@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.expo/
+__pycache__/
+*.pyc
+.venv/
+env/
+
+# Build
+ios/build/
+android/app/build/
+*.apk
+*.ipa
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment
+.env
+.env.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Codacy
+.github/instructions/codacy.instructions.md
