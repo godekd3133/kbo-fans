@@ -538,6 +538,76 @@ GET /api/standings?season=2026
 
 ---
 
+### 2.7 잠금화면 / 홈화면 위젯 (Phase 1.5)
+
+**목적**: 앱을 열지 않고도 잠금화면/홈화면에서 마이팀 실시간 스코어 확인
+
+#### iOS 위젯 (WidgetKit)
+
+```
+[accessoryRectangular] 잠금화면 직사각형
+┌─────────────────────┐
+│ KT  6 : 2  LG       │
+│ 4회초 ● LIVE         │
+└─────────────────────┘
+
+[accessoryCircular] 잠금화면 원형
+┌─────┐
+│ 6:2 │
+│ 4회 │
+└─────┘
+
+[accessoryInline] 잠금화면 인라인
+⚾ KT 6 : 2 LG · 4회초
+
+[systemSmall] 홈화면 소형 (2×2)
+┌────────────────┐
+│ ★ MY TEAM      │
+│ KT  6    LG  2 │
+│   4회초 LIVE    │
+│ 1 2 3 4 5 R   │
+│ 6 0 0 0 - 6   │
+│ 0 0 2 - - 2   │
+└────────────────┘
+```
+
+#### Android 위젯 (Glance API / AppWidgetProvider)
+
+```
+[Small] 잠금화면 / 홈화면
+┌─────────────────────┐
+│ ⚾ KT  6 : 2  LG    │
+│   4회초 ● LIVE       │
+└─────────────────────┘
+
+[Medium] 홈화면 (4×2)
+┌─────────────────────────┐
+│ ★ MY TEAM               │
+│ KT 위즈  6 : 2  LG 트윈스│
+│      4회초 ● LIVE        │
+│ 1  2  3  4  5  R  H  E  │
+│ 6  0  0  0  -  6  9  0  │
+│ 0  0  2  -  -  2  3  0  │
+└─────────────────────────┘
+```
+
+**기술 구현**:
+| 항목 | iOS | Android |
+|------|-----|---------|
+| 프레임워크 | WidgetKit (Swift) | Glance API (Kotlin) / AppWidgetProvider |
+| Flutter 연동 | `home_widget` 패키지 | `home_widget` 패키지 |
+| 데이터 공유 | App Groups (UserDefaults) | SharedPreferences |
+| 업데이트 주기 | Timeline (15분 최소) + 앱에서 강제 갱신 | WorkManager + 앱에서 강제 갱신 |
+| 잠금화면 지원 | iOS 16+ (accessoryInline/Circular/Rectangular) | Android 14+ (Lock Screen Widgets) |
+
+**위젯 표시 데이터**:
+- 마이팀 경기: 양팀명, 스코어, 현재 이닝, 경기 상태
+- 경기 전: "14:00 예정" + 선발 투수
+- 경기 종료: "경기종료" + 최종 스코어
+- 경기 없음: "오늘 경기 없음 · 다음: 3.29(일)"
+
+---
+
 ## 3. 공통 컴포넌트
 
 | 컴포넌트 | 사용 화면 | 설명 |

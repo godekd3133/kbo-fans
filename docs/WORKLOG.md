@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-03-30: AGENTS 컨텍스트 동기화
+
+### 완료
+- [x] `CLAUDE.md` 기반 `AGENTS.md` 신규 작성
+- [x] 저장소 내 Markdown 문서 전체 재검토 (`CLAUDE.md`, `docs/PLANNING.md`, `docs/APP_SPEC.md`, `docs/WORKLOG.md`)
+- [x] 문서 간 기준 우선순위 정리 (`AGENTS.md`에 반영)
+- [x] 최신 모바일 스택 기준이 Flutter임을 재확인
+
+### 확인 사항
+- `docs/PLANNING.md` 마지막 "다음 단계" 항목의 `Expo 프로젝트 셋업` 문구를 `Flutter 프로젝트 셋업`으로 정정
+- 최신 기준은 `Flutter + Dart`, `Riverpod`, `go_router`, `dio`, `FastAPI`, `AWS`, `FCM`
+
+### 비고
+- 이후 작업은 `AGENTS.md`를 기본 작업 가이드로 사용
+
+---
+
 ## 2026-03-28: 프로젝트 초기 세팅 + 기획 완료
 
 ### 완료
