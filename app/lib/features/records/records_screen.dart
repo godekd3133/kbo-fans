@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/player.dart';
+import '../../data/models/records_overview.dart';
 import '../../data/models/team_stats.dart';
 import '../../data/providers.dart';
 
@@ -57,6 +58,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
 
   Widget _buildTeamChooser() {
     final myTeamId = ref.watch(myTeamProvider);
+    final overviewAsync = ref.watch(recordsOverviewProvider(_selectedSeason));
     final orderedTeams = [...KboTeams.teams]
       ..sort((a, b) {
         if (a.id == myTeamId) return -1;
@@ -83,6 +85,22 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
             const SizedBox(height: 18),
             _seasonSelector(),
             const SizedBox(height: 14),
+            overviewAsync.when(
+              loading: () => const SizedBox.shrink(),
+              error: (error, stackTrace) => const SizedBox.shrink(),
+              data: (overview) => Column(
+                children: [
+                  _featuredCards(overview),
+                  const SizedBox(height: 14),
+                  _leaderboardCard('리그 타율 리더보드', overview.avgLeaders),
+                  const SizedBox(height: 10),
+                  _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
+                  const SizedBox(height: 10),
+                  _leaderboardCard('리그 ERA 리더보드', overview.eraLeaders),
+                  const SizedBox(height: 14),
+                ],
+              ),
+            ),
             TextField(
               onChanged: (value) => setState(() => _searchQuery = value),
               decoration: InputDecoration(
@@ -125,8 +143,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   }
 
   Widget _teamChooserCard(KboTeam team, {required bool isMyTeam}) {
-    final playersAsync = ref.watch(teamPlayersProvider('${team.id}|$_selectedSeason'));
-
     return GestureDetector(
       onTap: () => context.push('/records/team/${team.id}'),
       child: Container(
@@ -159,15 +175,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                     ],
                   ),
                   const SizedBox(height: 4),
-                  playersAsync.when(
-                    loading: () => const Text('대표 기록 로딩 중...', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
-                    error: (_, stackTrace) => const Text('선수 기록 보기', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    data: (players) => Text(
-                      _teamSummary(players),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isMyTeam ? team.primaryColor : AppColors.textSecondary,
-                      ),
+                  Text(
+                    isMyTeam ? '마이팀 기록실 열기' : '선수 기록 보기',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isMyTeam ? team.primaryColor : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -178,29 +190,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
         ),
       ),
     );
-  }
-
-  String _teamSummary(List<PlayerProfile> players) {
-    if (players.isEmpty) {
-      return '선수 기록 보기';
-    }
-
-    final hitters = players.where((player) => player.playerType == PlayerType.hitter).toList()
-      ..sort((a, b) => (b.ops ?? -1).compareTo(a.ops ?? -1));
-    final pitchers = players.where((player) => player.playerType == PlayerType.pitcher).toList()
-      ..sort((a, b) => (a.era ?? 999).compareTo(b.era ?? 999));
-
-    final bestHitter = hitters.isNotEmpty ? hitters.first : null;
-    final bestPitcher = pitchers.isNotEmpty ? pitchers.first : null;
-
-    final parts = <String>['선수 ${players.length}명'];
-    if (bestHitter != null && bestHitter.ops != null) {
-      parts.add('타자 ${bestHitter.name} OPS ${bestHitter.ops!.toStringAsFixed(3)}');
-    }
-    if (bestPitcher != null && bestPitcher.era != null) {
-      parts.add('투수 ${bestPitcher.name} ERA ${bestPitcher.era!.toStringAsFixed(2)}');
-    }
-    return parts.join(' · ');
   }
 
   Widget _buildTeamRecords(String teamId) {
@@ -651,6 +640,105 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
             child: Text(line, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
           ),
       ],
+    );
+  }
+
+  Widget _featuredCards(RecordsOverview overview) {
+    return Row(
+      children: [
+        Expanded(child: _featuredCard(overview.todayPlayer)),
+        const SizedBox(width: 10),
+        Expanded(child: _featuredCard(overview.monthPlayer)),
+      ],
+    );
+  }
+
+  Widget _featuredCard(FeaturedPlayerCard card) {
+    final team = KboTeams.byId(card.teamId ?? '');
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(card.label, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              if (card.imageUrl != null && card.imageUrl!.isNotEmpty)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: card.imageUrl!,
+                    width: 56,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, _, _) => _logoFallback(team?.shortName ?? '', 56),
+                  ),
+                )
+              else
+                _logoFallback(team?.shortName ?? '', 56),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(card.name ?? '-', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    Text(card.headline ?? '-', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    const SizedBox(height: 6),
+                    Text(
+                      card.summary ?? '-',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _leaderboardCard(String title, List<RecordLeader> leaders) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          for (final leader in leaders)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    child: Text('${leader.rank}', style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                  ),
+                  Expanded(
+                    child: Text(leader.name, style: const TextStyle(fontSize: 13)),
+                  ),
+                  Text(
+                    leader.value,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

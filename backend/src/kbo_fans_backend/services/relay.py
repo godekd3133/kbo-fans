@@ -2,17 +2,33 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from kbo_fans_backend.crawlers.relay import RelayCrawler
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 
 
 class RelayService:
     def __init__(
         self,
+        relay_crawler: Optional[RelayCrawler] = None,
         scoreboard_service: Optional[ScoreboardService] = None,
     ) -> None:
+        self.relay_crawler = relay_crawler or RelayCrawler()
         self.scoreboard_service = scoreboard_service or ScoreboardService()
 
     def get_relay(self, game_id: str, after: Optional[int] = None) -> dict[str, Any]:
+        try:
+            relay = self.relay_crawler.get_relay(game_id)
+            relay_items = relay["relayItems"]
+            if after is not None:
+                relay_items = [item for item in relay_items if item["seqNo"] > after]
+            return {
+                "gameId": game_id,
+                "currentAtBat": relay.get("currentAtBat"),
+                "relayItems": relay_items,
+            }
+        except Exception:
+            pass
+
         game = self.scoreboard_service.get_game(game_id)
         if game is None:
             return {

@@ -61,6 +61,7 @@ class ScheduleCrawler(BaseCrawler):
         action_html = cells[offset + 2]["Text"]
         status = self._derive_status(action_html)
         away_name, home_name = self._parse_play_names(play_html)
+        away_score, home_score = self._parse_play_score(play_html)
         away_id, home_id = self._derive_team_ids_from_game_id(extract_game_id(action_html))
 
         return {
@@ -69,8 +70,10 @@ class ScheduleCrawler(BaseCrawler):
             "gameId": extract_game_id(action_html),
             "awayId": away_id,
             "awayName": away_name,
+            "awayScore": away_score,
             "homeId": home_id,
             "homeName": home_name,
+            "homeScore": home_score,
             "stadium": strip_tags(cells[offset + 6]["Text"]),
             "status": status,
         }
@@ -91,6 +94,13 @@ class ScheduleCrawler(BaseCrawler):
         if len(parts) == 2:
             return parts[0].strip(), parts[1].strip()
         return "", ""
+
+    @staticmethod
+    def _parse_play_score(play_html: str) -> tuple[Optional[int], Optional[int]]:
+        score_texts = re.findall(r"<span class=\"(?:win|lose)\">(\d+)</span>", play_html)
+        if len(score_texts) >= 2:
+            return int(score_texts[0]), int(score_texts[1])
+        return None, None
 
     @staticmethod
     def _derive_team_ids_from_game_id(game_id: Optional[str]) -> Tuple[Optional[str], Optional[str]]:

@@ -33,8 +33,10 @@ class ScheduleService:
                     "time": row["time"],
                     "awayId": row["awayId"],
                     "awayName": row["awayName"],
+                    "awayScore": row["awayScore"],
                     "homeId": row["homeId"],
                     "homeName": row["homeName"],
+                    "homeScore": row["homeScore"],
                     "stadium": row["stadium"],
                     "status": row["status"],
                     "ticketInfo": self.ticketing_service.build_ticket_info(

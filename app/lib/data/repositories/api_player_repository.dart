@@ -1,5 +1,6 @@
 import '../api/api_client.dart';
 import '../models/player.dart';
+import '../models/records_overview.dart';
 import '../models/team_stats.dart';
 import 'player_repository.dart';
 
@@ -33,6 +34,21 @@ class ApiPlayerRepository implements PlayerRepository {
       pitching: (data['pitching'] as Map<String, dynamic>? ?? const {}).map(
         (key, value) => MapEntry(key, value.toString()),
       ),
+    );
+  }
+
+  @override
+  Future<RecordsOverview> getRecordsOverview({required int season}) async {
+    final data = await _client.get('/records/overview', queryParameters: {'season': season});
+    final leaders = data['leaders'] as Map<String, dynamic>? ?? const {};
+    final featured = data['featured'] as Map<String, dynamic>? ?? const {};
+    return RecordsOverview(
+      season: data['season'] as int? ?? season,
+      avgLeaders: _parseLeaders(leaders['avg'] as List<dynamic>? ?? const []),
+      opsLeaders: _parseLeaders(leaders['ops'] as List<dynamic>? ?? const []),
+      eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
+      todayPlayer: _parseFeatured(featured['todayPlayer'] as Map<String, dynamic>? ?? const {'label': '오늘의 플레이어'}),
+      monthPlayer: _parseFeatured(featured['monthPlayer'] as Map<String, dynamic>? ?? const {'label': '이달의 플레이어'}),
     );
   }
 
@@ -89,5 +105,32 @@ class ApiPlayerRepository implements PlayerRepository {
       default:
         return PlayerAvailabilityStatus.available;
     }
+  }
+
+  List<RecordLeader> _parseLeaders(List<dynamic> list) {
+    return list.map((item) {
+      final map = item as Map<String, dynamic>;
+      return RecordLeader(
+        rank: map['rank'] as int? ?? 0,
+        playerId: map['playerId'] as String? ?? '',
+        playerType: map['playerType'] as String? ?? '',
+        name: map['name'] as String? ?? '',
+        teamId: map['teamId'] as String? ?? '',
+        value: map['value'] as String? ?? '',
+      );
+    }).toList();
+  }
+
+  FeaturedPlayerCard _parseFeatured(Map<String, dynamic> map) {
+    return FeaturedPlayerCard(
+      label: map['label'] as String? ?? '',
+      playerId: map['playerId'] as String?,
+      playerType: map['playerType'] as String?,
+      name: map['name'] as String?,
+      teamId: map['teamId'] as String?,
+      headline: map['headline'] as String?,
+      summary: map['summary'] as String?,
+      imageUrl: map['imageUrl'] as String?,
+    );
   }
 }

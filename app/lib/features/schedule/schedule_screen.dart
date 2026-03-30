@@ -11,16 +11,14 @@ import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
 
 enum ScheduleViewMode { calendar, stadium }
+
 enum ScheduleTeamFilter { all, myTeamOnly, otherTeamsOnly }
 
 class _StadiumScheduleItem {
   final String date;
   final ScheduleGame game;
 
-  const _StadiumScheduleItem({
-    required this.date,
-    required this.game,
-  });
+  const _StadiumScheduleItem({required this.date, required this.game});
 }
 
 class ScheduleScreen extends ConsumerStatefulWidget {
@@ -65,8 +63,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             _buildMonthHeader(),
             Expanded(
               child: scheduleAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
-                error: (e, _) => Center(child: Text('일정을 불러올 수 없습니다', style: TextStyle(color: AppColors.textDisabled))),
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.live),
+                ),
+                error: (e, _) => Center(
+                  child: Text(
+                    '일정을 불러올 수 없습니다',
+                    style: TextStyle(color: AppColors.textDisabled),
+                  ),
+                ),
                 data: (days) => _buildBody(days),
               ),
             ),
@@ -108,7 +113,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       final day = int.tryParse(d.date.split('-').last) ?? 0;
       gameDays.add(day);
       if (myTeamId != null) {
-        final hasMyTeam = d.games.any((g) => g.awayId == myTeamId || g.homeId == myTeamId);
+        final hasMyTeam = d.games.any(
+          (g) => g.awayId == myTeamId || g.homeId == myTeamId,
+        );
         if (hasMyTeam) myTeamDays.add(day);
       }
     }
@@ -116,8 +123,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     // 선택된 날짜의 경기 목록
     ScheduleDay? selectedSchedule;
     if (_selectedDay != null) {
-      final dateStr = '${_currentMonth.year}-${_currentMonth.month.toString().padLeft(2, '0')}-${_selectedDay.toString().padLeft(2, '0')}';
-      selectedSchedule = filteredDays.where((d) => d.date == dateStr).firstOrNull;
+      final dateStr =
+          '${_currentMonth.year}-${_currentMonth.month.toString().padLeft(2, '0')}-${_selectedDay.toString().padLeft(2, '0')}';
+      selectedSchedule = filteredDays
+          .where((d) => d.date == dateStr)
+          .firstOrNull;
     }
 
     return Column(
@@ -150,7 +160,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       }).toList();
 
       if (games.isNotEmpty) {
-        filtered.add(ScheduleDay(date: day.date, label: day.label, games: games));
+        filtered.add(
+          ScheduleDay(date: day.date, label: day.label, games: games),
+        );
       }
     }
 
@@ -168,7 +180,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 child: _segmentedButton(
                   label: '달력으로 보기',
                   selected: _viewMode == ScheduleViewMode.calendar,
-                  onTap: () => setState(() => _viewMode = ScheduleViewMode.calendar),
+                  onTap: () =>
+                      setState(() => _viewMode = ScheduleViewMode.calendar),
                 ),
               ),
               const SizedBox(width: 8),
@@ -176,7 +189,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 child: _segmentedButton(
                   label: '경기장으로 보기',
                   selected: _viewMode == ScheduleViewMode.stadium,
-                  onTap: () => setState(() => _viewMode = ScheduleViewMode.stadium),
+                  onTap: () =>
+                      setState(() => _viewMode = ScheduleViewMode.stadium),
                 ),
               ),
             ],
@@ -187,19 +201,23 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               _filterChip(
                 label: '전체',
                 selected: _teamFilter == ScheduleTeamFilter.all,
-                onTap: () => setState(() => _teamFilter = ScheduleTeamFilter.all),
+                onTap: () =>
+                    setState(() => _teamFilter = ScheduleTeamFilter.all),
               ),
               const SizedBox(width: 8),
               _filterChip(
                 label: '마이팀만',
                 selected: _teamFilter == ScheduleTeamFilter.myTeamOnly,
-                onTap: () => setState(() => _teamFilter = ScheduleTeamFilter.myTeamOnly),
+                onTap: () =>
+                    setState(() => _teamFilter = ScheduleTeamFilter.myTeamOnly),
               ),
               const SizedBox(width: 8),
               _filterChip(
                 label: '마이팀 제외',
                 selected: _teamFilter == ScheduleTeamFilter.otherTeamsOnly,
-                onTap: () => setState(() => _teamFilter = ScheduleTeamFilter.otherTeamsOnly),
+                onTap: () => setState(
+                  () => _teamFilter = ScheduleTeamFilter.otherTeamsOnly,
+                ),
               ),
             ],
           ),
@@ -269,7 +287,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final lastDay = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
     final startWeekday = firstDay.weekday;
     final today = DateTime.now();
-    final isCurrentMonth = _currentMonth.year == today.year && _currentMonth.month == today.month;
+    final isCurrentMonth =
+        _currentMonth.year == today.year && _currentMonth.month == today.month;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -277,8 +296,16 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         children: [
           Row(
             children: weekdays.map((d) {
-              final color = d == '토' ? AppColors.accent : d == '일' ? AppColors.live : AppColors.textDisabled;
-              return Expanded(child: Center(child: Text(d, style: TextStyle(fontSize: 12, color: color))));
+              final color = d == '토'
+                  ? AppColors.accent
+                  : d == '일'
+                  ? AppColors.live
+                  : AppColors.textDisabled;
+              return Expanded(
+                child: Center(
+                  child: Text(d, style: TextStyle(fontSize: 12, color: color)),
+                ),
+              );
             }).toList(),
           ),
           const SizedBox(height: 8),
@@ -294,9 +321,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 final isToday = isCurrentMonth && day == today.day;
                 final hasGame = gameDays.contains(day);
                 final isMyTeam = myTeamDays.contains(day);
-                final isPast = DateTime(_currentMonth.year, _currentMonth.month, day).isBefore(
-                  DateTime(today.year, today.month, today.day),
-                );
+                final isPast = DateTime(
+                  _currentMonth.year,
+                  _currentMonth.month,
+                  day,
+                ).isBefore(DateTime(today.year, today.month, today.day));
 
                 return Expanded(
                   child: GestureDetector(
@@ -307,28 +336,45 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            width: 32, height: 32,
+                            width: 32,
+                            height: 32,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: isSelected ? AppColors.textPrimary : isToday ? AppColors.cardSub : null,
+                              color: isSelected
+                                  ? AppColors.textPrimary
+                                  : isToday
+                                  ? AppColors.cardSub
+                                  : null,
                             ),
                             child: Text(
                               '$day',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: isSelected ? AppColors.background : isPast ? AppColors.textDisabled : AppColors.textPrimary,
-                                fontWeight: isSelected || isToday ? FontWeight.w600 : FontWeight.normal,
+                                color: isSelected
+                                    ? AppColors.background
+                                    : isPast
+                                    ? AppColors.textDisabled
+                                    : AppColors.textPrimary,
+                                fontWeight: isSelected || isToday
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                               ),
                             ),
                           ),
                           if (hasGame)
                             Container(
-                              width: 4, height: 4,
+                              width: 4,
+                              height: 4,
                               margin: const EdgeInsets.only(top: 2),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isMyTeam ? (KboTeams.byId(ref.watch(myTeamProvider) ?? '')?.primaryColor ?? AppColors.live) : AppColors.textDisabled,
+                                color: isMyTeam
+                                    ? (KboTeams.byId(
+                                            ref.watch(myTeamProvider) ?? '',
+                                          )?.primaryColor ??
+                                          AppColors.live)
+                                    : AppColors.textDisabled,
                               ),
                             ),
                         ],
@@ -347,7 +393,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   Widget _buildGameList(ScheduleDay? schedule) {
     if (_selectedDay == null) {
-      return Center(child: Text('날짜를 선택하세요', style: TextStyle(color: AppColors.textDisabled)));
+      return Center(
+        child: Text(
+          '날짜를 선택하세요',
+          style: TextStyle(color: AppColors.textDisabled),
+        ),
+      );
     }
 
     if (schedule == null || schedule.games.isEmpty) {
@@ -357,99 +408,148 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           children: [
             Icon(Icons.event_busy, size: 48, color: AppColors.divider),
             const SizedBox(height: 12),
-            Text('경기가 없습니다', style: TextStyle(fontSize: 16, color: AppColors.textDisabled)),
+            Text(
+              '경기가 없습니다',
+              style: TextStyle(fontSize: 16, color: AppColors.textDisabled),
+            ),
           ],
         ),
       );
     }
 
     final dayNames = ['', '월', '화', '수', '목', '금', '토', '일'];
-    final date = DateTime(_currentMonth.year, _currentMonth.month, _selectedDay!);
-    final dateLabel = '${_currentMonth.month}월 $_selectedDay일 (${dayNames[date.weekday]})';
-    final label = schedule.label != null ? '$dateLabel — ${schedule.label}' : dateLabel;
+    final date = DateTime(
+      _currentMonth.year,
+      _currentMonth.month,
+      _selectedDay!,
+    );
+    final dateLabel =
+        '${_currentMonth.month}월 $_selectedDay일 (${dayNames[date.weekday]})';
+    final label = schedule.label != null
+        ? '$dateLabel — ${schedule.label}'
+        : dateLabel;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
         ),
-        ...schedule.games.map((g) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: GestureDetector(
-                onTap: () => context.push('/game/${g.gameId}'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(g.time, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                          const SizedBox(width: 8),
-                          if (g.status.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppColors.cardSub,
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                _statusLabel(g.status),
-                                style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+        ...schedule.games.map(
+          (g) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: GestureDetector(
+              onTap: () => context.push('/game/${g.gameId}'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          g.time,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (g.status.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _statusBadgeColor(g.status),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              _statusLabel(g.status),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _statusTextColor(g.status),
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          const Spacer(),
-                          Text(g.stadium, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
-                        ],
-                      ),
+                          ),
+                        const Spacer(),
+                        Text(
+                          g.stadium,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textDisabled,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _teamInfo(
+                            teamId: g.awayId,
+                            fallbackName: g.awayName,
+                            alignEnd: true,
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: SizedBox.shrink(),
+                        ),
+                        _scoreOrVersus(g.awayScore, g.homeScore),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: SizedBox.shrink(),
+                        ),
+                        Expanded(
+                          child: _teamInfo(
+                            teamId: g.homeId,
+                            fallbackName: g.homeName,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (g.ticketInfo != null) ...[
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          Expanded(
-                            child: _teamInfo(
-                              teamId: g.awayId,
-                              fallbackName: g.awayName,
-                              alignEnd: true,
-                            ),
+                          const Icon(
+                            Icons.confirmation_num_outlined,
+                            size: 14,
+                            color: AppColors.accent,
                           ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
+                          const SizedBox(width: 6),
+                          Expanded(
                             child: Text(
-                              'vs',
-                              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
-                            ),
-                          ),
-                          Expanded(
-                            child: _teamInfo(
-                              teamId: g.homeId,
-                              fallbackName: g.homeName,
+                              _ticketSummary(g.ticketInfo!),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      if (g.ticketInfo != null) ...[
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            const Icon(Icons.confirmation_num_outlined, size: 14, color: AppColors.accent),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                _ticketSummary(g.ticketInfo!),
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ),
-            )),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -468,7 +568,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final stadiums = stadiumMap.keys.toList()..sort();
     if (stadiums.isEmpty) {
       return Center(
-        child: Text('표시할 경기가 없습니다', style: TextStyle(color: AppColors.textDisabled)),
+        child: Text(
+          '표시할 경기가 없습니다',
+          style: TextStyle(color: AppColors.textDisabled),
+        ),
       );
     }
 
@@ -477,7 +580,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       children: [
         const Padding(
           padding: EdgeInsets.only(left: 4, bottom: 12),
-          child: Text('경기장별 일정', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          child: Text(
+            '경기장별 일정',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
         ),
         for (final stadium in stadiums) ...[
           Padding(
@@ -493,7 +599,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               child: GestureDetector(
                 onTap: () => context.push('/game/${item.game.gameId}'),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.card,
                     borderRadius: BorderRadius.circular(12),
@@ -505,23 +614,36 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         children: [
                           Text(
                             _formatDateLabel(item.date),
-                            style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textDisabled,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           Text(
                             item.game.time,
-                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                           const Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppColors.cardSub,
+                              color: _statusBadgeColor(item.game.status),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Text(
                               _statusLabel(item.game.status),
-                              style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _statusTextColor(item.game.status),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -538,10 +660,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                           ),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: Text(
-                              'vs',
-                              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
-                            ),
+                            child: SizedBox.shrink(),
+                          ),
+                          _scoreOrVersus(
+                            item.game.awayScore,
+                            item.game.homeScore,
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: SizedBox.shrink(),
                           ),
                           Expanded(
                             child: _teamInfo(
@@ -555,12 +682,19 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            const Icon(Icons.confirmation_num_outlined, size: 14, color: AppColors.accent),
+                            const Icon(
+                              Icons.confirmation_num_outlined,
+                              size: 14,
+                              color: AppColors.accent,
+                            ),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
                                 _ticketSummary(item.game.ticketInfo!),
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ),
                           ],
@@ -607,7 +741,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final shortName = team?.shortName ?? fallbackName;
 
     return Row(
-      mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: alignEnd
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       children: [
         if (alignEnd) ...[
           Flexible(
@@ -637,26 +773,103 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   String _statusLabel(String status) {
     switch (status.toUpperCase()) {
       case 'LIVE':
-        return '진행중';
+        return '경기 중';
       case 'FINAL':
-        return '종료';
+        return '경기 후';
       case 'CANCELLED':
         return '취소';
       default:
-        return '예정';
+        return '경기 전';
     }
+  }
+
+  Color _statusBadgeColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'LIVE':
+        return AppColors.live.withValues(alpha: 0.16);
+      case 'FINAL':
+        return AppColors.cardSub;
+      case 'CANCELLED':
+        return AppColors.textDisabled.withValues(alpha: 0.18);
+      default:
+        return AppColors.cardSub;
+    }
+  }
+
+  Color _statusTextColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'LIVE':
+        return AppColors.live;
+      case 'FINAL':
+        return AppColors.textSecondary;
+      case 'CANCELLED':
+        return AppColors.textDisabled;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  Widget _scoreOrVersus(int? awayScore, int? homeScore) {
+    final hasScore = awayScore != null && homeScore != null;
+    if (!hasScore) {
+      return const Text(
+        'vs',
+        style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '$awayScore',
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            ':',
+            style: TextStyle(fontSize: 16, color: AppColors.textDisabled),
+          ),
+        ),
+        Text(
+          '$homeScore',
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 
   Widget _teamLogo(String teamId, double size) {
     final team = KboTeams.byId(teamId);
     return CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
-      width: size, height: size,
-      placeholder: (_, _) => Container(width: size, height: size, decoration: BoxDecoration(color: AppColors.cardSub, shape: BoxShape.circle)),
+      width: size,
+      height: size,
+      placeholder: (_, _) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          shape: BoxShape.circle,
+        ),
+      ),
       errorWidget: (_, _, _) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(color: AppColors.cardSub, shape: BoxShape.circle),
-        child: Center(child: Text(team?.shortName ?? '', style: TextStyle(fontSize: size * 0.35, color: AppColors.textSecondary))),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            team?.shortName ?? '',
+            style: TextStyle(
+              fontSize: size * 0.35,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
       ),
     );
   }

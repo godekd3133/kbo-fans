@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,8 +21,10 @@ void main() async {
     DevConsole.instance.info('환경: ${AppConfig.instance.environment.name}');
     await TicketAlertService.instance.initialize();
     await WidgetSyncService.instance.initialize();
-    await Workmanager().initialize(widgetCallbackDispatcher, isInDebugMode: false);
-    await WidgetSyncService.instance.registerBackgroundRefresh();
+    if (!kIsWeb) {
+      await Workmanager().initialize(widgetCallbackDispatcher);
+      await WidgetSyncService.instance.registerBackgroundRefresh();
+    }
 
     FlutterError.onError = (details) {
       DevConsole.instance.error('Flutter: ${details.exceptionAsString()}');

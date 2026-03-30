@@ -87,7 +87,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _notifRow('경기 종료', _notifGameEnd, teamColor, (v) => setState(() => _notifGameEnd = v)),
                   const Divider(color: AppColors.divider, height: 1, indent: 16, endIndent: 16),
                   _notifRow('전체 경기 알림', _notifAllGames, teamColor, (v) => setState(() => _notifAllGames = v)),
-                  if (!_notifAllGames)
+                  if (_notifAllGames)
                     const Padding(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                       child: Align(

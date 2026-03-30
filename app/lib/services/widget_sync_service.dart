@@ -59,6 +59,10 @@ class WidgetSyncService {
     required List<Game> games,
     required String? myTeamId,
   }) async {
+    if (kIsWeb) {
+      return;
+    }
+
     final selected = _selectGame(games, myTeamId);
     await HomeWidget.saveWidgetData<String>('widget_my_team', myTeamId);
 

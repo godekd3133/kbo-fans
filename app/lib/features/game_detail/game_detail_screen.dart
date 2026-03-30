@@ -9,6 +9,7 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/game.dart';
+import '../../data/models/highlight_video.dart';
 import '../../data/providers.dart';
 import '../../services/ticket_alert_service.dart';
 import 'tabs/boxscore_tab.dart';
@@ -510,7 +511,7 @@ class _HighlightCardState extends State<_HighlightCard> {
     );
   }
 
-  Widget _videoCard(video) {
+  Widget _videoCard(HighlightVideo video) {
     final isPlayable = video.videoId.isNotEmpty;
     return SizedBox(
       width: 260,
@@ -542,13 +543,13 @@ class _HighlightCardState extends State<_HighlightCard> {
                       )
                     else
                       _thumbnailFallback(),
-                    Container(color: Colors.black.withOpacity(0.22)),
+                    Container(color: Colors.black.withValues(alpha: 0.22)),
                     Center(
                       child: Container(
                         width: 52,
                         height: 52,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.65),
+                          color: Colors.black.withValues(alpha: 0.65),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(

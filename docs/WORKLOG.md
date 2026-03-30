@@ -2,6 +2,46 @@
 
 ---
 
+## 2026-03-30: 웹 기능 점검 및 기록실/설정 버그 수정
+
+### 완료
+- [x] Flutter 웹 앱을 실제 브라우저에서 실행해 홈, 일정, 경기 상세, 기록실, 설정 흐름 점검
+- [x] 기록실 팀 선택 화면이 구단 10개의 선수 API를 동시에 호출하던 구조를 제거
+- [x] 기록실 첫 화면에서 리그 리더보드/추천 선수만 먼저 보여주고, 팀 상세 진입 시에만 선수 데이터를 조회하도록 정리
+- [x] 설정 화면의 `전체 경기 알림` 안내 문구가 스위치 상태와 반대로 보이던 문제 수정
+- [x] 하이라이트 카드 타입/색상 처리, 미사용 import, deprecated API 사용 정리로 웹 analyze 경고 제거
+
+### 원인
+- 기록실 팀 선택 카드가 요약 문구를 만들기 위해 각 팀별 `teamPlayersProvider`를 모두 `watch`하고 있었음
+- 웹에서는 첫 진입 시 `/api/team/{teamId}/players` 요청이 한꺼번에 발생해 타임아웃과 콘솔 노이즈가 생겼음
+- 설정 화면은 `전체 경기 알림`이 꺼진 상태에서만 `마이팀 외 경기도 알림을 받습니다` 문구를 노출해 의미가 뒤집혀 있었음
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-fatal-infos`
+- [x] Playwright로 `#/records`, `#/settings`, `#/schedule`, 경기 상세 화면 렌더링 확인
+- [x] 기록실 첫 화면 재검증 시 팀별 선수 API 연속 호출/콘솔 에러가 사라진 것 확인
+
+### 비고
+- `cd backend && source .venv/bin/activate && pytest -q` 실행 시 현재 작업과 무관한 `tests/test_relay_service.py` 2건이 실패함
+- 실패 내용은 relay summary/currentAtBat 기대값과 실제 구현 불일치로, 이번 웹 UI 수정과는 별도 이슈
+
+---
+
+## 2026-03-30: 일정 카드 상태 문구 / 점수 표시 보강
+
+### 완료
+- [x] KBO 월간 일정 원본 `play_html`에서 경기 점수 파싱 추가
+- [x] 백엔드 `/api/schedule` 응답에 `awayScore`, `homeScore` 필드 포함
+- [x] 일정 화면 카드 상태 문구를 `경기 전 / 경기 중 / 경기 후`로 통일
+- [x] 일정 화면 카드 중앙 영역에 점수가 있으면 `awayScore : homeScore`, 없으면 `vs`를 표시하도록 수정
+- [x] 관련 일정 화면 명세를 `docs/APP_SPEC.md`에 반영
+
+### 비고
+- KBO 월간 일정 원본은 종료 경기 점수를 직접 포함하고 있어 추가 scoreboard API 호출 없이 카드 점수 노출이 가능함
+- 예정 경기는 점수 데이터가 없으므로 기존처럼 `vs`를 유지
+
+---
+
 ## 2026-03-30: 종료 경기 상세 진입 오류 수정
 
 ### 완료
@@ -14,6 +54,10 @@
 - [x] 백엔드 `relay` endpoint가 501 대신 빈 payload를 반환하도록 정리해 웹 콘솔 오류 제거
 - [x] 예정 경기 `section=START_PIT` 링크를 `SCHEDULED`로 분류하도록 일정 상태 파싱 보정
 - [x] 종료 경기 문자중계 탭에서 이닝별 득점 요약과 경기 종료 결과를 보여주는 summary relay 추가
+- [x] KBO 로그인 세션을 사용하는 `LiveTextView2.aspx` crawler 추가
+- [x] `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD` 환경변수 기반으로 실제 play-by-play relay 파싱 지원
+- [x] `backend/.env` 자동 로드 지원 추가
+- [x] 로컬 `backend/.env`에 KBO relay 계정 설정
 
 ### 원인
 - 홈 화면은 `/game/:gameId` 라우팅 시 `extra: game`을 넘기지만, 일정 화면은 `gameId`만 넘기고 있었음
@@ -23,6 +67,7 @@
 - 앱에서 `relayProvider`와 `currentAtBatProvider`가 같은 endpoint를 각각 호출해 같은 실패가 중복 발생하고 있었음
 - KBO 일정 응답에서 예정 경기가 `section=START_PIT`로 내려오는 케이스를 `SCHEDULED`로 분류하지 못해 상세 상태가 `UNKNOWN`으로 내려오고 있었음
 - KBO 공식 live relay 원본 경로를 즉시 안정적으로 확보하기 어려워, 종료 경기의 경우 scoreboard 데이터로부터 흐름 요약을 만들어 탭 공백을 줄일 필요가 있었음
+- KBO 공식 `문자중계보기`는 로그인 사용자에게만 `LiveText.aspx` / `LiveTextView1.aspx` / `LiveTextView2.aspx`를 정상 제공하고 있었음
 
 ---
 
@@ -41,6 +86,15 @@
 - [x] 스코어 탭 이닝 셀 클릭 시 해당 회차 주요 장면 바텀시트 추가
 - [x] 문자중계 탭이 라이브 경기 전용으로 막히지 않도록 완화
 - [x] 라인업/상세 탭 좁은 폭 깨짐 대응을 위해 가로 스크롤 보강
+- [x] 홈 스코어보드 기준 위젯 동기화 서비스 추가
+- [x] 앱 foreground 기준 라이브 30초 / 예정 5분 자동 갱신 추가
+- [x] Android 앱 위젯 리시버 / 레이아웃 / 15분 주기 background refresh 등록 추가
+- [x] iOS WidgetKit용 데이터 공유/배경 갱신 훅 및 위젯 소스 초안 추가
+
+### 한계
+- Android 위젯의 시스템 `updatePeriodMillis`는 30분 미만으로 내려갈 수 없어서 15분 주기는 Workmanager 기반 best-effort로 보강
+- iOS WidgetKit은 시스템 budget 기반이라 실시간/초단위 갱신을 보장하지 않음
+- 현재 relay API는 투구별 원문 중계가 아니라 회차별 점수 요약 이벤트 중심
 
 ### 비고
 - KBO 일정 원본 응답에는 예매처/예매 오픈 시간이 없어 현재는 홈팀 기본 정책 기준 추정값으로 내려줌

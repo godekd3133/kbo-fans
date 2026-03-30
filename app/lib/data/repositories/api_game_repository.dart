@@ -120,8 +120,10 @@ class ApiGameRepository implements GameRepository {
           time: gm['time'] as String? ?? '',
           awayId: gm['awayId'] as String? ?? '',
           awayName: gm['awayName'] as String? ?? '',
+          awayScore: gm['awayScore'] as int?,
           homeId: gm['homeId'] as String? ?? '',
           homeName: gm['homeName'] as String? ?? '',
+          homeScore: gm['homeScore'] as int?,
           stadium: gm['stadium'] as String? ?? '',
           status: gm['status'] as String? ?? 'SCHEDULED',
           ticketInfo: _parseTicketInfo(
@@ -319,6 +321,9 @@ class ApiGameRepository implements GameRepository {
       return null;
     }
 
-    return HighlightInfo(officialUrl: officialUrl, youtubeVideos: youtubeVideos);
+    return HighlightInfo(
+      officialUrl: officialUrl,
+      youtubeVideos: youtubeVideos,
+    );
   }
 }

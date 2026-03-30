@@ -5,8 +5,10 @@ class ScheduleGame {
   final String time;
   final String awayId;
   final String awayName;
+  final int? awayScore;
   final String homeId;
   final String homeName;
+  final int? homeScore;
   final String stadium;
   final String status;
   final TicketInfo? ticketInfo;
@@ -16,8 +18,10 @@ class ScheduleGame {
     required this.time,
     required this.awayId,
     required this.awayName,
+    this.awayScore,
     required this.homeId,
     required this.homeName,
+    this.homeScore,
     required this.stadium,
     this.status = 'SCHEDULED',
     this.ticketInfo,
@@ -29,11 +33,7 @@ class ScheduleDay {
   final String? label;
   final List<ScheduleGame> games;
 
-  const ScheduleDay({
-    required this.date,
-    this.label,
-    required this.games,
-  });
+  const ScheduleDay({required this.date, this.label, required this.games});
 }
 
 class TeamStanding {
