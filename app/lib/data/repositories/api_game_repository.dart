@@ -2,6 +2,7 @@ import '../api/api_client.dart';
 import '../models/game.dart';
 import '../models/relay.dart';
 import '../models/boxscore.dart';
+import '../models/schedule.dart';
 import 'game_repository.dart';
 
 /// DEV / RELEASE 환경에서 실제 백엔드 API를 호출하는 구현체
@@ -59,6 +60,52 @@ class ApiGameRepository implements GameRepository {
     final team = data[side] as Map<String, dynamic>? ?? {};
     final lineup = team['lineup'] as List<dynamic>? ?? [];
     return lineup.map((l) => _parseLineup(l as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<List<ScheduleDay>> getSchedule(String yearMonth) async {
+    final data = await _client.get('/schedule', queryParameters: {'month': yearMonth});
+    final days = data['days'] as List<dynamic>? ?? [];
+    return days.map((d) {
+      final dayMap = d as Map<String, dynamic>;
+      final games = (dayMap['games'] as List<dynamic>? ?? []).map((g) {
+        final gm = g as Map<String, dynamic>;
+        return ScheduleGame(
+          gameId: gm['gameId'] as String? ?? '',
+          time: gm['time'] as String? ?? '',
+          awayId: gm['awayId'] as String? ?? '',
+          awayName: gm['awayName'] as String? ?? '',
+          homeId: gm['homeId'] as String? ?? '',
+          homeName: gm['homeName'] as String? ?? '',
+          stadium: gm['stadium'] as String? ?? '',
+          status: gm['status'] as String? ?? 'SCHEDULED',
+        );
+      }).toList();
+      return ScheduleDay(
+        date: dayMap['date'] as String? ?? '',
+        label: dayMap['label'] as String?,
+        games: games,
+      );
+    }).toList();
+  }
+
+  @override
+  Future<List<TeamStanding>> getStandings(int season) async {
+    final data = await _client.get('/standings', queryParameters: {'season': season});
+    final standings = data['standings'] as List<dynamic>? ?? [];
+    return standings.map((s) {
+      final sm = s as Map<String, dynamic>;
+      return TeamStanding(
+        rank: sm['rank'] as int? ?? 0,
+        teamId: sm['teamId'] as String? ?? '',
+        teamName: sm['teamName'] as String? ?? '',
+        wins: sm['wins'] as int? ?? 0,
+        losses: sm['losses'] as int? ?? 0,
+        draws: sm['draws'] as int? ?? 0,
+        pct: sm['pct'] as String? ?? '.000',
+        gb: sm['gb'] as String? ?? '-',
+      );
+    }).toList();
   }
 
   // ── JSON → 모델 변환 ──
