@@ -1,8 +1,11 @@
 import '../api/api_client.dart';
 import '../models/game.dart';
+import '../models/highlight_info.dart';
+import '../models/highlight_video.dart';
 import '../models/relay.dart';
 import '../models/boxscore.dart';
 import '../models/schedule.dart';
+import '../models/ticketing.dart';
 import 'game_repository.dart';
 
 /// DEV / RELEASE 환경에서 실제 백엔드 API를 호출하는 구현체
@@ -13,30 +16,61 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<Game>> getScoreboard(String date) async {
-    final data = await _client.get('/scoreboard', queryParameters: {'date': date});
+    final data = await _client.get(
+      '/scoreboard',
+      queryParameters: {'date': date},
+    );
     final games = data['games'] as List<dynamic>? ?? [];
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
   }
 
   @override
-  Future<List<RelayItem>> getRelay(String gameId, {int? afterSeqNo}) async {
+  Future<Game?> getGame(String gameId) async {
+    final data = await _client.get('/game/$gameId');
+    final game = data['game'] as Map<String, dynamic>?;
+    if (game == null) {
+      return null;
+    }
+    return _parseGame(game);
+  }
+
+  @override
+  Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {
     final params = <String, dynamic>{};
     if (afterSeqNo != null) params['after'] = afterSeqNo;
-    final data = await _client.get('/game/$gameId/relay', queryParameters: params);
+
+    final data = await _client.get(
+      '/game/$gameId/relay',
+      queryParameters: params,
+    );
     final items = data['relayItems'] as List<dynamic>? ?? [];
-    return items.map((r) => _parseRelayItem(r as Map<String, dynamic>)).toList();
+    final atBat = data['currentAtBat'] as Map<String, dynamic>?;
+
+    return RelayData(
+      currentAtBat: atBat == null ? null : _parseCurrentAtBat(atBat),
+      relayItems: items
+          .map((r) => _parseRelayItem(r as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  @override
+  Future<List<RelayItem>> getRelay(String gameId, {int? afterSeqNo}) async {
+    final relayData = await getRelayData(gameId, afterSeqNo: afterSeqNo);
+    return relayData.relayItems;
   }
 
   @override
   Future<CurrentAtBat?> getCurrentAtBat(String gameId) async {
-    final data = await _client.get('/game/$gameId/relay');
-    final atBat = data['currentAtBat'] as Map<String, dynamic>?;
-    if (atBat == null) return null;
-    return _parseCurrentAtBat(atBat);
+    final relayData = await getRelayData(gameId);
+    return relayData.currentAtBat;
   }
 
   @override
-  Future<List<BatterRecord>> getBatters(String gameId, {required bool isAway}) async {
+  Future<List<BatterRecord>> getBatters(
+    String gameId, {
+    required bool isAway,
+  }) async {
     final data = await _client.get('/game/$gameId/boxscore');
     final side = isAway ? 'away' : 'home';
     final team = data[side] as Map<String, dynamic>? ?? {};
@@ -45,16 +79,24 @@ class ApiGameRepository implements GameRepository {
   }
 
   @override
-  Future<List<PitcherRecord>> getPitchers(String gameId, {required bool isAway}) async {
+  Future<List<PitcherRecord>> getPitchers(
+    String gameId, {
+    required bool isAway,
+  }) async {
     final data = await _client.get('/game/$gameId/boxscore');
     final side = isAway ? 'away' : 'home';
     final team = data[side] as Map<String, dynamic>? ?? {};
     final pitchers = team['pitchers'] as List<dynamic>? ?? [];
-    return pitchers.map((p) => _parsePitcher(p as Map<String, dynamic>)).toList();
+    return pitchers
+        .map((p) => _parsePitcher(p as Map<String, dynamic>))
+        .toList();
   }
 
   @override
-  Future<List<LineupEntry>> getLineup(String gameId, {required bool isAway}) async {
+  Future<List<LineupEntry>> getLineup(
+    String gameId, {
+    required bool isAway,
+  }) async {
     final data = await _client.get('/game/$gameId/lineup');
     final side = isAway ? 'away' : 'home';
     final team = data[side] as Map<String, dynamic>? ?? {};
@@ -64,7 +106,10 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<ScheduleDay>> getSchedule(String yearMonth) async {
-    final data = await _client.get('/schedule', queryParameters: {'month': yearMonth});
+    final data = await _client.get(
+      '/schedule',
+      queryParameters: {'month': yearMonth},
+    );
     final days = data['days'] as List<dynamic>? ?? [];
     return days.map((d) {
       final dayMap = d as Map<String, dynamic>;
@@ -79,6 +124,9 @@ class ApiGameRepository implements GameRepository {
           homeName: gm['homeName'] as String? ?? '',
           stadium: gm['stadium'] as String? ?? '',
           status: gm['status'] as String? ?? 'SCHEDULED',
+          ticketInfo: _parseTicketInfo(
+            gm['ticketInfo'] as Map<String, dynamic>?,
+          ),
         );
       }).toList();
       return ScheduleDay(
@@ -91,7 +139,10 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<TeamStanding>> getStandings(int season) async {
-    final data = await _client.get('/standings', queryParameters: {'season': season});
+    final data = await _client.get(
+      '/standings',
+      queryParameters: {'season': season},
+    );
     final standings = data['standings'] as List<dynamic>? ?? [];
     return standings.map((s) {
       final sm = s as Map<String, dynamic>;
@@ -120,6 +171,10 @@ class ApiGameRepository implements GameRepository {
       stadium: json['stadium'] as String? ?? '',
       startTime: json['startTime'] as String? ?? '',
       crowd: json['crowd'] as int?,
+      ticketInfo: _parseTicketInfo(json['ticketInfo'] as Map<String, dynamic>?),
+      highlightInfo: _parseHighlightInfo(
+        json['highlightInfo'] as Map<String, dynamic>?,
+      ),
     );
   }
 
@@ -137,9 +192,8 @@ class ApiGameRepository implements GameRepository {
   }
 
   TeamScore _parseTeamScore(Map<String, dynamic> json) {
-    final scores = (json['scores'] as List<dynamic>?)
-            ?.map((s) => s as int?)
-            .toList() ??
+    final scores =
+        (json['scores'] as List<dynamic>?)?.map((s) => s as int?).toList() ??
         List.filled(9, null);
 
     return TeamScore(
@@ -216,5 +270,55 @@ class ApiGameRepository implements GameRepository {
       positionKo: json['positionKo'] as String? ?? '',
       name: json['name'] as String? ?? '',
     );
+  }
+
+  TicketInfo? _parseTicketInfo(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+
+    final openAtRaw = json['openAt'] as String?;
+    return TicketInfo(
+      vendorKey: json['vendorKey'] as String? ?? '',
+      vendorName: json['vendorName'] as String? ?? '',
+      vendorUrl: json['vendorUrl'] as String?,
+      openAt: openAtRaw != null ? DateTime.tryParse(openAtRaw) : null,
+      source: (json['source'] as String? ?? '').toLowerCase() == 'official'
+          ? TicketSource.official
+          : TicketSource.inferred,
+      note: json['note'] as String?,
+    );
+  }
+
+  HighlightVideo? _parseHighlightVideo(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+
+    return HighlightVideo(
+      videoId: json['videoId'] as String? ?? '',
+      title: json['title'] as String? ?? '유튜브 하이라이트',
+      thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
+      videoUrl: json['videoUrl'] as String? ?? '',
+      source: json['source'] as String? ?? 'youtube_search',
+    );
+  }
+
+  HighlightInfo? _parseHighlightInfo(Map<String, dynamic>? json) {
+    if (json == null) {
+      return null;
+    }
+
+    final youtubeVideos = (json['youtubeVideos'] as List<dynamic>? ?? [])
+        .map((item) => _parseHighlightVideo(item as Map<String, dynamic>?))
+        .whereType<HighlightVideo>()
+        .toList();
+    final officialUrl = json['officialUrl'] as String?;
+
+    if (youtubeVideos.isEmpty && (officialUrl == null || officialUrl.isEmpty)) {
+      return null;
+    }
+
+    return HighlightInfo(officialUrl: officialUrl, youtubeVideos: youtubeVideos);
   }
 }

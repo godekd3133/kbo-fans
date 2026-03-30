@@ -59,6 +59,7 @@ kbo_fans/
 - 실행 방법, 프로젝트 구조, 현재 구현 범위가 바뀌면 `README.md`를 함께 갱신한다
 - 사용자 관점의 기능/마일스톤 변경이 생기면 `CHANGELOG.md`를 함께 갱신한다
 - Codex 앱 실행 액션으로 쓰는 공용 명령은 가능하면 `scripts/` 아래 스크립트로 유지한다
+- Codex 앱 실행 액션을 플랫폼별로 분리할 때는 `ios`, `android`, `web` 각각 독립 스크립트 진입점을 둔다
 - 백엔드 최소 런타임은 `backend/pyproject.toml` 기준 Python `3.9`로 본다
 - 백엔드 코드에서는 Python 3.10+ 전용 타입 문법(`int | None`, `str | None`)을 쓰지 않고 `Optional[...]`, `Union[...]`을 사용한다
 - 커밋은 한글로 작성한다

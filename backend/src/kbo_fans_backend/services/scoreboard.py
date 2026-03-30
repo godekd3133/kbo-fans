@@ -5,6 +5,8 @@ from typing import Any, Optional
 from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.crawlers.scoreboard import ScoreboardCrawler
+from kbo_fans_backend.services.ticketing import TicketingService
+from kbo_fans_backend.services.youtube_highlight import YoutubeHighlightService
 
 
 class ScoreboardService:
@@ -13,10 +15,16 @@ class ScoreboardService:
         main_crawler: Optional[MainCrawler] = None,
         schedule_crawler: Optional[ScheduleCrawler] = None,
         scoreboard_crawler: Optional[ScoreboardCrawler] = None,
+        ticketing_service: Optional[TicketingService] = None,
+        youtube_highlight_service: Optional[YoutubeHighlightService] = None,
     ) -> None:
         self.main_crawler = main_crawler or MainCrawler()
         self.schedule_crawler = schedule_crawler or ScheduleCrawler()
         self.scoreboard_crawler = scoreboard_crawler or ScoreboardCrawler()
+        self.ticketing_service = ticketing_service or TicketingService()
+        self.youtube_highlight_service = (
+            youtube_highlight_service or YoutubeHighlightService()
+        )
 
     def get_scoreboard(self, date: str) -> dict[str, Any]:
         games = self.schedule_crawler.get_games_by_date(date)
@@ -25,12 +33,46 @@ class ScoreboardService:
         for game in games:
             detail = self.scoreboard_crawler.get_game_scoreboard(game["gameId"])
             main_game = game_list.get(game["gameId"], {})
-            enriched_games.append({**game, **self._merge_main_game(main_game), **detail})
+            enriched_games.append(
+                {
+                    **game,
+                    **self._merge_main_game(main_game),
+                    **detail,
+                    "ticketInfo": self.ticketing_service.build_ticket_info(
+                        home_team_id=game.get("homeId"),
+                        game_id=game.get("gameId"),
+                        start_time=main_game.get("G_TM") or game.get("time"),
+                    ),
+                    "highlightInfo": {
+                        "officialUrl": self._build_official_highlight_url(game["gameId"]),
+                        "youtubeVideos": self.youtube_highlight_service.fetch_highlights(
+                            game_id=game["gameId"],
+                            away_name=game.get("awayName", ""),
+                            home_name=game.get("homeName", ""),
+                        ),
+                    },
+                }
+            )
 
         return {
             "date": date,
             "games": enriched_games,
         }
+
+    def get_game(self, game_id: str) -> Optional[dict[str, Any]]:
+        if len(game_id) < 8:
+            return None
+
+        date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+        try:
+            games = self.get_scoreboard(date)["games"]
+        except Exception:
+            return None
+
+        for game in games:
+            if game.get("gameId") == game_id:
+                return game
+        return None
 
     def _merge_main_game(self, main_game: dict[str, Any]) -> dict[str, Any]:
         if not main_game:
@@ -70,3 +112,11 @@ class ScoreboardService:
         if inning_no and half:
             return f"{inning_no}회{half}"
         return status
+
+    @staticmethod
+    def _build_official_highlight_url(game_id: str) -> str:
+        game_date = game_id[:8]
+        return (
+            "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
+            f"?gameDate={game_date}&gameId={game_id}&section=HIGHLIGHT"
+        )

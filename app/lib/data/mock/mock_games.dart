@@ -1,4 +1,7 @@
+import '../../core/constants/ticketing_policy.dart';
 import '../models/game.dart';
+import '../models/highlight_info.dart';
+import '../models/highlight_video.dart';
 
 final mockGames = <Game>[
   Game(
@@ -15,7 +18,31 @@ final mockGames = <Game>[
       innings: [0, 0, 2, null, null, null, null, null, null],
       hits: 3, errors: 0, walks: 4,
     ),
-    stadium: '잠실', startTime: '14:00', crowd: 23750,
+    stadium: '잠실',
+    startTime: '14:00',
+    crowd: 23750,
+    ticketInfo: TicketingPolicy.inferredTicketInfo(
+      homeTeamId: 'LG',
+      gameId: '20260328KTLG0',
+      startTime: '14:00',
+    ),
+    highlightInfo: const HighlightInfo(
+      officialUrl: 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260328&gameId=20260328KTLG0&section=HIGHLIGHT',
+      youtubeVideos: [
+        HighlightVideo(
+          videoId: 'tyo0j_fyPMU',
+          title: 'KT vs LG 하이라이트 1',
+          thumbnailUrl: 'https://i.ytimg.com/vi/tyo0j_fyPMU/hqdefault.jpg',
+          videoUrl: 'https://www.youtube.com/watch?v=tyo0j_fyPMU',
+        ),
+        HighlightVideo(
+          videoId: '-um_JO9NGOo',
+          title: 'KT vs LG 하이라이트 2',
+          thumbnailUrl: 'https://i.ytimg.com/vi/-um_JO9NGOo/hqdefault.jpg',
+          videoUrl: 'https://www.youtube.com/watch?v=-um_JO9NGOo',
+        ),
+      ],
+    ),
   ),
   Game(
     gameId: '20260328HTSK0',
@@ -31,7 +58,14 @@ final mockGames = <Game>[
       innings: [0, 0, 0, 0, null, null, null, null, null],
       hits: 2, errors: 1, walks: 3,
     ),
-    stadium: '문학', startTime: '14:00', crowd: 18200,
+    stadium: '문학',
+    startTime: '14:00',
+    crowd: 18200,
+    ticketInfo: TicketingPolicy.inferredTicketInfo(
+      homeTeamId: 'SK',
+      gameId: '20260328HTSK0',
+      startTime: '14:00',
+    ),
   ),
   Game(
     gameId: '20260328LTSS0',
@@ -47,7 +81,14 @@ final mockGames = <Game>[
       innings: [0, 0, 0, 0, null, null, null, null, null],
       hits: 1, errors: 0, walks: 2,
     ),
-    stadium: '대구', startTime: '14:00', crowd: 15600,
+    stadium: '대구',
+    startTime: '14:00',
+    crowd: 15600,
+    ticketInfo: TicketingPolicy.inferredTicketInfo(
+      homeTeamId: 'SS',
+      gameId: '20260328LTSS0',
+      startTime: '14:00',
+    ),
   ),
   Game(
     gameId: '20260328OBNC0',
@@ -63,7 +104,14 @@ final mockGames = <Game>[
       innings: [1, 0, 2, null, null, null, null, null, null],
       hits: 5, errors: 0, walks: 2,
     ),
-    stadium: '창원', startTime: '14:00', crowd: 12400,
+    stadium: '창원',
+    startTime: '14:00',
+    crowd: 12400,
+    ticketInfo: TicketingPolicy.inferredTicketInfo(
+      homeTeamId: 'NC',
+      gameId: '20260328OBNC0',
+      startTime: '14:00',
+    ),
   ),
   Game(
     gameId: '20260328WOHH0',
@@ -79,6 +127,13 @@ final mockGames = <Game>[
       innings: [0, 2, 0, 1, null, null, null, null, null],
       hits: 6, errors: 0, walks: 1,
     ),
-    stadium: '대전', startTime: '14:00', crowd: 11800,
+    stadium: '대전',
+    startTime: '14:00',
+    crowd: 11800,
+    ticketInfo: TicketingPolicy.inferredTicketInfo(
+      homeTeamId: 'HH',
+      gameId: '20260328WOHH0',
+      startTime: '14:00',
+    ),
   ),
 ];

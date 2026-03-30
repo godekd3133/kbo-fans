@@ -25,6 +25,7 @@ class Settings:
     api_prefix: str
     request_timeout_seconds: int
     kbo_base_url: str
+    cors_allow_origin_regex: str
 
 
 @lru_cache
@@ -36,4 +37,8 @@ def get_settings() -> Settings:
         api_prefix=os.getenv("API_PREFIX", "/api"),
         request_timeout_seconds=_get_int("REQUEST_TIMEOUT_SECONDS", 10),
         kbo_base_url=os.getenv("KBO_BASE_URL", "https://www.koreabaseball.com"),
+        cors_allow_origin_regex=os.getenv(
+            "CORS_ALLOW_ORIGIN_REGEX",
+            r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+        ),
     )

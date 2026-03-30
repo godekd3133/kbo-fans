@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/boxscore.dart';
 import '../../../data/providers.dart';
 
 class LineupTab extends ConsumerStatefulWidget {
   final String gameId;
   final String awayName;
   final String homeName;
-  const LineupTab({super.key, required this.gameId, this.awayName = 'Away', this.homeName = 'Home'});
+
+  const LineupTab({
+    super.key,
+    required this.gameId,
+    this.awayName = 'Away',
+    this.homeName = 'Home',
+  });
 
   @override
   ConsumerState<LineupTab> createState() => _LineupTabState();
@@ -26,18 +33,47 @@ class _LineupTabState extends ConsumerState<LineupTab> {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(child: _toggleButton(widget.awayName, _showAway, () => setState(() => _showAway = true))),
-              const SizedBox(width: 8),
-              Expanded(child: _toggleButton(widget.homeName, !_showAway, () => setState(() => _showAway = false))),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: MediaQuery.of(context).size.width - 32,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _toggleButton(
+                      widget.awayName,
+                      _showAway,
+                      () => setState(() => _showAway = true),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _toggleButton(
+                      widget.homeName,
+                      !_showAway,
+                      () => setState(() => _showAway = false),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           lineupAsync.when(
-            loading: () => const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: AppColors.live))),
-            error: (e, _) => Text('라인업 로딩 실패: $e', style: TextStyle(color: AppColors.textDisabled)),
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(color: AppColors.live),
+              ),
+            ),
+            error: (e, _) => Text(
+              '라인업 로딩 실패: $e',
+              style: const TextStyle(color: AppColors.textDisabled),
+            ),
             data: (lineup) => _buildLineupContent(lineup),
           ),
         ],
@@ -45,48 +81,82 @@ class _LineupTabState extends ConsumerState<LineupTab> {
     );
   }
 
-  Widget _buildLineupContent(List lineup) {
-    // 선발 투수 (타순 9번에서 포지션이 투수인 선수)
-    final starter = lineup.isNotEmpty ? lineup.where((l) => l.position == 'P' || l.positionKo.contains('투수')).firstOrNull : null;
+  Widget _buildLineupContent(List<LineupEntry> lineup) {
+    final starter = lineup
+        .where((entry) => entry.position == 'P' || entry.positionKo.contains('투수'))
+        .cast<LineupEntry?>()
+        .firstWhere((entry) => entry != null, orElse: () => null);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (starter != null)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('선발투수', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                const Text(
+                  '선발투수',
+                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                ),
                 const SizedBox(height: 4),
-                Text(starter.name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(
+                  starter.name,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
               ],
             ),
           ),
         const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
-          child: Table(
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            columnWidths: const {0: FixedColumnWidth(40), 1: FlexColumnWidth(1), 2: FlexColumnWidth(1.5)},
-            children: [
-              TableRow(children: [
-                _cell('타순', const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
-                _cell('포지션', const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
-                _cell('이름', const TextStyle(fontSize: 12, color: AppColors.textDisabled), align: TextAlign.left),
-              ]),
-              for (int i = 0; i < lineup.length; i++)
-                TableRow(
-                  decoration: BoxDecoration(color: i.isEven ? Colors.transparent : const Color(0xFF1A1A1A)),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 720),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Table(
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              columnWidths: const {
+                0: FixedColumnWidth(88),
+                1: FixedColumnWidth(140),
+                2: FixedColumnWidth(220),
+              },
+              children: [
+                const TableRow(
                   children: [
-                    _cell('${lineup[i].order}', const TextStyle(fontSize: 14)),
-                    _cell(lineup[i].positionKo, const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-                    _cell(lineup[i].name, const TextStyle(fontSize: 14), align: TextAlign.left),
+                    _LineupHeaderCell('타순'),
+                    _LineupHeaderCell('포지션'),
+                    _LineupHeaderCell('이름', align: TextAlign.left),
                   ],
                 ),
-            ],
+                for (int i = 0; i < lineup.length; i++)
+                  TableRow(
+                    decoration: BoxDecoration(
+                      color: i.isEven ? Colors.transparent : const Color(0xFF1A1A1A),
+                    ),
+                    children: [
+                      _lineupCell('${lineup[i].order}', const TextStyle(fontSize: 16)),
+                      _lineupCell(
+                        lineup[i].positionKo,
+                        const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                      ),
+                      _lineupCell(
+                        lineup[i].name,
+                        const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        align: TextAlign.left,
+                      ),
+                    ],
+                  ),
+              ],
+            ),
           ),
         ),
       ],
@@ -97,19 +167,48 @@ class _LineupTabState extends ConsumerState<LineupTab> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 36,
+        height: 48,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: active ? AppColors.textPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
           border: active ? null : Border.all(color: AppColors.divider),
         ),
-        child: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: active ? AppColors.background : AppColors.textDisabled)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: active ? AppColors.background : AppColors.textDisabled,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _cell(String text, TextStyle style, {TextAlign align = TextAlign.center}) {
-    return Padding(padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8), child: Text(text, textAlign: align, style: style));
+  Widget _lineupCell(String text, TextStyle style, {TextAlign align = TextAlign.center}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+      child: Text(text, textAlign: align, style: style),
+    );
+  }
+}
+
+class _LineupHeaderCell extends StatelessWidget {
+  final String text;
+  final TextAlign align;
+
+  const _LineupHeaderCell(this.text, {this.align = TextAlign.center});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
+      child: Text(
+        text,
+        textAlign: align,
+        style: const TextStyle(fontSize: 13, color: AppColors.textDisabled),
+      ),
+    );
   }
 }

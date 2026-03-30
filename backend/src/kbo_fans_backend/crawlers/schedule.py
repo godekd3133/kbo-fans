@@ -102,7 +102,7 @@ class ScheduleCrawler(BaseCrawler):
     def _derive_status(action_html: str) -> str:
         if "section=REVIEW" in action_html:
             return "FINAL"
-        if "section=PREVIEW" in action_html:
+        if "section=PREVIEW" in action_html or "section=START_PIT" in action_html or "프리뷰" in action_html:
             return "SCHEDULED"
         if "문자중계" in action_html or "중계" in action_html:
             return "LIVE"
