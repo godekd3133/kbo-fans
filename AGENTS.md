@@ -28,6 +28,7 @@
 - Keep `README.md` updated when setup steps, local preview flow, repository structure, or current implementation scope changes.
 - Keep `CHANGELOG.md` updated when user-visible features, architecture milestones, or developer-facing setup behavior changes.
 - Keep shared local run entrypoints under `scripts/` stable when they are used as Codex app execution actions.
+- Prefer one action entrypoint per platform when Codex app execution actions are split by environment (`ios`, `android`, `web`).
 - Keep feature or task context as Markdown documents under `docs/` when the work is large enough to need durable context.
 - Use Korean commit messages.
 - Keep implementation aligned with Flutter, Riverpod, go_router, dio, FastAPI, AWS, and FCM unless the user explicitly changes direction.

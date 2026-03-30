@@ -6,6 +6,8 @@ import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../data/models/game.dart';
 import '../../features/game_detail/game_detail_screen.dart';
+import '../../features/records/player_detail_screen.dart';
+import '../../features/records/records_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../features/standings/standings_screen.dart';
 import '../../features/settings/settings_screen.dart';
@@ -51,12 +53,32 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: '/records',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: RecordsScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/records/team/:teamId',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: RecordsScreen(teamId: state.pathParameters['teamId']!),
+            ),
+          ),
+          GoRoute(
             path: '/settings',
             pageBuilder: (context, state) => const NoTransitionPage(
               child: SettingsScreen(),
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/records/player/:playerId',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => PlayerDetailScreen(
+          playerId: state.pathParameters['playerId']!,
+          season: int.tryParse(state.uri.queryParameters['season'] ?? '') ?? DateTime.now().year,
+        ),
       ),
       GoRoute(
         path: '/game/:gameId',

@@ -7,14 +7,26 @@ import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/providers.dart';
 
-class StandingsScreen extends ConsumerWidget {
+class StandingsScreen extends ConsumerStatefulWidget {
   const StandingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final season = DateTime.now().year;
+  ConsumerState<StandingsScreen> createState() => _StandingsScreenState();
+}
+
+class _StandingsScreenState extends ConsumerState<StandingsScreen> {
+  late int _selectedSeason;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedSeason = DateTime.now().year;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final myTeamId = ref.watch(myTeamProvider);
-    final standingsAsync = ref.watch(standingsProvider(season));
+    final standingsAsync = ref.watch(standingsProvider(_selectedSeason));
 
     return Scaffold(
       body: SafeArea(
@@ -24,12 +36,15 @@ class StandingsScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('📊 $season 정규시즌 순위', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                  Expanded(
+                    child: Text('📊 $_selectedSeason 정규시즌 순위', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                  ),
+                  _seasonDropdown(),
+                  const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.refresh, size: 20, color: AppColors.textDisabled),
-                    onPressed: () => ref.invalidate(standingsProvider(season)),
+                    onPressed: () => ref.invalidate(standingsProvider(_selectedSeason)),
                   ),
                 ],
               ),
@@ -50,7 +65,7 @@ class StandingsScreen extends ConsumerWidget {
                       Text('순위를 불러올 수 없습니다', style: TextStyle(color: AppColors.textDisabled)),
                       const SizedBox(height: 8),
                       TextButton(
-                        onPressed: () => ref.invalidate(standingsProvider(season)),
+                        onPressed: () => ref.invalidate(standingsProvider(_selectedSeason)),
                         child: const Text('다시 시도'),
                       ),
                     ],
@@ -77,7 +92,7 @@ class StandingsScreen extends ConsumerWidget {
   Widget _buildList(WidgetRef ref, List standings, String? myTeamId) {
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(standingsProvider(DateTime.now().year));
+        ref.invalidate(standingsProvider(_selectedSeason));
       },
       child: ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -139,6 +154,34 @@ class StandingsScreen extends ConsumerWidget {
           SizedBox(width: 48, child: Center(child: Text('승률', style: style))),
           SizedBox(width: 28, child: Center(child: Text('차', style: style))),
         ],
+      ),
+    );
+  }
+
+  Widget _seasonDropdown() {
+    final seasons = [for (int year = DateTime.now().year; year >= 2001; year--) year];
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: DropdownButton<int>(
+        value: _selectedSeason,
+        dropdownColor: AppColors.card,
+        underline: const SizedBox.shrink(),
+        items: seasons
+            .map((season) => DropdownMenuItem<int>(
+                  value: season,
+                  child: Text('$season', style: const TextStyle(fontSize: 14)),
+                ))
+            .toList(),
+        onChanged: (value) {
+          if (value == null) return;
+          setState(() => _selectedSeason = value);
+        },
       ),
     );
   }

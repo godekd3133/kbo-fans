@@ -1,3 +1,7 @@
+import 'highlight_info.dart';
+import 'highlight_video.dart';
+import 'ticketing.dart';
+
 enum GameStatus { scheduled, live, final_, cancelled }
 
 class TeamScore {
@@ -31,6 +35,8 @@ class Game {
   final String stadium;
   final String startTime;
   final int? crowd;
+  final TicketInfo? ticketInfo;
+  final HighlightInfo? highlightInfo;
 
   const Game({
     required this.gameId,
@@ -41,5 +47,7 @@ class Game {
     required this.stadium,
     required this.startTime,
     this.crowd,
+    this.ticketInfo,
+    this.highlightInfo,
   });
 }

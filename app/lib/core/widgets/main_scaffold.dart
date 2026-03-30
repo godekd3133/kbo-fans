@@ -9,6 +9,7 @@ class MainScaffold extends StatelessWidget {
     (icon: Icons.sports_baseball, label: '홈', path: '/home'),
     (icon: Icons.calendar_month, label: '일정', path: '/schedule'),
     (icon: Icons.leaderboard, label: '순위', path: '/standings'),
+    (icon: Icons.groups_2, label: '기록실', path: '/records'),
     (icon: Icons.settings, label: '설정', path: '/settings'),
   ];
 

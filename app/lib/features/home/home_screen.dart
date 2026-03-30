@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,14 +8,43 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/game.dart';
 import '../../data/providers.dart';
-import 'widgets/my_team_game_card.dart';
+import '../../services/widget_sync_service.dart';
 import 'widgets/game_card.dart';
+import 'widgets/my_team_game_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+  Timer? _refreshTimer;
+  String? _lastSyncSignature;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _invalidateTodayScoreboard();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final scoreboardAsync = ref.watch(scoreboardProvider(today));
     final myTeamId = ref.watch(myTeamProvider);
@@ -33,28 +64,37 @@ class HomeScreen extends ConsumerWidget {
                 Text('$error', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => ref.invalidate(scoreboardProvider(today)),
+                  onPressed: _invalidateTodayScoreboard,
                   child: const Text('다시 시도'),
                 ),
               ],
             ),
           ),
-          data: (games) => _buildContent(context, ref, games, myTeamId, today),
+          data: (games) {
+            _scheduleRefresh(games, myTeamId);
+            _syncWidget(games, myTeamId);
+            return _buildContent(context, games, myTeamId, today);
+          },
         ),
       ),
     );
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, List<Game> games, String? myTeamId, String today) {
+  Widget _buildContent(BuildContext context, List<Game> games, String? myTeamId, String today) {
     Game? myGame;
     if (myTeamId != null) {
-      myGame = games.where((g) => g.away.teamId == myTeamId || g.home.teamId == myTeamId).firstOrNull;
+      for (final game in games) {
+        if (game.away.teamId == myTeamId || game.home.teamId == myTeamId) {
+          myGame = game;
+          break;
+        }
+      }
     }
     final others = myGame != null ? games.where((g) => g.gameId != myGame!.gameId).toList() : games;
     final hasLive = games.any((g) => g.status == GameStatus.live);
 
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(scoreboardProvider(today)),
+      onRefresh: () async => _invalidateTodayScoreboard(),
       color: AppColors.live,
       child: CustomScrollView(
         slivers: [
@@ -121,5 +161,35 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _scheduleRefresh(List<Game> games, String? myTeamId) {
+    final interval = _resolveRefreshInterval(games);
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer(interval, _invalidateTodayScoreboard);
+  }
+
+  Duration _resolveRefreshInterval(List<Game> games) {
+    if (games.any((game) => game.status == GameStatus.live)) {
+      return const Duration(seconds: 30);
+    }
+    if (games.any((game) => game.status == GameStatus.scheduled)) {
+      return const Duration(minutes: 5);
+    }
+    return const Duration(minutes: 15);
+  }
+
+  void _invalidateTodayScoreboard() {
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    ref.invalidate(scoreboardProvider(today));
+  }
+
+  void _syncWidget(List<Game> games, String? myTeamId) {
+    final signature = '${games.length}|${games.map((g) => '${g.gameId}:${g.inning}:${g.away.score}:${g.home.score}').join(',')}|$myTeamId';
+    if (_lastSyncSignature == signature) {
+      return;
+    }
+    _lastSyncSignature = signature;
+    unawaited(WidgetSyncService.instance.syncScoreboard(games: games, myTeamId: myTeamId));
   }
 }

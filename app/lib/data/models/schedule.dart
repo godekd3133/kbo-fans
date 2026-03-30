@@ -1,3 +1,5 @@
+import 'ticketing.dart';
+
 class ScheduleGame {
   final String gameId;
   final String time;
@@ -7,6 +9,7 @@ class ScheduleGame {
   final String homeName;
   final String stadium;
   final String status;
+  final TicketInfo? ticketInfo;
 
   const ScheduleGame({
     required this.gameId,
@@ -17,6 +20,7 @@ class ScheduleGame {
     required this.homeName,
     required this.stadium,
     this.status = 'SCHEDULED',
+    this.ticketInfo,
   });
 }
 

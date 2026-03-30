@@ -43,3 +43,10 @@ class CurrentAtBat {
     required this.outs,
   });
 }
+
+class RelayData {
+  final CurrentAtBat? currentAtBat;
+  final List<RelayItem> relayItems;
+
+  const RelayData({required this.currentAtBat, required this.relayItems});
+}

@@ -14,3 +14,18 @@ command = '''
 ./scripts/codex-run.sh backend
 ./scripts/codex-run.sh doctor
 '''
+
+[[actions]]
+name = "IOS"
+icon = "run"
+command = "./scripts/codex-run-ios.sh"
+
+[[actions]]
+name = "AOS"
+icon = "tool"
+command = "./scripts/codex-run-android.sh"
+
+[[actions]]
+name = "WEB"
+icon = "tool"
+command = "./scripts/codex-run-web.sh"

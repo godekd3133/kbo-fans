@@ -8,18 +8,25 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
+import 'services/ticket_alert_service.dart';
+import 'services/widget_sync_service.dart';
+import 'package:workmanager/workmanager.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  AppConfig.initialize();
-  DevConsole.instance.info('환경: ${AppConfig.instance.environment.name}');
-
-  FlutterError.onError = (details) {
-    DevConsole.instance.error('Flutter: ${details.exceptionAsString()}');
-  };
-
   runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+
+    AppConfig.initialize();
+    DevConsole.instance.info('환경: ${AppConfig.instance.environment.name}');
+    await TicketAlertService.instance.initialize();
+    await WidgetSyncService.instance.initialize();
+    await Workmanager().initialize(widgetCallbackDispatcher, isInDebugMode: false);
+    await WidgetSyncService.instance.registerBackgroundRefresh();
+
+    FlutterError.onError = (details) {
+      DevConsole.instance.error('Flutter: ${details.exceptionAsString()}');
+    };
+
     final prefs = await SharedPreferences.getInstance();
     final onboardingDone = prefs.getBool('onboardingDone') ?? false;
 

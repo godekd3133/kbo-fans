@@ -23,13 +23,22 @@ MVP Phase 1 기준 핵심 범위:
   - 문자중계
   - 박스스코어
   - 라인업
+  - KBO 공식 + 유튜브 하이라이트 연결
+- 기록실
+  - 팀 엔트리
+  - 엔트리 제외 / 부상 이탈
+  - 선수 프로필 / 최근 기록
+  - 투수 / 야수 탭 분리
+  - 타율 / OPS / ERA / WHIP 정렬
 - 마이팀 선택
 - 일정
+  - 경기별 예매처 / 예매 오픈 시간 표시
+  - 경기 상세에서 예매처 바로가기 / 예매 오픈 알림
 - 순위
 - 푸시 알림
 
-현재 `app/`은 Flutter 프로젝트로 생성되어 있으며, 주요 화면 구조와 라우팅, 다크 테마, 일부 목데이터 기반 UI가 포함되어 있습니다.  
-`backend/`는 FastAPI 골격과 API 스텁, 기본 health check가 준비되어 있습니다.
+현재 `app/`은 Flutter 프로젝트로 생성되어 있으며, 주요 화면 구조와 라우팅, 다크 테마, 일정/기록실/경기 상세가 포함되어 있습니다.  
+`backend/`는 FastAPI 골격과 스코어보드/일정/박스스코어/라인업/순위, 팀 선수 기록 API가 준비되어 있습니다.
 
 ## Repository Structure
 
@@ -84,6 +93,7 @@ flutter run -d android
 - 현재 저장소에는 `ios/`와 `android/` 프로젝트가 모두 포함되어 있습니다.
 - `web/`과 `macos/`는 아직 생성되지 않았습니다.
 - 현재 홈 화면은 일부 목데이터를 사용하므로, UI 확인만 목적이면 백엔드 없이도 실행 가능합니다.
+- 예매 오픈 알림은 앱 로컬 예약 알림으로 동작합니다. 현재 예매처/오픈 시간은 홈팀 기본 정책 기준 추정값입니다.
 
 Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했습니다.
 
@@ -97,11 +107,19 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 
 권장 등록 방식:
 
-- iOS 실행 액션: `./scripts/codex-run.sh ios`
-- Android 실행 액션: `./scripts/codex-run.sh android`
-- Web 실행 액션: `./scripts/codex-run.sh web`
+- iOS 실행 액션: `./scripts/codex-run-ios.sh`
+- Android 실행 액션: `./scripts/codex-run-android.sh`
+- Web 실행 액션: `./scripts/codex-run-web.sh`
 - Backend 실행 액션: `./scripts/codex-run.sh backend`
 - 환경 점검 액션: `./scripts/codex-run.sh doctor`
+
+플랫폼별 실행 환경을 분리한 Codex 액션용 래퍼:
+
+```bash
+./scripts/codex-run-ios.sh
+./scripts/codex-run-android.sh
+./scripts/codex-run-web.sh
+```
 
 ## Run The Backend
 

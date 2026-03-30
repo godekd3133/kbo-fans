@@ -2,11 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/models/schedule.dart';
+import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
+
+enum ScheduleViewMode { calendar, stadium }
+enum ScheduleTeamFilter { all, myTeamOnly, otherTeamsOnly }
+
+class _StadiumScheduleItem {
+  final String date;
+  final ScheduleGame game;
+
+  const _StadiumScheduleItem({
+    required this.date,
+    required this.game,
+  });
+}
 
 class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key});
@@ -18,6 +33,8 @@ class ScheduleScreen extends ConsumerStatefulWidget {
 class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   late DateTime _currentMonth;
   int? _selectedDay;
+  ScheduleViewMode _viewMode = ScheduleViewMode.calendar;
+  ScheduleTeamFilter _teamFilter = ScheduleTeamFilter.all;
 
   @override
   void initState() {
@@ -84,9 +101,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   Widget _buildBody(List<ScheduleDay> days) {
     final myTeamId = ref.watch(myTeamProvider);
+    final filteredDays = _filterDays(days, myTeamId);
     final gameDays = <int>{};
     final myTeamDays = <int>{};
-    for (final d in days) {
+    for (final d in filteredDays) {
       final day = int.tryParse(d.date.split('-').last) ?? 0;
       gameDays.add(day);
       if (myTeamId != null) {
@@ -99,15 +117,149 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     ScheduleDay? selectedSchedule;
     if (_selectedDay != null) {
       final dateStr = '${_currentMonth.year}-${_currentMonth.month.toString().padLeft(2, '0')}-${_selectedDay.toString().padLeft(2, '0')}';
-      selectedSchedule = days.where((d) => d.date == dateStr).firstOrNull;
+      selectedSchedule = filteredDays.where((d) => d.date == dateStr).firstOrNull;
     }
 
     return Column(
       children: [
-        _buildCalendar(gameDays, myTeamDays),
-        const Divider(color: AppColors.divider, height: 1),
-        Expanded(child: _buildGameList(selectedSchedule)),
+        _buildControls(),
+        if (_viewMode == ScheduleViewMode.calendar) ...[
+          _buildCalendar(gameDays, myTeamDays),
+          const Divider(color: AppColors.divider, height: 1),
+          Expanded(child: _buildGameList(selectedSchedule)),
+        ] else ...[
+          const Divider(color: AppColors.divider, height: 1),
+          Expanded(child: _buildStadiumList(filteredDays)),
+        ],
       ],
+    );
+  }
+
+  List<ScheduleDay> _filterDays(List<ScheduleDay> days, String? myTeamId) {
+    if (_teamFilter == ScheduleTeamFilter.all || myTeamId == null) {
+      return days;
+    }
+
+    final keepOnlyMyTeam = _teamFilter == ScheduleTeamFilter.myTeamOnly;
+    final filtered = <ScheduleDay>[];
+
+    for (final day in days) {
+      final games = day.games.where((game) {
+        final isMyTeamGame = game.awayId == myTeamId || game.homeId == myTeamId;
+        return keepOnlyMyTeam ? isMyTeamGame : !isMyTeamGame;
+      }).toList();
+
+      if (games.isNotEmpty) {
+        filtered.add(ScheduleDay(date: day.date, label: day.label, games: games));
+      }
+    }
+
+    return filtered;
+  }
+
+  Widget _buildControls() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: _segmentedButton(
+                  label: '달력으로 보기',
+                  selected: _viewMode == ScheduleViewMode.calendar,
+                  onTap: () => setState(() => _viewMode = ScheduleViewMode.calendar),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _segmentedButton(
+                  label: '경기장으로 보기',
+                  selected: _viewMode == ScheduleViewMode.stadium,
+                  onTap: () => setState(() => _viewMode = ScheduleViewMode.stadium),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _filterChip(
+                label: '전체',
+                selected: _teamFilter == ScheduleTeamFilter.all,
+                onTap: () => setState(() => _teamFilter = ScheduleTeamFilter.all),
+              ),
+              const SizedBox(width: 8),
+              _filterChip(
+                label: '마이팀만',
+                selected: _teamFilter == ScheduleTeamFilter.myTeamOnly,
+                onTap: () => setState(() => _teamFilter = ScheduleTeamFilter.myTeamOnly),
+              ),
+              const SizedBox(width: 8),
+              _filterChip(
+                label: '마이팀 제외',
+                selected: _teamFilter == ScheduleTeamFilter.otherTeamsOnly,
+                onTap: () => setState(() => _teamFilter = ScheduleTeamFilter.otherTeamsOnly),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _segmentedButton({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.textPrimary : AppColors.card,
+          borderRadius: BorderRadius.circular(10),
+          border: selected ? null : Border.all(color: AppColors.divider),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? AppColors.background : AppColors.textSecondary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.cardSub : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AppColors.textSecondary : AppColors.divider,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
     );
   }
 
@@ -224,29 +376,75 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           child: Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
         ),
         ...schedule.games.map((g) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 10),
               child: GestureDetector(
                 onTap: () => context.push('/game/${g.gameId}'),
                 child: Container(
-                  height: 56,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(g.time, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-                      const SizedBox(width: 16),
-                      _teamLogo(g.awayId, 24),
-                      const SizedBox(width: 6),
-                      Text(KboTeams.byId(g.awayId)?.shortName ?? g.awayName, style: const TextStyle(fontSize: 14)),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('vs', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                      Row(
+                        children: [
+                          Text(g.time, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                          const SizedBox(width: 8),
+                          if (g.status.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.cardSub,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                _statusLabel(g.status),
+                                style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+                              ),
+                            ),
+                          const Spacer(),
+                          Text(g.stadium, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                        ],
                       ),
-                      Text(KboTeams.byId(g.homeId)?.shortName ?? g.homeName, style: const TextStyle(fontSize: 14)),
-                      const SizedBox(width: 6),
-                      _teamLogo(g.homeId, 24),
-                      const Spacer(),
-                      Text(g.stadium, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _teamInfo(
+                              teamId: g.awayId,
+                              fallbackName: g.awayName,
+                              alignEnd: true,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'vs',
+                              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                            ),
+                          ),
+                          Expanded(
+                            child: _teamInfo(
+                              teamId: g.homeId,
+                              fallbackName: g.homeName,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (g.ticketInfo != null) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.confirmation_num_outlined, size: 14, color: AppColors.accent),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _ticketSummary(g.ticketInfo!),
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -254,6 +452,199 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             )),
       ],
     );
+  }
+
+  Widget _buildStadiumList(List<ScheduleDay> days) {
+    final stadiumMap = <String, List<_StadiumScheduleItem>>{};
+    for (final day in days) {
+      for (final game in day.games) {
+        stadiumMap.putIfAbsent(game.stadium, () => []);
+        stadiumMap[game.stadium]!.add(
+          _StadiumScheduleItem(date: day.date, game: game),
+        );
+      }
+    }
+
+    final stadiums = stadiumMap.keys.toList()..sort();
+    if (stadiums.isEmpty) {
+      return Center(
+        child: Text('표시할 경기가 없습니다', style: TextStyle(color: AppColors.textDisabled)),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 12),
+          child: Text('경기장별 일정', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        ),
+        for (final stadium in stadiums) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+            child: Text(
+              stadium,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+          ...stadiumMap[stadium]!.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: GestureDetector(
+                onTap: () => context.push('/game/${item.game.gameId}'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            _formatDateLabel(item.date),
+                            style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            item.game.time,
+                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.cardSub,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              _statusLabel(item.game.status),
+                              style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _teamInfo(
+                              teamId: item.game.awayId,
+                              fallbackName: item.game.awayName,
+                              alignEnd: true,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              'vs',
+                              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                            ),
+                          ),
+                          Expanded(
+                            child: _teamInfo(
+                              teamId: item.game.homeId,
+                              fallbackName: item.game.homeName,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (item.game.ticketInfo != null) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.confirmation_num_outlined, size: 14, color: AppColors.accent),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _ticketSummary(item.game.ticketInfo!),
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _formatDateLabel(String date) {
+    final parts = date.split('-');
+    if (parts.length != 3) {
+      return date;
+    }
+    final month = parts[1];
+    final day = parts[2];
+    return '$month.$day';
+  }
+
+  String _ticketSummary(TicketInfo ticketInfo) {
+    final openAt = ticketInfo.openAt;
+    if (openAt == null) {
+      return '${ticketInfo.vendorName} · 예매 시간 미정';
+    }
+
+    final formatted = DateFormat('MM.dd HH:mm').format(openAt);
+    final suffix = ticketInfo.isInferred ? ' · 정책 기준' : '';
+    return '${ticketInfo.vendorName} · $formatted 오픈$suffix';
+  }
+
+  Widget _teamInfo({
+    required String teamId,
+    required String fallbackName,
+    bool alignEnd = false,
+  }) {
+    final team = KboTeams.byId(teamId);
+    final shortName = team?.shortName ?? fallbackName;
+
+    return Row(
+      mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: [
+        if (alignEnd) ...[
+          Flexible(
+            child: Text(
+              shortName,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        _teamLogo(teamId, 28),
+        if (!alignEnd) ...[
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              shortName,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _statusLabel(String status) {
+    switch (status.toUpperCase()) {
+      case 'LIVE':
+        return '진행중';
+      case 'FINAL':
+        return '종료';
+      case 'CANCELLED':
+        return '취소';
+      default:
+        return '예정';
+    }
   }
 
   Widget _teamLogo(String teamId, double size) {

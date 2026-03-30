@@ -13,12 +13,18 @@ dependencies:
   firebase_messaging: ^16.1.3
   flutter:
     sdk: flutter
+  flutter_local_notifications: ^19.4.2
+  flutter_timezone: ^4.1.1
   flutter_riverpod: ^3.3.1
   go_router: ^17.1.0
   home_widget: ^0.9.0
   intl: ^0.20.2
   shared_preferences: ^2.5.5
   table_calendar: ^3.2.0
+  timezone: ^0.10.1
+  url_launcher: ^6.3.2
+  workmanager: ^0.9.0+3
+  youtube_player_iframe: ^5.2.2
 
 dev_dependencies:
   flutter_test:
