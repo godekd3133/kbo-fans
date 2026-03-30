@@ -21,6 +21,9 @@
 - [x] 백엔드 `int | None` 등 Python 3.10+ 타입 문법을 Python 3.9 호환 표기로 정리
 - [x] `uvicorn` 실행 시 FastAPI import 단계에서 발생하던 타입 평가 오류 수정
 - [x] `AGENTS.md`, `CLAUDE.md`에 Python 3.9 호환 타입 힌트 규칙 명시
+- [x] Firebase iOS plugin 호환을 위해 iOS deployment target을 `15.0`으로 상향
+- [x] Flutter web 플랫폼 추가 (`app/web`)
+- [x] `scripts/codex-run.sh web` 실행 경로 추가
 
 ---
 

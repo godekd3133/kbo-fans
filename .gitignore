@@ -8,6 +8,7 @@ env/
 
 # Build
 ios/build/
+app/android/build/
 android/app/build/
 *.apk
 *.ipa

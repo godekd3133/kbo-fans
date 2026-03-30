@@ -16,13 +16,16 @@
 - 루트 `CHANGELOG.md` 추가
 - Codex 앱 실행 액션용 `scripts/codex-run.sh` 추가
 - 문서 유지관리 규칙에 `README.md`와 `CHANGELOG.md` 갱신 원칙 추가
+- Flutter web 플랫폼 추가 (`app/web`)
 
 ### Changed
 
 - 저장소 소개, 실행 방법, 문서 우선순위를 루트 README에서 바로 확인할 수 있도록 정리
 - README에 Codex 앱 실행 액션 등록용 공용 명령 추가
+- `scripts/codex-run.sh`에 Chrome 기반 웹 실행 명령 추가
 - 에이전트/프로젝트 컨텍스트 문서에 README 및 CHANGELOG 지속 갱신 규칙 반영
 - 백엔드 타입 힌트를 Python 3.9 호환 문법으로 정리해 `uvicorn` 실행 오류 수정
+- Firebase iOS 플러그인 요구사항에 맞춰 iOS 최소 배포 버전을 `15.0`으로 상향
 
 ## [2026-03-30]
 

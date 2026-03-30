@@ -90,6 +90,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ```bash
 ./scripts/codex-run.sh ios
 ./scripts/codex-run.sh android
+./scripts/codex-run.sh web
 ./scripts/codex-run.sh backend
 ./scripts/codex-run.sh doctor
 ```
@@ -98,6 +99,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 
 - iOS 실행 액션: `./scripts/codex-run.sh ios`
 - Android 실행 액션: `./scripts/codex-run.sh android`
+- Web 실행 액션: `./scripts/codex-run.sh web`
 - Backend 실행 액션: `./scripts/codex-run.sh backend`
 - 환경 점검 액션: `./scripts/codex-run.sh doctor`
 
