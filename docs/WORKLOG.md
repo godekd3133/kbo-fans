@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-03-30: README / CHANGELOG 정리
+
+### 완료
+- [x] 루트 `README.md` 신규 작성
+- [x] 루트 `CHANGELOG.md` 신규 작성
+- [x] Codex 앱 실행 액션용 `scripts/codex-run.sh` 추가
+- [x] 저장소 실행 방법, 문서 우선순위, 현재 구현 범위를 루트 README에 정리
+- [x] `AGENTS.md`에 README / CHANGELOG 지속 갱신 규칙 추가
+- [x] `CLAUDE.md`에 README / CHANGELOG 문서 역할 및 갱신 규칙 추가
+- [x] README에 Codex 앱 실행 액션 등록용 명령 추가
+
+### 반영 원칙
+- 이후 실행 방법, 현재 구현 범위, 저장소 구조가 바뀌면 `README.md`를 같이 갱신
+- 이후 사용자 관점 기능 변화나 마일스톤 변화가 생기면 `CHANGELOG.md`를 같이 갱신
+
+### 추가 수정
+- [x] 백엔드 `int | None` 등 Python 3.10+ 타입 문법을 Python 3.9 호환 표기로 정리
+- [x] `uvicorn` 실행 시 FastAPI import 단계에서 발생하던 타입 평가 오류 수정
+
+---
+
 ## 2026-03-30: AGENTS 컨텍스트 동기화
 
 ### 완료
@@ -16,6 +37,41 @@
 
 ### 비고
 - 이후 작업은 `AGENTS.md`를 기본 작업 가이드로 사용
+
+### 추가 진행
+- [x] `docs/FIGMA_PROMPT.md` 전체 검토
+- [x] Figma 작업 스킬 및 대상 파일 접근 경로 확인
+
+### 현재 블로커
+- Figma MCP 조회 시 Starter 플랜 도구 호출 한도 초과로 파일 메타데이터 조회 실패
+- 오류 메시지 기준 추가 작업 전 Figma MCP 한도 초기화 또는 상위 플랜 필요
+
+### 추가 문서 정리
+- [x] `docs/FIGMA_PROMPT.md` 반영해 `CLAUDE.md` 보강
+- [x] `docs/FIGMA_PROMPT.md`와 최근 작업 상황 반영해 `AGENTS.md` 보강
+- [x] `docs/TASK_DIVISION.md`를 협업 운영 문서 형태로 재정리
+
+### 백엔드 착수
+- [x] FastAPI 백엔드 기본 구조 생성 (`backend/`)
+- [x] `pyproject.toml`, `.env.example`, `README.md` 추가
+- [x] `api / core / crawlers / scheduler / push / schemas / utils` 패키지 골격 생성
+- [x] `/api/health` 구현 및 나머지 제품 API 스텁 라우트 등록
+- [x] 기본 테스트 파일 추가 (`backend/tests/test_health.py`)
+- [x] `GetScheduleList` 기반 월간 일정 크롤러 구현
+- [x] `GetScoreBoardScroll` 기반 스코어보드 상세 크롤러 구현
+- [x] `GetBoxScoreScroll` 기반 박스스코어 크롤러 구현
+- [x] `GetLineUpAnalysis` 기반 라인업 크롤러 구현
+- [x] TeamRankDaily SSR 파싱 기반 순위 크롤러 구현
+- [x] `/api/scoreboard`, `/api/schedule`, `/api/game/{gameId}/boxscore`, `/api/game/{gameId}/lineup`, `/api/standings` 연결
+- [x] `/api/push/register` 성공 응답 구현
+
+### 검증
+- [x] `python3 -m compileall backend/src` 통과
+- [x] 서비스 레벨에서 schedule/scoreboard/boxscore/lineup/standings 응답 샘플 확인
+
+### 남은 백엔드 작업
+- [ ] 문자중계 실제 데이터 경로 확인 및 `relay` 구현
+- [ ] push/register 실제 FCM 연동 구현
 
 ---
 

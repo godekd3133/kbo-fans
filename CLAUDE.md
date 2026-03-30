@@ -3,6 +3,11 @@
 ## 프로젝트 개요
 KBO 프로야구 팬을 위한 실시간 경기 정보 모바일 앱 (iOS/Android)
 
+### 제품 목표
+- 앱을 열면 바로 오늘 경기 상황을 확인할 수 있는 야구 특화 경험 제공
+- 코어팬에게는 문자중계/박스스코어/라인업을, 라이트팬에게는 마이팀 중심 빠른 확인 경험 제공
+- 네이버 스포츠나 SPORTS.i보다 가볍고 집중된 UX를 지향
+
 ## 기술 스택
 - **모바일**: Flutter + Dart
 - **백엔드**: Python FastAPI (AWS 배포)
@@ -18,14 +23,29 @@ KBO 프로야구 팬을 위한 실시간 경기 정보 모바일 앱 (iOS/Androi
 ```text
 kbo_fans/
 ├── CLAUDE.md              # 이 파일
+├── AGENTS.md              # Codex 작업 가이드
+├── README.md              # 저장소 소개 / 실행 방법 / 빠른 시작
+├── CHANGELOG.md           # 사용자 관점 변경 이력
 ├── docs/
 │   ├── PLANNING.md        # 서비스 기획서
 │   ├── APP_SPEC.md        # 앱 상세 기획서 (화면별 + API 명세)
+│   ├── FIGMA_PROMPT.md    # Figma 와이어프레임/디자인 생성 기준
 │   └── WORKLOG.md         # 작업 이력
 ├── design_docs.docx       # 수업 제출용 기획서
 ├── backend/               # Python FastAPI 서버 (예정)
 └── app/                   # Flutter 앱 (예정)
 ```
+
+## 문서 우선순위
+- 저장소 전반 작업 기준: `AGENTS.md`
+- 프로젝트 개요와 큰 방향: `CLAUDE.md`
+- 저장소 소개/실행 가이드: `README.md`
+- 외부 공개용 변경 이력: `CHANGELOG.md`
+- 제품 목표/UX 원칙/로드맵: `docs/PLANNING.md`
+- 화면 상세, 상태, API 계약: `docs/APP_SPEC.md`
+- Figma 화면 구성, 다크 테마, 컬러/레이아웃 기준: `docs/FIGMA_PROMPT.md`
+- 최신 작업 이력과 결정 사항: `docs/WORKLOG.md`
+- 문서가 충돌하면 최신 결정은 `docs/WORKLOG.md`와 실제 코드/산출물을 우선한다
 
 ## Git 설정
 - **레포**: github.com/godekd3133/kbo-fans (Private)
@@ -36,13 +56,40 @@ kbo_fans/
 - 모든 작업 상황은 MD 파일로 기록한다
 - 피처/작업 단위의 컨텍스트를 `docs/` 아래에 MD로 남긴다
 - 작업 이력은 `docs/WORKLOG.md`에 누적한다
+- 실행 방법, 프로젝트 구조, 현재 구현 범위가 바뀌면 `README.md`를 함께 갱신한다
+- 사용자 관점의 기능/마일스톤 변경이 생기면 `CHANGELOG.md`를 함께 갱신한다
+- Codex 앱 실행 액션으로 쓰는 공용 명령은 가능하면 `scripts/` 아래 스크립트로 유지한다
 - 커밋은 한글로 작성한다
+- Flutter, FastAPI, Figma 산출물은 문서와 함께 같이 업데이트한다
+- 화면/UX 변경 시 `docs/APP_SPEC.md`와 `docs/FIGMA_PROMPT.md` 반영 여부를 같이 확인한다
 
 ## 데이터 소스
 - KBO 공식 홈페이지 (koreabaseball.com) 크롤링
 - 경로 1: ASP.NET SSR 페이지 → GET + BeautifulSoup
 - 경로 2: ASMX 내부 API → POST → JSON
 - 상세 내용은 `docs/PLANNING.md` 참조
+
+## UX / 디자인 방향
+- 모바일 기준 프레임은 390x844(iPhone 14 기준)로 본다
+- 전체 방향은 모던, 미니멀, 다크 모드 기반 스포츠 앱이다
+- 핵심 컬러는 다크 배경(`#0F0F0F`, `#1A1A1A`)와 라이브 강조색(`#FF4444`)다
+- 팀 컬러는 개인화, 마이팀 강조, 알림/선택 상태 표현에 적극 사용한다
+- 주요 폰트 방향은 Pretendard(한글), SF Pro Display(영문/숫자)다
+- 공통 하단 탭은 `홈 / 일정 / 순위 / 설정` 4개 탭이다
+
+## 정보 구조
+- 온보딩: 마이팀 선택
+- 홈: 오늘의 스코어보드
+- 경기 상세: 스코어 / 문자중계 / 박스스코어 / 라인업
+- 일정
+- 순위
+- 설정
+- 위젯: 홈화면/잠금화면 변형은 Phase 1.5 범위
+
+## 디자인 작업 상태
+- `docs/FIGMA_PROMPT.md` 기준으로 페이지별 와이어프레임/시안 생성 준비가 되어 있다
+- Figma 작업 시 `User Flow`, 온보딩, 홈, 경기 상세 4탭, 일정, 순위, 설정, 위젯까지 포함한 구조를 기준으로 한다
+- Figma MCP 접근 상태는 계정/권한 영향이 있으므로 실제 작업 전 연결 상태를 확인해야 한다
 
 ## MVP 기능 (Phase 1)
 1. 실시간 스코어보드
@@ -51,3 +98,10 @@ kbo_fans/
 4. 푸시 알림
 5. 마이팀 설정
 6. 경기 일정 / 팀 순위
+
+## 다음 기본 우선순위
+1. Figma 와이어프레임/주요 화면 구조 정리
+2. Flutter 프로젝트 셋업
+3. FastAPI 백엔드 구조 셋업
+4. 크롤링 프로토타입 구축
+5. 홈 스코어보드와 경기 상세 핵심 화면 구현

@@ -150,15 +150,15 @@
 | ID | 작업 | 상태 | 선행조건 | 소유 경로 | 완료 기준 |
 |---|---|---|---|---|---|
 | X1 | FastAPI 프로젝트 셋업 | ✅ 완료 | 없음 | `backend/` | 앱 실행 가능한 FastAPI 골격 |
-| X2 | 스코어보드 크롤러 | ⬜ 대기 | X1 | `backend/crawlers/scoreboard.py` | scoreboard 응답 스키마 충족 |
+| X2 | 스코어보드 크롤러 | ✅ 완료 | X1 | `backend/crawlers/scoreboard.py` | scoreboard 응답 스키마 충족 |
 | X3 | 문자중계 크롤러 | ⬜ 대기 | X1 | `backend/crawlers/relay.py` | relay 응답 스키마 충족 |
-| X4 | 박스스코어/라인업 크롤러 | ⬜ 대기 | X1 | `backend/crawlers/boxscore.py`, `backend/crawlers/lineup.py` | boxscore/lineup 스키마 충족 |
-| X5 | 일정/순위 크롤러 | ⬜ 대기 | X1 | `backend/crawlers/schedule.py`, `backend/crawlers/standings.py` | schedule/standings 스키마 충족 |
-| X6 | REST API 구현 | ⬜ 대기 | X2~X5 | `backend/api/` | 앱 명세 엔드포인트 전체 동작 |
+| X4 | 박스스코어/라인업 크롤러 | ✅ 완료 | X1 | `backend/crawlers/boxscore.py`, `backend/crawlers/lineup.py` | boxscore/lineup 스키마 충족 |
+| X5 | 일정/순위 크롤러 | ✅ 완료 | X1 | `backend/crawlers/schedule.py`, `backend/crawlers/standings.py` | schedule, standings 구현 완료 |
+| X6 | REST API 구현 | 🔄 진행중 | X2~X5 | `backend/api/` | scoreboard, schedule, boxscore, lineup, standings 연결 완료 / relay, push 대기 |
 | X7 | Adaptive Polling 설계 | ⬜ 대기 | X2 | `backend/scheduler/` | 경기 상태별 폴링 정책 정의 |
 | X8 | 변경 감지/중복 방지 | ⬜ 대기 | X2~X5 | `backend/utils/` | hash 또는 diff 기반 감지 |
 | X9 | 선수 기록 크롤러 | ⬜ 대기 | X1 | `backend/crawlers/player_stats.py` | 팀 선수 기록 조회 가능 |
-| X10 | 푸시 이벤트 서버 | ⬜ 대기 | X6, X7 | `backend/push/` | 이벤트 감지 + 발송 흐름 정의 |
+| X10 | 푸시 이벤트 서버 | 🔄 진행중 | X6, X7 | `backend/push/` | register 응답 구현 완료 / 실제 FCM 발송 대기 |
 | X11 | 협업 문서 관리 | 🔄 진행중 | 없음 | `docs/` | 분담 문서 최신 상태 유지 |
 
 ### Figma 축
@@ -412,9 +412,13 @@ User-Agent: desktop browser UA
 ### Codex 현재
 
 - `X1` FastAPI 프로젝트 골격 생성 완료
+- `X2` 스코어보드 크롤러 구현 완료
+- `X4` 박스스코어/라인업 크롤러 구현 완료
+- `X5` 일정/순위 크롤러 구현 완료
+- `X6`에서 scoreboard/schedule/boxscore/lineup/standings API 연결 완료
 - `X11` 협업 문서 유지 진행중
 - Figma MCP 접근 불가 이슈 확인 완료
-- 다음 작업은 `X2` 스코어보드 크롤러와 `X3` 문자중계 크롤러 착수
+- 다음 작업은 `X3` 문자중계 경로 추적과 `X10` 실제 FCM 발송 설계
 
 ### 현재 블로커
 
@@ -433,9 +437,9 @@ User-Agent: desktop browser UA
 ### Codex 다음
 
 1. `X1` FastAPI 프로젝트 골격 생성
-2. `X2` 스코어보드 크롤러 구현
-3. `X3` 문자중계 크롤러 구현
-4. `X6-M1`까지 API 최소 세트 제공
+2. `X3` 문자중계 크롤러 구현
+3. `X3` 문자중계 경로 구현
+4. `X6-M4`까지 API 최소 세트 제공
 
 ### 공동
 

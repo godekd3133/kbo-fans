@@ -30,6 +30,14 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+*.egg-info/
+~$*.docx
+
+# MCP (토큰 포함)
+.mcp.json
 
 # Codacy
 .github/instructions/codacy.instructions.md
+
+# FVM Version Cache
+.fvm/
