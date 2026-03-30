@@ -1,10 +1,13 @@
 import 'package:dio/dio.dart';
 
+import '../../core/widgets/dev_console.dart';
 import '../models/game.dart';
 import '../models/relay.dart';
 import '../models/boxscore.dart';
 import '../models/schedule.dart';
 import 'game_repository.dart';
+
+final _log = DevConsole.instance;
 
 /// 앱에서 직접 KBO 홈페이지 ASMX API를 호출하는 구현체
 /// 백엔드 서버 없이 인터넷만 되면 실시간 데이터 갱신 가능
@@ -31,17 +34,25 @@ class KboDirectRepository implements GameRepository {
   // ── 공통 POST 호출 ──
 
   Future<Map<String, dynamic>> _postAsmx(String path, Map<String, dynamic> params) async {
-    final response = await _dio.post<Map<String, dynamic>>(
-      path,
-      data: params.entries.map((e) => '${e.key}=${e.value}').join('&'),
-    );
-    return response.data ?? {};
+    _log.info('KBO POST $path ${params.toString().substring(0, params.toString().length.clamp(0, 80))}');
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        path,
+        data: params.entries.map((e) => '${e.key}=${e.value}').join('&'),
+      );
+      _log.info('KBO OK $path → ${response.statusCode}');
+      return response.data ?? {};
+    } catch (e) {
+      _log.error('KBO FAIL $path → $e');
+      rethrow;
+    }
   }
 
   // ── 스코어보드 ──
 
   @override
   Future<List<Game>> getScoreboard(String date) async {
+    _log.info('스코어보드 조회: $date');
     // GetScoreBoardScroll은 gameId가 필요하므로, 먼저 일정에서 gameId 목록을 가져온다
     final yearMonth = date.substring(0, 7);
     final schedule = await getSchedule(yearMonth);

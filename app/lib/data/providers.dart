@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/config/app_config.dart';
@@ -9,21 +10,23 @@ import 'repositories/kbo_direct_repository.dart';
 import 'models/game.dart';
 import 'models/schedule.dart';
 
-/// API 클라이언트 (DEV/RELEASE에서만 실제 사용)
+/// API 클라이언트 (RELEASE에서만 실제 사용)
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 /// GameRepository — 환경에 따라 자동 전환
-/// LOCAL: Mock 데이터
-/// DEV: KBO 직접 크롤링 (인터넷만 되면 OK)
+/// LOCAL/DEV: KBO 직접 크롤링 (실제 데이터)
 /// RELEASE: 백엔드 API 서버 경유
+/// 웹에서 KBO 직접 호출 시 CORS 문제 → Mock fallback
 final gameRepositoryProvider = Provider<GameRepository>((ref) {
-  if (AppConfig.instance.useMockData) {
+  if (AppConfig.instance.isRelease) {
+    return ApiGameRepository(ref.read(apiClientProvider));
+  }
+  // LOCAL/DEV: 실제 KBO 데이터 직접 가져오기
+  // 웹에서는 CORS 때문에 Mock fallback
+  if (kIsWeb) {
     return MockGameRepository();
   }
-  if (AppConfig.instance.isDev) {
-    return KboDirectRepository();
-  }
-  return ApiGameRepository(ref.read(apiClientProvider));
+  return KboDirectRepository();
 });
 
 /// 오늘의 스코어보드

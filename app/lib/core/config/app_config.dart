@@ -25,7 +25,7 @@ class AppConfig {
     _instance = AppConfig._(
       environment: env,
       apiBaseUrl: _baseUrlFor(env),
-      useMockData: env == AppEnvironment.local,
+      useMockData: false, // 모든 환경에서 실제 데이터 사용 (웹은 providers에서 CORS fallback)
     );
   }
 
