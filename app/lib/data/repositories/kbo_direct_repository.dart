@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../../core/widgets/dev_console.dart';
 import '../models/game.dart';
@@ -11,24 +12,33 @@ final _log = DevConsole.instance;
 
 /// 앱에서 직접 KBO 홈페이지 ASMX API를 호출하는 구현체
 /// 백엔드 서버 없이 인터넷만 되면 실시간 데이터 갱신 가능
+/// 웹에서는 CORS proxy를 경유하여 호출
 class KboDirectRepository implements GameRepository {
   static const _kboBase = 'https://www.koreabaseball.com';
+  // 웹 CORS 우회용 프록시
+  static const _corsProxy = 'https://corsproxy.io/?';
 
   late final Dio _dio;
+  late final String _baseUrl;
 
   KboDirectRepository() {
+    // 웹에서는 CORS proxy 경유
+    _baseUrl = kIsWeb ? '$_corsProxy${Uri.encodeComponent(_kboBase)}' : _kboBase;
+
     _dio = Dio(BaseOptions(
-      baseUrl: _kboBase,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      baseUrl: _baseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 15),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'X-Requested-With': 'XMLHttpRequest',
-        'Referer': '$_kboBase/',
-        'Origin': _kboBase,
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        if (!kIsWeb) 'Referer': '$_kboBase/',
+        if (!kIsWeb) 'Origin': _kboBase,
+        if (!kIsWeb) 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       },
     ));
+
+    _log.info('KBO Repository: ${kIsWeb ? "웹 (CORS proxy)" : "네이티브 (직접)"}');
   }
 
   // ── 공통 POST 호출 ──

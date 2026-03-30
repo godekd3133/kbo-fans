@@ -11,12 +11,9 @@ import 'core/widgets/dev_console.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 환경 초기화 (--dart-define=APP_ENV=local|dev|release)
   AppConfig.initialize();
   DevConsole.instance.info('환경: ${AppConfig.instance.environment.name}');
-  DevConsole.instance.info('API: ${AppConfig.instance.apiBaseUrl}');
 
-  // 전역 에러 핸들링 → DevConsole에 로그
   FlutterError.onError = (details) {
     DevConsole.instance.error('Flutter: ${details.exceptionAsString()}');
   };
@@ -27,7 +24,10 @@ void main() async {
 
     runApp(
       ProviderScope(
-        child: KboFansApp(showOnboarding: !onboardingDone),
+        overrides: [
+          onboardingDoneProvider.overrideWithValue(onboardingDone),
+        ],
+        child: const KboFansApp(),
       ),
     );
   }, (error, stack) {
@@ -36,16 +36,11 @@ void main() async {
 }
 
 class KboFansApp extends ConsumerWidget {
-  final bool showOnboarding;
-  const KboFansApp({super.key, required this.showOnboarding});
+  const KboFansApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
-
-    if (showOnboarding) {
-      router.go('/onboarding');
-    }
 
     final app = MaterialApp.router(
       title: 'KBO Fans',
@@ -54,7 +49,6 @@ class KboFansApp extends ConsumerWidget {
       debugShowCheckedModeBanner: !AppConfig.instance.isRelease,
     );
 
-    // RELEASE가 아닌 환경에서 DevConsole 오버레이 표시
     if (AppConfig.instance.isRelease) return app;
     return DevConsoleOverlay(child: app);
   }

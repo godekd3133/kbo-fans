@@ -13,10 +13,15 @@ import '../widgets/main_scaffold.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// 온보딩 완료 여부 — main()에서 override
+final onboardingDoneProvider = Provider<bool>((ref) => false);
+
 final routerProvider = Provider<GoRouter>((ref) {
+  final onboardingDone = ref.watch(onboardingDoneProvider);
+
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/home',
+    initialLocation: onboardingDone ? '/home' : '/onboarding',
     routes: [
       GoRoute(
         path: '/onboarding',
