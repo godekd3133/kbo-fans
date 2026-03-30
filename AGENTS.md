@@ -75,6 +75,8 @@
 
 ## Backend And Data Constraints
 - Backend APIs should follow the response envelope and endpoint contracts documented in `docs/APP_SPEC.md`.
+- Backend currently targets Python `>=3.9` per `backend/pyproject.toml`, so backend code must remain Python 3.9 compatible unless the runtime policy is explicitly upgraded.
+- Do not use Python 3.10+ only type syntax such as `int | None` or `str | None` in backend FastAPI/Pydantic code while Python 3.9 remains the minimum supported version. Use `Optional[...]` / `Union[...]` instead.
 - Adaptive polling matters:
   - Scheduled games: 5 minutes
   - Live games: 30 to 60 seconds
