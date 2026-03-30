@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/models/game.dart';
-import '../../data/mock/mock_games.dart';
+import '../../data/providers.dart';
 import 'widgets/my_team_game_card.dart';
 import 'widgets/game_card.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _myTeamId;
-  final List<Game> _games = mockGames;
 
   @override
   void initState() {
@@ -30,10 +31,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _myTeamId = prefs.getString('myTeam'));
   }
 
-  Game? get _myTeamGame {
+  String get _today => DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+  Game? _myTeamGame(List<Game> games) {
     if (_myTeamId == null) return null;
     try {
-      return _games.firstWhere(
+      return games.firstWhere(
         (g) => g.away.teamId == _myTeamId || g.home.teamId == _myTeamId,
       );
     } catch (_) {
@@ -41,62 +44,103 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  List<Game> get _otherGames {
-    final myGame = _myTeamGame;
-    if (myGame == null) return _games;
-    return _games.where((g) => g.gameId != myGame.gameId).toList();
+  List<Game> _otherGames(List<Game> games) {
+    final myGame = _myTeamGame(games);
+    if (myGame == null) return games;
+    return games.where((g) => g.gameId != myGame.gameId).toList();
   }
-
-  bool get _hasLiveGames => _games.any((g) => g.status == GameStatus.live);
 
   @override
   Widget build(BuildContext context) {
+    final scoreboardAsync = ref.watch(scoreboardProvider(_today));
+
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            // TODO: API에서 데이터 새로고침
-            await Future.delayed(const Duration(milliseconds: 500));
-          },
-          color: AppColors.live,
-          child: CustomScrollView(
-            slivers: [
-              // 헤더
-              SliverToBoxAdapter(child: _buildHeader()),
-              // 마이팀 경기 카드
-              if (_myTeamGame != null)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: MyTeamGameCard(
-                      game: _myTeamGame!,
-                      onTap: () => context.push('/game/${_myTeamGame!.gameId}'),
-                    ),
-                  ),
+        child: scoreboardAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
+          error: (error, _) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: AppColors.live),
+                const SizedBox(height: 12),
+                Text('데이터를 불러올 수 없습니다', style: TextStyle(color: AppColors.textDisabled)),
+                const SizedBox(height: 4),
+                Text('$error', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => ref.invalidate(scoreboardProvider(_today)),
+                  child: const Text('다시 시도'),
                 ),
-              // 나머지 경기 카드
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                sliver: SliverList.separated(
-                  itemCount: _otherGames.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final game = _otherGames[index];
-                    return GameCard(
-                      game: game,
-                      onTap: () => context.push('/game/${game.gameId}'),
-                    );
-                  },
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
+          data: (games) => _buildContent(games),
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildContent(List<Game> games) {
+    final myGame = _myTeamGame(games);
+    final others = _otherGames(games);
+    final hasLive = games.any((g) => g.status == GameStatus.live);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(scoreboardProvider(_today));
+      },
+      color: AppColors.live,
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader(hasLive)),
+          if (games.isEmpty)
+            SliverFillRemaining(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.sports_baseball, size: 64, color: AppColors.divider),
+                    const SizedBox(height: 16),
+                    Text('오늘은 경기가 없습니다', style: TextStyle(fontSize: 16, color: AppColors.textDisabled)),
+                  ],
+                ),
+              ),
+            ),
+          if (myGame != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: MyTeamGameCard(
+                  game: myGame,
+                  onTap: () => context.push('/game/${myGame.gameId}'),
+                ),
+              ),
+            ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            sliver: SliverList.separated(
+              itemCount: others.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final game = others[index];
+                return GameCard(
+                  game: game,
+                  onTap: () => context.push('/game/${game.gameId}'),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(bool hasLive) {
+    final now = DateTime.now();
+    final dayNames = ['', '월', '화', '수', '목', '금', '토', '일'];
+    final dateStr = '${now.month}.${now.day} ${dayNames[now.weekday]}';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: Row(
@@ -105,8 +149,8 @@ class _HomeScreenState extends State<HomeScreen> {
           Text('KBO Fans', style: Theme.of(context).textTheme.headlineMedium),
           Row(
             children: [
-              Text('3.28 토', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-              if (_hasLiveGames) ...[
+              Text(dateStr, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+              if (hasLive) ...[
                 const SizedBox(width: 8),
                 Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.live, shape: BoxShape.circle)),
               ],
