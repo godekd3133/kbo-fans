@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/providers.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  String? _myTeamId;
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notifGameStart = true;
   bool _notifScoring = true;
   bool _notifHomerun = true;
@@ -23,19 +23,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifAllGames = false;
 
   @override
-  void initState() {
-    super.initState();
-    _loadSettings();
-  }
-
-  Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() => _myTeamId = prefs.getString('myTeam'));
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final team = _myTeamId != null ? KboTeams.byId(_myTeamId!) : null;
+    final myTeamId = ref.watch(myTeamProvider);
+    final team = myTeamId != null ? KboTeams.byId(myTeamId) : null;
     final teamColor = team?.primaryColor ?? AppColors.live;
 
     return Scaffold(

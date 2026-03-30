@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../data/providers.dart';
 import '../../core/theme/app_theme.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -18,10 +19,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _selectedTeamId;
 
   Future<void> _saveAndProceed() async {
+    // 마이팀을 전역 Provider에 저장
+    await ref.read(myTeamProvider.notifier).setTeam(_selectedTeamId);
     final prefs = await SharedPreferences.getInstance();
-    if (_selectedTeamId != null) {
-      await prefs.setString('myTeam', _selectedTeamId!);
-    }
     await prefs.setBool('onboardingDone', true);
     if (mounted) context.go('/home');
   }

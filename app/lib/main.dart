@@ -7,6 +7,7 @@ import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/widgets/dev_console.dart';
+import 'data/providers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,21 +36,38 @@ void main() async {
   });
 }
 
-class KboFansApp extends ConsumerWidget {
+class KboFansApp extends ConsumerStatefulWidget {
   const KboFansApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<KboFansApp> createState() => _KboFansAppState();
+}
+
+class _KboFansAppState extends ConsumerState<KboFansApp> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(myTeamProvider.notifier).load());
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
 
-    final app = MaterialApp.router(
+    return MaterialApp.router(
       title: 'KBO Fans',
       theme: AppTheme.dark,
       routerConfig: router,
       debugShowCheckedModeBanner: !AppConfig.instance.isRelease,
-    );
+      builder: (context, child) {
+        if (AppConfig.instance.isRelease) {
+          return child ?? const SizedBox.shrink();
+        }
 
-    if (AppConfig.instance.isRelease) return app;
-    return DevConsoleOverlay(child: app);
+        return DevConsoleOverlay(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
   }
 }

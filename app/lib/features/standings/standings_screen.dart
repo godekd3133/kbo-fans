@@ -1,35 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
-import '../../data/models/schedule.dart';
 import '../../data/providers.dart';
 
-class StandingsScreen extends ConsumerStatefulWidget {
+class StandingsScreen extends ConsumerWidget {
   const StandingsScreen({super.key});
 
   @override
-  ConsumerState<StandingsScreen> createState() => _StandingsScreenState();
-}
-
-class _StandingsScreenState extends ConsumerState<StandingsScreen> {
-  String? _myTeamId;
-
-  @override
-  void initState() {
-    super.initState();
-    SharedPreferences.getInstance().then((prefs) {
-      setState(() => _myTeamId = prefs.getString('myTeam'));
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final season = DateTime.now().year;
+    final myTeamId = ref.watch(myTeamProvider);
     final standingsAsync = ref.watch(standingsProvider(season));
 
     return Scaffold(
@@ -72,7 +56,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     ],
                   ),
                 ),
-                data: (standings) => _buildList(standings),
+                data: (standings) => _buildList(ref, standings, myTeamId),
               ),
             ),
             Padding(
@@ -90,7 +74,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
     );
   }
 
-  Widget _buildList(List<TeamStanding> standings) {
+  Widget _buildList(WidgetRef ref, List standings, String? myTeamId) {
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(standingsProvider(DateTime.now().year));
@@ -100,7 +84,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
         itemCount: standings.length,
         itemBuilder: (context, index) {
           final s = standings[index];
-          final isMyTeam = s.teamId == _myTeamId;
+          final isMyTeam = s.teamId == myTeamId;
           final team = KboTeams.byId(s.teamId);
           final teamColor = team?.primaryColor ?? AppColors.live;
 

@@ -19,19 +19,15 @@ class KboDirectRepository implements GameRepository {
   static const _corsProxy = 'https://corsproxy.io/?';
 
   late final Dio _dio;
-  late final String _baseUrl;
 
   KboDirectRepository() {
-    // 웹에서는 CORS proxy 경유
-    _baseUrl = kIsWeb ? '$_corsProxy${Uri.encodeComponent(_kboBase)}' : _kboBase;
 
     _dio = Dio(BaseOptions(
-      baseUrl: _baseUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 15),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'X-Requested-With': 'XMLHttpRequest',
+        if (!kIsWeb) 'X-Requested-With': 'XMLHttpRequest',
         if (!kIsWeb) 'Referer': '$_kboBase/',
         if (!kIsWeb) 'Origin': _kboBase,
         if (!kIsWeb) 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -41,13 +37,23 @@ class KboDirectRepository implements GameRepository {
     _log.info('KBO Repository: ${kIsWeb ? "웹 (CORS proxy)" : "네이티브 (직접)"}');
   }
 
+  /// 웹에서는 CORS proxy를 통해, 네이티브에서는 직접 호출
+  String _resolveUrl(String path) {
+    final fullUrl = '$_kboBase$path';
+    if (kIsWeb) {
+      return '$_corsProxy${Uri.encodeComponent(fullUrl)}';
+    }
+    return fullUrl;
+  }
+
   // ── 공통 POST 호출 ──
 
   Future<Map<String, dynamic>> _postAsmx(String path, Map<String, dynamic> params) async {
-    _log.info('KBO POST $path ${params.toString().substring(0, params.toString().length.clamp(0, 80))}');
+    final url = _resolveUrl(path);
+    _log.info('KBO POST $path');
     try {
       final response = await _dio.post<Map<String, dynamic>>(
-        path,
+        url,
         data: params.entries.map((e) => '${e.key}=${e.value}').join('&'),
       );
       _log.info('KBO OK $path → ${response.statusCode}');
@@ -222,11 +228,12 @@ class KboDirectRepository implements GameRepository {
 
   @override
   Future<List<TeamStanding>> getStandings(int season) async {
-    // ASMX에 순위 전용 엔드포인트가 없으므로 HTML SSR 대신
-    // 직접 GET 요청 후 JSON 파싱 시도
+    _log.info('순위 조회: $season');
     try {
+      final url = _resolveUrl('/Record/TeamRank/TeamRankDaily.aspx');
       final response = await _dio.get<String>(
-        '/Record/TeamRank/TeamRankDaily.aspx',
+        url,
+        queryParameters: {'seasonId': season},
         options: Options(
           headers: {
             'Content-Type': 'text/html',
@@ -236,8 +243,11 @@ class KboDirectRepository implements GameRepository {
         ),
       );
 
-      return _parseStandingsHtml(response.data ?? '');
-    } catch (_) {
+      final standings = _parseStandingsHtml(response.data ?? '');
+      _log.info('순위 파싱 완료: ${standings.length}팀');
+      return standings;
+    } catch (e) {
+      _log.error('순위 조회 실패: $e');
       return [];
     }
   }

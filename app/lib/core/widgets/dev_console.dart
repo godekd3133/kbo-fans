@@ -74,7 +74,13 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
   }
 
   void _onLog() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
   }
 
   int get _errorCount => DevConsole.instance.logs.where((l) => l.level == LogLevel.error).length;

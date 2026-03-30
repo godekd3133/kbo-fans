@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
@@ -19,7 +18,6 @@ class ScheduleScreen extends ConsumerStatefulWidget {
 class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   late DateTime _currentMonth;
   int? _selectedDay;
-  String? _myTeamId;
 
   @override
   void initState() {
@@ -27,9 +25,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final now = DateTime.now();
     _currentMonth = DateTime(now.year, now.month);
     _selectedDay = now.day;
-    SharedPreferences.getInstance().then((prefs) {
-      setState(() => _myTeamId = prefs.getString('myTeam'));
-    });
   }
 
   String get _yearMonth =>
@@ -88,14 +83,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _buildBody(List<ScheduleDay> days) {
-    // 경기 있는 날짜 Set
+    final myTeamId = ref.watch(myTeamProvider);
     final gameDays = <int>{};
     final myTeamDays = <int>{};
     for (final d in days) {
       final day = int.tryParse(d.date.split('-').last) ?? 0;
       gameDays.add(day);
-      if (_myTeamId != null) {
-        final hasMyTeam = d.games.any((g) => g.awayId == _myTeamId || g.homeId == _myTeamId);
+      if (myTeamId != null) {
+        final hasMyTeam = d.games.any((g) => g.awayId == myTeamId || g.homeId == myTeamId);
         if (hasMyTeam) myTeamDays.add(day);
       }
     }
@@ -135,7 +130,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             }).toList(),
           ),
           const SizedBox(height: 8),
-          ...List.generate(6, (week) {
+          ...List.generate(((startWeekday - 1 + lastDay.day + 6) ~/ 7), (week) {
             return Row(
               children: List.generate(7, (weekday) {
                 final cellIndex = week * 7 + weekday;
@@ -181,7 +176,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                               margin: const EdgeInsets.only(top: 2),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: isMyTeam ? (KboTeams.byId(_myTeamId!)?.primaryColor ?? AppColors.live) : AppColors.textDisabled,
+                                color: isMyTeam ? (KboTeams.byId(ref.watch(myTeamProvider) ?? '')?.primaryColor ?? AppColors.live) : AppColors.textDisabled,
                               ),
                             ),
                         ],

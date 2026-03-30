@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../data/models/game.dart';
 import '../../features/game_detail/game_detail_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../features/standings/standings_screen.dart';
@@ -62,6 +63,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => GameDetailScreen(
           gameId: state.pathParameters['gameId']!,
+          game: state.extra as Game?,
         ),
       ),
     ],

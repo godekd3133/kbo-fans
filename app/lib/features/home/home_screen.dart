@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../data/models/game.dart';
@@ -10,49 +9,14 @@ import '../../data/providers.dart';
 import 'widgets/my_team_game_card.dart';
 import 'widgets/game_card.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  String? _myTeamId;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadMyTeam();
-  }
-
-  Future<void> _loadMyTeam() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() => _myTeamId = prefs.getString('myTeam'));
-  }
-
-  String get _today => DateFormat('yyyy-MM-dd').format(DateTime.now());
-
-  Game? _myTeamGame(List<Game> games) {
-    if (_myTeamId == null) return null;
-    try {
-      return games.firstWhere(
-        (g) => g.away.teamId == _myTeamId || g.home.teamId == _myTeamId,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  List<Game> _otherGames(List<Game> games) {
-    final myGame = _myTeamGame(games);
-    if (myGame == null) return games;
-    return games.where((g) => g.gameId != myGame.gameId).toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scoreboardAsync = ref.watch(scoreboardProvider(_today));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final scoreboardAsync = ref.watch(scoreboardProvider(today));
+    final myTeamId = ref.watch(myTeamProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -69,31 +33,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Text('$error', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () => ref.invalidate(scoreboardProvider(_today)),
+                  onPressed: () => ref.invalidate(scoreboardProvider(today)),
                   child: const Text('다시 시도'),
                 ),
               ],
             ),
           ),
-          data: (games) => _buildContent(games),
+          data: (games) => _buildContent(context, ref, games, myTeamId, today),
         ),
       ),
     );
   }
 
-  Widget _buildContent(List<Game> games) {
-    final myGame = _myTeamGame(games);
-    final others = _otherGames(games);
+  Widget _buildContent(BuildContext context, WidgetRef ref, List<Game> games, String? myTeamId, String today) {
+    Game? myGame;
+    if (myTeamId != null) {
+      myGame = games.where((g) => g.away.teamId == myTeamId || g.home.teamId == myTeamId).firstOrNull;
+    }
+    final others = myGame != null ? games.where((g) => g.gameId != myGame!.gameId).toList() : games;
     final hasLive = games.any((g) => g.status == GameStatus.live);
 
     return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(scoreboardProvider(_today));
-      },
+      onRefresh: () async => ref.invalidate(scoreboardProvider(today)),
       color: AppColors.live,
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _buildHeader(hasLive)),
+          SliverToBoxAdapter(child: _buildHeader(context, hasLive)),
           if (games.isEmpty)
             SliverFillRemaining(
               child: Center(
@@ -113,7 +78,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: MyTeamGameCard(
                   game: myGame,
-                  onTap: () => context.push('/game/${myGame.gameId}'),
+                  onTap: () => context.push('/game/${myGame!.gameId}', extra: myGame),
                 ),
               ),
             ),
@@ -124,10 +89,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final game = others[index];
-                return GameCard(
-                  game: game,
-                  onTap: () => context.push('/game/${game.gameId}'),
-                );
+                return GameCard(game: game, onTap: () => context.push('/game/${game.gameId}', extra: game));
               },
             ),
           ),
@@ -136,7 +98,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(bool hasLive) {
+  Widget _buildHeader(BuildContext context, bool hasLive) {
     final now = DateTime.now();
     final dayNames = ['', '월', '화', '수', '목', '금', '토', '일'];
     final dateStr = '${now.month}.${now.day} ${dayNames[now.weekday]}';
