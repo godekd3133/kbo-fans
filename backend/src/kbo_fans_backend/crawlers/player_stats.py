@@ -49,8 +49,15 @@ class PlayerStatsCrawler(BaseCrawler):
     def get_team_players(self, team_id: str, season: int) -> List[Dict[str, Any]]:
         entry_keys = self._parse_register_all_entries(team_id)
         players = []
-        for group in self._POSITION_GROUPS:
-            players.extend(self._fetch_player_search_rows(team_id, group))
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(self._POSITION_GROUPS)
+        ) as executor:
+            grouped_players = executor.map(
+                lambda group: self._fetch_player_search_rows(team_id, group),
+                self._POSITION_GROUPS,
+            )
+            for group_players in grouped_players:
+                players.extend(group_players)
 
         def enrich(player: Dict[str, Any]) -> Dict[str, Any]:
             detail = self.get_player_detail(

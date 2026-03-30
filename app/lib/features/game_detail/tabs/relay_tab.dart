@@ -100,21 +100,37 @@ class RelayTab extends ConsumerWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            '현재 타석',
+            style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          ),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '타자: No.${ab.batterNumber} ${ab.batterName} (${ab.batterHand})',
-                style: const TextStyle(fontSize: 14),
+              Expanded(
+                child: Text(
+                  _formatBatterLabel(ab),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-              Text(
-                '투수: No.${ab.pitcherNumber} ${ab.pitcherName} (${ab.pitcherHand}) · ${ab.pitchCount}구',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  _formatPitcherLabel(ab),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -161,14 +177,16 @@ class RelayTab extends ConsumerWidget {
   }
 
   Widget _buildInningChips(List<RelayItem> items) {
-    // 이닝 목록 추출
-    final inningSet = <String>{};
+    final chips = <String>[];
     for (final item in items) {
-      if (item.event != 'INNING_CHANGE') {
-        inningSet.add('${item.inning}${item.half == "top" ? "초" : "말"}');
+      if (item.inning >= 900) {
+        continue;
+      }
+      final label = '${item.inning}${item.half == "top" ? "초" : "말"}';
+      if (!chips.contains(label)) {
+        chips.add(label);
       }
     }
-    final chips = inningSet.toList()..sort();
 
     if (chips.isEmpty) return const SizedBox.shrink();
 
@@ -226,14 +244,30 @@ class RelayTab extends ConsumerWidget {
 
   Widget _buildRelayItem(RelayItem item) {
     final isScoring = item.isScoring;
+    final isPitchDetail = item.text.startsWith('- ');
+    final isGameEnd = item.event == 'GAME_END';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: isPitchDetail ? 8 : 12,
+      ),
       decoration: BoxDecoration(
-        color: isScoring ? const Color(0xFF1C1111) : Colors.transparent,
+        color: isGameEnd
+            ? AppColors.card
+            : isScoring
+            ? const Color(0xFF1C1111)
+            : isPitchDetail
+            ? AppColors.cardSub.withValues(alpha: 0.45)
+            : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: Border(
           left: BorderSide(
-            color: isScoring ? AppColors.live : AppColors.divider,
+            color: isGameEnd
+                ? AppColors.textPrimary
+                : isScoring
+                ? AppColors.live
+                : AppColors.divider,
             width: 4,
           ),
         ),
@@ -241,14 +275,28 @@ class RelayTab extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isScoring || isGameEnd)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                isGameEnd ? '경기 종료' : '득점 장면',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: isGameEnd ? AppColors.textPrimary : AppColors.live,
+                ),
+              ),
+            ),
           Text(
-            '${isScoring ? "🔴" : "⚪"} ${item.text}',
+            item.text,
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: isScoring ? FontWeight.w600 : FontWeight.normal,
-              color: isScoring
-                  ? AppColors.textPrimary
-                  : AppColors.textSecondary,
+              fontSize: isPitchDetail ? 12 : 14,
+              fontWeight: isScoring || isGameEnd
+                  ? FontWeight.w700
+                  : FontWeight.normal,
+              color: isPitchDetail
+                  ? AppColors.textDisabled
+                  : AppColors.textPrimary,
             ),
           ),
           if (item.pitchSequence != null) ...[
@@ -264,5 +312,18 @@ class RelayTab extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  String _formatBatterLabel(CurrentAtBat ab) {
+    final number = ab.batterNumber > 0 ? 'No.${ab.batterNumber} ' : '';
+    final hand = ab.batterHand.isNotEmpty ? ' (${ab.batterHand})' : '';
+    return '타자  $number${ab.batterName}$hand';
+  }
+
+  String _formatPitcherLabel(CurrentAtBat ab) {
+    final number = ab.pitcherNumber > 0 ? 'No.${ab.pitcherNumber} ' : '';
+    final hand = ab.pitcherHand.isNotEmpty ? ' (${ab.pitcherHand})' : '';
+    final pitchCount = ab.pitchCount > 0 ? ' · ${ab.pitchCount}구' : '';
+    return '투수  $number${ab.pitcherName}$hand$pitchCount';
   }
 }

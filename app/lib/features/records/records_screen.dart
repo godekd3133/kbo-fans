@@ -194,8 +194,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
 
   Widget _buildTeamRecords(String teamId) {
     final team = KboTeams.byId(teamId);
-    final playersAsync = ref.watch(teamPlayersProvider('$teamId|$_selectedSeason'));
-    final teamStatsAsync = ref.watch(teamStatsProvider('$teamId|$_selectedSeason'));
+    final teamRecordsAsync = ref.watch(teamRecordsProvider('$teamId|$_selectedSeason'));
 
     return Scaffold(
       body: SafeArea(
@@ -240,10 +239,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: teamStatsAsync.when(
+              child: teamRecordsAsync.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, stackTrace) => const SizedBox.shrink(),
-                data: (teamStats) => _teamStatsCard(teamStats),
+                data: (teamRecords) => _teamStatsCard(teamRecords.teamStats),
               ),
             ),
             const SizedBox(height: 10),
@@ -315,10 +314,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: playersAsync.when(
+              child: teamRecordsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
                 error: (error, _) => Center(child: Text('선수 기록을 불러올 수 없습니다', style: TextStyle(color: AppColors.textDisabled))),
-                data: (players) => _buildList(players),
+                data: (teamRecords) => _buildList(teamRecords.players),
               ),
             ),
           ],

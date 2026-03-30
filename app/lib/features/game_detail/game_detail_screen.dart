@@ -147,11 +147,10 @@ class _GameDetailBody extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                   child: _TicketInfoCard(game: game),
                 ),
-              if (game.highlightInfo != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: _HighlightCard(game: game),
-                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: _HighlightSection(game: game, gameId: gameId),
+              ),
               const TabBar(
                 isScrollable: true,
                 indicatorColor: AppColors.textPrimary,
@@ -416,8 +415,9 @@ class _TicketInfoCard extends ConsumerWidget {
 
 class _HighlightCard extends StatefulWidget {
   final Game game;
+  final String gameId;
 
-  const _HighlightCard({required this.game});
+  const _HighlightCard({required this.game, required this.gameId});
 
   @override
   State<_HighlightCard> createState() => _HighlightCardState();
@@ -641,5 +641,58 @@ class _HighlightCardState extends State<_HighlightCard> {
     setState(() {
       _playingVideoId = videoId;
     });
+  }
+}
+
+class _HighlightSection extends ConsumerWidget {
+  final Game game;
+  final String gameId;
+
+  const _HighlightSection({required this.game, required this.gameId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final highlightAsync = ref.watch(highlightInfoProvider(gameId));
+
+    final mergedGame = Game(
+      gameId: game.gameId,
+      status: game.status,
+      inning: game.inning,
+      away: game.away,
+      home: game.home,
+      stadium: game.stadium,
+      startTime: game.startTime,
+      crowd: game.crowd,
+      ticketInfo: game.ticketInfo,
+      highlightInfo: highlightAsync.asData?.value ?? game.highlightInfo,
+    );
+
+    if (highlightAsync.isLoading && mergedGame.highlightInfo == null) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.live),
+            ),
+            SizedBox(width: 12),
+            Text('하이라이트 불러오는 중'),
+          ],
+        ),
+      );
+    }
+
+    if (mergedGame.highlightInfo == null) {
+      return const SizedBox.shrink();
+    }
+
+    return _HighlightCard(game: mergedGame, gameId: gameId);
   }
 }

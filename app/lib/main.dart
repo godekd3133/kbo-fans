@@ -57,7 +57,29 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(myTeamProvider.notifier).load());
+    Future.microtask(() async {
+      await ref.read(myTeamProvider.notifier).load();
+      _prefetchInitialData();
+    });
+  }
+
+  void _prefetchInitialData() {
+    final now = DateTime.now();
+    final today =
+        '${now.year.toString().padLeft(4, '0')}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
+    final yearMonth =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
+    final season = now.year;
+
+    unawaited(ref.read(scoreboardProvider(today).future));
+    unawaited(ref.read(scheduleProvider(yearMonth).future));
+    unawaited(ref.read(standingsProvider(season).future));
+    unawaited(ref.read(recordsOverviewProvider(season).future));
+
+    final myTeamId = ref.read(myTeamProvider);
+    if (myTeamId != null && myTeamId.isNotEmpty) {
+      unawaited(ref.read(teamRecordsProvider('$myTeamId|$season').future));
+    }
   }
 
   @override

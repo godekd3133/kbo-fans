@@ -992,6 +992,43 @@ GET /api/standings?season={YYYY}
 
 ---
 
+### 5.7 팀 기록실 합본
+
+```
+GET /api/team/{teamId}/records?season={YYYY}
+```
+
+**응답**:
+```json
+{
+  "success": true,
+  "data": {
+    "teamId": "LG",
+    "season": 2026,
+    "players": [
+      {
+        "id": "61102",
+        "teamId": "LG",
+        "playerType": "hitter",
+        "name": "홍길동"
+      }
+    ],
+    "teamStats": {
+      "teamId": "LG",
+      "season": 2026,
+      "hitting": {
+        "AVG": ".281"
+      },
+      "pitching": {
+        "ERA": "3.52"
+      }
+    }
+  }
+}
+```
+
+---
+
 ### 5.7 푸시 알림 등록
 
 ```

@@ -3,12 +3,14 @@ import '../../core/config/app_config.dart';
 
 class ApiClient {
   late final Dio _dio;
+  static const _requestTimeout = Duration(seconds: 25);
 
   ApiClient() {
     _dio = Dio(BaseOptions(
       baseUrl: AppConfig.instance.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      // KBO 원본 크롤링을 경유하는 일부 응답은 10초를 넘길 수 있어 웹에서 조기 타임아웃이 자주 났다.
+      connectTimeout: _requestTimeout,
+      receiveTimeout: _requestTimeout,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

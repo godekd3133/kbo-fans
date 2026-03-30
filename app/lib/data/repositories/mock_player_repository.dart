@@ -1,6 +1,7 @@
 import '../mock/mock_players.dart';
 import '../models/player.dart';
 import '../models/records_overview.dart';
+import '../models/team_records_bundle.dart';
 import '../models/team_stats.dart';
 import 'player_repository.dart';
 
@@ -25,6 +26,18 @@ class MockPlayerRepository implements PlayerRepository {
       season: season,
       hitting: const {'AVG': '.281', 'HR': '18', 'OPS': '.781'},
       pitching: const {'ERA': '3.52', 'WHIP': '1.28', 'SV': '9'},
+    );
+  }
+
+  @override
+  Future<TeamRecordsBundle> getTeamRecords(String teamId, {required int season}) async {
+    final results = await Future.wait([
+      getTeamPlayers(teamId, season: season),
+      getTeamStats(teamId, season: season),
+    ]);
+    return TeamRecordsBundle(
+      players: results[0] as List<PlayerProfile>,
+      teamStats: results[1] as TeamStats,
     );
   }
 

@@ -1,6 +1,7 @@
 import '../api/api_client.dart';
 import '../models/player.dart';
 import '../models/records_overview.dart';
+import '../models/team_records_bundle.dart';
 import '../models/team_stats.dart';
 import 'player_repository.dart';
 
@@ -25,9 +26,31 @@ class ApiPlayerRepository implements PlayerRepository {
   @override
   Future<TeamStats> getTeamStats(String teamId, {required int season}) async {
     final data = await _client.get('/team/$teamId/stats', queryParameters: {'season': season});
+    return _parseTeamStats(data, fallbackTeamId: teamId, fallbackSeason: season);
+  }
+
+  @override
+  Future<TeamRecordsBundle> getTeamRecords(String teamId, {required int season}) async {
+    final data = await _client.get('/team/$teamId/records', queryParameters: {'season': season});
+    final players = data['players'] as List<dynamic>? ?? [];
+    return TeamRecordsBundle(
+      players: players.map((item) => _parsePlayer(item as Map<String, dynamic>)).toList(),
+      teamStats: _parseTeamStats(
+        data['teamStats'] as Map<String, dynamic>? ?? const {},
+        fallbackTeamId: teamId,
+        fallbackSeason: season,
+      ),
+    );
+  }
+
+  TeamStats _parseTeamStats(
+    Map<String, dynamic> data, {
+    required String fallbackTeamId,
+    required int fallbackSeason,
+  }) {
     return TeamStats(
-      teamId: data['teamId'] as String? ?? teamId,
-      season: data['season'] as int? ?? season,
+      teamId: data['teamId'] as String? ?? fallbackTeamId,
+      season: data['season'] as int? ?? fallbackSeason,
       hitting: (data['hitting'] as Map<String, dynamic>? ?? const {}).map(
         (key, value) => MapEntry(key, value.toString()),
       ),

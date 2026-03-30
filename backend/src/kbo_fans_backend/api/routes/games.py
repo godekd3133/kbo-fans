@@ -70,14 +70,34 @@ def get_game(game_id: str) -> ApiEnvelope[dict]:
                 f'?gameDate={scheduled_game["gameId"][:8]}'
                 f'&gameId={scheduled_game["gameId"]}&section=HIGHLIGHT'
             ),
-            "youtubeVideos": youtube_highlight_service.fetch_highlights(
-                game_id=scheduled_game["gameId"],
-                away_name=scheduled_game["awayName"],
-                home_name=scheduled_game["homeName"],
-            ),
+            "youtubeVideos": [],
         }
 
     return ApiEnvelope.success_response({"game": game})
+
+
+@router.get("/highlights", response_model=ApiEnvelope[dict])
+def get_highlights(game_id: str) -> ApiEnvelope[dict]:
+    scheduled_game = schedule_service.get_schedule_game(game_id)
+    if scheduled_game is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="해당 경기의 하이라이트 정보를 찾을 수 없습니다",
+        )
+
+    highlight_info = {
+        "officialUrl": (
+            "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
+            f'?gameDate={scheduled_game["gameId"][:8]}'
+            f'&gameId={scheduled_game["gameId"]}&section=HIGHLIGHT'
+        ),
+        "youtubeVideos": youtube_highlight_service.fetch_highlights(
+            game_id=scheduled_game["gameId"],
+            away_name=scheduled_game["awayName"],
+            home_name=scheduled_game["homeName"],
+        ),
+    }
+    return ApiEnvelope.success_response({"highlightInfo": highlight_info})
 
 
 @router.get("/relay", response_model=ApiEnvelope[dict])

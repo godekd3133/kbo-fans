@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 import re
 from typing import Any, Dict, Optional
 
@@ -24,8 +25,16 @@ class TeamStatsCrawler(BaseCrawler):
     }
 
     def get_team_stats(self, team_id: str, season: int) -> Dict[str, Any]:
-        hitter_stats = self._fetch_table_stats(self._HITTER_URL, season, self._TEAM_NAME_MAP[team_id])
-        pitcher_stats = self._fetch_table_stats(self._PITCHER_URL, season, self._TEAM_NAME_MAP[team_id])
+        team_name = self._TEAM_NAME_MAP[team_id]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            hitter_future = executor.submit(
+                self._fetch_table_stats, self._HITTER_URL, season, team_name
+            )
+            pitcher_future = executor.submit(
+                self._fetch_table_stats, self._PITCHER_URL, season, team_name
+            )
+            hitter_stats = hitter_future.result()
+            pitcher_stats = pitcher_future.result()
         return {
             "teamId": team_id,
             "season": season,

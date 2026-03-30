@@ -17,6 +17,7 @@ import 'models/boxscore.dart';
 import 'models/player.dart';
 import 'models/records_overview.dart';
 import 'models/schedule.dart';
+import 'models/team_records_bundle.dart';
 import 'models/team_stats.dart';
 import '../services/ticket_alert_service.dart';
 
@@ -183,6 +184,13 @@ final teamStatsProvider = FutureProvider.family<TeamStats, String>((ref, key) {
   final teamId = parts[0];
   final season = int.parse(parts[1]);
   return ref.watch(playerRepositoryProvider).getTeamStats(teamId, season: season);
+});
+
+final teamRecordsProvider = FutureProvider.family<TeamRecordsBundle, String>((ref, key) {
+  final parts = key.split('|');
+  final teamId = parts[0];
+  final season = int.parse(parts[1]);
+  return ref.watch(playerRepositoryProvider).getTeamRecords(teamId, season: season);
 });
 
 final recordsOverviewProvider = FutureProvider.family<RecordsOverview, int>((ref, season) {
