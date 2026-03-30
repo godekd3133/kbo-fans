@@ -11,6 +11,7 @@ import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
 import 'repositories/mock_player_repository.dart';
 import 'models/game.dart';
+import 'models/highlight_info.dart';
 import 'models/relay.dart';
 import 'models/boxscore.dart';
 import 'models/player.dart';
@@ -73,6 +74,10 @@ final scoreboardProvider = FutureProvider.family<List<Game>, String>((
 
 final gameProvider = FutureProvider.family<Game?, String>((ref, gameId) {
   return ref.watch(gameRepositoryProvider).getGame(gameId);
+});
+
+final highlightInfoProvider = FutureProvider.family<HighlightInfo?, String>((ref, gameId) {
+  return ref.watch(gameRepositoryProvider).getHighlightInfo(gameId);
 });
 
 final ticketAlertEnabledProvider = FutureProvider.family<bool, String>((

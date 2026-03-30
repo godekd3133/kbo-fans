@@ -141,6 +141,27 @@ class KboDirectRepository implements GameRepository {
     }
   }
 
+  @override
+  Future<HighlightInfo?> getHighlightInfo(String gameId) async {
+    final date = _gameDateFromId(gameId);
+    if (date == null) {
+      return null;
+    }
+    final month = date.substring(0, 7);
+    final schedule = await getSchedule(month);
+    for (final day in schedule) {
+      for (final game in day.games) {
+        if (game.gameId == gameId) {
+          return HighlightInfo(
+            officialUrl: _buildOfficialHighlightUrl(gameId),
+            youtubeVideos: [_buildFallbackHighlight(game)],
+          );
+        }
+      }
+    }
+    return HighlightInfo(officialUrl: _buildOfficialHighlightUrl(gameId));
+  }
+
   Game _parseScoreboardGame(Map<String, dynamic> data, ScheduleGame sg) {
     final gameStatus = _resolveGameStatus(data);
     final inning = data['CURRENT_INNING'] as String? ?? '';

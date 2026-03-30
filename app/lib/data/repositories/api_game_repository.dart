@@ -35,6 +35,13 @@ class ApiGameRepository implements GameRepository {
   }
 
   @override
+  Future<HighlightInfo?> getHighlightInfo(String gameId) async {
+    final data = await _client.get('/game/$gameId/highlights');
+    final highlightInfo = data['highlightInfo'] as Map<String, dynamic>?;
+    return _parseHighlightInfo(highlightInfo);
+  }
+
+  @override
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {
     final params = <String, dynamic>{};
     if (afterSeqNo != null) params['after'] = afterSeqNo;

@@ -26,7 +26,7 @@ class RelayCrawler(BaseCrawler):
 
         return {
             "gameId": game_id,
-            "currentAtBat": None,
+            "currentAtBat": self._parse_current_at_bat(view2_html),
             "relayItems": self._parse_relay_items(view2_html),
         }
 
@@ -157,6 +157,44 @@ class RelayCrawler(BaseCrawler):
 
         return items
 
+    def _parse_current_at_bat(self, html: str) -> Optional[dict[str, Any]]:
+        soup = BeautifulSoup(html, "html.parser")
+        present = soup.select_one("p.present")
+        players = soup.select_one("div.playerName")
+        if present is None or players is None:
+            return None
+
+        count_texts = [strong.get_text(" ", strip=True) for strong in present.select("strong")]
+        inning_text = count_texts[0] if len(count_texts) > 0 else ""
+        count_text = count_texts[1] if len(count_texts) > 1 else ""
+
+        pitcher = self._player_text(players.select_one("li.pitcher"))
+        batter = self._player_text(players.select_one("li.supervision"))
+        balls, strikes, outs = self._parse_count_text(count_text)
+
+        if not pitcher and not batter and not count_text and not inning_text:
+            return None
+
+        return {
+            "batter": {
+                "name": batter,
+                "number": 0,
+                "hand": "",
+            },
+            "pitcher": {
+                "name": pitcher,
+                "number": 0,
+                "hand": "",
+                "pitchCount": 0,
+            },
+            "ballCount": {
+                "balls": balls,
+                "strikes": strikes,
+                "outs": outs,
+            },
+            "inningText": inning_text,
+        }
+
     @staticmethod
     def _normalize_text(text: str) -> str:
         text = re.sub(r"\s+", " ", text).strip()
@@ -201,3 +239,19 @@ class RelayCrawler(BaseCrawler):
             "text": text,
             "pitchSequence": None,
         }
+
+    @staticmethod
+    def _player_text(element: Optional[Any]) -> str:
+        if element is None:
+            return ""
+        return RelayCrawler._normalize_text(element.get_text(" ", strip=True))
+
+    @staticmethod
+    def _parse_count_text(text: str) -> tuple[int, int, int]:
+        match = re.search(r"(\d+)-(\d+)\s+(\d+)out", text)
+        if not match:
+            return 0, 0, 0
+        balls = int(match.group(1))
+        strikes = int(match.group(2))
+        outs = int(match.group(3))
+        return balls, strikes, outs

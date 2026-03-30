@@ -1,5 +1,6 @@
 import '../../core/constants/ticketing_policy.dart';
 import '../models/game.dart';
+import '../models/highlight_info.dart';
 import '../models/relay.dart';
 import '../models/boxscore.dart';
 import '../models/schedule.dart';
@@ -19,6 +20,16 @@ class MockGameRepository implements GameRepository {
     await Future.delayed(const Duration(milliseconds: 120));
     try {
       return mockGames.firstWhere((game) => game.gameId == gameId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<HighlightInfo?> getHighlightInfo(String gameId) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    try {
+      return mockGames.firstWhere((game) => game.gameId == gameId).highlightInfo;
     } catch (_) {
       return null;
     }

@@ -1,4 +1,5 @@
 import '../models/game.dart';
+import '../models/highlight_info.dart';
 import '../models/relay.dart';
 import '../models/boxscore.dart';
 import '../models/schedule.dart';
@@ -7,6 +8,7 @@ import '../models/schedule.dart';
 abstract class GameRepository {
   Future<List<Game>> getScoreboard(String date);
   Future<Game?> getGame(String gameId);
+  Future<HighlightInfo?> getHighlightInfo(String gameId);
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo});
   Future<List<RelayItem>> getRelay(String gameId, {int? afterSeqNo});
   Future<CurrentAtBat?> getCurrentAtBat(String gameId);
