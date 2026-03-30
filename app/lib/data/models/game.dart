@@ -1,0 +1,45 @@
+enum GameStatus { scheduled, live, final_, cancelled }
+
+class TeamScore {
+  final String teamId;
+  final String teamName;
+  final String shortName;
+  final int score;
+  final List<int?> innings; // null = 미진행
+  final int hits;
+  final int errors;
+  final int walks;
+
+  const TeamScore({
+    required this.teamId,
+    required this.teamName,
+    required this.shortName,
+    required this.score,
+    required this.innings,
+    this.hits = 0,
+    this.errors = 0,
+    this.walks = 0,
+  });
+}
+
+class Game {
+  final String gameId;
+  final GameStatus status;
+  final String inning; // "4회초", "경기종료" 등
+  final TeamScore away;
+  final TeamScore home;
+  final String stadium;
+  final String startTime;
+  final int? crowd;
+
+  const Game({
+    required this.gameId,
+    required this.status,
+    required this.inning,
+    required this.away,
+    required this.home,
+    required this.stadium,
+    required this.startTime,
+    this.crowd,
+  });
+}
