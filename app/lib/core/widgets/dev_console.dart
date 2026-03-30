@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 
 /// 앱 내 개발자 콘솔 — 에러/로그를 화면에 표시
@@ -146,6 +147,21 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                       children: [
                         const Text('🔧 Dev Console', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                         const Spacer(),
+                        GestureDetector(
+                          onTap: () {
+                            final text = DevConsole.instance.logs.map((e) {
+                              final t = '${e.time.hour.toString().padLeft(2, '0')}:${e.time.minute.toString().padLeft(2, '0')}:${e.time.second.toString().padLeft(2, '0')}';
+                              final lvl = e.level.name.toUpperCase();
+                              return '[$t][$lvl] ${e.message}';
+                            }).join('\n');
+                            Clipboard.setData(ClipboardData(text: text));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('로그 복사됨'), duration: Duration(seconds: 1)),
+                            );
+                          },
+                          child: const Icon(Icons.copy, size: 16, color: AppColors.accent),
+                        ),
+                        const SizedBox(width: 12),
                         GestureDetector(
                           onTap: () => DevConsole.instance.clear(),
                           child: const Text('Clear', style: TextStyle(fontSize: 12, color: AppColors.accent)),
