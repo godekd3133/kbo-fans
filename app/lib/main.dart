@@ -15,32 +15,25 @@ import 'services/widget_sync_service.dart';
 import 'package:workmanager/workmanager.dart';
 
 void main() async {
-  runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-    AppConfig.initialize();
-    DevConsole.instance.info('환경: ${AppConfig.instance.environment.name}');
+      AppConfig.initialize();
+      DevConsole.instance.info('환경: ${AppConfig.instance.environment.name}');
 
-    FlutterError.onError = (details) {
-      DevConsole.instance.error('Flutter: ${details.exceptionAsString()}');
-    };
+      FlutterError.onError = (details) {
+        DevConsole.instance.error('Flutter: ${details.exceptionAsString()}');
+      };
 
-    final prefs = await SharedPreferences.getInstance();
-    final onboardingDone = prefs.getBool('onboardingDone') ?? false;
+      runApp(const ProviderScope(child: KboFansApp()));
 
-    runApp(
-      ProviderScope(
-        overrides: [
-          onboardingDoneProvider.overrideWithValue(onboardingDone),
-        ],
-        child: const KboFansApp(),
-      ),
-    );
-
-    unawaited(_initializePlatformServices());
-  }, (error, stack) {
-    DevConsole.instance.error('$error');
-  });
+      unawaited(_initializePlatformServices());
+    },
+    (error, stack) {
+      DevConsole.instance.error('$error');
+    },
+  );
 }
 
 Future<void> _initializePlatformServices() async {
@@ -89,9 +82,16 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   void initState() {
     super.initState();
     Future.microtask(() async {
+      await _loadOnboardingState();
       await ref.read(myTeamProvider.notifier).load();
       _prefetchInitialData();
     });
+  }
+
+  Future<void> _loadOnboardingState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingDone = prefs.getBool('onboardingDone') ?? false;
+    ref.read(onboardingDoneProvider.notifier).setValue(onboardingDone);
   }
 
   void _prefetchInitialData() {
@@ -114,7 +114,12 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   }
 
   void _warm<T>(Future<T> future) {
-    unawaited(future.then<void>((_) {}, onError: (Object error, StackTrace stackTrace) {}));
+    unawaited(
+      future.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {},
+      ),
+    );
   }
 
   @override
@@ -131,9 +136,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
           return child ?? const SizedBox.shrink();
         }
 
-        return DevConsoleOverlay(
-          child: child ?? const SizedBox.shrink(),
-        );
+        return DevConsoleOverlay(child: child ?? const SizedBox.shrink());
       },
     );
   }
