@@ -108,8 +108,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                     color: team.primaryColor.withValues(
                                       alpha: 0.18,
                                     ),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 10),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 8),
                                   ),
                                 ]
                               : null,
@@ -235,7 +235,7 @@ class _OnboardingHintChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.divider),
       ),
       child: Text(

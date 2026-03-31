@@ -110,7 +110,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Text(team.name, style: const TextStyle(fontSize: 16)),
+                      Text(
+                        team.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ] else
                       const Text('팀을 선택하세요', style: TextStyle(fontSize: 16, color: AppColors.textDisabled)),
                     const Spacer(),
@@ -273,7 +279,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 16)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     description,
@@ -306,7 +318,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Expanded(child: Text(label, style: const TextStyle(fontSize: 16))),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
               if (trailing != null)
                 Text(trailing, style: const TextStyle(fontSize: 14, color: AppColors.textDisabled)),
               if (hasArrow)

@@ -535,16 +535,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: team?.primaryColor.withValues(alpha: 0.14) ?? AppColors.cardSub,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: Text('${player.number}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              ),
+              _playerPhoto(player, team),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -553,6 +544,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                     Row(
                       children: [
                         Flexible(child: Text(player.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                        const SizedBox(width: 8),
+                        _numberBadge(player.number, team),
                         const SizedBox(width: 8),
                         _statusBadge(player),
                       ],
@@ -601,6 +594,59 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
       case PlayerAvailabilityStatus.inactive:
         return _pill('엔트리 제외', AppColors.textDisabled);
     }
+  }
+
+  Widget _playerPhoto(PlayerProfile player, KboTeam? team) {
+    final photoUrl = player.imageUrl;
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: CachedNetworkImage(
+          imageUrl: photoUrl,
+          width: 52,
+          height: 52,
+          fit: BoxFit.cover,
+          placeholder: (_, _) => _playerPhotoFallback(player.number, team),
+          errorWidget: (_, _, _) => _playerPhotoFallback(player.number, team),
+        ),
+      );
+    }
+    return _playerPhotoFallback(player.number, team);
+  }
+
+  Widget _playerPhotoFallback(int number, KboTeam? team) {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: team?.primaryColor.withValues(alpha: 0.14) ?? AppColors.cardSub,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.person_rounded,
+        color: team?.primaryColor ?? AppColors.textSecondary,
+        size: 28,
+      ),
+    );
+  }
+
+  Widget _numberBadge(int number, KboTeam? team) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: (team?.primaryColor ?? AppColors.textSecondary).withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$number',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: team?.primaryColor ?? AppColors.textSecondary,
+        ),
+      ),
+    );
   }
 
   Widget _pill(String text, Color color) {

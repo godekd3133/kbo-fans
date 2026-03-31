@@ -239,10 +239,19 @@ class HomeService:
         if today_game is not None:
             away = today_game.get("away", {})
             home = today_game.get("home", {})
+            away_score = away.get("score")
+            home_score = home.get("score")
+            if away_score is None or home_score is None:
+                title = f"{away.get('shortName')} vs {home.get('shortName')}"
+            else:
+                title = (
+                    f"{away.get('shortName')} {away_score} : "
+                    f"{home_score} {home.get('shortName')}"
+                )
             items.append(
                 {
                     "eyebrow": "마이팀 경기",
-                    "title": f"{away.get('shortName')} {away.get('score')} : {home.get('score')} {home.get('shortName')}",
+                    "title": title,
                     "subtitle": f"{today_game.get('inning')} · {today_game.get('stadium')}",
                     "route": f"/game/{today_game.get('gameId')}",
                 }

@@ -10,6 +10,7 @@ class ApiPlayerRepository implements PlayerRepository {
   final ApiClient _client;
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
   static const _stableCacheAge = Duration(minutes: 5);
+  static const _playerCacheVersion = 'v2';
 
   ApiPlayerRepository(this._client);
 
@@ -18,7 +19,7 @@ class ApiPlayerRepository implements PlayerRepository {
     final data = await _client.getCached(
       '/team/$teamId/players',
       queryParameters: {'season': season},
-      cacheKey: 'teamPlayers:$teamId:$season',
+      cacheKey: 'teamPlayers:$_playerCacheVersion:$teamId:$season',
       preferCache: true,
       maxAge: _stableCacheAge,
     );
@@ -31,7 +32,7 @@ class ApiPlayerRepository implements PlayerRepository {
     final data = await _client.getCached(
       '/player/$playerId',
       queryParameters: {'season': season},
-      cacheKey: 'playerDetail:$playerId:$season',
+      cacheKey: 'playerDetail:$_playerCacheVersion:$playerId:$season',
       preferCache: true,
       maxAge: _stableCacheAge,
     );
@@ -43,7 +44,7 @@ class ApiPlayerRepository implements PlayerRepository {
     final data = await _client.getCached(
       '/team/$teamId/stats',
       queryParameters: {'season': season},
-      cacheKey: 'teamStats:$teamId:$season',
+      cacheKey: 'teamStats:$_playerCacheVersion:$teamId:$season',
       preferCache: true,
       maxAge: _stableCacheAge,
     );
@@ -55,7 +56,7 @@ class ApiPlayerRepository implements PlayerRepository {
     final data = await _client.getCached(
       '/team/$teamId/records',
       queryParameters: {'season': season},
-      cacheKey: 'teamRecords:$teamId:$season',
+      cacheKey: 'teamRecords:$_playerCacheVersion:$teamId:$season',
       preferCache: true,
       maxAge: _stableCacheAge,
     );

@@ -7,6 +7,7 @@ APP_DIR="$ROOT_DIR/app"
 BACKEND_DIR="$ROOT_DIR/backend"
 DEFAULT_ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
 DEFAULT_ANDROID_AVD="Medium_Phone_API_36"
+ANDROID_APPLICATION_ID="com.kbofans.kbo_fans"
 
 usage() {
   cat <<'EOF'
@@ -497,6 +498,7 @@ EOF
 run_android() {
   local java_home
   local serial
+  local adb_bin
 
   java_home="$(android_java_home)"
   if [[ -z "$java_home" ]]; then
@@ -513,7 +515,13 @@ EOF
   fi
 
   serial="$(ensure_android_runtime)"
+  adb_bin="$(android_adb_bin)"
   echo "Running on Android device/emulator: $serial"
+
+  if [[ -n "$adb_bin" ]]; then
+    echo "Uninstalling existing Android app: $ANDROID_APPLICATION_ID"
+    "$adb_bin" -s "$serial" uninstall "$ANDROID_APPLICATION_ID" >/dev/null 2>&1 || true
+  fi
 
   (
     export JAVA_HOME="$java_home"

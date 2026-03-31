@@ -151,6 +151,13 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: teamColor.withValues(alpha: 0.5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 14,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
       child: Row(
         children: [

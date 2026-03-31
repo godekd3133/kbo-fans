@@ -40,4 +40,38 @@ class KboTeams {
       return null;
     }
   }
+
+  static KboTeam? resolve({
+    String? id,
+    String? name,
+    String? shortName,
+  }) {
+    final normalizedId = (id ?? '').trim();
+    if (normalizedId.isNotEmpty) {
+      final team = byId(normalizedId);
+      if (team != null) {
+        return team;
+      }
+    }
+
+    final candidates = [
+      (name ?? '').trim(),
+      (shortName ?? '').trim(),
+    ].where((value) => value.isNotEmpty).toList();
+
+    for (final candidate in candidates) {
+      try {
+        return teams.firstWhere(
+          (team) =>
+              team.name == candidate ||
+              team.shortName == candidate ||
+              team.name.replaceAll(' ', '') == candidate.replaceAll(' ', ''),
+        );
+      } catch (_) {
+        continue;
+      }
+    }
+
+    return null;
+  }
 }

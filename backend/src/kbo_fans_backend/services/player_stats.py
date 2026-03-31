@@ -28,12 +28,12 @@ class PlayerStatsService:
     def get_team_players(self, team_id: str, season: int) -> Dict[str, Any]:
         cache_key = (team_id, season)
         cached = self._get_cached_team_players(cache_key)
-        if cached is not None:
+        if cached is not None and self._is_localized_team_players_payload(cached):
             return cached
 
         snapshot_key = self._team_players_snapshot_key(team_id, season)
         snapshot = self.snapshot_store.load_payload("team_players", snapshot_key)
-        if snapshot is not None:
+        if snapshot is not None and self._is_localized_team_players_payload(snapshot):
             return snapshot
 
         try:
@@ -89,6 +89,26 @@ class PlayerStatsService:
         self, cache_key: Tuple[str, int]
     ) -> Optional[Dict[str, Any]]:
         return self._team_players_cache.get(cache_key)
+
+    @staticmethod
+    def _is_localized_team_players_payload(payload: Dict[str, Any]) -> bool:
+        players = payload.get("players")
+        if not isinstance(players, list) or not players:
+            return True
+
+        sample = players[0] if isinstance(players[0], dict) else {}
+        name = str(sample.get("name") or "")
+        position = str(sample.get("position") or "")
+        role_label = str(sample.get("roleLabel") or "")
+
+        # 한글 필드가 전혀 없고 영문 포지션 표기가 남아 있으면 예전 snapshot/cached payload로 간주.
+        if any(keyword in position for keyword in ("Pitcher", "Catcher", "Infielder", "Outfielder")):
+            return False
+        if any(keyword in role_label for keyword in ("Pitcher", "Catcher", "Infielder", "Outfielder")):
+            return False
+        if name and name.upper() == name and " " in name:
+            return False
+        return True
 
     @staticmethod
     def _team_players_snapshot_key(team_id: str, season: int) -> str:

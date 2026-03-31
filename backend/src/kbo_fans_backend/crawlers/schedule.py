@@ -11,6 +11,29 @@ from kbo_fans_backend.utils.html import extract_game_id, strip_tags
 class ScheduleCrawler(BaseCrawler):
     """Fetches monthly schedule data from KBO schedule endpoints."""
 
+    _TEAM_NAME_TO_ID = {
+        "LG": "LG",
+        "LG 트윈스": "LG",
+        "KT": "KT",
+        "KT 위즈": "KT",
+        "SSG": "SK",
+        "SSG 랜더스": "SK",
+        "삼성": "SS",
+        "삼성 라이온즈": "SS",
+        "NC": "NC",
+        "NC 다이노스": "NC",
+        "한화": "HH",
+        "한화 이글스": "HH",
+        "롯데": "LT",
+        "롯데 자이언츠": "LT",
+        "KIA": "HT",
+        "KIA 타이거즈": "HT",
+        "두산": "OB",
+        "두산 베어스": "OB",
+        "키움": "WO",
+        "키움 히어로즈": "WO",
+    }
+
     def get_month_schedule(self, month: str) -> list[dict[str, Any]]:
         season_id, game_month = month.split("-")
         payload = self._post_json(
@@ -60,12 +83,19 @@ class ScheduleCrawler(BaseCrawler):
         status = self._derive_status(action_html)
         away_name, home_name = self._parse_play_names(play_html)
         away_score, home_score = self._parse_play_score(play_html)
-        away_id, home_id = self._derive_team_ids_from_game_id(extract_game_id(action_html))
+        game_id = extract_game_id(action_html)
+        away_id, home_id = self._derive_team_ids_from_game_id(game_id)
+        if away_id is None or home_id is None:
+            away_id, home_id = self._derive_team_ids_from_names(away_name, home_name)
+        if not game_id and current_date and away_id and home_id:
+            game_id = self._build_synthetic_game_id(current_date, away_id, home_id)
+        if status == "UNKNOWN" and time_text:
+            status = "SCHEDULED"
 
         return {
             "date": current_date,
             "time": time_text,
-            "gameId": extract_game_id(action_html),
+            "gameId": game_id,
             "awayId": away_id,
             "awayName": away_name,
             "awayScore": away_score,
@@ -105,6 +135,16 @@ class ScheduleCrawler(BaseCrawler):
         if not game_id or len(game_id) < 13:
             return None, None
         return game_id[8:10], game_id[10:12]
+
+    @classmethod
+    def _derive_team_ids_from_names(
+        cls, away_name: str, home_name: str
+    ) -> Tuple[Optional[str], Optional[str]]:
+        return cls._TEAM_NAME_TO_ID.get(away_name), cls._TEAM_NAME_TO_ID.get(home_name)
+
+    @staticmethod
+    def _build_synthetic_game_id(date: str, away_id: str, home_id: str) -> str:
+        return f"{date.replace('-', '')}{away_id}{home_id}0"
 
     @staticmethod
     def _derive_status(action_html: str) -> str:

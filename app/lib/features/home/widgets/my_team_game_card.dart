@@ -52,7 +52,7 @@ class MyTeamGameCard extends StatelessWidget {
                     children: [
                       Column(
                         children: [
-                          _teamLogo(game.away.teamId, 48),
+                          _teamLogo(game.away.teamId, game.away.shortName, 48),
                           const SizedBox(height: 4),
                           Text(
                             game.away.shortName,
@@ -128,7 +128,7 @@ class MyTeamGameCard extends StatelessWidget {
                       const SizedBox(width: 16),
                       Column(
                         children: [
-                          _teamLogo(game.home.teamId, 48),
+                          _teamLogo(game.home.teamId, game.home.shortName, 48),
                           const SizedBox(height: 4),
                           Text(
                             game.home.shortName,
@@ -233,14 +233,18 @@ class MyTeamGameCard extends StatelessWidget {
     );
   }
 
-  Widget _teamLogo(String teamId, double size) {
-    final team = KboTeams.byId(teamId);
+  Widget _teamLogo(String teamId, String shortName, double size) {
+    final team = KboTeams.resolve(
+      id: teamId,
+      name: shortName,
+      shortName: shortName,
+    );
     return CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
       width: size,
       height: size,
-      placeholder: (_, _) => _logoFallback(team?.shortName ?? teamId, size),
-      errorWidget: (_, _, _) => _logoFallback(team?.shortName ?? teamId, size),
+      placeholder: (_, _) => _logoFallback(team?.shortName ?? shortName, size),
+      errorWidget: (_, _, _) => _logoFallback(team?.shortName ?? shortName, size),
     );
   }
 
