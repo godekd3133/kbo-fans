@@ -18,6 +18,7 @@
 - [x] scoreboard / team stats / team players 에 stale cache fallback 을 추가해 KBO 원본 실패 시 직전 정상 응답을 재사용하도록 보강
 - [x] 웹 `API 진단` 화면을 추가해 `health / scoreboard / schedule` 상태를 한 번에 확인 가능하도록 구현
 - [x] README / APP_SPEC 에 운영 메모, 캐시 TTL, 로그 위치, 진단 화면 정보를 반영
+- [x] 친구/테스터 배포 경로를 정리한 `docs/DISTRIBUTION_GUIDE.md` 추가
 
 ### 검증
 - [x] `cd backend && source .venv/bin/activate && pytest -q`
@@ -185,6 +186,7 @@
 - [x] 라인업 탭을 모바일 카드형 UI로 전면 정리
 - [x] 라인업 탭 상단 스위처에 `AWAY/HOME + 팀명 + 로고` 표시 추가
 - [x] 홈 진입 속도 개선을 위해 scoreboard 응답에서 유튜브 하이라이트 검색 제거
+- [x] iOS/Android 런치 스크린을 다크 테마로 정리해 초기 흰 화면 노출 완화
 
 ### 원인
 - 홈 화면은 `/game/:gameId` 라우팅 시 `extra: game`을 넘기지만, 일정 화면은 `gameId`만 넘기고 있었음
