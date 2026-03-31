@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-03-31T08:12:54.943754+00:00",
+  "payload": {
+    "id": "63202",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63202.jpg",
+    "name": "장승현",
+    "number": 46,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1994년 03월 07일",
+    "heightWeight": "184cm / 86kg",
+    "career": "인천서림초-동산중-제물포고-두산-경찰-두산",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

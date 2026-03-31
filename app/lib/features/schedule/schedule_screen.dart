@@ -217,7 +217,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: _segmentedButton(
-                  label: '경기장으로 보기',
+                  label: '구장별 보기',
                   selected: _viewMode == ScheduleViewMode.stadium,
                   onTap: () =>
                       setState(() => _viewMode = ScheduleViewMode.stadium),
@@ -486,7 +486,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             Icon(Icons.event_busy, size: 48, color: AppColors.divider),
             const SizedBox(height: 12),
             Text(
-              '경기가 없습니다',
+              '선택한 날짜에 경기가 없습니다',
               style: TextStyle(fontSize: 16, color: AppColors.textDisabled),
             ),
           ],
@@ -559,7 +559,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         const Padding(
           padding: EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
-            '경기장별 일정',
+            '구장별 일정',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
         ),

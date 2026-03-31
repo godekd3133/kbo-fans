@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/player.dart';
 import '../../data/models/records_overview.dart';
+import '../../data/models/schedule.dart';
 import '../../data/models/team_records_bundle.dart';
 import '../../data/models/team_stats.dart';
 import '../../data/providers.dart';
@@ -562,6 +563,16 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                     Text(player.headlineStat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 3),
                     Text(player.secondaryStat, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    if (_primarySeasonMetrics(player).isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _primarySeasonMetrics(player)
+                            .map((metric) => _statPill(metric))
+                            .toList(),
+                      ),
+                    ],
                     if (player.statusNote != null) ...[
                       const SizedBox(height: 8),
                       Text(
@@ -598,6 +609,59 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
       decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
       child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
+  }
+
+  Widget _statPill(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  List<String> _primarySeasonMetrics(PlayerProfile player) {
+    final stats = player.seasonStats;
+    if (stats.isEmpty) {
+      return const [];
+    }
+
+    if (player.playerType == PlayerType.pitcher) {
+      return _pickMetrics(stats, const ['G ', 'IP ', 'SO ', 'ER ', 'W ', 'L '], maxCount: 4);
+    }
+
+    return _pickMetrics(stats, const ['G ', 'PA ', 'AB ', 'H ', 'HR ', 'RBI '], maxCount: 4);
+  }
+
+  List<String> _pickMetrics(List<String> stats, List<String> preferredPrefixes, {required int maxCount}) {
+    final picked = <String>[];
+
+    for (final prefix in preferredPrefixes) {
+      final match = stats.where((stat) => stat.startsWith(prefix)).firstOrNull;
+      if (match != null && !picked.contains(match)) {
+        picked.add(match);
+      }
+      if (picked.length >= maxCount) {
+        return picked;
+      }
+    }
+
+    for (final stat in stats) {
+      if (!picked.contains(stat)) {
+        picked.add(stat);
+      }
+      if (picked.length >= maxCount) {
+        break;
+      }
+    }
+
+    return picked;
   }
 
   Widget _filterButton({required String label, required bool selected, required VoidCallback onTap}) {
@@ -682,6 +746,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     final teamStanding = standings
         ?.where((standing) => standing.teamId == teamStats.teamId)
         .firstOrNull;
+    final battingAvg = teamStats.hitting['AVG'] ?? '-';
+    final teamEra = teamStats.pitching['ERA'] ?? '-';
+    final winPct = teamStanding?.pct ?? (teamStats.pitching['WPCT'] ?? '-');
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -693,24 +760,18 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
           Row(
             children: [
               Expanded(
-                child: _teamStatColumn(
+                child: _heroTeamMetric(
                   '팀 타율',
-                  [
-                    '타율 ${teamStats.hitting['AVG'] ?? '-'}',
-                    'OPS ${teamStats.hitting['OPS'] ?? '-'}',
-                    '홈런 ${teamStats.hitting['HR'] ?? '-'}',
-                  ],
+                  battingAvg,
+                  'OPS ${teamStats.hitting['OPS'] ?? '-'} · 홈런 ${teamStats.hitting['HR'] ?? '-'}',
                 ),
               ),
               Container(width: 1, height: 56, color: AppColors.divider),
               Expanded(
-                child: _teamStatColumn(
-                  '팀 투수',
-                  [
-                    'ERA ${teamStats.pitching['ERA'] ?? '-'}',
-                    'WHIP ${teamStats.pitching['WHIP'] ?? '-'}',
-                    '세이브 ${teamStats.pitching['SV'] ?? '-'}',
-                  ],
+                child: _heroTeamMetric(
+                  '팀 승률',
+                  winPct,
+                  '팀 ERA $teamEra · WHIP ${teamStats.pitching['WHIP'] ?? '-'}',
                 ),
               ),
             ],
@@ -740,22 +801,43 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                 ],
               ),
             ),
+          ] else ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _summaryMetric('팀 ERA', teamEra),
+                ),
+                Container(width: 1, height: 36, color: AppColors.divider),
+                Expanded(
+                  child: _summaryMetric('WHIP', teamStats.pitching['WHIP'] ?? '-'),
+                ),
+                Container(width: 1, height: 36, color: AppColors.divider),
+                Expanded(
+                  child: _summaryMetric('홈런', teamStats.hitting['HR'] ?? '-'),
+                ),
+              ],
+            ),
           ],
         ],
       ),
     );
   }
 
-  Widget _teamStatColumn(String title, List<String> lines) {
+  Widget _heroTeamMetric(String label, String value, String detail) {
     return Column(
       children: [
-        Text(title, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
         const SizedBox(height: 8),
-        for (final line in lines)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Text(line, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
+        Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        Text(
+          detail,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
+        ),
       ],
     );
   }

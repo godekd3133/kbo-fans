@@ -42,7 +42,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                   children: [
                     Expanded(
                       child: const Text(
-                        '정규시즌 순위',
+                        '정규시즌 순위표',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -159,7 +159,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${current.teamName} 현재 위치',
+                  '${current.teamName} 현재 순위',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,

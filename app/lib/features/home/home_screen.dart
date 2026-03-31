@@ -1235,7 +1235,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                 child: _metricColumn(
                   '최근 흐름',
                   brief == null || brief!.recentGamesCount == 0
-                      ? '최근 경기 없음'
+                      ? '최근 결과 없음'
                       : '${brief!.recentWins}승 ${brief!.recentLosses}패 ${brief!.recentDraws}무',
                 ),
               ),
@@ -1249,7 +1249,7 @@ class _MyTeamBriefCard extends StatelessWidget {
               ),
               Expanded(
                 child: _metricColumn(
-                  todayGame != null ? '오늘 상태' : '다음 일정',
+                  todayGame != null ? '경기 상태' : '다음 경기',
                   todayGame != null
                       ? todayGame!.inning
                       : nextGame == null
@@ -1517,7 +1517,7 @@ class _TodayBaseballCard extends StatelessWidget {
                         '/game/${brief.spotlight!.gameId}',
                         extra: brief.spotlight,
                       ),
-                      child: const Text('바로 보기'),
+                      child: const Text('경기 보기'),
                     ),
                   ),
                 ],

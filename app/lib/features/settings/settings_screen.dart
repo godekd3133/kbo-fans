@@ -207,13 +207,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 24),
 
             // 앱 정보
-            const Text('앱 정보', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            const Text('앱 정보 및 지원', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(
                 children: [
-                  _infoRow('연결 진단', hasArrow: true, onTap: () => context.push('/diagnostics')),
+                  _infoRow('API 진단', hasArrow: true, onTap: () => context.push('/diagnostics')),
                   _divider(),
                   _infoRow('버전', trailing: '1.0.0'),
                   _divider(),

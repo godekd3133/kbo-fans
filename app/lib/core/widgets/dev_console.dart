@@ -478,6 +478,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                 LogLevel.warn => AppColors.ballYellow,
                                 LogLevel.info => AppColors.textSecondary,
                               };
+                              final accent = _categoryColor(entry.message);
                               final timeStr =
                                   '${entry.time.hour.toString().padLeft(2, '0')}:${entry.time.minute.toString().padLeft(2, '0')}:${entry.time.second.toString().padLeft(2, '0')}';
                               final repeatSuffix = entry.count > 1
@@ -485,12 +486,51 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                   : '';
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
-                                child: Text(
-                                  '[$timeStr] ${entry.message}$repeatSuffix',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: color,
-                                    fontFamily: 'monospace',
+                                child: GestureDetector(
+                                  onLongPress: () async {
+                                    await Clipboard.setData(
+                                      ClipboardData(
+                                        text:
+                                            '[$timeStr][${entry.level.name.toUpperCase()}] ${entry.message}',
+                                      ),
+                                    );
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('로그 1건 복사됨'),
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.background.withValues(
+                                        alpha: 0.22,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: accent,
+                                          width: 3,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '[$timeStr] ${entry.message}$repeatSuffix',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: color,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
                                   ),
                                 ),
                               );
@@ -601,6 +641,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
 
   Widget _categoryChip(LogCategory category, String label) {
     final selected = _category == category;
+    final accent = _categoryAccent(category);
     return GestureDetector(
       onTap: () {
         setState(() => _category = category);
@@ -609,11 +650,9 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: selected ? AppColors.cardSub : Colors.transparent,
+          color: selected ? accent.withValues(alpha: 0.16) : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? AppColors.textSecondary : AppColors.divider,
-          ),
+          border: Border.all(color: selected ? accent : AppColors.divider),
         ),
         child: Text(
           label,
@@ -625,5 +664,38 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
         ),
       ),
     );
+  }
+
+  Color _categoryAccent(LogCategory category) {
+    switch (category) {
+      case LogCategory.api:
+        return AppColors.accent;
+      case LogCategory.kbo:
+        return AppColors.ballYellow;
+      case LogCategory.ui:
+        return AppColors.positive;
+      case LogCategory.push:
+        return AppColors.live;
+      case LogCategory.all:
+        return AppColors.textSecondary;
+    }
+  }
+
+  Color _categoryColor(String message) {
+    if (message.startsWith('KBO ')) {
+      return AppColors.ballYellow;
+    }
+    if (message.startsWith('Push ') || message.contains('push')) {
+      return AppColors.live;
+    }
+    if (message.startsWith('Flutter:') ||
+        message.startsWith('HOME ') ||
+        message.startsWith('SCHEDULE ')) {
+      return AppColors.positive;
+    }
+    if (_isApiLog(message)) {
+      return AppColors.accent;
+    }
+    return AppColors.textSecondary;
   }
 }
