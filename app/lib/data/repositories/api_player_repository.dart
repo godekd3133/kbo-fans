@@ -71,8 +71,10 @@ class ApiPlayerRepository implements PlayerRepository {
       hrLeaders: _parseLeaders(leaders['hr'] as List<dynamic>? ?? const []),
       opsLeaders: _parseLeaders(leaders['ops'] as List<dynamic>? ?? const []),
       eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
-      todayPlayer: _parseFeatured(featured['todayPlayer'] as Map<String, dynamic>? ?? const {'label': '오늘의 플레이어'}),
-      monthPlayer: _parseFeatured(featured['monthPlayer'] as Map<String, dynamic>? ?? const {'label': '이달의 플레이어'}),
+      todayHitter: _parseFeatured(featured['todayHitter'] as Map<String, dynamic>? ?? const {'label': '오늘의 타자'}),
+      todayPitcher: _parseFeatured(featured['todayPitcher'] as Map<String, dynamic>? ?? const {'label': '오늘의 투수'}),
+      monthHitter: _parseFeatured(featured['monthHitter'] as Map<String, dynamic>? ?? const {'label': '이달의 타자'}),
+      monthPitcher: _parseFeatured(featured['monthPitcher'] as Map<String, dynamic>? ?? const {'label': '이달의 투수'}),
     );
   }
 

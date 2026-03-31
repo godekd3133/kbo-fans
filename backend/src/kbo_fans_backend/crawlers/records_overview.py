@@ -33,18 +33,35 @@ class RecordsOverviewCrawler(BaseCrawler):
                 "era": era_leaders,
             },
             "featured": {
-                "todayPlayer": self._build_today_player(
+                "todayHitter": self._build_today_player(
+                    label="오늘의 타자",
                     season=season,
-                    leader_groups=[avg_leaders, hr_leaders, ops_leaders, era_leaders],
+                    leader_groups=[avg_leaders, hr_leaders, ops_leaders],
+                    target_type="hitter",
                 ),
-                "monthPlayer": self._build_month_player(
+                "todayPitcher": self._build_today_player(
+                    label="오늘의 투수",
+                    season=season,
+                    leader_groups=[era_leaders],
+                    target_type="pitcher",
+                ),
+                "monthHitter": self._build_month_player(
+                    label="이달의 타자",
                     season=season,
                     leader_groups={
                         "avg": avg_leaders,
                         "hr": hr_leaders,
                         "ops": ops_leaders,
+                    },
+                    target_type="hitter",
+                ),
+                "monthPitcher": self._build_month_player(
+                    label="이달의 투수",
+                    season=season,
+                    leader_groups={
                         "era": era_leaders,
                     },
+                    target_type="pitcher",
                 ),
             },
         }
@@ -107,11 +124,11 @@ class RecordsOverviewCrawler(BaseCrawler):
         return 3
 
     def _build_today_player(
-        self, season: int, leader_groups: List[List[Dict[str, Any]]]
+        self, label: str, season: int, leader_groups: List[List[Dict[str, Any]]], target_type: str
     ) -> Dict[str, Any]:
         details = self._collect_candidate_details(season, leader_groups)
         if not details:
-            return {"label": "오늘의 플레이어"}
+            return {"label": label}
 
         latest_date = max(
             (self._date_key(detail.get("recentGames", [{}])[0].get("date", "")) for detail in details if detail.get("recentGames")),
@@ -120,6 +137,7 @@ class RecordsOverviewCrawler(BaseCrawler):
         today_candidates = [
             detail
             for detail in details
+            if detail.get("playerType") == target_type
             if detail.get("recentGames")
             and self._date_key(detail["recentGames"][0].get("date", "")) == latest_date
         ]
@@ -133,18 +151,18 @@ class RecordsOverviewCrawler(BaseCrawler):
         )
         recent = best.get("recentGames", [])
         return {
-            "label": "오늘의 플레이어",
+            "label": label,
             "playerId": best.get("id"),
             "playerType": best.get("playerType"),
             "name": best.get("name"),
             "teamId": best.get("teamId"),
             "headline": best.get("headlineStat"),
-            "summary": recent[0]["summary"] if recent else best.get("secondaryStat"),
+            "summary": self._today_reason(best, recent),
             "imageUrl": best.get("imageUrl"),
         }
 
     def _build_month_player(
-        self, season: int, leader_groups: Dict[str, List[Dict[str, Any]]]
+        self, label: str, season: int, leader_groups: Dict[str, List[Dict[str, Any]]], target_type: str
     ) -> Dict[str, Any]:
         weights = {"avg": 3, "hr": 2, "ops": 3, "era": 3}
         scores: Dict[Tuple[str, str], int] = {}
@@ -157,7 +175,7 @@ class RecordsOverviewCrawler(BaseCrawler):
                 leader_lookup[key] = leader
 
         if not scores:
-            return {"label": "이달의 플레이어"}
+            return {"label": label}
 
         best_key = max(scores, key=scores.get)
         leader = leader_lookup[best_key]
@@ -168,13 +186,13 @@ class RecordsOverviewCrawler(BaseCrawler):
             include_recent=True,
         )
         return {
-            "label": "이달의 플레이어",
+            "label": label,
             "playerId": leader["playerId"],
             "playerType": leader["playerType"],
             "name": detail.get("name"),
             "teamId": detail.get("teamId"),
             "headline": detail.get("headlineStat"),
-            "summary": detail.get("secondaryStat"),
+            "summary": self._month_reason(detail, leader_groups, target_type),
             "imageUrl": detail.get("imageUrl"),
         }
 
@@ -198,6 +216,26 @@ class RecordsOverviewCrawler(BaseCrawler):
                     )
                 )
         return details
+
+    @staticmethod
+    def _today_reason(detail: Dict[str, Any], recent: List[Dict[str, Any]]) -> str:
+        if recent:
+            return recent[0].get("summary", "") or detail.get("secondaryStat")
+        return detail.get("secondaryStat")
+
+    def _month_reason(
+        self,
+        detail: Dict[str, Any],
+        leader_groups: Dict[str, List[Dict[str, Any]]],
+        target_type: str,
+    ) -> str:
+        reasons = []
+        player_id = detail.get("id")
+        for metric, leaders in leader_groups.items():
+            for leader in leaders:
+                if leader["playerId"] == player_id and leader["playerType"] == target_type:
+                    reasons.append(f"{metric.upper()} {leader['rank']}위")
+        return " + ".join(reasons[:2]) if reasons else detail.get("secondaryStat")
 
     @staticmethod
     def _date_key(value: str) -> Tuple[int, int]:

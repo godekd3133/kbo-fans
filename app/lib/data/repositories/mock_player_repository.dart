@@ -58,8 +58,10 @@ class MockPlayerRepository implements PlayerRepository {
       eraLeaders: [
         RecordLeader(rank: 1, playerId: 'LG-54-KELLY', playerType: 'pitcher', name: '켈리', teamId: 'LG', value: '2.45'),
       ],
-      todayPlayer: FeaturedPlayerCard(label: '오늘의 플레이어', name: '박해민', teamId: 'LG', headline: '타율 .318', summary: '최근 3경기 연속 안타'),
-      monthPlayer: FeaturedPlayerCard(label: '이달의 플레이어', name: '오지환', teamId: 'LG', headline: 'OPS .882', summary: '최근 7경기 OPS 1.001'),
+      todayHitter: FeaturedPlayerCard(label: '오늘의 타자', name: '박해민', teamId: 'LG', headline: '타율 .318', summary: '최근 경기 2안타 1도루'),
+      todayPitcher: FeaturedPlayerCard(label: '오늘의 투수', name: '켈리', teamId: 'LG', headline: 'ERA 2.45', summary: '최근 경기 6이닝 2실점 7K'),
+      monthHitter: FeaturedPlayerCard(label: '이달의 타자', name: '오지환', teamId: 'LG', headline: 'OPS .882', summary: 'OPS 1위 + 홈런 상위권'),
+      monthPitcher: FeaturedPlayerCard(label: '이달의 투수', name: '켈리', teamId: 'LG', headline: 'ERA 2.45', summary: 'ERA 상위권 + 2승'),
     );
   }
 }

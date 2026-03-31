@@ -721,11 +721,23 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   }
 
   Widget _featuredCards(RecordsOverview overview) {
-    return Row(
+    return Column(
       children: [
-        Expanded(child: _featuredCard(overview.todayPlayer)),
-        const SizedBox(width: 10),
-        Expanded(child: _featuredCard(overview.monthPlayer)),
+        Row(
+          children: [
+            Expanded(child: _featuredCard(overview.todayHitter)),
+            const SizedBox(width: 10),
+            Expanded(child: _featuredCard(overview.todayPitcher)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _featuredCard(overview.monthHitter)),
+            const SizedBox(width: 10),
+            Expanded(child: _featuredCard(overview.monthPitcher)),
+          ],
+        ),
       ],
     );
   }

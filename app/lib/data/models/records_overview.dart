@@ -44,8 +44,10 @@ class RecordsOverview {
   final List<RecordLeader> hrLeaders;
   final List<RecordLeader> opsLeaders;
   final List<RecordLeader> eraLeaders;
-  final FeaturedPlayerCard todayPlayer;
-  final FeaturedPlayerCard monthPlayer;
+  final FeaturedPlayerCard todayHitter;
+  final FeaturedPlayerCard todayPitcher;
+  final FeaturedPlayerCard monthHitter;
+  final FeaturedPlayerCard monthPitcher;
 
   const RecordsOverview({
     required this.season,
@@ -53,7 +55,9 @@ class RecordsOverview {
     required this.hrLeaders,
     required this.opsLeaders,
     required this.eraLeaders,
-    required this.todayPlayer,
-    required this.monthPlayer,
+    required this.todayHitter,
+    required this.todayPitcher,
+    required this.monthHitter,
+    required this.monthPitcher,
   });
 }
