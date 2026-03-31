@@ -327,9 +327,12 @@ class KboDirectRepository implements GameRepository {
           time: time,
           awayId: awayId,
           awayName: awayName,
+          awayScore: parsed.awayScore,
           homeId: homeId,
           homeName: homeName,
+          homeScore: parsed.homeScore,
           stadium: stadium,
+          status: parsed.status,
           ticketInfo: TicketingPolicy.inferredTicketInfo(
             homeTeamId: homeId,
             gameId: gameId,
@@ -558,8 +561,10 @@ class KboDirectRepository implements GameRepository {
     final actionHtml = cells[offset + 2]['Text'] as String? ?? '';
     final gameId = _extractGameId(actionHtml);
     final teamNames = _parseTeamsFromPlayHtml(playHtml);
+    final scores = _parseScoresFromPlayHtml(playHtml);
     final ids = _deriveTeamIdsFromGameId(gameId);
     final stadium = _stripHtml(cells[offset + 6]['Text'] as String? ?? '');
+    final status = _deriveScheduleStatus(actionHtml);
 
     return _ScheduleRow(
       date: currentDate ?? '',
@@ -567,9 +572,12 @@ class KboDirectRepository implements GameRepository {
       time: time,
       awayId: ids.$1,
       awayName: teamNames.$1,
+      awayScore: scores.$1,
       homeId: ids.$2,
       homeName: teamNames.$2,
+      homeScore: scores.$2,
       stadium: stadium,
+      status: status,
     );
   }
 
@@ -584,6 +592,34 @@ class KboDirectRepository implements GameRepository {
       return (spans.first, spans.last);
     }
     return ('', '');
+  }
+
+  (int?, int?) _parseScoresFromPlayHtml(String playHtml) {
+    final matches = RegExp(
+      r'<span class=\"(?:win|lose)\">(\d+)</span>',
+    ).allMatches(playHtml);
+    final scores = matches
+        .map((match) => int.tryParse(match.group(1) ?? ''))
+        .toList();
+    if (scores.length >= 2) {
+      return (scores[0], scores[1]);
+    }
+    return (null, null);
+  }
+
+  String _deriveScheduleStatus(String actionHtml) {
+    if (actionHtml.contains('section=REVIEW')) {
+      return 'FINAL';
+    }
+    if (actionHtml.contains('section=PREVIEW') ||
+        actionHtml.contains('section=START_PIT') ||
+        actionHtml.contains('프리뷰')) {
+      return 'SCHEDULED';
+    }
+    if (actionHtml.contains('문자중계') || actionHtml.contains('중계')) {
+      return 'LIVE';
+    }
+    return 'UNKNOWN';
   }
 
   (String, String) _deriveTeamIdsFromGameId(String gameId) {
@@ -636,9 +672,12 @@ class _ScheduleRow {
   final String time;
   final String awayId;
   final String awayName;
+  final int? awayScore;
   final String homeId;
   final String homeName;
+  final int? homeScore;
   final String stadium;
+  final String status;
 
   const _ScheduleRow({
     required this.date,
@@ -646,8 +685,11 @@ class _ScheduleRow {
     required this.time,
     required this.awayId,
     required this.awayName,
+    required this.awayScore,
     required this.homeId,
     required this.homeName,
+    required this.homeScore,
     required this.stadium,
+    required this.status,
   });
 }
