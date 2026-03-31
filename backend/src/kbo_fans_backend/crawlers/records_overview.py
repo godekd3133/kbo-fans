@@ -125,7 +125,11 @@ class RecordsOverviewCrawler(BaseCrawler):
         ]
         best = max(
             today_candidates or details,
-            key=lambda detail: detail.get("recentGames", [{}])[0].get("score", 0),
+            key=lambda detail: (
+                detail.get("recentGames", [{}])[0].get("score", 0)
+                if detail.get("recentGames")
+                else 0
+            ),
         )
         recent = best.get("recentGames", [])
         return {
