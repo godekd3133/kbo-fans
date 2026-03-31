@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
 
+import '../core/utils/game_status_label.dart';
 import '../data/models/game.dart';
 
 class LiveActivityService {
@@ -18,21 +19,25 @@ class LiveActivityService {
       return;
     }
 
-    final liveGame = _selectLiveGame(games, myTeamId);
-    if (liveGame == null) {
+    final targetGame = _selectTargetGame(games, myTeamId);
+    if (targetGame == null) {
       await endCurrentScore();
       return;
     }
 
     try {
       await _channel.invokeMethod('syncCurrentScore', {
-        'gameId': liveGame.gameId,
-        'awayTeam': liveGame.away.shortName,
-        'homeTeam': liveGame.home.shortName,
-        'awayScore': liveGame.away.score,
-        'homeScore': liveGame.home.score,
-        'inning': liveGame.inning,
-        'stadium': liveGame.stadium,
+        'gameId': targetGame.gameId,
+        'awayTeam': targetGame.away.shortName,
+        'homeTeam': targetGame.home.shortName,
+        'awayScore': targetGame.away.score,
+        'homeScore': targetGame.home.score,
+        'inning': secondaryTextForGameStatus(
+          targetGame.status,
+          inning: targetGame.inning,
+          startTime: targetGame.startTime,
+        ),
+        'stadium': targetGame.stadium,
         'updatedAt': _updatedAtText(),
       });
     } on PlatformException {
@@ -56,7 +61,7 @@ class LiveActivityService {
     }
   }
 
-  Game? _selectLiveGame(List<Game> games, String? myTeamId) {
+  Game? _selectTargetGame(List<Game> games, String? myTeamId) {
     if (myTeamId != null) {
       for (final game in games) {
         final isMyTeam =
@@ -65,10 +70,23 @@ class LiveActivityService {
           return game;
         }
       }
+      for (final game in games) {
+        final isMyTeam =
+            game.away.teamId == myTeamId || game.home.teamId == myTeamId;
+        if (isMyTeam && game.status == GameStatus.scheduled) {
+          return game;
+        }
+      }
     }
 
     for (final game in games) {
       if (game.status == GameStatus.live) {
+        return game;
+      }
+    }
+
+    for (final game in games) {
+      if (game.status == GameStatus.scheduled) {
         return game;
       }
     }
