@@ -1,4 +1,5 @@
 import '../api/api_client.dart';
+import '../bootstrap/bootstrap_repository.dart';
 import '../models/game.dart';
 import '../models/highlight_info.dart';
 import '../models/highlight_video.dart';
@@ -11,6 +12,7 @@ import 'game_repository.dart';
 /// DEV / RELEASE 환경에서 실제 백엔드 API를 호출하는 구현체
 class ApiGameRepository implements GameRepository {
   final ApiClient _client;
+  final BootstrapRepository _bootstrapRepository = BootstrapRepository();
   static const _liveishCacheAge = Duration(seconds: 30);
   static const _stableCacheAge = Duration(minutes: 5);
 
@@ -186,13 +188,23 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<TeamStanding>> getStandings(int season) async {
-    final data = await _client.getCached(
-      '/standings',
-      queryParameters: {'season': season},
-      cacheKey: 'standings:$season',
-      preferCache: true,
-      maxAge: _stableCacheAge,
-    );
+    try {
+      final data = await _client.getCached(
+        '/standings',
+        queryParameters: {'season': season},
+        cacheKey: 'standings:$season',
+        preferCache: true,
+        maxAge: _stableCacheAge,
+      );
+      return _parseStandings(data);
+    } catch (_) {
+      final snapshot = await _bootstrapRepository.loadStandings(season);
+      if (snapshot == null) rethrow;
+      return _parseStandings(snapshot);
+    }
+  }
+
+  List<TeamStanding> _parseStandings(Map<String, dynamic> data) {
     final standings = data['standings'] as List<dynamic>? ?? [];
     return standings.map((s) {
       final sm = s as Map<String, dynamic>;

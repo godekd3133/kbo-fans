@@ -71,9 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return Scaffold(
       body: SafeArea(
         child: scoreboardAsync.when(
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.live),
-          ),
+          loading: () => _buildLoadingShell(context),
           error: (error, _) => Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -117,6 +115,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             _enableSecondarySections();
             return _buildContent(context, games, myTeamId, today);
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingShell(BuildContext context) {
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: _buildHeader(context, false)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: _loadingCard(height: 128),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: _loadingCard(height: 112),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+            child: Text(
+              '오늘의 스코어보드',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: Column(
+              children: [
+                _loadingCard(height: 82),
+                const SizedBox(height: 8),
+                _loadingCard(height: 82),
+                const SizedBox(height: 8),
+                _loadingCard(height: 82),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _loadingCard({required double height}) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: const Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.2,
+            color: AppColors.live,
+          ),
         ),
       ),
     );
@@ -226,204 +289,206 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       child: AppPageFrame(
         child: CustomScrollView(
           slivers: [
-          SliverToBoxAdapter(child: _buildHeader(context, hasLive)),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: _secondarySectionsEnabled
-                  ? Consumer(
-                      builder: (context, ref, _) {
-                        final yearMonth = DateFormat(
-                          'yyyy-MM',
-                        ).format(DateTime.now());
-                        final season = DateTime.now().year;
-                        final scheduleAsync = ref.watch(
-                          scheduleProvider(yearMonth),
-                        );
-                        final standingsAsync = ref.watch(
-                          standingsProvider(season),
-                        );
-                        final myTeamBrief = _buildMyTeamBrief(
-                          myTeamId: myTeamId,
-                          myGame: myGame,
-                          scheduleDays: scheduleAsync.asData?.value ?? const [],
-                          standings: standingsAsync.asData?.value ?? const [],
-                          today: today,
-                        );
-                        _logSecondarySectionsLoaded(
-                          today: today,
-                          brief: myTeamBrief,
-                          overview: null,
-                        );
-                        return _MyTeamBriefCard(
-                          myTeamId: myTeamId,
-                          brief: myTeamBrief,
-                          todayGame: myGame,
-                        );
-                      },
-                    )
-                  : const _DeferredSectionCard(
-                      title: '마이팀 브리프',
-                      subtitle: '홈 첫 화면을 먼저 띄우는 중입니다.',
-                    ),
+            SliverToBoxAdapter(child: _buildHeader(context, hasLive)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                child: _secondarySectionsEnabled
+                    ? Consumer(
+                        builder: (context, ref, _) {
+                          final yearMonth = DateFormat(
+                            'yyyy-MM',
+                          ).format(DateTime.now());
+                          final season = DateTime.now().year;
+                          final scheduleAsync = ref.watch(
+                            scheduleProvider(yearMonth),
+                          );
+                          final standingsAsync = ref.watch(
+                            standingsProvider(season),
+                          );
+                          final myTeamBrief = _buildMyTeamBrief(
+                            myTeamId: myTeamId,
+                            myGame: myGame,
+                            scheduleDays:
+                                scheduleAsync.asData?.value ?? const [],
+                            standings: standingsAsync.asData?.value ?? const [],
+                            today: today,
+                          );
+                          _logSecondarySectionsLoaded(
+                            today: today,
+                            brief: myTeamBrief,
+                            overview: null,
+                          );
+                          return _MyTeamBriefCard(
+                            myTeamId: myTeamId,
+                            brief: myTeamBrief,
+                            todayGame: myGame,
+                          );
+                        },
+                      )
+                    : const _DeferredSectionCard(
+                        title: '마이팀 브리프',
+                        subtitle: '홈 첫 화면을 먼저 띄우는 중입니다.',
+                      ),
+              ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _TodayBaseballCard(brief: todayBrief),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _secondarySectionsEnabled
-                  ? Consumer(
-                      builder: (context, ref, _) {
-                        final yearMonth = DateFormat(
-                          'yyyy-MM',
-                        ).format(DateTime.now());
-                        final season = DateTime.now().year;
-                        final scheduleAsync = ref.watch(
-                          scheduleProvider(yearMonth),
-                        );
-                        final standingsAsync = ref.watch(
-                          standingsProvider(season),
-                        );
-                        final myTeamBrief = _buildMyTeamBrief(
-                          myTeamId: myTeamId,
-                          myGame: myGame,
-                          scheduleDays: scheduleAsync.asData?.value ?? const [],
-                          standings: standingsAsync.asData?.value ?? const [],
-                          today: today,
-                        );
-                        final baseQuickItems = _buildQuickItems(
-                          myTeamBrief: myTeamBrief,
-                          season: season,
-                        );
-                        _logSecondarySectionsLoaded(
-                          today: today,
-                          brief: myTeamBrief,
-                          overview: null,
-                        );
-                        if (baseQuickItems.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-                        return _QuickContentSection(items: baseQuickItems);
-                      },
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: _secondarySectionsEnabled && _overviewSectionEnabled
-                  ? Consumer(
-                      builder: (context, ref, _) {
-                        final season = DateTime.now().year;
-                        final overviewAsync = ref.watch(
-                          recordsOverviewProvider(season),
-                        );
-                        final items = _buildOverviewQuickItems(
-                          overview: overviewAsync.asData?.value,
-                          season: season,
-                        );
-                        _logSecondarySectionsLoaded(
-                          today: today,
-                          brief: null,
-                          overview: overviewAsync.asData?.value,
-                        );
-                        if (items.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-                        return _QuickContentSection(items: items);
-                      },
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ),
-          if (myGame != null)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: MyTeamGameCard(
-                  game: myGame,
-                  onTap: () =>
-                      context.push('/game/${myGame!.gameId}', extra: myGame),
-                ),
+                child: _TodayBaseballCard(brief: todayBrief),
               ),
             ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-              child: Text(
-                games.isEmpty ? '오늘의 스코어보드' : '전체 경기',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          if (games.isEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 32,
-                    horizontal: 20,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _secondarySectionsEnabled
+                    ? Consumer(
+                        builder: (context, ref, _) {
+                          final yearMonth = DateFormat(
+                            'yyyy-MM',
+                          ).format(DateTime.now());
+                          final season = DateTime.now().year;
+                          final scheduleAsync = ref.watch(
+                            scheduleProvider(yearMonth),
+                          );
+                          final standingsAsync = ref.watch(
+                            standingsProvider(season),
+                          );
+                          final myTeamBrief = _buildMyTeamBrief(
+                            myTeamId: myTeamId,
+                            myGame: myGame,
+                            scheduleDays:
+                                scheduleAsync.asData?.value ?? const [],
+                            standings: standingsAsync.asData?.value ?? const [],
+                            today: today,
+                          );
+                          final baseQuickItems = _buildQuickItems(
+                            myTeamBrief: myTeamBrief,
+                            season: season,
+                          );
+                          _logSecondarySectionsLoaded(
+                            today: today,
+                            brief: myTeamBrief,
+                            overview: null,
+                          );
+                          if (baseQuickItems.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return _QuickContentSection(items: baseQuickItems);
+                        },
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: _secondarySectionsEnabled && _overviewSectionEnabled
+                    ? Consumer(
+                        builder: (context, ref, _) {
+                          final season = DateTime.now().year;
+                          final overviewAsync = ref.watch(
+                            recordsOverviewProvider(season),
+                          );
+                          final items = _buildOverviewQuickItems(
+                            overview: overviewAsync.asData?.value,
+                            season: season,
+                          );
+                          _logSecondarySectionsLoaded(
+                            today: today,
+                            brief: null,
+                            overview: overviewAsync.asData?.value,
+                          );
+                          if (items.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return _QuickContentSection(items: items);
+                        },
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+            if (myGame != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: MyTeamGameCard(
+                    game: myGame,
+                    onTap: () =>
+                        context.push('/game/${myGame!.gameId}', extra: myGame),
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.divider),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.sports_baseball,
-                        size: 52,
-                        color: AppColors.divider,
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        '오늘은 경기가 없습니다',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '대신 리그 리더보드와 마이팀 브리프를 먼저 확인할 수 있습니다.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                ),
+              ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                child: Text(
+                  games.isEmpty ? '오늘의 스코어보드' : '전체 경기',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            sliver: SliverList.separated(
-              itemCount: others.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final game = others[index];
-                return GameCard(
-                  game: game,
-                  onTap: () =>
-                      context.push('/game/${game.gameId}', extra: game),
-                );
-              },
+            if (games.isEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 32,
+                      horizontal: 20,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.sports_baseball,
+                          size: 52,
+                          color: AppColors.divider,
+                        ),
+                        const SizedBox(height: 14),
+                        const Text(
+                          '오늘은 경기가 없습니다',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '대신 리그 리더보드와 마이팀 브리프를 먼저 확인할 수 있습니다.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              sliver: SliverList.separated(
+                itemCount: others.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final game = others[index];
+                  return GameCard(
+                    game: game,
+                    onTap: () =>
+                        context.push('/game/${game.gameId}', extra: game),
+                  );
+                },
+              ),
             ),
-          ),
           ],
         ),
       ),
@@ -886,7 +951,7 @@ class _MyTeamBriefCard extends StatelessWidget {
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
-                child: ElevatedButton(
+              child: ElevatedButton(
                 onPressed: () => context.go('/onboarding'),
                 child: const Text('마이팀 선택하기'),
               ),

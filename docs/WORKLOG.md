@@ -10,11 +10,23 @@
 - [x] 홈 화면 네트워크 호출(`scoreboard`, `schedule`, `standings`, `records/overview`) 확인
 - [x] 10개 유저 페르소나 기준 UX/UI 개선점 문서화 (`docs/UX_AUDIT_2026-03-31.md`)
 - [x] `README.md`의 웹 플랫폼 존재 여부 문구 최신화
+- [x] 웹에서 모바일 화면이 과도하게 늘어나지 않도록 공통 `AppPageFrame` 추가
+- [x] 온보딩 카드 밀도와 설명 문구 조정
+- [x] 홈 마이팀 미선택 CTA와 오늘의 야구 빠른 액션 보강
+- [x] 일정 화면에 달력 범례 추가
+- [x] 순위 화면에 마이팀 요약 카드 추가
+- [x] 설정 화면에 알림 설명문과 토글별 보조 문구 추가
+- [x] 순위/기록실 요약 시즌별 번들 스냅샷 fallback(`2001~현재`) 추가
+- [x] 앱 부트스트랩에 timeout/fallback 을 추가해 shared preferences 응답 지연 시 무한 스플래시를 피하도록 보강
 
 ### 확인 사항
 - `flutter run -d chrome` 디버그 세션은 정상 렌더링됨
 - 별도 `flutter run -d web-server --web-port 7357` 경로는 스플래시에서 멈추는 현상이 있어 웹 배포/프리뷰 경로 추가 점검 필요
 - 실제 시각 검증 기준으로 홈은 정보 구조가 풍부하지만 첫 화면 우선순위 정리가 더 필요함
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-fatal-infos`
+- [x] `cd app && fvm flutter test`
 
 ### 비고
 - macOS 앱 포커스 경쟁 때문에 기록실/경기 상세는 안정적인 스크린샷 확보가 제한됐고, 해당 영역은 코드 구조와 라우트 접근 가능 여부를 함께 참고해 판단함
@@ -475,3 +487,7 @@ kbo_fans/
 - `GET /api/game/20260331HTLG0/relay` : non-live 경기에서 크롤러 우회, 약 `0.56s`
 - `GET /api/game/20260331HTLG0/boxscore` : 캐시 히트 기준 약 `0.20s`
 - 앱 재진입/탭 재방문 시 `schedule`, `standings`, `records`, `player detail`, `overview`는 TTL 내 네트워크 재호출 없이 로컬 캐시 우선 사용
+
+### 문서화
+- [x] 홈 전용 aggregate endpoint 기반 성능 개선 제안서 작성 (`docs/PERFORMANCE_PROPOSAL_HOME_AGGREGATE.md`)
+- [x] 홈 aggregate endpoint 구현 계획서 작성 (`docs/PERFORMANCE_IMPLEMENTATION_PLAN_HOME_AGGREGATE.md`)

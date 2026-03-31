@@ -146,10 +146,17 @@ class ScoreboardService:
     def _enrich_game(
         self, game: dict[str, Any], main_game: dict[str, Any]
     ) -> dict[str, Any]:
-        try:
-            detail = self.scoreboard_crawler.get_game_scoreboard(game["gameId"])
-        except Exception:
+        resolved_status = str(game.get("status") or "")
+        if main_game:
+            resolved_status = self._map_status(main_game.get("GAME_STATE_SC"))
+
+        if resolved_status == "SCHEDULED":
             detail = self._scheduled_fallback_detail(game)
+        else:
+            try:
+                detail = self.scoreboard_crawler.get_game_scoreboard(game["gameId"])
+            except Exception:
+                detail = self._scheduled_fallback_detail(game)
         return {
             **game,
             **self._merge_main_game(main_game),

@@ -186,6 +186,7 @@ GET /api/scoreboard?date=2026-03-28
 - 예정 경기일 때 KBO scoreboard 세부 테이블이 비어도 홈 화면은 fallback payload 로 렌더링한다.
 - 예정 경기는 YouTube 검색을 생략하고 KBO 공식 하이라이트 링크만 유지한다.
 - 웹 진단 화면은 `health / scoreboard / schedule` 상태를 한 번에 확인한다.
+- 순위는 시즌별 번들 스냅샷 fallback(`2001~현재`)을 사용한다.
 
 ---
 
@@ -220,6 +221,7 @@ GET /api/team/{teamId}/players?season=2026
 **운영 메모**:
 - 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `5분 TTL` 캐시를 사용한다.
 - 앱은 기록실 로딩 완료 시간을 Dev Console 과 `/api/metrics/client` 로 함께 기록한다.
+- 기록실 요약/리더보드는 시즌별 번들 스냅샷 fallback(`2001~현재`)을 사용하며, 해당 시즌 데이터가 비어 있으면 가장 가까운 이전 시즌 스냅샷을 사용한다.
 
 ---
 

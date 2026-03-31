@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-03-31T07:21:53.717460+00:00",
+  "payload": {
+    "season": 2014,
+    "leaders": {
+      "avg": [],
+      "hr": [],
+      "ops": [],
+      "era": []
+    },
+    "featured": {
+      "todayHitter": {
+        "label": "오늘의 타자"
+      },
+      "todayPitcher": {
+        "label": "오늘의 투수"
+      },
+      "monthHitter": {
+        "label": "이달의 타자"
+      },
+      "monthPitcher": {
+        "label": "이달의 투수"
+      }
+    }
+  }
+}

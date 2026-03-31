@@ -83,4 +83,4 @@ def test_get_scoreboard_uses_ttl_cache_for_same_date() -> None:
     assert first == second
     assert schedule.calls == 1
     assert main.calls == 1
-    assert scoreboard.calls == 1
+    assert scoreboard.calls == 0

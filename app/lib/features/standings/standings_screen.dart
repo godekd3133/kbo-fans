@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
 
@@ -31,95 +32,166 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: const Text(
-                      '정규시즌 순위',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  _seasonDropdown(),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.refresh,
-                      size: 20,
-                      color: AppColors.textDisabled,
-                    ),
-                    onPressed: () =>
-                        ref.invalidate(standingsProvider(_selectedSeason)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildHeaderRow(),
-            ),
-            const Divider(
-              color: AppColors.divider,
-              height: 1,
-              indent: 16,
-              endIndent: 16,
-            ),
-            Expanded(
-              child: standingsAsync.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.live),
-                ),
-                error: (e, _) => Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '순위를 불러올 수 없습니다',
-                        style: TextStyle(color: AppColors.textDisabled),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        describeAsyncError(e),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textDisabled,
+        child: AppPageFrame(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: const Text(
+                        '정규시즌 순위',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () =>
-                            ref.invalidate(standingsProvider(_selectedSeason)),
-                        child: const Text('다시 시도'),
+                    ),
+                    _seasonDropdown(),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.refresh,
+                        size: 20,
+                        color: AppColors.textDisabled,
                       ),
+                      onPressed: () =>
+                          ref.invalidate(standingsProvider(_selectedSeason)),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: standingsAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.live),
+                  ),
+                  error: (e, _) => Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '순위를 불러올 수 없습니다',
+                          style: TextStyle(color: AppColors.textDisabled),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          describeAsyncError(e),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textDisabled,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: () =>
+                              ref.invalidate(standingsProvider(_selectedSeason)),
+                          child: const Text('다시 시도'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  data: (standings) => Column(
+                    children: [
+                      if (myTeamId != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          child: _myTeamSummaryCard(standings, myTeamId),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildHeaderRow(),
+                      ),
+                      const Divider(
+                        color: AppColors.divider,
+                        height: 1,
+                        indent: 16,
+                        endIndent: 16,
+                      ),
+                      Expanded(child: _buildList(ref, standings, myTeamId)),
                     ],
                   ),
                 ),
-                data: (standings) => _buildList(ref, standings, myTeamId),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Center(
-                child: Text(
-                  '마지막 업데이트: ${DateFormat('yyyy.MM.dd HH:mm').format(DateTime.now())}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textDisabled,
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: Text(
+                    '마지막 업데이트: ${DateFormat('yyyy.MM.dd HH:mm').format(DateTime.now())}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textDisabled,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _myTeamSummaryCard(List standings, String myTeamId) {
+    final current = standings.where((item) => item.teamId == myTeamId).firstOrNull;
+    if (current == null) {
+      return const SizedBox.shrink();
+    }
+
+    final team = KboTeams.byId(myTeamId);
+    final teamColor = team?.primaryColor ?? AppColors.live;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: teamColor.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${current.teamName} 현재 위치',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${current.rank}위 · ${current.wins}승 ${current.losses}패 ${current.draws}무',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: teamColor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              current.gb == '0' ? '선두권' : '${current.gb}G차',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: teamColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

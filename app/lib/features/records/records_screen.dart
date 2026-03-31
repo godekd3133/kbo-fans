@@ -638,7 +638,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   }
 
   Widget _seasonSelector() {
-    final seasons = [for (int year = DateTime.now().year; year >= 2020; year--) year];
+    final seasons = [for (int year = DateTime.now().year; year >= 2001; year--) year];
     return Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 12),

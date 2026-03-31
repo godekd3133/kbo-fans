@@ -1,4 +1,5 @@
 import '../api/api_client.dart';
+import '../bootstrap/bootstrap_repository.dart';
 import '../models/player.dart';
 import '../models/records_overview.dart';
 import '../models/team_records_bundle.dart';
@@ -7,6 +8,7 @@ import 'player_repository.dart';
 
 class ApiPlayerRepository implements PlayerRepository {
   final ApiClient _client;
+  final BootstrapRepository _bootstrapRepository = BootstrapRepository();
   static const _stableCacheAge = Duration(minutes: 5);
 
   ApiPlayerRepository(this._client);
@@ -87,13 +89,20 @@ class ApiPlayerRepository implements PlayerRepository {
 
   @override
   Future<RecordsOverview> getRecordsOverview({required int season}) async {
-    final data = await _client.getCached(
-      '/records/overview',
-      queryParameters: {'season': season},
-      cacheKey: 'recordsOverview:$season',
-      preferCache: true,
-      maxAge: _stableCacheAge,
-    );
+    Map<String, dynamic> data;
+    try {
+      data = await _client.getCached(
+        '/records/overview',
+        queryParameters: {'season': season},
+        cacheKey: 'recordsOverview:$season',
+        preferCache: true,
+        maxAge: _stableCacheAge,
+      );
+    } catch (_) {
+      final snapshot = await _bootstrapRepository.loadRecordsOverview(season);
+      if (snapshot == null) rethrow;
+      data = snapshot;
+    }
     final leaders = data['leaders'] as Map<String, dynamic>? ?? const {};
     final featured = data['featured'] as Map<String, dynamic>? ?? const {};
     return RecordsOverview(

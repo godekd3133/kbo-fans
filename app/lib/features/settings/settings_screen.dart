@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../data/providers.dart';
 import '../../services/push_notification_service.dart';
 
@@ -69,9 +70,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-          children: [
+        child: AppPageFrame(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+            children: [
             const Text('⚙️ 설정', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
             const SizedBox(height: 24),
 
@@ -112,35 +114,53 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const Text('알림 설정', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.cardSub,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: const Text(
+                '마이팀 알림은 앱의 갱신 주기 기준으로 감지됩니다. 경기 시작, 득점, 역전, 종료를 원하는 수준으로 조절하세요.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(
                 children: [
-                  _notifRow('경기 시작', _notifGameStart, teamColor, (v) async {
+                  _notifRow('경기 시작', '플레이볼 직후 한 번 알립니다', _notifGameStart, teamColor, (v) async {
                     setState(() => _notifGameStart = v);
                     await _savePushSettings();
                   }),
                   _divider(),
-                  _notifRow('득점', _notifScoring, teamColor, (v) async {
+                  _notifRow('득점', '마이팀이 점수를 올릴 때 알립니다', _notifScoring, teamColor, (v) async {
                     setState(() => _notifScoring = v);
                     await _savePushSettings();
                   }),
                   _divider(),
-                  _notifRow('홈런', _notifHomerun, teamColor, (v) async {
+                  _notifRow('홈런', '홈런 상황을 별도로 알려줍니다', _notifHomerun, teamColor, (v) async {
                     setState(() => _notifHomerun = v);
                     await _savePushSettings();
                   }),
                   _divider(),
-                  _notifRow('역전', _notifReversal, teamColor, (v) async {
+                  _notifRow('역전', '리드가 바뀌는 순간을 알려줍니다', _notifReversal, teamColor, (v) async {
                     setState(() => _notifReversal = v);
                     await _savePushSettings();
                   }),
                   _divider(),
-                  _notifRow('경기 종료', _notifGameEnd, teamColor, (v) async {
+                  _notifRow('경기 종료', '최종 결과와 함께 마무리 알림을 보냅니다', _notifGameEnd, teamColor, (v) async {
                     setState(() => _notifGameEnd = v);
                     await _savePushSettings();
                   }),
                   const Divider(color: AppColors.divider, height: 1, indent: 16, endIndent: 16),
-                  _notifRow('전체 경기 알림', _notifAllGames, teamColor, (v) async {
+                  _notifRow('전체 경기 알림', '켜면 마이팀 외 경기 이벤트도 함께 받습니다', _notifAllGames, teamColor, (v) async {
                     setState(() => _notifAllGames = v);
                     await _savePushSettings();
                   }),
@@ -184,20 +204,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _notifRow(String label, bool value, Color activeColor, ValueChanged<bool> onChanged) {
+  Widget _notifRow(
+    String label,
+    String description,
+    bool value,
+    Color activeColor,
+    ValueChanged<bool> onChanged,
+  ) {
     return SizedBox(
-      height: 48,
+      height: 62,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 16))),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textDisabled,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Switch(
               value: value,
               onChanged: onChanged,
