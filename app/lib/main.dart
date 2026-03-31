@@ -29,12 +29,19 @@ void main() async {
 
       runApp(const ProviderScope(child: KboFansApp()));
 
-      unawaited(_initializePlatformServices());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_initializePlatformServicesDeferred());
+      });
     },
     (error, stack) {
       DevConsole.instance.error('$error');
     },
   );
+}
+
+Future<void> _initializePlatformServicesDeferred() async {
+  await Future<void>.delayed(const Duration(milliseconds: 1500));
+  await _initializePlatformServices();
 }
 
 Future<void> _initializePlatformServices() async {
