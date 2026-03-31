@@ -32,6 +32,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   int? _homeLoadStartedAtMicros;
   String? _lastHomeLoadLogKey;
   bool _secondarySectionsEnabled = false;
+  int? _secondarySectionsStartedAtMicros;
+  String? _lastSecondarySectionsLogKey;
 
   @override
   void initState() {
@@ -146,6 +148,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _homeLoadStartedAtMicros = null;
   }
 
+  void _logSecondarySectionsLoaded({
+    required String today,
+    required _MyTeamBriefData? brief,
+    required RecordsOverview? overview,
+  }) {
+    if (!_secondarySectionsEnabled) {
+      return;
+    }
+    if (brief == null && overview == null) {
+      return;
+    }
+
+    final logKey = '$today|${brief?.teamId ?? '-'}|${overview?.season ?? 0}';
+    if (_lastSecondarySectionsLogKey == logKey) {
+      return;
+    }
+
+    final startedAt = _secondarySectionsStartedAtMicros;
+    if (startedAt != null) {
+      final elapsedMs =
+          (DateTime.now().microsecondsSinceEpoch - startedAt) / 1000;
+      DevConsole.instance.info(
+        'HOME secondary ${elapsedMs.toStringAsFixed(0)}ms',
+      );
+      unawaited(
+        ref.read(apiClientProvider).postClientMetric({
+          'screen': 'home',
+          'event': 'secondary_loaded',
+          'elapsedMs': elapsedMs.round(),
+          'date': today,
+          'hasBrief': brief != null,
+          'hasOverview': overview != null,
+        }),
+      );
+    }
+
+    _lastSecondarySectionsLogKey = logKey;
+    _secondarySectionsStartedAtMicros = null;
+  }
+
   Widget _buildContent(
     BuildContext context,
     List<Game> games,
@@ -200,6 +242,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           standings: standingsAsync.asData?.value ?? const [],
                           today: today,
                         );
+                        _logSecondarySectionsLoaded(
+                          today: today,
+                          brief: myTeamBrief,
+                          overview: null,
+                        );
                         return _MyTeamBriefCard(
                           myTeamId: myTeamId,
                           brief: myTeamBrief,
@@ -249,6 +296,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           myTeamBrief: myTeamBrief,
                           overview: recordsOverviewAsync.asData?.value,
                           season: season,
+                        );
+                        _logSecondarySectionsLoaded(
+                          today: today,
+                          brief: myTeamBrief,
+                          overview: recordsOverviewAsync.asData?.value,
                         );
                         if (quickItems.isEmpty) {
                           return const SizedBox.shrink();
@@ -708,6 +760,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     if (_secondarySectionsEnabled) {
       return;
     }
+    _secondarySectionsStartedAtMicros ??= DateTime.now().microsecondsSinceEpoch;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _secondarySectionsEnabled) {
         return;
@@ -1050,60 +1103,59 @@ class _TodayBaseballCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.divider),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              '주목 경기',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textDisabled,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            _gameStatusChip(brief.spotlight!),
-                          ],
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        '주목 경기',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textDisabled,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${brief.spotlight!.away.shortName} vs ${brief.spotlight!.home.shortName}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '${brief.spotlight!.inning} · ${brief.spotlight!.stadium}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${brief.spotlight!.away.score} : ${brief.spotlight!.home.score}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
+                      ),
+                      _gameStatusChip(brief.spotlight!),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${brief.spotlight!.away.shortName} vs ${brief.spotlight!.home.shortName}',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  OutlinedButton(
-                    onPressed: () => context.push(
-                      '/game/${brief.spotlight!.gameId}',
-                      extra: brief.spotlight,
+                  const SizedBox(height: 2),
+                  Text(
+                    '${brief.spotlight!.inning} · ${brief.spotlight!.stadium}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
                     ),
-                    child: const Text('바로 보기'),
                   ),
-                ],
+                  const SizedBox(height: 4),
+                  Text(
+                    '${brief.spotlight!.away.score} : ${brief.spotlight!.home.score}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton(
+                      onPressed: () => context.push(
+                        '/game/${brief.spotlight!.gameId}',
+                        extra: brief.spotlight,
+                      ),
+                      child: const Text('바로 보기'),
+                    ),
+                  ),
               ),
             ),
           ],
@@ -1118,16 +1170,19 @@ class _TodayBaseballCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              Expanded(
+              SizedBox(
+                width: 140,
                 child: OutlinedButton(
                   onPressed: () => context.go('/schedule'),
                   child: const Text('일정 보기'),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
+              SizedBox(
+                width: 140,
                 child: ElevatedButton(
                   onPressed: () => context.go('/standings'),
                   child: const Text('순위 보기'),
@@ -1200,7 +1255,7 @@ class _QuickContentSection extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: isCompact ? 1.25 : 1.45,
+                  childAspectRatio: isCompact ? 1.05 : 1.2,
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
@@ -1268,14 +1323,14 @@ class _QuickContentSection extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             item.subtitle,
-                            maxLines: isCompact ? 2 : 3,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 12,
