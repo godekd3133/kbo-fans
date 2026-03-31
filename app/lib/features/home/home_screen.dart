@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/game_status_badge.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/game.dart';
@@ -1118,7 +1119,7 @@ class _TodayBaseballCard extends StatelessWidget {
                       _gameStatusChip(brief.spotlight!),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       _teamMark(
@@ -1140,21 +1141,51 @@ class _TodayBaseballCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${brief.spotlight!.inning} · ${brief.spotlight!.stadium}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _metaPill(
+                        secondaryTextForGameStatus(
+                          brief.spotlight!.status,
+                          inning: brief.spotlight!.inning,
+                          startTime: brief.spotlight!.startTime,
+                        ),
+                      ),
+                      _metaPill(brief.spotlight!.stadium),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${brief.spotlight!.away.score} : ${brief.spotlight!.home.score}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Text(
+                        '${brief.spotlight!.away.score}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          ':',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppColors.textDisabled,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${brief.spotlight!.home.score}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   Align(
@@ -1280,6 +1311,25 @@ class _TodayBaseballCard extends StatelessWidget {
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ],
+    );
+  }
+
+  Widget _metaPill(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.34),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 11,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }
