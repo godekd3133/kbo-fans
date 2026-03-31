@@ -165,6 +165,7 @@ class ScoreboardService:
                 detail = self.scoreboard_crawler.get_game_scoreboard(game_id)
             except Exception:
                 detail = self._scheduled_fallback_detail(game)
+        detail = self._backfill_team_identity(game, detail)
         return {
             **game,
             **self._merge_main_game(main_game),
@@ -209,6 +210,34 @@ class ScoreboardService:
                 "errors": None,
                 "balls": None,
             },
+        }
+
+    @staticmethod
+    def _backfill_team_identity(
+        game: dict[str, Any],
+        detail: dict[str, Any],
+    ) -> dict[str, Any]:
+        away = dict(detail.get("away", {}))
+        home = dict(detail.get("home", {}))
+
+        if not away.get("teamId"):
+            away["teamId"] = game.get("awayId")
+        if not away.get("teamName"):
+            away["teamName"] = game.get("awayName")
+        if not away.get("shortName"):
+            away["shortName"] = game.get("awayName")
+
+        if not home.get("teamId"):
+            home["teamId"] = game.get("homeId")
+        if not home.get("teamName"):
+            home["teamName"] = game.get("homeName")
+        if not home.get("shortName"):
+            home["shortName"] = game.get("homeName")
+
+        return {
+            **detail,
+            "away": away,
+            "home": home,
         }
 
     def _merge_main_game(self, main_game: dict[str, Any]) -> dict[str, Any]:

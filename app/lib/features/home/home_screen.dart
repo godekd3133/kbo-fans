@@ -726,7 +726,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       items.add(
         _QuickContentItemData(
           eyebrow: '마이팀 경기',
-          title: '${nextGame.awayName} vs ${nextGame.homeName}',
+          title: _scheduleMatchupTitle(nextGame),
           subtitle: '${nextGame.time} · ${nextGame.stadium}',
           route: '/schedule',
         ),
@@ -741,7 +741,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       items.add(
         _QuickContentItemData(
           eyebrow: '예매 오픈 임박',
-          title: '${ticketGame.awayName} vs ${ticketGame.homeName}',
+          title: _scheduleMatchupTitle(ticketGame),
           subtitle: '${ticketInfo.vendorName} · $formatted',
           route: '/schedule',
         ),
@@ -871,6 +871,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   bool _isMyTeamGame(ScheduleGame game, String teamId) {
     return game.awayId == teamId || game.homeId == teamId;
+  }
+
+  String _scheduleMatchupTitle(ScheduleGame game) {
+    if (game.awayScore != null && game.homeScore != null) {
+      return '${game.awayName} ${game.awayScore} : ${game.homeScore} ${game.homeName}';
+    }
+    return '${game.awayName} vs ${game.homeName}';
   }
 
   Widget _buildHeader(BuildContext context, bool hasLive) {
@@ -1172,6 +1179,12 @@ class _MyTeamBriefCard extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () => context.go('/onboarding'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
                 child: const Text('마이팀 선택하기'),
               ),
             ),
@@ -1308,6 +1321,12 @@ class _MyTeamBriefCard extends StatelessWidget {
                       context.go('/schedule');
                     }
                   },
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                   child: Text(todayGame != null ? '경기 상세' : '일정 보기'),
                 ),
               ),
@@ -1315,6 +1334,12 @@ class _MyTeamBriefCard extends StatelessWidget {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () => context.go('/standings'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                   child: const Text('순위 보기'),
                 ),
               ),
@@ -1570,6 +1595,12 @@ class _TodayBaseballCard extends StatelessWidget {
                 width: 140,
                 child: OutlinedButton(
                   onPressed: () => context.go('/schedule'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                   child: const Text('일정 보기'),
                 ),
               ),
@@ -1577,6 +1608,12 @@ class _TodayBaseballCard extends StatelessWidget {
                 width: 140,
                 child: ElevatedButton(
                   onPressed: () => context.go('/standings'),
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
                   child: const Text('순위 보기'),
                 ),
               ),
@@ -1942,8 +1979,15 @@ Widget _sectionCard({required Widget child}) {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: AppColors.card,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       border: Border.all(color: AppColors.divider),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x1A000000),
+          blurRadius: 16,
+          offset: Offset(0, 6),
+        ),
+      ],
     ),
     child: child,
   );

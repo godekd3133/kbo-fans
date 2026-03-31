@@ -85,7 +85,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Container(
                 height: 56,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.divider),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 12,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
                 child: Row(
                   children: [
                     if (team != null) ...[
@@ -129,7 +140,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppColors.cardSub,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppColors.divider),
               ),
               child: const Text(
@@ -143,7 +154,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             Container(
-              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.divider),
+              ),
               child: Column(
                 children: [
                   _notifRow('경기 시작', '플레이볼 직후 한 번 알립니다', _notifGameStart, teamColor, (v) async {
@@ -186,7 +201,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const Text('리그 전체 알림', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
             const SizedBox(height: 6),
             Container(
-              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.divider),
+              ),
               child: Column(
                 children: [
                   _notifRow('리그 전체 알림', '켜면 마이팀 외 경기 이벤트도 함께 받습니다', _notifAllGames, teamColor, (v) async {
@@ -210,7 +229,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const Text('앱 정보 및 지원', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
             const SizedBox(height: 6),
             Container(
-              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.divider),
+              ),
               child: Column(
                 children: [
                   _infoRow('API 진단', hasArrow: true, onTap: () => context.push('/diagnostics')),
