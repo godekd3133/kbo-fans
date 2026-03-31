@@ -1256,8 +1256,8 @@ class _QuickContentSection extends StatelessWidget {
                   mainAxisExtent: isVeryNarrow
                       ? 176
                       : isCompact
-                          ? 220
-                          : 204,
+                      ? 220
+                      : 204,
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
@@ -1404,12 +1404,12 @@ Color _quickItemAccent(_QuickContentItemData item) {
 
 String _quickItemIcon(_QuickContentItemData item) {
   final key = item.eyebrow;
-  if (key.contains('홈런')) return '💥';
-  if (key.contains('예매')) return '🎟️';
-  if (key.contains('마이팀 경기')) return '⚾';
-  if (key.contains('마이팀 하이라이트')) return '🎬';
-  if (key.contains('오늘의 플레이어')) return '🔥';
-  if (key.contains('순위')) return '📊';
+  if (key.contains('홈런')) return 'HR';
+  if (key.contains('예매')) return 'T';
+  if (key.contains('마이팀 경기')) return 'G';
+  if (key.contains('마이팀 하이라이트')) return 'V';
+  if (key.contains('오늘의 플레이어')) return 'P';
+  if (key.contains('순위')) return 'R';
   return '•';
 }
 

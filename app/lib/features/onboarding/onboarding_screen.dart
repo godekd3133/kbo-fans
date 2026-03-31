@@ -42,7 +42,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             children: [
               const SizedBox(height: 60),
               Text(
-                '⚾ KBO Fans',
+                'KBO Fans',
                 style: Theme.of(context).textTheme.headlineLarge,
               ),
               const SizedBox(height: 8),

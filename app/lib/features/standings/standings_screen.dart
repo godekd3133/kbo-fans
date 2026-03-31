@@ -39,13 +39,24 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: const Text('정규시즌 순위', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                    child: const Text(
+                      '정규시즌 순위',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                   _seasonDropdown(),
                   const SizedBox(width: 8),
                   IconButton(
-                    icon: const Icon(Icons.refresh, size: 20, color: AppColors.textDisabled),
-                    onPressed: () => ref.invalidate(standingsProvider(_selectedSeason)),
+                    icon: const Icon(
+                      Icons.refresh,
+                      size: 20,
+                      color: AppColors.textDisabled,
+                    ),
+                    onPressed: () =>
+                        ref.invalidate(standingsProvider(_selectedSeason)),
                   ),
                 ],
               ),
@@ -55,24 +66,38 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildHeaderRow(),
             ),
-            const Divider(color: AppColors.divider, height: 1, indent: 16, endIndent: 16),
+            const Divider(
+              color: AppColors.divider,
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+            ),
             Expanded(
               child: standingsAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.live),
+                ),
                 error: (e, _) => Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('순위를 불러올 수 없습니다', style: TextStyle(color: AppColors.textDisabled)),
+                      Text(
+                        '순위를 불러올 수 없습니다',
+                        style: TextStyle(color: AppColors.textDisabled),
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         describeAsyncError(e),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textDisabled,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       TextButton(
-                        onPressed: () => ref.invalidate(standingsProvider(_selectedSeason)),
+                        onPressed: () =>
+                            ref.invalidate(standingsProvider(_selectedSeason)),
                         child: const Text('다시 시도'),
                       ),
                     ],
@@ -86,7 +111,10 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               child: Center(
                 child: Text(
                   '마지막 업데이트: ${DateFormat('yyyy.MM.dd HH:mm').format(DateTime.now())}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDisabled,
+                  ),
                 ),
               ),
             ),
@@ -116,29 +144,103 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               color: isMyTeam
                   ? teamColor.withValues(alpha: 0.1)
                   : (index.isOdd ? AppColors.card : Colors.transparent),
-              border: isMyTeam ? Border(left: BorderSide(color: teamColor, width: 4)) : null,
+              border: isMyTeam
+                  ? Border(left: BorderSide(color: teamColor, width: 4))
+                  : null,
             ),
             child: Row(
               children: [
-                SizedBox(width: 32, child: Center(child: Text('${s.rank}', style: const TextStyle(fontSize: 14)))),
+                SizedBox(
+                  width: 32,
+                  child: Center(
+                    child: Text(
+                      '${s.rank}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
                 if (isMyTeam)
-                  Padding(padding: const EdgeInsets.only(right: 4), child: Text('★', style: TextStyle(fontSize: 12, color: teamColor))),
+                  Container(
+                    margin: const EdgeInsets.only(right: 4),
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: teamColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 CachedNetworkImage(
-                  imageUrl: team?.logoUrl ?? '', width: 24, height: 24,
+                  imageUrl: team?.logoUrl ?? '',
+                  width: 24,
+                  height: 24,
                   placeholder: (_, _) => const SizedBox(width: 24, height: 24),
                   errorWidget: (_, _, _) => Container(
-                    width: 24, height: 24,
-                    decoration: BoxDecoration(color: AppColors.cardSub, shape: BoxShape.circle),
-                    child: Center(child: Text(team?.shortName ?? '', style: const TextStyle(fontSize: 8, color: AppColors.textSecondary))),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: AppColors.cardSub,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        team?.shortName ?? '',
+                        style: const TextStyle(
+                          fontSize: 8,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                Expanded(child: Text(s.teamName, style: const TextStyle(fontSize: 14))),
-                SizedBox(width: 32, child: Center(child: Text('${s.wins}', style: const TextStyle(fontSize: 14)))),
-                SizedBox(width: 32, child: Center(child: Text('${s.losses}', style: const TextStyle(fontSize: 14)))),
-                SizedBox(width: 28, child: Center(child: Text('${s.draws}', style: const TextStyle(fontSize: 14)))),
-                SizedBox(width: 48, child: Center(child: Text(s.pct, style: const TextStyle(fontSize: 14)))),
-                SizedBox(width: 28, child: Center(child: Text(s.gb, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)))),
+                Expanded(
+                  child: Text(s.teamName, style: const TextStyle(fontSize: 14)),
+                ),
+                SizedBox(
+                  width: 32,
+                  child: Center(
+                    child: Text(
+                      '${s.wins}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 32,
+                  child: Center(
+                    child: Text(
+                      '${s.losses}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 28,
+                  child: Center(
+                    child: Text(
+                      '${s.draws}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 48,
+                  child: Center(
+                    child: Text(s.pct, style: const TextStyle(fontSize: 14)),
+                  ),
+                ),
+                SizedBox(
+                  width: 28,
+                  child: Center(
+                    child: Text(
+                      s.gb,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           );
@@ -153,20 +255,45 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
       height: 36,
       child: Row(
         children: [
-          SizedBox(width: 32, child: Center(child: Text('순위', style: style))),
-          Expanded(child: Padding(padding: EdgeInsets.only(left: 36), child: Text('팀', style: style))),
-          SizedBox(width: 32, child: Center(child: Text('승', style: style))),
-          SizedBox(width: 32, child: Center(child: Text('패', style: style))),
-          SizedBox(width: 28, child: Center(child: Text('무', style: style))),
-          SizedBox(width: 48, child: Center(child: Text('승률', style: style))),
-          SizedBox(width: 28, child: Center(child: Text('차', style: style))),
+          SizedBox(
+            width: 32,
+            child: Center(child: Text('순위', style: style)),
+          ),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: 36),
+              child: Text('팀', style: style),
+            ),
+          ),
+          SizedBox(
+            width: 32,
+            child: Center(child: Text('승', style: style)),
+          ),
+          SizedBox(
+            width: 32,
+            child: Center(child: Text('패', style: style)),
+          ),
+          SizedBox(
+            width: 28,
+            child: Center(child: Text('무', style: style)),
+          ),
+          SizedBox(
+            width: 48,
+            child: Center(child: Text('승률', style: style)),
+          ),
+          SizedBox(
+            width: 28,
+            child: Center(child: Text('차', style: style)),
+          ),
         ],
       ),
     );
   }
 
   Widget _seasonDropdown() {
-    final seasons = [for (int year = DateTime.now().year; year >= 2001; year--) year];
+    final seasons = [
+      for (int year = DateTime.now().year; year >= 2001; year--) year,
+    ];
     return Container(
       height: 36,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -180,10 +307,12 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
         dropdownColor: AppColors.card,
         underline: const SizedBox.shrink(),
         items: seasons
-            .map((season) => DropdownMenuItem<int>(
-                  value: season,
-                  child: Text('$season', style: const TextStyle(fontSize: 14)),
-                ))
+            .map(
+              (season) => DropdownMenuItem<int>(
+                value: season,
+                child: Text('$season', style: const TextStyle(fontSize: 14)),
+              ),
+            )
             .toList(),
         onChanged: (value) {
           if (value == null) return;

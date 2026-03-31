@@ -33,7 +33,7 @@ class MyTeamGameCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '★ MY TEAM',
+                'MY TEAM',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
