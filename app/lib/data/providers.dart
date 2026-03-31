@@ -9,7 +9,6 @@ import 'repositories/api_game_repository.dart';
 import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
-import 'repositories/mock_player_repository.dart';
 import 'models/game.dart';
 import 'models/highlight_info.dart';
 import 'models/relay.dart';
@@ -161,10 +160,7 @@ final standingsProvider = FutureProvider.family<List<TeamStanding>, int>((
 });
 
 final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
-  if (kIsWeb || AppConfig.instance.isRelease) {
-    return ApiPlayerRepository(ref.read(apiClientProvider));
-  }
-  return MockPlayerRepository();
+  return ApiPlayerRepository(ref.read(apiClientProvider));
 });
 
 final teamPlayersProvider = FutureProvider.family<List<PlayerProfile>, String>((ref, key) {

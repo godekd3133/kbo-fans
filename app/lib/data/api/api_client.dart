@@ -76,13 +76,57 @@ class ApiClient {
   }
 
   Future<void> postClientMetric(Map<String, dynamic> data) async {
+    if (!kIsWeb && AppConfig.instance.isLocal) {
+      return;
+    }
     try {
       await post('/metrics/client', data: data);
     } catch (_) {
-      if (kDebugMode) {
+      if (kDebugMode && !AppConfig.instance.isLocal) {
         DevConsole.instance.warn('client metric send failed');
       }
     }
+  }
+
+  Future<List<String>> diagnoseTeamRecords({
+    required String teamId,
+    required int season,
+  }) async {
+    final diagnostics = <String>[];
+    final targets = [
+      ('team/players', '/team/$teamId/players', {'season': season}),
+      ('team/stats', '/team/$teamId/stats', {'season': season}),
+      ('team/records', '/team/$teamId/records', {'season': season}),
+    ];
+
+    for (final target in targets) {
+      final startedAt = DateTime.now().microsecondsSinceEpoch;
+      try {
+        final data = await get(target.$2, queryParameters: target.$3);
+        final elapsedMs =
+            (DateTime.now().microsecondsSinceEpoch - startedAt) / 1000;
+        final summary = switch (target.$1) {
+          'team/players' =>
+            'players=${(data['players'] as List<dynamic>? ?? const []).length}',
+          'team/stats' =>
+            'hitting=${(data['hitting'] as Map<String, dynamic>? ?? const {}).length}',
+          'team/records' =>
+            'players=${(data['players'] as List<dynamic>? ?? const []).length}, stats=${(data['teamStats'] as Map<String, dynamic>? ?? const {}).length}',
+          _ => 'ok',
+        };
+        diagnostics.add(
+          'DIAG ${target.$1} OK ${elapsedMs.toStringAsFixed(0)}ms [$summary]',
+        );
+      } catch (error) {
+        final elapsedMs =
+            (DateTime.now().microsecondsSinceEpoch - startedAt) / 1000;
+        diagnostics.add(
+          'DIAG ${target.$1} FAIL ${elapsedMs.toStringAsFixed(0)}ms [${describeAsyncError(error)}]',
+        );
+      }
+    }
+
+    return diagnostics;
   }
 
   /// 백엔드 ApiEnvelope 구조에서 data 필드 추출
@@ -108,6 +152,9 @@ class ApiClient {
   }) {
     final startedAt = options.extra['request_started_at'] as int?;
     if (startedAt == null || AppConfig.instance.isRelease) {
+      return;
+    }
+    if (failed && options.path == '/metrics/client') {
       return;
     }
 

@@ -34,6 +34,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   late int _selectedSeason;
   int? _teamRecordsLoadStartedAtMicros;
   String? _lastTeamRecordsLogKey;
+  String? _lastTeamRecordsDiagKey;
 
   @override
   void initState() {
@@ -326,19 +327,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
               child: teamRecordsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
                 error: (error, _) => Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        '선수 기록을 불러올 수 없습니다',
-                        style: TextStyle(color: AppColors.textDisabled),
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () => context.push('/diagnostics'),
-                        child: const Text('진단 보기'),
-                      ),
-                    ],
+                  child: Text(
+                    '선수 기록을 불러올 수 없습니다',
+                    style: const TextStyle(color: AppColors.textDisabled),
                   ),
                 ),
                 data: (teamRecords) => _buildList(teamRecords.players),
@@ -354,6 +345,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     String teamId,
     AsyncValue<TeamRecordsBundle> teamRecordsAsync,
   ) {
+    if (teamRecordsAsync.hasError) {
+      _logTeamRecordsDiagnostics(teamId);
+    }
+
     if (!teamRecordsAsync.hasValue) {
       _teamRecordsLoadStartedAtMicros ??=
           DateTime.now().microsecondsSinceEpoch;
@@ -387,6 +382,26 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     }
     _lastTeamRecordsLogKey = logKey;
     _teamRecordsLoadStartedAtMicros = null;
+  }
+
+  void _logTeamRecordsDiagnostics(String teamId) {
+    final diagKey = '$teamId|$_selectedSeason';
+    if (_lastTeamRecordsDiagKey == diagKey) {
+      return;
+    }
+    _lastTeamRecordsDiagKey = diagKey;
+    unawaited(() async {
+      final diagnostics = await ref.read(apiClientProvider).diagnoseTeamRecords(
+        teamId: teamId,
+        season: _selectedSeason,
+      );
+      DevConsole.instance.warn(
+        'RECORDS DIAG team=$teamId season=$_selectedSeason',
+      );
+      for (final line in diagnostics) {
+        DevConsole.instance.warn(line);
+      }
+    }());
   }
 
   Widget _buildList(List<PlayerProfile> players) {

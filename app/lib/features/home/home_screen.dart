@@ -97,10 +97,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   onPressed: _invalidateTodayScoreboard,
                   child: const Text('다시 시도'),
                 ),
-                TextButton(
-                  onPressed: () => context.push('/diagnostics'),
-                  child: const Text('진단 보기'),
-                ),
               ],
             ),
           ),
@@ -1156,6 +1152,7 @@ class _TodayBaseballCard extends StatelessWidget {
                       child: const Text('바로 보기'),
                     ),
                   ),
+                ],
               ),
             ),
           ],
@@ -1246,16 +1243,21 @@ class _QuickContentSection extends StatelessWidget {
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
-              final isCompact = constraints.maxWidth < 360;
+              final isVeryNarrow = constraints.maxWidth < 340;
+              final isCompact = constraints.maxWidth < 420;
               return GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                  crossAxisCount: isVeryNarrow ? 1 : 2,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: isCompact ? 1.05 : 1.2,
+                  mainAxisExtent: isVeryNarrow
+                      ? 176
+                      : isCompact
+                          ? 220
+                          : 204,
                 ),
                 itemBuilder: (context, index) {
                   final item = items[index];
@@ -1318,26 +1320,36 @@ class _QuickContentSection extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          Text(
-                            item.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  item.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  item.subtitle,
+                                  maxLines: isVeryNarrow ? 2 : 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            item.subtitle,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const Spacer(),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Text(

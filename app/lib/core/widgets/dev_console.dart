@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../config/app_config.dart';
 import '../theme/app_theme.dart';
 
 /// 앱 내 개발자 콘솔 — 에러/로그를 화면에 표시
@@ -137,7 +139,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                 children: [
                   // 헤더
                   Container(
-                    height: 40,
+                    height: 56,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: const BoxDecoration(
                       color: Color(0xFF1A1A1A),
@@ -145,8 +147,32 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                     ),
                     child: Row(
                       children: [
-                        const Text('🔧 Dev Console', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                        const Spacer(),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '🔧 Dev Console',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'API ${AppConfig.instance.apiBaseUrl}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textDisabled,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         GestureDetector(
                           onTap: () {
                             final text = DevConsole.instance.logs.map((e) {

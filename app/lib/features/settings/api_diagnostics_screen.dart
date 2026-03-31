@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
+import '../../services/push_notification_service.dart';
 
 class ApiDiagnosticsScreen extends ConsumerStatefulWidget {
   const ApiDiagnosticsScreen({super.key});
@@ -15,11 +16,13 @@ class ApiDiagnosticsScreen extends ConsumerStatefulWidget {
 
 class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
   late Future<List<_DiagnosticResult>> _future;
+  late Future<Map<String, dynamic>> _pushFuture;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    _pushFuture = PushNotificationService.instance.debugState();
   }
 
   Future<List<_DiagnosticResult>> _load() async {
@@ -102,9 +105,33 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                 _DiagnosticCard(result: result),
                 const SizedBox(height: 10),
               ],
+              FutureBuilder<Map<String, dynamic>>(
+                future: _pushFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+                  final data = snapshot.data!;
+                  final topics = (data['topics'] as List<dynamic>? ?? const []).join(', ');
+                  return _DiagnosticCard(
+                    result: _DiagnosticResult(
+                      key: 'push',
+                      ok: data['initialized'] == true,
+                      elapsedMs: 0,
+                      detail:
+                          'initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
+                          '${topics.isNotEmpty ? ' topics=$topics' : ''}',
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => setState(() => _future = _load()),
+                onPressed: () => setState(() {
+                  _future = _load();
+                  _pushFuture = PushNotificationService.instance.debugState();
+                }),
                 child: const Text('다시 진단'),
               ),
             ],
