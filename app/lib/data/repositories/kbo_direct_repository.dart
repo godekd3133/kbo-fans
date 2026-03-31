@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:html/parser.dart' as html_parser;
+import 'dart:convert';
 
 import '../../core/constants/ticketing_policy.dart';
 import '../../core/widgets/dev_console.dart';
@@ -62,12 +63,21 @@ class KboDirectRepository implements GameRepository {
     final url = _resolveUrl(path);
     _log.info('KBO POST $path');
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
+      final response = await _dio.post<String>(
         url,
         data: params.entries.map((e) => '${e.key}=${e.value}').join('&'),
+        options: Options(responseType: ResponseType.plain),
       );
       _log.info('KBO OK $path → ${response.statusCode}');
-      return response.data ?? {};
+      final body = response.data ?? '{}';
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      }
+      if (decoded is Map) {
+        return decoded.map((key, value) => MapEntry(key.toString(), value));
+      }
+      throw FormatException('Unexpected ASMX payload type: ${decoded.runtimeType}');
     } catch (e) {
       _log.error('KBO FAIL $path → $e');
       rethrow;

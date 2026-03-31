@@ -25,11 +25,13 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   Timer? _refreshTimer;
   String? _lastSyncSignature;
   int? _homeLoadStartedAtMicros;
   String? _lastHomeLoadLogKey;
+  bool _secondarySectionsEnabled = false;
 
   @override
   void initState() {
@@ -55,31 +57,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   @override
   Widget build(BuildContext context) {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final yearMonth = DateFormat('yyyy-MM').format(DateTime.now());
-    final season = DateTime.now().year;
     final scoreboardAsync = ref.watch(scoreboardProvider(today));
-    final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
-    final standingsAsync = ref.watch(standingsProvider(season));
-    final recordsOverviewAsync = ref.watch(recordsOverviewProvider(season));
     final myTeamId = ref.watch(myTeamProvider);
     _logHomeLoad(scoreboardAsync, today);
 
     return Scaffold(
       body: SafeArea(
         child: scoreboardAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.live),
+          ),
           error: (error, _) => Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: AppColors.live),
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: AppColors.live,
+                ),
                 const SizedBox(height: 12),
-                Text('데이터를 불러올 수 없습니다', style: TextStyle(color: AppColors.textDisabled)),
+                Text(
+                  '데이터를 불러올 수 없습니다',
+                  style: TextStyle(color: AppColors.textDisabled),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   describeAsyncError(error),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textDisabled,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextButton(
@@ -96,15 +105,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           data: (games) {
             _scheduleRefresh(games, myTeamId);
             _syncWidget(games, myTeamId);
-            return _buildContent(
-              context,
-              games,
-              myTeamId,
-              today,
-              scheduleAsync: scheduleAsync,
-              standingsAsync: standingsAsync,
-              recordsOverviewAsync: recordsOverviewAsync,
-            );
+            _enableSecondarySections();
+            return _buildContent(context, games, myTeamId, today);
           },
         ),
       ),
@@ -148,11 +150,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     BuildContext context,
     List<Game> games,
     String? myTeamId,
-    String today, {
-    required AsyncValue<List<ScheduleDay>> scheduleAsync,
-    required AsyncValue<List<TeamStanding>> standingsAsync,
-    required AsyncValue<RecordsOverview> recordsOverviewAsync,
-  }) {
+    String today,
+  ) {
     Game? myGame;
     if (myTeamId != null) {
       for (final game in games) {
@@ -162,20 +161,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         }
       }
     }
-    final others = myGame != null ? games.where((g) => g.gameId != myGame!.gameId).toList() : games;
+    final others = myGame != null
+        ? games.where((g) => g.gameId != myGame!.gameId).toList()
+        : games;
     final hasLive = games.any((g) => g.status == GameStatus.live);
-    final myTeamBrief = _buildMyTeamBrief(
+    final todayBrief = _buildTodayBrief(
+      games: games,
       myTeamId: myTeamId,
       myGame: myGame,
-      scheduleDays: scheduleAsync.asData?.value ?? const [],
-      standings: standingsAsync.asData?.value ?? const [],
-      today: today,
-    );
-    final todayBrief = _buildTodayBrief(games: games, myTeamId: myTeamId, myGame: myGame);
-    final quickItems = _buildQuickItems(
-      myTeamBrief: myTeamBrief,
-      overview: recordsOverviewAsync.asData?.value,
-      season: DateTime.now().year,
     );
 
     return RefreshIndicator(
@@ -187,11 +180,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: _MyTeamBriefCard(
-                myTeamId: myTeamId,
-                brief: myTeamBrief,
-                todayGame: myGame,
-              ),
+              child: _secondarySectionsEnabled
+                  ? Consumer(
+                      builder: (context, ref, _) {
+                        final yearMonth = DateFormat(
+                          'yyyy-MM',
+                        ).format(DateTime.now());
+                        final season = DateTime.now().year;
+                        final scheduleAsync = ref.watch(
+                          scheduleProvider(yearMonth),
+                        );
+                        final standingsAsync = ref.watch(
+                          standingsProvider(season),
+                        );
+                        final myTeamBrief = _buildMyTeamBrief(
+                          myTeamId: myTeamId,
+                          myGame: myGame,
+                          scheduleDays: scheduleAsync.asData?.value ?? const [],
+                          standings: standingsAsync.asData?.value ?? const [],
+                          today: today,
+                        );
+                        return _MyTeamBriefCard(
+                          myTeamId: myTeamId,
+                          brief: myTeamBrief,
+                          todayGame: myGame,
+                        );
+                      },
+                    )
+                  : const _DeferredSectionCard(
+                      title: '마이팀 브리프',
+                      subtitle: '홈 첫 화면을 먼저 띄우는 중입니다.',
+                    ),
             ),
           ),
           SliverToBoxAdapter(
@@ -200,20 +219,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               child: _TodayBaseballCard(brief: todayBrief),
             ),
           ),
-          if (quickItems.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: _QuickContentSection(items: quickItems),
-              ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _secondarySectionsEnabled
+                  ? Consumer(
+                      builder: (context, ref, _) {
+                        final yearMonth = DateFormat(
+                          'yyyy-MM',
+                        ).format(DateTime.now());
+                        final season = DateTime.now().year;
+                        final scheduleAsync = ref.watch(
+                          scheduleProvider(yearMonth),
+                        );
+                        final standingsAsync = ref.watch(
+                          standingsProvider(season),
+                        );
+                        final recordsOverviewAsync = ref.watch(
+                          recordsOverviewProvider(season),
+                        );
+                        final myTeamBrief = _buildMyTeamBrief(
+                          myTeamId: myTeamId,
+                          myGame: myGame,
+                          scheduleDays: scheduleAsync.asData?.value ?? const [],
+                          standings: standingsAsync.asData?.value ?? const [],
+                          today: today,
+                        );
+                        final quickItems = _buildQuickItems(
+                          myTeamBrief: myTeamBrief,
+                          overview: recordsOverviewAsync.asData?.value,
+                          season: season,
+                        );
+                        if (quickItems.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return _QuickContentSection(items: quickItems);
+                      },
+                    )
+                  : const SizedBox.shrink(),
             ),
+          ),
           if (myGame != null)
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 child: MyTeamGameCard(
                   game: myGame,
-                  onTap: () => context.push('/game/${myGame!.gameId}', extra: myGame),
+                  onTap: () =>
+                      context.push('/game/${myGame!.gameId}', extra: myGame),
                 ),
               ),
             ),
@@ -222,7 +275,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
               child: Text(
                 games.isEmpty ? '오늘의 스코어보드' : '전체 경기',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -231,7 +287,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 32,
+                    horizontal: 20,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.card,
                     borderRadius: BorderRadius.circular(16),
@@ -239,19 +298,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                   ),
                   child: Column(
                     children: [
-                      Icon(Icons.sports_baseball, size: 52, color: AppColors.divider),
+                      Icon(
+                        Icons.sports_baseball,
+                        size: 52,
+                        color: AppColors.divider,
+                      ),
                       const SizedBox(height: 14),
                       const Text(
                         '오늘은 경기가 없습니다',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        myTeamBrief?.nextGame != null
-                            ? '다음 ${myTeamBrief!.teamLabel} 경기를 준비해두었습니다.'
-                            : '대신 리그 리더보드와 마이팀 브리프를 먼저 확인할 수 있습니다.',
+                        '대신 리그 리더보드와 마이팀 브리프를 먼저 확인할 수 있습니다.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -265,7 +332,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final game = others[index];
-                return GameCard(game: game, onTap: () => context.push('/game/${game.gameId}', extra: game));
+                return GameCard(
+                  game: game,
+                  onTap: () =>
+                      context.push('/game/${game.gameId}', extra: game),
+                );
               },
             ),
           ),
@@ -285,19 +356,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       return null;
     }
 
-    final standing = standings.where((item) => item.teamId == myTeamId).cast<TeamStanding?>().firstOrNull;
+    final standing = standings
+        .where((item) => item.teamId == myTeamId)
+        .cast<TeamStanding?>()
+        .firstOrNull;
     final flatGames = [
       for (final day in scheduleDays)
         for (final game in day.games)
           _ScheduleGameEntry(date: day.date, game: game),
     ]..sort((a, b) => a.date.compareTo(b.date));
 
-    final recentGames = flatGames
-        .where((entry) => entry.date.compareTo(today) <= 0)
-        .where((entry) => _isMyTeamGame(entry.game, myTeamId))
-        .where((entry) => entry.game.awayScore != null && entry.game.homeScore != null)
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final recentGames =
+        flatGames
+            .where((entry) => entry.date.compareTo(today) <= 0)
+            .where((entry) => _isMyTeamGame(entry.game, myTeamId))
+            .where(
+              (entry) =>
+                  entry.game.awayScore != null && entry.game.homeScore != null,
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
     final recentSlice = recentGames.take(3).toList();
     final recentSummaries = <_RecentGameSummaryData>[];
@@ -307,7 +385,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     for (final entry in recentSlice) {
       final isAway = entry.game.awayId == myTeamId;
       final myScore = isAway ? entry.game.awayScore! : entry.game.homeScore!;
-      final opponentScore = isAway ? entry.game.homeScore! : entry.game.awayScore!;
+      final opponentScore = isAway
+          ? entry.game.homeScore!
+          : entry.game.awayScore!;
       final opponentName = isAway ? entry.game.homeName : entry.game.awayName;
       late final String resultLabel;
       if (myScore > opponentScore) {
@@ -355,26 +435,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     required String? myTeamId,
     required Game? myGame,
   }) {
-    final liveGames = games.where((game) => game.status == GameStatus.live).length;
-    final scheduledGames = games.where((game) => game.status == GameStatus.scheduled).length;
-    final finalGames = games.where((game) => game.status == GameStatus.final_).length;
+    final liveGames = games
+        .where((game) => game.status == GameStatus.live)
+        .length;
+    final scheduledGames = games
+        .where((game) => game.status == GameStatus.scheduled)
+        .length;
+    final finalGames = games
+        .where((game) => game.status == GameStatus.final_)
+        .length;
 
-    final spotlight = myGame ??
-        games.where((game) => game.status == GameStatus.live).cast<Game?>().firstOrNull ??
-        games.where((game) => game.status == GameStatus.scheduled).cast<Game?>().firstOrNull ??
+    final spotlight =
+        myGame ??
+        games
+            .where((game) => game.status == GameStatus.live)
+            .cast<Game?>()
+            .firstOrNull ??
+        games
+            .where((game) => game.status == GameStatus.scheduled)
+            .cast<Game?>()
+            .firstOrNull ??
         games.cast<Game?>().firstOrNull;
 
     final headline = liveGames > 0
         ? '지금 $liveGames경기 진행 중'
         : games.isEmpty
-            ? '오늘은 경기가 없습니다'
-            : '오늘 $scheduledGames경기 예정';
+        ? '오늘은 경기가 없습니다'
+        : '오늘 $scheduledGames경기 예정';
 
     final detail = spotlight == null
         ? '리그 리더보드와 마이팀 브리프로 오늘의 흐름을 확인할 수 있습니다.'
         : myTeamId != null && myGame != null
-            ? '마이팀 ${myGame.away.teamId == myTeamId ? myGame.away.shortName : myGame.home.shortName} 경기부터 확인하세요.'
-            : '${spotlight.away.shortName} vs ${spotlight.home.shortName} · ${spotlight.stadium}';
+        ? '마이팀 ${myGame.away.teamId == myTeamId ? myGame.away.shortName : myGame.home.shortName} 경기부터 확인하세요.'
+        : '${spotlight.away.shortName} vs ${spotlight.home.shortName} · ${spotlight.stadium}';
 
     return _TodayBaseballBriefData(
       headline: headline,
@@ -399,7 +492,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       items.add(
         _QuickContentItemData(
           eyebrow: '마이팀 경기',
-          title: '${myTeamGame.away.shortName} ${myTeamGame.away.score} : ${myTeamGame.home.score} ${myTeamGame.home.shortName}',
+          title:
+              '${myTeamGame.away.shortName} ${myTeamGame.away.score} : ${myTeamGame.home.score} ${myTeamGame.home.shortName}',
           subtitle: '${myTeamGame.inning} · ${myTeamGame.stadium}',
           route: '/game/${myTeamGame.gameId}',
         ),
@@ -427,7 +521,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         _QuickContentItemData(
           eyebrow: '마이팀 순위',
           title: '${standing.rank}위 · ${standing.teamName}',
-          subtitle: '${standing.wins}승 ${standing.losses}패 ${standing.draws}무'
+          subtitle:
+              '${standing.wins}승 ${standing.losses}패 ${standing.draws}무'
               '${standing.gb == '0' ? ' · 공동 선두권' : ' · ${standing.gb}G차'}',
           route: '/standings',
         ),
@@ -455,7 +550,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         _QuickContentItemData(
           eyebrow: '홈런 리더',
           title: '${leader.name} ${leader.value}개',
-          subtitle: '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 시즌 홈런 선두',
+          subtitle:
+              '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 시즌 홈런 선두',
           route: '/records',
         ),
       );
@@ -470,10 +566,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         _QuickContentItemData(
           eyebrow: player.label,
           title: player.name!,
-          subtitle: [player.headline, player.summary]
-              .whereType<String>()
-              .where((value) => value.isNotEmpty)
-              .join(' · '),
+          subtitle: [
+            player.headline,
+            player.summary,
+          ].whereType<String>().where((value) => value.isNotEmpty).join(' · '),
           route: route,
         ),
       );
@@ -483,7 +579,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         _QuickContentItemData(
           eyebrow: '타율 리더',
           title: '${leader.name} ${leader.value}',
-          subtitle: '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 컨디션 체크',
+          subtitle:
+              '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 컨디션 체크',
           route: '/records',
         ),
       );
@@ -509,7 +606,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('KBO Fans', style: Theme.of(context).textTheme.headlineMedium),
+              Text(
+                'KBO Fans',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
               const SizedBox(height: 2),
               const Text(
                 '마이팀과 오늘 경기 흐름을 한 번에',
@@ -520,7 +620,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.card,
                   borderRadius: BorderRadius.circular(999),
@@ -528,14 +631,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
                 ),
                 child: Row(
                   children: [
-                    Text(dateStr, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    Text(
+                      dateStr,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     if (hasLive) ...[
                       const SizedBox(width: 8),
-                      Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.live, shape: BoxShape.circle)),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: AppColors.live,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                       const SizedBox(width: 6),
                       const Text(
                         'LIVE',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.live),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.live,
+                        ),
                       ),
                     ],
                   ],
@@ -570,12 +690,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   }
 
   void _syncWidget(List<Game> games, String? myTeamId) {
-    final signature = '${games.length}|${games.map((g) => '${g.gameId}:${g.inning}:${g.away.score}:${g.home.score}').join(',')}|$myTeamId';
+    final signature =
+        '${games.length}|${games.map((g) => '${g.gameId}:${g.inning}:${g.away.score}:${g.home.score}').join(',')}|$myTeamId';
     if (_lastSyncSignature == signature) {
       return;
     }
     _lastSyncSignature = signature;
-    unawaited(WidgetSyncService.instance.syncScoreboard(games: games, myTeamId: myTeamId));
+    unawaited(
+      WidgetSyncService.instance.syncScoreboard(
+        games: games,
+        myTeamId: myTeamId,
+      ),
+    );
+  }
+
+  void _enableSecondarySections() {
+    if (_secondarySectionsEnabled) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _secondarySectionsEnabled) {
+        return;
+      }
+      setState(() {
+        _secondarySectionsEnabled = true;
+      });
+    });
+  }
+}
+
+class _DeferredSectionCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _DeferredSectionCard({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return _sectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -597,7 +767,10 @@ class _MyTeamBriefCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('마이팀 브리프', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const Text(
+              '마이팀 브리프',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
             const Text(
               '응원팀을 선택하면 오늘 경기, 최근 흐름, 순위를 홈에서 바로 보여줍니다.',
@@ -620,10 +793,12 @@ class _MyTeamBriefCard extends StatelessWidget {
     final standing = brief?.standing;
     final nextGame = brief?.nextGame;
     final opponentId = todayGame != null
-        ? (todayGame!.away.teamId == myTeamId ? todayGame!.home.teamId : todayGame!.away.teamId)
+        ? (todayGame!.away.teamId == myTeamId
+              ? todayGame!.home.teamId
+              : todayGame!.away.teamId)
         : nextGame != null
-            ? (nextGame.awayId == myTeamId ? nextGame.homeId : nextGame.awayId)
-            : null;
+        ? (nextGame.awayId == myTeamId ? nextGame.homeId : nextGame.awayId)
+        : null;
     final opponent = opponentId != null ? KboTeams.byId(opponentId) : null;
 
     return _sectionCard(
@@ -633,9 +808,14 @@ class _MyTeamBriefCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: (team?.primaryColor ?? AppColors.live).withValues(alpha: 0.14),
+                  color: (team?.primaryColor ?? AppColors.live).withValues(
+                    alpha: 0.14,
+                  ),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -651,20 +831,29 @@ class _MyTeamBriefCard extends StatelessWidget {
               if (standing != null)
                 Text(
                   '${standing.rank}위 · ${standing.gb == '0' ? '선두권' : '${standing.gb}G차'}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(team?.name ?? myTeamId!, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          Text(
+            team?.name ?? myTeamId!,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 4),
           Text(
             todayGame == null && nextGame == null
                 ? '다음 경기 정보가 아직 없습니다.'
                 : todayGame != null
-                    ? '${todayGame!.startTime} · ${todayGame!.stadium} · ${opponent?.name ?? ''}전'
-                    : '다음 경기 ${nextGame!.time} · ${nextGame.stadium} · ${opponent?.name ?? ''}전',
-            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                ? '${todayGame!.startTime} · ${todayGame!.stadium} · ${opponent?.name ?? ''}전'
+                : '다음 경기 ${nextGame!.time} · ${nextGame.stadium} · ${opponent?.name ?? ''}전',
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -680,7 +869,9 @@ class _MyTeamBriefCard extends StatelessWidget {
               Expanded(
                 child: _metricColumn(
                   '현재 순위',
-                  standing == null ? '집계 중' : '${standing.rank}위 (${standing.wins}-${standing.losses})',
+                  standing == null
+                      ? '집계 중'
+                      : '${standing.rank}위 (${standing.wins}-${standing.losses})',
                 ),
               ),
               Expanded(
@@ -689,8 +880,8 @@ class _MyTeamBriefCard extends StatelessWidget {
                   todayGame != null
                       ? todayGame!.inning
                       : nextGame == null
-                          ? '-'
-                          : '${nextGame.time} ${opponent?.shortName ?? ''}전',
+                      ? '-'
+                      : '${nextGame.time} ${opponent?.shortName ?? ''}전',
                 ),
               ),
             ],
@@ -706,7 +897,8 @@ class _MyTeamBriefCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final summary in brief!.recentSummaries) _recentGameChip(summary),
+                for (final summary in brief!.recentSummaries)
+                  _recentGameChip(summary),
               ],
             ),
           ],
@@ -717,7 +909,10 @@ class _MyTeamBriefCard extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: () {
                     if (todayGame != null) {
-                      context.push('/game/${todayGame!.gameId}', extra: todayGame);
+                      context.push(
+                        '/game/${todayGame!.gameId}',
+                        extra: todayGame,
+                      );
                     } else {
                       context.go('/schedule');
                     }
@@ -743,9 +938,15 @@ class _MyTeamBriefCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+        ),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
       ],
     );
   }
@@ -777,7 +978,11 @@ class _MyTeamBriefCard extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               summary.result,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -785,8 +990,20 @@ class _MyTeamBriefCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(summary.opponentName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-              Text(summary.score, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text(
+                summary.opponentName,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                summary.score,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ],
           ),
         ],
@@ -806,11 +1023,23 @@ class _TodayBaseballCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('오늘의 야구', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const Text(
+            '오늘의 야구',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 10),
-          Text(brief.headline, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+          Text(
+            brief.headline,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 6),
-          Text(brief.detail, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          Text(
+            brief.detail,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
           if (brief.spotlight != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -831,7 +1060,10 @@ class _TodayBaseballCard extends StatelessWidget {
                           children: [
                             const Text(
                               '주목 경기',
-                              style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.textDisabled,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             _gameStatusChip(brief.spotlight!),
@@ -840,23 +1072,35 @@ class _TodayBaseballCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           '${brief.spotlight!.away.shortName} vs ${brief.spotlight!.home.shortName}',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '${brief.spotlight!.inning} · ${brief.spotlight!.stadium}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${brief.spotlight!.away.score} : ${brief.spotlight!.home.score}',
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   OutlinedButton(
-                    onPressed: () => context.push('/game/${brief.spotlight!.gameId}', extra: brief.spotlight),
+                    onPressed: () => context.push(
+                      '/game/${brief.spotlight!.gameId}',
+                      extra: brief.spotlight,
+                    ),
                     child: const Text('바로 보기'),
                   ),
                 ],
@@ -906,9 +1150,15 @@ class _TodayBaseballCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textDisabled)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -934,7 +1184,10 @@ class _QuickContentSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('빠른 콘텐츠', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const Text(
+            '빠른 콘텐츠',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 12),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -958,7 +1211,9 @@ class _QuickContentSection extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.cardSub,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: _quickItemAccent(item).withValues(alpha: 0.32)),
+                        border: Border.all(
+                          color: _quickItemAccent(item).withValues(alpha: 0.32),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -969,7 +1224,9 @@ class _QuickContentSection extends StatelessWidget {
                                 width: 28,
                                 height: 28,
                                 decoration: BoxDecoration(
-                                  color: _quickItemAccent(item).withValues(alpha: 0.14),
+                                  color: _quickItemAccent(
+                                    item,
+                                  ).withValues(alpha: 0.14),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 alignment: Alignment.center,
@@ -981,9 +1238,14 @@ class _QuickContentSection extends StatelessWidget {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 5,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: _quickItemAccent(item).withValues(alpha: 0.14),
+                                    color: _quickItemAccent(
+                                      item,
+                                    ).withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: Text(
@@ -1001,13 +1263,24 @@ class _QuickContentSection extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                          Text(
+                            item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           Text(
                             item.subtitle,
                             maxLines: isCompact ? 2 : 3,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                           const Spacer(),
                           Row(
@@ -1021,7 +1294,10 @@ class _QuickContentSection extends StatelessWidget {
                                 ),
                               ),
                               const Spacer(),
-                              const Icon(Icons.chevron_right_rounded, color: AppColors.textDisabled),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppColors.textDisabled,
+                              ),
                             ],
                           ),
                         ],

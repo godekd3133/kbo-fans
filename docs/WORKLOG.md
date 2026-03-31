@@ -50,6 +50,23 @@
 
 ---
 
+## 2026-03-31: 원격 푸시 경로 연결
+
+### 완료
+- [x] 앱에 Firebase 초기화 및 FCM 토큰/토픽 동기화 서비스 추가
+- [x] 마이팀 변경 시 푸시 토픽 재구독 및 `/api/push/register` 재등록 연결
+- [x] 설정 화면 알림 토글을 SharedPreferences에 저장하고 푸시 구독과 연동
+- [x] Android 13+ `POST_NOTIFICATIONS` 권한 선언 추가
+- [x] 백엔드 `/api/push/test` 테스트 발송 endpoint 추가
+- [x] 백엔드 Firebase Admin 서비스 계정 경로/프로젝트 ID 설정 추가
+- [x] 진단 화면에 푸시 초기화/토픽 상태 표시 추가
+
+### 비고
+- 실제 원격 푸시 수신까지는 앱의 Firebase 설정 파일(`GoogleService-Info.plist`, `google-services.json`)과 백엔드 서비스 계정 JSON이 필요
+- 현재 코드 경로는 연결됐지만, 위 설정 파일이 없으면 런타임에서 초기화가 skip 될 수 있음
+
+---
+
 ## 2026-03-30: 웹 하이라이트 재생 시 스크롤 잠김 수정
 
 ### 완료
