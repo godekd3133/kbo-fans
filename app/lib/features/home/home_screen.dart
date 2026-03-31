@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1118,12 +1119,26 @@ class _TodayBaseballCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '${brief.spotlight!.away.shortName} vs ${brief.spotlight!.home.shortName}',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    children: [
+                      _teamMark(
+                        brief.spotlight!.away.teamId,
+                        brief.spotlight!.away.shortName,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'vs',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textDisabled,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _teamMark(
+                        brief.spotlight!.home.teamId,
+                        brief.spotlight!.home.shortName,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1221,6 +1236,50 @@ class _TodayBaseballCard extends StatelessWidget {
       game.status,
       fontSize: 10,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    );
+  }
+
+  Widget _teamMark(String teamId, String shortName) {
+    final team = KboTeams.byId(teamId);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CachedNetworkImage(
+          imageUrl: team?.logoUrl ?? '',
+          width: 20,
+          height: 20,
+          placeholder: (_, _) => Container(
+            width: 20,
+            height: 20,
+            decoration: const BoxDecoration(
+              color: AppColors.card,
+              shape: BoxShape.circle,
+            ),
+          ),
+          errorWidget: (_, _, _) => Container(
+            width: 20,
+            height: 20,
+            decoration: const BoxDecoration(
+              color: AppColors.card,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              shortName.substring(0, 1),
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          shortName,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ],
     );
   }
 }

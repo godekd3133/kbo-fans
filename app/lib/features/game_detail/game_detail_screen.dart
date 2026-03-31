@@ -65,137 +65,146 @@ class _GameDetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isLive = game.status == GameStatus.live;
+    const tabBar = TabBar(
+      isScrollable: true,
+      indicatorColor: AppColors.textPrimary,
+      indicatorWeight: 2,
+      labelColor: AppColors.textPrimary,
+      labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+      unselectedLabelColor: AppColors.textDisabled,
+      unselectedLabelStyle: TextStyle(fontSize: 14),
+      tabs: [
+        Tab(text: '스코어'),
+        Tab(text: '문자중계'),
+        Tab(text: '박스스코어'),
+        Tab(text: '라인업'),
+      ],
+    );
 
     return DefaultTabController(
       length: 4,
       child: Scaffold(
         body: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, size: 24),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    Expanded(
-                      child: Text(
-                        '${game.stadium}${game.crowd != null ? " · ${_formatNumber(game.crowd!)}명" : ""}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
+          child: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) => [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, size: 24),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      Expanded(
+                        child: Text(
+                          '${game.stadium}${game.crowd != null ? " · ${_formatNumber(game.crowd!)}명" : ""}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
+                      const SizedBox(width: 48),
+                    ],
+                  ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _teamSection(
-                        game.away.teamId,
-                        game.away.shortName,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Column(
-                      children: [
-                        Text(
-                          '${game.away.score} : ${game.home.score}',
-                          style: const TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 4,
-                          ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _teamSection(
+                          game.away.teamId,
+                          game.away.shortName,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          secondaryTextForGameStatus(
-                            game.status,
-                            inning: game.inning,
-                            startTime: game.startTime,
-                          ),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isLive
-                                ? AppColors.live
-                                : AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _teamSection(
-                        game.home.teamId,
-                        game.home.shortName,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 16),
+                      Column(
+                        children: [
+                          Text(
+                            '${game.away.score} : ${game.home.score}',
+                            style: const TextStyle(
+                              fontSize: 36,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 4,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            secondaryTextForGameStatus(
+                              game.status,
+                              inning: game.inning,
+                              startTime: game.startTime,
+                            ),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isLive
+                                  ? AppColors.live
+                                  : AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _teamSection(
+                          game.home.teamId,
+                          game.home.shortName,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               if (game.ticketInfo != null)
-                Padding(
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _TicketInfoCard(game: game),
+                  ),
+                ),
+              SliverToBoxAdapter(
+                child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: _TicketInfoCard(game: game),
+                  child: _HighlightSection(game: game, gameId: gameId),
                 ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: _HighlightSection(game: game, gameId: gameId),
               ),
-              const TabBar(
-                isScrollable: true,
-                indicatorColor: AppColors.textPrimary,
-                indicatorWeight: 2,
-                labelColor: AppColors.textPrimary,
-                labelStyle: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                unselectedLabelColor: AppColors.textDisabled,
-                unselectedLabelStyle: TextStyle(fontSize: 14),
-                tabs: [
-                  Tab(text: '스코어'),
-                  Tab(text: '문자중계'),
-                  Tab(text: '박스스코어'),
-                  Tab(text: '라인업'),
-                ],
-              ),
-              const Divider(height: 1, color: AppColors.divider),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    ScoreTab(gameId: gameId, game: game),
-                    RelayTab(gameId: gameId, gameStatus: game.status),
-                    BoxscoreTab(
-                      gameId: gameId,
-                      awayName: game.away.shortName,
-                      homeName: game.home.shortName,
-                      awayTeamId: game.away.teamId,
-                      homeTeamId: game.home.teamId,
-                    ),
-                    LineupTab(
-                      gameId: gameId,
-                      awayName: game.away.shortName,
-                      homeName: game.home.shortName,
-                      awayTeamId: game.away.teamId,
-                      homeTeamId: game.home.teamId,
-                    ),
-                  ],
-                ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _TabBarHeaderDelegate(tabBar),
               ),
             ],
+            body: TabBarView(
+              children: [
+                ScoreTab(gameId: gameId, game: game),
+                RelayTab(gameId: gameId, gameStatus: game.status),
+                BoxscoreTab(
+                  gameId: gameId,
+                  awayName: game.away.shortName,
+                  homeName: game.home.shortName,
+                  awayTeamId: game.away.teamId,
+                  homeTeamId: game.home.teamId,
+                ),
+                LineupTab(
+                  gameId: gameId,
+                  awayName: game.away.shortName,
+                  homeName: game.home.shortName,
+                  awayTeamId: game.away.teamId,
+                  homeTeamId: game.home.teamId,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -513,9 +522,10 @@ class _HighlightCardState extends State<_HighlightCard> {
                 const SizedBox(height: 12),
                 if (videos.isNotEmpty)
                   SizedBox(
-                    height: 220,
+                    height: _videoListHeight(context),
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
+                      physics: const ClampingScrollPhysics(),
                       itemCount: videos.length,
                       separatorBuilder: (_, _) => const SizedBox(width: 12),
                       itemBuilder: (context, index) =>
@@ -552,25 +562,25 @@ class _HighlightCardState extends State<_HighlightCard> {
     final isPlayable = video.videoId.isNotEmpty;
     return SizedBox(
       width: 260,
-      child: GestureDetector(
-        onTap: isPlayable
-            ? () => _playInline(video.videoId)
-            : () => _openUrl(video.videoUrl),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.cardSub,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: _playingVideoId == video.videoId
-                  ? AppColors.live
-                  : AppColors.divider,
-            ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _playingVideoId == video.videoId
+                ? AppColors.live
+                : AppColors.divider,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              AspectRatio(
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: isPlayable
+                  ? () => _playInline(video.videoId)
+                  : () => _openUrl(video.videoUrl),
+              child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Stack(
                   fit: StackFit.expand,
@@ -606,55 +616,53 @@ class _HighlightCardState extends State<_HighlightCard> {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      video.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    video.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: isPlayable
+                              ? () => _playInline(video.videoId)
+                              : () => _openUrl(video.videoUrl),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.live,
+                            foregroundColor: AppColors.textPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          child: Text(
+                            _playingVideoId == video.videoId ? '재생 중' : '바로 재생',
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: isPlayable
-                                ? () => _playInline(video.videoId)
-                                : () => _openUrl(video.videoUrl),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.live,
-                              foregroundColor: AppColors.textPrimary,
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                            ),
-                            child: Text(
-                              _playingVideoId == video.videoId
-                                  ? '재생 중'
-                                  : '바로 재생',
-                            ),
-                          ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _openUrl(video.videoUrl),
+                        icon: const Icon(
+                          Icons.open_in_new_rounded,
+                          color: AppColors.textSecondary,
                         ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: () => _openUrl(video.videoUrl),
-                          icon: const Icon(
-                            Icons.open_in_new_rounded,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -770,6 +778,17 @@ class _HighlightCardState extends State<_HighlightCard> {
       ),
     );
   }
+
+  double _videoListHeight(BuildContext context) {
+    final height = MediaQuery.of(context).size.height;
+    if (height < 760) {
+      return 196;
+    }
+    if (height < 860) {
+      return 208;
+    }
+    return 220;
+  }
 }
 
 class _HighlightSection extends ConsumerWidget {
@@ -825,5 +844,40 @@ class _HighlightSection extends ConsumerWidget {
     }
 
     return _HighlightCard(game: mergedGame, gameId: gameId);
+  }
+}
+
+class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+
+  const _TabBarHeaderDelegate(this.tabBar);
+
+  @override
+  double get minExtent => tabBar.preferredSize.height + 1;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height + 1;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(color: AppColors.background),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          tabBar,
+          const Divider(height: 1, color: AppColors.divider),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _TabBarHeaderDelegate oldDelegate) {
+    return oldDelegate.tabBar != tabBar;
   }
 }
