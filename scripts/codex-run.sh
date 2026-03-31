@@ -16,7 +16,7 @@ Usage:
   ./scripts/codex-run.sh doctor
 
 Commands:
-  ios      Run the Flutter app on iOS Simulator
+  ios      Run the Flutter app on a connected iOS device (fallback: Simulator)
   android  Run the Flutter app on Android device/emulator
   web      Run the Flutter app in Chrome
   backend  Run the FastAPI backend with a local virtualenv
@@ -37,6 +37,56 @@ has_ios_simulator() {
   fi
 
   xcrun simctl list devices available 2>/dev/null | grep -q "("
+}
+
+pick_ios_device() {
+  local flutter
+  flutter="$(flutter_cmd)"
+
+  if [[ -z "$flutter" ]]; then
+    echo ""
+    return
+  fi
+
+  (
+    cd "$APP_DIR"
+    eval "$flutter devices --machine" 2>/dev/null
+  ) | python3 - <<'PY'
+import json
+import sys
+
+raw = sys.stdin.read().strip()
+if not raw:
+    print("")
+    raise SystemExit(0)
+
+try:
+    devices = json.loads(raw)
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+ios_devices = [d for d in devices if d.get("targetPlatform") == "ios"]
+physical = [
+    d for d in ios_devices
+    if d.get("sdk", "").startswith("iOS")
+    and d.get("emulator") is False
+    and d.get("id") not in {"ios", "iphone"}
+]
+if physical:
+    print(physical[0].get("id", ""))
+    raise SystemExit(0)
+
+simulators = [
+    d for d in ios_devices
+    if d.get("id") in {"ios", "iphone"} or d.get("emulator") is True
+]
+if simulators:
+    print(simulators[0].get("id", "ios"))
+    raise SystemExit(0)
+
+print("")
+PY
 }
 
 has_android_emulator() {
@@ -78,15 +128,23 @@ run_flutter() {
 }
 
 run_ios() {
+  local device_id
+  device_id="$(pick_ios_device)"
+
+  if [[ -n "$device_id" && "$device_id" != "ios" && "$device_id" != "iphone" ]]; then
+    run_flutter run -d "$device_id"
+    return
+  fi
+
   if ! has_ios_simulator; then
     cat >&2 <<'EOF'
-No available iOS Simulator runtime was found.
+No connected iOS device or available iOS Simulator runtime was found.
 
 Next step:
-1. Open Xcode
-2. Go to Settings > Platforms
-3. Download an iOS Simulator runtime
-4. Open Simulator.app once, then rerun:
+1. Connect and unlock an iPhone/iPad with Developer Mode enabled
+2. Or open Xcode > Settings > Platforms and install an iOS Simulator runtime
+3. If using a simulator, open Simulator.app once
+4. Rerun:
    ./scripts/codex-run.sh ios
 EOF
     exit 1
