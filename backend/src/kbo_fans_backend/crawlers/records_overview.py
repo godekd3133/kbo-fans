@@ -33,8 +33,19 @@ class RecordsOverviewCrawler(BaseCrawler):
                 "era": era_leaders,
             },
             "featured": {
-                "todayPlayer": self._build_featured_card("오늘의 플레이어", avg_leaders, season),
-                "monthPlayer": self._build_featured_card("이달의 플레이어", ops_leaders, season),
+                "todayPlayer": self._build_today_player(
+                    season=season,
+                    leader_groups=[avg_leaders, hr_leaders, ops_leaders, era_leaders],
+                ),
+                "monthPlayer": self._build_month_player(
+                    season=season,
+                    leader_groups={
+                        "avg": avg_leaders,
+                        "hr": hr_leaders,
+                        "ops": ops_leaders,
+                        "era": era_leaders,
+                    },
+                ),
             },
         }
 
@@ -95,29 +106,101 @@ class RecordsOverviewCrawler(BaseCrawler):
                 return labels.index(metric_key.upper())
         return 3
 
-    def _build_featured_card(
-        self, label: str, leaders: List[Dict[str, Any]], season: int
+    def _build_today_player(
+        self, season: int, leader_groups: List[List[Dict[str, Any]]]
     ) -> Dict[str, Any]:
-        if not leaders:
-            return {"label": label}
-        leader = leaders[0]
+        details = self._collect_candidate_details(season, leader_groups)
+        if not details:
+            return {"label": "오늘의 플레이어"}
+
+        latest_date = max(
+            (self._date_key(detail.get("recentGames", [{}])[0].get("date", "")) for detail in details if detail.get("recentGames")),
+            default=(0, 0),
+        )
+        today_candidates = [
+            detail
+            for detail in details
+            if detail.get("recentGames")
+            and self._date_key(detail["recentGames"][0].get("date", "")) == latest_date
+        ]
+        best = max(
+            today_candidates or details,
+            key=lambda detail: detail.get("recentGames", [{}])[0].get("score", 0),
+        )
+        recent = best.get("recentGames", [])
+        return {
+            "label": "오늘의 플레이어",
+            "playerId": best.get("id"),
+            "playerType": best.get("playerType"),
+            "name": best.get("name"),
+            "teamId": best.get("teamId"),
+            "headline": best.get("headlineStat"),
+            "summary": recent[0]["summary"] if recent else best.get("secondaryStat"),
+            "imageUrl": best.get("imageUrl"),
+        }
+
+    def _build_month_player(
+        self, season: int, leader_groups: Dict[str, List[Dict[str, Any]]]
+    ) -> Dict[str, Any]:
+        weights = {"avg": 3, "hr": 2, "ops": 3, "era": 3}
+        scores: Dict[Tuple[str, str], int] = {}
+        leader_lookup: Dict[Tuple[str, str], Dict[str, Any]] = {}
+        for metric, leaders in leader_groups.items():
+            weight = weights.get(metric, 1)
+            for leader in leaders:
+                key = (leader["playerId"], leader["playerType"])
+                scores[key] = scores.get(key, 0) + (6 - leader["rank"]) * weight
+                leader_lookup[key] = leader
+
+        if not scores:
+            return {"label": "이달의 플레이어"}
+
+        best_key = max(scores, key=scores.get)
+        leader = leader_lookup[best_key]
         detail = self.player_stats_crawler.get_player_detail(
             player_id=leader["playerId"],
             player_type=leader["playerType"],
             season=season,
             include_recent=True,
         )
-        recent = detail.get("recentGames", [])
         return {
-            "label": label,
+            "label": "이달의 플레이어",
             "playerId": leader["playerId"],
             "playerType": leader["playerType"],
             "name": detail.get("name"),
             "teamId": detail.get("teamId"),
             "headline": detail.get("headlineStat"),
-            "summary": recent[0]["summary"] if recent else detail.get("secondaryStat"),
+            "summary": detail.get("secondaryStat"),
             "imageUrl": detail.get("imageUrl"),
         }
+
+    def _collect_candidate_details(
+        self, season: int, leader_groups: List[List[Dict[str, Any]]]
+    ) -> List[Dict[str, Any]]:
+        seen: set[Tuple[str, str]] = set()
+        details: List[Dict[str, Any]] = []
+        for leaders in leader_groups:
+            for leader in leaders:
+                key = (leader["playerId"], leader["playerType"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                details.append(
+                    self.player_stats_crawler.get_player_detail(
+                        player_id=leader["playerId"],
+                        player_type=leader["playerType"],
+                        season=season,
+                        include_recent=True,
+                    )
+                )
+        return details
+
+    @staticmethod
+    def _date_key(value: str) -> Tuple[int, int]:
+        match = re.search(r"(\d{2})\.(\d{2})", value)
+        if not match:
+            return (0, 0)
+        return (int(match.group(1)), int(match.group(2)))
 
     @staticmethod
     def _extract_hidden(html: str, name: str) -> str:

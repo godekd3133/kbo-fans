@@ -106,7 +106,9 @@ class PlayerStatsCrawler(BaseCrawler):
         season_stats = self._parse_season_stats(total_html, season)
         current_season = self._extract_current_season(html)
         recent_games = self._parse_recent_games(
-            html, include_recent=include_recent and season == current_season
+            html,
+            include_recent=include_recent and season == current_season,
+            player_type=player_type,
         )
 
         profile["season"] = season
@@ -289,7 +291,9 @@ class PlayerStatsCrawler(BaseCrawler):
         match = re.search(r"(\d{4})\s*시즌", html)
         return int(match.group(1)) if match else 0
 
-    def _parse_recent_games(self, html: str, include_recent: bool) -> List[Dict[str, str]]:
+    def _parse_recent_games(
+        self, html: str, include_recent: bool, player_type: str
+    ) -> List[Dict[str, Any]]:
         if not include_recent:
             return []
 
@@ -301,20 +305,72 @@ class PlayerStatsCrawler(BaseCrawler):
         if not match:
             return []
 
-        games: List[Dict[str, str]] = []
+        games: List[Dict[str, Any]] = []
         rows = re.findall(r"<tr>(.*?)</tr>", match.group(1), re.S)
         for row in rows[:5]:
             cells = [strip_tags(cell) for cell in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
             if len(cells) < 3:
                 continue
+            if player_type == "pitcher":
+                summary = "결과 %s · IP %s · SO %s · ER %s" % (
+                    cells[2] if len(cells) > 2 else "-",
+                    cells[5] if len(cells) > 5 else "-",
+                    cells[10] if len(cells) > 10 else "-",
+                    cells[12] if len(cells) > 12 else "-",
+                )
+                score = self._score_pitcher_recent_game(cells)
+            else:
+                summary = "AVG %s · H %s · HR %s · RBI %s" % (
+                    cells[2] if len(cells) > 2 else "-",
+                    cells[6] if len(cells) > 6 else "-",
+                    cells[9] if len(cells) > 9 else "-",
+                    cells[10] if len(cells) > 10 else "-",
+                )
+                score = self._score_hitter_recent_game(cells)
+
             games.append(
                 {
                     "date": cells[0],
                     "opponent": cells[1],
-                    "summary": " / ".join(cell for cell in cells[2:6] if cell),
+                    "summary": summary,
+                    "score": score,
                 }
             )
         return games
+
+    def _score_hitter_recent_game(self, cells: List[str]) -> float:
+        avg = self._parse_float(cells[2] if len(cells) > 2 else None) or 0.0
+        hits = self._parse_int(cells[6] if len(cells) > 6 else None) or 0
+        hr = self._parse_int(cells[9] if len(cells) > 9 else None) or 0
+        rbi = self._parse_int(cells[10] if len(cells) > 10 else None) or 0
+        return hits * 3 + hr * 6 + rbi * 2 + avg
+
+    def _score_pitcher_recent_game(self, cells: List[str]) -> float:
+        result = cells[2] if len(cells) > 2 else ""
+        ip = cells[5] if len(cells) > 5 else "0"
+        strikeouts = self._parse_int(cells[10] if len(cells) > 10 else None) or 0
+        earned_runs = self._parse_int(cells[12] if len(cells) > 12 else None) or 0
+        score = self._innings_to_outs(ip) * 0.6 + strikeouts * 1.5 - earned_runs * 3
+        if "승" in result or result.upper() == "W":
+            score += 3
+        if "세" in result or result.upper() == "S":
+            score += 2
+        if "홀" in result or result.upper() == "H":
+            score += 1
+        return score
+
+    @staticmethod
+    def _innings_to_outs(value: str) -> int:
+        try:
+            if " " in value:
+                whole, frac = value.split(" ", 1)
+                return int(whole) * 3 + (2 if "2/3" in frac else 1 if "1/3" in frac else 0)
+            if "." in value:
+                whole, frac = value.split(".", 1)
+                return int(whole) * 3 + int(frac)
+            return int(value) * 3
+        except Exception:
+            return 0
 
     @staticmethod
     def _build_season_stat_list(player_type: str, stats: Dict[str, str]) -> List[str]:
