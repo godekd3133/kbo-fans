@@ -37,7 +37,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
 
   @override
   Widget build(BuildContext context) {
-    final lineupAsync = ref.watch(lineupProvider(_lineupKey));
+    final gameLineupAsync = ref.watch(gameLineupProvider(widget.gameId));
     final pitchersAsync = ref.watch(pitchersProvider(_lineupKey));
 
     return LayoutBuilder(
@@ -56,7 +56,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                 children: [
                   _buildTeamToggle(),
                   const SizedBox(height: 16),
-                  lineupAsync.when(
+                  gameLineupAsync.when(
                     loading: () => const Center(
                       child: Padding(
                         padding: EdgeInsets.all(28),
@@ -67,12 +67,15 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                       '라인업 데이터 로딩 실패: $error',
                       style: const TextStyle(color: AppColors.textDisabled),
                     ),
-                    data: (lineup) => pitchersAsync.when(
-                      loading: () => _buildContent(lineup, const []),
-                      error: (_, _) => _buildContent(lineup, const []),
+                    data: (gameLineup) {
+                      final teamLineup = _showAway ? gameLineup.away : gameLineup.home;
+                      return pitchersAsync.when(
+                      loading: () => _buildContent(teamLineup, const []),
+                      error: (_, _) => _buildContent(teamLineup, const []),
                       data: (pitchers) =>
-                          _buildContent(lineup, pitchers.cast<PitcherRecord>()),
-                    ),
+                          _buildContent(teamLineup, pitchers.cast<PitcherRecord>()),
+                    );
+                    },
                   ),
                 ],
               ),
@@ -109,7 +112,8 @@ class _LineupTabState extends ConsumerState<LineupTab> {
     );
   }
 
-  Widget _buildContent(List<LineupEntry> lineup, List<PitcherRecord> pitchers) {
+  Widget _buildContent(TeamLineupData teamLineup, List<PitcherRecord> pitchers) {
+    final lineup = teamLineup.lineup;
     if (lineup.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -130,6 +134,9 @@ class _LineupTabState extends ConsumerState<LineupTab> {
         .cast<LineupEntry?>()
         .firstWhere((entry) => entry != null, orElse: () => null);
     final starterStats = pitchers.isNotEmpty ? pitchers.first : null;
+    final starterName = (teamLineup.starterName != null && teamLineup.starterName!.isNotEmpty)
+        ? teamLineup.starterName
+        : starter?.name;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,7 +218,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                   ),
                 ],
               ),
-              if (starter != null) ...[
+              if (starterName != null) ...[
                 const SizedBox(height: 16),
                 Container(
                   width: double.infinity,
@@ -253,7 +260,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              starter.name,
+                              starterName,
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
@@ -292,6 +299,30 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                             ),
                           ],
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.background.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '선발투수',
+                        style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        '선발투수 미발표',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),

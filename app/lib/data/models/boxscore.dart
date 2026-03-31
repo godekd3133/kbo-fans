@@ -79,10 +79,12 @@ class LineupEntry {
 class TeamLineupData {
   final String teamId;
   final List<LineupEntry> lineup;
+  final String? starterName;
 
   const TeamLineupData({
     required this.teamId,
     required this.lineup,
+    this.starterName,
   });
 }
 

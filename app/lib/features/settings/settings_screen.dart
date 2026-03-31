@@ -79,7 +79,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
             // 마이팀
             const Text('마이팀', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             GestureDetector(
               onTap: () => context.go('/onboarding'),
               child: Container(
@@ -119,11 +119,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 height: 1.4,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 알림 설정
             const Text('마이팀 경기 알림', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
@@ -141,7 +141,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(
@@ -181,10 +181,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             const Text('리그 전체 알림', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Container(
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(
@@ -204,11 +204,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 앱 정보
             const Text('앱 정보 및 지원', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Container(
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(

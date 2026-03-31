@@ -1,0 +1,132 @@
+{
+  "savedAt": "2026-03-31T08:19:32.569345+00:00",
+  "payload": {
+    "gameId": "20260331OBSS0",
+    "away": {
+      "teamId": "OB",
+      "lineup": [
+        {
+          "order": 1,
+          "position": "SS",
+          "positionKo": "유격수",
+          "name": "박찬호"
+        },
+        {
+          "order": 2,
+          "position": "CF",
+          "positionKo": "중견수",
+          "name": "정수빈"
+        },
+        {
+          "order": 3,
+          "position": "DH",
+          "positionKo": "지명타자",
+          "name": "강승호"
+        },
+        {
+          "order": 4,
+          "position": "C",
+          "positionKo": "포수",
+          "name": "양의지"
+        },
+        {
+          "order": 5,
+          "position": "2B",
+          "positionKo": "2루수",
+          "name": "박준순"
+        },
+        {
+          "order": 6,
+          "position": "3B",
+          "positionKo": "3루수",
+          "name": "안재석"
+        },
+        {
+          "order": 7,
+          "position": "1B",
+          "positionKo": "1루수",
+          "name": "양석환"
+        },
+        {
+          "order": 8,
+          "position": "LF",
+          "positionKo": "좌익수",
+          "name": "김민석"
+        },
+        {
+          "order": 9,
+          "position": "RF",
+          "positionKo": "우익수",
+          "name": "박지훈"
+        }
+      ],
+      "starter": {
+        "name": null,
+        "hand": null
+      }
+    },
+    "home": {
+      "teamId": "SS",
+      "lineup": [
+        {
+          "order": 1,
+          "position": "SS",
+          "positionKo": "유격수",
+          "name": "이재현"
+        },
+        {
+          "order": 2,
+          "position": "RF",
+          "positionKo": "우익수",
+          "name": "김성윤"
+        },
+        {
+          "order": 3,
+          "position": "LF",
+          "positionKo": "좌익수",
+          "name": "구자욱"
+        },
+        {
+          "order": 4,
+          "position": "1B",
+          "positionKo": "1루수",
+          "name": "디아즈"
+        },
+        {
+          "order": 5,
+          "position": "DH",
+          "positionKo": "지명타자",
+          "name": "최형우"
+        },
+        {
+          "order": 6,
+          "position": "3B",
+          "positionKo": "3루수",
+          "name": "김영웅"
+        },
+        {
+          "order": 7,
+          "position": "2B",
+          "positionKo": "2루수",
+          "name": "류지혁"
+        },
+        {
+          "order": 8,
+          "position": "C",
+          "positionKo": "포수",
+          "name": "강민호"
+        },
+        {
+          "order": 9,
+          "position": "CF",
+          "positionKo": "중견수",
+          "name": "김지찬"
+        }
+      ],
+      "starter": {
+        "name": null,
+        "hand": null
+      }
+    }
+  }
+}

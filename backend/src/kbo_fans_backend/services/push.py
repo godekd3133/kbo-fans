@@ -37,6 +37,40 @@ class PushService:
         response = messaging.send(message)
         return {"sent": True, "target": "token", "messageId": response}
 
+    def send_lineup_opened(
+        self,
+        *,
+        game_id: str,
+        away_team_id: str,
+        away_team_name: str,
+        home_team_id: str,
+        home_team_name: str,
+    ) -> dict[str, Any]:
+        messaging = self._get_messaging()
+        title = "선발 라인업 공개"
+        body = f"{away_team_name} vs {home_team_name} 라인업이 공개됐습니다."
+
+        targets = [
+            f"lineup_opened_{away_team_id}",
+            f"lineup_opened_{home_team_id}",
+            "lineup_opened_ALL",
+        ]
+        sent = []
+        for topic in targets:
+            message = messaging.Message(
+                notification=messaging.Notification(title=title, body=body),
+                data={
+                    "type": "lineup_opened",
+                    "gameId": game_id,
+                    "awayTeamId": away_team_id,
+                    "homeTeamId": home_team_id,
+                },
+                topic=topic,
+            )
+            message_id = messaging.send(message)
+            sent.append({"topic": topic, "messageId": message_id})
+        return {"sent": True, "messages": sent}
+
     def _build_topics(self, payload: PushRegisterRequest) -> list[str]:
         team_key = payload.myTeam or "ALL"
         topics: list[str] = []
@@ -47,6 +81,7 @@ class PushService:
             "homerun": payload.notifications.homerun,
             "reversal": payload.notifications.reversal,
             "game_end": payload.notifications.gameEnd,
+            "lineup_opened": payload.notifications.lineupOpened,
         }
 
         for topic_name, enabled in topic_flags.items():

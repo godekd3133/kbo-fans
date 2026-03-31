@@ -530,6 +530,8 @@ class _HighlightCardState extends State<_HighlightCard> {
 
   Widget _videoCard(HighlightVideo video) {
     final isPlayable = video.videoId.isNotEmpty;
+    final isSearchFallback = video.source == 'youtube_search_fallback';
+    final cardTitle = isSearchFallback ? '유튜브에서 하이라이트 찾기' : video.title;
     final thumbnailUrl = video.thumbnailUrl.isNotEmpty
         ? video.thumbnailUrl
         : (video.videoId.isNotEmpty
@@ -595,56 +597,69 @@ class _HighlightCardState extends State<_HighlightCard> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minHeight: 104),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      video.title,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    cardTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
+                    ),
+                  ),
+                  if (isSearchFallback) ...[
+                    const SizedBox(height: 4),
+                    const Text(
+                      '앱 밖에서 유튜브 검색 결과를 엽니다.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 1.25,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: isPlayable
-                            ? () => _playInline(video.videoId)
-                            : () => _openUrl(video.videoUrl),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.live,
-                          foregroundColor: AppColors.textPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        child: Text(
-                          _playingVideoId == video.videoId ? '재생 중' : '바로 재생',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: () => _openUrl(video.videoUrl),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.textSecondary,
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 0),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                        label: const Text('열기'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
-                ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isPlayable
+                          ? () => _playInline(video.videoId)
+                          : () => _openUrl(video.videoUrl),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.live,
+                        foregroundColor: AppColors.textPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      child: Text(
+                        isSearchFallback
+                            ? '유튜브 검색 열기'
+                            : _playingVideoId == video.videoId
+                                ? '재생 중'
+                                : '바로 재생',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => _openUrl(video.videoUrl),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                      label: const Text('열기'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

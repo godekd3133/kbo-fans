@@ -79,6 +79,10 @@ class PushNotificationService {
   static const _prefsPrefix = 'push_notifications.';
   static const _subscribedTopicsKey = '${_prefsPrefix}subscribed_topics';
   static const _platform = 'flutter';
+  static const _debugLastInitStatusKey =
+      '${_prefsPrefix}debug_last_init_status';
+  static const _debugLastInitReasonKey =
+      '${_prefsPrefix}debug_last_init_reason';
 
   bool _initialized = false;
   String? _lastToken;
@@ -105,8 +109,14 @@ class PushNotificationService {
       });
 
       _initialized = true;
+      await _saveDebugInitState(status: 'ready', reason: null);
       await syncRegistration(myTeam: myTeam);
     } catch (error) {
+      final reason = error.toString();
+      await _saveDebugInitState(
+        status: AppConfig.instance.isLocal ? 'skipped' : 'failed',
+        reason: reason,
+      );
       if (AppConfig.instance.isLocal) {
         DevConsole.instance.info('Push init skipped (local): $error');
       } else {
@@ -199,6 +209,10 @@ class PushNotificationService {
     return {
       'initialized': _initialized,
       'tokenReady': (_lastToken ?? '').isNotEmpty,
+      'status':
+          prefs.getString(_debugLastInitStatusKey) ??
+          (_initialized ? 'ready' : 'idle'),
+      'reason': prefs.getString(_debugLastInitReasonKey),
       'topics': prefs.getStringList(_subscribedTopicsKey) ?? const <String>[],
       'settings': (await loadSettings()).toJson(),
     };
@@ -239,5 +253,18 @@ class PushNotificationService {
     DevConsole.instance.info(
       'Push foreground: $title ${body.isEmpty ? '' : '· $body'}',
     );
+  }
+
+  Future<void> _saveDebugInitState({
+    required String status,
+    required String? reason,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_debugLastInitStatusKey, status);
+    if (reason == null || reason.isEmpty) {
+      await prefs.remove(_debugLastInitReasonKey);
+    } else {
+      await prefs.setString(_debugLastInitReasonKey, reason);
+    }
   }
 }

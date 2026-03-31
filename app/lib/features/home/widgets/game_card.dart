@@ -132,28 +132,27 @@ class GameCard extends StatelessWidget {
       imageUrl: team?.logoUrl ?? '',
       width: size,
       height: size,
-      placeholder: (_, _) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          shape: BoxShape.circle,
-        ),
+      placeholder: (_, _) => _logoFallback(team?.shortName ?? teamId, size),
+      errorWidget: (_, _, _) => _logoFallback(team?.shortName ?? teamId, size),
+    );
+  }
+
+  Widget _logoFallback(String shortName, double size) {
+    final label = shortName.isEmpty ? '?' : shortName.substring(0, 1);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        shape: BoxShape.circle,
       ),
-      errorWidget: (_, _, _) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: Text(
-            team?.shortName ?? '',
-            style: TextStyle(
-              fontSize: size * 0.3,
-              color: AppColors.textSecondary,
-            ),
+      child: Center(
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: size * 0.34,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ),

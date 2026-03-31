@@ -63,7 +63,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Expanded(
                 child: standingsAsync.when(
                   loading: () => const Center(
@@ -99,7 +99,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     children: [
                       if (myTeamId != null)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                           child: _myTeamSummaryCard(standings, myTeamId),
                         ),
                       Padding(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
@@ -11,7 +12,8 @@ class ApiDiagnosticsScreen extends ConsumerStatefulWidget {
   const ApiDiagnosticsScreen({super.key});
 
   @override
-  ConsumerState<ApiDiagnosticsScreen> createState() => _ApiDiagnosticsScreenState();
+  ConsumerState<ApiDiagnosticsScreen> createState() =>
+      _ApiDiagnosticsScreenState();
 }
 
 class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
@@ -32,8 +34,15 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
 
     return Future.wait([
       _measure('health', () async => client.get('/health')),
-      _measure('scoreboard', () async => client.get('/scoreboard', queryParameters: {'date': today})),
-      _measure('schedule', () async => client.get('/schedule', queryParameters: {'month': yearMonth})),
+      _measure(
+        'scoreboard',
+        () async => client.get('/scoreboard', queryParameters: {'date': today}),
+      ),
+      _measure(
+        'schedule',
+        () async =>
+            client.get('/schedule', queryParameters: {'month': yearMonth}),
+      ),
     ]);
   }
 
@@ -112,15 +121,22 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                     return const SizedBox.shrink();
                   }
                   final data = snapshot.data!;
-                  final topics = (data['topics'] as List<dynamic>? ?? const []).join(', ');
+                  final topics = (data['topics'] as List<dynamic>? ?? const [])
+                      .join(', ');
+                  final status = data['status'] as String? ?? 'idle';
+                  final reason = data['reason'] as String?;
+                  final isLocalSkipped =
+                      AppConfig.instance.isLocal && status == 'skipped';
                   return _DiagnosticCard(
                     result: _DiagnosticResult(
                       key: 'push',
                       ok: data['initialized'] == true,
+                      muted: isLocalSkipped,
                       elapsedMs: 0,
                       detail:
-                          'initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
+                          '${_pushDetailPrefix(status)} initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
                           '${topics.isNotEmpty ? ' topics=$topics' : ''}',
+                      note: isLocalSkipped ? _pushReasonLabel(reason) : null,
                     ),
                   );
                 },
@@ -145,14 +161,18 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
 class _DiagnosticResult {
   final String key;
   final bool ok;
+  final bool muted;
   final double elapsedMs;
   final String detail;
+  final String? note;
 
   const _DiagnosticResult({
     required this.key,
     required this.ok,
+    this.muted = false,
     required this.elapsedMs,
     required this.detail,
+    this.note,
   });
 }
 
@@ -163,7 +183,11 @@ class _DiagnosticCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = result.ok ? AppColors.positive : AppColors.live;
+    final color = result.muted
+        ? AppColors.textSecondary
+        : result.ok
+        ? AppColors.positive
+        : AppColors.live;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -177,29 +201,75 @@ class _DiagnosticCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                result.ok ? Icons.check_circle_outline : Icons.error_outline,
+                result.muted
+                    ? Icons.pause_circle_outline
+                    : result.ok
+                    ? Icons.check_circle_outline
+                    : Icons.error_outline,
                 size: 18,
                 color: color,
               ),
               const SizedBox(width: 8),
               Text(
                 result.key,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const Spacer(),
               Text(
                 '${result.elapsedMs.toStringAsFixed(0)}ms',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             result.detail,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
           ),
+          if (result.note != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              result.note!,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textDisabled,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+String _pushDetailPrefix(String status) {
+  switch (status) {
+    case 'ready':
+      return 'ready';
+    case 'skipped':
+      return 'disabled';
+    case 'failed':
+      return 'failed';
+    default:
+      return 'idle';
+  }
+}
+
+String _pushReasonLabel(String? reason) {
+  if (reason == null || reason.isEmpty) {
+    return '로컬 환경에서 푸시 초기화를 건너뛰었습니다.';
+  }
+  if (reason.contains('FirebaseOptions')) {
+    return '로컬 Firebase 설정이 없어 푸시를 비활성 상태로 표시합니다.';
+  }
+  return '로컬 환경에서 푸시 초기화를 건너뛰었습니다.';
 }

@@ -11,6 +11,7 @@ class NotificationSettings(BaseModel):
     homerun: bool
     reversal: bool
     gameEnd: bool
+    lineupOpened: bool = True
     allGames: bool
 
 

@@ -347,7 +347,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             if (myGame != null)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: MyTeamGameCard(
                     game: myGame,
                     onTap: () =>
@@ -414,7 +414,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   return Column(
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                         child: _secondarySectionsEnabled
                             ? _MyTeamBriefCard(
                                 myTeamId: myTeamId,
@@ -427,12 +427,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                               ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                         child: _TodayBaseballCard(brief: todayBrief),
                       ),
                       if (_secondarySectionsEnabled && baseQuickItems.isNotEmpty)
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                           child: _QuickContentSection(items: baseQuickItems),
                         ),
                       if (!_secondarySectionsEnabled &&
@@ -447,7 +447,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             if (games.isEmpty || others.isNotEmpty)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
                   child: Text(
                     games.isEmpty
                         ? '오늘의 스코어보드'
@@ -505,7 +505,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
               sliver: SliverList.separated(
                 itemCount: others.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
