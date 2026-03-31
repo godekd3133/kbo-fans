@@ -6,26 +6,16 @@ name = "kbo_fans"
 script = ""
 
 [[actions]]
-name = "실행됨"
-icon = "run"
-command = '''
-./scripts/codex-run.sh ios
-./scripts/codex-run.sh android
-./scripts/codex-run.sh backend
-./scripts/codex-run.sh doctor
-'''
-
-[[actions]]
 name = "IOS"
 icon = "run"
 command = "./scripts/codex-run-ios.sh"
 
 [[actions]]
 name = "AOS"
-icon = "tool"
+icon = "run"
 command = "./scripts/codex-run-android.sh"
 
 [[actions]]
 name = "WEB"
-icon = "tool"
+icon = "run"
 command = "./scripts/codex-run-web.sh"

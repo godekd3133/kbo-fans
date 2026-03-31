@@ -39,6 +39,47 @@ has_ios_simulator() {
   xcrun simctl list devices available 2>/dev/null | grep -q "("
 }
 
+ios_destination_issue() {
+  local device_id="$1"
+
+  if [[ -z "$device_id" ]]; then
+    echo ""
+    return
+  fi
+
+  if ! command -v xcodebuild >/dev/null 2>&1; then
+    echo ""
+    return
+  fi
+
+  local output
+  output="$(
+    cd "$APP_DIR/ios" && xcodebuild -workspace Runner.xcworkspace -scheme Runner -showdestinations 2>&1 || true
+  )"
+
+  if [[ -z "$output" ]]; then
+    echo ""
+    return
+  fi
+
+  printf '%s\n' "$output" | python3 - "$device_id" <<'PY'
+import re
+import sys
+
+device_id = sys.argv[1]
+text = sys.stdin.read()
+for line in text.splitlines():
+    if device_id not in line:
+        continue
+    match = re.search(r"error:([^}]+)", line)
+    if match:
+        print(match.group(1).strip())
+        raise SystemExit(0)
+
+print("")
+PY
+}
+
 pick_ios_device() {
   local flutter
   flutter="$(flutter_cmd)"
@@ -210,10 +251,32 @@ run_flutter() {
 run_ios() {
   local device_id
   local device_name
+  local destination_issue
   device_id="$(pick_ios_device)"
   device_name="$(pick_ios_device_name)"
 
   if [[ -n "$device_id" && "$device_id" != "ios" && "$device_id" != "iphone" ]]; then
+    destination_issue="$(ios_destination_issue "$device_id")"
+    if [[ -n "$destination_issue" ]]; then
+      cat >&2 <<EOF
+Connected iOS device detected but Xcode cannot build for it yet.
+
+Device:
+  ${device_name:-$device_id} ($device_id)
+
+Reason:
+  $destination_issue
+
+Next step:
+1. Open Xcode
+2. Go to Settings > Components
+3. Install the required iOS platform/device support for the device OS version
+4. Keep the device unlocked and rerun:
+   ./scripts/codex-run.sh ios
+EOF
+      exit 1
+    fi
+
     echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
     run_flutter run -d "$device_id"
     return
