@@ -429,6 +429,7 @@ class _LineupCard extends StatelessWidget {
     final positionLabel = entry.positionKo.isNotEmpty
         ? entry.positionKo
         : entry.position;
+    final battingOrderLabel = '${entry.order}번 타자';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -471,10 +472,20 @@ class _LineupCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
+                Text(
+                  '$battingOrderLabel · $positionLabel',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
+                    _Pill(label: battingOrderLabel, color: accent),
                     _Pill(label: positionLabel, color: accent),
                     _Pill(
                       label: entry.position,
