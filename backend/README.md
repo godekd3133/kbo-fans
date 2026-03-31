@@ -43,3 +43,26 @@ uvicorn kbo_fans_backend.main:app --reload
 - Health endpoint is implemented
 - Product API routes are registered as stubs against the documented contract
 - Crawlers, scheduler, and push modules have dedicated boundaries but are not implemented yet
+
+## Push notifications
+
+Remote push requires Firebase configuration on both app and backend.
+
+- App:
+  - iOS `GoogleService-Info.plist`
+  - Android `google-services.json`
+- Backend:
+  - `FIREBASE_SERVICE_ACCOUNT_PATH`
+  - optional `FIREBASE_PROJECT_ID`
+
+Test send endpoint:
+
+```bash
+curl -X POST http://localhost:8000/api/push/test \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "title": "KBO Fans Test",
+    "body": "Push delivery test",
+    "topic": "game_start_LG"
+  }'
+```

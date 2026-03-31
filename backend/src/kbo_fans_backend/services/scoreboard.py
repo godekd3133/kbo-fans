@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import concurrent.futures
+import logging
 import re
+import time
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.main import MainCrawler
@@ -9,6 +11,8 @@ from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.crawlers.scoreboard import ScoreboardCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.utils.ttl_cache import TtlCache
+
+logger = logging.getLogger(__name__)
 
 
 class ScoreboardService:
@@ -30,28 +34,46 @@ class ScoreboardService:
         )
 
     def get_scoreboard(self, date: str) -> dict[str, Any]:
+        started_at = time.perf_counter()
         date = self._normalize_date(date)
         cached = self._scoreboard_cache.get(date)
         if cached is not None:
+            logger.info("scoreboard cache hit %s", date)
             return cached
 
         try:
+            schedule_started_at = time.perf_counter()
             games = self.schedule_crawler.get_games_by_date(date)
+            logger.info(
+                "scoreboard schedule %s %.0fms (%s games)",
+                date,
+                (time.perf_counter() - schedule_started_at) * 1000,
+                len(games),
+            )
         except Exception:
             stale = self._scoreboard_cache.get_stale(date)
             if stale is not None:
+                logger.warning("scoreboard stale cache fallback %s", date)
                 return stale
             raise
 
         try:
+            main_started_at = time.perf_counter()
             game_list = {
                 game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
             }
+            logger.info(
+                "scoreboard main list %s %.0fms",
+                date,
+                (time.perf_counter() - main_started_at) * 1000,
+            )
         except Exception:
             game_list = {}
+            logger.warning("scoreboard main list failed %s", date)
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=max(1, min(len(games), 5))
         ) as executor:
+            enrich_started_at = time.perf_counter()
             enriched_games = list(
                 executor.map(
                     lambda game: self._enrich_game(
@@ -60,12 +82,22 @@ class ScoreboardService:
                     games,
                 )
             )
+            logger.info(
+                "scoreboard enrich %s %.0fms",
+                date,
+                (time.perf_counter() - enrich_started_at) * 1000,
+            )
 
         payload = {
             "date": date,
             "games": enriched_games,
         }
         self._scoreboard_cache.set(date, payload)
+        logger.info(
+            "scoreboard total %s %.0fms",
+            date,
+            (time.perf_counter() - started_at) * 1000,
+        )
         return payload
 
     @staticmethod
