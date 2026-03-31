@@ -476,6 +476,27 @@ class KboDirectRepository implements GameRepository {
     return relayData.currentAtBat;
   }
 
+  @override
+  Future<GameBoxscoreData> getBoxscoreData(String gameId) async {
+    final awayBatters = await getBatters(gameId, isAway: true);
+    final awayPitchers = await getPitchers(gameId, isAway: true);
+    final homeBatters = await getBatters(gameId, isAway: false);
+    final homePitchers = await getPitchers(gameId, isAway: false);
+    return GameBoxscoreData(
+      gameId: gameId,
+      away: TeamBoxscoreData(
+        teamId: gameId.substring(8, 10),
+        batters: awayBatters,
+        pitchers: awayPitchers,
+      ),
+      home: TeamBoxscoreData(
+        teamId: gameId.substring(10, 12),
+        batters: homeBatters,
+        pitchers: homePitchers,
+      ),
+    );
+  }
+
   // ── 박스스코어 ──
 
   @override
@@ -532,6 +553,17 @@ class KboDirectRepository implements GameRepository {
         decision: m['DC'] as String?,
       );
     }).toList();
+  }
+
+  @override
+  Future<GameLineupData> getLineupData(String gameId) async {
+    final away = await getLineup(gameId, isAway: true);
+    final home = await getLineup(gameId, isAway: false);
+    return GameLineupData(
+      gameId: gameId,
+      away: TeamLineupData(teamId: gameId.substring(8, 10), lineup: away),
+      home: TeamLineupData(teamId: gameId.substring(10, 12), lineup: home),
+    );
   }
 
   @override

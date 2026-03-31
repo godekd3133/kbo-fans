@@ -1,0 +1,43 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="160" y1="120" x2="860" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B1020"/>
+      <stop offset="0.55" stop-color="#111827"/>
+      <stop offset="1" stop-color="#1E293B"/>
+    </linearGradient>
+    <radialGradient id="glowRed" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(260 220) rotate(47) scale(420 320)">
+      <stop stop-color="#F04D5E" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#F04D5E" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBlue" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(780 820) rotate(47) scale(420 320)">
+      <stop stop-color="#4F8CFF" stop-opacity="0.42"/>
+      <stop offset="1" stop-color="#4F8CFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ball" x1="370" y1="320" x2="654" y2="706" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF7"/>
+      <stop offset="1" stop-color="#E7E5E4"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#glowRed)"/>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#glowBlue)"/>
+
+  <circle cx="512" cy="430" r="176" fill="url(#ball)"/>
+  <path d="M425 278C350 333 336 530 412 586" stroke="#D04A4A" stroke-width="12" stroke-linecap="round"/>
+  <path d="M599 278C674 333 688 530 612 586" stroke="#4C7EF5" stroke-width="12" stroke-linecap="round"/>
+  <g stroke-width="8" stroke-linecap="round">
+    <path d="M395 322L418 344" stroke="#D04A4A"/>
+    <path d="M383 366L410 389" stroke="#D04A4A"/>
+    <path d="M377 411L406 435" stroke="#D04A4A"/>
+    <path d="M381 458L409 480" stroke="#D04A4A"/>
+    <path d="M394 502L420 524" stroke="#D04A4A"/>
+    <path d="M629 322L606 344" stroke="#4C7EF5"/>
+    <path d="M641 366L614 389" stroke="#4C7EF5"/>
+    <path d="M647 411L618 435" stroke="#4C7EF5"/>
+    <path d="M643 458L615 480" stroke="#4C7EF5"/>
+    <path d="M630 502L604 524" stroke="#4C7EF5"/>
+  </g>
+
+  <text x="512" y="735" text-anchor="middle" fill="#F8FAFC" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="138" font-weight="500" letter-spacing="22">KBO</text>
+  <text x="512" y="835" text-anchor="middle" fill="#D7DEE9" font-family="Avenir Next, Helvetica Neue, Arial, sans-serif" font-size="72" font-weight="400" letter-spacing="18">FANS</text>
+</svg>

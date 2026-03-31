@@ -16,9 +16,12 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<Game>> getScoreboard(String date) async {
-    final data = await _client.get(
+    final isHistoricalDate = _isHistoricalDate(date);
+    final data = await _client.getCached(
       '/scoreboard',
       queryParameters: {'date': date},
+      cacheKey: 'scoreboard:$date',
+      preferCache: isHistoricalDate,
     );
     final games = data['games'] as List<dynamic>? ?? [];
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
@@ -26,7 +29,11 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<Game?> getGame(String gameId) async {
-    final data = await _client.get('/game/$gameId');
+    final data = await _client.getCached(
+      '/game/$gameId',
+      cacheKey: 'game:$gameId',
+      preferCache: true,
+    );
     final game = data['game'] as Map<String, dynamic>?;
     if (game == null) {
       return null;
@@ -36,7 +43,11 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<HighlightInfo?> getHighlightInfo(String gameId) async {
-    final data = await _client.get('/game/$gameId/highlights');
+    final data = await _client.getCached(
+      '/game/$gameId/highlights',
+      cacheKey: 'highlights:$gameId',
+      preferCache: true,
+    );
     final highlightInfo = data['highlightInfo'] as Map<String, dynamic>?;
     return _parseHighlightInfo(highlightInfo);
   }
@@ -74,15 +85,26 @@ class ApiGameRepository implements GameRepository {
   }
 
   @override
+  Future<GameBoxscoreData> getBoxscoreData(String gameId) async {
+    final data = await _client.getCached(
+      '/game/$gameId/boxscore',
+      cacheKey: 'boxscore:$gameId',
+      preferCache: true,
+    );
+    return GameBoxscoreData(
+      gameId: gameId,
+      away: _parseTeamBoxscore(data['away'] as Map<String, dynamic>? ?? const {}),
+      home: _parseTeamBoxscore(data['home'] as Map<String, dynamic>? ?? const {}),
+    );
+  }
+
+  @override
   Future<List<BatterRecord>> getBatters(
     String gameId, {
     required bool isAway,
   }) async {
-    final data = await _client.get('/game/$gameId/boxscore');
-    final side = isAway ? 'away' : 'home';
-    final team = data[side] as Map<String, dynamic>? ?? {};
-    final batters = team['batters'] as List<dynamic>? ?? [];
-    return batters.map((b) => _parseBatter(b as Map<String, dynamic>)).toList();
+    final data = await getBoxscoreData(gameId);
+    return (isAway ? data.away : data.home).batters;
   }
 
   @override
@@ -90,13 +112,22 @@ class ApiGameRepository implements GameRepository {
     String gameId, {
     required bool isAway,
   }) async {
-    final data = await _client.get('/game/$gameId/boxscore');
-    final side = isAway ? 'away' : 'home';
-    final team = data[side] as Map<String, dynamic>? ?? {};
-    final pitchers = team['pitchers'] as List<dynamic>? ?? [];
-    return pitchers
-        .map((p) => _parsePitcher(p as Map<String, dynamic>))
-        .toList();
+    final data = await getBoxscoreData(gameId);
+    return (isAway ? data.away : data.home).pitchers;
+  }
+
+  @override
+  Future<GameLineupData> getLineupData(String gameId) async {
+    final data = await _client.getCached(
+      '/game/$gameId/lineup',
+      cacheKey: 'lineup:$gameId',
+      preferCache: true,
+    );
+    return GameLineupData(
+      gameId: gameId,
+      away: _parseTeamLineup(data['away'] as Map<String, dynamic>? ?? const {}),
+      home: _parseTeamLineup(data['home'] as Map<String, dynamic>? ?? const {}),
+    );
   }
 
   @override
@@ -104,18 +135,17 @@ class ApiGameRepository implements GameRepository {
     String gameId, {
     required bool isAway,
   }) async {
-    final data = await _client.get('/game/$gameId/lineup');
-    final side = isAway ? 'away' : 'home';
-    final team = data[side] as Map<String, dynamic>? ?? {};
-    final lineup = team['lineup'] as List<dynamic>? ?? [];
-    return lineup.map((l) => _parseLineup(l as Map<String, dynamic>)).toList();
+    final data = await getLineupData(gameId);
+    return (isAway ? data.away : data.home).lineup;
   }
 
   @override
   Future<List<ScheduleDay>> getSchedule(String yearMonth) async {
-    final data = await _client.get(
+    final data = await _client.getCached(
       '/schedule',
       queryParameters: {'month': yearMonth},
+      cacheKey: 'schedule:$yearMonth',
+      preferCache: true,
     );
     final days = data['days'] as List<dynamic>? ?? [];
     return days.map((d) {
@@ -148,9 +178,11 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<TeamStanding>> getStandings(int season) async {
-    final data = await _client.get(
+    final data = await _client.getCached(
       '/standings',
       queryParameters: {'season': season},
+      cacheKey: 'standings:$season',
+      preferCache: true,
     );
     final standings = data['standings'] as List<dynamic>? ?? [];
     return standings.map((s) {
@@ -277,6 +309,30 @@ class ApiGameRepository implements GameRepository {
     );
   }
 
+  TeamBoxscoreData _parseTeamBoxscore(Map<String, dynamic> json) {
+    final batters = (json['batters'] as List<dynamic>? ?? [])
+        .map((item) => _parseBatter(item as Map<String, dynamic>))
+        .toList();
+    final pitchers = (json['pitchers'] as List<dynamic>? ?? [])
+        .map((item) => _parsePitcher(item as Map<String, dynamic>))
+        .toList();
+    return TeamBoxscoreData(
+      teamId: json['teamId'] as String? ?? '',
+      batters: batters,
+      pitchers: pitchers,
+    );
+  }
+
+  TeamLineupData _parseTeamLineup(Map<String, dynamic> json) {
+    final lineup = (json['lineup'] as List<dynamic>? ?? [])
+        .map((item) => _parseLineup(item as Map<String, dynamic>))
+        .toList();
+    return TeamLineupData(
+      teamId: json['teamId'] as String? ?? '',
+      lineup: lineup,
+    );
+  }
+
   LineupEntry _parseLineup(Map<String, dynamic> json) {
     return LineupEntry(
       order: json['order'] as int? ?? 0,
@@ -337,5 +393,16 @@ class ApiGameRepository implements GameRepository {
       officialUrl: officialUrl,
       youtubeVideos: youtubeVideos,
     );
+  }
+
+  bool _isHistoricalDate(String date) {
+    try {
+      final target = DateTime.parse(date);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      return target.isBefore(today);
+    } catch (_) {
+      return false;
+    }
   }
 }

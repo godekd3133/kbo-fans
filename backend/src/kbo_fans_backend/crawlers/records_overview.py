@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import concurrent.futures
 import re
 from typing import Any, Dict, List, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
-from kbo_fans_backend.crawlers.player_stats import PlayerStatsCrawler
 from kbo_fans_backend.utils.html import strip_tags
 
 
@@ -13,16 +13,38 @@ class RecordsOverviewCrawler(BaseCrawler):
     _HITTER_HR_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HR_CN"
     _HITTER_OPS_URL = "/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT"
     _PITCHER_ERA_URL = "/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.player_stats_crawler = PlayerStatsCrawler()
+    _PLAYER_IMAGE_URL = (
+        "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/{player_id}.jpg"
+    )
 
     def get_overview(self, season: int) -> Dict[str, Any]:
-        avg_leaders = self._fetch_leaders(self._HITTER_AVG_URL, season, "AVG", "hitter")
-        hr_leaders = self._fetch_leaders(self._HITTER_HR_URL, season, "HR", "hitter")
-        ops_leaders = self._fetch_leaders(self._HITTER_OPS_URL, season, "OPS", "hitter")
-        era_leaders = self._fetch_leaders(self._PITCHER_ERA_URL, season, "ERA", "pitcher")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+            avg_future = executor.submit(
+                self._fetch_leaders, self._HITTER_AVG_URL, season, "AVG", "hitter"
+            )
+            hr_future = executor.submit(
+                self._fetch_leaders, self._HITTER_HR_URL, season, "HR", "hitter"
+            )
+            ops_future = executor.submit(
+                self._fetch_leaders, self._HITTER_OPS_URL, season, "OPS", "hitter"
+            )
+            era_future = executor.submit(
+                self._fetch_leaders, self._PITCHER_ERA_URL, season, "ERA", "pitcher"
+            )
+
+            avg_leaders = avg_future.result()
+            hr_leaders = hr_future.result()
+            ops_leaders = ops_future.result()
+            era_leaders = era_future.result()
+
+        hitter_groups = {
+            "avg": avg_leaders,
+            "hr": hr_leaders,
+            "ops": ops_leaders,
+        }
+        pitcher_groups = {
+            "era": era_leaders,
+        }
 
         return {
             "season": season,
@@ -33,35 +55,29 @@ class RecordsOverviewCrawler(BaseCrawler):
                 "era": era_leaders,
             },
             "featured": {
-                "todayHitter": self._build_today_player(
+                "todayHitter": self._build_featured_player(
                     label="오늘의 타자",
-                    season=season,
-                    leader_groups=[avg_leaders, hr_leaders, ops_leaders],
+                    leader_groups=hitter_groups,
                     target_type="hitter",
+                    period_label="오늘",
                 ),
-                "todayPitcher": self._build_today_player(
+                "todayPitcher": self._build_featured_player(
                     label="오늘의 투수",
-                    season=season,
-                    leader_groups=[era_leaders],
+                    leader_groups=pitcher_groups,
                     target_type="pitcher",
+                    period_label="오늘",
                 ),
-                "monthHitter": self._build_month_player(
+                "monthHitter": self._build_featured_player(
                     label="이달의 타자",
-                    season=season,
-                    leader_groups={
-                        "avg": avg_leaders,
-                        "hr": hr_leaders,
-                        "ops": ops_leaders,
-                    },
+                    leader_groups=hitter_groups,
                     target_type="hitter",
+                    period_label="이달",
                 ),
-                "monthPitcher": self._build_month_player(
+                "monthPitcher": self._build_featured_player(
                     label="이달의 투수",
-                    season=season,
-                    leader_groups={
-                        "era": era_leaders,
-                    },
+                    leader_groups=pitcher_groups,
                     target_type="pitcher",
+                    period_label="이달",
                 ),
             },
         }
@@ -77,7 +93,9 @@ class RecordsOverviewCrawler(BaseCrawler):
             "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
             "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
             "__EVENTVALIDATION": self._extract_hidden(html, "__EVENTVALIDATION"),
-            "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason": str(season),
+            "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason": str(
+                season
+            ),
             "__EVENTTARGET": "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason",
             "__EVENTARGUMENT": "",
         }
@@ -105,6 +123,7 @@ class RecordsOverviewCrawler(BaseCrawler):
                     "rank": int(strip_tags(cells[0])),
                     "playerId": player_link.group(1),
                     "playerType": player_type,
+                    "metricKey": metric_key,
                     "name": strip_tags(cells[1]),
                     "teamId": self._team_name_to_id(strip_tags(cells[2])),
                     "value": strip_tags(cells[value_index]),
@@ -123,46 +142,12 @@ class RecordsOverviewCrawler(BaseCrawler):
                 return labels.index(metric_key.upper())
         return 3
 
-    def _build_today_player(
-        self, label: str, season: int, leader_groups: List[List[Dict[str, Any]]], target_type: str
-    ) -> Dict[str, Any]:
-        details = self._collect_candidate_details(season, leader_groups)
-        if not details:
-            return {"label": label}
-
-        latest_date = max(
-            (self._date_key(detail.get("recentGames", [{}])[0].get("date", "")) for detail in details if detail.get("recentGames")),
-            default=(0, 0),
-        )
-        today_candidates = [
-            detail
-            for detail in details
-            if detail.get("playerType") == target_type
-            if detail.get("recentGames")
-            and self._date_key(detail["recentGames"][0].get("date", "")) == latest_date
-        ]
-        best = max(
-            today_candidates or details,
-            key=lambda detail: (
-                detail.get("recentGames", [{}])[0].get("score", 0)
-                if detail.get("recentGames")
-                else 0
-            ),
-        )
-        recent = best.get("recentGames", [])
-        return {
-            "label": label,
-            "playerId": best.get("id"),
-            "playerType": best.get("playerType"),
-            "name": best.get("name"),
-            "teamId": best.get("teamId"),
-            "headline": best.get("headlineStat"),
-            "summary": self._today_reason(best, recent),
-            "imageUrl": best.get("imageUrl"),
-        }
-
-    def _build_month_player(
-        self, label: str, season: int, leader_groups: Dict[str, List[Dict[str, Any]]], target_type: str
+    def _build_featured_player(
+        self,
+        label: str,
+        leader_groups: Dict[str, List[Dict[str, Any]]],
+        target_type: str,
+        period_label: str,
     ) -> Dict[str, Any]:
         weights = {"avg": 3, "hr": 2, "ops": 3, "era": 3}
         scores: Dict[Tuple[str, str], int] = {}
@@ -179,70 +164,54 @@ class RecordsOverviewCrawler(BaseCrawler):
 
         best_key = max(scores, key=scores.get)
         leader = leader_lookup[best_key]
-        detail = self.player_stats_crawler.get_player_detail(
-            player_id=leader["playerId"],
-            player_type=leader["playerType"],
-            season=season,
-            include_recent=True,
-        )
         return {
             "label": label,
             "playerId": leader["playerId"],
             "playerType": leader["playerType"],
-            "name": detail.get("name"),
-            "teamId": detail.get("teamId"),
-            "headline": detail.get("headlineStat"),
-            "summary": self._month_reason(detail, leader_groups, target_type),
-            "imageUrl": detail.get("imageUrl"),
+            "name": leader["name"],
+            "teamId": leader["teamId"],
+            "headline": self._headline_for_leader(leader),
+            "summary": self._feature_reason(
+                player_id=leader["playerId"],
+                leader_groups=leader_groups,
+                target_type=target_type,
+                period_label=period_label,
+            ),
+            "imageUrl": self._PLAYER_IMAGE_URL.format(player_id=leader["playerId"]),
         }
 
-    def _collect_candidate_details(
-        self, season: int, leader_groups: List[List[Dict[str, Any]]]
-    ) -> List[Dict[str, Any]]:
-        seen: set[Tuple[str, str]] = set()
-        details: List[Dict[str, Any]] = []
-        for leaders in leader_groups:
-            for leader in leaders:
-                key = (leader["playerId"], leader["playerType"])
-                if key in seen:
-                    continue
-                seen.add(key)
-                details.append(
-                    self.player_stats_crawler.get_player_detail(
-                        player_id=leader["playerId"],
-                        player_type=leader["playerType"],
-                        season=season,
-                        include_recent=True,
-                    )
-                )
-        return details
-
-    @staticmethod
-    def _today_reason(detail: Dict[str, Any], recent: List[Dict[str, Any]]) -> str:
-        if recent:
-            return recent[0].get("summary", "") or detail.get("secondaryStat")
-        return detail.get("secondaryStat")
-
-    def _month_reason(
+    def _feature_reason(
         self,
-        detail: Dict[str, Any],
+        player_id: str,
         leader_groups: Dict[str, List[Dict[str, Any]]],
         target_type: str,
+        period_label: str,
     ) -> str:
         reasons = []
-        player_id = detail.get("id")
         for metric, leaders in leader_groups.items():
             for leader in leaders:
-                if leader["playerId"] == player_id and leader["playerType"] == target_type:
+                if (
+                    leader["playerId"] == player_id
+                    and leader["playerType"] == target_type
+                ):
                     reasons.append(f"{metric.upper()} {leader['rank']}위")
-        return " + ".join(reasons[:2]) if reasons else detail.get("secondaryStat")
+        if not reasons:
+            return ""
+        return f"{period_label} 리더보드 기준 {' + '.join(reasons[:2])}"
 
     @staticmethod
-    def _date_key(value: str) -> Tuple[int, int]:
-        match = re.search(r"(\d{2})\.(\d{2})", value)
-        if not match:
-            return (0, 0)
-        return (int(match.group(1)), int(match.group(2)))
+    def _headline_for_leader(leader: Dict[str, Any]) -> str:
+        metric = str(leader.get("metricKey", "")).upper()
+        value = str(leader.get("value", "-"))
+        if metric == "AVG":
+            return f"타율 {value}"
+        if metric == "HR":
+            return f"홈런 {value}"
+        if metric == "OPS":
+            return f"OPS {value}"
+        if metric == "ERA":
+            return f"ERA {value}"
+        return value
 
     @staticmethod
     def _extract_hidden(html: str, name: str) -> str:

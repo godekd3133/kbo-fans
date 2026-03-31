@@ -69,7 +69,7 @@ class YoutubeHighlightService:
                 {
                     "videoId": video_id,
                     "title": title,
-                    "thumbnailUrl": f"https://i.ytimg.com/vi/{video_id}/hqdefault.jpg",
+                    "thumbnailUrl": f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
                     "videoUrl": video_url,
                     "source": "youtube_search",
                 }

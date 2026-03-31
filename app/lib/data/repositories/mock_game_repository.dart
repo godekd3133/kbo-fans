@@ -57,12 +57,30 @@ class MockGameRepository implements GameRepository {
   }
 
   @override
+  Future<GameBoxscoreData> getBoxscoreData(String gameId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return GameBoxscoreData(
+      gameId: gameId,
+      away: const TeamBoxscoreData(
+        teamId: 'KT',
+        batters: mockAwayBatters,
+        pitchers: mockAwayPitchers,
+      ),
+      home: const TeamBoxscoreData(
+        teamId: 'LG',
+        batters: mockAwayBatters,
+        pitchers: mockAwayPitchers,
+      ),
+    );
+  }
+
+  @override
   Future<List<BatterRecord>> getBatters(
     String gameId, {
     required bool isAway,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    return mockAwayBatters;
+    final data = await getBoxscoreData(gameId);
+    return (isAway ? data.away : data.home).batters;
   }
 
   @override
@@ -70,8 +88,18 @@ class MockGameRepository implements GameRepository {
     String gameId, {
     required bool isAway,
   }) async {
+    final data = await getBoxscoreData(gameId);
+    return (isAway ? data.away : data.home).pitchers;
+  }
+
+  @override
+  Future<GameLineupData> getLineupData(String gameId) async {
     await Future.delayed(const Duration(milliseconds: 200));
-    return mockAwayPitchers;
+    return GameLineupData(
+      gameId: gameId,
+      away: const TeamLineupData(teamId: 'KT', lineup: mockAwayLineup),
+      home: const TeamLineupData(teamId: 'LG', lineup: mockAwayLineup),
+    );
   }
 
   @override
@@ -79,8 +107,8 @@ class MockGameRepository implements GameRepository {
     String gameId, {
     required bool isAway,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    return mockAwayLineup;
+    final data = await getLineupData(gameId);
+    return (isAway ? data.away : data.home).lineup;
   }
 
   @override

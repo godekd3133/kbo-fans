@@ -60,25 +60,37 @@ class PlayerStatsCrawler(BaseCrawler):
                 players.extend(group_players)
 
         def enrich(player: Dict[str, Any]) -> Dict[str, Any]:
-            detail = self.get_player_detail(
-                player_id=player["id"],
-                player_type=player["playerType"],
-                season=season,
-                base_profile=player,
-                include_recent=False,
-            )
-            roster_key = (detail.get("name", ""), detail.get("number", 0))
-            if roster_key in entry_keys:
-                detail["rosterGroup"] = "entry"
-                detail["status"] = "available"
-                detail["statusNote"] = None
-            else:
-                detail["rosterGroup"] = "reserve"
-                detail["status"] = "inactive"
-                detail["statusNote"] = "엔트리 제외"
-            return detail
+            roster_key = (player.get("name", ""), player.get("number", 0))
+            is_entry = roster_key in entry_keys
+            if not is_entry:
+                return self._build_player_summary(
+                    player=player,
+                    season=season,
+                    season_stats={},
+                    roster_group="reserve",
+                    status="inactive",
+                    status_note="엔트리 제외",
+                )
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            try:
+                season_stats = self._fetch_player_total_stats(
+                    player_id=player["id"],
+                    player_type=player["playerType"],
+                    season=season,
+                )
+            except Exception:
+                season_stats = {}
+
+            return self._build_player_summary(
+                player=player,
+                season=season,
+                season_stats=season_stats,
+                roster_group="entry",
+                status="available",
+                status_note=None,
+            )
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
             return list(executor.map(enrich, players))
 
     def get_player_detail(
@@ -93,12 +105,14 @@ class PlayerStatsCrawler(BaseCrawler):
             player_type = self._guess_player_type(player_id)
 
         detail_url = self._detail_url(player_id, player_type)
-        response = self.session.get(f"{self.base_url}{detail_url}", timeout=self.timeout)
-        response.raise_for_status()
-        html = response.text
-        total_html = self.session.get(
-            f"{self.base_url}{self._total_url(player_id, player_type)}", timeout=self.timeout
-        ).text
+        html = self._get_text(
+            f"{self.base_url}{detail_url}",
+            breaker_key="kbo_player_detail",
+        )
+        total_html = self._get_text(
+            f"{self.base_url}{self._total_url(player_id, player_type)}",
+            breaker_key="kbo_player_total",
+        )
 
         profile = dict(base_profile or {})
         profile.update(self._parse_profile(html, player_id, player_type))
@@ -119,6 +133,15 @@ class PlayerStatsCrawler(BaseCrawler):
         profile["secondaryStat"] = self._build_secondary(player_type, season_stats)
         profile["sortMetrics"] = self._build_sort_metrics(player_type, season_stats)
         return profile
+
+    def _fetch_player_total_stats(
+        self, player_id: str, player_type: str, season: int
+    ) -> Dict[str, str]:
+        total_html = self._get_text(
+            f"{self.base_url}{self._total_url(player_id, player_type)}",
+            breaker_key="kbo_player_total",
+        )
+        return self._parse_season_stats(total_html, season)
 
     def _fetch_register_page(self, team_id: str) -> str:
         response = self.session.get(f"{self.base_url}{self._REGISTER_URL}", timeout=self.timeout)
@@ -179,9 +202,9 @@ class PlayerStatsCrawler(BaseCrawler):
                     "id": href_match.group(2),
                     "teamId": team_id,
                     "playerType": "pitcher" if href_match.group(1) == "Pitcher" else "hitter",
-                    "nameEn": strip_tags(cells[0]),
+                    "name": strip_tags(cells[0]),
                     "number": self._parse_int(strip_tags(cells[1])) or 0,
-                    "positionEn": strip_tags(cells[2]),
+                    "position": strip_tags(cells[2]),
                     "birthDate": strip_tags(cells[3]),
                     "heightWeight": strip_tags(cells[4]).replace(",", " / "),
                 }
@@ -442,3 +465,40 @@ class PlayerStatsCrawler(BaseCrawler):
             return float(str(value).replace(",", ""))
         except ValueError:
             return None
+
+    def _build_player_summary(
+        self,
+        *,
+        player: Dict[str, Any],
+        season: int,
+        season_stats: Dict[str, str],
+        roster_group: str,
+        status: str,
+        status_note: Optional[str],
+    ) -> Dict[str, Any]:
+        player_type = player["playerType"]
+        position = player.get("position", "")
+        return {
+            "id": player["id"],
+            "teamId": player["teamId"],
+            "playerType": player_type,
+            "imageUrl": self._PLAYER_IMAGE_URL.format(player_id=player["id"]),
+            "name": player.get("name", ""),
+            "number": player.get("number", 0),
+            "position": position,
+            "roleLabel": position,
+            "handedness": "",
+            "birthDate": player.get("birthDate", ""),
+            "heightWeight": player.get("heightWeight", ""),
+            "career": "",
+            "season": season,
+            "seasonStats": self._build_season_stat_list(player_type, season_stats),
+            "highlights": self._build_highlights(player_type, season_stats),
+            "recentGames": [],
+            "headlineStat": self._build_headline(player_type, season_stats),
+            "secondaryStat": self._build_secondary(player_type, season_stats),
+            "sortMetrics": self._build_sort_metrics(player_type, season_stats),
+            "rosterGroup": roster_group,
+            "status": status,
+            "statusNote": status_note,
+        }

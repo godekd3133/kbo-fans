@@ -12,26 +12,46 @@ class ApiPlayerRepository implements PlayerRepository {
 
   @override
   Future<List<PlayerProfile>> getTeamPlayers(String teamId, {required int season}) async {
-    final data = await _client.get('/team/$teamId/players', queryParameters: {'season': season});
+    final data = await _client.getCached(
+      '/team/$teamId/players',
+      queryParameters: {'season': season},
+      cacheKey: 'teamPlayers:$teamId:$season',
+      preferCache: true,
+    );
     final players = data['players'] as List<dynamic>? ?? [];
     return players.map((item) => _parsePlayer(item as Map<String, dynamic>)).toList();
   }
 
   @override
   Future<PlayerProfile> getPlayerDetail(String playerId, {required int season}) async {
-    final data = await _client.get('/player/$playerId', queryParameters: {'season': season});
+    final data = await _client.getCached(
+      '/player/$playerId',
+      queryParameters: {'season': season},
+      cacheKey: 'playerDetail:$playerId:$season',
+      preferCache: true,
+    );
     return _parsePlayer(data);
   }
 
   @override
   Future<TeamStats> getTeamStats(String teamId, {required int season}) async {
-    final data = await _client.get('/team/$teamId/stats', queryParameters: {'season': season});
+    final data = await _client.getCached(
+      '/team/$teamId/stats',
+      queryParameters: {'season': season},
+      cacheKey: 'teamStats:$teamId:$season',
+      preferCache: true,
+    );
     return _parseTeamStats(data, fallbackTeamId: teamId, fallbackSeason: season);
   }
 
   @override
   Future<TeamRecordsBundle> getTeamRecords(String teamId, {required int season}) async {
-    final data = await _client.get('/team/$teamId/records', queryParameters: {'season': season});
+    final data = await _client.getCached(
+      '/team/$teamId/records',
+      queryParameters: {'season': season},
+      cacheKey: 'teamRecords:$teamId:$season',
+      preferCache: true,
+    );
     final players = data['players'] as List<dynamic>? ?? [];
     return TeamRecordsBundle(
       players: players.map((item) => _parsePlayer(item as Map<String, dynamic>)).toList(),
@@ -62,7 +82,12 @@ class ApiPlayerRepository implements PlayerRepository {
 
   @override
   Future<RecordsOverview> getRecordsOverview({required int season}) async {
-    final data = await _client.get('/records/overview', queryParameters: {'season': season});
+    final data = await _client.getCached(
+      '/records/overview',
+      queryParameters: {'season': season},
+      cacheKey: 'recordsOverview:$season',
+      preferCache: true,
+    );
     final leaders = data['leaders'] as Map<String, dynamic>? ?? const {};
     final featured = data['featured'] as Map<String, dynamic>? ?? const {};
     return RecordsOverview(

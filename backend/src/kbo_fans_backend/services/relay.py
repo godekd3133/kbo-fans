@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.relay import RelayCrawler
 from kbo_fans_backend.services.scoreboard import ScoreboardService
+from kbo_fans_backend.storage import JsonSnapshotStore
 
 
 class RelayService:
@@ -11,12 +12,30 @@ class RelayService:
         self,
         relay_crawler: Optional[RelayCrawler] = None,
         scoreboard_service: Optional[ScoreboardService] = None,
+        snapshot_store: Optional[JsonSnapshotStore] = None,
     ) -> None:
         self.relay_crawler = relay_crawler or RelayCrawler()
         self.scoreboard_service = scoreboard_service or ScoreboardService()
+        self.snapshot_store = snapshot_store or JsonSnapshotStore()
 
     def get_relay(self, game_id: str, after: Optional[int] = None) -> dict[str, Any]:
         game = self.scoreboard_service.get_game(game_id)
+        snapshot = self.snapshot_store.load_payload("relay", game_id)
+
+        if game is not None and game.get("status") != "LIVE":
+            relay_items = self._build_summary_items(game)
+            if after is not None:
+                relay_items = [
+                    item for item in relay_items if item["seqNo"] > after
+                ]
+            payload = {
+                "gameId": game_id,
+                "currentAtBat": None,
+                "relayItems": relay_items,
+            }
+            if game.get("status") == "FINAL":
+                self.snapshot_store.save("relay", game_id, payload)
+            return payload
 
         try:
             relay = self.relay_crawler.get_relay(game_id)
@@ -29,13 +48,24 @@ class RelayService:
 
             if after is not None:
                 relay_items = [item for item in relay_items if item["seqNo"] > after]
-            return {
+            payload = {
                 "gameId": game_id,
                 "currentAtBat": current_at_bat,
                 "relayItems": relay_items,
             }
+            if game is not None and game.get("status") == "FINAL":
+                self.snapshot_store.save("relay", game_id, payload)
+            return payload
         except Exception:
-            pass
+            if snapshot is not None:
+                if after is not None:
+                    snapshot = {
+                        **snapshot,
+                        "relayItems": [
+                            item for item in snapshot.get("relayItems", []) if item["seqNo"] > after
+                        ],
+                    }
+                return snapshot
 
         if game is None:
             return {
@@ -48,11 +78,14 @@ class RelayService:
         if after is not None:
             relay_items = [item for item in relay_items if item["seqNo"] > after]
 
-        return {
+        payload = {
             "gameId": game_id,
             "currentAtBat": self._build_current_at_bat(game),
             "relayItems": relay_items,
         }
+        if game.get("status") == "FINAL":
+            self.snapshot_store.save("relay", game_id, payload)
+        return payload
 
     def _build_summary_items(self, game: dict[str, Any]) -> list[dict[str, Any]]:
         away = game.get("away", {})

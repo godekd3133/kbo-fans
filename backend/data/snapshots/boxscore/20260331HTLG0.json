@@ -1,0 +1,46 @@
+{
+  "savedAt": "2026-03-31T07:16:30.256339+00:00",
+  "payload": {
+    "gameId": "20260331HTLG0",
+    "away": {
+      "teamId": "HT",
+      "batters": [],
+      "pitchers": [],
+      "totals": {
+        "batting": {
+          "atBats": 0,
+          "runs": 0,
+          "hits": 0,
+          "rbi": 0
+        },
+        "pitching": {
+          "innings": "0.0",
+          "hits": 0,
+          "strikeouts": 0,
+          "walks": 0,
+          "earnedRuns": 0
+        }
+      }
+    },
+    "home": {
+      "teamId": "LG",
+      "batters": [],
+      "pitchers": [],
+      "totals": {
+        "batting": {
+          "atBats": 0,
+          "runs": 0,
+          "hits": 0,
+          "rbi": 0
+        },
+        "pitching": {
+          "innings": "0.0",
+          "hits": 0,
+          "strikeouts": 0,
+          "walks": 0,
+          "earnedRuns": 0
+        }
+      }
+    }
+  }
+}

@@ -4,12 +4,14 @@ import concurrent.futures
 import logging
 import re
 import time
+from datetime import date as date_type
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.crawlers.scoreboard import ScoreboardCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
+from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 logger = logging.getLogger(__name__)
@@ -24,11 +26,13 @@ class ScoreboardService:
         schedule_crawler: Optional[ScheduleCrawler] = None,
         scoreboard_crawler: Optional[ScoreboardCrawler] = None,
         ticketing_service: Optional[TicketingService] = None,
+        snapshot_store: Optional[JsonSnapshotStore] = None,
     ) -> None:
         self.main_crawler = main_crawler or MainCrawler()
         self.schedule_crawler = schedule_crawler or ScheduleCrawler()
         self.scoreboard_crawler = scoreboard_crawler or ScoreboardCrawler()
         self.ticketing_service = ticketing_service or TicketingService()
+        self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self._scoreboard_cache: TtlCache[str, dict[str, Any]] = TtlCache(
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
@@ -36,6 +40,11 @@ class ScoreboardService:
     def get_scoreboard(self, date: str) -> dict[str, Any]:
         started_at = time.perf_counter()
         date = self._normalize_date(date)
+        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        if self._is_historical_date(date) and snapshot is not None:
+            logger.info("scoreboard snapshot hit %s", date)
+            return snapshot
+
         cached = self._scoreboard_cache.get(date)
         if cached is not None:
             logger.info("scoreboard cache hit %s", date)
@@ -55,6 +64,9 @@ class ScoreboardService:
             if stale is not None:
                 logger.warning("scoreboard stale cache fallback %s", date)
                 return stale
+            if snapshot is not None:
+                logger.warning("scoreboard snapshot fallback %s", date)
+                return snapshot
             raise
 
         try:
@@ -93,6 +105,12 @@ class ScoreboardService:
             "games": enriched_games,
         }
         self._scoreboard_cache.set(date, payload)
+        if self._should_persist_snapshot(date, enriched_games):
+            self.snapshot_store.save("scoreboard", date, payload)
+            for game in enriched_games:
+                game_id = game.get("gameId")
+                if game_id:
+                    self.snapshot_store.save("games", str(game_id), game)
         logger.info(
             "scoreboard total %s %.0fms",
             date,
@@ -109,6 +127,10 @@ class ScoreboardService:
     def get_game(self, game_id: str) -> Optional[dict[str, Any]]:
         if len(game_id) < 8:
             return None
+
+        snapshot = self.snapshot_store.load_payload("games", game_id)
+        if snapshot is not None:
+            return snapshot
 
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
         try:
@@ -220,3 +242,17 @@ class ScoreboardService:
             "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
             f"?gameDate={game_date}&gameId={game_id}&section=HIGHLIGHT"
         )
+
+    @staticmethod
+    def _is_historical_date(date: str) -> bool:
+        try:
+            return date_type.fromisoformat(date) < date_type.today()
+        except ValueError:
+            return False
+
+    def _should_persist_snapshot(self, date: str, games: list[dict[str, Any]]) -> bool:
+        if self._is_historical_date(date):
+            return True
+
+        terminal_statuses = {"FINAL", "CANCELLED", "SUSPENDED"}
+        return bool(games) and all(game.get("status") in terminal_statuses for game in games)

@@ -18,6 +18,30 @@ class BatterRecord {
   });
 }
 
+class TeamBoxscoreData {
+  final String teamId;
+  final List<BatterRecord> batters;
+  final List<PitcherRecord> pitchers;
+
+  const TeamBoxscoreData({
+    required this.teamId,
+    required this.batters,
+    required this.pitchers,
+  });
+}
+
+class GameBoxscoreData {
+  final String gameId;
+  final TeamBoxscoreData away;
+  final TeamBoxscoreData home;
+
+  const GameBoxscoreData({
+    required this.gameId,
+    required this.away,
+    required this.home,
+  });
+}
+
 class PitcherRecord {
   final String name;
   final String innings;
@@ -49,5 +73,27 @@ class LineupEntry {
     required this.position,
     required this.positionKo,
     required this.name,
+  });
+}
+
+class TeamLineupData {
+  final String teamId;
+  final List<LineupEntry> lineup;
+
+  const TeamLineupData({
+    required this.teamId,
+    required this.lineup,
+  });
+}
+
+class GameLineupData {
+  final String gameId;
+  final TeamLineupData away;
+  final TeamLineupData home;
+
+  const GameLineupData({
+    required this.gameId,
+    required this.away,
+    required this.home,
   });
 }

@@ -1,0 +1,63 @@
+{
+  "savedAt": "2026-03-31T07:17:38.884829+00:00",
+  "payload": {
+    "gameId": "20260329LTSS0",
+    "currentAtBat": null,
+    "relayItems": [
+      {
+        "seqNo": 1,
+        "inning": 4,
+        "half": "top",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "4회초 롯데 1득점",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 2,
+        "inning": 5,
+        "half": "top",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "5회초 롯데 1득점",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 3,
+        "inning": 5,
+        "half": "bottom",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "5회말 삼성 1득점",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 4,
+        "inning": 7,
+        "half": "top",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "7회초 롯데 4득점",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 5,
+        "inning": 7,
+        "half": "bottom",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "7회말 삼성 1득점",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 6,
+        "inning": 999,
+        "half": "bottom",
+        "event": "GAME_END",
+        "isScoring": false,
+        "text": "경기종료 롯데 6 : 2 삼성",
+        "pitchSequence": null
+      }
+    ]
+  }
+}

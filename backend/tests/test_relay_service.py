@@ -75,3 +75,22 @@ def test_relay_service_builds_current_at_bat_for_live_game() -> None:
         "strikes": 1,
         "outs": 1,
     }
+
+
+def test_relay_service_skips_crawler_for_scheduled_game() -> None:
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": "20260331HTLG0",
+                "status": "SCHEDULED",
+                "away": {"shortName": "KIA", "score": None, "scores": [None]},
+                "home": {"shortName": "LG", "score": None, "scores": [None]},
+            }
+        ),
+    )
+
+    relay = service.get_relay("20260331HTLG0")
+
+    assert relay["currentAtBat"] is None
+    assert relay["relayItems"] == []

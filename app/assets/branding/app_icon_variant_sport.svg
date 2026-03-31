@@ -1,0 +1,40 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="114" y1="108" x2="908" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A0F18"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="slash" x1="182" y1="166" x2="872" y2="858" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E74958"/>
+      <stop offset="0.48" stop-color="#1A2233"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+    <linearGradient id="ball" x1="338" y1="280" x2="682" y2="648" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF6"/>
+      <stop offset="1" stop-color="#E7E5E4"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#bg)"/>
+  <path d="M130 820L814 136H916L232 820H130Z" fill="url(#slash)" fill-opacity="0.95"/>
+
+  <g filter="url(#shadow)">
+    <circle cx="512" cy="382" r="188" fill="url(#ball)"/>
+  </g>
+  <path d="M418 223C339 283 322 490 406 555" stroke="#D73B46" stroke-width="14" stroke-linecap="round"/>
+  <path d="M606 223C685 283 702 490 618 555" stroke="#2F6CF5" stroke-width="14" stroke-linecap="round"/>
+  <g stroke-width="10" stroke-linecap="round">
+    <path d="M386 270L415 296" stroke="#D73B46"/>
+    <path d="M372 322L405 348" stroke="#D73B46"/>
+    <path d="M364 378L399 406" stroke="#D73B46"/>
+    <path d="M371 433L404 460" stroke="#D73B46"/>
+    <path d="M387 486L417 512" stroke="#D73B46"/>
+    <path d="M638 270L609 296" stroke="#2F6CF5"/>
+    <path d="M652 322L619 348" stroke="#2F6CF5"/>
+    <path d="M660 378L625 406" stroke="#2F6CF5"/>
+    <path d="M653 433L620 460" stroke="#2F6CF5"/>
+    <path d="M637 486L607 512" stroke="#2F6CF5"/>
+  </g>
+
+  <text x="512" y="760" text-anchor="middle" fill="#FFFFFF" font-family="Arial Black, Impact, Haettenschweiler, sans-serif" font-size="164" font-weight="900" letter-spacing="8">KBO</text>
+  <text x="512" y="860" text-anchor="middle" fill="#E5E7EB" font-family="Arial Black, Impact, Haettenschweiler, sans-serif" font-size="88" font-weight="900" letter-spacing="10">FANS</text>
+</svg>

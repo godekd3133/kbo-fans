@@ -11,7 +11,7 @@ class LineupCrawler(BaseCrawler):
     """Fetches lineup analysis data and normalizes it into lineup output."""
 
     def get_lineup(self, game_id: str) -> dict[str, Any]:
-        response = self.session.post(
+        payload = self._post_json(
             f"{self.base_url}/ws/Schedule.asmx/GetLineUpAnalysis",
             data={
                 "leId": 1,
@@ -23,10 +23,12 @@ class LineupCrawler(BaseCrawler):
                 "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest",
             },
-            timeout=self.timeout,
+            breaker_key="kbo_lineup",
         )
-        response.raise_for_status()
-        payload = response.json()
+        away_id, home_id = self._derive_team_ids(game_id)
+
+        if len(payload) < 5 or not payload[1] or not payload[2] or not payload[3] or not payload[4]:
+            return self._empty_lineup(game_id, away_id, home_id)
 
         home_meta = payload[1][0]
         away_meta = payload[2][0]
@@ -36,13 +38,25 @@ class LineupCrawler(BaseCrawler):
         return {
             "gameId": game_id,
             "away": {
-                "teamId": away_meta["T_ID"],
+                "teamId": away_meta.get("T_ID", away_id),
                 "lineup": away_lineup,
             },
             "home": {
-                "teamId": home_meta["T_ID"],
+                "teamId": home_meta.get("T_ID", home_id),
                 "lineup": home_lineup,
             },
+        }
+
+    @staticmethod
+    def _derive_team_ids(game_id: str) -> tuple[str, str]:
+        return game_id[8:10], game_id[10:12]
+
+    @staticmethod
+    def _empty_lineup(game_id: str, away_id: str, home_id: str) -> dict[str, Any]:
+        return {
+            "gameId": game_id,
+            "away": {"teamId": away_id, "lineup": []},
+            "home": {"teamId": home_id, "lineup": []},
         }
 
     @staticmethod

@@ -9,6 +9,7 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
+import 'services/game_event_alert_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/ticket_alert_service.dart';
 import 'services/widget_sync_service.dart';
@@ -47,6 +48,12 @@ Future<void> _initializePlatformServices() async {
     await WidgetSyncService.instance.initialize();
   } catch (error) {
     DevConsole.instance.error('WidgetSync init failed: $error');
+  }
+
+  try {
+    await GameEventAlertService.instance.initialize();
+  } catch (error) {
+    DevConsole.instance.error('GameEventAlert init failed: $error');
   }
 
   try {

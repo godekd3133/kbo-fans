@@ -1,6 +1,6 @@
 # KBO Fans 앱 기획서 (App Specification)
 
-> 최종 수정: 2026-03-28
+> 최종 수정: 2026-03-31
 > 상태: Draft v1
 
 ---
@@ -240,6 +240,11 @@ GET /api/team/{teamId}/players?season=2026
 GET /api/player/{playerId}?season=2026
 → 선수 프로필 / 시즌 기록 / 최근 기록
 ```
+
+**운영 메모**:
+- 선수 프로필과 시즌 누적 기록은 경기 종료 후 백엔드가 선수/시즌 기준으로 증분 반영한 스냅샷을 우선 사용한다.
+- 최근 경기 기록은 최근 N경기 요약을 미리 정규화해 저장하고, 앱은 마지막 스냅샷을 먼저 렌더링한 뒤 필요 시 백그라운드 재검증만 수행한다.
+- 당일 live 경기 중 변할 수 있는 오늘 경기 누적값만 짧은 TTL 또는 live 소스와 병행하고, 과거 날짜 기록은 원천 재크롤링 없이 저장된 히스토리 레코드를 우선 조회한다.
 
 ---
 
@@ -513,6 +518,10 @@ GET /api/schedule?month=2026-03
 → {days: [{date, games: [{gameId, time, away, home, awayScore, homeScore, stadium, status, ticketInfo}]}]}
 ```
 
+**운영 메모**:
+- 월간 일정은 월 단위 prefetch/cache 를 사용하고, 지난 날짜 경기 결과는 경기 종료 후 저장된 schedule snapshot 을 우선 사용한다.
+- 과거 경기 일정/결과 조회는 live scoreboard 재수집이 아니라 저장된 경기 결과와 예매/구장 메타를 재사용해 즉시 응답한다.
+
 ---
 
 ### 2.5 순위
@@ -560,6 +569,10 @@ GET /api/schedule?month=2026-03
 GET /api/standings?season=2026
 → [{rank, teamId, teamName, wins, losses, draws, pct, gb}]
 ```
+
+**운영 메모**:
+- 순위는 latest 응답만 짧게 캐시하는 것을 넘어서, 시즌 중 하루 여러 번 standings snapshot 을 저장해 과거 날짜 기준 순위 회고가 가능하도록 설계한다.
+- 앱 기본 화면은 최신 snapshot 을 즉시 보여주고, 당일 경기 진행 중에만 주기적 재계산 또는 원천 재수집을 허용한다.
 
 ---
 
@@ -757,6 +770,28 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 }
 ```
 
+### 데이터 신선도 계층
+
+| 계층 | 대상 데이터 | 서버 처리 방식 | 앱 처리 방식 |
+|------|-------------|----------------|--------------|
+| Live | 진행 중 경기 scoreboard, relay, 현재 타석, 당일 라인업 변경 | 짧은 TTL + adaptive polling + stale fallback | 마지막 응답 즉시 표시 후 백그라운드 갱신 |
+| Warm Cache | 오늘 일정, 경기 단건 상세, 당일/직전 경기 박스스코어, 최근 팀 기록 | 메모리/Redis TTL 캐시 + 종료 직후 증분 갱신 | 화면 진입 전 prefetch, pull-to-refresh |
+| Persisted Snapshot | 선수 과거 기록, 지난 경기 결과, 지난 날짜 순위, 시즌 누적 팀/선수 통계 | DB/스토리지에 정규화 후 저장, 재크롤링보다 snapshot 우선 | 로컬 캐시와 함께 즉시 렌더링, 필요 시 조용한 재검증 |
+
+### 히스토리 데이터 저장 원칙
+
+- 경기 종료 시점에 해당 경기의 박스스코어, 라인업, relay summary, 하이라이트 메타를 영속 저장한다.
+- 선수 시즌 누적 기록과 최근 경기 로그는 경기 종료 이벤트를 기준으로 증분 업데이트한다.
+- 순위는 하루 여러 번 snapshot 으로 저장하고, 과거 날짜 조회는 저장된 snapshot 을 우선 반환한다.
+- 원천 KBO 응답이 수정될 가능성이 있으므로 당일/전일 데이터는 재검증 주기를 두고, 시간이 지난 히스토리 데이터는 낮은 빈도로만 재검증한다.
+- 앱이 `지난 경기 / 지난 순위 / 선수 과거 기록`을 요청할 때는 원천 크롤링보다 저장된 정규화 데이터에서 먼저 응답해야 한다.
+
+### 앱 렌더링 정책
+
+- 앱은 cold start 시 로컬에 남아 있는 마지막 성공 응답을 먼저 렌더링하고, 서버 최신값은 백그라운드에서 동기화한다.
+- 홈/일정/순위/기록실은 모두 stale-while-revalidate 패턴을 기본값으로 삼는다.
+- 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
+
 ---
 
 ### 5.1 스코어보드
@@ -768,6 +803,10 @@ GET /api/scoreboard?date={YYYY-MM-DD}
 | 파라미터 | 타입 | 필수 | 설명 |
 |----------|------|------|------|
 | date | string | N | 조회 날짜 (기본: 오늘) |
+
+**응답 정책**:
+- 오늘/진행 중 경기는 live cache 를 사용한다.
+- 지난 날짜는 저장된 경기 결과 snapshot 을 우선 사용하고, 필요 시에만 서버 내부 재검증 작업을 별도로 수행한다.
 
 **응답**:
 ```json
@@ -985,6 +1024,10 @@ GET /api/schedule?month={YYYY-MM}
 GET /api/standings?season={YYYY}
 ```
 
+**응답 정책**:
+- 기본 응답은 최신 standings snapshot 을 사용한다.
+- 당일 경기 진행 중에는 짧은 캐시 + 재계산을 허용하되, 지난 날짜 기준 순위는 저장된 snapshot 을 우선 사용한다.
+
 **응답**:
 ```json
 {
@@ -1017,6 +1060,10 @@ GET /api/standings?season={YYYY}
 ```
 GET /api/team/{teamId}/records?season={YYYY}
 ```
+
+**응답 정책**:
+- 팀/시즌 기록실 합본은 경기 종료 후 반영된 시즌 누적 스냅샷과 최근 경기 요약을 조합해 응답한다.
+- 과거 기록 조회를 위해 KBO 원본을 화면 요청마다 다시 긁지 않고, 저장된 선수/팀 기록 레코드를 우선 사용한다.
 
 **응답**:
 ```json
@@ -1129,13 +1176,13 @@ GET /api/game/{gameId}
 
 | Method | Path | 설명 | 캐시 |
 |--------|------|------|------|
-| GET | `/api/scoreboard` | 오늘의 스코어보드 | 30초 |
-| GET | `/api/game/{gameId}` | 경기 단건 상세 / 예매 정보 | 30초 |
-| GET | `/api/game/{gameId}/relay` | 문자중계 | 없음 (실시간) |
-| GET | `/api/game/{gameId}/boxscore` | 박스스코어 | 1분 |
-| GET | `/api/game/{gameId}/lineup` | 라인업 | 5분 |
-| GET | `/api/schedule` | 경기 일정 | 1시간 |
-| GET | `/api/standings` | 팀 순위 | 5분 |
+| GET | `/api/scoreboard` | 오늘의 스코어보드 | 오늘 live 30초 / 지난 날짜 snapshot 우선 |
+| GET | `/api/game/{gameId}` | 경기 단건 상세 / 예매 정보 | today 30초 / final snapshot 영속 저장 |
+| GET | `/api/game/{gameId}/relay` | 문자중계 | 없음 (실시간) / 종료 후 summary snapshot 저장 |
+| GET | `/api/game/{gameId}/boxscore` | 박스스코어 | live 1분 / 종료 후 snapshot 우선 |
+| GET | `/api/game/{gameId}/lineup` | 라인업 | 예정/당일 5분 / 종료 후 snapshot 우선 |
+| GET | `/api/schedule` | 경기 일정 | 월 단위 1시간 / 지난 날짜 snapshot 우선 |
+| GET | `/api/standings` | 팀 순위 | latest 5분 / 과거 기준 standings snapshot |
 | POST | `/api/push/register` | 푸시 등록 | 없음 |
 
 ---

@@ -62,12 +62,20 @@ class FallbackGameRepository implements GameRepository {
       _run('game/$gameId/currentAtBat', (repo) => repo.getCurrentAtBat(gameId));
 
   @override
+  Future<GameBoxscoreData> getBoxscoreData(String gameId) =>
+      _run('game/$gameId/boxscore', (repo) => repo.getBoxscoreData(gameId));
+
+  @override
   Future<List<BatterRecord>> getBatters(String gameId, {required bool isAway}) =>
       _run('game/$gameId/batters', (repo) => repo.getBatters(gameId, isAway: isAway));
 
   @override
   Future<List<PitcherRecord>> getPitchers(String gameId, {required bool isAway}) =>
       _run('game/$gameId/pitchers', (repo) => repo.getPitchers(gameId, isAway: isAway));
+
+  @override
+  Future<GameLineupData> getLineupData(String gameId) =>
+      _run('game/$gameId/lineupData', (repo) => repo.getLineupData(gameId));
 
   @override
   Future<List<LineupEntry>> getLineup(String gameId, {required bool isAway}) =>

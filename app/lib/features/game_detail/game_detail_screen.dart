@@ -530,6 +530,11 @@ class _HighlightCardState extends State<_HighlightCard> {
 
   Widget _videoCard(HighlightVideo video) {
     final isPlayable = video.videoId.isNotEmpty;
+    final thumbnailUrl = video.thumbnailUrl.isNotEmpty
+        ? video.thumbnailUrl
+        : (video.videoId.isNotEmpty
+              ? 'https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg'
+              : '');
     return SizedBox(
       width: 260,
       child: Container(
@@ -555,9 +560,9 @@ class _HighlightCardState extends State<_HighlightCard> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    if ((video.thumbnailUrl).isNotEmpty)
+                    if (thumbnailUrl.isNotEmpty)
                       CachedNetworkImage(
-                        imageUrl: video.thumbnailUrl,
+                        imageUrl: thumbnailUrl,
                         fit: BoxFit.cover,
                         errorWidget: (_, _, _) => _thumbnailFallback(),
                         placeholder: (_, _) =>

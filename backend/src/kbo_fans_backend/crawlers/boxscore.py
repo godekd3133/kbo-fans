@@ -12,7 +12,7 @@ class BoxscoreCrawler(BaseCrawler):
     """Fetches boxscore data."""
 
     def get_boxscore(self, game_id: str) -> dict[str, Any]:
-        response = self.session.post(
+        payload = self._post_json(
             f"{self.base_url}/ws/Schedule.asmx/GetBoxScoreScroll",
             data={
                 "leId": 1,
@@ -24,17 +24,20 @@ class BoxscoreCrawler(BaseCrawler):
                 "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest",
             },
-            timeout=self.timeout,
+            breaker_key="kbo_boxscore",
         )
-        response.raise_for_status()
-        payload = response.json()
-
-        away_hitters = self._parse_hitter_team(payload["arrHitter"][0])
-        home_hitters = self._parse_hitter_team(payload["arrHitter"][1])
-        away_pitchers = self._parse_pitcher_team(payload["arrPitcher"][0])
-        home_pitchers = self._parse_pitcher_team(payload["arrPitcher"][1])
-
         away_id, home_id = self._derive_team_ids(game_id)
+
+        hitters_payload = payload.get("arrHitter")
+        pitchers_payload = payload.get("arrPitcher")
+        if not hitters_payload or not pitchers_payload:
+            return self._empty_boxscore(game_id, away_id, home_id)
+
+        away_hitters = self._parse_hitter_team(hitters_payload[0])
+        home_hitters = self._parse_hitter_team(hitters_payload[1])
+        away_pitchers = self._parse_pitcher_team(pitchers_payload[0])
+        home_pitchers = self._parse_pitcher_team(pitchers_payload[1])
+
         return {
             "gameId": game_id,
             "away": {
@@ -54,6 +57,34 @@ class BoxscoreCrawler(BaseCrawler):
                     "batting": home_hitters["totals"],
                     "pitching": home_pitchers["totals"],
                 },
+            },
+        }
+
+    @staticmethod
+    def _empty_boxscore(game_id: str, away_id: str, home_id: str) -> dict[str, Any]:
+        empty_totals = {
+            "batting": {"atBats": 0, "runs": 0, "hits": 0, "rbi": 0},
+            "pitching": {
+                "innings": "0.0",
+                "hits": 0,
+                "strikeouts": 0,
+                "walks": 0,
+                "earnedRuns": 0,
+            },
+        }
+        return {
+            "gameId": game_id,
+            "away": {
+                "teamId": away_id,
+                "batters": [],
+                "pitchers": [],
+                "totals": empty_totals,
+            },
+            "home": {
+                "teamId": home_id,
+                "batters": [],
+                "pitchers": [],
+                "totals": empty_totals,
             },
         }
 

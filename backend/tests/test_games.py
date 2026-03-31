@@ -65,3 +65,52 @@ def test_get_relay_returns_empty_payload() -> None:
     assert body["data"]["gameId"] == "20260330KTLG0"
     assert "currentAtBat" in body["data"]
     assert "relayItems" in body["data"]
+
+
+def test_get_boxscore_returns_empty_payload_when_crawler_has_no_data(monkeypatch) -> None:
+    monkeypatch.setattr(
+        games.boxscore_service,
+        "get_boxscore",
+        lambda game_id: {
+            "gameId": game_id,
+            "away": {
+                "teamId": "KT",
+                "batters": [],
+                "pitchers": [],
+                "totals": {
+                    "batting": {"atBats": 0, "runs": 0, "hits": 0, "rbi": 0},
+                    "pitching": {
+                        "innings": "0.0",
+                        "hits": 0,
+                        "strikeouts": 0,
+                        "walks": 0,
+                        "earnedRuns": 0,
+                    },
+                },
+            },
+            "home": {
+                "teamId": "LG",
+                "batters": [],
+                "pitchers": [],
+                "totals": {
+                    "batting": {"atBats": 0, "runs": 0, "hits": 0, "rbi": 0},
+                    "pitching": {
+                        "innings": "0.0",
+                        "hits": 0,
+                        "strikeouts": 0,
+                        "walks": 0,
+                        "earnedRuns": 0,
+                    },
+                },
+            },
+        },
+    )
+    client = TestClient(app)
+
+    response = client.get("/api/game/20260330KTLG0/boxscore")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["away"]["batters"] == []
+    assert body["data"]["home"]["pitchers"] == []

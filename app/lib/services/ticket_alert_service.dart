@@ -27,6 +27,11 @@ class TicketAlertService {
   static const _channelId = 'ticket_open_alerts';
   static const _channelName = '예매 오픈 알림';
   static const _channelDescription = '경기 예매 시작 시간 알림';
+  static const _reminderOffsets = <Duration>[
+    Duration(days: 1),
+    Duration(hours: 1),
+    Duration(minutes: 10),
+  ];
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
@@ -79,7 +84,7 @@ class TicketAlertService {
     final ticket = game.ticketInfo;
 
     if (!enabled) {
-      await _plugin.cancel(_notificationId(game.gameId));
+      await _cancelScheduledReminders(game.gameId);
       ids.remove(game.gameId);
       await prefs.setStringList(_prefsKey, ids.toList()..sort());
       return const TicketAlertResult(
@@ -102,30 +107,50 @@ class TicketAlertService {
       );
     }
 
-    await _plugin.zonedSchedule(
-      _notificationId(game.gameId),
-      '${game.away.shortName} vs ${game.home.shortName} 예매 오픈',
-      '${ticket.vendorName}에서 ${_formatDateTime(ticket.openAt!)}부터 예매할 수 있습니다.',
-      tz.TZDateTime.from(ticket.openAt!, tz.local),
-      NotificationDetails(
-        android: const AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.max,
-          priority: Priority.high,
+    await _cancelScheduledReminders(game.gameId);
+
+    final now = DateTime.now();
+    final scheduledLabels = <String>[];
+    for (var index = 0; index < _reminderOffsets.length; index++) {
+      final offset = _reminderOffsets[index];
+      final reminderTime = ticket.openAt!.subtract(offset);
+      if (!reminderTime.isAfter(now)) {
+        continue;
+      }
+
+      await _plugin.zonedSchedule(
+        _notificationId(game.gameId, index),
+        '${game.away.shortName} vs ${game.home.shortName} 예매 알림',
+        '${ticket.vendorName} 예매 ${_relativeLabel(offset)} 전입니다. 오픈 시각 ${_formatDateTime(ticket.openAt!)}',
+        tz.TZDateTime.from(reminderTime, tz.local),
+        NotificationDetails(
+          android: const AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription: _channelDescription,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+          iOS: const DarwinNotificationDetails(),
         ),
-        iOS: const DarwinNotificationDetails(),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+      scheduledLabels.add(_relativeLabel(offset));
+    }
+
+    if (scheduledLabels.isEmpty) {
+      return const TicketAlertResult(
+        scheduled: false,
+        message: '남은 예매 리마인드 시점이 없어 알림을 예약할 수 없습니다.',
+      );
+    }
 
     ids.add(game.gameId);
     await prefs.setStringList(_prefsKey, ids.toList()..sort());
 
     return TicketAlertResult(
       scheduled: true,
-      message: '${ticket.vendorName} 예매 오픈 알림을 예약했습니다.',
+      message: '${ticket.vendorName} 예매 알림을 ${scheduledLabels.join(', ')} 기준으로 예약했습니다.',
     );
   }
 
@@ -133,8 +158,14 @@ class TicketAlertService {
     return jsonEncode({'initialized': _initialized});
   }
 
-  int _notificationId(String gameId) {
-    return gameId.hashCode & 0x7fffffff;
+  Future<void> _cancelScheduledReminders(String gameId) async {
+    for (var index = 0; index < _reminderOffsets.length; index++) {
+      await _plugin.cancel(_notificationId(gameId, index));
+    }
+  }
+
+  int _notificationId(String gameId, int index) {
+    return '$gameId#$index'.hashCode & 0x7fffffff;
   }
 
   String _formatDateTime(DateTime value) {
@@ -143,5 +174,18 @@ class TicketAlertService {
     final hour = value.hour.toString().padLeft(2, '0');
     final minute = value.minute.toString().padLeft(2, '0');
     return '$month.$day $hour:$minute';
+  }
+
+  String _relativeLabel(Duration offset) {
+    if (offset.inDays == 1) {
+      return '하루 전';
+    }
+    if (offset.inHours == 1) {
+      return '1시간 전';
+    }
+    if (offset.inMinutes == 10) {
+      return '10분 전';
+    }
+    return '${offset.inMinutes}분 전';
   }
 }

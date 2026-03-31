@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/widgets/dev_console.dart';
@@ -7,6 +11,7 @@ import '../../core/widgets/dev_console.dart';
 class ApiClient {
   late final Dio _dio;
   static const _requestTimeout = Duration(seconds: 25);
+  static const _cachePrefix = 'api_cache:';
 
   ApiClient() {
     _dio = Dio(
@@ -70,6 +75,40 @@ class ApiClient {
       queryParameters: queryParameters,
     );
     return _extractData(response);
+  }
+
+  Future<Map<String, dynamic>> getCached(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    required String cacheKey,
+    bool preferCache = false,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final storageKey = '$_cachePrefix$cacheKey';
+    final cached = _readCachedPayload(prefs, storageKey);
+
+    if (preferCache && cached != null) {
+      unawaited(
+        _refreshCached(
+          path,
+          queryParameters: queryParameters,
+          prefs: prefs,
+          storageKey: storageKey,
+        ),
+      );
+      return cached;
+    }
+
+    try {
+      final fresh = await get(path, queryParameters: queryParameters);
+      await _writeCachedPayload(prefs, storageKey, fresh);
+      return fresh;
+    } catch (_) {
+      if (cached != null) {
+        return cached;
+      }
+      rethrow;
+    }
   }
 
   /// POST 요청 → ApiEnvelope.data 반환
@@ -151,6 +190,53 @@ class ApiClient {
     }
 
     return body['data'] as Map<String, dynamic>? ?? {};
+  }
+
+  Map<String, dynamic>? _readCachedPayload(
+    SharedPreferences prefs,
+    String storageKey,
+  ) {
+    final raw = prefs.getString(storageKey);
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final payload = decoded['data'];
+      if (payload is Map<String, dynamic>) {
+        return payload;
+      }
+    } catch (_) {
+      return null;
+    }
+    return null;
+  }
+
+  Future<void> _writeCachedPayload(
+    SharedPreferences prefs,
+    String storageKey,
+    Map<String, dynamic> data,
+  ) async {
+    final encoded = jsonEncode({
+      'cachedAt': DateTime.now().toIso8601String(),
+      'data': data,
+    });
+    await prefs.setString(storageKey, encoded);
+  }
+
+  Future<void> _refreshCached(
+    String path, {
+    required SharedPreferences prefs,
+    required String storageKey,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    try {
+      final fresh = await get(path, queryParameters: queryParameters);
+      await _writeCachedPayload(prefs, storageKey, fresh);
+    } catch (_) {
+      // Cached-first paths should remain silent on refresh failure.
+    }
   }
 
   void _logRequestTiming(

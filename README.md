@@ -92,7 +92,8 @@ flutter run -d android
 참고:
 
 - 현재 저장소에는 `ios/`와 `android/` 프로젝트가 모두 포함되어 있습니다.
-- `web/`과 `macos/`는 아직 생성되지 않았습니다.
+- `web/` 플랫폼은 추가되어 있으며 `./scripts/codex-run-web.sh` 또는 `flutter run -d chrome` 으로 실행할 수 있습니다.
+- `macos/` 프로젝트는 아직 생성되지 않았습니다.
 - 현재 홈 화면은 일부 목데이터를 사용하므로, UI 확인만 목적이면 백엔드 없이도 실행 가능합니다.
 - 예매 오픈 알림은 앱 로컬 예약 알림으로 동작합니다. 현재 예매처/오픈 시간은 홈팀 기본 정책 기준 추정값입니다.
 - 위젯 갱신은 앱 foreground에서는 라이브 30초 / 예정 5분 기준으로 반영되며, 백그라운드 주기는 OS 정책에 따라 제한됩니다.
@@ -141,6 +142,8 @@ uvicorn kbo_fans_backend.main:app --reload
 
 - 홈 스코어보드는 날짜 기준 `30초 TTL` 캐시를 사용합니다.
 - 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `5분 TTL` 캐시를 사용합니다.
+- 지난 경기 결과, 선수 과거 기록, 지난 날짜 순위는 화면 요청 시 원천 크롤링보다 저장된 snapshot/정규화 레코드를 우선 사용합니다.
+- 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장하고, 앱은 stale-while-revalidate 방식으로 마지막 성공 데이터를 먼저 보여주는 방향을 기준으로 합니다.
 - 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.
 - 개발 환경에서는 앱 Dev Console 에 `API`, `HOME loaded`, `RECORDS loaded` 타이밍 로그가 표시됩니다.
 - 백엔드는 `backend/logs/backend.log`, `backend/logs/client_metrics.log` 에 느린 요청과 클라이언트 실측 지표를 저장합니다.

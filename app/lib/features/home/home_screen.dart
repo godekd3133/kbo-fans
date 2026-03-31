@@ -16,6 +16,7 @@ import '../../data/models/records_overview.dart';
 import '../../data/models/schedule.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
+import '../../services/game_event_alert_service.dart';
 import '../../services/widget_sync_service.dart';
 import 'widgets/game_card.dart';
 import 'widgets/my_team_game_card.dart';
@@ -34,6 +35,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   int? _homeLoadStartedAtMicros;
   String? _lastHomeLoadLogKey;
   bool _secondarySectionsEnabled = false;
+  bool _overviewSectionEnabled = false;
   int? _secondarySectionsStartedAtMicros;
   String? _lastSecondarySectionsLogKey;
 
@@ -105,6 +107,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           data: (games) {
             _scheduleRefresh(games, myTeamId);
             _syncWidget(games, myTeamId);
+            unawaited(
+              GameEventAlertService.instance.processScoreboard(
+                games: games,
+                myTeamId: myTeamId,
+              ),
+            );
             _enableSecondarySections();
             return _buildContent(context, games, myTeamId, today);
           },
@@ -280,9 +288,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         final standingsAsync = ref.watch(
                           standingsProvider(season),
                         );
-                        final recordsOverviewAsync = ref.watch(
-                          recordsOverviewProvider(season),
-                        );
                         final myTeamBrief = _buildMyTeamBrief(
                           myTeamId: myTeamId,
                           myGame: myGame,
@@ -290,20 +295,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           standings: standingsAsync.asData?.value ?? const [],
                           today: today,
                         );
-                        final quickItems = _buildQuickItems(
+                        final baseQuickItems = _buildQuickItems(
                           myTeamBrief: myTeamBrief,
-                          overview: recordsOverviewAsync.asData?.value,
                           season: season,
                         );
                         _logSecondarySectionsLoaded(
                           today: today,
                           brief: myTeamBrief,
-                          overview: recordsOverviewAsync.asData?.value,
+                          overview: null,
                         );
-                        if (quickItems.isEmpty) {
+                        if (baseQuickItems.isEmpty) {
                           return const SizedBox.shrink();
                         }
-                        return _QuickContentSection(items: quickItems);
+                        return _QuickContentSection(items: baseQuickItems);
+                      },
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _secondarySectionsEnabled && _overviewSectionEnabled
+                  ? Consumer(
+                      builder: (context, ref, _) {
+                        final season = DateTime.now().year;
+                        final overviewAsync = ref.watch(
+                          recordsOverviewProvider(season),
+                        );
+                        final items = _buildOverviewQuickItems(
+                          overview: overviewAsync.asData?.value,
+                          season: season,
+                        );
+                        _logSecondarySectionsLoaded(
+                          today: today,
+                          brief: null,
+                          overview: overviewAsync.asData?.value,
+                        );
+                        if (items.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        return _QuickContentSection(items: items);
                       },
                     )
                   : const SizedBox.shrink(),
@@ -532,7 +564,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   List<_QuickContentItemData> _buildQuickItems({
     required _MyTeamBriefData? myTeamBrief,
-    required RecordsOverview? overview,
     required int season,
   }) {
     final items = <_QuickContentItemData>[];
@@ -579,23 +610,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       );
     }
 
-    final myTeamHighlight = myTeamGame?.highlightInfo;
-    if (myTeamBrief != null && myTeamHighlight != null) {
-      final firstVideo = myTeamHighlight.youtubeVideos.firstOrNull;
-      if (firstVideo != null) {
-        items.add(
-          _QuickContentItemData(
-            eyebrow: '마이팀 하이라이트',
-            title: myTeamBrief.teamLabel,
-            subtitle: firstVideo.title,
-            route: '/game/${myTeamGame!.gameId}',
-          ),
-        );
-      }
+    return items.take(4).toList();
+  }
+
+  List<_QuickContentItemData> _buildOverviewQuickItems({
+    required RecordsOverview? overview,
+    required int season,
+  }) {
+    if (overview == null) {
+      return const [];
     }
 
-    if (overview?.hrLeaders.isNotEmpty == true) {
-      final leader = overview!.hrLeaders.first;
+    final items = <_QuickContentItemData>[];
+
+    if (overview.hrLeaders.isNotEmpty) {
+      final leader = overview.hrLeaders.first;
       items.add(
         _QuickContentItemData(
           eyebrow: '홈런 리더',
@@ -607,13 +636,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       );
     }
 
-    final featuredPlayer = overview == null
-        ? null
-        : (overview.todayHitter.name != null
-              ? overview.todayHitter
-              : overview.todayPitcher.name != null
-              ? overview.todayPitcher
-              : null);
+    final featuredPlayer = overview.todayHitter.name != null
+        ? overview.todayHitter
+        : overview.todayPitcher.name != null
+        ? overview.todayPitcher
+        : null;
 
     if (featuredPlayer?.name != null) {
       final player = featuredPlayer!;
@@ -631,8 +658,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           route: route,
         ),
       );
-    } else if (overview?.avgLeaders.isNotEmpty == true) {
-      final leader = overview!.avgLeaders.first;
+    } else if (overview.avgLeaders.isNotEmpty) {
+      final leader = overview.avgLeaders.first;
       items.add(
         _QuickContentItemData(
           eyebrow: '타율 리더',
@@ -644,7 +671,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       );
     }
 
-    return items.take(4).toList();
+    return items.take(2).toList();
   }
 
   bool _isMyTeamGame(ScheduleGame game, String teamId) {
@@ -773,6 +800,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
       setState(() {
         _secondarySectionsEnabled = true;
+      });
+      Future<void>.delayed(const Duration(milliseconds: 450), () {
+        if (!mounted || _overviewSectionEnabled) {
+          return;
+        }
+        setState(() {
+          _overviewSectionEnabled = true;
+        });
       });
     });
   }

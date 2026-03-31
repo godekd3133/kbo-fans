@@ -47,6 +47,7 @@ class Settings:
     kbo_relay_password: str
     firebase_service_account_path: str
     firebase_project_id: str
+    snapshot_dir: str
 
 
 @lru_cache
@@ -66,4 +67,8 @@ def get_settings() -> Settings:
         kbo_relay_password=os.getenv("KBO_RELAY_PASSWORD", ""),
         firebase_service_account_path=os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", ""),
         firebase_project_id=os.getenv("FIREBASE_PROJECT_ID", ""),
+        snapshot_dir=os.getenv(
+            "SNAPSHOT_DIR",
+            str(Path(__file__).resolve().parents[3] / "data" / "snapshots"),
+        ),
     )

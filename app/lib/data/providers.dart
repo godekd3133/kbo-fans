@@ -113,6 +113,13 @@ final currentAtBatProvider = FutureProvider.family<CurrentAtBat?, String>((
   return ref.watch(gameRepositoryProvider).getCurrentAtBat(gameId);
 });
 
+final gameBoxscoreProvider = FutureProvider.family<GameBoxscoreData, String>((
+  ref,
+  gameId,
+) {
+  return ref.watch(gameRepositoryProvider).getBoxscoreData(gameId);
+});
+
 /// (gameId, isAway) 튜플을 문자열 키로 변환하여 family 파라미터로 사용
 final battersProvider = FutureProvider.family<List<BatterRecord>, String>((
   ref,
@@ -121,7 +128,9 @@ final battersProvider = FutureProvider.family<List<BatterRecord>, String>((
   final parts = key.split('|');
   final gameId = parts[0];
   final isAway = parts[1] == 'true';
-  return ref.watch(gameRepositoryProvider).getBatters(gameId, isAway: isAway);
+  return ref.watch(gameBoxscoreProvider(gameId).future).then(
+    (data) => (isAway ? data.away : data.home).batters,
+  );
 });
 
 final pitchersProvider = FutureProvider.family<List<PitcherRecord>, String>((
@@ -131,7 +140,16 @@ final pitchersProvider = FutureProvider.family<List<PitcherRecord>, String>((
   final parts = key.split('|');
   final gameId = parts[0];
   final isAway = parts[1] == 'true';
-  return ref.watch(gameRepositoryProvider).getPitchers(gameId, isAway: isAway);
+  return ref.watch(gameBoxscoreProvider(gameId).future).then(
+    (data) => (isAway ? data.away : data.home).pitchers,
+  );
+});
+
+final gameLineupProvider = FutureProvider.family<GameLineupData, String>((
+  ref,
+  gameId,
+) {
+  return ref.watch(gameRepositoryProvider).getLineupData(gameId);
 });
 
 final lineupProvider = FutureProvider.family<List<LineupEntry>, String>((
@@ -141,7 +159,9 @@ final lineupProvider = FutureProvider.family<List<LineupEntry>, String>((
   final parts = key.split('|');
   final gameId = parts[0];
   final isAway = parts[1] == 'true';
-  return ref.watch(gameRepositoryProvider).getLineup(gameId, isAway: isAway);
+  return ref.watch(gameLineupProvider(gameId).future).then(
+    (data) => (isAway ? data.away : data.home).lineup,
+  );
 });
 
 // ── 일정/순위 ──

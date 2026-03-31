@@ -12,11 +12,13 @@ abstract class GameRepository {
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo});
   Future<List<RelayItem>> getRelay(String gameId, {int? afterSeqNo});
   Future<CurrentAtBat?> getCurrentAtBat(String gameId);
+  Future<GameBoxscoreData> getBoxscoreData(String gameId);
   Future<List<BatterRecord>> getBatters(String gameId, {required bool isAway});
   Future<List<PitcherRecord>> getPitchers(
     String gameId, {
     required bool isAway,
   });
+  Future<GameLineupData> getLineupData(String gameId);
   Future<List<LineupEntry>> getLineup(String gameId, {required bool isAway});
   Future<List<ScheduleDay>> getSchedule(String yearMonth);
   Future<List<TeamStanding>> getStandings(int season);
