@@ -20,6 +20,9 @@
 - [x] README / APP_SPEC 에 운영 메모, 캐시 TTL, 로그 위치, 진단 화면 정보를 반영
 - [x] 친구/테스터 배포 경로를 정리한 `docs/DISTRIBUTION_GUIDE.md` 추가
 - [x] `docs/DISTRIBUTION_GUIDE.md`에 iOS TestFlight / Android 내부 테스트 실제 업로드 순서 추가
+- [x] `docs/ANDROID_SIGNING_GUIDE.md` 추가
+- [x] `docs/IOS_TESTFLIGHT_CHECKLIST.md` 추가
+- [x] Android release signing 을 `key.properties` 기반 구조로 정리
 
 ### 검증
 - [x] `cd backend && source .venv/bin/activate && pytest -q`
