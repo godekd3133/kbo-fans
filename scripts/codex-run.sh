@@ -48,14 +48,26 @@ pick_ios_device() {
     return
   fi
 
-  (
-    cd "$APP_DIR"
-    eval "$flutter devices --machine" 2>/dev/null
-  ) | python3 - <<'PY'
+  local devices_json
+  devices_json="$(
+    cd "$APP_DIR" && eval "$flutter devices --machine" 2>/dev/null || true
+  )"
+
+  if [[ -z "$devices_json" ]]; then
+    echo ""
+    return
+  fi
+
+  local tmp_json
+  tmp_json="$(mktemp)"
+  printf '%s' "$devices_json" > "$tmp_json"
+
+  python3 - "$tmp_json" <<'PY'
 import json
 import sys
 
-raw = sys.stdin.read().strip()
+path = sys.argv[1]
+raw = open(path, "r", encoding="utf-8").read().strip()
 if not raw:
     print("")
     raise SystemExit(0)
@@ -87,6 +99,74 @@ if simulators:
 
 print("")
 PY
+  local status=$?
+  rm -f "$tmp_json"
+  return $status
+}
+
+pick_ios_device_name() {
+  local flutter
+  flutter="$(flutter_cmd)"
+
+  if [[ -z "$flutter" ]]; then
+    echo ""
+    return
+  fi
+
+  local devices_json
+  devices_json="$(
+    cd "$APP_DIR" && eval "$flutter devices --machine" 2>/dev/null || true
+  )"
+
+  if [[ -z "$devices_json" ]]; then
+    echo ""
+    return
+  fi
+
+  local tmp_json
+  tmp_json="$(mktemp)"
+  printf '%s' "$devices_json" > "$tmp_json"
+
+  python3 - "$tmp_json" <<'PY'
+import json
+import sys
+
+path = sys.argv[1]
+raw = open(path, "r", encoding="utf-8").read().strip()
+if not raw:
+    print("")
+    raise SystemExit(0)
+
+try:
+    devices = json.loads(raw)
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+ios_devices = [d for d in devices if d.get("targetPlatform") == "ios"]
+physical = [
+    d for d in ios_devices
+    if d.get("sdk", "").startswith("iOS")
+    and d.get("emulator") is False
+    and d.get("id") not in {"ios", "iphone"}
+]
+if physical:
+    print(physical[0].get("name", ""))
+    raise SystemExit(0)
+
+simulators = [
+    d for d in ios_devices
+    if d.get("id") in {"ios", "iphone"} or d.get("emulator") is True
+]
+if simulators:
+    print(simulators[0].get("name", "iOS Simulator"))
+    raise SystemExit(0)
+
+print("")
+PY
+  local status=$?
+  rm -f "$tmp_json"
+  return $status
 }
 
 has_android_emulator() {
@@ -129,9 +209,12 @@ run_flutter() {
 
 run_ios() {
   local device_id
+  local device_name
   device_id="$(pick_ios_device)"
+  device_name="$(pick_ios_device_name)"
 
   if [[ -n "$device_id" && "$device_id" != "ios" && "$device_id" != "iphone" ]]; then
+    echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
     run_flutter run -d "$device_id"
     return
   fi
@@ -154,6 +237,7 @@ EOF
     open -a Simulator >/dev/null 2>&1 || true
   fi
 
+  echo "Running on iOS Simulator"
   run_flutter run -d ios
 }
 
