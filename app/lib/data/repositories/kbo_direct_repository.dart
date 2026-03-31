@@ -285,9 +285,12 @@ class KboDirectRepository implements GameRepository {
       String time;
       String awayId;
       String awayName;
+      int? awayScore;
       String homeId;
       String homeName;
+      int? homeScore;
       String stadium;
+      String status;
 
       if (cells != null && cells.isNotEmpty) {
         final parsed = _parseScheduleTableRow(cells, currentDate, year);
@@ -297,9 +300,12 @@ class KboDirectRepository implements GameRepository {
         time = parsed.time;
         awayId = parsed.awayId;
         awayName = parsed.awayName;
+        awayScore = parsed.awayScore;
         homeId = parsed.homeId;
         homeName = parsed.homeName;
+        homeScore = parsed.homeScore;
         stadium = parsed.stadium;
+        status = parsed.status;
       } else {
         final gameDate = r['G_DT'] as String? ?? '';
         if (gameDate.isEmpty) continue;
@@ -311,9 +317,12 @@ class KboDirectRepository implements GameRepository {
         time = r['G_TM'] as String? ?? '';
         awayId = r['AWAY_ID'] as String? ?? '';
         awayName = r['AWAY_NM'] as String? ?? awayId;
+        awayScore = _parseInt(r['T_SCORE_CN']);
         homeId = r['HOME_ID'] as String? ?? '';
         homeName = r['HOME_NM'] as String? ?? homeId;
+        homeScore = _parseInt(r['B_SCORE_CN']);
         stadium = r['S_NM'] as String? ?? '';
+        status = _mapScheduleStatus(r['GAME_STATE_SC'] as String? ?? '');
       }
 
       if (date.isEmpty || gameId.isEmpty) {
@@ -327,12 +336,12 @@ class KboDirectRepository implements GameRepository {
           time: time,
           awayId: awayId,
           awayName: awayName,
-          awayScore: parsed.awayScore,
+          awayScore: awayScore,
           homeId: homeId,
           homeName: homeName,
-          homeScore: parsed.homeScore,
+          homeScore: homeScore,
           stadium: stadium,
-          status: parsed.status,
+          status: status,
           ticketInfo: TicketingPolicy.inferredTicketInfo(
             homeTeamId: homeId,
             gameId: gameId,
@@ -374,46 +383,47 @@ class KboDirectRepository implements GameRepository {
   }
 
   List<TeamStanding> _parseStandingsHtml(String html) {
-    // 간단한 정규식 기반 파싱 (BeautifulSoup 없이)
     final standings = <TeamStanding>[];
-    // tbl-type04 테이블에서 순위 데이터 추출
-    final rowPattern = RegExp(r'<tr[^>]*>.*?</tr>', dotAll: true);
-    final tdPattern = RegExp(r'<td[^>]*>(.*?)</td>', dotAll: true);
-    final tagRemove = RegExp(r'<[^>]*>');
+    final document = html_parser.parse(html);
+    final tables = document.querySelectorAll('table');
 
-    final tableMatch = RegExp(
-      r'tbl-type04.*?</table>',
-      dotAll: true,
-    ).firstMatch(html);
-    if (tableMatch == null) return standings;
+    for (final table in tables) {
+      final headers = table
+          .querySelectorAll('th')
+          .map((node) => node.text.trim())
+          .toList();
+      if (!headers.contains('팀명') || !headers.contains('승') || !headers.contains('패')) {
+        continue;
+      }
 
-    final rows = rowPattern.allMatches(tableMatch.group(0)!).toList();
+      final rows = table.querySelectorAll('tbody tr');
+      for (final row in rows) {
+        final cells = row
+            .querySelectorAll('td')
+            .map((node) => node.text.trim())
+            .toList();
+        if (cells.length < 6) {
+          continue;
+        }
 
-    int rank = 0;
-    for (final rowMatch in rows) {
-      final tds = tdPattern.allMatches(rowMatch.group(0)!).map((m) {
-        return m.group(1)!.replaceAll(tagRemove, '').trim();
-      }).toList();
+        final rank = int.tryParse(cells[0]) ?? standings.length + 1;
+        final teamName = cells[1];
+        final teamId = _teamNameToId(teamName);
 
-      if (tds.length < 7) continue;
-      rank++;
-
-      // 팀명에서 팀 ID 추출
-      final teamName = tds[0];
-      final teamId = _teamNameToId(teamName);
-
-      standings.add(
-        TeamStanding(
-          rank: rank,
-          teamId: teamId,
-          teamName: teamName,
-          wins: int.tryParse(tds[1]) ?? 0,
-          losses: int.tryParse(tds[2]) ?? 0,
-          draws: int.tryParse(tds[3]) ?? 0,
-          pct: tds[4],
-          gb: tds[5].isEmpty ? '-' : tds[5],
-        ),
-      );
+        standings.add(
+          TeamStanding(
+            rank: rank,
+            teamId: teamId,
+            teamName: _teamNameToFullName(teamName),
+            wins: int.tryParse(cells[3]) ?? 0,
+            losses: int.tryParse(cells[4]) ?? 0,
+            draws: int.tryParse(cells[5]) ?? 0,
+            pct: cells.length > 6 ? cells[6] : '.000',
+            gb: cells.length > 7 && cells[7].isNotEmpty ? cells[7] : '-',
+          ),
+        );
+      }
+      break;
     }
 
     return standings;
@@ -431,6 +441,20 @@ class KboDirectRepository implements GameRepository {
     if (name.contains('두산')) return 'OB';
     if (name.contains('키움')) return 'WO';
     return '';
+  }
+
+  String _teamNameToFullName(String name) {
+    if (name.contains('LG')) return 'LG 트윈스';
+    if (name.contains('KT')) return 'KT 위즈';
+    if (name.contains('SSG')) return 'SSG 랜더스';
+    if (name.contains('삼성')) return '삼성 라이온즈';
+    if (name.contains('NC')) return 'NC 다이노스';
+    if (name.contains('한화')) return '한화 이글스';
+    if (name.contains('롯데')) return '롯데 자이언츠';
+    if (name.contains('KIA')) return 'KIA 타이거즈';
+    if (name.contains('두산')) return '두산 베어스';
+    if (name.contains('키움')) return '키움 히어로즈';
+    return name;
   }
 
   // ── 문자중계 (미구현 — 추후 추가) ──
@@ -620,6 +644,22 @@ class KboDirectRepository implements GameRepository {
       return 'LIVE';
     }
     return 'UNKNOWN';
+  }
+
+  String _mapScheduleStatus(String status) {
+    switch (status) {
+      case '1':
+        return 'SCHEDULED';
+      case '2':
+        return 'LIVE';
+      case '3':
+      case '4':
+        return 'FINAL';
+      case '5':
+        return 'CANCELLED';
+      default:
+        return 'UNKNOWN';
+    }
   }
 
   (String, String) _deriveTeamIdsFromGameId(String gameId) {
