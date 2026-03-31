@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from kbo_fans_backend.api.routes import (
     games,
     health,
+    metrics,
     players,
     push,
     records,
@@ -14,6 +15,7 @@ from kbo_fans_backend.api.routes import (
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(metrics.router, tags=["metrics"])
 api_router.include_router(scoreboard.router, tags=["scoreboard"])
 api_router.include_router(games.router, tags=["games"])
 api_router.include_router(records.router, tags=["records"])

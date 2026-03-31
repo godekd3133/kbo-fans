@@ -49,6 +49,9 @@ class MockPlayerRepository implements PlayerRepository {
       avgLeaders: [
         RecordLeader(rank: 1, playerId: 'LG-29-PARK', playerType: 'hitter', name: '박해민', teamId: 'LG', value: '.318'),
       ],
+      hrLeaders: [
+        RecordLeader(rank: 1, playerId: 'LG-10-OH', playerType: 'hitter', name: '오지환', teamId: 'LG', value: '12'),
+      ],
       opsLeaders: [
         RecordLeader(rank: 1, playerId: 'LG-10-OH', playerType: 'hitter', name: '오지환', teamId: 'LG', value: '.882'),
       ],

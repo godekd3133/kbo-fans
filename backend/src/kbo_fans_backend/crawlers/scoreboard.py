@@ -10,8 +10,9 @@ class ScoreboardCrawler(BaseCrawler):
     """Fetches and normalizes scoreboard detail data from KBO sources."""
 
     def get_game_scoreboard(self, game_id: str) -> dict[str, Any]:
-        response = self.session.post(
+        payload = self._post_json(
             f"{self.base_url}/ws/Schedule.asmx/GetScoreBoardScroll",
+            breaker_key=f"kbo:scoreboard:{game_id}",
             data={
                 "leId": 1,
                 "srId": 0,
@@ -22,15 +23,14 @@ class ScoreboardCrawler(BaseCrawler):
                 "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest",
             },
-            timeout=self.timeout,
         )
-        response.raise_for_status()
-        payload = response.json()
 
-        inning_table = json.loads(payload["table2"])
-        totals_table = json.loads(payload["table3"])
-        away_scores = self._row_scores(inning_table["rows"][0]["row"])
-        home_scores = self._row_scores(inning_table["rows"][1]["row"])
+        inning_table = self._parse_table(payload.get("table2"))
+        totals_table = self._parse_table(payload.get("table3"))
+        away_scores = self._extract_scores(inning_table, row_index=0)
+        home_scores = self._extract_scores(inning_table, row_index=1)
+        away_totals = self._extract_totals(totals_table, row_index=0)
+        home_totals = self._extract_totals(totals_table, row_index=1)
 
         return {
             "inning": self._derive_inning(payload),
@@ -44,9 +44,9 @@ class ScoreboardCrawler(BaseCrawler):
                 "logoUrl": self._normalize_logo_url(payload["A_INITIAL_LK"]),
                 "score": self._parse_int(payload.get("T_SCORE_CN")),
                 "scores": away_scores,
-                "hits": self._parse_int(totals_table["rows"][0]["row"][1]["Text"]),
-                "errors": self._parse_int(totals_table["rows"][0]["row"][2]["Text"]),
-                "balls": self._parse_int(totals_table["rows"][0]["row"][3]["Text"]),
+                "hits": away_totals["hits"],
+                "errors": away_totals["errors"],
+                "balls": away_totals["balls"],
             },
             "home": {
                 "teamId": payload["HOME_ID"],
@@ -55,9 +55,9 @@ class ScoreboardCrawler(BaseCrawler):
                 "logoUrl": self._normalize_logo_url(payload["H_INITIAL_LK"]),
                 "score": self._parse_int(payload.get("B_SCORE_CN")),
                 "scores": home_scores,
-                "hits": self._parse_int(totals_table["rows"][1]["row"][1]["Text"]),
-                "errors": self._parse_int(totals_table["rows"][1]["row"][2]["Text"]),
-                "balls": self._parse_int(totals_table["rows"][1]["row"][3]["Text"]),
+                "hits": home_totals["hits"],
+                "errors": home_totals["errors"],
+                "balls": home_totals["balls"],
             },
         }
 
@@ -85,7 +85,59 @@ class ScoreboardCrawler(BaseCrawler):
             scores.append(None if text in {"", "-"} else int(text))
         return scores
 
+    @staticmethod
+    def _parse_table(raw: Optional[str]) -> Optional[dict[str, Any]]:
+        if not raw:
+            return None
+        return json.loads(raw)
+
+    def _extract_scores(
+        self,
+        inning_table: Optional[dict[str, Any]],
+        *,
+        row_index: int,
+    ) -> List[Optional[int]]:
+        if not inning_table:
+            return [None] * 9
+
+        rows = inning_table.get("rows", [])
+        if row_index >= len(rows):
+            return [None] * 9
+
+        return self._row_scores(rows[row_index].get("row", []))
+
+    def _extract_totals(
+        self,
+        totals_table: Optional[dict[str, Any]],
+        *,
+        row_index: int,
+    ) -> dict[str, Optional[int]]:
+        empty = {
+            "hits": None,
+            "errors": None,
+            "balls": None,
+        }
+        if not totals_table:
+            return empty
+
+        rows = totals_table.get("rows", [])
+        if row_index >= len(rows):
+            return empty
+
+        row = rows[row_index].get("row", [])
+        if len(row) < 4:
+            return empty
+
+        return {
+            "hits": self._parse_int(row[1].get("Text")),
+            "errors": self._parse_int(row[2].get("Text")),
+            "balls": self._parse_int(row[3].get("Text")),
+        }
+
     def _derive_inning(self, payload: dict[str, Any]) -> str:
         if payload.get("END_TM"):
             return "경기종료"
+        start_time = str(payload.get("START_TM") or "").strip()
+        if not payload.get("table2"):
+            return f"{start_time} 예정".strip() or "예정"
         return "경기중"

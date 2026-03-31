@@ -195,6 +195,8 @@ class ApiGameRepository implements GameRepository {
         return GameStatus.final_;
       case 'CANCELLED':
         return GameStatus.cancelled;
+      case 'SUSPENDED':
+        return GameStatus.suspended;
       default:
         return GameStatus.scheduled;
     }
@@ -238,10 +240,13 @@ class ApiGameRepository implements GameRepository {
       batterName: batter['name'] as String? ?? '',
       batterNumber: batter['number'] as int? ?? 0,
       batterHand: batter['hand'] as String? ?? '',
+      batterRecent: batter['recent'] as String? ?? '',
       pitcherName: pitcher['name'] as String? ?? '',
       pitcherNumber: pitcher['number'] as int? ?? 0,
       pitcherHand: pitcher['hand'] as String? ?? '',
       pitchCount: pitcher['pitchCount'] as int? ?? 0,
+      inningText: json['inningText'] as String? ?? '',
+      baseState: json['baseState'] as String? ?? '',
       balls: bc['balls'] as int? ?? 0,
       strikes: bc['strikes'] as int? ?? 0,
       outs: bc['outs'] as int? ?? 0,

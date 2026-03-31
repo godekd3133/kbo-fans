@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:html/parser.dart' as html_parser;
 
 import '../../core/constants/ticketing_policy.dart';
 import '../../core/widgets/dev_console.dart';
@@ -256,29 +257,58 @@ class KboDirectRepository implements GameRepository {
 
     final data = await _postAsmx('/ws/Schedule.asmx/GetScheduleList', {
       'leId': 1,
-      'srId': 0,
+      'srIdList': '0,9,6',
       'seasonId': year,
-      'yearMonth': '$year$month',
+      'gameMonth': month,
+      'teamId': '',
     });
 
     final rows = data['rows'] as List<dynamic>? ?? [];
     final dayMap = <String, List<ScheduleGame>>{};
+    String? currentDate;
 
     for (final row in rows) {
       final r = row as Map<String, dynamic>;
-      final gameDate = r['G_DT'] as String? ?? '';
-      if (gameDate.isEmpty) continue;
+      final cells = r['row'] as List<dynamic>?;
+      String date;
+      String gameId;
+      String time;
+      String awayId;
+      String awayName;
+      String homeId;
+      String homeName;
+      String stadium;
 
-      // "2026-03-28" 형식으로 정규화
-      final date = gameDate.length == 8
-          ? '${gameDate.substring(0, 4)}-${gameDate.substring(4, 6)}-${gameDate.substring(6, 8)}'
-          : gameDate;
+      if (cells != null && cells.isNotEmpty) {
+        final parsed = _parseScheduleTableRow(cells, currentDate, year);
+        currentDate = parsed.date;
+        date = parsed.date;
+        gameId = parsed.gameId;
+        time = parsed.time;
+        awayId = parsed.awayId;
+        awayName = parsed.awayName;
+        homeId = parsed.homeId;
+        homeName = parsed.homeName;
+        stadium = parsed.stadium;
+      } else {
+        final gameDate = r['G_DT'] as String? ?? '';
+        if (gameDate.isEmpty) continue;
+        date = gameDate.length == 8
+            ? '${gameDate.substring(0, 4)}-${gameDate.substring(4, 6)}-${gameDate.substring(6, 8)}'
+            : gameDate;
+        currentDate = date;
+        gameId = r['G_ID'] as String? ?? '';
+        time = r['G_TM'] as String? ?? '';
+        awayId = r['AWAY_ID'] as String? ?? '';
+        awayName = r['AWAY_NM'] as String? ?? awayId;
+        homeId = r['HOME_ID'] as String? ?? '';
+        homeName = r['HOME_NM'] as String? ?? homeId;
+        stadium = r['S_NM'] as String? ?? '';
+      }
 
-      final gameId = r['G_ID'] as String? ?? '';
-      final time = r['G_TM'] as String? ?? '';
-      final awayId = r['AWAY_ID'] as String? ?? '';
-      final homeId = r['HOME_ID'] as String? ?? '';
-      final stadium = r['S_NM'] as String? ?? '';
+      if (date.isEmpty || gameId.isEmpty) {
+        continue;
+      }
 
       dayMap.putIfAbsent(date, () => []);
       dayMap[date]!.add(
@@ -286,9 +316,9 @@ class KboDirectRepository implements GameRepository {
           gameId: gameId,
           time: time,
           awayId: awayId,
-          awayName: r['AWAY_NM'] as String? ?? awayId,
+          awayName: awayName,
           homeId: homeId,
-          homeName: r['HOME_NM'] as String? ?? homeId,
+          homeName: homeName,
           stadium: stadium,
           ticketInfo: TicketingPolicy.inferredTicketInfo(
             homeTeamId: homeId,
@@ -500,6 +530,69 @@ class KboDirectRepository implements GameRepository {
     return int.tryParse(value.toString().replaceAll(',', ''));
   }
 
+  _ScheduleRow _parseScheduleTableRow(
+    List<dynamic> cells,
+    String? currentDate,
+    String seasonId,
+  ) {
+    var offset = 0;
+    final firstText = _stripHtml(cells[0]['Text'] as String? ?? '');
+    if (RegExp(r'^\d{2}\.\d{2}\(.+\)$').hasMatch(firstText)) {
+      final parts = firstText.split('(').first.split('.');
+      currentDate = '$seasonId-${parts[0]}-${parts[1]}';
+      offset = 1;
+    }
+
+    final time = _stripHtml(cells[offset]['Text'] as String? ?? '');
+    final playHtml = cells[offset + 1]['Text'] as String? ?? '';
+    final actionHtml = cells[offset + 2]['Text'] as String? ?? '';
+    final gameId = _extractGameId(actionHtml);
+    final teamNames = _parseTeamsFromPlayHtml(playHtml);
+    final ids = _deriveTeamIdsFromGameId(gameId);
+    final stadium = _stripHtml(cells[offset + 6]['Text'] as String? ?? '');
+
+    return _ScheduleRow(
+      date: currentDate ?? '',
+      gameId: gameId,
+      time: time,
+      awayId: ids.$1,
+      awayName: teamNames.$1,
+      homeId: ids.$2,
+      homeName: teamNames.$2,
+      stadium: stadium,
+    );
+  }
+
+  (String, String) _parseTeamsFromPlayHtml(String playHtml) {
+    final document = html_parser.parseFragment(playHtml);
+    final spans = document
+        .querySelectorAll('span')
+        .map((e) => e.text.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    if (spans.length >= 2) {
+      return (spans.first, spans.last);
+    }
+    return ('', '');
+  }
+
+  (String, String) _deriveTeamIdsFromGameId(String gameId) {
+    if (gameId.length < 12) {
+      return ('', '');
+    }
+    return (gameId.substring(8, 10), gameId.substring(10, 12));
+  }
+
+  String _extractGameId(String html) {
+    final match = RegExp(r'gameId=([A-Z0-9]+)').firstMatch(html);
+    return match?.group(1) ?? '';
+  }
+
+  String _stripHtml(String value) {
+    final text = html_parser.parseFragment(value).text;
+    return (text ?? '').trim();
+  }
+
   String? _gameDateFromId(String gameId) {
     if (gameId.length < 8) {
       return null;
@@ -525,4 +618,26 @@ class KboDirectRepository implements GameRepository {
     final date = _gameDateFromId(gameId)!.replaceAll('-', '');
     return 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=$date&gameId=$gameId&section=HIGHLIGHT';
   }
+}
+
+class _ScheduleRow {
+  final String date;
+  final String gameId;
+  final String time;
+  final String awayId;
+  final String awayName;
+  final String homeId;
+  final String homeName;
+  final String stadium;
+
+  const _ScheduleRow({
+    required this.date,
+    required this.gameId,
+    required this.time,
+    required this.awayId,
+    required this.awayName,
+    required this.homeId,
+    required this.homeName,
+    required this.stadium,
+  });
 }

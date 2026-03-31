@@ -1,7 +1,7 @@
 import 'highlight_info.dart';
 import 'ticketing.dart';
 
-enum GameStatus { scheduled, live, final_, cancelled }
+enum GameStatus { scheduled, live, final_, cancelled, suspended }
 
 class TeamScore {
   final String teamId;

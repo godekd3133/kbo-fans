@@ -10,12 +10,10 @@ class StandingsCrawler(BaseCrawler):
     """Fetches daily team standings from the rendered standings page."""
 
     def get_standings(self, season: int) -> dict[str, Any]:
-        response = self.session.get(
+        html = self._get_text(
             f"{self.base_url}/Record/TeamRank/TeamRankDaily.aspx",
-            timeout=self.timeout,
+            breaker_key="kbo:standings_daily",
         )
-        response.raise_for_status()
-        html = response.text
 
         updated_match = re.search(r'<span class="exp2">\(([^)]+) 기준\)</span>', html)
         row_matches = re.findall(

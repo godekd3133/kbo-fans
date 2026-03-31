@@ -11,6 +11,7 @@ import '../../features/records/records_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../features/standings/standings_screen.dart';
 import '../../features/settings/settings_screen.dart';
+import '../../features/settings/api_diagnostics_screen.dart';
 import '../widgets/main_scaffold.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -87,6 +88,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           gameId: state.pathParameters['gameId']!,
           game: state.extra as Game?,
         ),
+      ),
+      GoRoute(
+        path: '/diagnostics',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ApiDiagnosticsScreen(),
       ),
     ],
   );

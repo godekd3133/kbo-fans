@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import re
+import logging
 from typing import Any, Optional
 
 from bs4 import BeautifulSoup
 
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.base import BaseCrawler
+
+logger = logging.getLogger(__name__)
 
 
 class RelayCrawler(BaseCrawler):
@@ -18,23 +21,43 @@ class RelayCrawler(BaseCrawler):
         self.user_id = settings.kbo_relay_user_id
         self.password = settings.kbo_relay_password
         self._logged_in = False
+        self._login_attempts = 0
 
     def get_relay(self, game_id: str) -> dict[str, Any]:
-        self._ensure_logged_in()
-        self._fetch_live_text_page(game_id)
-        view2_html = self._post_live_text_view("LiveTextView2.aspx", game_id)
+        last_error: Optional[Exception] = None
+        for attempt in range(2):
+            try:
+                self._ensure_logged_in(force=attempt > 0)
+                self._fetch_live_text_page(game_id)
+                view2_html = self._post_live_text_view("LiveTextView2.aspx", game_id)
+                self._assert_valid_relay_response(view2_html, "LiveTextView2")
 
-        return {
-            "gameId": game_id,
-            "currentAtBat": self._parse_current_at_bat(view2_html),
-            "relayItems": self._parse_relay_items(view2_html),
-        }
+                return {
+                    "gameId": game_id,
+                    "currentAtBat": self._parse_current_at_bat(view2_html),
+                    "relayItems": self._parse_relay_items(view2_html),
+                }
+            except Exception as exc:
+                last_error = exc
+                logger.warning(
+                    "Relay fetch failed for %s on attempt %s: %s",
+                    game_id,
+                    attempt + 1,
+                    exc,
+                )
+                self._reset_login_state()
 
-    def _ensure_logged_in(self) -> None:
-        if self._logged_in:
+        assert last_error is not None
+        raise last_error
+
+    def _ensure_logged_in(self, force: bool = False) -> None:
+        if self._logged_in and not force:
             return
         if not self.user_id or not self.password:
             raise RuntimeError("KBO relay credentials are not configured.")
+
+        if force:
+            self._reset_login_state()
 
         login_page = self.session.get(f"{self.base_url}/Member/Login.aspx", timeout=self.timeout)
         login_page.raise_for_status()
@@ -67,6 +90,8 @@ class RelayCrawler(BaseCrawler):
             raise RuntimeError("KBO relay login failed.")
 
         self._logged_in = True
+        self._login_attempts += 1
+        logger.info("KBO relay login succeeded (attempt %s).", self._login_attempts)
 
     def _fetch_live_text_page(self, game_id: str) -> None:
         response = self.session.get(
@@ -95,6 +120,17 @@ class RelayCrawler(BaseCrawler):
         )
         response.raise_for_status()
         return response.text
+
+    def _reset_login_state(self) -> None:
+        self.session.cookies.clear()
+        self._logged_in = False
+
+    @staticmethod
+    def _assert_valid_relay_response(html: str, source: str) -> None:
+        if "에러 | KBO" in html or "Error/Error.html" in html:
+            raise RuntimeError(f"{source} returned KBO error page.")
+        if 'id="numCont1"' not in html and 'class="playerBox' not in html:
+            raise RuntimeError(f"{source} did not contain expected relay markup.")
 
     def _parse_relay_items(self, html: str) -> list[dict[str, Any]]:
         soup = BeautifulSoup(html, "html.parser")
@@ -161,31 +197,37 @@ class RelayCrawler(BaseCrawler):
         soup = BeautifulSoup(html, "html.parser")
         present = soup.select_one("p.present")
         players = soup.select_one("div.playerName")
+        pitcher_box = soup.select_one(".playerBox.awayBox .player-info-wrap")
+        batter_box = soup.select_one(".playerBox.homeBox .player-info-wrap")
         if present is None or players is None:
             return None
 
         count_texts = [strong.get_text(" ", strip=True) for strong in present.select("strong")]
         inning_text = count_texts[0] if len(count_texts) > 0 else ""
         count_text = count_texts[1] if len(count_texts) > 1 else ""
+        base_state = self._parse_base_state(present.select_one("img"))
 
         pitcher = self._player_text(players.select_one("li.pitcher"))
         batter = self._player_text(players.select_one("li.supervision"))
         balls, strikes, outs = self._parse_count_text(count_text)
+        pitcher_meta = self._parse_player_info_box(pitcher_box)
+        batter_meta = self._parse_player_info_box(batter_box)
 
         if not pitcher and not batter and not count_text and not inning_text:
             return None
 
         return {
             "batter": {
-                "name": batter,
-                "number": 0,
-                "hand": "",
+                "name": batter or batter_meta["name"],
+                "number": batter_meta["number"],
+                "hand": batter_meta["hand"],
+                "recent": batter_meta["recent"],
             },
             "pitcher": {
-                "name": pitcher,
-                "number": 0,
-                "hand": "",
-                "pitchCount": 0,
+                "name": pitcher or pitcher_meta["name"],
+                "number": pitcher_meta["number"],
+                "hand": pitcher_meta["hand"],
+                "pitchCount": pitcher_meta["pitch_count"],
             },
             "ballCount": {
                 "balls": balls,
@@ -193,6 +235,7 @@ class RelayCrawler(BaseCrawler):
                 "outs": outs,
             },
             "inningText": inning_text,
+            "baseState": base_state,
         }
 
     @staticmethod
@@ -255,3 +298,63 @@ class RelayCrawler(BaseCrawler):
         strikes = int(match.group(2))
         outs = int(match.group(3))
         return balls, strikes, outs
+
+    @staticmethod
+    def _parse_player_info_box(element: Optional[Any]) -> dict[str, Any]:
+        if element is None:
+            return {
+                "name": "",
+                "number": 0,
+                "hand": "",
+                "pitch_count": 0,
+                "recent": "",
+            }
+
+        number_text = RelayCrawler._player_text(element.select_one(".no"))
+        hand_text = ""
+        who = element.select_one(".who")
+        if who is not None:
+            spans = who.select("span")
+            if spans:
+                hand_text = RelayCrawler._normalize_text(spans[-1].get_text(" ", strip=True)).strip("()")
+
+        today_text = RelayCrawler._player_text(element.select_one(".today span"))
+        pitch_count_match = re.search(r"(\d+)투구", today_text)
+
+        name = number_text
+        number = 0
+        if number_text.startswith("No."):
+            match = re.match(r"No\.(\d+)\s+(.+)", number_text)
+            if match:
+                number = int(match.group(1))
+                name = match.group(2).strip()
+
+        return {
+            "name": name,
+            "number": number,
+            "hand": hand_text,
+            "pitch_count": int(pitch_count_match.group(1)) if pitch_count_match else 0,
+            "recent": today_text if not pitch_count_match else "",
+        }
+
+    @staticmethod
+    def _parse_base_state(element: Optional[Any]) -> str:
+        if element is None:
+            return ""
+
+        src = element.get("src", "")
+        match = re.search(r"ground_base(\d+)\.png", src)
+        if not match:
+            alt = RelayCrawler._normalize_text(element.get("alt", ""))
+            return alt if alt != "주자" else ""
+
+        return {
+            "0": "주자없음",
+            "1": "주자1루",
+            "2": "주자2루",
+            "3": "주자1,2루",
+            "4": "주자3루",
+            "5": "주자1,3루",
+            "6": "주자2,3루",
+            "7": "만루",
+        }.get(match.group(1), "")

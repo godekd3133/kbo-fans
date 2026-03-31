@@ -1,20 +1,39 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from kbo_fans_backend.crawlers.player_stats import PlayerStatsCrawler
+from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
 class PlayerStatsService:
+    _TEAM_PLAYERS_CACHE_TTL_SECONDS = 300
+
     def __init__(self, crawler: Optional[PlayerStatsCrawler] = None) -> None:
         self.crawler = crawler or PlayerStatsCrawler()
+        self._team_players_cache: TtlCache[Tuple[str, int], Dict[str, Any]] = TtlCache(
+            self._TEAM_PLAYERS_CACHE_TTL_SECONDS
+        )
 
     def get_team_players(self, team_id: str, season: int) -> Dict[str, Any]:
-        return {
-            "teamId": team_id,
-            "season": season,
-            "players": self.crawler.get_team_players(team_id, season),
-        }
+        cache_key = (team_id, season)
+        cached = self._get_cached_team_players(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            payload = {
+                "teamId": team_id,
+                "season": season,
+                "players": self.crawler.get_team_players(team_id, season),
+            }
+        except Exception:
+            stale = self._team_players_cache.get_stale(cache_key)
+            if stale is not None:
+                return stale
+            raise
+        self._team_players_cache.set(cache_key, payload)
+        return payload
 
     def get_player_detail(
         self, player_id: str, season: int, player_type: Optional[str] = None
@@ -25,3 +44,8 @@ class PlayerStatsService:
             season=season,
             include_recent=True,
         )
+
+    def _get_cached_team_players(
+        self, cache_key: Tuple[str, int]
+    ) -> Optional[Dict[str, Any]]:
+        return self._team_players_cache.get(cache_key)

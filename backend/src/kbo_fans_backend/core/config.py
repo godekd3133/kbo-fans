@@ -45,6 +45,8 @@ class Settings:
     cors_allow_origin_regex: str
     kbo_relay_user_id: str
     kbo_relay_password: str
+    firebase_service_account_path: str
+    firebase_project_id: str
 
 
 @lru_cache
@@ -62,4 +64,6 @@ def get_settings() -> Settings:
         ),
         kbo_relay_user_id=os.getenv("KBO_RELAY_USER_ID", ""),
         kbo_relay_password=os.getenv("KBO_RELAY_PASSWORD", ""),
+        firebase_service_account_path=os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", ""),
+        firebase_project_id=os.getenv("FIREBASE_PROJECT_ID", ""),
     )

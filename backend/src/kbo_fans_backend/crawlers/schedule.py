@@ -13,8 +13,9 @@ class ScheduleCrawler(BaseCrawler):
 
     def get_month_schedule(self, month: str) -> list[dict[str, Any]]:
         season_id, game_month = month.split("-")
-        response = self.session.post(
+        payload = self._post_json(
             f"{self.base_url}/ws/Schedule.asmx/GetScheduleList",
+            breaker_key="kbo:schedule_list",
             data={
                 "leId": 1,
                 "srIdList": "0,9,6",
@@ -26,10 +27,7 @@ class ScheduleCrawler(BaseCrawler):
                 "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest",
             },
-            timeout=self.timeout,
         )
-        response.raise_for_status()
-        payload = response.json()
 
         rows: list[dict[str, Any]] = []
         current_date: Optional[str] = None

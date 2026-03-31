@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,8 +7,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dev_console.dart';
 import '../../data/models/player.dart';
 import '../../data/models/records_overview.dart';
+import '../../data/models/team_records_bundle.dart';
 import '../../data/models/team_stats.dart';
 import '../../data/providers.dart';
 
@@ -28,6 +32,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   PlayerSortOption _sort = PlayerSortOption.avg;
   String _searchQuery = '';
   late int _selectedSeason;
+  int? _teamRecordsLoadStartedAtMicros;
+  String? _lastTeamRecordsLogKey;
 
   @override
   void initState() {
@@ -93,6 +99,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                   _featuredCards(overview),
                   const SizedBox(height: 14),
                   _leaderboardCard('리그 타율 리더보드', overview.avgLeaders),
+                  const SizedBox(height: 10),
+                  _leaderboardCard('리그 홈런 리더보드', overview.hrLeaders),
                   const SizedBox(height: 10),
                   _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
                   const SizedBox(height: 10),
@@ -195,6 +203,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   Widget _buildTeamRecords(String teamId) {
     final team = KboTeams.byId(teamId);
     final teamRecordsAsync = ref.watch(teamRecordsProvider('$teamId|$_selectedSeason'));
+    _logTeamRecordsLoad(teamId, teamRecordsAsync);
 
     return Scaffold(
       body: SafeArea(
@@ -316,7 +325,22 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
             Expanded(
               child: teamRecordsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
-                error: (error, _) => Center(child: Text('선수 기록을 불러올 수 없습니다', style: TextStyle(color: AppColors.textDisabled))),
+                error: (error, _) => Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '선수 기록을 불러올 수 없습니다',
+                        style: TextStyle(color: AppColors.textDisabled),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () => context.push('/diagnostics'),
+                        child: const Text('진단 보기'),
+                      ),
+                    ],
+                  ),
+                ),
                 data: (teamRecords) => _buildList(teamRecords.players),
               ),
             ),
@@ -324,6 +348,45 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
         ),
       ),
     );
+  }
+
+  void _logTeamRecordsLoad(
+    String teamId,
+    AsyncValue<TeamRecordsBundle> teamRecordsAsync,
+  ) {
+    if (!teamRecordsAsync.hasValue) {
+      _teamRecordsLoadStartedAtMicros ??=
+          DateTime.now().microsecondsSinceEpoch;
+      return;
+    }
+
+    final records = teamRecordsAsync.value;
+    final playerCount = records?.players.length ?? 0;
+    final logKey = '$teamId|$_selectedSeason|$playerCount';
+    if (_lastTeamRecordsLogKey == logKey) {
+      return;
+    }
+
+    final startedAt = _teamRecordsLoadStartedAtMicros;
+    if (startedAt != null) {
+      final elapsedMs =
+          (DateTime.now().microsecondsSinceEpoch - startedAt) / 1000;
+      DevConsole.instance.info(
+        'RECORDS $teamId/$_selectedSeason loaded ${elapsedMs.toStringAsFixed(0)}ms ($playerCount players)',
+      );
+      unawaited(
+        ref.read(apiClientProvider).postClientMetric({
+          'screen': 'records',
+          'event': 'loaded',
+          'elapsedMs': elapsedMs.round(),
+          'teamId': teamId,
+          'season': _selectedSeason,
+          'playerCount': playerCount,
+        }),
+      );
+    }
+    _lastTeamRecordsLogKey = logKey;
+    _teamRecordsLoadStartedAtMicros = null;
   }
 
   Widget _buildList(List<PlayerProfile> players) {

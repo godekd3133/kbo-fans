@@ -41,6 +41,7 @@ class FeaturedPlayerCard {
 class RecordsOverview {
   final int season;
   final List<RecordLeader> avgLeaders;
+  final List<RecordLeader> hrLeaders;
   final List<RecordLeader> opsLeaders;
   final List<RecordLeader> eraLeaders;
   final FeaturedPlayerCard todayPlayer;
@@ -49,6 +50,7 @@ class RecordsOverview {
   const RecordsOverview({
     required this.season,
     required this.avgLeaders,
+    required this.hrLeaders,
     required this.opsLeaders,
     required this.eraLeaders,
     required this.todayPlayer,

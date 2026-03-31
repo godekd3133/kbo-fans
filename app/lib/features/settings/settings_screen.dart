@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/providers.dart';
+import '../../services/push_notification_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -21,6 +22,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notifReversal = true;
   bool _notifGameEnd = true;
   bool _notifAllGames = false;
+  bool _pushLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPushSettings();
+  }
+
+  Future<void> _loadPushSettings() async {
+    final settings = await PushNotificationService.instance.loadSettings();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _notifGameStart = settings.gameStart;
+      _notifScoring = settings.scoring;
+      _notifHomerun = settings.homerun;
+      _notifReversal = settings.reversal;
+      _notifGameEnd = settings.gameEnd;
+      _notifAllGames = settings.allGames;
+      _pushLoaded = true;
+    });
+  }
+
+  Future<void> _savePushSettings() async {
+    final teamId = ref.read(myTeamProvider);
+    await PushNotificationService.instance.saveSettings(
+      PushNotificationSettings(
+        gameStart: _notifGameStart,
+        scoring: _notifScoring,
+        homerun: _notifHomerun,
+        reversal: _notifReversal,
+        gameEnd: _notifGameEnd,
+        allGames: _notifAllGames,
+      ),
+      myTeam: teamId,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,23 +115,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(
                 children: [
-                  _notifRow('경기 시작', _notifGameStart, teamColor, (v) => setState(() => _notifGameStart = v)),
+                  _notifRow('경기 시작', _notifGameStart, teamColor, (v) async {
+                    setState(() => _notifGameStart = v);
+                    await _savePushSettings();
+                  }),
                   _divider(),
-                  _notifRow('득점', _notifScoring, teamColor, (v) => setState(() => _notifScoring = v)),
+                  _notifRow('득점', _notifScoring, teamColor, (v) async {
+                    setState(() => _notifScoring = v);
+                    await _savePushSettings();
+                  }),
                   _divider(),
-                  _notifRow('홈런', _notifHomerun, teamColor, (v) => setState(() => _notifHomerun = v)),
+                  _notifRow('홈런', _notifHomerun, teamColor, (v) async {
+                    setState(() => _notifHomerun = v);
+                    await _savePushSettings();
+                  }),
                   _divider(),
-                  _notifRow('역전', _notifReversal, teamColor, (v) => setState(() => _notifReversal = v)),
+                  _notifRow('역전', _notifReversal, teamColor, (v) async {
+                    setState(() => _notifReversal = v);
+                    await _savePushSettings();
+                  }),
                   _divider(),
-                  _notifRow('경기 종료', _notifGameEnd, teamColor, (v) => setState(() => _notifGameEnd = v)),
+                  _notifRow('경기 종료', _notifGameEnd, teamColor, (v) async {
+                    setState(() => _notifGameEnd = v);
+                    await _savePushSettings();
+                  }),
                   const Divider(color: AppColors.divider, height: 1, indent: 16, endIndent: 16),
-                  _notifRow('전체 경기 알림', _notifAllGames, teamColor, (v) => setState(() => _notifAllGames = v)),
+                  _notifRow('전체 경기 알림', _notifAllGames, teamColor, (v) async {
+                    setState(() => _notifAllGames = v);
+                    await _savePushSettings();
+                  }),
                   if (_notifAllGames)
                     const Padding(
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text('마이팀 외 경기도 알림을 받습니다', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                      ),
+                    ),
+                  if (!_pushLoaded)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('푸시 설정 불러오는 중', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
                       ),
                     ),
                 ],
@@ -107,6 +172,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(
                 children: [
+                  _infoRow('연결 진단', hasArrow: true, onTap: () => context.push('/diagnostics')),
+                  _divider(),
                   _infoRow('버전', trailing: '1.0.0'),
                   _divider(),
                   _infoRow('이용약관', hasArrow: true),
@@ -143,19 +210,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _infoRow(String label, {String? trailing, bool hasArrow = false}) {
-    return SizedBox(
-      height: 48,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: [
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 16))),
-            if (trailing != null)
-              Text(trailing, style: const TextStyle(fontSize: 14, color: AppColors.textDisabled)),
-            if (hasArrow)
-              const Icon(Icons.chevron_right, color: AppColors.textDisabled, size: 20),
-          ],
+  Widget _infoRow(String label, {String? trailing, bool hasArrow = false, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      child: SizedBox(
+        height: 48,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 16))),
+              if (trailing != null)
+                Text(trailing, style: const TextStyle(fontSize: 14, color: AppColors.textDisabled)),
+              if (hasArrow)
+                const Icon(Icons.chevron_right, color: AppColors.textDisabled, size: 20),
+            ],
+          ),
         ),
       ),
     );

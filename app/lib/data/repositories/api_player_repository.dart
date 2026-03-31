@@ -68,6 +68,7 @@ class ApiPlayerRepository implements PlayerRepository {
     return RecordsOverview(
       season: data['season'] as int? ?? season,
       avgLeaders: _parseLeaders(leaders['avg'] as List<dynamic>? ?? const []),
+      hrLeaders: _parseLeaders(leaders['hr'] as List<dynamic>? ?? const []),
       opsLeaders: _parseLeaders(leaders['ops'] as List<dynamic>? ?? const []),
       eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
       todayPlayer: _parseFeatured(featured['todayPlayer'] as Map<String, dynamic>? ?? const {'label': '오늘의 플레이어'}),

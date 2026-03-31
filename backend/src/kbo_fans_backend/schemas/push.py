@@ -19,3 +19,10 @@ class PushRegisterRequest(BaseModel):
     platform: str
     myTeam: Optional[str] = None
     notifications: NotificationSettings
+
+
+class PushTestRequest(BaseModel):
+    title: str
+    body: str
+    topic: Optional[str] = None
+    token: Optional[str] = None

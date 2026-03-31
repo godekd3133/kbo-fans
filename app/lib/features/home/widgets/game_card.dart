@@ -3,6 +3,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/game_status_label.dart';
+import '../../../core/widgets/game_status_badge.dart';
 import '../../../data/models/game.dart';
 
 class GameCard extends StatelessWidget {
@@ -14,12 +16,13 @@ class GameCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isLive = game.status == GameStatus.live;
+    final secondary = _secondaryText();
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 72,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 82,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(12),
@@ -33,31 +36,75 @@ class GameCard extends StatelessWidget {
                 children: [
                   _teamLogo(game.away.teamId, 28),
                   const SizedBox(width: 8),
-                  Text(game.away.shortName, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                  Text(
+                    game.away.shortName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Text('${game.away.score}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                  Text(
+                    '${game.away.score}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),
-            // 이닝
+            // 상태
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text(
-                game.inning,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isLive ? AppColors.live : AppColors.textDisabled,
-                  fontWeight: isLive ? FontWeight.w600 : FontWeight.normal,
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GameStatusBadge.forGame(
+                    game.status,
+                    fontSize: 10,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                  ),
+                  if (secondary != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      secondary,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isLive
+                            ? AppColors.live
+                            : AppColors.textSecondary,
+                        fontWeight: isLive
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             // 홈
             Expanded(
               child: Row(
                 children: [
-                  Text('${game.home.score}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                  Text(
+                    '${game.home.score}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Text(game.home.shortName, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                  Text(
+                    game.home.shortName,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   _teamLogo(game.home.teamId, 28),
                 ],
@@ -69,6 +116,16 @@ class GameCard extends StatelessWidget {
     );
   }
 
+  String? _secondaryText() {
+    final text = secondaryTextForGameStatus(
+      game.status,
+      inning: game.inning,
+      startTime: game.startTime,
+    );
+    final label = labelForGameStatus(game.status);
+    return text == label ? null : text;
+  }
+
   Widget _teamLogo(String teamId, double size) {
     final team = KboTeams.byId(teamId);
     return CachedNetworkImage(
@@ -76,13 +133,29 @@ class GameCard extends StatelessWidget {
       width: size,
       height: size,
       placeholder: (_, _) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(color: AppColors.cardSub, shape: BoxShape.circle),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          shape: BoxShape.circle,
+        ),
       ),
       errorWidget: (_, _, _) => Container(
-        width: size, height: size,
-        decoration: BoxDecoration(color: AppColors.cardSub, shape: BoxShape.circle),
-        child: Center(child: Text(team?.shortName ?? '', style: TextStyle(fontSize: size * 0.3, color: AppColors.textSecondary))),
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            team?.shortName ?? '',
+            style: TextStyle(
+              fontSize: size * 0.3,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
       ),
     );
   }

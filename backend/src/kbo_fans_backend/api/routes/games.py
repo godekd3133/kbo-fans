@@ -91,7 +91,9 @@ def get_highlights(game_id: str) -> ApiEnvelope[dict]:
             f'?gameDate={scheduled_game["gameId"][:8]}'
             f'&gameId={scheduled_game["gameId"]}&section=HIGHLIGHT'
         ),
-        "youtubeVideos": youtube_highlight_service.fetch_highlights(
+        "youtubeVideos": []
+        if scheduled_game.get("status") == "SCHEDULED"
+        else youtube_highlight_service.fetch_highlights(
             game_id=scheduled_game["gameId"],
             away_name=scheduled_game["awayName"],
             home_name=scheduled_game["homeName"],

@@ -22,10 +22,13 @@ class CurrentAtBat {
   final String batterName;
   final int batterNumber;
   final String batterHand;
+  final String batterRecent;
   final String pitcherName;
   final int pitcherNumber;
   final String pitcherHand;
   final int pitchCount;
+  final String inningText;
+  final String baseState;
   final int balls;
   final int strikes;
   final int outs;
@@ -34,10 +37,13 @@ class CurrentAtBat {
     required this.batterName,
     required this.batterNumber,
     required this.batterHand,
+    this.batterRecent = '',
     required this.pitcherName,
     required this.pitcherNumber,
     required this.pitcherHand,
     required this.pitchCount,
+    this.inningText = '',
+    this.baseState = '',
     required this.balls,
     required this.strikes,
     required this.outs,

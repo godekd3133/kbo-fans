@@ -9,8 +9,14 @@ class _StubScoreboardService:
         return self._game
 
 
+class _FailingRelayCrawler:
+    def get_relay(self, game_id: str):
+        raise RuntimeError("relay unavailable")
+
+
 def test_relay_service_builds_summary_items_for_final_game() -> None:
     service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
         scoreboard_service=_StubScoreboardService(
             {
                 "gameId": "20260329LTSS0",
@@ -42,6 +48,7 @@ def test_relay_service_builds_summary_items_for_final_game() -> None:
 
 def test_relay_service_builds_current_at_bat_for_live_game() -> None:
     service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
         scoreboard_service=_StubScoreboardService(
             {
                 "gameId": "20260330KTLG0",

@@ -43,7 +43,10 @@ class TeamStatsCrawler(BaseCrawler):
         }
 
     def _fetch_table_stats(self, path: str, season: int, team_name: str) -> Dict[str, str]:
-        html = self.session.get(f"{self.base_url}{path}", timeout=self.timeout).text
+        html = self._get_text(
+            f"{self.base_url}{path}",
+            breaker_key=f"kbo:team_stats:{path}",
+        )
         payload = {
             "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
             "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
@@ -52,7 +55,11 @@ class TeamStatsCrawler(BaseCrawler):
             "__EVENTTARGET": "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason",
             "__EVENTARGUMENT": "",
         }
-        html = self.session.post(f"{self.base_url}{path}", data=payload, timeout=self.timeout).text
+        html = self._post_text(
+            f"{self.base_url}{path}",
+            breaker_key=f"kbo:team_stats:{path}",
+            data=payload,
+        )
 
         header_match = re.search(r"<thead>(.*?)</thead>", html, re.S)
         body_match = re.search(r"<tbody>(.*?)</tbody>", html, re.S)

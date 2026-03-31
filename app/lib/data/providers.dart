@@ -19,6 +19,7 @@ import 'models/records_overview.dart';
 import 'models/schedule.dart';
 import 'models/team_records_bundle.dart';
 import 'models/team_stats.dart';
+import '../services/push_notification_service.dart';
 import '../services/ticket_alert_service.dart';
 
 /// API 클라이언트 (RELEASE에서만 실제 사용)
@@ -57,6 +58,7 @@ class MyTeamNotifier extends Notifier<String?> {
       await prefs.remove('myTeam');
     }
     state = teamId;
+    await PushNotificationService.instance.syncRegistration(myTeam: teamId);
   }
 }
 

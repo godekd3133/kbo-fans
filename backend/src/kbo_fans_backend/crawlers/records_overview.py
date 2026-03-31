@@ -10,6 +10,7 @@ from kbo_fans_backend.utils.html import strip_tags
 
 class RecordsOverviewCrawler(BaseCrawler):
     _HITTER_AVG_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HRA_RT"
+    _HITTER_HR_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HR_CN"
     _HITTER_OPS_URL = "/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT"
     _PITCHER_ERA_URL = "/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT"
 
@@ -19,6 +20,7 @@ class RecordsOverviewCrawler(BaseCrawler):
 
     def get_overview(self, season: int) -> Dict[str, Any]:
         avg_leaders = self._fetch_leaders(self._HITTER_AVG_URL, season, "AVG", "hitter")
+        hr_leaders = self._fetch_leaders(self._HITTER_HR_URL, season, "HR", "hitter")
         ops_leaders = self._fetch_leaders(self._HITTER_OPS_URL, season, "OPS", "hitter")
         era_leaders = self._fetch_leaders(self._PITCHER_ERA_URL, season, "ERA", "pitcher")
 
@@ -26,6 +28,7 @@ class RecordsOverviewCrawler(BaseCrawler):
             "season": season,
             "leaders": {
                 "avg": avg_leaders,
+                "hr": hr_leaders,
                 "ops": ops_leaders,
                 "era": era_leaders,
             },
@@ -38,7 +41,10 @@ class RecordsOverviewCrawler(BaseCrawler):
     def _fetch_leaders(
         self, path: str, season: int, metric_key: str, player_type: str
     ) -> List[Dict[str, Any]]:
-        html = self.session.get(f"{self.base_url}{path}", timeout=self.timeout).text
+        html = self._get_text(
+            f"{self.base_url}{path}",
+            breaker_key=f"kbo:records_overview:{path}",
+        )
         payload = {
             "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
             "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
@@ -47,13 +53,18 @@ class RecordsOverviewCrawler(BaseCrawler):
             "__EVENTTARGET": "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason",
             "__EVENTARGUMENT": "",
         }
-        html = self.session.post(f"{self.base_url}{path}", data=payload, timeout=self.timeout).text
+        html = self._post_text(
+            f"{self.base_url}{path}",
+            breaker_key=f"kbo:records_overview:{path}",
+            data=payload,
+        )
 
         rows = re.findall(r"<tr>(.*?)</tr>", html, re.S)
+        value_index = self._resolve_metric_index(rows, metric_key)
         leaders: List[Dict[str, Any]] = []
         for row in rows:
             cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
-            if len(cells) < 4:
+            if len(cells) <= value_index:
                 continue
             player_link = re.search(
                 r'href="/Record/Player/(?:Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)"',
@@ -68,12 +79,21 @@ class RecordsOverviewCrawler(BaseCrawler):
                     "playerType": player_type,
                     "name": strip_tags(cells[1]),
                     "teamId": self._team_name_to_id(strip_tags(cells[2])),
-                    "value": strip_tags(cells[3]),
+                    "value": strip_tags(cells[value_index]),
                 }
             )
             if len(leaders) >= 5:
                 break
         return leaders
+
+    @staticmethod
+    def _resolve_metric_index(rows: List[str], metric_key: str) -> int:
+        for row in rows:
+            cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+            labels = [strip_tags(cell).strip().upper() for cell in cells]
+            if metric_key.upper() in labels:
+                return labels.index(metric_key.upper())
+        return 3
 
     def _build_featured_card(
         self, label: str, leaders: List[Dict[str, Any]], season: int

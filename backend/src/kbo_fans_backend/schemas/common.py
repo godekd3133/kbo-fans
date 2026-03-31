@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel, Field
-from pydantic.generics import GenericModel
 
 T = TypeVar("T")
 
@@ -14,7 +13,7 @@ class ApiError(BaseModel):
     message: str
 
 
-class ApiEnvelope(GenericModel, Generic[T]):
+class ApiEnvelope(BaseModel, Generic[T]):
     success: bool
     data: Optional[T] = None
     error: Optional[ApiError] = None

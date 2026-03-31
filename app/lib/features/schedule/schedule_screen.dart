@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/dev_console.dart';
+import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
 import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
+import 'widgets/schedule_game_card.dart';
 
 enum ScheduleViewMode { calendar, stadium }
 
@@ -33,6 +37,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   int? _selectedDay;
   ScheduleViewMode _viewMode = ScheduleViewMode.calendar;
   ScheduleTeamFilter _teamFilter = ScheduleTeamFilter.all;
+  int? _scheduleLoadStartedAtMicros;
+  String? _lastScheduleLoadLogKey;
 
   @override
   void initState() {
@@ -40,6 +46,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final now = DateTime.now();
     _currentMonth = DateTime(now.year, now.month);
     _selectedDay = now.day;
+    _scheduleLoadStartedAtMicros = DateTime.now().microsecondsSinceEpoch;
   }
 
   String get _yearMonth =>
@@ -55,6 +62,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   @override
   Widget build(BuildContext context) {
     final scheduleAsync = ref.watch(scheduleProvider(_yearMonth));
+    _logScheduleLoad(scheduleAsync);
 
     return Scaffold(
       body: SafeArea(
@@ -67,9 +75,29 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   child: CircularProgressIndicator(color: AppColors.live),
                 ),
                 error: (e, _) => Center(
-                  child: Text(
-                    '일정을 불러올 수 없습니다',
-                    style: TextStyle(color: AppColors.textDisabled),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '일정을 불러올 수 없습니다',
+                        style: TextStyle(color: AppColors.textDisabled),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        describeAsyncError(e),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () => ref.invalidate(scheduleProvider(_yearMonth)),
+                        child: const Text('다시 시도'),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/diagnostics'),
+                        child: const Text('진단 보기'),
+                      ),
+                    ],
                   ),
                 ),
                 data: (days) => _buildBody(days),
@@ -442,111 +470,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         ...schedule.games.map(
           (g) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: GestureDetector(
+            child: ScheduleGameCard(
+              game: g,
               onTap: () => context.push('/game/${g.gameId}'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          g.time,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (g.status.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _statusBadgeColor(g.status),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              _statusLabel(g.status),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _statusTextColor(g.status),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        const Spacer(),
-                        Text(
-                          g.stadium,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textDisabled,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _teamInfo(
-                            teamId: g.awayId,
-                            fallbackName: g.awayName,
-                            alignEnd: true,
-                          ),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: SizedBox.shrink(),
-                        ),
-                        _scoreOrVersus(g.awayScore, g.homeScore),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: SizedBox.shrink(),
-                        ),
-                        Expanded(
-                          child: _teamInfo(
-                            teamId: g.homeId,
-                            fallbackName: g.homeName,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (g.ticketInfo != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.confirmation_num_outlined,
-                            size: 14,
-                            color: AppColors.accent,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              _ticketSummary(g.ticketInfo!),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+              ticketSummary: g.ticketInfo == null
+                  ? null
+                  : _ticketSummary(g.ticketInfo!),
             ),
           ),
         ),
@@ -596,113 +525,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ...stadiumMap[stadium]!.map(
             (item) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: GestureDetector(
+              child: ScheduleGameCard(
+                game: item.game,
+                dateLabel: _formatDateLabel(item.date),
                 onTap: () => context.push('/game/${item.game.gameId}'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            _formatDateLabel(item.date),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textDisabled,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            item.game.time,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _statusBadgeColor(item.game.status),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              _statusLabel(item.game.status),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _statusTextColor(item.game.status),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _teamInfo(
-                              teamId: item.game.awayId,
-                              fallbackName: item.game.awayName,
-                              alignEnd: true,
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: SizedBox.shrink(),
-                          ),
-                          _scoreOrVersus(
-                            item.game.awayScore,
-                            item.game.homeScore,
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 12),
-                            child: SizedBox.shrink(),
-                          ),
-                          Expanded(
-                            child: _teamInfo(
-                              teamId: item.game.homeId,
-                              fallbackName: item.game.homeName,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (item.game.ticketInfo != null) ...[
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.confirmation_num_outlined,
-                              size: 14,
-                              color: AppColors.accent,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                _ticketSummary(item.game.ticketInfo!),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+                ticketSummary: item.game.ticketInfo == null
+                    ? null
+                    : _ticketSummary(item.game.ticketInfo!),
               ),
             ),
           ),
@@ -732,145 +561,38 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return '${ticketInfo.vendorName} · $formatted 오픈$suffix';
   }
 
-  Widget _teamInfo({
-    required String teamId,
-    required String fallbackName,
-    bool alignEnd = false,
-  }) {
-    final team = KboTeams.byId(teamId);
-    final shortName = team?.shortName ?? fallbackName;
-
-    return Row(
-      mainAxisAlignment: alignEnd
-          ? MainAxisAlignment.end
-          : MainAxisAlignment.start,
-      children: [
-        if (alignEnd) ...[
-          Flexible(
-            child: Text(
-              shortName,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-        _teamLogo(teamId, 28),
-        if (!alignEnd) ...[
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              shortName,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  String _statusLabel(String status) {
-    switch (status.toUpperCase()) {
-      case 'LIVE':
-        return '경기 중';
-      case 'FINAL':
-        return '경기 후';
-      case 'CANCELLED':
-        return '취소';
-      default:
-        return '경기 전';
+  void _logScheduleLoad(AsyncValue<List<ScheduleDay>> scheduleAsync) {
+    if (!scheduleAsync.hasValue) {
+      _scheduleLoadStartedAtMicros ??= DateTime.now().microsecondsSinceEpoch;
+      return;
     }
-  }
 
-  Color _statusBadgeColor(String status) {
-    switch (status.toUpperCase()) {
-      case 'LIVE':
-        return AppColors.live.withValues(alpha: 0.16);
-      case 'FINAL':
-        return AppColors.cardSub;
-      case 'CANCELLED':
-        return AppColors.textDisabled.withValues(alpha: 0.18);
-      default:
-        return AppColors.cardSub;
+    final days = scheduleAsync.value ?? const <ScheduleDay>[];
+    final gameCount = days.fold<int>(0, (sum, day) => sum + day.games.length);
+    final logKey = '$_yearMonth|${days.length}|$gameCount';
+    if (_lastScheduleLoadLogKey == logKey) {
+      return;
     }
-  }
 
-  Color _statusTextColor(String status) {
-    switch (status.toUpperCase()) {
-      case 'LIVE':
-        return AppColors.live;
-      case 'FINAL':
-        return AppColors.textSecondary;
-      case 'CANCELLED':
-        return AppColors.textDisabled;
-      default:
-        return AppColors.textSecondary;
-    }
-  }
-
-  Widget _scoreOrVersus(int? awayScore, int? homeScore) {
-    final hasScore = awayScore != null && homeScore != null;
-    if (!hasScore) {
-      return const Text(
-        'vs',
-        style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+    final startedAt = _scheduleLoadStartedAtMicros;
+    if (startedAt != null) {
+      final elapsedMs =
+          (DateTime.now().microsecondsSinceEpoch - startedAt) / 1000;
+      DevConsole.instance.info(
+        'SCHEDULE $_yearMonth loaded ${elapsedMs.toStringAsFixed(0)}ms (${days.length} days/$gameCount games)',
+      );
+      unawaited(
+        ref.read(apiClientProvider).postClientMetric({
+          'screen': 'schedule',
+          'event': 'loaded',
+          'elapsedMs': elapsedMs.round(),
+          'month': _yearMonth,
+          'dayCount': days.length,
+          'gameCount': gameCount,
+        }),
       );
     }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '$awayScore',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-        ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text(
-            ':',
-            style: TextStyle(fontSize: 16, color: AppColors.textDisabled),
-          ),
-        ),
-        Text(
-          '$homeScore',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-        ),
-      ],
-    );
-  }
-
-  Widget _teamLogo(String teamId, double size) {
-    final team = KboTeams.byId(teamId);
-    return CachedNetworkImage(
-      imageUrl: team?.logoUrl ?? '',
-      width: size,
-      height: size,
-      placeholder: (_, _) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          shape: BoxShape.circle,
-        ),
-      ),
-      errorWidget: (_, _, _) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: Text(
-            team?.shortName ?? '',
-            style: TextStyle(
-              fontSize: size * 0.35,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
+    _lastScheduleLoadLogKey = logKey;
+    _scheduleLoadStartedAtMicros = null;
   }
 }

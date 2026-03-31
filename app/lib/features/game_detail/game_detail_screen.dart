@@ -8,6 +8,7 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/game_status_label.dart';
 import '../../data/models/game.dart';
 import '../../data/models/highlight_video.dart';
 import '../../data/providers.dart';
@@ -119,9 +120,11 @@ class _GameDetailBody extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          game.inning.isEmpty
-                              ? '${game.startTime} 예정'
-                              : game.inning,
+                          secondaryTextForGameStatus(
+                            game.status,
+                            inning: game.inning,
+                            startTime: game.startTime,
+                          ),
                           style: TextStyle(
                             fontSize: 14,
                             color: isLive
@@ -175,8 +178,20 @@ class _GameDetailBody extends ConsumerWidget {
                   children: [
                     ScoreTab(gameId: gameId, game: game),
                     RelayTab(gameId: gameId, gameStatus: game.status),
-                    BoxscoreTab(gameId: gameId),
-                    LineupTab(gameId: gameId),
+                    BoxscoreTab(
+                      gameId: gameId,
+                      awayName: game.away.shortName,
+                      homeName: game.home.shortName,
+                      awayTeamId: game.away.teamId,
+                      homeTeamId: game.home.teamId,
+                    ),
+                    LineupTab(
+                      gameId: gameId,
+                      awayName: game.away.shortName,
+                      homeName: game.home.shortName,
+                      awayTeamId: game.away.teamId,
+                      homeTeamId: game.home.teamId,
+                    ),
                   ],
                 ),
               ),
@@ -426,6 +441,7 @@ class _HighlightCard extends StatefulWidget {
 class _HighlightCardState extends State<_HighlightCard> {
   YoutubePlayerController? _controller;
   String? _playingVideoId;
+  bool _webPlayerInteractive = false;
 
   @override
   void dispose() {
@@ -452,9 +468,18 @@ class _HighlightCardState extends State<_HighlightCard> {
           if (_playingVideoId != null && _controller != null)
             AspectRatio(
               aspectRatio: 16 / 9,
-              child: YoutubePlayer(
-                controller: _controller!,
-                aspectRatio: 16 / 9,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  IgnorePointer(
+                    ignoring: kIsWeb && !_webPlayerInteractive,
+                    child: YoutubePlayer(
+                      controller: _controller!,
+                      aspectRatio: 16 / 9,
+                    ),
+                  ),
+                  if (kIsWeb) _webPlayerModeOverlay(),
+                ],
               ),
             ),
           Padding(
@@ -468,14 +493,22 @@ class _HighlightCardState extends State<_HighlightCard> {
                 ),
                 const SizedBox(height: 8),
                 if (videos.isNotEmpty)
-                  const Text(
-                    '여러 영상을 좌우로 넘기면서 바로 재생할 수 있습니다.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  Text(
+                    kIsWeb
+                        ? '기본은 스크롤 모드이며, 필요할 때만 플레이어 조작 모드로 전환할 수 있습니다.'
+                        : '여러 영상을 좌우로 넘기면서 바로 재생할 수 있습니다.',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   )
                 else
                   const Text(
                     '공식 하이라이트 페이지에서 확인할 수 있습니다.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 const SizedBox(height: 12),
                 if (videos.isNotEmpty)
@@ -485,7 +518,8 @@ class _HighlightCardState extends State<_HighlightCard> {
                       scrollDirection: Axis.horizontal,
                       itemCount: videos.length,
                       separatorBuilder: (_, _) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) => _videoCard(videos[index]),
+                      itemBuilder: (context, index) =>
+                          _videoCard(videos[index]),
                     ),
                   ),
                 if (highlight.officialUrl != null) ...[
@@ -497,7 +531,10 @@ class _HighlightCardState extends State<_HighlightCard> {
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: AppColors.divider),
                         foregroundColor: AppColors.textPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 14,
+                        ),
                       ),
                       child: const Text('KBO 공식 하이라이트 열기'),
                     ),
@@ -516,13 +553,17 @@ class _HighlightCardState extends State<_HighlightCard> {
     return SizedBox(
       width: 260,
       child: GestureDetector(
-        onTap: isPlayable ? () => _playInline(video.videoId) : () => _openUrl(video.videoUrl),
+        onTap: isPlayable
+            ? () => _playInline(video.videoId)
+            : () => _openUrl(video.videoUrl),
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.cardSub,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: _playingVideoId == video.videoId ? AppColors.live : AppColors.divider,
+              color: _playingVideoId == video.videoId
+                  ? AppColors.live
+                  : AppColors.divider,
             ),
           ),
           clipBehavior: Clip.antiAlias,
@@ -539,7 +580,8 @@ class _HighlightCardState extends State<_HighlightCard> {
                         imageUrl: video.thumbnailUrl,
                         fit: BoxFit.cover,
                         errorWidget: (_, _, _) => _thumbnailFallback(),
-                        placeholder: (_, _) => Container(color: AppColors.cardSub),
+                        placeholder: (_, _) =>
+                            Container(color: AppColors.cardSub),
                       )
                     else
                       _thumbnailFallback(),
@@ -553,7 +595,9 @@ class _HighlightCardState extends State<_HighlightCard> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          isPlayable ? Icons.play_arrow_rounded : Icons.open_in_browser_rounded,
+                          isPlayable
+                              ? Icons.play_arrow_rounded
+                              : Icons.open_in_browser_rounded,
                           color: Colors.white,
                           size: 32,
                         ),
@@ -571,26 +615,38 @@ class _HighlightCardState extends State<_HighlightCard> {
                       video.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: isPlayable ? () => _playInline(video.videoId) : () => _openUrl(video.videoUrl),
+                            onPressed: isPlayable
+                                ? () => _playInline(video.videoId)
+                                : () => _openUrl(video.videoUrl),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.live,
                               foregroundColor: AppColors.textPrimary,
                               padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
-                            child: Text(_playingVideoId == video.videoId ? '재생 중' : '바로 재생'),
+                            child: Text(
+                              _playingVideoId == video.videoId
+                                  ? '재생 중'
+                                  : '바로 재생',
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
                           onPressed: () => _openUrl(video.videoUrl),
-                          icon: const Icon(Icons.open_in_new_rounded, color: AppColors.textSecondary),
+                          icon: const Icon(
+                            Icons.open_in_new_rounded,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -618,7 +674,9 @@ class _HighlightCardState extends State<_HighlightCard> {
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
-    final mode = kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppBrowserView;
+    final mode = kIsWeb
+        ? LaunchMode.platformDefault
+        : LaunchMode.inAppBrowserView;
     await launchUrl(uri, mode: mode);
   }
 
@@ -640,7 +698,77 @@ class _HighlightCardState extends State<_HighlightCard> {
 
     setState(() {
       _playingVideoId = videoId;
+      _webPlayerInteractive = false;
     });
+  }
+
+  Widget _webPlayerModeOverlay() {
+    return Align(
+      alignment: Alignment.topRight,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _modeChip(
+                  label: '스크롤',
+                  selected: !_webPlayerInteractive,
+                  onTap: () {
+                    setState(() {
+                      _webPlayerInteractive = false;
+                    });
+                  },
+                ),
+                const SizedBox(width: 4),
+                _modeChip(
+                  label: '플레이어 조작',
+                  selected: _webPlayerInteractive,
+                  onTap: () {
+                    setState(() {
+                      _webPlayerInteractive = true;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modeChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected ? AppColors.textPrimary : Colors.transparent,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: selected ? AppColors.background : AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -680,7 +808,10 @@ class _HighlightSection extends ConsumerWidget {
             SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.live),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.live,
+              ),
             ),
             SizedBox(width: 12),
             Text('하이라이트 불러오는 중'),

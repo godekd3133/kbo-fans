@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
 
 class StandingsScreen extends ConsumerStatefulWidget {
@@ -38,7 +39,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               child: Row(
                 children: [
                   Expanded(
-                    child: Text('📊 $_selectedSeason 정규시즌 순위', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                    child: const Text('정규시즌 순위', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                   ),
                   _seasonDropdown(),
                   const SizedBox(width: 8),
@@ -63,6 +64,12 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('순위를 불러올 수 없습니다', style: TextStyle(color: AppColors.textDisabled)),
+                      const SizedBox(height: 8),
+                      Text(
+                        describeAsyncError(e),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                      ),
                       const SizedBox(height: 8),
                       TextButton(
                         onPressed: () => ref.invalidate(standingsProvider(_selectedSeason)),

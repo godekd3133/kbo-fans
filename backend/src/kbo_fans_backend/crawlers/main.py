@@ -9,8 +9,9 @@ class MainCrawler(BaseCrawler):
     """Fetches core game-center metadata from Main.asmx endpoints."""
 
     def get_kbo_game_list(self, date: str) -> list[dict[str, Any]]:
-        response = self.session.post(
+        return self._post_json(
             f"{self.base_url}/ws/Main.asmx/GetKboGameList",
+            breaker_key="kbo:main_game_list",
             data={
                 "leId": "1",
                 "srId": self._series_for_date(date),
@@ -20,10 +21,7 @@ class MainCrawler(BaseCrawler):
                 "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
                 "X-Requested-With": "XMLHttpRequest",
             },
-            timeout=self.timeout,
-        )
-        response.raise_for_status()
-        return response.json().get("game", [])
+        ).get("game", [])
 
     @staticmethod
     def _series_for_date(date: str) -> str:

@@ -137,6 +137,15 @@ uvicorn kbo_fans_backend.main:app --reload
 
 - `GET /api/health`
 
+## Operational Notes
+
+- 홈 스코어보드는 날짜 기준 `30초 TTL` 캐시를 사용합니다.
+- 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `5분 TTL` 캐시를 사용합니다.
+- 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.
+- 개발 환경에서는 앱 Dev Console 에 `API`, `HOME loaded`, `RECORDS loaded` 타이밍 로그가 표시됩니다.
+- 백엔드는 `backend/logs/backend.log`, `backend/logs/client_metrics.log` 에 느린 요청과 클라이언트 실측 지표를 저장합니다.
+- 웹에서 API 실패 시 앱 내 `진단 보기` 화면으로 `health / scoreboard / schedule` 상태를 함께 확인할 수 있습니다.
+
 ## Design And Product Principles
 
 - 앱을 열면 바로 야구 정보를 보여준다
