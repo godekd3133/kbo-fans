@@ -43,6 +43,9 @@ class ApiHomeRepository {
       title: json['title'] as String? ?? '',
       subtitle: json['subtitle'] as String? ?? '',
       route: json['route'] as String? ?? '/home',
+      teamId: json['teamId'] as String?,
+      imageUrl: json['imageUrl'] as String?,
+      fallbackLabel: json['fallbackLabel'] as String?,
     );
   }
 

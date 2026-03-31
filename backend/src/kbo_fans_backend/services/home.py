@@ -254,6 +254,8 @@ class HomeService:
                     "title": title,
                     "subtitle": f"{today_game.get('inning')} · {today_game.get('stadium')}",
                     "route": f"/game/{today_game.get('gameId')}",
+                    "teamId": (my_team_brief or {}).get("teamId"),
+                    "fallbackLabel": (my_team_brief or {}).get("teamLabel"),
                 }
             )
 
@@ -266,6 +268,8 @@ class HomeService:
                     "title": f"{next_game.get('awayName')} vs {next_game.get('homeName')}",
                     "subtitle": f"{ticket_info.get('vendorName')} · {ticket_info.get('openAt')}",
                     "route": "/schedule",
+                    "teamId": my_team_brief.get("teamId") if my_team_brief else None,
+                    "fallbackLabel": my_team_brief.get("teamLabel") if my_team_brief else None,
                 }
             )
 
@@ -285,6 +289,8 @@ class HomeService:
                     "title": f"{standing.get('rank')}위 · {standing.get('teamName')}",
                     "subtitle": subtitle,
                     "route": "/standings",
+                    "teamId": standing.get("teamId"),
+                    "fallbackLabel": standing.get("teamName"),
                 }
             )
 
@@ -297,6 +303,8 @@ class HomeService:
                     "title": f"{leader.get('name')} {leader.get('value')}개",
                     "subtitle": f"{self._TEAM_LABELS.get(leader.get('teamId', ''), leader.get('teamId', ''))} · 시즌 홈런 선두",
                     "route": "/records",
+                    "teamId": leader.get("teamId"),
+                    "fallbackLabel": leader.get("name"),
                 }
             )
 
@@ -322,6 +330,9 @@ class HomeService:
                         if part
                     ),
                     "route": route,
+                    "teamId": featured.get("teamId"),
+                    "imageUrl": featured.get("imageUrl"),
+                    "fallbackLabel": featured.get("name"),
                 }
             )
 

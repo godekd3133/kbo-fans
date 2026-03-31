@@ -5,12 +5,18 @@ class HomeQuickItem {
   final String title;
   final String subtitle;
   final String route;
+  final String? teamId;
+  final String? imageUrl;
+  final String? fallbackLabel;
 
   const HomeQuickItem({
     required this.eyebrow,
     required this.title,
     required this.subtitle,
     required this.route,
+    this.teamId,
+    this.imageUrl,
+    this.fallbackLabel,
   });
 }
 

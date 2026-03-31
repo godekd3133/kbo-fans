@@ -729,6 +729,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           title: _scheduleMatchupTitle(nextGame),
           subtitle: '${nextGame.time} · ${nextGame.stadium}',
           route: '/schedule',
+          teamId: myTeamBrief.teamId,
+          fallbackLabel: myTeamBrief.teamLabel,
         ),
       );
     }
@@ -744,6 +746,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           title: _scheduleMatchupTitle(ticketGame),
           subtitle: '${ticketInfo.vendorName} · $formatted',
           route: '/schedule',
+          teamId: myTeamBrief?.teamId,
+          fallbackLabel: myTeamBrief?.teamLabel,
         ),
       );
     }
@@ -758,6 +762,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               '${standing.wins}승 ${standing.losses}패 ${standing.draws}무'
               '${standing.gb == '0' ? ' · 공동 선두권' : ' · ${standing.gb}G차'}',
           route: '/standings',
+          teamId: standing.teamId,
+          fallbackLabel: standing.teamName,
         ),
       );
     }
@@ -784,6 +790,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           subtitle:
               '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 시즌 홈런 선두',
           route: '/records',
+          teamId: leader.teamId,
+          fallbackLabel: leader.name,
         ),
       );
     }
@@ -808,6 +816,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             player.summary,
           ].whereType<String>().where((value) => value.isNotEmpty).join(' · '),
           route: route,
+          teamId: player.teamId,
+          imageUrl: player.imageUrl,
+          fallbackLabel: player.name,
         ),
       );
     } else if (overview.avgLeaders.isNotEmpty) {
@@ -1833,7 +1844,7 @@ class _QuickContentSection extends StatelessWidget {
             '지금 보면 좋은 정보',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           const Text(
             '마이팀, 오늘 경기, 리그 흐름을 짧게 훑어보세요.',
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -1872,7 +1883,7 @@ class _QuickContentListItem extends StatelessWidget {
           children: [
             Container(
               width: 3,
-              height: 48,
+              height: 54,
               decoration: BoxDecoration(
                 color: accent,
                 borderRadius: BorderRadius.circular(999),
@@ -1885,19 +1896,9 @@ class _QuickContentListItem extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          _quickItemIcon(item),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
+            Container(
+              child: _quickItemAvatar(item, accent),
+            ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -1916,10 +1917,10 @@ class _QuickContentListItem extends StatelessWidget {
                   const SizedBox(height: 8),
                   Text(
                     item.title,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                       height: 1.2,
                     ),
@@ -1927,7 +1928,7 @@ class _QuickContentListItem extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     item.subtitle,
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 12,
@@ -1940,7 +1941,7 @@ class _QuickContentListItem extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             const Padding(
-              padding: EdgeInsets.only(top: 14),
+              padding: EdgeInsets.only(top: 16),
               child: Icon(
                 Icons.chevron_right_rounded,
                 color: AppColors.textDisabled,
@@ -1990,6 +1991,64 @@ String _quickItemIcon(_QuickContentItemData item) {
   if (key.contains('오늘의 플레이어')) return 'P';
   if (key.contains('순위')) return 'R';
   return '•';
+}
+
+Widget _quickItemAvatar(_QuickContentItemData item, Color accent) {
+  final team = KboTeams.resolve(
+    id: item.teamId,
+    name: item.fallbackLabel,
+    shortName: item.fallbackLabel,
+  );
+  final imageUrl = item.imageUrl;
+
+  if (imageUrl != null && imageUrl.isNotEmpty) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: 40,
+        height: 40,
+        fit: BoxFit.cover,
+        errorWidget: (_, _, _) => _quickItemAvatarFallback(item, accent, team),
+        placeholder: (_, _) => _quickItemAvatarFallback(item, accent, team),
+      ),
+    );
+  }
+
+  if (team != null) {
+    return CachedNetworkImage(
+      imageUrl: team.logoUrl,
+      width: 40,
+      height: 40,
+      fit: BoxFit.contain,
+      errorWidget: (_, _, _) => _quickItemAvatarFallback(item, accent, team),
+      placeholder: (_, _) => _quickItemAvatarFallback(item, accent, team),
+    );
+  }
+
+  return _quickItemAvatarFallback(item, accent, team);
+}
+
+Widget _quickItemAvatarFallback(_QuickContentItemData item, Color accent, KboTeam? team) {
+  final label = (item.fallbackLabel ?? item.title).trim();
+  final initial = label.isEmpty ? _quickItemIcon(item) : label.characters.first;
+  return Container(
+    width: 40,
+    height: 40,
+    decoration: BoxDecoration(
+      color: accent.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      initial,
+      style: TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        color: team?.primaryColor ?? accent,
+      ),
+    ),
+  );
 }
 
 class _ScheduleGameEntry {
@@ -2086,11 +2145,17 @@ class _QuickContentItemData {
   final String title;
   final String subtitle;
   final String route;
+  final String? teamId;
+  final String? imageUrl;
+  final String? fallbackLabel;
 
   const _QuickContentItemData({
     required this.eyebrow,
     required this.title,
     required this.subtitle,
     required this.route,
+    this.teamId,
+    this.imageUrl,
+    this.fallbackLabel,
   });
 }
