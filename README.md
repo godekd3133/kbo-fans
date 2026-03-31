@@ -92,7 +92,8 @@ flutter run -d android
 참고:
 
 - 현재 저장소에는 `ios/`와 `android/` 프로젝트가 모두 포함되어 있습니다.
-- `web/` 플랫폼은 추가되어 있으며 `./scripts/codex-run-web.sh` 또는 `flutter run -d chrome` 으로 실행할 수 있습니다.
+- `web/` 플랫폼은 추가되어 있으며 기본 웹 프리뷰는 `./scripts/codex-run-web.sh` 로 실행합니다.
+- Chrome 디버그 세션이 필요하면 `./scripts/codex-run-web-dev.sh` 또는 `flutter run -d chrome` 을 사용합니다.
 - `macos/` 프로젝트는 아직 생성되지 않았습니다.
 - 현재 홈 화면은 일부 목데이터를 사용하므로, UI 확인만 목적이면 백엔드 없이도 실행 가능합니다.
 - 예매 오픈 알림은 앱 로컬 예약 알림으로 동작합니다. 현재 예매처/오픈 시간은 홈팀 기본 정책 기준 추정값입니다.
@@ -104,6 +105,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run.sh ios
 ./scripts/codex-run.sh android
 ./scripts/codex-run.sh web
+./scripts/codex-run.sh web-static
 ./scripts/codex-run.sh backend
 ./scripts/codex-run.sh doctor
 ```
@@ -113,6 +115,8 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - iOS 실행 액션: `./scripts/codex-run-ios.sh`
 - Android 실행 액션: `./scripts/codex-run-android.sh`
 - Web 실행 액션: `./scripts/codex-run-web.sh`
+- 정적 웹 프리뷰 실행 액션: `./scripts/codex-run-web-static.sh`
+- 웹 Chrome 디버그 실행 액션: `./scripts/codex-run-web-dev.sh`
 - Backend 실행 액션: `./scripts/codex-run.sh backend`
 - 환경 점검 액션: `./scripts/codex-run.sh doctor`
 
@@ -122,7 +126,15 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run-ios.sh
 ./scripts/codex-run-android.sh
 ./scripts/codex-run-web.sh
+./scripts/codex-run-web-static.sh
+./scripts/codex-run-web-dev.sh
 ```
+
+참고:
+
+- `./scripts/codex-run-web.sh` 는 기본 웹 프리뷰 경로이며, `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
+- `./scripts/codex-run-web-static.sh` 는 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 프리뷰 경로입니다.
+- `./scripts/codex-run-web-dev.sh` 는 Chrome 디버그 세션을 직접 띄우는 개발용 경로입니다.
 
 ## Run The Backend
 

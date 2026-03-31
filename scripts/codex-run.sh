@@ -12,6 +12,7 @@ Usage:
   ./scripts/codex-run.sh ios
   ./scripts/codex-run.sh android
   ./scripts/codex-run.sh web
+  ./scripts/codex-run.sh web-static
   ./scripts/codex-run.sh backend
   ./scripts/codex-run.sh doctor
 
@@ -19,6 +20,7 @@ Commands:
   ios      Run the Flutter app on a connected iOS device (fallback: Simulator)
   android  Run the Flutter app on Android device/emulator
   web      Run the Flutter app in Chrome
+  web-static  Build web release and serve it locally on port 7357
   backend  Run the FastAPI backend with a local virtualenv
   doctor   Check local Flutter/FVM and Python prerequisites
 EOF
@@ -326,6 +328,27 @@ run_web() {
   run_flutter run -d chrome
 }
 
+run_web_static() {
+  local flutter
+  flutter="$(flutter_cmd)"
+
+  if [[ -z "$flutter" ]]; then
+    echo "Flutter or FVM is not installed or not on PATH." >&2
+    exit 1
+  fi
+
+  require_cmd python3
+
+  (
+    cd "$APP_DIR"
+    eval "$flutter pub get"
+    eval "$flutter build web --release"
+    cd build/web
+    echo "Serving Flutter web release build at http://localhost:7357"
+    python3 -m http.server 7357
+  )
+}
+
 run_backend() {
   require_cmd python3
 
@@ -394,6 +417,9 @@ main() {
       ;;
     web)
       run_web
+      ;;
+    web-static)
+      run_web_static
       ;;
     backend)
       run_backend

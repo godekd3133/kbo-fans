@@ -118,6 +118,13 @@ class ScoreboardService:
         )
         return payload
 
+    def get_home_scoreboard(self, date: str) -> dict[str, Any]:
+        payload = self.get_scoreboard(date)
+        return {
+            "date": payload["date"],
+            "games": [self._strip_home_payload(game) for game in payload["games"]],
+        }
+
     @staticmethod
     def _normalize_date(value: str) -> str:
         if re.fullmatch(r"\d{8}", value):
@@ -263,3 +270,17 @@ class ScoreboardService:
 
         terminal_statuses = {"FINAL", "CANCELLED", "SUSPENDED"}
         return bool(games) and all(game.get("status") in terminal_statuses for game in games)
+
+    @staticmethod
+    def _strip_home_payload(game: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "gameId": game.get("gameId"),
+            "status": game.get("status"),
+            "inning": game.get("inning"),
+            "stadium": game.get("stadium"),
+            "startTime": game.get("startTime"),
+            "crowd": game.get("crowd"),
+            "ticketInfo": game.get("ticketInfo"),
+            "away": game.get("away"),
+            "home": game.get("home"),
+        }

@@ -16,3 +16,9 @@ service = ScoreboardService()
 def get_scoreboard(date: Optional[str] = Query(default=None)) -> ApiEnvelope[dict]:
     target_date = date or date_type.today().isoformat()
     return ApiEnvelope.success_response(service.get_scoreboard(target_date))
+
+
+@router.get("/scoreboard/home", response_model=ApiEnvelope[dict])
+def get_home_scoreboard(date: Optional[str] = Query(default=None)) -> ApiEnvelope[dict]:
+    target_date = date or date_type.today().isoformat()
+    return ApiEnvelope.success_response(service.get_home_scoreboard(target_date))

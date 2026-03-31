@@ -18,10 +18,15 @@
 - [x] 설정 화면에 알림 설명문과 토글별 보조 문구 추가
 - [x] 순위/기록실 요약 시즌별 번들 스냅샷 fallback(`2001~현재`) 추가
 - [x] 앱 부트스트랩에 timeout/fallback 을 추가해 shared preferences 응답 지연 시 무한 스플래시를 피하도록 보강
+- [x] 웹 HTML 스플래시에 DOM 감지/timeout 제거 fallback 추가
+- [x] 정적 빌드 기반 `web-static` 프리뷰 스크립트 추가
+- [x] 기본 `codex-run-web.sh` 를 정적 프리뷰 기준으로 전환하고 `codex-run-web-dev.sh` 추가
 
 ### 확인 사항
 - `flutter run -d chrome` 디버그 세션은 정상 렌더링됨
-- 별도 `flutter run -d web-server --web-port 7357` 경로는 스플래시에서 멈추는 현상이 있어 웹 배포/프리뷰 경로 추가 점검 필요
+- `flutter run -d web-server --web-port 7357` 는 일반 Chrome 기준으로 Flutter view 가 뜨지 않아 안정적인 검증 경로로 보기 어려움
+- 웹 프리뷰는 `./scripts/codex-run-web-static.sh` 또는 `./scripts/codex-run.sh web-static` 기준으로 사용하는 쪽이 안전함
+- Codex 액션 기본 웹 실행 경로는 `./scripts/codex-run-web.sh`, Chrome 디버그가 필요하면 `./scripts/codex-run-web-dev.sh`
 - 실제 시각 검증 기준으로 홈은 정보 구조가 풍부하지만 첫 화면 우선순위 정리가 더 필요함
 
 ### 검증

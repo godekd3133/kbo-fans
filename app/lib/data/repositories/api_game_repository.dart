@@ -22,9 +22,9 @@ class ApiGameRepository implements GameRepository {
   Future<List<Game>> getScoreboard(String date) async {
     final isHistoricalDate = _isHistoricalDate(date);
     final data = await _client.getCached(
-      '/scoreboard',
+      '/scoreboard/home',
       queryParameters: {'date': date},
-      cacheKey: 'scoreboard:$date',
+      cacheKey: 'scoreboard_home:$date',
       preferCache: isHistoricalDate,
       maxAge: isHistoricalDate ? _stableCacheAge : _liveishCacheAge,
     );
@@ -101,8 +101,12 @@ class ApiGameRepository implements GameRepository {
     );
     return GameBoxscoreData(
       gameId: gameId,
-      away: _parseTeamBoxscore(data['away'] as Map<String, dynamic>? ?? const {}),
-      home: _parseTeamBoxscore(data['home'] as Map<String, dynamic>? ?? const {}),
+      away: _parseTeamBoxscore(
+        data['away'] as Map<String, dynamic>? ?? const {},
+      ),
+      home: _parseTeamBoxscore(
+        data['home'] as Map<String, dynamic>? ?? const {},
+      ),
     );
   }
 
