@@ -99,6 +99,9 @@
 - [x] `docs/ANDROID_SIGNING_GUIDE.md` 추가
 - [x] `docs/IOS_TESTFLIGHT_CHECKLIST.md` 추가
 - [x] Android release signing 을 `key.properties` 기반 구조로 정리
+- [x] 구현 인사이트 정리용 `docs/ENGINEERING_NOTES.md` 추가
+- [x] 반복 작업을 위한 `.claude/skills/ios-live-activity-widget`, `.claude/skills/mobile-preview-release` 추가
+- [x] `AGENTS.md`, `CLAUDE.md` 에 문서/스킬 진입점 반영
 
 ### 검증
 - [x] `cd backend && source .venv/bin/activate && pytest -q`
@@ -479,6 +482,8 @@ kbo_fans/
 - [x] 예정/종료/취소 경기 relay 요청 시 크롤러를 타지 않도록 short-circuit 처리
 - [x] records overview 영속 snapshot fallback 추가
 - [x] 앱 로컬 API 캐시를 TTL 기반으로 조정해 신선한 데이터 재사용 시 불필요한 백그라운드 재요청 제거
+- [x] 홈 화면에서 `schedule` / `standings` 중복 구독 제거
+- [x] 홈 `overview` 섹션을 실제 노출 위치 기준으로 lazy load
 - [x] 관련 백엔드 회귀 테스트 추가
 
 ### 검증 메모
@@ -492,6 +497,8 @@ kbo_fans/
 - `GET /api/game/20260331HTLG0/relay` : non-live 경기에서 크롤러 우회, 약 `0.56s`
 - `GET /api/game/20260331HTLG0/boxscore` : 캐시 히트 기준 약 `0.20s`
 - 앱 재진입/탭 재방문 시 `schedule`, `standings`, `records`, `player detail`, `overview`는 TTL 내 네트워크 재호출 없이 로컬 캐시 우선 사용
+- 홈 화면은 `schedule` / `standings`를 한 번만 읽고 두 섹션에서 재사용
+- 홈 `overview`는 고정 시간 지연 대신 실제 화면 근접 시점에 로드
 
 ### 문서화
 - [x] 홈 전용 aggregate endpoint 기반 성능 개선 제안서 작성 (`docs/PERFORMANCE_PROPOSAL_HOME_AGGREGATE.md`)

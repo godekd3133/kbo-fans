@@ -8,9 +8,11 @@
 ## Source Of Truth
 - Start with this file for repository-level working rules.
 - Use `CLAUDE.md` for high-level project context.
+- Use `.claude/SKILL_REFERENCE.md` for reusable task patterns extracted from prior work.
 - Use `README.md` for external-facing project summary, quick start, and local preview/run guidance.
 - Use `CHANGELOG.md` for user-visible change history.
 - Use `docs/APP_SPEC.md` for screen behavior, provider structure, API contracts, and status codes.
+- Use `docs/ENGINEERING_NOTES.md` for implementation-level insights, local/dev behavior, widget/live activity constraints, and release workflow notes.
 - Use `docs/PLANNING.md` for product goals, MVP scope, UX principles, and risk context.
 - Use `docs/FIGMA_PROMPT.md` for visual system, frame sizing, dark theme rules, page ordering, and wireframe/detail screen composition.
 - Use `docs/WORKLOG.md` for recent decisions and change history.
@@ -29,11 +31,40 @@
 - Keep `CHANGELOG.md` updated when user-visible features, architecture milestones, or developer-facing setup behavior changes.
 - Keep shared local run entrypoints under `scripts/` stable when they are used as Codex app execution actions.
 - Prefer one action entrypoint per platform when Codex app execution actions are split by environment (`ios`, `android`, `web`).
+- When work becomes repeatable, prefer documenting it under `.claude/skills/` and keep AGENTS/CLAUDE aligned with the new skill entrypoints.
 - Keep feature or task context as Markdown documents under `docs/` when the work is large enough to need durable context.
 - Use Korean commit messages.
 - Keep implementation aligned with Flutter, Riverpod, go_router, dio, FastAPI, AWS, and FCM unless the user explicitly changes direction.
 - When changing UX flows, screen states, or navigation, update both the relevant spec doc and the work log in the same task when feasible.
 - Treat design artifacts as first-class project context, not secondary references.
+
+## Runtime Notes
+- Web and release builds should use backend API paths, not direct KBO ASMX/HTML calls.
+- Local native debugging may use direct KBO crawling when backend is not the focus; prefer backend API for web validation and release behavior.
+- Home first paint should prefer lightweight/cached payloads, then refresh in the background.
+- Historical standings, records, and finished-game detail should prefer stored snapshots when available over re-crawling upstream pages.
+- Team records UX should enter through team selection first, then fetch team-specific records after selection.
+- If `origin` SSH access fails during push, use the repository SSH alias path `git@github-personal:godekd3133/kbo-fans.git`.
+
+## Repo Skills
+- Reusable repo-local workflows live under `.claude/skills/`.
+- `kbo-runtime-data`: use when changing app data-loading paths, cache/snapshot policy, API vs direct KBO routing, or performance-sensitive record/scoreboard flows.
+- `kbo-release-flow`: use when preparing commits, pushes, preview tags, or friend/TestFlight-facing release steps for this repository.
+
+## Implementation Insights
+- Keep app data sources consistent by domain. Do not let one screen use mock data while another uses live API for the same product surface.
+- For mobile debug builds on real devices, `localhost` API assumptions are unsafe. Prefer backend API first with explicit fallback only where the app can safely fetch direct KBO data.
+- Current fallback policy:
+  - Home / Schedule / Standings / Game Detail may fall back to direct KBO fetches in mobile debug when API connection fails.
+  - Records must stay API-backed unless a dedicated direct-player implementation is added. Do not silently fall back to incomplete mock data there.
+- When touching direct KBO parsers in `app/lib/data/repositories/kbo_direct_repository.dart`, keep field parity with backend contracts. Schedule status, scores, and standings parsing have already drifted once and broke UI state.
+- Dev-only diagnostics should stay in Dev Console when possible. Avoid promoting debugging affordances to user-facing UI unless explicitly requested.
+- Snapshot fallback is only approved for relatively stable data:
+  - standings
+  - records overview / leaderboards
+  - not full team player detail payloads
+- When adding fallback data, prefer generated assets over handwritten literals and keep the generation path under `scripts/`.
+- If work clearly matches an existing local Claude skill under `.claude/skills/`, read that skill first and follow it.
 
 ## Design And UX Constraints
 - Prioritize "open the app and see baseball immediately".
@@ -59,6 +90,12 @@
   - Action accent: `#2979FF`
   - Ball count yellow: `#FFD600`
 - Use Pretendard for Korean-first UI copy and SF Pro-style numeric emphasis when drafting designs or frontend UI.
+- Do not use emoji in app UI copy or labels. Prefer text, color, badges, or icons.
+
+## Reusable Patterns
+- Relay work should follow the login-based KBO live text flow documented in `.claude/skills/kbo-relay-integration/SKILL.md`.
+- Home performance work should follow `.claude/skills/home-load-performance/SKILL.md`.
+- Game detail tab UI work should follow `.claude/skills/game-detail-tab-polish/SKILL.md`.
 
 ## Figma Workflow Notes
 - `docs/FIGMA_PROMPT.md` defines the current intended Figma page order and screen states.
@@ -82,9 +119,18 @@
   - Scheduled games: 5 minutes
   - Live games: 30 to 60 seconds
   - Final games: stop polling after final persistence
+- Local app mode may run without backend availability, so local/dev fallback behavior should be explicit rather than assumed.
 - Respect crawler fragility and KBO site change risk; keep parsing logic modular.
+
+## Repeatable Workflows
+- Reuse `.claude/skills/ios-live-activity-widget/SKILL.md` when touching iOS WidgetKit / Live Activity / Dynamic Island logic.
+- Reuse `.claude/skills/mobile-preview-release/SKILL.md` when preparing preview tags, GitHub prereleases, TestFlight readiness, or Android signing docs.
 
 ## Known Document Notes
 - The active mobile direction for this repository is Flutter, not Expo or React Native.
 - If future planning notes conflict with implementation docs, treat `CLAUDE.md`, `docs/WORKLOG.md`, and the latest code as the current direction.
 - `docs/FIGMA_PROMPT.md` is more detailed than `CLAUDE.md` for visual decisions; prefer it for screen composition and styling details.
+
+## Claude Skill Notes
+- Repetitive project-specific workflows that are now worth extracting live under `.claude/skills/`.
+- If you update a Codex-facing workflow in `AGENTS.md`, update the corresponding Claude-side skill or context note in `.claude/skills/` or `CLAUDE.md` in the same task.

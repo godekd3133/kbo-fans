@@ -39,10 +39,12 @@ kbo_fans/
 ## 문서 우선순위
 - 저장소 전반 작업 기준: `AGENTS.md`
 - 프로젝트 개요와 큰 방향: `CLAUDE.md`
+- 재사용 가능한 작업 패턴/스킬: `.claude/SKILL_REFERENCE.md`
 - 저장소 소개/실행 가이드: `README.md`
 - 외부 공개용 변경 이력: `CHANGELOG.md`
 - 제품 목표/UX 원칙/로드맵: `docs/PLANNING.md`
 - 화면 상세, 상태, API 계약: `docs/APP_SPEC.md`
+- 구현 인사이트/배포 메모: `docs/ENGINEERING_NOTES.md`
 - Figma 화면 구성, 다크 테마, 컬러/레이아웃 기준: `docs/FIGMA_PROMPT.md`
 - 최신 작업 이력과 결정 사항: `docs/WORKLOG.md`
 - 문서가 충돌하면 최신 결정은 `docs/WORKLOG.md`와 실제 코드/산출물을 우선한다
@@ -60,11 +62,36 @@ kbo_fans/
 - 사용자 관점의 기능/마일스톤 변경이 생기면 `CHANGELOG.md`를 함께 갱신한다
 - Codex 앱 실행 액션으로 쓰는 공용 명령은 가능하면 `scripts/` 아래 스크립트로 유지한다
 - Codex 앱 실행 액션을 플랫폼별로 분리할 때는 `ios`, `android`, `web` 각각 독립 스크립트 진입점을 둔다
+- 반복되는 작업은 `.claude/skills/` 로 뺄 수 있으면 빼고, 관련 진입점을 문서에 같이 남긴다
 - 백엔드 최소 런타임은 `backend/pyproject.toml` 기준 Python `3.9`로 본다
 - 백엔드 코드에서는 Python 3.10+ 전용 타입 문법(`int | None`, `str | None`)을 쓰지 않고 `Optional[...]`, `Union[...]`을 사용한다
 - 커밋은 한글로 작성한다
 - Flutter, FastAPI, Figma 산출물은 문서와 함께 같이 업데이트한다
 - 화면/UX 변경 시 `docs/APP_SPEC.md`와 `docs/FIGMA_PROMPT.md` 반영 여부를 같이 확인한다
+
+## 최근 구현 인사이트
+- 실기기 디버그 환경에서 `localhost` 백엔드는 신뢰하지 않는다. 모바일 디버그는 API 우선, 일부 화면만 direct KBO fallback 허용이 현재 원칙이다.
+- 데이터 소스 혼선은 실제 장애처럼 보이므로 화면별로 다른 저장소를 보게 두지 않는다.
+- 현재 허용된 direct fallback 범위:
+  - 홈
+  - 일정
+  - 순위
+  - 경기 상세
+- 현재 비허용 direct fallback 범위:
+  - 기록실 선수 상세/엔트리 전체
+  - 이 영역은 API 또는 서버 stale cache 기준으로 유지한다.
+- 순위와 기록실 요약은 시즌별 스냅샷 fallback(`2001~현재`)을 앱 번들에 둔다.
+- Dev Console 은 현재 API base URL, API latency, 홈/일정/기록실 로딩 완료 로그, 기록실 진단 로그를 표시하는 운영 도구다.
+- 일정/순위 fallback 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
+- `.claude/skills/`에 이미 같은 작업 패턴이 있으면 먼저 그 스킬을 참고한다
+- 앱 UI 카피에는 이모지를 사용하지 않는다
+
+## 누적 인사이트
+- 홈 첫 진입은 “스코어보드 우선, 나머지 섹션 후순위”가 체감 속도에 가장 중요하다
+- 홈에서는 상세용 하이라이트/유튜브 검색을 절대 같이 물지 않는다
+- KBO relay는 비로그인으로 안정적으로 확보되지 않으며, 로그인 세션과 재시도 정책이 필요하다
+- `LiveTextView2.aspx`가 현재 타석과 play-by-play의 핵심 source다
+- 라인업/박스스코어는 표보다 모바일 카드형 레이아웃이 가독성이 훨씬 좋다
 
 ## 데이터 소스
 - KBO 공식 홈페이지 (koreabaseball.com) 크롤링
@@ -94,6 +121,10 @@ kbo_fans/
 - Figma 작업 시 `User Flow`, 온보딩, 홈, 경기 상세 4탭, 일정, 순위, 설정, 위젯까지 포함한 구조를 기준으로 한다
 - Figma MCP 접근 상태는 계정/권한 영향이 있으므로 실제 작업 전 연결 상태를 확인해야 한다
 
+## 반복 작업 스킬
+- iOS 위젯 / Live Activity / Dynamic Island 수정 시: `.claude/skills/ios-live-activity-widget/SKILL.md`
+- 프리뷰 릴리즈, TestFlight/Android 배포 준비 시: `.claude/skills/mobile-preview-release/SKILL.md`
+
 ## MVP 기능 (Phase 1)
 1. 실시간 스코어보드
 2. 문자중계
@@ -108,3 +139,9 @@ kbo_fans/
 3. FastAPI 백엔드 구조 셋업
 4. 크롤링 프로토타입 구축
 5. 홈 스코어보드와 경기 상세 핵심 화면 구현
+
+## Claude Skills
+- `.claude/skills/bootstrap-fallback-data/SKILL.md`
+  - 시즌별 standings / records overview 스냅샷 생성과 앱 fallback 연결 작업용
+- `.claude/skills/app-icon-pipeline/SKILL.md`
+  - 앱 아이콘 변형 제작, 선택, iOS/Android 리소스 갱신 작업용
