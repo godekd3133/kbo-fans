@@ -684,6 +684,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         : myTeamId != null && myGame != null
         ? '마이팀 ${myGame.away.teamId == myTeamId ? myGame.away.shortName : myGame.home.shortName} 경기부터 확인하세요.'
         : '${spotlight.away.shortName} vs ${spotlight.home.shortName} · ${spotlight.stadium}';
+    final summaries = games
+        .where((game) => game.gameId != spotlight?.gameId)
+        .take(3)
+        .map(
+          (game) => _TodayGameSummaryData(
+            awayShortName: game.away.shortName,
+            homeShortName: game.home.shortName,
+            stadium: game.stadium,
+            status: game.status,
+            timeLabel: game.inning.isNotEmpty ? game.inning : game.startTime,
+            awayScore: game.away.score,
+            homeScore: game.home.score,
+            isMyTeamGame: myTeamId != null &&
+                (game.away.teamId == myTeamId || game.home.teamId == myTeamId),
+          ),
+        )
+        .toList();
 
     return _TodayBaseballBriefData(
       headline: headline,
@@ -693,6 +710,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       scheduledGames: scheduledGames,
       finalGames: finalGames,
       spotlight: spotlight,
+      summaries: summaries,
     );
   }
 
@@ -861,7 +879,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final dateStr = '${now.month}.${now.day} ${dayNames[now.weekday]}';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -872,7 +890,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 'KBO Fans',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               const Text(
                 '오늘 경기와 마이팀을 먼저 확인하세요',
                 style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
@@ -884,7 +902,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
-                  vertical: 8,
+                  vertical: 7,
                 ),
                 decoration: BoxDecoration(
                   color: AppColors.card,
@@ -1534,6 +1552,15 @@ class _TodayBaseballCard extends StatelessWidget {
               Expanded(child: _summaryPill('종료', '${brief.finalGames}경기')),
             ],
           ),
+          if (brief.summaries.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Text(
+              '다른 경기',
+              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+            ),
+            const SizedBox(height: 8),
+            for (final item in brief.summaries) _todayGameSummaryRow(item),
+          ],
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
@@ -1562,17 +1589,21 @@ class _TodayBaseballCard extends StatelessWidget {
 
   Widget _summaryPill(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textDisabled,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -1589,6 +1620,74 @@ class _TodayBaseballCard extends StatelessWidget {
       game.status,
       fontSize: 10,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    );
+  }
+
+  Widget _todayGameSummaryRow(_TodayGameSummaryData item) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: item.isMyTeamGame
+              ? AppColors.accent.withValues(alpha: 0.08)
+              : AppColors.cardSub,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: item.isMyTeamGame ? AppColors.accent : AppColors.divider,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${item.awayShortName} vs ${item.homeShortName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      if (item.isMyTeamGame)
+                        const Text(
+                          'MY',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.accent,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${labelForGameStatus(item.status)} · ${item.timeLabel} · ${item.stadium}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              '${item.awayScore} : ${item.homeScore}',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1667,7 +1766,7 @@ class _BenefitChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.divider),
       ),
       child: Text(
@@ -1923,6 +2022,7 @@ class _TodayBaseballBriefData {
   final int scheduledGames;
   final int finalGames;
   final Game? spotlight;
+  final List<_TodayGameSummaryData> summaries;
 
   const _TodayBaseballBriefData({
     required this.headline,
@@ -1932,6 +2032,29 @@ class _TodayBaseballBriefData {
     required this.scheduledGames,
     required this.finalGames,
     required this.spotlight,
+    required this.summaries,
+  });
+}
+
+class _TodayGameSummaryData {
+  final String awayShortName;
+  final String homeShortName;
+  final String stadium;
+  final GameStatus status;
+  final String timeLabel;
+  final int awayScore;
+  final int homeScore;
+  final bool isMyTeamGame;
+
+  const _TodayGameSummaryData({
+    required this.awayShortName,
+    required this.homeShortName,
+    required this.stadium,
+    required this.status,
+    required this.timeLabel,
+    required this.awayScore,
+    required this.homeScore,
+    required this.isMyTeamGame,
   });
 }
 

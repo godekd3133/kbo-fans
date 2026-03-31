@@ -37,7 +37,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
                 child: Row(
                   children: [
                     Expanded(
@@ -118,7 +118,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Center(
                   child: Text(
                     '마지막 업데이트: ${DateFormat('yyyy.MM.dd HH:mm').format(DateTime.now())}',
@@ -146,10 +146,10 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
     final teamColor = team?.primaryColor ?? AppColors.live;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: teamColor.withValues(alpha: 0.5)),
       ),
       child: Row(
@@ -177,7 +177,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
               color: teamColor.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(999),

@@ -200,7 +200,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final hasMyTeam = ref.watch(myTeamProvider) != null;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -225,7 +225,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -258,7 +258,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             ),
           ),
           if (_viewMode == ScheduleViewMode.calendar) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             _legendRow(),
           ],
         ],
@@ -311,11 +311,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 40,
+        height: 42,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? AppColors.textPrimary : AppColors.card,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: selected ? null : Border.all(color: AppColors.divider),
         ),
         child: Text(
@@ -338,7 +338,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: selected ? AppColors.cardSub : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
@@ -385,7 +385,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           ...List.generate(((startWeekday - 1 + lastDay.day + 6) ~/ 7), (week) {
             return Row(
               children: List.generate(7, (weekday) {
@@ -462,7 +462,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               }),
             );
           }),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
         ],
       ),
     );

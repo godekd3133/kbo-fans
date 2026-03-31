@@ -46,7 +46,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
               Text(
                 'KBO Fans',
                 style: Theme.of(context).textTheme.headlineLarge,
@@ -75,7 +75,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _OnboardingHintChip(label: '마이팀 중심 홈'),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Expanded(
                 child: GridView.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -198,7 +198,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     foregroundColor: AppColors.textPrimary,
                     disabledForegroundColor: AppColors.textDisabled,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: const Text(
@@ -207,7 +207,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               GestureDetector(
                 onTap: _saveAndProceed,
                 child: Text(
@@ -215,7 +215,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   style: TextStyle(fontSize: 14, color: AppColors.textDisabled),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
             ],
           ),
         ),

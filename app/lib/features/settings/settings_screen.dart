@@ -72,10 +72,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: SafeArea(
         child: AppPageFrame(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
             children: [
             const Text('⚙️ 설정', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // 마이팀
             const Text('마이팀', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),

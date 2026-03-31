@@ -332,6 +332,11 @@ class _LineupTabState extends ConsumerState<LineupTab> {
           ),
         ),
         const SizedBox(height: 16),
+        _FieldDiagramCard(
+          lineup: lineup,
+          accent: _teamAccent(team),
+        ),
+        const SizedBox(height: 16),
         ...lineup.map(
           (entry) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
@@ -493,6 +498,180 @@ class _LineupCard extends StatelessWidget {
                       subtle: true,
                     ),
                   ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldDiagramCard extends StatelessWidget {
+  final List<LineupEntry> lineup;
+  final Color accent;
+
+  const _FieldDiagramCard({
+    required this.lineup,
+    required this.accent,
+  });
+
+  static const Map<String, Alignment> _positionAlignments = {
+    'P': Alignment(0, 0.48),
+    'C': Alignment(0, 0.9),
+    '1B': Alignment(0.56, 0.46),
+    '2B': Alignment(0.26, 0.18),
+    '3B': Alignment(-0.56, 0.46),
+    'SS': Alignment(-0.26, 0.18),
+    'LF': Alignment(-0.66, -0.32),
+    'CF': Alignment(0, -0.62),
+    'RF': Alignment(0.66, -0.32),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final fielders = lineup
+        .where((entry) => _positionAlignments.containsKey(entry.position))
+        .toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '수비 포지션',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '그라운드 위에서 포지션과 선수 이름을 한눈에 볼 수 있습니다.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          AspectRatio(
+            aspectRatio: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Stack(
+                children: [
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      width: 220,
+                      height: 220,
+                      margin: const EdgeInsets.only(bottom: 28),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.12),
+                        border: Border.all(color: accent.withValues(alpha: 0.38), width: 2),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(22),
+                          topRight: Radius.circular(22),
+                          bottomLeft: Radius.circular(180),
+                          bottomRight: Radius.circular(180),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Align(
+                    alignment: const Alignment(0, 0.84),
+                    child: Transform.rotate(
+                      angle: 0.785398,
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                  for (final fielder in fielders)
+                    Align(
+                      alignment: _positionAlignments[fielder.position]!,
+                      child: _FieldMarker(
+                        entry: fielder,
+                        accent: accent,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FieldMarker extends StatelessWidget {
+  final LineupEntry entry;
+  final Color accent;
+
+  const _FieldMarker({
+    required this.entry,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 90,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  entry.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${entry.positionKo} · ${entry.position}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 9, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              color: accent,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.45),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
