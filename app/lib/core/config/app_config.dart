@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 enum AppEnvironment { local, dev, release }
 
 class AppConfig {
@@ -30,25 +32,27 @@ class AppConfig {
   }
 
   static String _baseUrlFor(AppEnvironment env) {
+    const override = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (override.isNotEmpty) {
+      return override;
+    }
+
     switch (env) {
       case AppEnvironment.local:
-        // LOCAL: 로컬 FastAPI 서버 (에뮬레이터에서는 10.0.2.2)
-        return const String.fromEnvironment(
-          'API_BASE_URL',
-          defaultValue: 'http://localhost:8000/api',
-        );
+        // LOCAL: 웹/iOS는 localhost, Android 에뮬레이터는 10.0.2.2
+        if (kIsWeb) {
+          return 'http://localhost:8000/api';
+        }
+        if (defaultTargetPlatform == TargetPlatform.android) {
+          return 'http://10.0.2.2:8000/api';
+        }
+        return 'http://localhost:8000/api';
       case AppEnvironment.dev:
         // DEV: AWS dev 서버
-        return const String.fromEnvironment(
-          'API_BASE_URL',
-          defaultValue: 'https://dev-api.kbofans.com/api',
-        );
+        return 'https://dev-api.kbofans.com/api';
       case AppEnvironment.release:
         // RELEASE: AWS 프로덕션 서버
-        return const String.fromEnvironment(
-          'API_BASE_URL',
-          defaultValue: 'https://api.kbofans.com/api',
-        );
+        return 'https://api.kbofans.com/api';
     }
   }
 

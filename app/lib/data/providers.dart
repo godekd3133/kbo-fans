@@ -6,6 +6,7 @@ import '../core/config/app_config.dart';
 import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
 import 'repositories/api_game_repository.dart';
+import 'repositories/fallback_game_repository.dart';
 import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
@@ -26,16 +27,16 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 /// GameRepository — 환경에 따라 자동 전환
 final gameRepositoryProvider = Provider<GameRepository>((ref) {
-  // 웹은 KBO 원본을 직접 호출하면 CORS/프록시 이슈가 커서 항상 백엔드 API를 경유한다.
-  if (kIsWeb) {
-    return ApiGameRepository(ref.read(apiClientProvider));
+  final apiRepository = ApiGameRepository(ref.read(apiClientProvider));
+
+  if (kIsWeb || AppConfig.instance.isRelease) {
+    return apiRepository;
   }
 
-  if (AppConfig.instance.isRelease) {
-    return ApiGameRepository(ref.read(apiClientProvider));
-  }
-
-  return KboDirectRepository();
+  return FallbackGameRepository(
+    primary: apiRepository,
+    fallback: KboDirectRepository(),
+  );
 });
 
 // ── 마이팀 전역 상태 ──

@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/config/app_config.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
 
@@ -98,7 +99,7 @@ class PushNotificationService {
       );
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-      FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      messaging.onTokenRefresh.listen((token) {
         _lastToken = token;
         unawaited(syncRegistration(myTeam: myTeam, forceToken: token));
       });
@@ -106,7 +107,11 @@ class PushNotificationService {
       _initialized = true;
       await syncRegistration(myTeam: myTeam);
     } catch (error) {
-      DevConsole.instance.warn('Push init skipped: $error');
+      if (AppConfig.instance.isLocal) {
+        DevConsole.instance.info('Push init skipped (local): $error');
+      } else {
+        DevConsole.instance.warn('Push init skipped: $error');
+      }
     }
   }
 
