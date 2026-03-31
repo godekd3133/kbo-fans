@@ -64,6 +64,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: AppColors.textDisabled),
               ),
+              const SizedBox(height: 10),
+              const Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _OnboardingHintChip(label: '오늘 경기 우선'),
+                  _OnboardingHintChip(label: '예매 오픈 추적'),
+                  _OnboardingHintChip(label: '마이팀 중심 홈'),
+                ],
+              ),
               const SizedBox(height: 24),
               Expanded(
                 child: GridView.builder(
@@ -159,7 +170,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              team.name,
+                              isSelected ? '선택됨 · ${team.name}' : team.name,
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -207,6 +218,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               const SizedBox(height: 24),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OnboardingHintChip extends StatelessWidget {
+  final String label;
+
+  const _OnboardingHintChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

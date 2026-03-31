@@ -108,6 +108,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              team == null
+                  ? '마이팀을 선택하면 홈과 알림이 응원팀 기준으로 맞춰집니다.'
+                  : '응원팀을 바꾸면 홈 브리프와 알림 기준도 함께 바뀝니다.',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textDisabled,
+                height: 1.4,
+              ),
+            ),
             const SizedBox(height: 24),
 
             // 알림 설정

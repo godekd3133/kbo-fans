@@ -703,14 +703,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final items = <_QuickContentItemData>[];
 
     final myTeamGame = myTeamBrief?.todayGame;
-    if (myTeamGame != null) {
+    if (myTeamGame == null && myTeamBrief?.nextGame != null) {
+      final nextGame = myTeamBrief!.nextGame!;
       items.add(
         _QuickContentItemData(
           eyebrow: '마이팀 경기',
-          title:
-              '${myTeamGame.away.shortName} ${myTeamGame.away.score} : ${myTeamGame.home.score} ${myTeamGame.home.shortName}',
-          subtitle: '${myTeamGame.inning} · ${myTeamGame.stadium}',
-          route: '/game/${myTeamGame.gameId}',
+          title: '${nextGame.awayName} vs ${nextGame.homeName}',
+          subtitle: '${nextGame.time} · ${nextGame.stadium}',
+          route: '/schedule',
         ),
       );
     }
