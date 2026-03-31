@@ -290,41 +290,11 @@ class _TicketInfoCard extends ConsumerWidget {
                 '예매 정보',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
-              const Spacer(),
-              if (ticket.isInferred)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.cardSub,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    '정책 기준',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
             ],
           ),
           const SizedBox(height: 10),
           _infoRow('예매처', ticket.vendorName),
           _infoRow('예매 시작', _formatTicketTime(ticket.openAt)),
-          if (ticket.note != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                ticket.note!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textDisabled,
-                ),
-              ),
-            ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -336,7 +306,7 @@ class _TicketInfoCard extends ConsumerWidget {
                           final uri = Uri.parse(ticket.vendorUrl!);
                           final mode = kIsWeb
                               ? LaunchMode.platformDefault
-                              : LaunchMode.inAppBrowserView;
+                              : LaunchMode.externalApplication;
                           await launchUrl(uri, mode: mode);
                         },
                   style: OutlinedButton.styleFrom(
@@ -684,7 +654,7 @@ class _HighlightCardState extends State<_HighlightCard> {
     final uri = Uri.parse(url);
     final mode = kIsWeb
         ? LaunchMode.platformDefault
-        : LaunchMode.inAppBrowserView;
+        : LaunchMode.externalApplication;
     await launchUrl(uri, mode: mode);
   }
 

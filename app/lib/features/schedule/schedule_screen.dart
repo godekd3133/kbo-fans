@@ -553,8 +553,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     }
 
     final formatted = DateFormat('MM.dd HH:mm').format(openAt);
-    final suffix = ticketInfo.isInferred ? ' · 정책 기준' : '';
-    return '${ticketInfo.vendorName} · $formatted 오픈$suffix';
+    return '${ticketInfo.vendorName} · $formatted 오픈';
   }
 
   void _logScheduleLoad(AsyncValue<List<ScheduleDay>> scheduleAsync) {
