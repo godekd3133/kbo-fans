@@ -18,7 +18,6 @@ if (hasReleaseKeystore) {
 android {
     namespace = "com.kbofans.kbo_fans"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
