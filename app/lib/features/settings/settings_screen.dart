@@ -111,7 +111,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 24),
 
             // 알림 설정
-            const Text('알림 설정', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            const Text('마이팀 경기 알림', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -130,7 +130,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Container(
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(
@@ -159,7 +159,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     setState(() => _notifGameEnd = v);
                     await _savePushSettings();
                   }),
-                  const Divider(color: AppColors.divider, height: 1, indent: 16, endIndent: 16),
+                  if (!_pushLoaded)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('푸시 설정 불러오는 중', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            const Text('리그 전체 알림', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                children: [
                   _notifRow('전체 경기 알림', '켜면 마이팀 외 경기 이벤트도 함께 받습니다', _notifAllGames, teamColor, (v) async {
                     setState(() => _notifAllGames = v);
                     await _savePushSettings();
@@ -169,15 +187,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: Text('마이팀 외 경기도 알림을 받습니다', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
-                      ),
-                    ),
-                  if (!_pushLoaded)
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text('푸시 설정 불러오는 중', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                        child: Text('마이팀 외 경기까지 포함되어 알림 수가 늘어날 수 있습니다', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
                       ),
                     ),
                 ],

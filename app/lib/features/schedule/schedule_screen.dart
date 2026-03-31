@@ -197,9 +197,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _buildControls() {
+    final hasMyTeam = ref.watch(myTeamProvider) != null;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -222,34 +225,42 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              _filterChip(
-                label: '전체',
-                selected: _teamFilter == ScheduleTeamFilter.all,
-                onTap: () =>
-                    setState(() => _teamFilter = ScheduleTeamFilter.all),
-              ),
-              const SizedBox(width: 8),
-              _filterChip(
-                label: '마이팀만',
-                selected: _teamFilter == ScheduleTeamFilter.myTeamOnly,
-                onTap: () =>
-                    setState(() => _teamFilter = ScheduleTeamFilter.myTeamOnly),
-              ),
-              const SizedBox(width: 8),
-              _filterChip(
-                label: '마이팀 제외',
-                selected: _teamFilter == ScheduleTeamFilter.otherTeamsOnly,
-                onTap: () => setState(
-                  () => _teamFilter = ScheduleTeamFilter.otherTeamsOnly,
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _filterChip(
+                  label: '전체',
+                  selected: _teamFilter == ScheduleTeamFilter.all,
+                  onTap: () =>
+                      setState(() => _teamFilter = ScheduleTeamFilter.all),
                 ),
-              ),
-            ],
+                if (hasMyTeam) ...[
+                  const SizedBox(width: 8),
+                  _filterChip(
+                    label: '마이팀만',
+                    selected: _teamFilter == ScheduleTeamFilter.myTeamOnly,
+                    onTap: () => setState(
+                      () => _teamFilter = ScheduleTeamFilter.myTeamOnly,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _filterChip(
+                    label: '마이팀 제외',
+                    selected: _teamFilter == ScheduleTeamFilter.otherTeamsOnly,
+                    onTap: () => setState(
+                      () => _teamFilter = ScheduleTeamFilter.otherTeamsOnly,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
-          _legendRow(),
+          if (_viewMode == ScheduleViewMode.calendar) ...[
+            const SizedBox(height: 8),
+            _legendRow(),
+          ],
         ],
       ),
     );

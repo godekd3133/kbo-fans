@@ -11,6 +11,7 @@
 - Use `.claude/SKILL_REFERENCE.md` for reusable task patterns extracted from prior work.
 - Use `README.md` for external-facing project summary, quick start, and local preview/run guidance.
 - Use `CHANGELOG.md` for user-visible change history.
+- Use `docs/DISTRIBUTION_GUIDE.md`, `docs/ANDROID_SIGNING_GUIDE.md`, and `docs/IOS_TESTFLIGHT_CHECKLIST.md` for friend/tester distribution work.
 - Use `docs/APP_SPEC.md` for screen behavior, provider structure, API contracts, and status codes.
 - Use `docs/ENGINEERING_NOTES.md` for implementation-level insights, local/dev behavior, widget/live activity constraints, and release workflow notes.
 - Use `docs/PLANNING.md` for product goals, MVP scope, UX principles, and risk context.
@@ -37,6 +38,7 @@
 - Keep implementation aligned with Flutter, Riverpod, go_router, dio, FastAPI, AWS, and FCM unless the user explicitly changes direction.
 - When changing UX flows, screen states, or navigation, update both the relevant spec doc and the work log in the same task when feasible.
 - Treat design artifacts as first-class project context, not secondary references.
+- Codex app action commands created in the repo still require manual registration in the app UI; do not assume scripts auto-populate the action menu.
 
 ## Runtime Notes
 - Web and release builds should use backend API paths, not direct KBO ASMX/HTML calls.
@@ -48,7 +50,10 @@
 
 ## Repo Skills
 - Reusable repo-local workflows live under `.claude/skills/`.
+- Skill index lives in `.claude/SKILL_REFERENCE.md`.
 - `kbo-runtime-data`: use when changing app data-loading paths, cache/snapshot policy, API vs direct KBO routing, or performance-sensitive record/scoreboard flows.
+- `kbo-history-snapshot`: use when classifying live vs historical data, adding snapshot-first backend paths, or making app historical screens cached-first.
+- `kbo-doc-sync`: use when architecture/API/UX changes also require synced updates across AGENTS, CLAUDE, spec docs, worklog, changelog, and skills.
 - `kbo-release-flow`: use when preparing commits, pushes, preview tags, or friend/TestFlight-facing release steps for this repository.
 
 ## Implementation Insights
@@ -63,6 +68,9 @@
   - standings
   - records overview / leaderboards
   - not full team player detail payloads
+- Current backend direction is broader than early app-only fallback notes:
+  - historical standings, past games, player detail, team players, and team stats may use stored backend snapshots
+  - live relay / live scoreboard should remain live-first
 - When adding fallback data, prefer generated assets over handwritten literals and keep the generation path under `scripts/`.
 - If work clearly matches an existing local Claude skill under `.claude/skills/`, read that skill first and follow it.
 
@@ -94,8 +102,13 @@
 
 ## Reusable Patterns
 - Relay work should follow the login-based KBO live text flow documented in `.claude/skills/kbo-relay-integration/SKILL.md`.
+- App-side direct KBO ASMX work should follow `.claude/skills/kbo-asmx-direct-integration/SKILL.md`.
 - Home performance work should follow `.claude/skills/home-load-performance/SKILL.md`.
 - Game detail tab UI work should follow `.claude/skills/game-detail-tab-polish/SKILL.md`.
+- iOS device run and widget troubleshooting should follow `.claude/skills/ios-live-activity-widget/SKILL.md`.
+- App startup / white-screen / noisy local runtime work should follow `.claude/skills/app-startup-runtime-triage/SKILL.md`.
+- Connected iOS device run-action and Xcode destination triage should follow `.claude/skills/ios-device-run-action/SKILL.md`.
+- Friend/tester distribution work should follow `.claude/skills/app-distribution/SKILL.md`.
 
 ## Figma Workflow Notes
 - `docs/FIGMA_PROMPT.md` defines the current intended Figma page order and screen states.
@@ -122,6 +135,13 @@
 - Local app mode may run without backend availability, so local/dev fallback behavior should be explicit rather than assumed.
 - Respect crawler fragility and KBO site change risk; keep parsing logic modular.
 
+## Distribution Notes
+- For the fastest external sharing, prefer web first.
+- For iPhone tester installs, prefer TestFlight.
+- For Android tester installs, prefer Google Play internal testing after release signing is configured.
+- Android release signing secrets live in `app/android/key.properties` and a local keystore; never commit them.
+- iOS destinations depend heavily on active Xcode version and matching runtime/platform support.
+
 ## Repeatable Workflows
 - Reuse `.claude/skills/ios-live-activity-widget/SKILL.md` when touching iOS WidgetKit / Live Activity / Dynamic Island logic.
 - Reuse `.claude/skills/mobile-preview-release/SKILL.md` when preparing preview tags, GitHub prereleases, TestFlight readiness, or Android signing docs.
@@ -130,6 +150,7 @@
 - The active mobile direction for this repository is Flutter, not Expo or React Native.
 - If future planning notes conflict with implementation docs, treat `CLAUDE.md`, `docs/WORKLOG.md`, and the latest code as the current direction.
 - `docs/FIGMA_PROMPT.md` is more detailed than `CLAUDE.md` for visual decisions; prefer it for screen composition and styling details.
+- `flutter devices` 와 `xcodebuild -showdestinations` 결과가 다를 수 있으니, 실기기 실행 이슈는 두 경로를 같이 본다.
 
 ## Claude Skill Notes
 - Repetitive project-specific workflows that are now worth extracting live under `.claude/skills/`.

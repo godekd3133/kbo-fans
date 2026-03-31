@@ -31,10 +31,25 @@
   - App Group entitlements
   - real device verification
   를 체크한다.
+- `GeneratedPluginRegistrant.register(...)` 중복 호출로 duplicate plugin crash 가 나지 않게 한다.
+- widget extension plist 에서는
+  - `CFBundleShortVersionString = $(MARKETING_VERSION)`
+  - `CFBundleVersion = $(CURRENT_PROJECT_VERSION)`
+  를 사용한다.
+- `Runner` / widget target 의 `SUPPORTED_PLATFORMS` 는 `iphoneos iphonesimulator` 로 명시한다.
+- Xcode 의 `-showdestinations` 에 실제 iPhone / Simulator destination 이 보이는지 먼저 확인한다.
+
+## Common Failure Clues
+
+- `Duplicate plugin key: FLTFirebaseCorePlugin`
+- `No such module 'workmanager'`
+- `No such module 'home_widget'`
+- `Appex bundle ... does not have a CFBundleVersion`
+- `Found no destinations for the scheme`
+- `iOS xx.x is not installed`
 
 ## Done Criteria
 
 - Flutter -> native channel -> ActivityKit 경로가 끊기지 않는다
 - 홈 화면 밖에서도 동기화가 유지된다
 - 실기기 확인 필요 여부를 문서/답변에 명시한다
-

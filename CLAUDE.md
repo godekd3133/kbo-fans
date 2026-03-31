@@ -42,6 +42,7 @@ kbo_fans/
 - 재사용 가능한 작업 패턴/스킬: `.claude/SKILL_REFERENCE.md`
 - 저장소 소개/실행 가이드: `README.md`
 - 외부 공개용 변경 이력: `CHANGELOG.md`
+- 배포 / 테스터 공유 가이드: `docs/DISTRIBUTION_GUIDE.md`, `docs/ANDROID_SIGNING_GUIDE.md`, `docs/IOS_TESTFLIGHT_CHECKLIST.md`
 - 제품 목표/UX 원칙/로드맵: `docs/PLANNING.md`
 - 화면 상세, 상태, API 계약: `docs/APP_SPEC.md`
 - 구현 인사이트/배포 메모: `docs/ENGINEERING_NOTES.md`
@@ -62,12 +63,31 @@ kbo_fans/
 - 사용자 관점의 기능/마일스톤 변경이 생기면 `CHANGELOG.md`를 함께 갱신한다
 - Codex 앱 실행 액션으로 쓰는 공용 명령은 가능하면 `scripts/` 아래 스크립트로 유지한다
 - Codex 앱 실행 액션을 플랫폼별로 분리할 때는 `ios`, `android`, `web` 각각 독립 스크립트 진입점을 둔다
+- Codex 앱 액션은 저장소 스크립트를 만든다고 UI에 자동 등록되지 않으므로, 사용자 수동 등록이 필요하다는 전제를 유지한다
 - 반복되는 작업은 `.claude/skills/` 로 뺄 수 있으면 빼고, 관련 진입점을 문서에 같이 남긴다
 - 백엔드 최소 런타임은 `backend/pyproject.toml` 기준 Python `3.9`로 본다
 - 백엔드 코드에서는 Python 3.10+ 전용 타입 문법(`int | None`, `str | None`)을 쓰지 않고 `Optional[...]`, `Union[...]`을 사용한다
 - 커밋은 한글로 작성한다
 - Flutter, FastAPI, Figma 산출물은 문서와 함께 같이 업데이트한다
 - 화면/UX 변경 시 `docs/APP_SPEC.md`와 `docs/FIGMA_PROMPT.md` 반영 여부를 같이 확인한다
+
+## 런타임 / 운영 메모
+- 웹과 release 빌드는 KBO 원본 직접 호출 대신 백엔드 API 경로를 기본으로 사용한다
+- 로컬 네이티브 디버깅은 필요 시 direct KBO crawler 경로를 쓸 수 있지만, 웹 검증과 출시 동작은 반드시 API 경로 기준으로 맞춘다
+- 홈 첫 진입은 경량 payload / 캐시 우선, 이후 background refresh 방식으로 체감 속도를 확보한다
+- 지난 경기 결과, 과거 시즌 순위, 기록실 과거 시즌 데이터는 snapshot 우선 전략을 유지한다
+- 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다
+- Git push 시 기본 `origin` 이슈가 있으면 `git@github-personal:godekd3133/kbo-fans.git` 경로를 사용한다
+
+## 저장소 스킬
+- `.claude/skills/kbo-runtime-data/SKILL.md`
+  - 데이터 로딩 경로, API/direct 선택, cache/snapshot, 성능 검증용 가이드
+- `.claude/skills/kbo-release-flow/SKILL.md`
+  - 커밋/푸시/프리뷰 태그/TestFlight 전환 시 체크해야 할 저장소 전용 릴리즈 가이드
+- `.claude/skills/app-startup-runtime-triage/SKILL.md`
+  - 앱 시작 흰 화면, local API base URL, Dev Console 로그 노이즈, Firebase local 경고 트리아지용 가이드
+- `.claude/skills/ios-device-run-action/SKILL.md`
+  - 연결된 iOS 실기기 우선 실행 액션, `flutter devices`/`xcodebuild` destination 불일치 점검 가이드
 
 ## 최근 구현 인사이트
 - 실기기 디버그 환경에서 `localhost` 백엔드는 신뢰하지 않는다. 모바일 디버그는 API 우선, 일부 화면만 direct KBO fallback 허용이 현재 원칙이다.
@@ -85,13 +105,31 @@ kbo_fans/
 - 일정/순위 fallback 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
 - `.claude/skills/`에 이미 같은 작업 패턴이 있으면 먼저 그 스킬을 참고한다
 - 앱 UI 카피에는 이모지를 사용하지 않는다
+- 히스토리 데이터는 원천 재크롤링보다 backend snapshot 우선이 현재 방향이다.
+- 앱 히스토리 화면은 cached-first + background refresh, live 화면은 network-first 가 기본 원칙이다.
 
 ## 누적 인사이트
 - 홈 첫 진입은 “스코어보드 우선, 나머지 섹션 후순위”가 체감 속도에 가장 중요하다
 - 홈에서는 상세용 하이라이트/유튜브 검색을 절대 같이 물지 않는다
+- 상세 하이라이트는 lazy endpoint 로 분리해야 실제 화면이 먼저 뜬다
+- 앱 시작 전에 plugin init 을 기다리면 iOS/web 에서 흰 화면 원인이 되기 쉽다
+- local Android API 연결은 `localhost` 대신 `10.0.2.2` 를 기본으로 보는 편이 안전하다
+- Dev Console 은 성공/실패를 `API OK / API FAIL` 로 분리해야 원인 파악이 빠르다
 - KBO relay는 비로그인으로 안정적으로 확보되지 않으며, 로그인 세션과 재시도 정책이 필요하다
 - `LiveTextView2.aspx`가 현재 타석과 play-by-play의 핵심 source다
+- 앱 direct KBO 경로에서는 `GetScheduleList` request shape 와 plain text decode 가 중요하다
+- iOS 위젯/기기 이슈는 duplicate plugin, widget plist version, destination/platform support 순서로 본다
 - 라인업/박스스코어는 표보다 모바일 카드형 레이아웃이 가독성이 훨씬 좋다
+
+## 재사용 스킬
+- KBO direct ASMX 연동: `.claude/skills/kbo-asmx-direct-integration/SKILL.md`
+- iOS WidgetKit / Live Activity / 기기 실행 트리아지: `.claude/skills/ios-live-activity-widget/SKILL.md`
+- 친구에게 가장 빨리 보여주는 경로는 웹이다
+- iPhone 친구 배포는 TestFlight를 기본 경로로 본다
+- Android 친구 배포는 release signing 설정 후 Google Play internal testing 을 기본 경로로 본다
+- Android release signing 비밀값은 `app/android/key.properties` 와 local keystore 로 관리하고 Git에는 올리지 않는다
+- iOS 실행/배포는 활성 Xcode 버전과 simulator/platform support 정합성에 크게 영향받는다
+- Xcode Components 에 설치된 것으로 보여도 `xcodebuild -showdestinations` 에서는 platform 미설치로 막을 수 있다
 
 ## 데이터 소스
 - KBO 공식 홈페이지 (koreabaseball.com) 크롤링
@@ -122,8 +160,12 @@ kbo_fans/
 - Figma MCP 접근 상태는 계정/권한 영향이 있으므로 실제 작업 전 연결 상태를 확인해야 한다
 
 ## 반복 작업 스킬
+- 전체 스킬 인덱스: `.claude/SKILL_REFERENCE.md`
+- 히스토리 데이터 / snapshot-first 캐시 구조 작업 시: `.claude/skills/kbo-history-snapshot/SKILL.md`
+- 아키텍처/API/UX 변경 후 문서 동기화 시: `.claude/skills/kbo-doc-sync/SKILL.md`
 - iOS 위젯 / Live Activity / Dynamic Island 수정 시: `.claude/skills/ios-live-activity-widget/SKILL.md`
 - 프리뷰 릴리즈, TestFlight/Android 배포 준비 시: `.claude/skills/mobile-preview-release/SKILL.md`
+- 친구/테스터 배포 준비 시: `.claude/skills/app-distribution/SKILL.md`
 
 ## MVP 기능 (Phase 1)
 1. 실시간 스코어보드

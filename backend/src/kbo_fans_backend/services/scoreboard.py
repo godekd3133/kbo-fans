@@ -89,7 +89,7 @@ class ScoreboardService:
             enriched_games = list(
                 executor.map(
                     lambda game: self._enrich_game(
-                        game, game_list.get(game["gameId"], {})
+                        game, game_list.get(game.get("gameId"), {})
                     ),
                     games,
                 )
@@ -153,15 +153,16 @@ class ScoreboardService:
     def _enrich_game(
         self, game: dict[str, Any], main_game: dict[str, Any]
     ) -> dict[str, Any]:
+        game_id = game.get("gameId")
         resolved_status = str(game.get("status") or "")
         if main_game:
             resolved_status = self._map_status(main_game.get("GAME_STATE_SC"))
 
-        if resolved_status == "SCHEDULED":
+        if not game_id or resolved_status == "SCHEDULED":
             detail = self._scheduled_fallback_detail(game)
         else:
             try:
-                detail = self.scoreboard_crawler.get_game_scoreboard(game["gameId"])
+                detail = self.scoreboard_crawler.get_game_scoreboard(game_id)
             except Exception:
                 detail = self._scheduled_fallback_detail(game)
         return {
@@ -170,11 +171,11 @@ class ScoreboardService:
             **detail,
             "ticketInfo": self.ticketing_service.build_ticket_info(
                 home_team_id=game.get("homeId"),
-                game_id=game.get("gameId"),
+                game_id=game_id,
                 start_time=main_game.get("G_TM") or game.get("time"),
             ),
             "highlightInfo": {
-                "officialUrl": self._build_official_highlight_url(game["gameId"]),
+                "officialUrl": self._build_official_highlight_url(game_id),
                 "youtubeVideos": [],
             },
         }
@@ -250,7 +251,9 @@ class ScoreboardService:
         return status
 
     @staticmethod
-    def _build_official_highlight_url(game_id: str) -> str:
+    def _build_official_highlight_url(game_id: Optional[str]) -> str:
+        if not game_id:
+            return ""
         game_date = game_id[:8]
         return (
             "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"

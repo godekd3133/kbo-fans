@@ -2,6 +2,47 @@
 
 ---
 
+## 2026-03-31: 에이전트 메모와 저장소 스킬 정리
+
+### 완료
+- [x] `AGENTS.md`에 런타임/운영 메모 추가
+- [x] `CLAUDE.md`에 동일한 저장소 운영 인사이트 반영
+- [x] 반복 가능한 작업을 `.claude/skills/` 로 분리
+  - `kbo-runtime-data`
+  - `kbo-release-flow`
+  - `app-startup-runtime-triage`
+  - `ios-device-run-action`
+
+### 반영 인사이트
+- 웹/release 는 backend API 경로를 기본으로 사용
+- 로컬 네이티브는 direct crawler 경로를 디버깅 목적에 한해 사용 가능
+- home first paint 는 경량 payload / cache 우선
+- historical standings/records/completed games 는 snapshot 우선
+- push 실패 시 `github-personal` SSH alias 경로 사용
+- local Android API 연결은 `10.0.2.2` 를 기본값으로 보는 편이 안전함
+- 실기기 실행 이슈는 `flutter devices` 와 `xcodebuild -showdestinations` 를 같이 봐야 함
+
+---
+
+## 2026-03-31: 인사이트 문서화 및 Claude 스킬 추출
+
+### 완료
+- [x] 최근 캐시/snapshot/문서 동기화 인사이트를 `docs/ENGINEERING_NOTES.md`로 정리
+- [x] `.claude/skills/kbo-history-snapshot/SKILL.md` 추가
+- [x] `.claude/skills/kbo-doc-sync/SKILL.md` 추가
+- [x] `.claude/SKILL_REFERENCE.md` 추가
+- [x] `AGENTS.md`, `CLAUDE.md`에 새 인사이트와 skill 진입점 연결
+
+### 원인
+- 최근 작업에서 히스토리 데이터 snapshot 우선 전략과 문서 동기화 규칙이 반복적으로 등장했고, 매번 대화로만 유지하면 다음 세션에서 쉽게 누락될 수 있었음
+- repo-local Claude skill 체계가 이미 일부 존재했기 때문에, 새로 얻은 반복 패턴도 같은 위치에 편입하는 편이 유지보수에 유리했음
+
+### 비고
+- 이번 단계는 코드 실행 경로 변경이 아니라 컨텍스트/워크플로우 정리 작업이다
+- 새 skill 은 Claude 로컬 기준 진입점이고, Codex 쪽은 `AGENTS.md`와 문서 연결로 함께 발견 가능하도록 맞췄다
+
+---
+
 ## 2026-03-31: 웹 UX/UI 점검 및 10개 페르소나 분석
 
 ### 완료
@@ -99,6 +140,9 @@
 - [x] `docs/ANDROID_SIGNING_GUIDE.md` 추가
 - [x] `docs/IOS_TESTFLIGHT_CHECKLIST.md` 추가
 - [x] Android release signing 을 `key.properties` 기반 구조로 정리
+- [x] `.claude/skills/app-distribution/SKILL.md` 추가
+- [x] `.claude/SKILL_REFERENCE.md`에 `app-distribution` 추가
+- [x] 배포 / 액션 등록 관련 인사이트를 `AGENTS.md`, `CLAUDE.md`에 반영
 - [x] 구현 인사이트 정리용 `docs/ENGINEERING_NOTES.md` 추가
 - [x] 반복 작업을 위한 `.claude/skills/ios-live-activity-widget`, `.claude/skills/mobile-preview-release` 추가
 - [x] `AGENTS.md`, `CLAUDE.md` 에 문서/스킬 진입점 반영
@@ -302,6 +346,8 @@
 - [x] 앱 foreground 기준 라이브 30초 / 예정 5분 자동 갱신 추가
 - [x] Android 앱 위젯 리시버 / 레이아웃 / 15분 주기 background refresh 등록 추가
 - [x] iOS WidgetKit용 데이터 공유/배경 갱신 훅 및 위젯 소스 초안 추가
+- [x] 반복 패턴을 `.claude/skills/` 로 승격 (`kbo-asmx-direct-integration`)
+- [x] AGENTS / CLAUDE / SKILL_REFERENCE 에 재사용 인사이트 동기화
 
 ### 한계
 - Android 위젯의 시스템 `updatePeriodMillis`는 30분 미만으로 내려갈 수 없어서 15분 주기는 Workmanager 기반 best-effort로 보강
@@ -484,6 +530,8 @@ kbo_fans/
 - [x] 앱 로컬 API 캐시를 TTL 기반으로 조정해 신선한 데이터 재사용 시 불필요한 백그라운드 재요청 제거
 - [x] 홈 화면에서 `schedule` / `standings` 중복 구독 제거
 - [x] 홈 `overview` 섹션을 실제 노출 위치 기준으로 lazy load
+- [x] 홈 secondary 섹션 전용 aggregate endpoint (`GET /api/home`) 추가
+- [x] 홈 화면에서 aggregate 성공 시 secondary 섹션을 서버 조합 데이터로 렌더, 실패 시 기존 provider 조합 fallback 유지
 - [x] 관련 백엔드 회귀 테스트 추가
 
 ### 검증 메모
@@ -499,6 +547,7 @@ kbo_fans/
 - 앱 재진입/탭 재방문 시 `schedule`, `standings`, `records`, `player detail`, `overview`는 TTL 내 네트워크 재호출 없이 로컬 캐시 우선 사용
 - 홈 화면은 `schedule` / `standings`를 한 번만 읽고 두 섹션에서 재사용
 - 홈 `overview`는 고정 시간 지연 대신 실제 화면 근접 시점에 로드
+- `GET /api/home?date=2026-03-31&myTeam=LG` : `200`, 약 `0.66s`
 
 ### 문서화
 - [x] 홈 전용 aggregate endpoint 기반 성능 개선 제안서 작성 (`docs/PERFORMANCE_PROPOSAL_HOME_AGGREGATE.md`)

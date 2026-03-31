@@ -211,7 +211,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
           final teamColor = team?.primaryColor ?? AppColors.live;
 
           return Container(
-            height: 48,
+            height: 56,
             decoration: BoxDecoration(
               color: isMyTeam
                   ? teamColor.withValues(alpha: 0.1)
@@ -227,7 +227,11 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                   child: Center(
                     child: Text(
                       '${s.rank}',
-                      style: const TextStyle(fontSize: 14),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: isMyTeam ? FontWeight.w800 : FontWeight.w600,
+                        color: isMyTeam ? teamColor : AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ),
@@ -266,14 +270,23 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(s.teamName, style: const TextStyle(fontSize: 14)),
+                  child: Text(
+                    s.teamName,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isMyTeam ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
                 ),
                 SizedBox(
                   width: 32,
                   child: Center(
                     child: Text(
                       '${s.wins}',
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -282,7 +295,10 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                   child: Center(
                     child: Text(
                       '${s.losses}',
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
@@ -291,14 +307,23 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                   child: Center(
                     child: Text(
                       '${s.draws}',
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
                 SizedBox(
                   width: 48,
                   child: Center(
-                    child: Text(s.pct, style: const TextStyle(fontSize: 14)),
+                    child: Text(
+                      s.pct,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
                 SizedBox(
@@ -324,7 +349,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   Widget _buildHeaderRow() {
     const style = TextStyle(fontSize: 12, color: AppColors.textDisabled);
     return const SizedBox(
-      height: 36,
+      height: 34,
       child: Row(
         children: [
           SizedBox(
