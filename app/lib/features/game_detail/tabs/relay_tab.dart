@@ -65,127 +65,328 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   }
 
   Widget _buildContent(List<RelayItem> items, CurrentAtBat? atBat) {
+    final moments = _buildMoments(items);
+
     return CustomScrollView(
       controller: _scrollController,
       slivers: [
-        if (atBat != null) SliverToBoxAdapter(child: _buildCurrentAtBat(atBat)),
+        if (atBat != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: _CurrentAtBatHero(atBat: atBat),
+            ),
+          ),
         if (items.isNotEmpty)
-          SliverToBoxAdapter(child: _buildInningChips(items)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 14),
+              child: _buildInningChips(items),
+            ),
+          ),
         SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          sliver: SliverList.builder(
-            itemCount: items.length,
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+          sliver: SliverList.separated(
+            itemCount: moments.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final item = items[index];
-              if (item.event == 'INNING_CHANGE') {
-                final key = _inningKeys.putIfAbsent(
-                  item.text,
-                  () => GlobalKey(),
-                );
-                return KeyedSubtree(
-                  key: key,
-                  child: _buildInningDivider(item.text),
-                );
-              }
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildRelayItem(item),
+              final moment = moments[index];
+              final key = _inningKeys.putIfAbsent(
+                '${moment.inningLabel}-$index',
+                () => GlobalKey(),
+              );
+              return KeyedSubtree(
+                key: key,
+                child: _RelayMomentCard(moment: moment),
               );
             },
           ),
         ),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );
   }
 
-  Widget _buildCurrentAtBat(CurrentAtBat ab) {
+  List<_RelayMoment> _buildMoments(List<RelayItem> items) {
+    final moments = <_RelayMoment>[];
+    var currentInningLabel = '';
+    _RelayMomentBuilder? current;
+
+    for (final item in items) {
+      if (item.event == 'INNING_CHANGE') {
+        currentInningLabel = _chipLabel(item.text);
+        current = null;
+        continue;
+      }
+
+      final inningLabel = currentInningLabel.isNotEmpty
+          ? currentInningLabel
+          : '${item.inning}${item.half == 'top' ? '회초' : '회말'}';
+
+      final isPitchDetail = item.text.startsWith('- ');
+      if (isPitchDetail) {
+        if (current == null) {
+          current = _RelayMomentBuilder(
+            inningLabel: inningLabel,
+            lead: item,
+          );
+          moments.add(current.build());
+          current = null;
+        } else {
+          current.pitchItems.add(item);
+          moments[moments.length - 1] = current.build();
+        }
+        continue;
+      }
+
+      current = _RelayMomentBuilder(
+        inningLabel: inningLabel,
+        lead: item,
+      );
+      moments.add(current.build());
+    }
+
+    return moments;
+  }
+
+  Widget _buildInningChips(List<RelayItem> items) {
+    final chips = <String>[];
+    for (final item in items) {
+      if (item.inning >= 900) continue;
+      final label = item.event == 'INNING_CHANGE'
+          ? _chipLabel(item.text)
+          : '${item.inning}${item.half == "top" ? "회초" : "회말"}';
+      if (!chips.contains(label)) {
+        chips.add(label);
+      }
+    }
+
+    if (chips.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: chips.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final label = chips[index];
+          final isActive = index == chips.length - 1;
+          return GestureDetector(
+            onTap: () => _scrollToInning(label),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.textPrimary : AppColors.cardSub,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive
+                      ? AppColors.background
+                      : AppColors.textDisabled,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _scrollToInning(String label) {
+    GlobalKey? targetKey;
+    for (final entry in _inningKeys.entries) {
+      if (entry.key.startsWith(label)) {
+        targetKey = entry.value;
+        break;
+      }
+    }
+    if (targetKey == null || targetKey.currentContext == null) {
+      return;
+    }
+    Scrollable.ensureVisible(
+      targetKey.currentContext!,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      alignment: 0.1,
+    );
+  }
+
+  String _chipLabel(String label) {
+    if (label.contains('회초') || label.contains('회말')) {
+      return label;
+    }
+    return label.replaceAll(' 공격 ---------------------------------------', '');
+  }
+}
+
+class _CurrentAtBatHero extends StatelessWidget {
+  final CurrentAtBat atBat;
+
+  const _CurrentAtBatHero({required this.atBat});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 380;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  const Text(
+                    '현재 타석',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                  if (atBat.inningText.isNotEmpty)
+                    _RelayPill(
+                      label: atBat.inningText,
+                      color: AppColors.textPrimary,
+                      subtle: true,
+                    ),
+                  if (atBat.baseState.isNotEmpty)
+                    _BaseStateBadge(baseState: atBat.baseState),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (isCompact) ...[
+                _ParticipantCard(
+                  title: '타자',
+                  name: _formatBatterLabel(atBat),
+                  detail: atBat.batterRecent.isEmpty
+                      ? '최근 타석 정보 없음'
+                      : '최근 타석: ${atBat.batterRecent}',
+                ),
+                const SizedBox(height: 10),
+                _ParticipantCard(
+                  title: '상대투수',
+                  name: _formatPitcherLabel(atBat),
+                  detail: atBat.pitchCount > 0 ? '${atBat.pitchCount}구' : '투구 수 집계 중',
+                ),
+              ] else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ParticipantCard(
+                        title: '타자',
+                        name: _formatBatterLabel(atBat),
+                        detail: atBat.batterRecent.isEmpty
+                            ? '최근 타석 정보 없음'
+                            : '최근 타석: ${atBat.batterRecent}',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ParticipantCard(
+                        title: '상대투수',
+                        name: _formatPitcherLabel(atBat),
+                        detail: atBat.pitchCount > 0 ? '${atBat.pitchCount}구' : '투구 수 집계 중',
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 20,
+                runSpacing: 10,
+                children: [
+                  _CountMeter('B', atBat.balls, 4, AppColors.ballYellow),
+                  _CountMeter('S', atBat.strikes, 3, AppColors.live),
+                  _CountMeter('O', atBat.outs, 3, AppColors.textPrimary),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatBatterLabel(CurrentAtBat ab) {
+    final number = ab.batterNumber > 0 ? '${ab.batterNumber}번 ' : '';
+    final hand = ab.batterHand.isNotEmpty ? ' · ${ab.batterHand}' : '';
+    return '$number${ab.batterName}$hand';
+  }
+
+  String _formatPitcherLabel(CurrentAtBat ab) {
+    final hand = ab.pitcherHand.isNotEmpty ? ' · ${ab.pitcherHand}' : '';
+    return '${ab.pitcherName}$hand';
+  }
+}
+
+class _ParticipantCard extends StatelessWidget {
+  final String title;
+  final String name;
+  final String detail;
+
+  const _ParticipantCard({
+    required this.title,
+    required this.name,
+    required this.detail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider),
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '현재 타석',
-            style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
           ),
-          const SizedBox(height: 8),
-          if (ab.inningText.isNotEmpty || ab.baseState.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (ab.inningText.isNotEmpty)
-                    _statusBadge(
-                      label: ab.inningText,
-                      color: AppColors.textPrimary,
-                      subtle: true,
-                    ),
-                  if (ab.baseState.isNotEmpty)
-                    _BaseStateBadge(baseState: ab.baseState),
-                ],
-              ),
-            ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  _formatBatterLabel(ab),
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  _formatPitcherLabel(ab),
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 6),
+          Text(
+            name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
-          if (ab.batterRecent.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Text(
-                '최근 타석: ${ab.batterRecent}',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textDisabled,
-                ),
-              ),
-            ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildCount('B', ab.balls, 4, AppColors.ballYellow),
-              const SizedBox(width: 24),
-              _buildCount('S', ab.strikes, 3, AppColors.live),
-              const SizedBox(width: 24),
-              _buildCount('O', ab.outs, 3, AppColors.textPrimary),
-            ],
+          const SizedBox(height: 4),
+          Text(
+            detail,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildCount(String label, int filled, int total, Color activeColor) {
+class _CountMeter extends StatelessWidget {
+  final String label;
+  final int filled;
+  final int total;
+  final Color activeColor;
+
+  const _CountMeter(this.label, this.filled, this.total, this.activeColor);
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
         Text(
@@ -203,253 +404,143 @@ class _RelayTabState extends ConsumerState<RelayTab> {
               color: i < filled ? activeColor : Colors.transparent,
               border: Border.all(
                 color: i < filled ? activeColor : AppColors.divider,
-                width: 1.5,
+                width: 1.4,
               ),
             ),
           ),
       ],
     );
   }
+}
 
-  Widget _buildInningChips(List<RelayItem> items) {
-    final chips = <String>[];
-    for (final item in items) {
-      if (item.inning >= 900) continue;
-      final label = item.event == 'INNING_CHANGE'
-          ? item.text
-          : '${item.inning}${item.half == "top" ? "회초" : "회말"}';
-      if (!chips.contains(label)) {
-        chips.add(label);
-      }
-    }
+class _RelayMomentCard extends StatelessWidget {
+  final _RelayMoment moment;
 
-    if (chips.isEmpty) return const SizedBox.shrink();
+  const _RelayMomentCard({required this.moment});
 
-    return Container(
-      height: 40,
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: chips.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final label = chips[index];
-          final isActive = index == chips.length - 1;
-          return GestureDetector(
-            onTap: () => _scrollToInning(label),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              decoration: BoxDecoration(
-                color: isActive ? AppColors.textPrimary : AppColors.cardSub,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                _chipLabel(label),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isActive
-                      ? AppColors.background
-                      : AppColors.textDisabled,
-                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildInningDivider(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          const Expanded(child: Divider(color: AppColors.divider)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textDisabled,
-              ),
-            ),
-          ),
-          const Expanded(child: Divider(color: AppColors.divider)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRelayItem(RelayItem item) {
-    final isScoring = item.isScoring;
-    final isPitchDetail = item.text.startsWith('- ');
-    final isGameEnd = item.event == 'GAME_END';
-    final isSubstitution = item.event == 'SUBSTITUTION';
-    final isDecisionPitch =
-        isPitchDetail &&
-        (item.text.contains('타격') ||
-            item.text.contains('헛스윙') ||
-            item.text.contains('스트라이크') ||
-            item.text.contains('볼'));
-    final pitchBadge = _extractPitchBadge(item.text);
+  @override
+  Widget build(BuildContext context) {
+    final accent = moment.isScoring
+        ? AppColors.live
+        : moment.isSubstitution
+        ? AppColors.accent
+        : AppColors.textSecondary;
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: isPitchDetail ? 8 : 12,
-      ),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isGameEnd
-            ? AppColors.card
-            : isScoring
+        color: moment.isScoring
             ? const Color(0xFF1C1111)
-            : isSubstitution
-            ? AppColors.cardSub.withValues(alpha: 0.72)
-            : isPitchDetail
-            ? (isDecisionPitch
-                  ? AppColors.background.withValues(alpha: 0.82)
-                  : AppColors.cardSub.withValues(alpha: 0.45))
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        border: Border(
-          left: BorderSide(
-            color: isGameEnd
-                ? AppColors.textPrimary
-                : isScoring
-                ? AppColors.live
-                : isSubstitution
-                ? AppColors.accent
-                : AppColors.divider,
-            width: 4,
-          ),
+            : AppColors.cardSub,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: moment.isScoring
+              ? AppColors.live.withValues(alpha: 0.45)
+              : AppColors.divider,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (isScoring || isGameEnd)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text(
-                isGameEnd ? '경기 종료' : '득점 장면',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: isGameEnd ? AppColors.textPrimary : AppColors.live,
-                ),
+          Row(
+            children: [
+              _RelayPill(
+                label: moment.inningLabel,
+                color: AppColors.textPrimary,
+                subtle: true,
               ),
-            ),
-          if (isSubstitution)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 6),
-              child: Text(
-                '교체',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
-                ),
-              ),
-            ),
+              const SizedBox(width: 8),
+              if (moment.isScoring)
+                const _RelayPill(label: '득점 장면', color: AppColors.live),
+              if (moment.isSubstitution)
+                const _RelayPill(label: '교체', color: AppColors.accent),
+              if (moment.isGameEnd)
+                const _RelayPill(label: '경기 종료', color: AppColors.textPrimary),
+            ],
+          ),
+          const SizedBox(height: 10),
           Text(
-            item.text,
+            moment.lead.text,
             style: TextStyle(
-              fontSize: isPitchDetail ? 12 : 14,
-              fontWeight: isScoring || isGameEnd
-                  ? FontWeight.w700
-                  : FontWeight.normal,
-              color: isSubstitution
-                  ? AppColors.textPrimary
-                  : isPitchDetail
-                  ? AppColors.textDisabled
-                  : AppColors.textPrimary,
+              fontSize: 15,
+              fontWeight: moment.isScoring || moment.isGameEnd
+                  ? FontWeight.w800
+                  : FontWeight.w700,
+              color: AppColors.textPrimary,
+              height: 1.35,
             ),
           ),
-          if (pitchBadge != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Wrap(
-                spacing: 8,
-                children: [
-                  _pill(pitchBadge.$1, AppColors.textSecondary, subtle: true),
-                  _pill(pitchBadge.$3, pitchBadge.$2),
-                ],
+          if (moment.pitchItems.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            for (final pitch in moment.pitchItems) ...[
+              _PitchLogRow(text: pitch.text),
+              if (pitch != moment.pitchItems.last) const SizedBox(height: 6),
+            ],
+          ],
+          if (moment.lead.pitchSequence != null &&
+              moment.lead.pitchSequence!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              moment.lead.pitchSequence!,
+              style: TextStyle(
+                fontSize: 11,
+                color: accent,
+                fontWeight: FontWeight.w600,
               ),
             ),
+          ],
         ],
       ),
     );
   }
+}
 
-  String _formatBatterLabel(CurrentAtBat ab) {
-    final number = ab.batterNumber > 0 ? 'No.${ab.batterNumber} ' : '';
-    final hand = ab.batterHand.isNotEmpty ? ' (${ab.batterHand})' : '';
-    return '타자  $number${ab.batterName}$hand';
-  }
+class _PitchLogRow extends StatelessWidget {
+  final String text;
 
-  String _formatPitcherLabel(CurrentAtBat ab) {
-    final number = ab.pitcherNumber > 0 ? 'No.${ab.pitcherNumber} ' : '';
-    final hand = ab.pitcherHand.isNotEmpty ? ' (${ab.pitcherHand})' : '';
-    final pitchCount = ab.pitchCount > 0 ? ' · ${ab.pitchCount}구' : '';
-    return '투수  $number${ab.pitcherName}$hand$pitchCount';
-  }
+  const _PitchLogRow({required this.text});
 
-  String _chipLabel(String label) {
-    if (label.contains('회초') || label.contains('회말')) {
-      return label;
-    }
-    return label.replaceAll(' 공격 ---------------------------------------', '');
-  }
-
-  void _scrollToInning(String label) {
-    final targetKey = _inningKeys[label];
-    if (targetKey == null || targetKey.currentContext == null) {
-      return;
-    }
-    Scrollable.ensureVisible(
-      targetKey.currentContext!,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOutCubic,
-      alignment: 0.1,
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        text.replaceFirst('- ', ''),
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
+}
 
-  (String, Color, String)? _extractPitchBadge(String text) {
-    final match = RegExp(r'^-\s*(\d+구)\s+(.+)$').firstMatch(text);
-    if (match == null) return null;
+class _RelayPill extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool subtle;
 
-    final pitchNo = match.group(1)!;
-    final result = match.group(2)!;
-    final color = switch (result) {
-      '볼' => AppColors.ballYellow,
-      '스트라이크' => AppColors.live,
-      '헛스윙' => AppColors.live,
-      '파울' => AppColors.textSecondary,
-      '타격' => AppColors.accent,
-      _ => AppColors.textPrimary,
-    };
-    return (pitchNo, color, result);
-  }
+  const _RelayPill({
+    required this.label,
+    required this.color,
+    this.subtle = false,
+  });
 
-  Widget _statusBadge({
-    required String label,
-    required Color color,
-    bool subtle = false,
-  }) {
-    return _pill(label, color, subtle: subtle);
-  }
-
-  Widget _pill(String label, Color color, {bool subtle = false}) {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: subtle ? AppColors.background : color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: subtle ? AppColors.divider : color.withValues(alpha: 0.28),
+          color: subtle ? AppColors.divider : color.withValues(alpha: 0.3),
         ),
       ),
       child: Text(
@@ -546,6 +637,46 @@ class _BaseStateBadge extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RelayMoment {
+  final String inningLabel;
+  final RelayItem lead;
+  final List<RelayItem> pitchItems;
+  final bool isScoring;
+  final bool isGameEnd;
+  final bool isSubstitution;
+
+  const _RelayMoment({
+    required this.inningLabel,
+    required this.lead,
+    required this.pitchItems,
+    required this.isScoring,
+    required this.isGameEnd,
+    required this.isSubstitution,
+  });
+}
+
+class _RelayMomentBuilder {
+  final String inningLabel;
+  final RelayItem lead;
+  final List<RelayItem> pitchItems = [];
+
+  _RelayMomentBuilder({
+    required this.inningLabel,
+    required this.lead,
+  });
+
+  _RelayMoment build() {
+    return _RelayMoment(
+      inningLabel: inningLabel,
+      lead: lead,
+      pitchItems: List<RelayItem>.from(pitchItems),
+      isScoring: lead.isScoring,
+      isGameEnd: lead.event == 'GAME_END',
+      isSubstitution: lead.event == 'SUBSTITUTION',
     );
   }
 }

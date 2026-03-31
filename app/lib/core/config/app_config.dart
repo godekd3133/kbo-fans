@@ -39,12 +39,18 @@ class AppConfig {
 
     switch (env) {
       case AppEnvironment.local:
-        // LOCAL: 웹/iOS는 localhost, Android 에뮬레이터는 10.0.2.2
+        // LOCAL:
+        // - 웹은 localhost
+        // - Android 에뮬레이터는 10.0.2.2
+        // - iOS native 디버그는 실기기에서 localhost가 불가하므로 dev API를 기본 사용
         if (kIsWeb) {
           return 'http://localhost:8000/api';
         }
         if (defaultTargetPlatform == TargetPlatform.android) {
           return 'http://10.0.2.2:8000/api';
+        }
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          return 'https://dev-api.kbofans.com/api';
         }
         return 'http://localhost:8000/api';
       case AppEnvironment.dev:

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
@@ -88,7 +88,7 @@ class PushNotificationService {
   String? _lastToken;
 
   Future<void> initialize({String? myTeam}) async {
-    if (_initialized || kIsWeb) {
+    if (_initialized || kIsWeb || _useLocalOnlyMode) {
       return;
     }
 
@@ -152,7 +152,7 @@ class PushNotificationService {
   }
 
   Future<void> syncRegistration({String? myTeam, String? forceToken}) async {
-    if (kIsWeb || !_initialized) {
+    if (kIsWeb || !_initialized || _useLocalOnlyMode) {
       return;
     }
 
@@ -208,6 +208,7 @@ class PushNotificationService {
     final prefs = await SharedPreferences.getInstance();
     return {
       'initialized': _initialized,
+      'localOnlyMode': _useLocalOnlyMode,
       'tokenReady': (_lastToken ?? '').isNotEmpty,
       'status':
           prefs.getString(_debugLastInitStatusKey) ??
@@ -253,6 +254,12 @@ class PushNotificationService {
     DevConsole.instance.info(
       'Push foreground: $title ${body.isEmpty ? '' : '· $body'}',
     );
+  }
+
+  bool get _useLocalOnlyMode {
+    return !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS ||
+            defaultTargetPlatform == TargetPlatform.android);
   }
 
   Future<void> _saveDebugInitState({

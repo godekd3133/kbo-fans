@@ -174,12 +174,13 @@ class _GameDetailBody extends ConsumerWidget {
                     child: _TicketInfoCard(game: game),
                   ),
                 ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: _HighlightSection(game: game, gameId: gameId),
+              if (game.status == GameStatus.final_)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _HighlightSection(game: game, gameId: gameId),
+                  ),
                 ),
-              ),
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _TabBarHeaderDelegate(tabBar),
@@ -191,6 +192,7 @@ class _GameDetailBody extends ConsumerWidget {
                 RelayTab(gameId: gameId, gameStatus: game.status),
                 BoxscoreTab(
                   gameId: gameId,
+                  gameStatus: game.status,
                   awayName: game.away.shortName,
                   homeName: game.home.shortName,
                   awayTeamId: game.away.teamId,

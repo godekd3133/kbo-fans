@@ -25,7 +25,7 @@ description: KBO 공식 로그인 기반 문자중계 relay를 다룰 때 사용
 - `KBO_RELAY_USER_ID`
 - `KBO_RELAY_PASSWORD`
 
-자격증명은 코드에 하드코딩하지 않는다.
+자격증명은 코드나 저장소 문서에 하드코딩하지 않는다. 로컬 `.env` 또는 Keychain 같은 secure storage 에만 둔다.
 
 ## Parsing rules
 

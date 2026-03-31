@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'dart:convert';
 
@@ -22,8 +23,12 @@ class KboDirectRepository implements GameRepository {
   static const _kboBase = 'https://www.koreabaseball.com';
   // 웹 CORS 우회용 프록시
   static const _corsProxy = 'https://corsproxy.io/?';
+  static const _relayUserId = 'godekd3133';
+  static const _relayPassword = 'alsrb2002!';
 
   late final Dio _dio;
+  bool _relayLoggedIn = false;
+  final Map<String, Future<GameLineupData>> _lineupRequests = {};
 
   KboDirectRepository() {
     _dio = Dio(
@@ -84,16 +89,60 @@ class KboDirectRepository implements GameRepository {
     }
   }
 
+  Future<String> _postPlain(
+    String path,
+    Map<String, dynamic> params, {
+    Map<String, String>? headers,
+  }) async {
+    final url = _resolveUrl(path);
+    final response = await _dio.post<String>(
+      url,
+      data: params.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent('${e.value}')}').join('&'),
+      options: Options(
+        responseType: ResponseType.plain,
+        headers: headers,
+      ),
+    );
+    return response.data ?? '';
+  }
+
+  Future<String> _getPlain(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final url = _resolveUrl(path);
+    final response = await _dio.get<String>(
+      url,
+      queryParameters: queryParameters,
+      options: Options(responseType: ResponseType.plain),
+    );
+    return response.data ?? '';
+  }
+
+  Future<Map<String, Map<String, dynamic>>> _getMainGameMap(String date) async {
+    final data = await _postAsmx('/ws/Main.asmx/GetKboGameList', {
+      'leId': '1',
+      'srId': _mainSeriesForDate(date),
+      'date': date.replaceAll('-', ''),
+    });
+    final games = data['game'] as List<dynamic>? ?? const [];
+    return {
+      for (final item in games)
+        if (item is Map<String, dynamic> && (item['G_ID'] as String?)?.isNotEmpty == true)
+          item['G_ID'] as String: item,
+    };
+  }
+
   // ── 스코어보드 ──
 
   @override
   Future<List<Game>> getScoreboard(String date) async {
     _log.info('스코어보드 조회: $date');
-    // GetScoreBoardScroll은 gameId가 필요하므로, 먼저 일정에서 gameId 목록을 가져온다
     final yearMonth = date.substring(0, 7);
     final schedule = await getSchedule(yearMonth);
     final today = schedule.where((d) => d.date == date).toList();
     if (today.isEmpty) return [];
+    final mainGames = await _getMainGameMap(date);
 
     final games = <Game>[];
     for (final sg in today.first.games) {
@@ -104,32 +153,30 @@ class KboDirectRepository implements GameRepository {
           'seasonId': date.substring(0, 4),
           'gameId': sg.gameId,
         });
-
-        games.add(_parseScoreboardGame(data, sg));
-      } catch (_) {
-        // 개별 경기 실패 시 스킵
+        final mainGame = mainGames[sg.gameId];
+        final view1Detail = await _loadView1ScoreboardDetail(
+          sg.gameId,
+          shouldLoad: (mainGame?['GAME_STATE_SC'] as String?) == '2',
+        );
         games.add(
-          Game(
-            gameId: sg.gameId,
-            status: GameStatus.scheduled,
-            inning: '',
-            away: TeamScore(
-              teamId: sg.awayId,
-              teamName: sg.awayName,
-              shortName: sg.awayName,
-              score: 0,
-              innings: List.filled(9, null),
-            ),
-            home: TeamScore(
-              teamId: sg.homeId,
-              teamName: sg.homeName,
-              shortName: sg.homeName,
-              score: 0,
-              innings: List.filled(9, null),
-            ),
-            stadium: sg.stadium,
-            startTime: sg.time,
-            ticketInfo: sg.ticketInfo,
+          _parseScoreboardGame(
+            data,
+            sg,
+            mainGame: mainGame,
+            view1Detail: view1Detail,
+          ),
+        );
+      } catch (_) {
+        final mainGame = mainGames[sg.gameId];
+        final view1Detail = await _loadView1ScoreboardDetail(
+          sg.gameId,
+          shouldLoad: (mainGame?['GAME_STATE_SC'] as String?) == '2',
+        );
+        games.add(
+          _buildFallbackGame(
+            sg,
+            mainGame: mainGame,
+            view1Detail: view1Detail,
           ),
         );
       }
@@ -173,16 +220,37 @@ class KboDirectRepository implements GameRepository {
     return HighlightInfo(officialUrl: _buildOfficialHighlightUrl(gameId));
   }
 
-  Game _parseScoreboardGame(Map<String, dynamic> data, ScheduleGame sg) {
-    final gameStatus = _resolveGameStatus(data);
-    final inning = data['CURRENT_INNING'] as String? ?? '';
+  Game _parseScoreboardGame(
+    Map<String, dynamic> data,
+    ScheduleGame sg, {
+    Map<String, dynamic>? mainGame,
+    Map<String, dynamic>? view1Detail,
+  }) {
+    final gameStatus = _resolveGameStatus(data, mainGame: mainGame);
+    final inning = _deriveInningLabel(
+      scoreboardData: data,
+      mainGame: mainGame,
+      startTime: sg.time,
+    );
 
     return Game(
       gameId: sg.gameId,
       status: gameStatus,
       inning: inning,
-      away: _buildTeamScore(data, isAway: true),
-      home: _buildTeamScore(data, isAway: false),
+      away: _buildTeamScore(
+        data,
+        isAway: true,
+        scheduleGame: sg,
+        mainGame: mainGame,
+        view1Detail: view1Detail,
+      ),
+      home: _buildTeamScore(
+        data,
+        isAway: false,
+        scheduleGame: sg,
+        mainGame: mainGame,
+        view1Detail: view1Detail,
+      ),
       stadium: data['S_NM'] as String? ?? sg.stadium,
       startTime: sg.time,
       crowd: _parseInt(data['CROWD_CN']),
@@ -200,13 +268,58 @@ class KboDirectRepository implements GameRepository {
     );
   }
 
-  TeamScore _buildTeamScore(Map<String, dynamic> data, {required bool isAway}) {
+  Game _buildFallbackGame(
+    ScheduleGame sg, {
+    Map<String, dynamic>? mainGame,
+    Map<String, dynamic>? view1Detail,
+  }) {
+    final status = _resolveGameStatus(const {}, mainGame: mainGame);
+    return Game(
+      gameId: sg.gameId,
+      status: status,
+      inning: _deriveInningLabel(
+        scoreboardData: const {},
+        mainGame: mainGame,
+        startTime: sg.time,
+      ),
+      away: _buildTeamScore(
+        const {},
+        isAway: true,
+        scheduleGame: sg,
+        mainGame: mainGame,
+        view1Detail: view1Detail,
+      ),
+      home: _buildTeamScore(
+        const {},
+        isAway: false,
+        scheduleGame: sg,
+        mainGame: mainGame,
+        view1Detail: view1Detail,
+      ),
+      stadium: sg.stadium,
+      startTime: sg.time,
+      ticketInfo: sg.ticketInfo,
+      highlightInfo: HighlightInfo(
+        officialUrl: _buildOfficialHighlightUrl(sg.gameId),
+        youtubeVideos: [_buildFallbackHighlight(sg)],
+      ),
+    );
+  }
+
+  TeamScore _buildTeamScore(
+    Map<String, dynamic> data, {
+    required bool isAway,
+    required ScheduleGame scheduleGame,
+    Map<String, dynamic>? mainGame,
+    Map<String, dynamic>? view1Detail,
+  }) {
     final prefix = isAway ? 'AWAY' : 'HOME';
-    final teamId = data['${prefix}_ID'] as String? ?? '';
+    final teamId = data['${prefix}_ID'] as String? ??
+        (isAway ? scheduleGame.awayId : scheduleGame.homeId);
     final teamName =
         data['FULL_${prefix}_NM'] as String? ??
         data['${prefix}_NM'] as String? ??
-        '';
+        (isAway ? scheduleGame.awayName : scheduleGame.homeName);
 
     // 이닝별 점수 파싱
     final innings = <int?>[];
@@ -230,19 +343,51 @@ class KboDirectRepository implements GameRepository {
     final eKey = isAway ? 'T_ERR_CN' : 'B_ERR_CN';
     final bKey = isAway ? 'T_BB_CN' : 'B_BB_CN';
 
+    final dynamic selectedScores = isAway
+        ? (view1Detail == null ? null : view1Detail['awayScores'])
+        : (view1Detail == null ? null : view1Detail['homeScores']);
+    final dynamic selectedTotals = isAway
+        ? (view1Detail == null ? null : view1Detail['awayTotals'])
+        : (view1Detail == null ? null : view1Detail['homeTotals']);
+    final view1Scores = (selectedScores as List<int?>?) ?? const <int?>[];
+    final view1Totals =
+        (selectedTotals as Map<String, int?>?) ?? const <String, int?>{};
+    final resolvedInnings = innings.every((score) => score == null) && view1Scores.isNotEmpty
+        ? [...view1Scores]
+        : innings;
+
     return TeamScore(
       teamId: teamId,
       teamName: teamName,
       shortName: data['${prefix}_NM'] as String? ?? teamId,
-      score: _parseInt(data[rKey]) ?? 0,
-      innings: innings,
-      hits: _parseInt(data[hKey]) ?? 0,
-      errors: _parseInt(data[eKey]) ?? 0,
-      walks: _parseInt(data[bKey]) ?? 0,
+      score: _parseInt(data[rKey]) ??
+          _parseInt(isAway ? (mainGame?['T_SCORE_CN']) : (mainGame?['B_SCORE_CN'])) ??
+          (isAway ? scheduleGame.awayScore : scheduleGame.homeScore) ??
+          0,
+      innings: resolvedInnings,
+      hits: _parseInt(data[hKey]) ?? view1Totals['hits'] ?? 0,
+      errors: _parseInt(data[eKey]) ?? view1Totals['errors'] ?? 0,
+      walks: _parseInt(data[bKey]) ?? view1Totals['balls'] ?? 0,
     );
   }
 
-  GameStatus _resolveGameStatus(Map<String, dynamic> data) {
+  GameStatus _resolveGameStatus(
+    Map<String, dynamic> data, {
+    Map<String, dynamic>? mainGame,
+  }) {
+    final mainStatus = mainGame?['GAME_STATE_SC'] as String? ?? '';
+    switch (mainStatus) {
+      case '2':
+        return GameStatus.live;
+      case '3':
+        return GameStatus.final_;
+      case '4':
+        return GameStatus.cancelled;
+      case '5':
+        return GameStatus.suspended;
+      case '1':
+        return GameStatus.scheduled;
+    }
     final status = data['GAME_STATE_SC'] as String? ?? '';
     switch (status) {
       case '3':
@@ -254,6 +399,32 @@ class KboDirectRepository implements GameRepository {
       default:
         return GameStatus.scheduled;
     }
+  }
+
+  String _deriveInningLabel({
+    required Map<String, dynamic> scoreboardData,
+    required Map<String, dynamic>? mainGame,
+    required String startTime,
+  }) {
+    if ((mainGame?['GAME_STATE_SC'] as String?) == '3') {
+      return '경기종료';
+    }
+    if ((mainGame?['GAME_STATE_SC'] as String?) == '1') {
+      return '$startTime 예정'.trim();
+    }
+    final inningNo = mainGame?['GAME_INN_NO'];
+    final half = mainGame?['GAME_TB_SC_NM'];
+    if (inningNo != null && half != null) {
+      return '$inningNo회$half';
+    }
+    final currentInning = scoreboardData['CURRENT_INNING'] as String? ?? '';
+    if (currentInning.isNotEmpty) {
+      return currentInning;
+    }
+    if ((mainGame?['GAME_STATE_SC'] as String?) == '2') {
+      return '경기중';
+    }
+    return '';
   }
 
   // ── 일정 ──
@@ -461,7 +632,36 @@ class KboDirectRepository implements GameRepository {
 
   @override
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {
-    return const RelayData(currentAtBat: null, relayItems: []);
+    try {
+      await _ensureRelayLoggedIn();
+      await _getPlain('/Game/LiveText.aspx', queryParameters: {
+        'leagueId': 1,
+        'seriesId': 0,
+        'gameId': gameId,
+        'gyear': gameId.substring(0, 4),
+      });
+      final html = await _postPlain('/Game/LiveTextView2.aspx', {
+        'leagueId': 1,
+        'seriesId': 0,
+        'gameId': gameId,
+        'gyear': gameId.substring(0, 4),
+      });
+      final relayItems = _parseRelayItems(html);
+      final filtered = afterSeqNo == null
+          ? relayItems
+          : relayItems.where((item) => item.seqNo > afterSeqNo).toList();
+      return RelayData(
+        currentAtBat: _parseCurrentAtBat(html),
+        relayItems: filtered,
+      );
+    } catch (error) {
+      if (error is DioException && error.response?.statusCode == 302) {
+        _log.info('KBO relay login redirect for $gameId, summary fallback 사용');
+      } else {
+        _log.warn('KBO relay fallback failed for $gameId: $error');
+      }
+      return _buildSummaryRelayFallback(gameId, afterSeqNo: afterSeqNo);
+    }
   }
 
   @override
@@ -557,13 +757,46 @@ class KboDirectRepository implements GameRepository {
 
   @override
   Future<GameLineupData> getLineupData(String gameId) async {
-    final away = await getLineup(gameId, isAway: true);
-    final home = await getLineup(gameId, isAway: false);
-    return GameLineupData(
-      gameId: gameId,
-      away: TeamLineupData(teamId: gameId.substring(8, 10), lineup: away),
-      home: TeamLineupData(teamId: gameId.substring(10, 12), lineup: home),
-    );
+    final game = await getGame(gameId);
+    if (game == null || game.status != GameStatus.live) {
+      return GameLineupData(
+        gameId: gameId,
+        away: TeamLineupData(teamId: gameId.substring(8, 10), lineup: const []),
+        home: TeamLineupData(teamId: gameId.substring(10, 12), lineup: const []),
+      );
+    }
+    return _lineupRequests.putIfAbsent(gameId, () async {
+      try {
+        final data = await _postAsmx('/ws/Schedule.asmx/GetMatchPlayerList', {
+          'leId': 1,
+          'srId': 0,
+          'seasonId': gameId.substring(0, 4),
+          'gameId': gameId,
+        });
+
+        final awayRows = data['away'] as List<dynamic>? ?? const [];
+        final homeRows = data['home'] as List<dynamic>? ?? const [];
+
+        return GameLineupData(
+          gameId: gameId,
+          away: TeamLineupData(
+            teamId: gameId.substring(8, 10),
+            lineup: _parseLineupRows(awayRows),
+            starterName: _parseStarterName(awayRows),
+          ),
+          home: TeamLineupData(
+            teamId: gameId.substring(10, 12),
+            lineup: _parseLineupRows(homeRows),
+            starterName: _parseStarterName(homeRows),
+          ),
+        );
+      } catch (error) {
+        _log.warn('KBO lineup fallback for $gameId: $error');
+        return _buildFallbackLineupData(gameId);
+      } finally {
+        _lineupRequests.remove(gameId);
+      }
+    });
   }
 
   @override
@@ -571,15 +804,11 @@ class KboDirectRepository implements GameRepository {
     String gameId, {
     required bool isAway,
   }) async {
-    final data = await _postAsmx('/ws/Schedule.asmx/GetMatchPlayerList', {
-      'leId': 1,
-      'srId': 0,
-      'seasonId': gameId.substring(0, 4),
-      'gameId': gameId,
-    });
+    final data = await getLineupData(gameId);
+    return (isAway ? data.away : data.home).lineup;
+  }
 
-    final key = isAway ? 'away' : 'home';
-    final rows = data[key] as List<dynamic>? ?? [];
+  List<LineupEntry> _parseLineupRows(List<dynamic> rows) {
     return rows.map((r) {
       final m = r as Map<String, dynamic>;
       return LineupEntry(
@@ -591,12 +820,357 @@ class KboDirectRepository implements GameRepository {
     }).toList();
   }
 
+  String? _parseStarterName(List<dynamic> rows) {
+    for (final row in rows) {
+      final m = row as Map<String, dynamic>;
+      final pos = m['POS_CD'] as String? ?? '';
+      final posKo = m['POS_NM'] as String? ?? '';
+      if (pos == 'P' || posKo.contains('투수')) {
+        final name = m['P_NM'] as String? ?? '';
+        if (name.isNotEmpty) {
+          return name;
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<GameLineupData> _buildFallbackLineupData(String gameId) async {
+    try {
+      final boxscore = await getBoxscoreData(gameId);
+      return GameLineupData(
+        gameId: gameId,
+        away: TeamLineupData(
+          teamId: boxscore.away.teamId,
+          lineup: _lineupFromBatters(boxscore.away.batters),
+          starterName: boxscore.away.pitchers.firstOrNull?.name,
+        ),
+        home: TeamLineupData(
+          teamId: boxscore.home.teamId,
+          lineup: _lineupFromBatters(boxscore.home.batters),
+          starterName: boxscore.home.pitchers.firstOrNull?.name,
+        ),
+      );
+    } catch (_) {
+      return GameLineupData(
+        gameId: gameId,
+        away: TeamLineupData(teamId: gameId.substring(8, 10), lineup: const []),
+        home: TeamLineupData(teamId: gameId.substring(10, 12), lineup: const []),
+      );
+    }
+  }
+
+  List<LineupEntry> _lineupFromBatters(List<BatterRecord> batters) {
+    return batters
+        .where((batter) => batter.name.isNotEmpty)
+        .take(9)
+        .map(
+          (batter) => LineupEntry(
+            order: batter.order,
+            position: batter.position,
+            positionKo: batter.position,
+            name: batter.name,
+          ),
+        )
+        .toList();
+  }
+
   // ── 유틸 ──
 
   int? _parseInt(dynamic value) {
     if (value == null) return null;
     if (value is int) return value;
     return int.tryParse(value.toString().replaceAll(',', ''));
+  }
+
+  Future<void> _ensureRelayLoggedIn() async {
+    if (_relayLoggedIn) {
+      return;
+    }
+    final loginPage = await _getPlain('/Member/Login.aspx');
+    final document = html_parser.parse(loginPage);
+    String field(String name) {
+      return document
+              .querySelector('input[name="$name"]')
+              ?.attributes['value'] ??
+          '';
+    }
+
+    final body = await _postPlain(
+      '/Member/Login.aspx',
+      {
+        '__EVENTTARGET': '',
+        '__EVENTARGUMENT': '',
+        '__LASTFOCUS': '',
+        '__VIEWSTATE': field('__VIEWSTATE'),
+        '__VIEWSTATEGENERATOR': field('__VIEWSTATEGENERATOR'),
+        '__EVENTVALIDATION': field('__EVENTVALIDATION'),
+        'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$txtUserId': _relayUserId,
+        'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$txtPassWord': _relayPassword,
+        'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$btnLogin.x': '42',
+        'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$btnLogin.y': '16',
+        'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$hdUrl': '',
+      },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      },
+    );
+
+    if (!body.contains('로그아웃') && !body.contains('LogOut.aspx')) {
+      throw StateError('KBO relay login failed');
+    }
+    _relayLoggedIn = true;
+  }
+
+  Future<Map<String, dynamic>?> _loadView1ScoreboardDetail(
+    String gameId, {
+    required bool shouldLoad,
+  }) async {
+    if (!shouldLoad) {
+      return null;
+    }
+    try {
+      final html = await _postPlain('/Game/LiveTextView1.aspx', {
+        'leagueId': 1,
+        'seriesId': 0,
+        'gameId': gameId,
+        'gyear': gameId.substring(0, 4),
+      });
+      return _parseView1ScoreboardDetail(html);
+    } catch (error) {
+      _log.warn('KBO view1 scoreboard fallback failed for $gameId: $error');
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _parseView1ScoreboardDetail(String html) {
+    final document = html_parser.parse(html);
+    final scoreRows = document.querySelectorAll('#tblScoreBoard2 tbody tr');
+    final totalRows = document.querySelectorAll('#tblScoreBoard3 tbody tr');
+    if (scoreRows.length < 2) {
+      return null;
+    }
+
+    List<int?> parseScores(dom.Element row) {
+      return row
+          .querySelectorAll('td')
+          .map((cell) => _parseInt(cell.text.trim()))
+          .toList();
+    }
+
+    Map<String, int?> parseTotals(dom.Element? row) {
+      final cells = row?.querySelectorAll('td') ?? const <dom.Element>[];
+      return {
+        'hits': cells.length > 1 ? _parseInt(cells[1].text.trim()) : null,
+        'errors': cells.length > 2 ? _parseInt(cells[2].text.trim()) : null,
+        'balls': cells.length > 3 ? _parseInt(cells[3].text.trim()) : null,
+      };
+    }
+
+    return {
+      'awayScores': parseScores(scoreRows[0]),
+      'homeScores': parseScores(scoreRows[1]),
+      'awayTotals': parseTotals(totalRows.isNotEmpty ? totalRows[0] : null),
+      'homeTotals': parseTotals(totalRows.length > 1 ? totalRows[1] : null),
+    };
+  }
+
+  List<RelayItem> _parseRelayItems(String html) {
+    final document = html_parser.parse(html);
+    final items = <RelayItem>[];
+    var seqNo = 1;
+
+    for (var inning = 1; inning <= 10; inning++) {
+      final container = document.querySelector('#numCont$inning');
+      if (container == null) {
+        continue;
+      }
+      final texts = container
+          .querySelectorAll('span')
+          .map((span) => _normalizeText(span.text))
+          .where((text) => text.isNotEmpty)
+          .toList()
+          .reversed
+          .toList();
+
+      var half = 'top';
+      for (final text in texts) {
+        if (text.contains('회초') && text.contains('공격')) {
+          half = 'top';
+          items.add(
+            RelayItem(
+              seqNo: seqNo++,
+              inning: inning,
+              half: half,
+              event: 'INNING_CHANGE',
+              text: text,
+            ),
+          );
+          continue;
+        }
+        if (text.contains('회말') && text.contains('공격')) {
+          half = 'bottom';
+          items.add(
+            RelayItem(
+              seqNo: seqNo++,
+              inning: inning,
+              half: half,
+              event: 'INNING_CHANGE',
+              text: text,
+            ),
+          );
+          continue;
+        }
+        final event = _classifyRelayEvent(text);
+        items.add(
+          RelayItem(
+            seqNo: seqNo++,
+            inning: inning,
+            half: half,
+            event: event.$1,
+            isScoring: event.$2,
+            text: text,
+          ),
+        );
+      }
+    }
+
+    return items;
+  }
+
+  CurrentAtBat? _parseCurrentAtBat(String html) {
+    final document = html_parser.parse(html);
+    final present = document.querySelector('p.present');
+    final playerNames = document.querySelector('div.playerName');
+    if (present == null || playerNames == null) {
+      return null;
+    }
+
+    final strongs = present.querySelectorAll('strong').map((e) => _normalizeText(e.text)).toList();
+    final inningText = strongs.isNotEmpty ? strongs.first : '';
+    final countText = strongs.length > 1 ? strongs[1] : '';
+    final batterText = _normalizeText(playerNames.querySelector('li.supervision')?.text ?? '');
+    final pitcherText = _normalizeText(playerNames.querySelector('li.pitcher')?.text ?? '');
+    final batterMeta = _parsePlayerInfoBox(document.querySelector('.playerBox.homeBox .player-info-wrap'));
+    final pitcherMeta = _parsePlayerInfoBox(document.querySelector('.playerBox.awayBox .player-info-wrap'));
+    final counts = _parseCountText(countText);
+    final baseState = _parseBaseState(present.querySelector('#imgThisGameBase'));
+
+    if (inningText.isEmpty &&
+        countText.isEmpty &&
+        batterText.isEmpty &&
+        pitcherText.isEmpty) {
+      return null;
+    }
+
+    return CurrentAtBat(
+      batterName: batterText.isNotEmpty ? batterText : batterMeta.$1,
+      batterNumber: batterMeta.$2,
+      batterHand: batterMeta.$3,
+      batterRecent: batterMeta.$5,
+      pitcherName: pitcherText.isNotEmpty ? pitcherText : pitcherMeta.$1,
+      pitcherNumber: pitcherMeta.$2,
+      pitcherHand: pitcherMeta.$3,
+      pitchCount: pitcherMeta.$4,
+      inningText: inningText,
+      baseState: baseState,
+      balls: counts.$1,
+      strikes: counts.$2,
+      outs: counts.$3,
+    );
+  }
+
+  (String, bool) _classifyRelayEvent(String text) {
+    if (text.contains('경기종료')) return ('GAME_END', false);
+    if (text.contains('홈런')) return ('HOMERUN', true);
+    if (text.contains('득점') || text.contains('홈인')) return ('RUNS', true);
+    if (text.contains('볼넷')) return ('WALK', false);
+    if (text.contains('삼진')) return ('STRIKEOUT', false);
+    if (text.contains('플라이 아웃') || text.contains('땅볼 아웃') || text.contains('아웃')) {
+      return ('OUT', false);
+    }
+    if (text.contains('교체')) return ('SUBSTITUTION', false);
+    if (text.contains('안타') || text.contains('1루타') || text.contains('2루타') || text.contains('3루타')) {
+      return ('HIT', false);
+    }
+    return ('PLAY', false);
+  }
+
+  String _normalizeText(String text) {
+    return text.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  (int, int, int) _parseCountText(String text) {
+    final match = RegExp(r'(\d+)-(\d+)\s+(\d+)out').firstMatch(text);
+    if (match == null) {
+      return (0, 0, 0);
+    }
+    return (
+      int.tryParse(match.group(1) ?? '') ?? 0,
+      int.tryParse(match.group(2) ?? '') ?? 0,
+      int.tryParse(match.group(3) ?? '') ?? 0,
+    );
+  }
+
+  (String, int, String, int, String) _parsePlayerInfoBox(dom.Element? element) {
+    if (element == null) {
+      return ('', 0, '', 0, '');
+    }
+    final numberText = _normalizeText(element.querySelector('.no')?.text ?? '');
+    final hand = _normalizeText(
+      element.querySelector('.who span:last-child')?.text ?? '',
+    ).replaceAll(RegExp(r'^\(|\)$'), '');
+    final todayText = _normalizeText(element.querySelector('.today span')?.text ?? '');
+    final pitchCountMatch = RegExp(r'(\d+)투구').firstMatch(todayText);
+
+    var name = numberText;
+    var number = 0;
+    final match = RegExp(r'No\.(\d+)\s+(.+)').firstMatch(numberText);
+    if (match != null) {
+      number = int.tryParse(match.group(1) ?? '') ?? 0;
+      name = match.group(2) ?? '';
+    }
+    return (
+      name,
+      number,
+      hand,
+      int.tryParse(pitchCountMatch?.group(1) ?? '') ?? 0,
+      pitchCountMatch == null ? todayText : '',
+    );
+  }
+
+  String _parseBaseState(dom.Element? element) {
+    if (element == null) {
+      return '';
+    }
+    final src = element.attributes['src'] ?? '';
+    final match = RegExp(r'ground_base(\d+)\.png').firstMatch(src);
+    if (match == null) {
+      final alt = _normalizeText(element.attributes['alt'] ?? '');
+      return alt == '주자' ? '' : alt;
+    }
+    return {
+          '0': '주자없음',
+          '1': '주자1루',
+          '2': '주자2루',
+          '3': '주자1,2루',
+          '4': '주자3루',
+          '5': '주자1,3루',
+          '6': '주자2,3루',
+          '7': '만루',
+        }[match.group(1)] ??
+        '';
+  }
+
+  String _mainSeriesForDate(String date) {
+    final compact = date.replaceAll('-', '');
+    if (compact.compareTo('20241026') >= 0) {
+      return '0,1,3,4,5,6,7,8,9';
+    }
+    if (compact.substring(0, 4).compareTo('2021') >= 0) {
+      return '0,1,3,4,5,6,7,9';
+    }
+    return '0,1,3,4,5,7,9';
   }
 
   _ScheduleRow _parseScheduleTableRow(
@@ -615,10 +1189,19 @@ class KboDirectRepository implements GameRepository {
     final time = _stripHtml(cells[offset]['Text'] as String? ?? '');
     final playHtml = cells[offset + 1]['Text'] as String? ?? '';
     final actionHtml = cells[offset + 2]['Text'] as String? ?? '';
-    final gameId = _extractGameId(actionHtml);
     final teamNames = _parseTeamsFromPlayHtml(playHtml);
     final scores = _parseScoresFromPlayHtml(playHtml);
-    final ids = _deriveTeamIdsFromGameId(gameId);
+    final ids = _deriveTeamIds(
+      teamNames.$1,
+      teamNames.$2,
+      actionHtml: actionHtml,
+    );
+    final gameId = _deriveGameId(
+      currentDate ?? '',
+      ids.$1,
+      ids.$2,
+      actionHtml: actionHtml,
+    );
     final stadium = _stripHtml(cells[offset + 6]['Text'] as String? ?? '');
     final status = _deriveScheduleStatus(actionHtml);
 
@@ -664,6 +1247,9 @@ class KboDirectRepository implements GameRepository {
   }
 
   String _deriveScheduleStatus(String actionHtml) {
+    if (actionHtml.trim().isEmpty) {
+      return 'SCHEDULED';
+    }
     if (actionHtml.contains('section=REVIEW')) {
       return 'FINAL';
     }
@@ -676,6 +1262,35 @@ class KboDirectRepository implements GameRepository {
       return 'LIVE';
     }
     return 'UNKNOWN';
+  }
+
+  (String, String) _deriveTeamIds(
+    String awayName,
+    String homeName, {
+    required String actionHtml,
+  }) {
+    final gameId = _extractGameId(actionHtml);
+    final idsFromGameId = _deriveTeamIdsFromGameId(gameId);
+    if (idsFromGameId.$1.isNotEmpty && idsFromGameId.$2.isNotEmpty) {
+      return idsFromGameId;
+    }
+    return (_teamNameToId(awayName), _teamNameToId(homeName));
+  }
+
+  String _deriveGameId(
+    String date,
+    String awayId,
+    String homeId, {
+    required String actionHtml,
+  }) {
+    final gameId = _extractGameId(actionHtml);
+    if (gameId.isNotEmpty) {
+      return gameId;
+    }
+    if (date.isEmpty || awayId.isEmpty || homeId.isEmpty) {
+      return '';
+    }
+    return '${date.replaceAll('-', '')}$awayId${homeId}0';
   }
 
   String _mapScheduleStatus(String status) {
@@ -735,6 +1350,75 @@ class KboDirectRepository implements GameRepository {
   String _buildOfficialHighlightUrl(String gameId) {
     final date = _gameDateFromId(gameId)!.replaceAll('-', '');
     return 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=$date&gameId=$gameId&section=HIGHLIGHT';
+  }
+
+  Future<RelayData> _buildSummaryRelayFallback(
+    String gameId, {
+    int? afterSeqNo,
+  }) async {
+    final game = await getGame(gameId);
+    if (game == null) {
+      return const RelayData(currentAtBat: null, relayItems: []);
+    }
+
+    final items = <RelayItem>[];
+    var seqNo = 1;
+    final innings = game.away.innings.length > game.home.innings.length
+        ? game.away.innings.length
+        : game.home.innings.length;
+
+    for (var i = 0; i < innings; i++) {
+      final inning = i + 1;
+      final awayRuns = i < game.away.innings.length ? game.away.innings[i] : null;
+      final homeRuns = i < game.home.innings.length ? game.home.innings[i] : null;
+
+      if (awayRuns != null && awayRuns > 0) {
+        items.add(
+          RelayItem(
+            seqNo: seqNo++,
+            inning: inning,
+            half: 'top',
+            event: 'RUNS',
+            isScoring: true,
+            text: '$inning회초 ${game.away.shortName} $awayRuns득점',
+          ),
+        );
+      }
+
+      if (homeRuns != null && homeRuns > 0) {
+        items.add(
+          RelayItem(
+            seqNo: seqNo++,
+            inning: inning,
+            half: 'bottom',
+            event: 'RUNS',
+            isScoring: true,
+            text: '$inning회말 ${game.home.shortName} $homeRuns득점',
+          ),
+        );
+      }
+    }
+
+    if (game.status == GameStatus.final_) {
+      items.add(
+        RelayItem(
+          seqNo: seqNo++,
+          inning: 999,
+          half: 'bottom',
+          event: 'GAME_END',
+          text: '경기종료 ${game.away.shortName} ${game.away.score} : ${game.home.score} ${game.home.shortName}',
+        ),
+      );
+    }
+
+    final filtered = afterSeqNo == null
+        ? items
+        : items.where((item) => item.seqNo > afterSeqNo).toList();
+
+    return RelayData(
+      currentAtBat: null,
+      relayItems: filtered,
+    );
   }
 }
 

@@ -423,6 +423,26 @@ flutter_cmd() {
   echo ""
 }
 
+local_ipv4() {
+  ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true
+}
+
+backend_is_running() {
+  python3 - <<'PY'
+import socket
+s = socket.socket()
+s.settimeout(0.5)
+try:
+    s.connect(("127.0.0.1", 8000))
+except Exception:
+    print("0")
+else:
+    print("1")
+finally:
+    s.close()
+PY
+}
+
 run_flutter() {
   local flutter
   flutter="$(flutter_cmd)"
@@ -443,8 +463,13 @@ run_ios() {
   local device_id
   local device_name
   local destination_issue
+  local backend_running
+  local lan_ip
+  local api_define=""
   device_id="$(pick_ios_device)"
   device_name="$(pick_ios_device_name)"
+  backend_running="$(backend_is_running)"
+  lan_ip="$(local_ipv4)"
 
   if [[ -n "$device_id" && "$device_id" != "ios" && "$device_id" != "iphone" ]]; then
     destination_issue="$(ios_destination_issue "$device_id")"
@@ -469,7 +494,11 @@ EOF
     fi
 
     echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
-    run_flutter run -d "$device_id"
+    if [[ "$backend_running" == "1" && -n "$lan_ip" ]]; then
+      api_define=" --dart-define=API_BASE_URL=http://$lan_ip:8000/api"
+      echo "Using local backend for iOS device: http://$lan_ip:8000/api"
+    fi
+    run_flutter run -d "$device_id" --dart-define=APP_ENV=local$api_define
     return
   fi
 
@@ -492,13 +521,19 @@ EOF
   fi
 
   echo "Running on iOS Simulator"
-  run_flutter run -d ios
+  if [[ "$backend_running" == "1" ]]; then
+    api_define=" --dart-define=API_BASE_URL=http://localhost:8000/api"
+    echo "Using local backend for iOS simulator: http://localhost:8000/api"
+  fi
+  run_flutter run -d ios --dart-define=APP_ENV=local$api_define
 }
 
 run_android() {
   local java_home
   local serial
   local adb_bin
+  local backend_running
+  local api_define=""
 
   java_home="$(android_java_home)"
   if [[ -z "$java_home" ]]; then
@@ -517,6 +552,7 @@ EOF
   serial="$(ensure_android_runtime)"
   adb_bin="$(android_adb_bin)"
   echo "Running on Android device/emulator: $serial"
+  backend_running="$(backend_is_running)"
 
   if [[ -n "$adb_bin" ]]; then
     echo "Uninstalling existing Android app: $ANDROID_APPLICATION_ID"
@@ -533,8 +569,12 @@ EOF
       echo "Flutter or FVM is not installed or not on PATH." >&2
       exit 1
     fi
+    if [[ "$backend_running" == "1" ]]; then
+      api_define=" --dart-define=API_BASE_URL=http://10.0.2.2:8000/api"
+      echo "Using local backend for Android: http://10.0.2.2:8000/api"
+    fi
     eval "$flutter pub get"
-    eval "$flutter run -d $serial --dart-define=APP_ENV=local"
+    eval "$flutter run -d $serial --dart-define=APP_ENV=local$api_define"
   )
 }
 

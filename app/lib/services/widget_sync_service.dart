@@ -6,6 +6,7 @@ import 'package:workmanager/workmanager.dart';
 import '../core/config/app_config.dart';
 import '../data/api/api_client.dart';
 import '../data/models/game.dart';
+import '../data/models/relay.dart';
 import '../data/repositories/api_game_repository.dart';
 import '../data/repositories/game_repository.dart';
 import '../data/repositories/kbo_direct_repository.dart';
@@ -30,6 +31,7 @@ void widgetCallbackDispatcher() {
       await WidgetSyncService.instance.syncScoreboard(
         games: games,
         myTeamId: myTeamId,
+        repository: repository,
       );
       return true;
     } catch (_) {
@@ -44,7 +46,15 @@ class WidgetSyncService {
   static final WidgetSyncService instance = WidgetSyncService._();
   String? _lastSyncSignature;
 
+  bool get _isLocalIosDebug =>
+      !kIsWeb &&
+      defaultTargetPlatform == TargetPlatform.iOS &&
+      AppConfig.instance.isLocal;
+
   Future<void> initialize() async {
+    if (_isLocalIosDebug) {
+      return;
+    }
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       await HomeWidget.setAppGroupId(_widgetGroupId);
     }
@@ -60,8 +70,9 @@ class WidgetSyncService {
   Future<void> syncScoreboard({
     required List<Game> games,
     required String? myTeamId,
+    GameRepository? repository,
   }) async {
-    if (kIsWeb) {
+    if (kIsWeb || _isLocalIosDebug) {
       return;
     }
 
@@ -79,11 +90,21 @@ class WidgetSyncService {
         HomeWidget.saveWidgetData<String>('widget_subtitle', 'KBO Fans'),
         HomeWidget.saveWidgetData<String>('widget_status', ''),
         HomeWidget.saveWidgetData<String>('widget_score', ''),
+        HomeWidget.saveWidgetData<String>('widget_batter', ''),
+        HomeWidget.saveWidgetData<String>('widget_pitcher', ''),
         HomeWidget.saveWidgetData<String>('widget_updated_at', _updatedAtText()),
       ]);
       await _updateWidget();
       await LiveActivityService.instance.endCurrentScore();
       return;
+    }
+
+    final relayRepository = repository ?? createRepositoryForBackground();
+    CurrentAtBat? currentAtBat;
+    try {
+      currentAtBat = await relayRepository.getCurrentAtBat(selected.gameId);
+    } catch (_) {
+      currentAtBat = null;
     }
 
     await Future.wait([
@@ -100,6 +121,8 @@ class WidgetSyncService {
         'widget_score',
         '${selected.away.score} : ${selected.home.score}',
       ),
+      HomeWidget.saveWidgetData<String>('widget_batter', _batterText(currentAtBat)),
+      HomeWidget.saveWidgetData<String>('widget_pitcher', _pitcherText(currentAtBat)),
       HomeWidget.saveWidgetData<String>('widget_updated_at', _updatedAtText()),
       HomeWidget.saveWidgetData<String>('widget_game_id', selected.gameId),
     ]);
@@ -112,6 +135,9 @@ class WidgetSyncService {
   }
 
   Future<void> registerBackgroundRefresh() async {
+    if (_isLocalIosDebug) {
+      return;
+    }
     await Workmanager().registerPeriodicTask(
       'kbo-widget-periodic',
       widgetRefreshTaskName,
@@ -178,13 +204,32 @@ class WidgetSyncService {
     final now = DateTime.now();
     final hour = now.hour.toString().padLeft(2, '0');
     final minute = now.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    final second = now.second.toString().padLeft(2, '0');
+    return '$hour:$minute:$second';
+  }
+
+  String _batterText(CurrentAtBat? currentAtBat) {
+    if (currentAtBat == null || currentAtBat.batterName.isEmpty) {
+      return '';
+    }
+    return '타자 ${currentAtBat.batterName}';
+  }
+
+  String _pitcherText(CurrentAtBat? currentAtBat) {
+    if (currentAtBat == null || currentAtBat.pitcherName.isEmpty) {
+      return '';
+    }
+    return '투수 ${currentAtBat.pitcherName}';
   }
 
   String _buildSignature({
     required List<Game> games,
     required String? myTeamId,
   }) {
+    final hasLive = games.any((game) => game.status == GameStatus.live);
+    final liveRefreshBucket = hasLive
+        ? DateTime.now().millisecondsSinceEpoch ~/ 10000
+        : 0;
     final payload = games
         .map(
           (game) => [
@@ -196,6 +241,6 @@ class WidgetSyncService {
           ].join(':'),
         )
         .join(',');
-    return '${myTeamId ?? '-'}|$payload';
+    return '${myTeamId ?? '-'}|$payload|$liveRefreshBucket';
   }
 }

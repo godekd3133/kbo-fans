@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -73,6 +74,11 @@ Future<void> _initializePlatformServices() async {
   }
 
   if (kIsWeb) {
+    return;
+  }
+
+  if (AppConfig.instance.isLocal &&
+      defaultTargetPlatform == TargetPlatform.iOS) {
     return;
   }
 

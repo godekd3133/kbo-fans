@@ -974,12 +974,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Duration _resolveRefreshInterval(List<Game> games) {
     if (games.any((game) => game.status == GameStatus.live)) {
-      return const Duration(seconds: 30);
+      return const Duration(seconds: 10);
     }
     if (games.any((game) => game.status == GameStatus.scheduled)) {
-      return const Duration(minutes: 5);
+      return const Duration(minutes: 2);
     }
-    return const Duration(minutes: 15);
+    return const Duration(minutes: 5);
   }
 
   void _invalidateTodayScoreboard() {
@@ -1868,15 +1868,21 @@ class _QuickContentListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = _quickItemAccent(item);
+    final isPrimary =
+        item.eyebrow.contains('마이팀') || item.eyebrow.contains('예매');
 
     return GestureDetector(
       onTap: () => context.push(item.route),
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         decoration: BoxDecoration(
-          color: AppColors.cardSub,
+          color: isPrimary
+              ? accent.withValues(alpha: 0.08)
+              : AppColors.cardSub,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(
+            color: isPrimary ? accent.withValues(alpha: 0.35) : AppColors.divider,
+          ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1885,7 +1891,7 @@ class _QuickContentListItem extends StatelessWidget {
               width: 3,
               height: 54,
               decoration: BoxDecoration(
-                color: accent,
+                color: isPrimary ? accent : accent.withValues(alpha: 0.65),
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -1907,7 +1913,7 @@ class _QuickContentListItem extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
-                            color: accent,
+                            color: isPrimary ? accent : AppColors.textSecondary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),

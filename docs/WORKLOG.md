@@ -533,6 +533,11 @@ kbo_fans/
 - [x] 홈 secondary 섹션 전용 aggregate endpoint (`GET /api/home`) 추가
 - [x] 홈 화면에서 aggregate 성공 시 secondary 섹션을 서버 조합 데이터로 렌더, 실패 시 기존 provider 조합 fallback 유지
 - [x] 관련 백엔드 회귀 테스트 추가
+- [x] iPhone local 디버그에서 `records`가 mock/localhost 경로로 빠지던 분기를 제거하고 iOS local 기본 API를 dev 서버로 전환
+- [x] direct KBO 일정 파서가 당일 예정 경기 행의 빈 action 셀 때문에 `gameId`를 잃고 오늘 경기 전체를 누락하던 문제 수정
+- [x] direct KBO 일정에서 링크가 비어 있어도 날짜+팀명으로 `gameId`를 복원하도록 보강
+- [x] local iPhone에서 backend 없이도 `Main.asmx` 기반 live 상태 판정과 `LiveTextView2.aspx` 기반 문자중계를 직접 파싱하도록 direct KBO 경로 보강
+- [x] direct relay용 KBO 로그인 플로우를 앱 내부에 추가하고 live scoreboard fallback을 `Main.asmx` 메타데이터로 보강
 
 ### 검증 메모
 - `GET /api/game/20260331HTLG0/boxscore` : `500` -> `200` (예정 경기 빈 데이터 응답)
@@ -548,6 +553,10 @@ kbo_fans/
 - 홈 화면은 `schedule` / `standings`를 한 번만 읽고 두 섹션에서 재사용
 - 홈 `overview`는 고정 시간 지연 대신 실제 화면 근접 시점에 로드
 - `GET /api/home?date=2026-03-31&myTeam=LG` : `200`, 약 `0.66s`
+- KBO `GetScheduleList` 2026-03 응답에서 `03.31(화)` 예정 경기 행은 review/relay 링크가 비어 있어 기존 파서가 `gameId`를 빈 값으로 처리하던 것을 확인
+- KBO `Main.asmx/GetKboGameList` 2026-03-31 응답에서 `GAME_STATE_SC=2` 와 현재 타석 count 필드가 live 판정 근거로 유효함을 확인
+- KBO `LiveTextView2.aspx` 20260331OBSS0 응답이 로그인 후가 아닌 direct 호출에서도 relay markup(`#numCont*`, `.playerBox`, `p.present`)을 반환하는 것을 확인
+- `fvm flutter analyze --no-fatal-infos` 통과
 
 ### 문서화
 - [x] 홈 전용 aggregate endpoint 기반 성능 개선 제안서 작성 (`docs/PERFORMANCE_PROPOSAL_HOME_AGGREGATE.md`)

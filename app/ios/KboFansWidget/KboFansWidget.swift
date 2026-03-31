@@ -10,6 +10,8 @@ struct KboFansWidgetEntry: TimelineEntry {
   let subtitle: String
   let status: String
   let score: String
+  let batter: String
+  let pitcher: String
   let updatedAt: String
 }
 
@@ -21,6 +23,8 @@ struct KboFansWidgetProvider: TimelineProvider {
       subtitle: "잠실",
       status: "4회초",
       score: "6 : 2",
+      batter: "타자 박해민",
+      pitcher: "투수 켈리",
       updatedAt: "14:32"
     )
   }
@@ -31,7 +35,7 @@ struct KboFansWidgetProvider: TimelineProvider {
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<KboFansWidgetEntry>) -> Void) {
     let entry = loadEntry()
-    let nextRefresh = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date().addingTimeInterval(900)
+    let nextRefresh = Calendar.current.date(byAdding: .minute, value: 1, to: Date()) ?? Date().addingTimeInterval(60)
     completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
   }
 
@@ -43,6 +47,8 @@ struct KboFansWidgetProvider: TimelineProvider {
       subtitle: data?.string(forKey: "widget_subtitle") ?? "KBO Fans",
       status: data?.string(forKey: "widget_status") ?? "",
       score: data?.string(forKey: "widget_score") ?? "",
+      batter: data?.string(forKey: "widget_batter") ?? "",
+      pitcher: data?.string(forKey: "widget_pitcher") ?? "",
       updatedAt: data?.string(forKey: "widget_updated_at") ?? "--:--"
     )
   }
@@ -52,7 +58,7 @@ struct KboFansWidgetEntryView: View {
   let entry: KboFansWidgetProvider.Entry
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
+    let content = VStack(alignment: .leading, spacing: 6) {
       Text(entry.title)
         .font(.headline)
         .foregroundStyle(.white)
@@ -67,13 +73,34 @@ struct KboFansWidgetEntryView: View {
         .font(.title2)
         .bold()
         .foregroundStyle(.white)
+      if !entry.batter.isEmpty || !entry.pitcher.isEmpty {
+        VStack(alignment: .leading, spacing: 2) {
+          if !entry.batter.isEmpty {
+            Text(entry.batter)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+          if !entry.pitcher.isEmpty {
+            Text(entry.pitcher)
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .lineLimit(1)
+          }
+        }
+      }
       Text("업데이트 \(entry.updatedAt)")
         .font(.caption2)
         .foregroundStyle(.gray)
     }
     .padding()
-    .containerBackground(for: .widget) {
-      Color(red: 0.06, green: 0.06, blue: 0.06)
+
+    if #available(iOS 17.0, *) {
+      content.containerBackground(for: .widget) {
+        Color(red: 0.06, green: 0.06, blue: 0.06)
+      }
+    } else {
+      content.background(Color(red: 0.06, green: 0.06, blue: 0.06))
     }
   }
 }
@@ -87,7 +114,7 @@ struct KboFansWidget: Widget {
     }
     .configurationDisplayName("KBO Fans")
     .description("마이팀 혹은 현재 경기 점수를 빠르게 확인합니다.")
-    .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+    .supportedFamilies([.systemSmall, .systemMedium])
   }
 }
 
@@ -113,6 +140,20 @@ struct KboFansLiveActivityView: View {
         Text("업데이트 \(context.state.updatedAt)")
           .font(.caption2)
           .foregroundStyle(.secondary)
+      }
+      if !context.state.batter.isEmpty || !context.state.pitcher.isEmpty {
+        VStack(alignment: .leading, spacing: 2) {
+          if !context.state.batter.isEmpty {
+            Text("타자 \(context.state.batter)")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+          if !context.state.pitcher.isEmpty {
+            Text("투수 \(context.state.pitcher)")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+        }
       }
     }
     .padding(.horizontal, 16)
@@ -191,6 +232,16 @@ struct KboFansLiveActivityWidget: Widget {
               .foregroundStyle(.secondary)
             Spacer()
             Text("업데이트 \(context.state.updatedAt)")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+          if !context.state.batter.isEmpty {
+            Text("타자 \(context.state.batter)")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+          if !context.state.pitcher.isEmpty {
+            Text("투수 \(context.state.pitcher)")
               .font(.caption2)
               .foregroundStyle(.secondary)
           }

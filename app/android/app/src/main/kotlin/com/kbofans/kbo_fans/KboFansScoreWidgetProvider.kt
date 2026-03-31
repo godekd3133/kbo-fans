@@ -3,6 +3,7 @@ package com.kbofans.kbo_fans
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.view.View
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import es.antonborri.home_widget.HomeWidgetProvider
@@ -35,6 +36,18 @@ class KboFansScoreWidgetProvider : HomeWidgetProvider() {
                 setTextViewText(
                     R.id.widget_score,
                     widgetData.getString("widget_score", "") ?: "",
+                )
+                val batter = widgetData.getString("widget_batter", "") ?: ""
+                val pitcher = widgetData.getString("widget_pitcher", "") ?: ""
+                setTextViewText(R.id.widget_batter, batter)
+                setTextViewText(R.id.widget_pitcher, pitcher)
+                setViewVisibility(
+                    R.id.widget_batter,
+                    if (batter.isNotEmpty()) View.VISIBLE else View.GONE,
+                )
+                setViewVisibility(
+                    R.id.widget_pitcher,
+                    if (pitcher.isNotEmpty()) View.VISIBLE else View.GONE,
                 )
                 setTextViewText(
                     R.id.widget_updated_at,

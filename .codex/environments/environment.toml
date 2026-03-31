@@ -19,3 +19,8 @@ command = "./scripts/codex-run-android.sh"
 name = "WEB"
 icon = "run"
 command = "./scripts/codex-run-web.sh"
+
+[[actions]]
+name = "SERVER"
+icon = "tool"
+command = "./scripts/codex-run.sh backend"

@@ -239,14 +239,16 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
             right: 8,
             bottom: 90,
             top: MediaQuery.of(context).size.height * 0.4,
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xF0111111),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Column(
-                children: [
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xF0111111),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Column(
+                  children: [
                   // 헤더
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -537,7 +539,8 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                             },
                           ),
                   ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

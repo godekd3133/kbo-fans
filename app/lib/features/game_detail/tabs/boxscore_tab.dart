@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/game.dart';
 import '../../../data/models/boxscore.dart';
+import '../../../data/models/player.dart';
 import '../../../data/providers.dart';
 
 class BoxscoreTab extends ConsumerStatefulWidget {
   final String gameId;
+  final GameStatus gameStatus;
   final String awayName;
   final String homeName;
   final String awayTeamId;
@@ -17,6 +20,7 @@ class BoxscoreTab extends ConsumerStatefulWidget {
   const BoxscoreTab({
     super.key,
     required this.gameId,
+    required this.gameStatus,
     this.awayName = '원정',
     this.homeName = '홈',
     this.awayTeamId = '',
@@ -38,8 +42,19 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.gameStatus == GameStatus.scheduled) {
+      return _buildUnavailableState('경기 시작 후 박스스코어가 제공됩니다');
+    }
+    if (widget.gameStatus == GameStatus.cancelled) {
+      return _buildUnavailableState('취소된 경기는 박스스코어가 없습니다');
+    }
+
     final battersAsync = ref.watch(battersProvider(_batterKey));
     final pitchersAsync = ref.watch(pitchersProvider(_pitcherKey));
+    final season = DateTime.now().year;
+    final playersAsync = _selectedTeamId.isEmpty
+        ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
+        : ref.watch(teamPlayersProvider('$_selectedTeamId|$season'));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -75,9 +90,26 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         '투수 데이터 로딩 실패: $error',
                         style: const TextStyle(color: AppColors.textDisabled),
                       ),
-                      data: (pitchers) => _buildContent(
-                        batters.cast<BatterRecord>(),
-                        pitchers.cast<PitcherRecord>(),
+                      data: (pitchers) => playersAsync.when(
+                        loading: () => _buildContent(
+                          batters.cast<BatterRecord>(),
+                          pitchers.cast<PitcherRecord>(),
+                          const {},
+                        ),
+                        error: (_, _) => _buildContent(
+                          batters.cast<BatterRecord>(),
+                          pitchers.cast<PitcherRecord>(),
+                          const {},
+                        ),
+                        data: (players) => _buildContent(
+                          batters.cast<BatterRecord>(),
+                          pitchers.cast<PitcherRecord>(),
+                          {
+                            for (final player in players)
+                              if (player.name.isNotEmpty && player.imageUrl != null && player.imageUrl!.isNotEmpty)
+                                player.name: player.imageUrl!,
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -87,6 +119,19 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildUnavailableState(String message) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.sports_baseball, size: 48, color: AppColors.divider),
+          const SizedBox(height: 12),
+          Text(message, style: const TextStyle(color: AppColors.textDisabled)),
+        ],
+      ),
     );
   }
 
@@ -119,6 +164,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   Widget _buildContent(
     List<BatterRecord> batters,
     List<PitcherRecord> pitchers,
+    Map<String, String> playerImages,
   ) {
     final team = KboTeams.byId(_selectedTeamId);
     final accent = team?.primaryColor ?? AppColors.accent;
@@ -241,7 +287,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
-        ...batters.map((batter) => _buildBatterCard(batter, accent)),
+        ...batters.map((batter) => _buildBatterCard(batter, accent, playerImages)),
         const SizedBox(height: 18),
         const Text(
           '투수',
@@ -253,7 +299,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     );
   }
 
-  Widget _buildBatterCard(BatterRecord batter, Color accent) {
+  Widget _buildBatterCard(
+    BatterRecord batter,
+    Color accent,
+    Map<String, String> playerImages,
+  ) {
+    final imageUrl = playerImages[batter.name];
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
@@ -265,33 +316,37 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         ),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                '${batter.order}',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: accent,
-                ),
-              ),
+            _PlayerAvatar(
+              imageUrl: imageUrl,
+              fallbackLabel: batter.name,
+              accent: accent,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          batter.name,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      _InfoPill(label: '${batter.order}번', accent: accent),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   Text(
-                    batter.name,
+                    '${batter.position} 포지션',
                     style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -299,7 +354,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _InfoPill(label: batter.position, accent: accent),
                       _InfoPill(
                         label: '타수 ${batter.atBats}',
                         accent: AppColors.textDisabled,
@@ -502,6 +556,53 @@ class _TeamLogo extends StatelessWidget {
       child: Text(
         fallback.isNotEmpty ? fallback.substring(0, 1) : '?',
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+class _PlayerAvatar extends StatelessWidget {
+  final String? imageUrl;
+  final String fallbackLabel;
+  final Color accent;
+
+  const _PlayerAvatar({
+    required this.imageUrl,
+    required this.fallbackLabel,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
+          width: 52,
+          height: 52,
+          fit: BoxFit.cover,
+          placeholder: (_, _) => _fallbackAvatar(),
+          errorWidget: (_, _, _) => _fallbackAvatar(),
+        ),
+      );
+    }
+    return _fallbackAvatar();
+  }
+
+  Widget _fallbackAvatar() {
+    return Container(
+      width: 52,
+      height: 52,
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.person_rounded,
+        color: accent,
+        size: 28,
       ),
     );
   }

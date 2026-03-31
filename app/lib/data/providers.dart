@@ -2,13 +2,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/config/app_config.dart';
 import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
 import 'repositories/api_game_repository.dart';
-import 'repositories/api_home_repository.dart';
+import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
+import 'repositories/local_asset_player_repository.dart';
 import 'models/game.dart';
 import 'models/highlight_info.dart';
 import 'models/relay.dart';
@@ -29,14 +29,11 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 final gameRepositoryProvider = Provider<GameRepository>((ref) {
   final apiRepository = ApiGameRepository(ref.read(apiClientProvider));
 
-  if (kIsWeb || AppConfig.instance.isRelease) {
+  if (kIsWeb) {
     return apiRepository;
   }
 
-  if (AppConfig.instance.isDev || AppConfig.instance.isLocal) {
-    return apiRepository;
-  }
-  return apiRepository;
+  return KboDirectRepository();
 });
 
 // ── 마이팀 전역 상태 ──
@@ -180,25 +177,36 @@ final standingsProvider = FutureProvider.family<List<TeamStanding>, int>((
   return ref.watch(gameRepositoryProvider).getStandings(season);
 });
 
-final homeRepositoryProvider = Provider<ApiHomeRepository>((ref) {
-  return ApiHomeRepository(ref.read(apiClientProvider));
-});
-
 final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
   ref,
   key,
-) {
+) async {
   final parts = key.split('|');
   final date = parts[0];
   final myTeam = parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
-  return ref.read(homeRepositoryProvider).getHomeAggregate(
+
+  final scoreboard = await ref.read(scoreboardProvider(date).future);
+  final yearMonth = date.substring(0, 7);
+  final season = int.parse(date.substring(0, 4));
+  final schedule = await ref.read(scheduleProvider(yearMonth).future);
+  final standings = await ref.read(standingsProvider(season).future);
+  final overview = await ref.read(recordsOverviewProvider(season).future);
+
+  return buildLocalHomeAggregate(
     date: date,
     myTeam: myTeam,
+    games: scoreboard,
+    scheduleDays: schedule,
+    standings: standings,
+    overview: overview,
   );
 });
 
 final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
-  return ApiPlayerRepository(ref.read(apiClientProvider));
+  if (kIsWeb) {
+    return ApiPlayerRepository(ref.read(apiClientProvider));
+  }
+  return LocalAssetPlayerRepository();
 });
 
 final teamPlayersProvider = FutureProvider.family<List<PlayerProfile>, String>((ref, key) {

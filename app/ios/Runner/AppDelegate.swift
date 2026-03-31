@@ -104,15 +104,17 @@ import workmanager_apple
     }
 
     let attributes = KboFansScoreAttributes(gameId: gameId)
-    let state = KboFansScoreAttributes.ContentState(
-      awayTeam: awayTeam,
-      homeTeam: homeTeam,
-      awayScore: awayScore,
-      homeScore: homeScore,
-      inning: inning,
-      stadium: stadium,
-      updatedAt: updatedAt
-    )
+      let state = KboFansScoreAttributes.ContentState(
+        awayTeam: awayTeam,
+        homeTeam: homeTeam,
+        awayScore: awayScore,
+        homeScore: homeScore,
+        inning: inning,
+        batter: arguments["batter"] as? String ?? "",
+        pitcher: arguments["pitcher"] as? String ?? "",
+        stadium: stadium,
+        updatedAt: updatedAt
+      )
 
     Task {
       do {

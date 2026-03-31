@@ -135,6 +135,7 @@ kbo_fans/
 - KBO 공식 홈페이지 (koreabaseball.com) 크롤링
 - 경로 1: ASP.NET SSR 페이지 → GET + BeautifulSoup
 - 경로 2: ASMX 내부 API → POST → JSON
+- 일부 relay/보호 페이지는 KBO 로그인 세션이 필요할 수 있으며, 자격증명은 로컬 secure storage(`.env`, Keychain)로만 관리한다. 저장소 문서나 코드에 평문으로 남기지 않는다.
 - 상세 내용은 `docs/PLANNING.md` 참조
 
 ## UX / 디자인 방향

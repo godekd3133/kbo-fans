@@ -2,8 +2,13 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
 
+import '../core/config/app_config.dart';
 import '../core/utils/game_status_label.dart';
 import '../data/models/game.dart';
+import '../data/models/relay.dart';
+import '../data/repositories/api_game_repository.dart';
+import '../data/repositories/kbo_direct_repository.dart';
+import '../data/api/api_client.dart';
 
 class LiveActivityService {
   LiveActivityService._();
@@ -26,6 +31,16 @@ class LiveActivityService {
     }
 
     try {
+      final repository = AppConfig.instance.isRelease
+          ? ApiGameRepository(ApiClient())
+          : KboDirectRepository();
+      CurrentAtBat? currentAtBat;
+      try {
+        currentAtBat = await repository.getCurrentAtBat(targetGame.gameId);
+      } catch (_) {
+        currentAtBat = null;
+      }
+
       await _channel.invokeMethod('syncCurrentScore', {
         'gameId': targetGame.gameId,
         'awayTeam': targetGame.away.shortName,
@@ -37,6 +52,8 @@ class LiveActivityService {
           inning: targetGame.inning,
           startTime: targetGame.startTime,
         ),
+        'batter': currentAtBat?.batterName ?? '',
+        'pitcher': currentAtBat?.pitcherName ?? '',
         'stadium': targetGame.stadium,
         'updatedAt': _updatedAtText(),
       });
@@ -98,6 +115,7 @@ class LiveActivityService {
     final now = DateTime.now();
     final hour = now.hour.toString().padLeft(2, '0');
     final minute = now.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
+    final second = now.second.toString().padLeft(2, '0');
+    return '$hour:$minute:$second';
   }
 }
