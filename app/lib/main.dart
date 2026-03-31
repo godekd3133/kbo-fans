@@ -89,17 +89,33 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(_lifecycleObserver);
-    Future.microtask(() async {
-      await _loadOnboardingState();
-      await ref.read(myTeamProvider.notifier).load();
-      _prefetchInitialData();
-    });
+    Future.microtask(_bootstrapApp);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     super.dispose();
+  }
+
+  Future<void> _bootstrapApp() async {
+    try {
+      await _loadOnboardingState().timeout(const Duration(seconds: 3));
+    } catch (error) {
+      DevConsole.instance.warn('onboarding bootstrap fallback: $error');
+      ref.read(onboardingDoneProvider.notifier).setValue(false);
+    }
+
+    try {
+      await ref
+          .read(myTeamProvider.notifier)
+          .load()
+          .timeout(const Duration(seconds: 3));
+    } catch (error) {
+      DevConsole.instance.warn('myTeam bootstrap fallback: $error');
+    }
+
+    _prefetchInitialData();
   }
 
   Future<void> _loadOnboardingState() async {

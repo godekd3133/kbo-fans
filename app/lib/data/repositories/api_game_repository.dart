@@ -11,6 +11,8 @@ import 'game_repository.dart';
 /// DEV / RELEASE 환경에서 실제 백엔드 API를 호출하는 구현체
 class ApiGameRepository implements GameRepository {
   final ApiClient _client;
+  static const _liveishCacheAge = Duration(seconds: 30);
+  static const _stableCacheAge = Duration(minutes: 5);
 
   ApiGameRepository(this._client);
 
@@ -22,6 +24,7 @@ class ApiGameRepository implements GameRepository {
       queryParameters: {'date': date},
       cacheKey: 'scoreboard:$date',
       preferCache: isHistoricalDate,
+      maxAge: isHistoricalDate ? _stableCacheAge : _liveishCacheAge,
     );
     final games = data['games'] as List<dynamic>? ?? [];
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
@@ -33,6 +36,7 @@ class ApiGameRepository implements GameRepository {
       '/game/$gameId',
       cacheKey: 'game:$gameId',
       preferCache: true,
+      maxAge: _liveishCacheAge,
     );
     final game = data['game'] as Map<String, dynamic>?;
     if (game == null) {
@@ -47,6 +51,7 @@ class ApiGameRepository implements GameRepository {
       '/game/$gameId/highlights',
       cacheKey: 'highlights:$gameId',
       preferCache: true,
+      maxAge: _stableCacheAge,
     );
     final highlightInfo = data['highlightInfo'] as Map<String, dynamic>?;
     return _parseHighlightInfo(highlightInfo);
@@ -90,6 +95,7 @@ class ApiGameRepository implements GameRepository {
       '/game/$gameId/boxscore',
       cacheKey: 'boxscore:$gameId',
       preferCache: true,
+      maxAge: _liveishCacheAge,
     );
     return GameBoxscoreData(
       gameId: gameId,
@@ -122,6 +128,7 @@ class ApiGameRepository implements GameRepository {
       '/game/$gameId/lineup',
       cacheKey: 'lineup:$gameId',
       preferCache: true,
+      maxAge: _liveishCacheAge,
     );
     return GameLineupData(
       gameId: gameId,
@@ -146,6 +153,7 @@ class ApiGameRepository implements GameRepository {
       queryParameters: {'month': yearMonth},
       cacheKey: 'schedule:$yearMonth',
       preferCache: true,
+      maxAge: _stableCacheAge,
     );
     final days = data['days'] as List<dynamic>? ?? [];
     return days.map((d) {
@@ -183,6 +191,7 @@ class ApiGameRepository implements GameRepository {
       queryParameters: {'season': season},
       cacheKey: 'standings:$season',
       preferCache: true,
+      maxAge: _stableCacheAge,
     );
     final standings = data['standings'] as List<dynamic>? ?? [];
     return standings.map((s) {

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
@@ -66,40 +67,42 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildMonthHeader(),
-            Expanded(
-              child: scheduleAsync.when(
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: AppColors.live),
-                ),
-                error: (e, _) => Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        '일정을 불러올 수 없습니다',
-                        style: TextStyle(color: AppColors.textDisabled),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        describeAsyncError(e),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => ref.invalidate(scheduleProvider(_yearMonth)),
-                        child: const Text('다시 시도'),
-                      ),
-                    ],
+        child: AppPageFrame(
+          child: Column(
+            children: [
+              _buildMonthHeader(),
+              Expanded(
+                child: scheduleAsync.when(
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.live),
                   ),
+                  error: (e, _) => Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          '일정을 불러올 수 없습니다',
+                          style: TextStyle(color: AppColors.textDisabled),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          describeAsyncError(e),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () => ref.invalidate(scheduleProvider(_yearMonth)),
+                          child: const Text('다시 시도'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  data: (days) => _buildBody(days),
                 ),
-                data: (days) => _buildBody(days),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -245,8 +248,47 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          _legendRow(),
         ],
       ),
+    );
+  }
+
+  Widget _legendRow() {
+    final myTeamColor =
+        KboTeams.byId(ref.watch(myTeamProvider) ?? '')?.primaryColor ??
+        AppColors.live;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        children: [
+          _legendItem(myTeamColor, '마이팀 경기일'),
+          _legendItem(AppColors.textDisabled, '일반 경기일'),
+          _legendItem(AppColors.textPrimary, '선택한 날짜'),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendItem(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+        ),
+      ],
     );
   }
 

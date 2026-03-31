@@ -461,6 +461,7 @@ kbo_fans/
 - [x] 경기 상세에서 `boxscore` / `lineup` 중복 API 호출을 provider 공유 구조로 제거
 - [x] 예정/종료/취소 경기 relay 요청 시 크롤러를 타지 않도록 short-circuit 처리
 - [x] records overview 영속 snapshot fallback 추가
+- [x] 앱 로컬 API 캐시를 TTL 기반으로 조정해 신선한 데이터 재사용 시 불필요한 백그라운드 재요청 제거
 - [x] 관련 백엔드 회귀 테스트 추가
 
 ### 검증 메모
@@ -473,3 +474,4 @@ kbo_fans/
 - 홈 화면은 보조 섹션을 한 번에 기다리지 않고 순차 노출되도록 조정
 - `GET /api/game/20260331HTLG0/relay` : non-live 경기에서 크롤러 우회, 약 `0.56s`
 - `GET /api/game/20260331HTLG0/boxscore` : 캐시 히트 기준 약 `0.20s`
+- 앱 재진입/탭 재방문 시 `schedule`, `standings`, `records`, `player detail`, `overview`는 TTL 내 네트워크 재호출 없이 로컬 캐시 우선 사용

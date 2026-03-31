@@ -1,0 +1,238 @@
+{
+  "savedAt": "2026-03-31T07:20:17.308044+00:00",
+  "payload": {
+    "season": 2001,
+    "leaders": {
+      "avg": [
+        {
+          "rank": 1,
+          "playerId": "79240",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "허경민",
+          "teamId": "KT",
+          "value": "0.750"
+        },
+        {
+          "rank": 2,
+          "playerId": "53123",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "오스틴",
+          "teamId": "LG",
+          "value": "0.667"
+        },
+        {
+          "rank": 3,
+          "playerId": "56626",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "카스트로",
+          "teamId": "HT",
+          "value": "0.556"
+        },
+        {
+          "rank": 4,
+          "playerId": "54730",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "페라자",
+          "teamId": "HH",
+          "value": "0.545"
+        },
+        {
+          "rank": 5,
+          "playerId": "79365",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "박동원",
+          "teamId": "LG",
+          "value": "0.500"
+        }
+      ],
+      "hr": [
+        {
+          "rank": 1,
+          "playerId": "51868",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "고명준",
+          "teamId": "SK",
+          "value": "2"
+        },
+        {
+          "rank": 1,
+          "playerId": "79215",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "박건우",
+          "teamId": "NC",
+          "value": "2"
+        },
+        {
+          "rank": 1,
+          "playerId": "54529",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "레이예스",
+          "teamId": "LT",
+          "value": "2"
+        },
+        {
+          "rank": 1,
+          "playerId": "50150",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "손호영",
+          "teamId": "LT",
+          "value": "2"
+        },
+        {
+          "rank": 5,
+          "playerId": "79365",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "박동원",
+          "teamId": "LG",
+          "value": "1"
+        }
+      ],
+      "ops": [
+        {
+          "rank": 1,
+          "playerId": "79240",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "허경민",
+          "teamId": "KT",
+          "value": "1.903"
+        },
+        {
+          "rank": 2,
+          "playerId": "54529",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "레이예스",
+          "teamId": "LT",
+          "value": "1.886"
+        },
+        {
+          "rank": 3,
+          "playerId": "51868",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "고명준",
+          "teamId": "SK",
+          "value": "1.750"
+        },
+        {
+          "rank": 4,
+          "playerId": "79365",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "박동원",
+          "teamId": "LG",
+          "value": "1.667"
+        },
+        {
+          "rank": 5,
+          "playerId": "56626",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "카스트로",
+          "teamId": "HT",
+          "value": "1.600"
+        }
+      ],
+      "era": [
+        {
+          "rank": 1,
+          "playerId": "63248",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "함덕주",
+          "teamId": "LG",
+          "value": "0.00"
+        },
+        {
+          "rank": 1,
+          "playerId": "52809",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "전영준",
+          "teamId": "SK",
+          "value": "0.00"
+        },
+        {
+          "rank": 1,
+          "playerId": "65933",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "구창모",
+          "teamId": "NC",
+          "value": "0.00"
+        },
+        {
+          "rank": 1,
+          "playerId": "52902",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "임지민",
+          "teamId": "NC",
+          "value": "0.00"
+        },
+        {
+          "rank": 1,
+          "playerId": "65048",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "김민수",
+          "teamId": "KT",
+          "value": "0.00"
+        }
+      ]
+    },
+    "featured": {
+      "todayHitter": {
+        "label": "오늘의 타자",
+        "playerId": "79240",
+        "playerType": "hitter",
+        "name": "허경민",
+        "teamId": "KT",
+        "headline": "OPS 1.903",
+        "summary": "오늘 리더보드 기준 AVG 1위 + OPS 1위",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79240.jpg"
+      },
+      "todayPitcher": {
+        "label": "오늘의 투수",
+        "playerId": "63248",
+        "playerType": "pitcher",
+        "name": "함덕주",
+        "teamId": "LG",
+        "headline": "ERA 0.00",
+        "summary": "오늘 리더보드 기준 ERA 1위",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63248.jpg"
+      },
+      "monthHitter": {
+        "label": "이달의 타자",
+        "playerId": "79240",
+        "playerType": "hitter",
+        "name": "허경민",
+        "teamId": "KT",
+        "headline": "OPS 1.903",
+        "summary": "이달 리더보드 기준 AVG 1위 + OPS 1위",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79240.jpg"
+      },
+      "monthPitcher": {
+        "label": "이달의 투수",
+        "playerId": "63248",
+        "playerType": "pitcher",
+        "name": "함덕주",
+        "teamId": "LG",
+        "headline": "ERA 0.00",
+        "summary": "이달 리더보드 기준 ERA 1위",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63248.jpg"
+      }
+    }
+  }
+}

@@ -82,21 +82,29 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     required String cacheKey,
     bool preferCache = false,
+    Duration? maxAge,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = '$_cachePrefix$cacheKey';
     final cached = _readCachedPayload(prefs, storageKey);
+    final isFresh = cached != null && _isCacheFresh(cached, maxAge);
+
+    if (cached != null && isFresh) {
+      return cached.data;
+    }
 
     if (preferCache && cached != null) {
-      unawaited(
-        _refreshCached(
-          path,
-          queryParameters: queryParameters,
-          prefs: prefs,
-          storageKey: storageKey,
-        ),
-      );
-      return cached;
+      if (!isFresh) {
+        unawaited(
+          _refreshCached(
+            path,
+            queryParameters: queryParameters,
+            prefs: prefs,
+            storageKey: storageKey,
+          ),
+        );
+      }
+      return cached.data;
     }
 
     try {
@@ -105,7 +113,7 @@ class ApiClient {
       return fresh;
     } catch (_) {
       if (cached != null) {
-        return cached;
+        return cached.data;
       }
       rethrow;
     }
@@ -192,7 +200,7 @@ class ApiClient {
     return body['data'] as Map<String, dynamic>? ?? {};
   }
 
-  Map<String, dynamic>? _readCachedPayload(
+  _CachedPayload? _readCachedPayload(
     SharedPreferences prefs,
     String storageKey,
   ) {
@@ -203,9 +211,13 @@ class ApiClient {
 
     try {
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final cachedAt = decoded['cachedAt'] as String?;
       final payload = decoded['data'];
-      if (payload is Map<String, dynamic>) {
-        return payload;
+      final parsedCachedAt = cachedAt == null
+          ? null
+          : DateTime.tryParse(cachedAt)?.toUtc();
+      if (payload is Map<String, dynamic> && parsedCachedAt != null) {
+        return _CachedPayload(data: payload, cachedAt: parsedCachedAt);
       }
     } catch (_) {
       return null;
@@ -239,6 +251,13 @@ class ApiClient {
     }
   }
 
+  bool _isCacheFresh(_CachedPayload cached, Duration? maxAge) {
+    if (maxAge == null) {
+      return false;
+    }
+    return DateTime.now().toUtc().difference(cached.cachedAt) <= maxAge;
+  }
+
   void _logRequestTiming(
     RequestOptions options,
     int? statusCode, {
@@ -264,6 +283,16 @@ class ApiClient {
       DevConsole.instance.info(message);
     }
   }
+}
+
+class _CachedPayload {
+  final Map<String, dynamic> data;
+  final DateTime cachedAt;
+
+  const _CachedPayload({
+    required this.data,
+    required this.cachedAt,
+  });
 }
 
 class ApiException implements Exception {

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/router/app_router.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../data/providers.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -33,14 +34,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final selectedTeam = _selectedTeamId != null
         ? KboTeams.byId(_selectedTeamId!)
         : null;
+    final viewportWidth = MediaQuery.of(context).size.width;
+    final contentMaxWidth = viewportWidth >= 900 ? 560.0 : 460.0;
+    final crossAxisCount = viewportWidth >= 900 ? 3 : 2;
+    final logoSize = viewportWidth >= 900 ? 72.0 : 92.0;
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: AppPageFrame(
+          maxWidth: contentMaxWidth,
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             children: [
-              const SizedBox(height: 60),
+              const SizedBox(height: 40),
               Text(
                 'KBO Fans',
                 style: Theme.of(context).textTheme.headlineLarge,
@@ -52,14 +58,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 10),
+              const Text(
+                '선택하면 홈에서 마이팀 경기, 최근 흐름, 순위를 먼저 보여줍니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AppColors.textDisabled),
+              ),
+              const SizedBox(height: 24),
               Expanded(
                 child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 20,
-                    mainAxisSpacing: 18,
-                    childAspectRatio: 0.95,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: viewportWidth >= 900 ? 0.9 : 0.95,
                   ),
                   itemCount: KboTeams.teams.length,
                   itemBuilder: (context, index) {
@@ -92,15 +104,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                               : null,
                         ),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 18,
+                          horizontal: 12,
+                          vertical: 14,
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Container(
-                              width: 92,
-                              height: 92,
+                              width: logoSize,
+                              height: logoSize,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: AppColors.background,
@@ -138,7 +150,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                             Text(
                               team.shortName,
                               style: TextStyle(
-                                fontSize: 17,
+                                fontSize: 16,
                                 color: isSelected
                                     ? team.primaryColor
                                     : AppColors.textPrimary,
@@ -192,7 +204,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   style: TextStyle(fontSize: 14, color: AppColors.textDisabled),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
             ],
           ),
         ),

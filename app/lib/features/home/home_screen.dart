@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/game_status_badge.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/game.dart';
@@ -222,8 +223,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     return RefreshIndicator(
       onRefresh: () async => _invalidateTodayScoreboard(),
       color: AppColors.live,
-      child: CustomScrollView(
-        slivers: [
+      child: AppPageFrame(
+        child: CustomScrollView(
+          slivers: [
           SliverToBoxAdapter(child: _buildHeader(context, hasLive)),
           SliverToBoxAdapter(
             child: Padding(
@@ -422,7 +424,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               },
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -870,10 +873,20 @@ class _MyTeamBriefCard extends StatelessWidget {
               '응원팀을 선택하면 오늘 경기, 최근 흐름, 순위를 홈에서 바로 보여줍니다.',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: const [
+                _BenefitChip(label: '오늘 경기 우선'),
+                _BenefitChip(label: '예매 오픈 추적'),
+                _BenefitChip(label: '순위/최근 흐름'),
+              ],
+            ),
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+                child: ElevatedButton(
                 onPressed: () => context.go('/onboarding'),
                 child: const Text('마이팀 선택하기'),
               ),
@@ -1369,6 +1382,32 @@ class _TodayBaseballCard extends StatelessWidget {
         text,
         style: const TextStyle(
           fontSize: 11,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _BenefitChip extends StatelessWidget {
+  final String label;
+
+  const _BenefitChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12,
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w600,
         ),

@@ -7,6 +7,7 @@ import 'player_repository.dart';
 
 class ApiPlayerRepository implements PlayerRepository {
   final ApiClient _client;
+  static const _stableCacheAge = Duration(minutes: 5);
 
   ApiPlayerRepository(this._client);
 
@@ -17,6 +18,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'teamPlayers:$teamId:$season',
       preferCache: true,
+      maxAge: _stableCacheAge,
     );
     final players = data['players'] as List<dynamic>? ?? [];
     return players.map((item) => _parsePlayer(item as Map<String, dynamic>)).toList();
@@ -29,6 +31,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'playerDetail:$playerId:$season',
       preferCache: true,
+      maxAge: _stableCacheAge,
     );
     return _parsePlayer(data);
   }
@@ -40,6 +43,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'teamStats:$teamId:$season',
       preferCache: true,
+      maxAge: _stableCacheAge,
     );
     return _parseTeamStats(data, fallbackTeamId: teamId, fallbackSeason: season);
   }
@@ -51,6 +55,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'teamRecords:$teamId:$season',
       preferCache: true,
+      maxAge: _stableCacheAge,
     );
     final players = data['players'] as List<dynamic>? ?? [];
     return TeamRecordsBundle(
@@ -87,6 +92,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'recordsOverview:$season',
       preferCache: true,
+      maxAge: _stableCacheAge,
     );
     final leaders = data['leaders'] as Map<String, dynamic>? ?? const {};
     final featured = data['featured'] as Map<String, dynamic>? ?? const {};
