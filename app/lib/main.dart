@@ -95,6 +95,10 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   }
 
   void _prefetchInitialData() {
+    if (_shouldSkipInitialPrefetch()) {
+      return;
+    }
+
     final now = DateTime.now();
     final today =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -120,6 +124,20 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         onError: (Object error, StackTrace stackTrace) {},
       ),
     );
+  }
+
+  bool _shouldSkipInitialPrefetch() {
+    if (_isWidgetTestBinding()) {
+      return true;
+    }
+    return AppConfig.instance.isLocal;
+  }
+
+  bool _isWidgetTestBinding() {
+    final bindingName = WidgetsBinding.instance.runtimeType.toString();
+    return bindingName.contains('TestWidgetsFlutterBinding') ||
+        bindingName.contains('AutomatedTestWidgetsFlutterBinding') ||
+        bindingName.contains('LiveTestWidgetsFlutterBinding');
   }
 
   @override
