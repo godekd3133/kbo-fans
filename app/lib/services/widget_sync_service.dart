@@ -42,6 +42,7 @@ class WidgetSyncService {
   WidgetSyncService._();
 
   static final WidgetSyncService instance = WidgetSyncService._();
+  String? _lastSyncSignature;
 
   Future<void> initialize() async {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
@@ -65,6 +66,11 @@ class WidgetSyncService {
     }
 
     final selected = _selectGame(games, myTeamId);
+    final signature = _buildSignature(games: games, myTeamId: myTeamId);
+    if (_lastSyncSignature == signature) {
+      return;
+    }
+    _lastSyncSignature = signature;
     await HomeWidget.saveWidgetData<String>('widget_my_team', myTeamId);
 
     if (selected == null) {
@@ -173,5 +179,23 @@ class WidgetSyncService {
     final hour = now.hour.toString().padLeft(2, '0');
     final minute = now.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  String _buildSignature({
+    required List<Game> games,
+    required String? myTeamId,
+  }) {
+    final payload = games
+        .map(
+          (game) => [
+            game.gameId,
+            game.status.name,
+            game.inning,
+            game.away.score,
+            game.home.score,
+          ].join(':'),
+        )
+        .join(',');
+    return '${myTeamId ?? '-'}|$payload';
   }
 }

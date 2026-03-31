@@ -81,11 +81,18 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(_lifecycleObserver);
     Future.microtask(() async {
       await _loadOnboardingState();
       await ref.read(myTeamProvider.notifier).load();
       _prefetchInitialData();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(_lifecycleObserver);
+    super.dispose();
   }
 
   Future<void> _loadOnboardingState() async {
@@ -143,6 +150,18 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    final myTeamId = ref.watch(myTeamProvider);
+    final today = _todayKey();
+    final scoreboardAsync = ref.watch(scoreboardProvider(today));
+
+    scoreboardAsync.whenData((games) {
+      unawaited(
+        WidgetSyncService.instance.syncScoreboard(
+          games: games,
+          myTeamId: myTeamId,
+        ),
+      );
+    });
 
     return MaterialApp.router(
       title: 'KBO Fans',
@@ -157,5 +176,29 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         return DevConsoleOverlay(child: child ?? const SizedBox.shrink());
       },
     );
+  }
+
+  String _todayKey() {
+    final now = DateTime.now();
+    return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  late final WidgetsBindingObserver _lifecycleObserver = _AppLifecycleObserver(
+    onResumed: () {
+      ref.invalidate(scoreboardProvider(_todayKey()));
+    },
+  );
+}
+
+class _AppLifecycleObserver with WidgetsBindingObserver {
+  _AppLifecycleObserver({required this.onResumed});
+
+  final VoidCallback onResumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      onResumed();
+    }
   }
 }
