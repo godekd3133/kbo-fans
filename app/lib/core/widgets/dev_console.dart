@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import '../theme/app_theme.dart';
@@ -11,6 +12,7 @@ class DevConsole {
 
   DevConsole._();
 
+  static const _dedupeWindow = Duration(seconds: 5);
   final List<LogEntry> _logs = [];
   final _listeners = <VoidCallback>[];
 
@@ -25,10 +27,19 @@ class DevConsole {
   List<LogEntry> get logs => List.unmodifiable(_logs);
 
   void log(String message, {LogLevel level = LogLevel.info}) {
-    _logs.insert(
-      0,
-      LogEntry(message: message, level: level, time: DateTime.now()),
-    );
+    final now = DateTime.now();
+    if (_logs.isNotEmpty) {
+      final head = _logs.first;
+      if (head.message == message &&
+          head.level == level &&
+          now.difference(head.time) <= _dedupeWindow) {
+        _logs[0] = head.copyWith(time: now, count: head.count + 1);
+        _notify();
+        return;
+      }
+    }
+
+    _logs.insert(0, LogEntry(message: message, level: level, time: now));
     // 최대 100개
     if (_logs.length > 100) _logs.removeLast();
     _notify();
@@ -46,15 +57,33 @@ class DevConsole {
 
 enum LogLevel { info, warn, error }
 
+enum LogCategory { all, api, kbo, ui, push }
+
 class LogEntry {
   final String message;
   final LogLevel level;
   final DateTime time;
+  final int count;
   const LogEntry({
     required this.message,
     required this.level,
     required this.time,
+    this.count = 1,
   });
+
+  LogEntry copyWith({
+    String? message,
+    LogLevel? level,
+    DateTime? time,
+    int? count,
+  }) {
+    return LogEntry(
+      message: message ?? this.message,
+      level: level ?? this.level,
+      time: time ?? this.time,
+      count: count ?? this.count,
+    );
+  }
 }
 
 /// 개발자 콘솔 FAB + 오버레이
@@ -67,22 +96,34 @@ class DevConsoleOverlay extends StatefulWidget {
 }
 
 class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
+  static const _prefsApiOnly = 'dev_console.api_only';
+  static const _prefsCategory = 'dev_console.category';
+  static const _prefsInfo = 'dev_console.level.info';
+  static const _prefsWarn = 'dev_console.level.warn';
+  static const _prefsError = 'dev_console.level.error';
   bool _isOpen = false;
+  bool _apiOnly = false;
+  bool _collapseOldLogs = true;
+  String _query = '';
+  LogCategory _category = LogCategory.all;
   final Set<LogLevel> _visibleLevels = {
     LogLevel.info,
     LogLevel.warn,
     LogLevel.error,
   };
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     DevConsole.instance.addListener(_onLog);
+    _restoreFilters();
   }
 
   @override
   void dispose() {
     DevConsole.instance.removeListener(_onLog);
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -96,10 +137,48 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
     });
   }
 
+  Future<void> _restoreFilters() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _apiOnly = prefs.getBool(_prefsApiOnly) ?? false;
+      _category = LogCategory.values.elementAt(
+        prefs.getInt(_prefsCategory) ?? LogCategory.all.index,
+      );
+      _visibleLevels
+        ..clear()
+        ..addAll({
+          if (prefs.getBool(_prefsInfo) ?? true) LogLevel.info,
+          if (prefs.getBool(_prefsWarn) ?? true) LogLevel.warn,
+          if (prefs.getBool(_prefsError) ?? true) LogLevel.error,
+        });
+      if (_visibleLevels.isEmpty) {
+        _visibleLevels.addAll(LogLevel.values);
+      }
+    });
+  }
+
+  Future<void> _persistFilters() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefsApiOnly, _apiOnly);
+    await prefs.setInt(_prefsCategory, _category.index);
+    await prefs.setBool(_prefsInfo, _visibleLevels.contains(LogLevel.info));
+    await prefs.setBool(_prefsWarn, _visibleLevels.contains(LogLevel.warn));
+    await prefs.setBool(_prefsError, _visibleLevels.contains(LogLevel.error));
+  }
+
   int get _errorCount =>
       DevConsole.instance.logs.where((l) => l.level == LogLevel.error).length;
   List<LogEntry> get _filteredLogs => DevConsole.instance.logs
       .where((entry) => _visibleLevels.contains(entry.level))
+      .where((entry) => !_apiOnly || _isApiLog(entry.message))
+      .where((entry) => _matchesCategory(entry.message))
+      .where(
+        (entry) =>
+            _query.isEmpty ||
+            entry.message.toLowerCase().contains(_query.toLowerCase()),
+      )
+      .where((entry) => !_collapseOldLogs || _isRecent(entry.time))
       .toList();
 
   @override
@@ -259,12 +338,120 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                         const SizedBox(height: 10),
                         Row(
                           children: [
+                            _quickChip(
+                              selected: !_apiOnly,
+                              label: 'ALL',
+                              onTap: () {
+                                setState(() => _apiOnly = false);
+                                _persistFilters();
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _quickChip(
+                              selected: _apiOnly,
+                              label: 'API',
+                              onTap: () {
+                                setState(() => _apiOnly = true);
+                                _persistFilters();
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _quickChip(
+                              selected: _collapseOldLogs,
+                              label: '최근',
+                              onTap: () => setState(
+                                () => _collapseOldLogs = !_collapseOldLogs,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
                             _filterChip(LogLevel.info, 'INFO'),
                             const SizedBox(width: 8),
                             _filterChip(LogLevel.warn, 'WARN'),
                             const SizedBox(width: 8),
                             _filterChip(LogLevel.error, 'ERROR'),
                           ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (value) {
+                                  setState(() => _query = value.trim());
+                                },
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  hintText: '로그 검색',
+                                  hintStyle: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textDisabled,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search,
+                                    size: 16,
+                                    color: AppColors.textDisabled,
+                                  ),
+                                  suffixIcon: _query.isEmpty
+                                      ? null
+                                      : GestureDetector(
+                                          onTap: () {
+                                            _searchController.clear();
+                                            setState(() => _query = '');
+                                          },
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 16,
+                                            color: AppColors.textDisabled,
+                                          ),
+                                        ),
+                                  filled: true,
+                                  fillColor: AppColors.background.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.divider,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.divider,
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.accent,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _categoryChip(LogCategory.all, 'ALL'),
+                              const SizedBox(width: 8),
+                              _categoryChip(LogCategory.api, 'API'),
+                              const SizedBox(width: 8),
+                              _categoryChip(LogCategory.kbo, 'KBO'),
+                              const SizedBox(width: 8),
+                              _categoryChip(LogCategory.ui, 'UI'),
+                              const SizedBox(width: 8),
+                              _categoryChip(LogCategory.push, 'PUSH'),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -293,10 +480,13 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                               };
                               final timeStr =
                                   '${entry.time.hour.toString().padLeft(2, '0')}:${entry.time.minute.toString().padLeft(2, '0')}:${entry.time.second.toString().padLeft(2, '0')}';
+                              final repeatSuffix = entry.count > 1
+                                  ? ' ×${entry.count}'
+                                  : '';
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Text(
-                                  '[$timeStr] ${entry.message}',
+                                  '[$timeStr] ${entry.message}$repeatSuffix',
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: color,
@@ -326,6 +516,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
             _visibleLevels.add(level);
           }
         });
+        _persistFilters();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -342,6 +533,94 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
             fontSize: 11,
             color: selected ? AppColors.textPrimary : AppColors.textDisabled,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _quickChip({
+    required bool selected,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.accent.withValues(alpha: 0.16)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AppColors.accent : AppColors.divider,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _isApiLog(String message) {
+    return message.startsWith('API ') ||
+        message.startsWith('DIAG ') ||
+        message.startsWith('HOME ') ||
+        message.startsWith('SCHEDULE ') ||
+        message.startsWith('RECORDS ') ||
+        message.startsWith('KBO ');
+  }
+
+  bool _matchesCategory(String message) {
+    switch (_category) {
+      case LogCategory.all:
+        return true;
+      case LogCategory.api:
+        return _isApiLog(message);
+      case LogCategory.kbo:
+        return message.startsWith('KBO ');
+      case LogCategory.ui:
+        return message.startsWith('Flutter:') ||
+            message.startsWith('HOME ') ||
+            message.startsWith('SCHEDULE ');
+      case LogCategory.push:
+        return message.startsWith('Push ') || message.contains('push');
+    }
+  }
+
+  bool _isRecent(DateTime time) {
+    return DateTime.now().difference(time) <= const Duration(minutes: 2);
+  }
+
+  Widget _categoryChip(LogCategory category, String label) {
+    final selected = _category == category;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _category = category);
+        _persistFilters();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.cardSub : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AppColors.textSecondary : AppColors.divider,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
           ),
         ),
       ),

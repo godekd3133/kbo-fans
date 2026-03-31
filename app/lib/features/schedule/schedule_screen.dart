@@ -247,7 +247,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   ),
                   const SizedBox(width: 8),
                   _filterChip(
-                    label: '마이팀 제외',
+                    label: '다른 경기',
                     selected: _teamFilter == ScheduleTeamFilter.otherTeamsOnly,
                     onTap: () => setState(
                       () => _teamFilter = ScheduleTeamFilter.otherTeamsOnly,
@@ -472,7 +472,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     if (_selectedDay == null) {
       return Center(
         child: Text(
-          '날짜를 선택하세요',
+          '날짜를 탭해 경기 일정을 보세요',
           style: TextStyle(color: AppColors.textDisabled),
         ),
       );

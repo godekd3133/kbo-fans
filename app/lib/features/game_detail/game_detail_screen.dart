@@ -550,6 +550,7 @@ class _HighlightCardState extends State<_HighlightCard> {
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             InkWell(
               onTap: isPlayable
@@ -594,47 +595,56 @@ class _HighlightCardState extends State<_HighlightCard> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    video.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 104),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      video.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: isPlayable
-                              ? () => _playInline(video.videoId)
-                              : () => _openUrl(video.videoUrl),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.live,
-                            foregroundColor: AppColors.textPrimary,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                          ),
-                          child: Text(
-                            _playingVideoId == video.videoId ? '재생 중' : '바로 재생',
-                          ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isPlayable
+                            ? () => _playInline(video.videoId)
+                            : () => _openUrl(video.videoUrl),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.live,
+                          foregroundColor: AppColors.textPrimary,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                        child: Text(
+                          _playingVideoId == video.videoId ? '재생 중' : '바로 재생',
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      IconButton(
+                    ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
                         onPressed: () => _openUrl(video.videoUrl),
-                        icon: const Icon(
-                          Icons.open_in_new_rounded,
-                          color: AppColors.textSecondary,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                        label: const Text('열기'),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

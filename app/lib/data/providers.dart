@@ -7,7 +7,6 @@ import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
 import 'repositories/api_game_repository.dart';
 import 'repositories/api_home_repository.dart';
-import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
 import 'models/game.dart';
@@ -34,11 +33,10 @@ final gameRepositoryProvider = Provider<GameRepository>((ref) {
     return apiRepository;
   }
 
-  if (AppConfig.instance.isDev) {
+  if (AppConfig.instance.isDev || AppConfig.instance.isLocal) {
     return apiRepository;
   }
-
-  return KboDirectRepository();
+  return apiRepository;
 });
 
 // ── 마이팀 전역 상태 ──

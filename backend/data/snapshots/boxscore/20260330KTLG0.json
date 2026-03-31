@@ -1,0 +1,32 @@
+{
+  "savedAt": "2026-03-31T08:12:14.948558+00:00",
+  "payload": {
+    "gameId": "20260329KTLG0",
+    "away": {
+      "teamId": "KT",
+      "batters": [
+        {
+          "name": "A"
+        }
+      ],
+      "pitchers": [
+        {
+          "name": "P"
+        }
+      ]
+    },
+    "home": {
+      "teamId": "LG",
+      "batters": [
+        {
+          "name": "B"
+        }
+      ],
+      "pitchers": [
+        {
+          "name": "Q"
+        }
+      ]
+    }
+  }
+}

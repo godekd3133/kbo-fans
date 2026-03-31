@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_DIR="$ROOT_DIR/app"
 BACKEND_DIR="$ROOT_DIR/backend"
+DEFAULT_ANDROID_SDK_ROOT="$HOME/Library/Android/sdk"
+DEFAULT_ANDROID_AVD="Medium_Phone_API_36"
 
 usage() {
   cat <<'EOF'
@@ -213,11 +215,197 @@ PY
 }
 
 has_android_emulator() {
-  if ! command -v emulator >/dev/null 2>&1; then
+  local emulator_bin
+  emulator_bin="$(android_emulator_bin)"
+  if [[ -z "$emulator_bin" ]]; then
     return 1
   fi
 
-  [[ -n "$(emulator -list-avds 2>/dev/null)" ]]
+  [[ -n "$("$emulator_bin" -list-avds 2>/dev/null)" ]]
+}
+
+android_sdk_root() {
+  if [[ -n "${ANDROID_SDK_ROOT:-}" && -d "${ANDROID_SDK_ROOT:-}" ]]; then
+    echo "$ANDROID_SDK_ROOT"
+    return
+  fi
+
+  if [[ -n "${ANDROID_HOME:-}" && -d "${ANDROID_HOME:-}" ]]; then
+    echo "$ANDROID_HOME"
+    return
+  fi
+
+  if [[ -d "$DEFAULT_ANDROID_SDK_ROOT" ]]; then
+    echo "$DEFAULT_ANDROID_SDK_ROOT"
+    return
+  fi
+
+  echo ""
+}
+
+android_adb_bin() {
+  local sdk_root
+  sdk_root="$(android_sdk_root)"
+  if [[ -n "$sdk_root" && -x "$sdk_root/platform-tools/adb" ]]; then
+    echo "$sdk_root/platform-tools/adb"
+    return
+  fi
+
+  command -v adb 2>/dev/null || true
+}
+
+android_emulator_bin() {
+  local sdk_root
+  sdk_root="$(android_sdk_root)"
+  if [[ -n "$sdk_root" && -x "$sdk_root/emulator/emulator" ]]; then
+    echo "$sdk_root/emulator/emulator"
+    return
+  fi
+
+  command -v emulator 2>/dev/null || true
+}
+
+android_java_home() {
+  if [[ -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
+    echo "$JAVA_HOME"
+    return
+  fi
+
+  local android_studio_jbr
+  android_studio_jbr="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+  if [[ -x "$android_studio_jbr/bin/java" ]]; then
+    echo "$android_studio_jbr"
+    return
+  fi
+
+  if command -v /usr/libexec/java_home >/dev/null 2>&1; then
+    /usr/libexec/java_home -v 17 2>/dev/null || true
+    return
+  fi
+
+  echo ""
+}
+
+running_android_serial() {
+  local adb_bin
+  adb_bin="$(android_adb_bin)"
+  if [[ -z "$adb_bin" ]]; then
+    echo ""
+    return
+  fi
+
+  "$adb_bin" devices | awk '/^emulator-[0-9]+\tdevice$/ {print $1; exit}'
+}
+
+pick_android_avd() {
+  local emulator_bin
+  emulator_bin="$(android_emulator_bin)"
+  if [[ -z "$emulator_bin" ]]; then
+    echo ""
+    return
+  fi
+
+  local avds
+  avds="$("$emulator_bin" -list-avds 2>/dev/null || true)"
+  if [[ -z "$avds" ]]; then
+    echo ""
+    return
+  fi
+
+  if printf '%s\n' "$avds" | rg -x "$DEFAULT_ANDROID_AVD" >/dev/null 2>&1; then
+    echo "$DEFAULT_ANDROID_AVD"
+    return
+  fi
+
+  printf '%s\n' "$avds" | head -n 1
+}
+
+wait_for_android_boot() {
+  local adb_bin="$1"
+  local serial="$2"
+  local attempts="${3:-90}"
+
+  local i
+  for ((i = 0; i < attempts; i++)); do
+    if [[ "$("$adb_bin" -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == "1" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
+ensure_android_runtime() {
+  local adb_bin
+  local emulator_bin
+  local serial
+  local avd_name
+
+  adb_bin="$(android_adb_bin)"
+  emulator_bin="$(android_emulator_bin)"
+
+  if [[ -z "$adb_bin" || -z "$emulator_bin" ]]; then
+    cat >&2 <<'EOF'
+Android SDK tools were not found.
+
+Expected:
+- ~/Library/Android/sdk/platform-tools/adb
+- ~/Library/Android/sdk/emulator/emulator
+
+Next step:
+1. Install Android Studio
+2. Install Android SDK Platform-Tools and Emulator
+3. Rerun:
+   ./scripts/codex-run.sh android
+EOF
+    exit 1
+  fi
+
+  serial="$(running_android_serial)"
+  if [[ -n "$serial" ]]; then
+    echo "$serial"
+    return
+  fi
+
+  avd_name="$(pick_android_avd)"
+  if [[ -z "$avd_name" ]]; then
+    cat >&2 <<'EOF'
+No Android emulator (AVD) was found.
+
+Next step:
+1. Open Android Studio
+2. Open Device Manager
+3. Create an Android Virtual Device
+4. Rerun:
+   ./scripts/codex-run.sh android
+EOF
+    exit 1
+  fi
+
+  echo "Launching Android emulator: $avd_name"
+  "$emulator_bin" -avd "$avd_name" >/tmp/kbo-fans-android-emulator.log 2>&1 &
+
+  local i
+  for ((i = 0; i < 90; i++)); do
+    serial="$(running_android_serial)"
+    if [[ -n "$serial" ]]; then
+      break
+    fi
+    sleep 2
+  done
+
+  if [[ -z "$serial" ]]; then
+    echo "Android emulator did not appear in adb devices." >&2
+    exit 1
+  fi
+
+  if ! wait_for_android_boot "$adb_bin" "$serial"; then
+    echo "Android emulator boot did not complete in time." >&2
+    exit 1
+  fi
+
+  echo "$serial"
 }
 
 flutter_cmd() {
@@ -307,21 +495,39 @@ EOF
 }
 
 run_android() {
-  if ! has_android_emulator; then
+  local java_home
+  local serial
+
+  java_home="$(android_java_home)"
+  if [[ -z "$java_home" ]]; then
     cat >&2 <<'EOF'
-No Android emulator (AVD) was found.
+Java 17 runtime was not found for Android builds.
 
 Next step:
-1. Open Android Studio
-2. Open Device Manager
-3. Create and start an Android Virtual Device
-4. Rerun:
+1. Install Android Studio (recommended), or
+2. Install JDK 17 and export JAVA_HOME
+3. Rerun:
    ./scripts/codex-run.sh android
 EOF
     exit 1
   fi
 
-  run_flutter run -d android
+  serial="$(ensure_android_runtime)"
+  echo "Running on Android device/emulator: $serial"
+
+  (
+    export JAVA_HOME="$java_home"
+    export ANDROID_SDK_ROOT="$(android_sdk_root)"
+    cd "$APP_DIR"
+    local flutter
+    flutter="$(flutter_cmd)"
+    if [[ -z "$flutter" ]]; then
+      echo "Flutter or FVM is not installed or not on PATH." >&2
+      exit 1
+    fi
+    eval "$flutter pub get"
+    eval "$flutter run -d $serial --dart-define=APP_ENV=local"
+  )
 }
 
 run_web() {
@@ -391,6 +597,10 @@ run_doctor() {
 
   if has_android_emulator; then
     echo "Android emulator (AVD): available"
+    echo "android sdk: $(android_sdk_root)"
+    echo "android adb: $(android_adb_bin)"
+    echo "android emulator: $(android_emulator_bin)"
+    echo "android java: $(android_java_home)"
   else
     echo "Android emulator (AVD): not installed"
   fi

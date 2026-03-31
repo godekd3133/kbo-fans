@@ -183,7 +183,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
-              current.gb == '0' ? '선두권' : '${current.gb}G차',
+              current.gb == '0' ? '공동 선두' : '${current.gb}G차',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,

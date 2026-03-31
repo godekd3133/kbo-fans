@@ -49,20 +49,21 @@ class ApiClient {
       ),
     );
 
-    _dio.interceptors.add(
-      LogInterceptor(
-        requestBody: !AppConfig.instance.isRelease,
-        responseBody: !AppConfig.instance.isRelease,
-        error: true,
-        logPrint: (obj) {
-          // Release에서는 로그 출력 안 함
-          if (!AppConfig.instance.isRelease) {
-            // ignore: avoid_print
-            print(obj);
-          }
-        },
-      ),
-    );
+    if (!AppConfig.instance.isLocal) {
+      _dio.interceptors.add(
+        LogInterceptor(
+          requestBody: !AppConfig.instance.isRelease,
+          responseBody: !AppConfig.instance.isRelease,
+          error: true,
+          logPrint: (obj) {
+            if (!AppConfig.instance.isRelease) {
+              // ignore: avoid_print
+              print(obj);
+            }
+          },
+        ),
+      );
+    }
   }
 
   /// GET 요청 → ApiEnvelope.data 반환
@@ -289,10 +290,7 @@ class _CachedPayload {
   final Map<String, dynamic> data;
   final DateTime cachedAt;
 
-  const _CachedPayload({
-    required this.data,
-    required this.cachedAt,
-  });
+  const _CachedPayload({required this.data, required this.cachedAt});
 }
 
 class ApiException implements Exception {

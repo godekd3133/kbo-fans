@@ -60,6 +60,15 @@ class PlayerStatsCrawler(BaseCrawler):
                 players.extend(group_players)
 
         def enrich(player: Dict[str, Any]) -> Dict[str, Any]:
+            try:
+                profile_summary = self._fetch_player_profile_summary(
+                    player_id=player["id"],
+                    player_type=player["playerType"],
+                )
+                player = {**player, **profile_summary}
+            except Exception:
+                pass
+
             roster_key = (player.get("name", ""), player.get("number", 0))
             is_entry = roster_key in entry_keys
             if not is_entry:
@@ -92,6 +101,19 @@ class PlayerStatsCrawler(BaseCrawler):
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
             return list(executor.map(enrich, players))
+
+    def _fetch_player_profile_summary(
+        self,
+        *,
+        player_id: str,
+        player_type: str,
+    ) -> Dict[str, Any]:
+        detail_url = self._detail_url(player_id, player_type)
+        html = self._get_text(
+            f"{self.base_url}{detail_url}",
+            breaker_key="kbo_player_detail",
+        )
+        return self._parse_profile(html, player_id, player_type)
 
     def get_player_detail(
         self,

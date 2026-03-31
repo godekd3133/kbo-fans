@@ -135,6 +135,8 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - `./scripts/codex-run-web.sh` 는 기본 웹 프리뷰 경로이며, `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
 - `./scripts/codex-run-web-static.sh` 는 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 프리뷰 경로입니다.
 - `./scripts/codex-run-web-dev.sh` 는 Chrome 디버그 세션을 직접 띄우는 개발용 경로입니다.
+- `./scripts/codex-run-android.sh` 는 Android Studio JBR(Java 17), Android SDK, AVD 부팅, `APP_ENV=local` 기준까지 포함한 Codex용 안드로이드 실행 경로입니다.
+- 안드로이드 실행 환경 메모는 `docs/CODEX_ANDROID_ENV.md` 를 참고합니다.
 
 ## Run The Backend
 

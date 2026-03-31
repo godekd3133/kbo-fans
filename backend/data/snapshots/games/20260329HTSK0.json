@@ -1,0 +1,86 @@
+{
+  "savedAt": "2026-03-31T08:08:17.907577+00:00",
+  "payload": {
+    "date": "2026-03-29",
+    "time": "14:00",
+    "gameId": "20260329HTSK0",
+    "awayId": "HT",
+    "awayName": "KIA",
+    "awayScore": 6,
+    "homeId": "SK",
+    "homeName": "SSG",
+    "homeScore": 11,
+    "stadium": "문학",
+    "status": "FINAL",
+    "inning": "경기종료",
+    "startTime": "14:00",
+    "current": {
+      "balls": 1,
+      "strikes": 2,
+      "outs": 3,
+      "batterName": "조병현",
+      "pitcherName": "나성범"
+    },
+    "crowd": 23000,
+    "away": {
+      "teamId": "HT",
+      "teamName": "KIA 타이거즈",
+      "shortName": "KIA",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HT_s.png",
+      "score": 6,
+      "scores": [
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        4,
+        0,
+        0,
+        null,
+        null,
+        null
+      ],
+      "hits": 8,
+      "errors": 0,
+      "balls": 8
+    },
+    "home": {
+      "teamId": "SK",
+      "teamName": "SSG 랜더스",
+      "shortName": "SSG",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_SK_s.png",
+      "score": 11,
+      "scores": [
+        0,
+        4,
+        5,
+        1,
+        0,
+        0,
+        0,
+        1,
+        null,
+        null,
+        null,
+        null
+      ],
+      "hits": 8,
+      "errors": 0,
+      "balls": 8
+    },
+    "ticketInfo": {
+      "vendorKey": "interpark",
+      "vendorName": "인터파크 티켓",
+      "vendorUrl": "https://tickets.interpark.com",
+      "openAt": "2026-03-22T11:00:00",
+      "source": "inferred",
+      "note": "홈팀 기본 예매 정책 기준 추정값"
+    },
+    "highlightInfo": {
+      "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260329&gameId=20260329HTSK0&section=HIGHLIGHT",
+      "youtubeVideos": []
+    }
+  }
+}

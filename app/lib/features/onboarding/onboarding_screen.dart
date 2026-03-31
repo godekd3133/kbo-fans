@@ -211,7 +211,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               GestureDetector(
                 onTap: _saveAndProceed,
                 child: Text(
-                  '건너뛰기',
+                  '나중에 설정에서 선택하기',
                   style: TextStyle(fontSize: 14, color: AppColors.textDisabled),
                 ),
               ),

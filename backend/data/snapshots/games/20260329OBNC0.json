@@ -1,0 +1,86 @@
+{
+  "savedAt": "2026-03-31T08:08:17.915256+00:00",
+  "payload": {
+    "date": "2026-03-29",
+    "time": "14:00",
+    "gameId": "20260329OBNC0",
+    "awayId": "OB",
+    "awayName": "두산",
+    "awayScore": 9,
+    "homeId": "NC",
+    "homeName": "NC",
+    "homeScore": 6,
+    "stadium": "창원",
+    "status": "FINAL",
+    "inning": "경기종료",
+    "startTime": "14:01",
+    "current": {
+      "balls": 3,
+      "strikes": 3,
+      "outs": 3,
+      "batterName": "김형준",
+      "pitcherName": "김택연"
+    },
+    "crowd": 18128,
+    "away": {
+      "teamId": "OB",
+      "teamName": "두산 베어스",
+      "shortName": "두산",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_OB_s.png",
+      "score": 9,
+      "scores": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        2,
+        5,
+        0,
+        null,
+        null,
+        null
+      ],
+      "hits": 10,
+      "errors": 0,
+      "balls": 5
+    },
+    "home": {
+      "teamId": "NC",
+      "teamName": "NC 다이노스",
+      "shortName": "NC",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_NC_s.png",
+      "score": 6,
+      "scores": [
+        0,
+        0,
+        0,
+        4,
+        0,
+        1,
+        1,
+        0,
+        0,
+        null,
+        null,
+        null
+      ],
+      "hits": 10,
+      "errors": 0,
+      "balls": 6
+    },
+    "ticketInfo": {
+      "vendorKey": "ticketlink",
+      "vendorName": "티켓링크",
+      "vendorUrl": "https://www.ticketlink.co.kr",
+      "openAt": "2026-03-22T11:00:00",
+      "source": "inferred",
+      "note": "홈팀 기본 예매 정책 기준 추정값"
+    },
+    "highlightInfo": {
+      "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260329&gameId=20260329OBNC0&section=HIGHLIGHT",
+      "youtubeVideos": []
+    }
+  }
+}

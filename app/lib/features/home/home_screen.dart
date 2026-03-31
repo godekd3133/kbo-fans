@@ -874,7 +874,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
               const SizedBox(height: 2),
               const Text(
-                '마이팀과 오늘 경기 흐름을 한 번에',
+                '오늘 경기와 마이팀을 먼저 확인하세요',
                 style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
               ),
             ],
@@ -894,7 +894,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 child: Row(
                   children: [
                     Text(
-                      dateStr,
+                      '오늘 $dateStr',
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,

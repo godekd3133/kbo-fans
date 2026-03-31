@@ -189,7 +189,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(12)),
               child: Column(
                 children: [
-                  _notifRow('전체 경기 알림', '켜면 마이팀 외 경기 이벤트도 함께 받습니다', _notifAllGames, teamColor, (v) async {
+                  _notifRow('리그 전체 알림', '켜면 마이팀 외 경기 이벤트도 함께 받습니다', _notifAllGames, teamColor, (v) async {
                     setState(() => _notifAllGames = v);
                     await _savePushSettings();
                   }),

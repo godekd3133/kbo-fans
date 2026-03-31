@@ -204,6 +204,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   Widget _buildTeamRecords(String teamId) {
     final team = KboTeams.byId(teamId);
     final teamRecordsAsync = ref.watch(teamRecordsProvider('$teamId|$_selectedSeason'));
+    final standingsAsync = ref.watch(standingsProvider(_selectedSeason));
     _logTeamRecordsLoad(teamId, teamRecordsAsync);
 
     return Scaffold(
@@ -252,7 +253,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
               child: teamRecordsAsync.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, stackTrace) => const SizedBox.shrink(),
-                data: (teamRecords) => _teamStatsCard(teamRecords.teamStats),
+                data: (teamRecords) => _teamStatsCard(
+                  teamRecords.teamStats,
+                  standingsAsync.asData?.value,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -671,36 +675,72 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     );
   }
 
-  Widget _teamStatsCard(TeamStats teamStats) {
+  Widget _teamStatsCard(
+    TeamStats teamStats,
+    List<TeamStanding>? standings,
+  ) {
+    final teamStanding = standings
+        ?.where((standing) => standing.teamId == teamStats.teamId)
+        .firstOrNull;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _teamStatColumn(
-              '팀 타격',
-              [
-                'AVG ${teamStats.hitting['AVG'] ?? '-'}',
-                'HR ${teamStats.hitting['HR'] ?? '-'}',
-                'OPS ${teamStats.hitting['OPS'] ?? '-'}',
-              ],
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _teamStatColumn(
+                  '팀 타율',
+                  [
+                    '타율 ${teamStats.hitting['AVG'] ?? '-'}',
+                    'OPS ${teamStats.hitting['OPS'] ?? '-'}',
+                    '홈런 ${teamStats.hitting['HR'] ?? '-'}',
+                  ],
+                ),
+              ),
+              Container(width: 1, height: 56, color: AppColors.divider),
+              Expanded(
+                child: _teamStatColumn(
+                  '팀 투수',
+                  [
+                    'ERA ${teamStats.pitching['ERA'] ?? '-'}',
+                    'WHIP ${teamStats.pitching['WHIP'] ?? '-'}',
+                    '세이브 ${teamStats.pitching['SV'] ?? '-'}',
+                  ],
+                ),
+              ),
+            ],
           ),
-          Container(width: 1, height: 56, color: AppColors.divider),
-          Expanded(
-            child: _teamStatColumn(
-              '팀 투수',
-              [
-                'ERA ${teamStats.pitching['ERA'] ?? '-'}',
-                'WHIP ${teamStats.pitching['WHIP'] ?? '-'}',
-                'SV ${teamStats.pitching['SV'] ?? '-'}',
-              ],
+          if (teamStanding != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.cardSub,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _summaryMetric('팀 순위', '${teamStanding.rank}위'),
+                  ),
+                  Container(width: 1, height: 36, color: AppColors.divider),
+                  Expanded(
+                    child: _summaryMetric('팀 승률', teamStanding.pct),
+                  ),
+                  Container(width: 1, height: 36, color: AppColors.divider),
+                  Expanded(
+                    child: _summaryMetric('게임차', teamStanding.gb),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
