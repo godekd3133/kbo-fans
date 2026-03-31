@@ -607,8 +607,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       );
     }
 
-    if (overview?.todayPlayer.name != null) {
-      final player = overview!.todayPlayer;
+    final featuredPlayer = overview == null
+        ? null
+        : (overview.todayHitter.name != null
+              ? overview.todayHitter
+              : overview.todayPitcher.name != null
+              ? overview.todayPitcher
+              : null);
+
+    if (featuredPlayer?.name != null) {
+      final player = featuredPlayer!;
       final route = player.playerId != null
           ? '/records/player/${player.playerId}?season=$season'
           : '/records';
