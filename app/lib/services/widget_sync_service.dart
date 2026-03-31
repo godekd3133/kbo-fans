@@ -9,6 +9,7 @@ import '../data/models/game.dart';
 import '../data/repositories/api_game_repository.dart';
 import '../data/repositories/game_repository.dart';
 import '../data/repositories/kbo_direct_repository.dart';
+import 'live_activity_service.dart';
 
 const widgetRefreshTaskName = 'kbo_widget_refresh';
 const _widgetGroupId = 'group.com.kbofans.kbo_fans';
@@ -75,6 +76,7 @@ class WidgetSyncService {
         HomeWidget.saveWidgetData<String>('widget_updated_at', _updatedAtText()),
       ]);
       await _updateWidget();
+      await LiveActivityService.instance.endCurrentScore();
       return;
     }
 
@@ -97,6 +99,10 @@ class WidgetSyncService {
     ]);
 
     await _updateWidget();
+    await LiveActivityService.instance.syncCurrentScore(
+      games: games,
+      myTeamId: myTeamId,
+    );
   }
 
   Future<void> registerBackgroundRefresh() async {
@@ -122,21 +128,44 @@ class WidgetSyncService {
       return null;
     }
 
-    if (myTeamId != null) {
-      for (final game in games) {
-        if (game.away.teamId == myTeamId || game.home.teamId == myTeamId) {
-          return game;
-        }
-      }
+    final liveMyTeamGame = _findGame(
+      games,
+      myTeamId: myTeamId,
+      onlyLive: true,
+    );
+    if (liveMyTeamGame != null) {
+      return liveMyTeamGame;
     }
 
-    for (final game in games) {
-      if (game.status == GameStatus.live) {
-        return game;
-      }
+    final liveGame = _findGame(games, onlyLive: true);
+    if (liveGame != null) {
+      return liveGame;
+    }
+
+    final myTeamGame = _findGame(games, myTeamId: myTeamId);
+    if (myTeamGame != null) {
+      return myTeamGame;
     }
 
     return games.first;
+  }
+
+  Game? _findGame(
+    List<Game> games, {
+    String? myTeamId,
+    bool onlyLive = false,
+  }) {
+    for (final game in games) {
+      if (onlyLive && game.status != GameStatus.live) {
+        continue;
+      }
+      if (myTeamId == null ||
+          game.away.teamId == myTeamId ||
+          game.home.teamId == myTeamId) {
+        return game;
+      }
+    }
+    return null;
   }
 
   String _updatedAtText() {

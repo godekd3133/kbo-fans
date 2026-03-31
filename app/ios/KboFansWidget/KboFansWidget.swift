@@ -1,3 +1,4 @@
+import ActivityKit
 import SwiftUI
 import WidgetKit
 
@@ -77,7 +78,6 @@ struct KboFansWidgetEntryView: View {
   }
 }
 
-@main
 struct KboFansWidget: Widget {
   let kind: String = "KboFansWidget"
 
@@ -88,5 +88,138 @@ struct KboFansWidget: Widget {
     .configurationDisplayName("KBO Fans")
     .description("마이팀 혹은 현재 경기 점수를 빠르게 확인합니다.")
     .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular])
+  }
+}
+
+@available(iOS 16.1, *)
+struct KboFansLiveActivityView: View {
+  let context: ActivityViewContext<KboFansScoreAttributes>
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(alignment: .center, spacing: 12) {
+        scoreColumn(team: context.state.awayTeam, score: context.state.awayScore)
+        Spacer(minLength: 8)
+        inningBadge
+        Spacer(minLength: 8)
+        scoreColumn(team: context.state.homeTeam, score: context.state.homeScore, trailing: true)
+      }
+
+      HStack {
+        Label(context.state.stadium, systemImage: "mappin.and.ellipse")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+        Spacer()
+        Text("업데이트 \(context.state.updatedAt)")
+          .font(.caption2)
+          .foregroundStyle(.secondary)
+      }
+    }
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
+    .activityBackgroundTint(Color.black.opacity(0.94))
+    .activitySystemActionForegroundColor(.white)
+  }
+
+  private func scoreColumn(team: String, score: Int, trailing: Bool = false) -> some View {
+    VStack(alignment: trailing ? .trailing : .leading, spacing: 4) {
+      Text(team)
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+      Text("\(score)")
+        .font(.system(size: 30, weight: .bold, design: .rounded))
+        .foregroundStyle(.white)
+    }
+  }
+
+  private var inningBadge: some View {
+    Text(context.state.inning)
+      .font(.caption.weight(.semibold))
+      .foregroundStyle(.white)
+      .padding(.horizontal, 10)
+      .padding(.vertical, 6)
+      .background(
+        Capsule()
+          .fill(Color(red: 1.0, green: 0.27, blue: 0.27))
+      )
+  }
+}
+
+@available(iOS 16.1, *)
+struct KboFansLiveActivityWidget: Widget {
+  var body: some WidgetConfiguration {
+    ActivityConfiguration(for: KboFansScoreAttributes.self) { context in
+      KboFansLiveActivityView(context: context)
+    } dynamicIsland: { context in
+      DynamicIsland {
+        DynamicIslandExpandedRegion(.leading) {
+          VStack(alignment: .leading, spacing: 2) {
+            Text(context.state.awayTeam)
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+            Text("\(context.state.awayScore)")
+              .font(.title3.weight(.bold))
+              .foregroundStyle(.white)
+          }
+        }
+        DynamicIslandExpandedRegion(.center) {
+          Text(context.state.inning)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+              Capsule()
+                .fill(Color(red: 1.0, green: 0.27, blue: 0.27))
+            )
+        }
+        DynamicIslandExpandedRegion(.trailing) {
+          VStack(alignment: .trailing, spacing: 2) {
+            Text(context.state.homeTeam)
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+            Text("\(context.state.homeScore)")
+              .font(.title3.weight(.bold))
+              .foregroundStyle(.white)
+          }
+        }
+        DynamicIslandExpandedRegion(.bottom) {
+          HStack {
+            Label(context.state.stadium, systemImage: "baseball")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+            Spacer()
+            Text("업데이트 \(context.state.updatedAt)")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+        }
+      } compactLeading: {
+        Text("\(context.state.awayScore)")
+          .font(.headline.weight(.bold))
+          .foregroundStyle(.white)
+      } compactTrailing: {
+        Text("\(context.state.homeScore)")
+          .font(.headline.weight(.bold))
+          .foregroundStyle(.white)
+      } minimal: {
+        Text("\(context.state.awayScore):\(context.state.homeScore)")
+          .font(.caption2.weight(.bold))
+          .foregroundStyle(.white)
+      }
+      .keylineTint(Color(red: 1.0, green: 0.27, blue: 0.27))
+    }
+  }
+}
+
+@main
+struct KboFansWidgetBundle: WidgetBundle {
+  @WidgetBundleBuilder
+  var body: some Widget {
+    KboFansWidget()
+    if #available(iOS 16.1, *) {
+      KboFansLiveActivityWidget()
+    }
   }
 }
