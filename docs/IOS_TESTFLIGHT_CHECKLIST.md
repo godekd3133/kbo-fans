@@ -87,6 +87,27 @@ Organizer 에서:
 - [ ] App Store Connect > TestFlight 에 빌드 표시
 - [ ] processing 완료
 
+## GitHub Actions 서명 빌드 시크릿
+
+GitHub Actions 에서 signed IPA 까지 생성하려면 아래 시크릿이 필요하다.
+
+- `IOS_CERTIFICATE_P12_BASE64`
+- `IOS_CERTIFICATE_PASSWORD`
+- `IOS_RUNNER_PROFILE_BASE64`
+- `IOS_WIDGET_PROFILE_BASE64`
+- `IOS_RUNNER_PROFILE_SPECIFIER`
+- `IOS_WIDGET_PROFILE_SPECIFIER`
+- `IOS_TEAM_ID`
+- 선택: `IOS_EXPORT_METHOD`
+  - 기본값은 `app-store`
+
+이 시크릿이 준비되면 `Actions > App Build Artifacts` 에서 `platform=ios`, `build_signed_ios_ipa=true` 로 실행해 `.ipa` 를 아티팩트로 받을 수 있다.
+
+주의:
+
+- 위젯 extension 이 있으므로 Runner 와 Widget 두 provisioning profile 을 모두 준비해야 한다.
+- 시크릿이 없으면 기본 워크플로우는 simulator 용 unsigned 앱만 생성한다.
+
 ## 8. 내부 테스트
 
 - [ ] 내부 테스터 그룹 생성

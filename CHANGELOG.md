@@ -14,6 +14,11 @@
 
 - 루트 `README.md` 추가
 - 루트 `CHANGELOG.md` 추가
+- GitHub Actions 수동 빌드 워크플로우 추가 (`.github/workflows/app-build-artifacts.yml`)
+  - Android `apk` / `aab`
+  - iOS simulator 앱 zip
+  - 선택적 signed iOS `ipa`
+  - Web 정적 빌드 zip
 - Codex 앱 실행 액션용 `scripts/codex-run.sh` 추가
 - 플랫폼 분리 Codex 실행 액션용 래퍼 스크립트 추가
   - `scripts/codex-run-ios.sh`
@@ -33,6 +38,7 @@
 
 ### Changed
 
+- 배포/서명 문서에 GitHub Actions 기반 빌드본 추출 절차와 필요한 CI 시크릿 항목을 추가
 - 웹에서 온보딩, 홈, 일정, 순위, 설정 화면이 브라우저 전체 폭으로 과도하게 늘어나지 않도록 모바일 폭 기준 레이아웃으로 정리
 - 홈 화면의 마이팀 미선택 상태 CTA와 오늘의 야구 빠른 이동 동선을 보강
 - 일정 화면에 달력 범례를 추가해 마이팀 경기일과 일반 경기일을 더 쉽게 구분하도록 개선

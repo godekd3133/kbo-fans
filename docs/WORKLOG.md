@@ -62,6 +62,8 @@
 - [x] 웹 HTML 스플래시에 DOM 감지/timeout 제거 fallback 추가
 - [x] 정적 빌드 기반 `web-static` 프리뷰 스크립트 추가
 - [x] 기본 `codex-run-web.sh` 를 정적 프리뷰 기준으로 전환하고 `codex-run-web-dev.sh` 추가
+- [x] 게임 상세 UI 의도를 `docs/GAME_DETAIL_UI_NOTES.md` 로 문서화
+- [x] 기기 단독모드 디버깅 메모를 `docs/GAME_DETAIL_DEBUG_NOTES.md` 로 문서화
 
 ### 확인 사항
 - `flutter run -d chrome` 디버그 세션은 정상 렌더링됨
@@ -348,6 +350,7 @@
 - [x] iOS WidgetKit용 데이터 공유/배경 갱신 훅 및 위젯 소스 초안 추가
 - [x] 반복 패턴을 `.claude/skills/` 로 승격 (`kbo-asmx-direct-integration`)
 - [x] AGENTS / CLAUDE / SKILL_REFERENCE 에 재사용 인사이트 동기화
+- [x] 앱 단독 모드 전환 현황 문서 추가 (`docs/APP_STANDALONE_MODE.md`)
 
 ### 한계
 - Android 위젯의 시스템 `updatePeriodMillis`는 30분 미만으로 내려갈 수 없어서 15분 주기는 Workmanager 기반 best-effort로 보강
@@ -516,6 +519,13 @@ kbo_fans/
 ## 2026-03-31
 
 ### 작업 내용
+- [x] native 앱 기본 데이터 경로를 `direct KBO only`에서 `API first + direct fallback` 구조로 전환해 홈/상세/relay/lineup이 같은 서버 응답을 우선 사용하도록 정리
+- [x] 홈 스코어보드 live 경기에서 `H/E/B`가 0으로 보이던 문제를 수정하기 위해 backend scoreboard service에 `LiveTextView1.aspx` totals fallback 추가
+- [x] live 경기 scoreboard 응답에서 `예정/경기중` 같은 뭉툭한 inning 문구 대신 `Main.asmx` 기준 현재 이닝(`8회말` 등)이 우선되도록 merge 순서 정리
+- [x] 종료 경기 relay가 득점 요약만 내려오던 문제를 수정해 final 상태에서도 crawler 원문 play-by-play를 우선 시도하고, 실패 시에만 summary fallback 사용
+- [x] 문자중계 회차 칩 점프가 lazy sliver 문맥에서 실패하던 문제를 수정하기 위해 relay 카드 렌더를 전체 Column 구조로 변경
+- [x] 경기 상세 `문자중계` 탭의 현재 타석 카드를 이닝/주자/타자/투수/투구수/BSO와 최근 교체/직전 플레이가 함께 보이도록 재구성
+- [x] relay 목록을 최신 seq 기준 역순 정렬하고, 타석 결과 카드에 이벤트 배지와 플레이 주체 텍스트를 추가
 - [x] 웹 검증 중 발견된 경기 상세 `박스스코어` / `라인업` 500 오류 수정
 - [x] 예정 경기에서 KBO 박스스코어 응답 키가 없을 때 빈 데이터로 정상 응답하도록 방어 로직 추가
 - [x] 기록실 팀 상세 `/team/{teamId}/records`가 선수 크롤링 타임아웃으로 전체 500이 되던 문제를 부분 성공 응답으로 변경
@@ -556,8 +566,46 @@ kbo_fans/
 - KBO `GetScheduleList` 2026-03 응답에서 `03.31(화)` 예정 경기 행은 review/relay 링크가 비어 있어 기존 파서가 `gameId`를 빈 값으로 처리하던 것을 확인
 - KBO `Main.asmx/GetKboGameList` 2026-03-31 응답에서 `GAME_STATE_SC=2` 와 현재 타석 count 필드가 live 판정 근거로 유효함을 확인
 - KBO `LiveTextView2.aspx` 20260331OBSS0 응답이 로그인 후가 아닌 direct 호출에서도 relay markup(`#numCont*`, `.playerBox`, `p.present`)을 반환하는 것을 확인
+- live direct lineup에서 `GetLineUpAnalysis`는 타선만 제공하고 선발명은 비운다는 점을 확인하고, `Main.asmx/GetKboGameList`의 `T_PIT_P_NM/B_PIT_P_NM` 및 relay 현재 투수로 선발/불펜 fallback 합성 로직을 추가
+- live relay 교체 문구(`투수 오러클린 : 투수 백정현 (으)로 교체`)에서 불펜 투수 순서를 복원할 수 있음을 확인하고, local direct 라인업 탭 투수 fallback에 relay 기반 불펜 목록을 연결
+- direct boxscore fallback에도 `투수 운용`과 `라인업 기준 타순` 섹션을 추가해 공식 박스스코어 payload가 비어도 라이브 경기 맥락을 유지하도록 보강
+- 기록실/선수 데이터 로딩은 모바일 local에서도 `API -> 기기 로컬 snapshot -> 번들 asset` 순서로 동작하도록 `DeviceSnapshotPlayerRepository`를 추가
 - `fvm flutter analyze --no-fatal-infos` 통과
 
 ### 문서화
+- [x] `docs/APP_SPEC.md` 문자중계 탭 UI 요소 설명을 최신 relay 카드 구조 기준으로 갱신
+- [x] `docs/APP_SPEC.md`에 종료 경기 relay의 full play-by-play 우선 / summary fallback 정책 반영
 - [x] 홈 전용 aggregate endpoint 기반 성능 개선 제안서 작성 (`docs/PERFORMANCE_PROPOSAL_HOME_AGGREGATE.md`)
 - [x] 홈 aggregate endpoint 구현 계획서 작성 (`docs/PERFORMANCE_IMPLEMENTATION_PLAN_HOME_AGGREGATE.md`)
+
+### 후속 확인 필요
+- [ ] local Android/iOS 기기 단독모드에서 앱 시작 직후 종료가 재발하지 않는지 확인
+- [ ] local standalone에서 위젯 / Live Activity / 로컬 알림이 실제로 동작하는지 확인
+- [ ] direct KBO `SR_ID` 기반 요청 변경 후 점수판 H/E/B, 이닝별 점수, 라인업, 박스스코어가 실경기 기준으로 안정화됐는지 확인
+- [ ] direct relay 현재 타석 카드의 팀 로고 / 선수 프로필 이미지 렌더가 실제 기기에서 정상인지 확인
+
+- [x] iOS 런치 스크린 문구를 단순화하고, AppDelegate/Flutter 첫 프레임 startup 타이밍 로그를 추가해 첫 프레임 이전 지연 구간을 구분 가능하게 함
+- [x] 최초 startup preload는 API 캐시/스냅샷을 경기·일정·순위·리그 기록·전 팀 기록실·당일 경기 상세까지 순차 저장하고, Flutter boot 화면은 진행 상태를 단계별로 계속 갱신하도록 조정
+
+---
+
+## 2026-04-01
+
+### 작업 내용
+- [x] GitHub Actions 수동 빌드 워크플로우 `.github/workflows/app-build-artifacts.yml` 추가
+- [x] `platform` (`android` / `ios` / `web` / `all`) 과 `app_environment` (`local` / `dev` / `release` / `all`) 입력으로 빌드 매트릭스를 선택할 수 있게 구성
+- [x] Android 에서 환경별 `apk`, `aab` 아티팩트를 업로드하도록 구성
+- [x] iOS 에서 환경별 unsigned simulator 앱 zip 아티팩트를 업로드하도록 구성
+- [x] iOS 인증서/프로비저닝 시크릿이 준비된 경우 선택적으로 signed `ipa` 를 생성하도록 구성
+- [x] Web 에서 환경별 정적 빌드 zip 아티팩트를 업로드하도록 구성
+- [x] README / 배포 가이드 / Android 서명 가이드 / iOS TestFlight 체크리스트에 GitHub Actions 빌드본 추출 절차와 CI 시크릿 목록 반영
+
+### 검증 메모
+- GitHub Actions 워크플로우는 `workflow_dispatch` 수동 실행 기준으로 설계함
+- Android 서명 시크릿이 없으면 현재 Gradle 정책대로 debug signing fallback release 빌드가 생성되도록 유지
+- iOS 는 기본 경로를 simulator용 unsigned 빌드로 두고, 인증서/프로비저닝 시크릿이 있을 때만 signed `ipa` 경로를 활성화함
+- 앱 환경값은 기존 `AppConfig` 의 `APP_ENV=local|dev|release` 정의를 그대로 사용함
+
+### 후속 확인 필요
+- [ ] GitHub 저장소 Secrets 에 Android/iOS signing 값을 실제 등록한 뒤 `Actions > App Build Artifacts` 실런 검증
+- [ ] signed iOS `ipa` 생성 시 현재 프로비저닝 프로파일 specifier 명이 Runner / Widget 번들 ID와 정확히 일치하는지 확인

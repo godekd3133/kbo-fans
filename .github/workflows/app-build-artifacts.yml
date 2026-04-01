@@ -1,0 +1,418 @@
+name: App Build Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Build target platform
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - android
+          - ios
+          - web
+      app_environment:
+        description: APP_ENV to embed in the build
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - local
+          - dev
+          - release
+      build_signed_ios_ipa:
+        description: Build signed iOS IPA when signing secrets are configured
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-build-artifacts-${{ github.ref }}-${{ github.event.inputs.platform || 'all' }}-${{ github.event.inputs.app_environment || 'all' }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      environment_matrix: ${{ steps.matrix.outputs.environment_matrix }}
+    steps:
+      - id: matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app_environment="${{ inputs.app_environment }}"
+
+          if [[ "$app_environment" == "all" ]]; then
+            echo 'environment_matrix=["local","dev","release"]' >> "$GITHUB_OUTPUT"
+          else
+            printf 'environment_matrix=["%s"]\n' "$app_environment" >> "$GITHUB_OUTPUT"
+          fi
+
+  android:
+    needs: prepare
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'android' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app_environment: ${{ fromJson(needs.prepare.outputs.environment_matrix) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Configure Android signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${ANDROID_KEYSTORE_BASE64}" && -n "${ANDROID_KEYSTORE_PASSWORD}" && -n "${ANDROID_KEY_ALIAS}" && -n "${ANDROID_KEY_PASSWORD}" ]]; then
+            python3 - <<'PY'
+            import base64
+            import os
+            from pathlib import Path
+
+            Path("android/upload-keystore.jks").write_bytes(
+                base64.b64decode(os.environ["ANDROID_KEYSTORE_BASE64"])
+            )
+            PY
+
+            cat > android/key.properties <<EOF
+            storePassword=${ANDROID_KEYSTORE_PASSWORD}
+            keyPassword=${ANDROID_KEY_PASSWORD}
+            keyAlias=${ANDROID_KEY_ALIAS}
+            storeFile=../upload-keystore.jks
+            EOF
+
+            echo "ANDROID_SIGNING_STATUS=release-keystore" >> "$GITHUB_ENV"
+          else
+            echo "ANDROID_SIGNING_STATUS=debug-fallback" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build Android APK
+        run: flutter build apk --release --dart-define=APP_ENV=${{ matrix.app_environment }}
+
+      - name: Build Android App Bundle
+        run: flutter build appbundle --release --dart-define=APP_ENV=${{ matrix.app_environment }}
+
+      - name: Write Android build metadata
+        run: |
+          cat > build/android-build-metadata-${{ matrix.app_environment }}.txt <<EOF
+          platform=android
+          app_environment=${{ matrix.app_environment }}
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          aab=build/app/outputs/bundle/release/app-release.aab
+          signing=${ANDROID_SIGNING_STATUS}
+          EOF
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.app_environment }}-apk
+          path: |
+            app/build/app/outputs/flutter-apk/app-release.apk
+            app/build/android-build-metadata-${{ matrix.app_environment }}.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Android App Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ matrix.app_environment }}-aab
+          path: |
+            app/build/app/outputs/bundle/release/app-release.aab
+            app/build/android-build-metadata-${{ matrix.app_environment }}.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  web:
+    needs: prepare
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'web' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app_environment: ${{ fromJson(needs.prepare.outputs.environment_matrix) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter config
+        run: flutter config --enable-web
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Web
+        run: flutter build web --release --dart-define=APP_ENV=${{ matrix.app_environment }}
+
+      - name: Package Web artifact
+        run: |
+          cd build/web
+          zip -r ../kbo-fans-web-${{ matrix.app_environment }}.zip .
+
+      - name: Write Web build metadata
+        run: |
+          cat > build/web-build-metadata-${{ matrix.app_environment }}.txt <<EOF
+          platform=web
+          app_environment=${{ matrix.app_environment }}
+          archive=build/kbo-fans-web-${{ matrix.app_environment }}.zip
+          EOF
+
+      - name: Upload Web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-${{ matrix.app_environment }}
+          path: |
+            app/build/kbo-fans-web-${{ matrix.app_environment }}.zip
+            app/build/web-build-metadata-${{ matrix.app_environment }}.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  ios_simulator:
+    needs: prepare
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'ios' }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        app_environment: ${{ fromJson(needs.prepare.outputs.environment_matrix) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        working-directory: app/ios
+        run: pod install
+
+      - name: Build iOS simulator app
+        run: flutter build ios --simulator --release --no-codesign --dart-define=APP_ENV=${{ matrix.app_environment }}
+
+      - name: Package iOS simulator app
+        run: |
+          cd build/ios/iphonesimulator
+          zip -r ../../ios-simulator-${{ matrix.app_environment }}.zip Runner.app
+
+      - name: Write iOS simulator metadata
+        run: |
+          cat > build/ios-simulator-metadata-${{ matrix.app_environment }}.txt <<EOF
+          platform=ios
+          artifact_type=simulator-app
+          app_environment=${{ matrix.app_environment }}
+          archive=build/ios-simulator-${{ matrix.app_environment }}.zip
+          signing=no-codesign
+          EOF
+
+      - name: Upload iOS simulator artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ matrix.app_environment }}-simulator-app
+          path: |
+            app/build/ios-simulator-${{ matrix.app_environment }}.zip
+            app/build/ios-simulator-metadata-${{ matrix.app_environment }}.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  ios_signed_ipa:
+    needs: prepare
+    if: ${{ (inputs.platform == 'all' || inputs.platform == 'ios') && inputs.build_signed_ios_ipa }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        app_environment: ${{ fromJson(needs.prepare.outputs.environment_matrix) }}
+    defaults:
+      run:
+        shell: bash
+        working-directory: app
+    env:
+      IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+      IOS_RUNNER_PROFILE_BASE64: ${{ secrets.IOS_RUNNER_PROFILE_BASE64 }}
+      IOS_WIDGET_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROFILE_BASE64 }}
+      IOS_RUNNER_PROFILE_SPECIFIER: ${{ secrets.IOS_RUNNER_PROFILE_SPECIFIER }}
+      IOS_WIDGET_PROFILE_SPECIFIER: ${{ secrets.IOS_WIDGET_PROFILE_SPECIFIER }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate iOS signing secrets
+        run: |
+          set -euo pipefail
+
+          missing=0
+          for name in \
+            IOS_CERTIFICATE_P12_BASE64 \
+            IOS_CERTIFICATE_PASSWORD \
+            IOS_RUNNER_PROFILE_BASE64 \
+            IOS_WIDGET_PROFILE_BASE64 \
+            IOS_RUNNER_PROFILE_SPECIFIER \
+            IOS_WIDGET_PROFILE_SPECIFIER \
+            IOS_TEAM_ID
+          do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required secret: $name" >&2
+              missing=1
+            fi
+          done
+
+          if [[ "$missing" -ne 0 ]]; then
+            exit 1
+          fi
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Install CocoaPods
+        working-directory: app/ios
+        run: pod install
+
+      - name: Install iOS certificate and provisioning profiles
+        env:
+          KEYCHAIN_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-signing
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$RUNNER_TEMP/ios-signing"
+
+          python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+
+          temp = Path(os.environ["RUNNER_TEMP"]) / "ios-signing"
+          temp.mkdir(parents=True, exist_ok=True)
+          (temp / "certificate.p12").write_bytes(base64.b64decode(os.environ["IOS_CERTIFICATE_P12_BASE64"]))
+          (temp / "runner.mobileprovision").write_bytes(base64.b64decode(os.environ["IOS_RUNNER_PROFILE_BASE64"]))
+          (temp / "widget.mobileprovision").write_bytes(base64.b64decode(os.environ["IOS_WIDGET_PROFILE_BASE64"]))
+          PY
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/ios-signing/app-signing.keychain-db"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/ios-signing/certificate.p12" \
+            -P "$IOS_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+          security default-keychain -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$RUNNER_TEMP/ios-signing/runner.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/"
+          cp "$RUNNER_TEMP/ios-signing/widget.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/"
+
+      - name: Create export options
+        run: |
+          export_method="${IOS_EXPORT_METHOD:-app-store}"
+          cat > ios/ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>compileBitcode</key>
+            <false/>
+            <key>destination</key>
+            <string>export</string>
+            <key>method</key>
+            <string>${export_method}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.kbofans.kboFans</key>
+              <string>${IOS_RUNNER_PROFILE_SPECIFIER}</string>
+              <key>com.kbofans.kboFans.KboFansWidget</key>
+              <string>${IOS_WIDGET_PROFILE_SPECIFIER}</string>
+            </dict>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>teamID</key>
+            <string>${IOS_TEAM_ID}</string>
+            <key>thinning</key>
+            <string>&lt;none&gt;</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: Build signed iOS IPA
+        run: |
+          flutter build ipa \
+            --release \
+            --dart-define=APP_ENV=${{ matrix.app_environment }} \
+            --export-options-plist=ios/ExportOptions.plist
+
+      - name: Write iOS IPA metadata
+        run: |
+          cat > build/ios-ipa-metadata-${{ matrix.app_environment }}.txt <<EOF
+          platform=ios
+          artifact_type=signed-ipa
+          app_environment=${{ matrix.app_environment }}
+          archive=build/ios/ipa/*.ipa
+          export_method=${IOS_EXPORT_METHOD:-app-store}
+          team_id=${IOS_TEAM_ID}
+          EOF
+
+      - name: Upload signed iOS IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-${{ matrix.app_environment }}-ipa
+          path: |
+            app/build/ios/ipa/*.ipa
+            app/build/ios-ipa-metadata-${{ matrix.app_environment }}.txt
+          if-no-files-found: error
+          retention-days: 14

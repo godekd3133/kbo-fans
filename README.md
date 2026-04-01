@@ -113,6 +113,9 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 권장 등록 방식:
 
 - iOS 실행 액션: `./scripts/codex-run-ios.sh`
+- iOS debug 실행 액션: `./scripts/codex-run-ios-debug.sh`
+- iOS standalone profile 실행 액션: `./scripts/codex-run-ios-profile.sh`
+- iOS release 실행 액션: `./scripts/codex-run-ios-release.sh`
 - Android 실행 액션: `./scripts/codex-run-android.sh`
 - Web 실행 액션: `./scripts/codex-run-web.sh`
 - 정적 웹 프리뷰 실행 액션: `./scripts/codex-run-web-static.sh`
@@ -124,6 +127,9 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 
 ```bash
 ./scripts/codex-run-ios.sh
+./scripts/codex-run-ios-debug.sh
+./scripts/codex-run-ios-profile.sh
+./scripts/codex-run-ios-release.sh
 ./scripts/codex-run-android.sh
 ./scripts/codex-run-web.sh
 ./scripts/codex-run-web-static.sh
@@ -135,8 +141,46 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - `./scripts/codex-run-web.sh` 는 기본 웹 프리뷰 경로이며, `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
 - `./scripts/codex-run-web-static.sh` 는 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 프리뷰 경로입니다.
 - `./scripts/codex-run-web-dev.sh` 는 Chrome 디버그 세션을 직접 띄우는 개발용 경로입니다.
+- `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 `--profile --dart-define=APP_ENV=local` 로 실행합니다. 이렇게 설치된 빌드는 케이블을 뽑은 뒤 앱을 다시 켜도 standalone 재실행이 가능합니다.
+- `./scripts/codex-run-ios-debug.sh` 는 연결된 iPhone 실기기에서 `--debug` 로 실행합니다. 디버거 연결 상태에서 개발할 때만 쓰는 경로입니다.
+- `./scripts/codex-run-ios-profile.sh` 는 위 동작을 명시적으로 호출하는 iPhone standalone 테스트용 래퍼입니다.
+- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local` 로 실행합니다. 최종 standalone 동작 확인용 경로입니다.
+- 모바일 local 모드에서는 기본으로 direct scrape 우선입니다. 필요하면 `--dart-define=PREFER_DIRECT_SCRAPE=true|false` 로 강제할 수 있습니다.
 - `./scripts/codex-run-android.sh` 는 Android Studio JBR(Java 17), Android SDK, AVD 부팅, `APP_ENV=local` 기준까지 포함한 Codex용 안드로이드 실행 경로입니다.
 - 안드로이드 실행 환경 메모는 `docs/CODEX_ANDROID_ENV.md` 를 참고합니다.
+
+## GitHub Actions Build Artifacts
+
+GitHub Actions 에서 앱 빌드본을 바로 뽑을 수 있도록 수동 실행 워크플로우를 추가했습니다.
+
+- 워크플로우: `.github/workflows/app-build-artifacts.yml`
+- 실행 위치: GitHub `Actions > App Build Artifacts > Run workflow`
+- 선택 입력:
+  - `platform`: `android`, `ios`, `web`, `all`
+  - `app_environment`: `local`, `dev`, `release`, `all`
+  - `build_signed_ios_ipa`: iOS 서명 시크릿이 준비된 경우에만 `true`
+
+생성 아티팩트:
+
+- Android
+  - `android-<env>-apk`
+  - `android-<env>-aab`
+- iOS
+  - `ios-<env>-simulator-app`
+  - `ios-<env>-ipa` (`build_signed_ios_ipa=true` 이고 시크릿이 있을 때만)
+- Web
+  - `web-<env>`
+
+주의:
+
+- Android 는 서명 시크릿이 없으면 현재 Gradle 설정대로 debug signing fallback 으로 release 빌드를 만듭니다.
+- iOS 는 기본으로 simulator용 unsigned 앱만 만들고, 실제 IPA 는 인증서/프로비저닝 시크릿이 있어야 합니다.
+- `local` 환경 빌드는 CI에서 컴파일은 가능하지만, 런타임 API 기준은 여전히 local 설정(`localhost`, `10.0.2.2`, direct scrape 기본값)을 따릅니다.
+
+권장 시크릿:
+
+- Android: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`
+- iOS: `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_RUNNER_PROFILE_BASE64`, `IOS_WIDGET_PROFILE_BASE64`, `IOS_RUNNER_PROFILE_SPECIFIER`, `IOS_WIDGET_PROFILE_SPECIFIER`, `IOS_TEAM_ID`, 선택 `IOS_EXPORT_METHOD`
 
 ## Run The Backend
 

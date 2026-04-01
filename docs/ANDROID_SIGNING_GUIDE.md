@@ -72,6 +72,25 @@ storeFile=/Users/kimminkyu/keystores/kbo-fans-upload.jks
 - 실제 비밀번호는 Git에 올리면 안 됨
 - `storeFile` 은 절대 경로가 가장 안전함
 
+## GitHub Actions 시크릿
+
+CI 에서도 Android release 빌드를 서명하려면 아래 시크릿을 등록한다.
+
+- `ANDROID_KEYSTORE_BASE64`
+  - upload keystore `.jks` 파일의 base64 문자열
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+예시:
+
+```bash
+base64 -i ~/keystores/kbo-fans-upload.jks | pbcopy
+```
+
+워크플로우는 이 시크릿이 모두 있으면 `app/android/upload-keystore.jks` 와 `app/android/key.properties` 를 런타임에 생성한다.
+시크릿이 없으면 현재 Gradle fallback 정책대로 debug signing 으로 release 빌드를 만든다.
+
 ## 3. `.gitignore` 확인
 
 아래 파일은 Git에 올라가면 안 된다.
@@ -160,3 +179,4 @@ fvm flutter build appbundle --release
 
 - `app/android/app/build.gradle.kts` 는 이제 `key.properties` 기반 release signing 구조를 사용함
 - Play 배포 전에는 반드시 `app/android/key.properties` 와 upload keystore 를 준비해야 함
+- GitHub Actions 에서는 `.github/workflows/app-build-artifacts.yml` 로 `apk`, `aab` 를 플랫폼/환경별로 추출 가능

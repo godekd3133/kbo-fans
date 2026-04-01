@@ -20,6 +20,29 @@
 
 즉, 친구에게 "설치"를 시키려면 웹 링크 공유만으로는 부족하고, 플랫폼별 배포 절차가 필요하다.
 
+## GitHub Actions 빌드본 추출
+
+현재 저장소는 GitHub Actions 에서 앱 빌드본을 수동 생성할 수 있다.
+
+- 워크플로우: `Actions > App Build Artifacts`
+- 파일 위치: `.github/workflows/app-build-artifacts.yml`
+- 입력:
+  - `platform`: `android`, `ios`, `web`, `all`
+  - `app_environment`: `local`, `dev`, `release`, `all`
+  - `build_signed_ios_ipa`: iOS 서명용 시크릿 준비 시 `true`
+
+아티팩트:
+
+- Android: `apk`, `aab`
+- iOS: simulator용 `.app.zip`, 선택적으로 signed `.ipa`
+- Web: 정적 배포용 `web zip`
+
+운영 메모:
+
+- Android 는 서명 시크릿이 없으면 debug signing fallback 이 적용된 release 빌드가 생성된다.
+- iOS 는 기본값으로 unsigned simulator 빌드만 생성된다.
+- 실제 TestFlight 업로드용 IPA 는 iOS 인증서/프로비저닝 시크릿이 준비된 경우에만 CI에서 뽑는다.
+
 ## iOS 배포
 
 ### 가장 현실적인 방법: TestFlight
@@ -194,6 +217,13 @@ Android는 iOS보다 배포 진입장벽이 낮다.
 
 현재 저장소에서는 서명 설정이 별도로 정리돼 있어야 하므로, 실제 배포 전 keystore 경로와 비밀번호 관리 방식을 확정해야 한다.
 
+GitHub Actions 에서 Android release 서명까지 하려면 아래 시크릿을 저장소/organization secret 으로 추가한다.
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
 #### 3. Android App Bundle 생성
 
 권장 명령:
@@ -258,6 +288,12 @@ Play Console에서:
 다만 수업/실서비스 기준으로는 Play Console 테스트 트랙을 우선 추천한다.
 
 ## Web 공유
+
+GitHub Actions 의 `web-<env>` 아티팩트를 내려받으면 정적 웹 빌드 결과를 바로 확인할 수 있다.
+
+- `release`: 운영 API 기준 정적 빌드
+- `dev`: dev API 기준 정적 빌드
+- `local`: localhost 기준 정적 빌드
 
 설치가 아니라 빠른 확인이 목적이면 웹이 가장 쉽다.
 
