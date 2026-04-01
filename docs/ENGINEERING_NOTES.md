@@ -11,6 +11,18 @@
 - 앱 로컬 모드에서는 KBO direct 경로가 필요할 수 있으므로, fallback 여부를 명시적으로 결정해야 한다.
 - noisy fallback 로그가 과하면 `local` / 테스트 바인딩에서 prefetch, metric, push init을 완화하는 방향이 안전하다.
 - local, dev, release API base URL은 코드에 고정 default 를 두되 `API_BASE_URL` override 를 우선한다.
+- iPhone local debug에서 `localhost` API는 실기기에서 직접 닿지 않는다.
+  - backend를 켜고 실기기에서 API를 쓰려면 Mac LAN IP를 `API_BASE_URL`로 주입해야 한다.
+  - `scripts/codex-run.sh ios` 는 backend가 8000 포트로 떠 있으면 자동으로 LAN IP를 주입하도록 유지한다.
+- backend가 없는 local iPhone 경로에서는 direct KBO source가 최후 fallback이다.
+  - scoreboard live status는 `Main.asmx/GetKboGameList` 를 우선 참고한다.
+  - 일정 파서는 `GetScheduleList`의 빈 action cell에서도 `gameId`를 날짜+팀 코드로 복원해야 한다.
+  - relay는 `LiveTextView2.aspx` markup(`#numCont*`, `p.present`, `.playerBox`) 기준으로 파싱한다.
+- local/mobile 알림은 remote push가 아니라 앱 내부 비교 로직이다.
+  - scoreboard diff: 경기 시작 / 득점 / 역전 / 종료
+  - relay diff: 홈런 / 이닝 교대
+  - lineup diff: 선발 라인업 공개 / 변경
+  - 따라서 앱이 완전히 죽어 있으면 서버 push처럼 즉시 오지 않는다.
 
 ## Widget / Live Activity
 
@@ -27,6 +39,13 @@
   - App Group entitlement
   - 실제 기기 검증
   를 별도로 확인해야 한다.
+- local iPhone debug에서는 `home_widget` / App Group / Workmanager 경로가 런타임 안정성을 해칠 수 있다.
+  - `APP_ENV=local` + iOS 에서는 widget sync / periodic refresh 등록을 no-op 처리하는 편이 안전하다.
+- foreground 기준 잠금화면 체감 갱신은 홈 scoreboard invalidate 주기에 의해 사실상 상한이 결정된다.
+  - live game polling 간격은 현재 10초 기준으로 맞춘다.
+  - static widget timeline은 1분 단위 재로드를 요청한다.
+  - Live Activity / widget `updatedAt` 에는 초 단위 시각을 넣어 실제 갱신 여부를 구분한다.
+- widget/live sync signature는 점수/이닝이 안 바뀌더라도 live 중에는 일정 주기로 다시 흘려보내야 체감 갱신이 유지된다.
 
 ## Launch / First Frame
 
@@ -38,6 +57,9 @@
 - Pod deployment target 경고는 `Podfile` 의 `post_install` 에서 일괄 보정하는 편이 낫다.
 - 플러그인 Objective-C 경고는 repo 코드가 아니라 pub cache / pod 소스라, 가능하면 설정으로 억제하고 근본 수정은 dependency upgrade 로 푼다.
 - `dummy.o has no symbols` 는 보통 harmless warning 이다.
+- Flutter가 생성하는 `Generated.xcconfig` / `flutter_export_environment.sh` 에 stale `CONFIGURATION_BUILD_DIR` 가 남으면 `Pods_Runner.framework not found` 같은 링크 오류가 날 수 있다.
+- Flutter native asset `objective_c.framework` 는 실기기 빌드에서 simulator slice가 섞이거나 adhoc 서명으로 남을 수 있다.
+  - 앱 타깃 build phase에서 플랫폼에 맞는 `objective_c.dylib` 를 선택해 덮어쓰고 프레임워크 번들 단위로 다시 codesign 하는 방식이 안전했다.
 
 ## Release / Preview
 
@@ -54,4 +76,3 @@
   - `docs/DISTRIBUTION_GUIDE.md`
   - `docs/ANDROID_SIGNING_GUIDE.md`
   - `docs/IOS_TESTFLIGHT_CHECKLIST.md`
-

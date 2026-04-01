@@ -22,6 +22,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notifHomerun = true;
   bool _notifReversal = true;
   bool _notifGameEnd = true;
+  bool _notifLineupOpened = true;
+  bool _notifInningChange = false;
   bool _notifAllGames = false;
   bool _pushLoaded = false;
 
@@ -42,6 +44,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _notifHomerun = settings.homerun;
       _notifReversal = settings.reversal;
       _notifGameEnd = settings.gameEnd;
+      _notifLineupOpened = settings.lineupOpened;
+      _notifInningChange = settings.inningChange;
       _notifAllGames = settings.allGames;
       _pushLoaded = true;
     });
@@ -56,6 +60,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         homerun: _notifHomerun,
         reversal: _notifReversal,
         gameEnd: _notifGameEnd,
+        lineupOpened: _notifLineupOpened,
+        inningChange: _notifInningChange,
         allGames: _notifAllGames,
       ),
       myTeam: teamId,
@@ -189,6 +195,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _divider(),
                   _notifRow('경기 종료', '최종 결과와 함께 마무리 알림을 보냅니다', _notifGameEnd, teamColor, (v) async {
                     setState(() => _notifGameEnd = v);
+                    await _savePushSettings();
+                  }),
+                  _divider(),
+                  _notifRow('라인업', '선발 라인업 공개 또는 변경 시 알려줍니다', _notifLineupOpened, teamColor, (v) async {
+                    setState(() => _notifLineupOpened = v);
+                    await _savePushSettings();
+                  }),
+                  _divider(),
+                  _notifRow('이닝 교대', '회차가 넘어갈 때 알려줍니다', _notifInningChange, teamColor, (v) async {
+                    setState(() => _notifInningChange = v);
                     await _savePushSettings();
                   }),
                   if (!_pushLoaded)

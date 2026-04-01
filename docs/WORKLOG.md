@@ -110,6 +110,21 @@
 - 홈 폴링 주기를 따르므로 완전 실시간 보장은 안 됨
 - 홈런 전용 알림은 scoreboard만으로는 확정이 어려워 이번 단계에서는 별도 미구현
 
+## 2026-04-01: 로컬 경기 이벤트 알림 확장
+
+### 완료
+- [x] `local` 환경에서도 홈 스코어보드 갱신 시 로컬 경기 이벤트 알림이 동작하도록 홈 화면 호출 조건 정리
+- [x] 홈런 알림을 relay event 비교 기준으로 구현
+- [x] 이닝 교대 알림을 relay `INNING_CHANGE` 비교 기준으로 구현
+- [x] 라인업 공개/변경 알림을 lineup signature 비교 기준으로 구현
+- [x] 설정 화면에 `라인업`, `이닝 교대` 토글 추가
+- [x] push registration payload 와 backend schema 에 `lineupOpened`, `inningChange` 설정값 반영
+- [x] `fvm flutter analyze` 대상 파일 무이슈 확인
+
+### 비고
+- 로컬 알림은 여전히 앱 refresh 주기 기반 best-effort 이며 서버 push 대체는 아님
+- `리그 전체 알림`이 켜져 있으면 마이팀 외 경기에도 동일한 로컬 이벤트 알림을 적용
+
 ---
 
 ## 2026-03-31: 예매 오픈 로컬 알림 다단계 예약
@@ -599,6 +614,7 @@ kbo_fans/
 - [x] iOS 인증서/프로비저닝 시크릿이 준비된 경우 선택적으로 signed `ipa` 를 생성하도록 구성
 - [x] Web 에서 환경별 정적 빌드 zip 아티팩트를 업로드하도록 구성
 - [x] README / 배포 가이드 / Android 서명 가이드 / iOS TestFlight 체크리스트에 GitHub Actions 빌드본 추출 절차와 CI 시크릿 목록 반영
+- [x] 남은 GitHub Secrets 등록 / 실행 검증 항목을 `docs/GITHUB_ACTIONS_BUILD_TODO.md` 로 분리 정리
 
 ### 검증 메모
 - GitHub Actions 워크플로우는 `workflow_dispatch` 수동 실행 기준으로 설계함

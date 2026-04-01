@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
@@ -22,6 +22,8 @@ class PushNotificationSettings {
   final bool homerun;
   final bool reversal;
   final bool gameEnd;
+  final bool lineupOpened;
+  final bool inningChange;
   final bool allGames;
 
   const PushNotificationSettings({
@@ -30,6 +32,8 @@ class PushNotificationSettings {
     required this.homerun,
     required this.reversal,
     required this.gameEnd,
+    required this.lineupOpened,
+    required this.inningChange,
     required this.allGames,
   });
 
@@ -39,6 +43,8 @@ class PushNotificationSettings {
       homerun = true,
       reversal = true,
       gameEnd = true,
+      lineupOpened = true,
+      inningChange = false,
       allGames = false;
 
   PushNotificationSettings copyWith({
@@ -47,6 +53,8 @@ class PushNotificationSettings {
     bool? homerun,
     bool? reversal,
     bool? gameEnd,
+    bool? lineupOpened,
+    bool? inningChange,
     bool? allGames,
   }) {
     return PushNotificationSettings(
@@ -55,6 +63,8 @@ class PushNotificationSettings {
       homerun: homerun ?? this.homerun,
       reversal: reversal ?? this.reversal,
       gameEnd: gameEnd ?? this.gameEnd,
+      lineupOpened: lineupOpened ?? this.lineupOpened,
+      inningChange: inningChange ?? this.inningChange,
       allGames: allGames ?? this.allGames,
     );
   }
@@ -66,6 +76,8 @@ class PushNotificationSettings {
       'homerun': homerun,
       'reversal': reversal,
       'gameEnd': gameEnd,
+      'lineupOpened': lineupOpened,
+      'inningChange': inningChange,
       'allGames': allGames,
     };
   }
@@ -88,7 +100,7 @@ class PushNotificationService {
   String? _lastToken;
 
   Future<void> initialize({String? myTeam}) async {
-    if (_initialized || kIsWeb || _useLocalOnlyMode) {
+    if (_initialized || kIsWeb) {
       return;
     }
 
@@ -133,6 +145,8 @@ class PushNotificationService {
       homerun: prefs.getBool('${_prefsPrefix}homerun') ?? true,
       reversal: prefs.getBool('${_prefsPrefix}reversal') ?? true,
       gameEnd: prefs.getBool('${_prefsPrefix}game_end') ?? true,
+      lineupOpened: prefs.getBool('${_prefsPrefix}lineup_opened') ?? true,
+      inningChange: prefs.getBool('${_prefsPrefix}inning_change') ?? false,
       allGames: prefs.getBool('${_prefsPrefix}all_games') ?? false,
     );
   }
@@ -147,12 +161,14 @@ class PushNotificationService {
     await prefs.setBool('${_prefsPrefix}homerun', settings.homerun);
     await prefs.setBool('${_prefsPrefix}reversal', settings.reversal);
     await prefs.setBool('${_prefsPrefix}game_end', settings.gameEnd);
+    await prefs.setBool('${_prefsPrefix}lineup_opened', settings.lineupOpened);
+    await prefs.setBool('${_prefsPrefix}inning_change', settings.inningChange);
     await prefs.setBool('${_prefsPrefix}all_games', settings.allGames);
     await syncRegistration(myTeam: myTeam);
   }
 
   Future<void> syncRegistration({String? myTeam, String? forceToken}) async {
-    if (kIsWeb || !_initialized || _useLocalOnlyMode) {
+    if (kIsWeb || !_initialized) {
       return;
     }
 
@@ -208,7 +224,7 @@ class PushNotificationService {
     final prefs = await SharedPreferences.getInstance();
     return {
       'initialized': _initialized,
-      'localOnlyMode': _useLocalOnlyMode,
+      'localOnlyMode': false,
       'tokenReady': (_lastToken ?? '').isNotEmpty,
       'status':
           prefs.getString(_debugLastInitStatusKey) ??
@@ -222,12 +238,14 @@ class PushNotificationService {
   Set<String> _buildTopics(PushNotificationSettings settings, String? myTeam) {
     final teamKey = (myTeam == null || myTeam.isEmpty) ? 'ALL' : myTeam;
     final topics = <String>{};
-    final flags = <String, bool>{
+      final flags = <String, bool>{
       'game_start': settings.gameStart,
       'scoring': settings.scoring,
       'homerun': settings.homerun,
       'reversal': settings.reversal,
       'game_end': settings.gameEnd,
+      'lineup_opened': settings.lineupOpened,
+      'inning_change': settings.inningChange,
     };
 
     flags.forEach((topicName, enabled) {
@@ -254,12 +272,6 @@ class PushNotificationService {
     DevConsole.instance.info(
       'Push foreground: $title ${body.isEmpty ? '' : '· $body'}',
     );
-  }
-
-  bool get _useLocalOnlyMode {
-    return !kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.iOS ||
-            defaultTargetPlatform == TargetPlatform.android);
   }
 
   Future<void> _saveDebugInitState({

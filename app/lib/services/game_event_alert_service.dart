@@ -5,7 +5,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/widgets/dev_console.dart';
+import '../data/models/boxscore.dart';
 import '../data/models/game.dart';
+import '../data/models/relay.dart';
+import '../data/repositories/game_repository.dart';
 import 'push_notification_service.dart';
 
 class GameEventAlertService {
@@ -15,7 +18,7 @@ class GameEventAlertService {
   static const _snapshotKey = 'game_event_alert.snapshots';
   static const _channelId = 'game_event_alerts';
   static const _channelName = '경기 이벤트 알림';
-  static const _channelDescription = '마이팀 경기 이벤트 로컬 알림';
+  static const _channelDescription = '경기 이벤트 로컬 알림';
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -48,33 +51,57 @@ class GameEventAlertService {
     _initialized = true;
   }
 
-  Future<void> processScoreboard({
+  Future<void> processGames({
     required List<Game> games,
     required String? myTeamId,
+    required GameRepository repository,
   }) async {
-    if (kIsWeb || myTeamId == null || myTeamId.isEmpty) {
+    if (kIsWeb) {
       return;
     }
 
     await initialize();
-    final pushSettings = await PushNotificationService.instance.loadSettings();
+    final settings = await PushNotificationService.instance.loadSettings();
+    final trackedGames = _trackedGames(
+      games: games,
+      myTeamId: myTeamId,
+      trackAllGames: settings.allGames,
+    );
+    if (trackedGames.isEmpty) {
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final snapshots = _readSnapshots(prefs);
 
-    for (final game in games) {
-      if (!_isMyTeamGame(game, myTeamId)) {
-        continue;
-      }
-
-      final isAway = game.away.teamId == myTeamId;
-      final current = _GameAlertSnapshot.fromGame(game, isAway: isAway);
+    for (final game in trackedGames) {
       final previous = snapshots[game.gameId];
+      final previousRelaySeq = previous?.lastRelaySeq ?? 0;
+      final nextRelaySeq = await _processRelayEvents(
+        repository: repository,
+        game: game,
+        previous: previous,
+        settings: settings,
+        myTeamId: myTeamId,
+      );
+      final nextLineupSignature = await _processLineupEvents(
+        repository: repository,
+        game: game,
+        previous: previous,
+        settings: settings,
+      );
+
+      final current = _GameAlertSnapshot.fromGame(
+        game,
+        lastRelaySeq: nextRelaySeq ?? previousRelaySeq,
+        lineupSignature: nextLineupSignature ?? previous?.lineupSignature ?? '',
+      );
 
       if (previous != null) {
-        await _maybeNotify(
+        await _maybeNotifyScoreboardEvents(
           previous: previous,
           current: current,
-          settings: pushSettings,
+          settings: settings,
           game: game,
           myTeamId: myTeamId,
         );
@@ -83,71 +110,243 @@ class GameEventAlertService {
       snapshots[game.gameId] = current;
     }
 
-    await prefs.setString(_snapshotKey, jsonEncode({
-      for (final entry in snapshots.entries) entry.key: entry.value.toJson(),
-    }));
+    await prefs.setString(
+      _snapshotKey,
+      jsonEncode({
+        for (final entry in snapshots.entries) entry.key: entry.value.toJson(),
+      }),
+    );
   }
 
-  Future<void> _maybeNotify({
+  List<Game> _trackedGames({
+    required List<Game> games,
+    required String? myTeamId,
+    required bool trackAllGames,
+  }) {
+    final filtered = games.where((game) {
+      if (game.status == GameStatus.cancelled ||
+          game.status == GameStatus.suspended) {
+        return false;
+      }
+      if (trackAllGames) {
+        return true;
+      }
+      if (myTeamId == null || myTeamId.isEmpty) {
+        return false;
+      }
+      return game.away.teamId == myTeamId || game.home.teamId == myTeamId;
+    }).toList();
+
+    filtered.sort((a, b) => a.gameId.compareTo(b.gameId));
+    return filtered;
+  }
+
+  Future<int?> _processRelayEvents({
+    required GameRepository repository,
+    required Game game,
+    required _GameAlertSnapshot? previous,
+    required PushNotificationSettings settings,
+    required String? myTeamId,
+  }) async {
+    if (!(settings.homerun || settings.inningChange)) {
+      return previous?.lastRelaySeq;
+    }
+    if (game.status != GameStatus.live) {
+      return previous?.lastRelaySeq;
+    }
+
+    try {
+      final relayData = await repository.getRelayData(
+        game.gameId,
+        afterSeqNo: previous?.lastRelaySeq == 0 ? null : previous?.lastRelaySeq,
+      );
+      final relayItems = [...relayData.relayItems]
+        ..sort((a, b) => a.seqNo.compareTo(b.seqNo));
+
+      var maxSeq = previous?.lastRelaySeq ?? 0;
+      final shouldNotify = previous != null;
+      for (final item in relayItems) {
+        if (item.seqNo > maxSeq) {
+          maxSeq = item.seqNo;
+        }
+        if (!shouldNotify) {
+          continue;
+        }
+
+        if (settings.homerun && _isHomerunEvent(item)) {
+          await _showNow(
+            title: '${game.away.shortName} vs ${game.home.shortName} 홈런',
+            body: item.text,
+            tag: '${game.gameId}:homerun:${item.seqNo}',
+          );
+        }
+
+        if (settings.inningChange && item.event == 'INNING_CHANGE') {
+          await _showNow(
+            title: '${game.away.shortName} vs ${game.home.shortName} 이닝 교대',
+            body: item.text,
+            tag: '${game.gameId}:inning:${item.seqNo}',
+          );
+        }
+      }
+
+      return maxSeq;
+    } catch (error) {
+      DevConsole.instance.warn('Relay alert processing failed: $error');
+      return previous?.lastRelaySeq;
+    }
+  }
+
+  Future<String?> _processLineupEvents({
+    required GameRepository repository,
+    required Game game,
+    required _GameAlertSnapshot? previous,
+    required PushNotificationSettings settings,
+  }) async {
+    if (!settings.lineupOpened) {
+      return previous?.lineupSignature;
+    }
+    if (game.status == GameStatus.final_ ||
+        game.status == GameStatus.cancelled ||
+        game.status == GameStatus.suspended) {
+      return previous?.lineupSignature;
+    }
+
+    try {
+      final lineup = await repository.getLineupData(game.gameId);
+      final signature = _lineupSignature(lineup);
+      if (signature.isEmpty) {
+        return previous?.lineupSignature ?? '';
+      }
+
+      if (previous != null && previous.lineupSignature != signature) {
+        final title = previous.lineupSignature.isEmpty
+            ? '선발 라인업 공개'
+            : '선발 라인업 변경';
+        await _showNow(
+          title: title,
+          body: '${game.away.shortName} vs ${game.home.shortName} 라인업이 업데이트됐습니다.',
+          tag: '${game.gameId}:lineup:${signature.hashCode}',
+        );
+      }
+
+      return signature;
+    } catch (error) {
+      DevConsole.instance.warn('Lineup alert processing failed: $error');
+      return previous?.lineupSignature;
+    }
+  }
+
+  Future<void> _maybeNotifyScoreboardEvents({
     required _GameAlertSnapshot previous,
     required _GameAlertSnapshot current,
     required PushNotificationSettings settings,
     required Game game,
-    required String myTeamId,
+    required String? myTeamId,
   }) async {
-    final myTeam = game.away.teamId == myTeamId ? game.away : game.home;
-    final opponent = game.away.teamId == myTeamId ? game.home : game.away;
+    final isMyTeamGame =
+        myTeamId != null &&
+        myTeamId.isNotEmpty &&
+        (game.away.teamId == myTeamId || game.home.teamId == myTeamId);
+    final myTeam = isMyTeamGame
+        ? (game.away.teamId == myTeamId ? game.away : game.home)
+        : null;
+    final opponent = isMyTeamGame
+        ? (game.away.teamId == myTeamId ? game.home : game.away)
+        : null;
 
     if (settings.gameStart &&
         previous.status == GameStatus.scheduled &&
         current.status == GameStatus.live) {
       await _showNow(
-        title: '${myTeam.shortName} 경기 시작',
-        body: '${opponent.shortName}전이 시작됐습니다. ${game.stadium}',
+        title: isMyTeamGame && myTeam != null
+            ? '${myTeam.shortName} 경기 시작'
+            : '${game.away.shortName} vs ${game.home.shortName} 경기 시작',
+        body: isMyTeamGame && opponent != null
+            ? '${opponent.shortName}전이 시작됐습니다. ${game.stadium}'
+            : '${game.stadium} 경기 시작',
         tag: '${game.gameId}:start:${current.inning}',
       );
     }
 
-    if (settings.scoring && current.myScore > previous.myScore) {
-      final delta = current.myScore - previous.myScore;
-      await _showNow(
-        title: '${myTeam.shortName} $delta점 득점',
-        body: '현재 ${myTeam.shortName} ${current.myScore} : ${current.opponentScore} ${opponent.shortName}',
-        tag: '${game.gameId}:score:${current.myScore}:${current.opponentScore}',
-      );
+    final awayDelta = current.awayScore - previous.awayScore;
+    final homeDelta = current.homeScore - previous.homeScore;
+    if (settings.scoring && (awayDelta > 0 || homeDelta > 0)) {
+      if (isMyTeamGame && myTeam != null && opponent != null) {
+        final myScoreDelta = current.scoreForTeam(myTeam.teamId) -
+            previous.scoreForTeam(myTeam.teamId);
+        if (myScoreDelta > 0) {
+          await _showNow(
+            title: '${myTeam.shortName} $myScoreDelta점 득점',
+            body:
+                '현재 ${myTeam.shortName} ${current.scoreForTeam(myTeam.teamId)} : ${current.scoreForTeam(opponent.teamId)} ${opponent.shortName}',
+            tag:
+                '${game.gameId}:score:${current.scoreForTeam(myTeam.teamId)}:${current.scoreForTeam(opponent.teamId)}',
+          );
+        }
+      } else {
+        final scorer = awayDelta > 0 ? game.away : game.home;
+        final delta = awayDelta > 0 ? awayDelta : homeDelta;
+        await _showNow(
+          title: '${scorer.shortName} $delta점 득점',
+          body:
+              '현재 ${game.away.shortName} ${current.awayScore} : ${current.homeScore} ${game.home.shortName}',
+          tag:
+              '${game.gameId}:score:${current.awayScore}:${current.homeScore}',
+        );
+      }
     }
 
     if (settings.reversal) {
-      final previousDiff = previous.myScore - previous.opponentScore;
-      final currentDiff = current.myScore - current.opponentScore;
-      if (previousDiff <= 0 && currentDiff > 0) {
-        await _showNow(
-          title: '${myTeam.shortName} 역전',
-          body: '${opponent.shortName}전에서 경기를 뒤집었습니다. ${current.myScore}:${current.opponentScore}',
-          tag: '${game.gameId}:reversal:win:${current.myScore}:${current.opponentScore}',
-        );
-      } else if (previousDiff >= 0 && currentDiff < 0) {
-        await _showNow(
-          title: '${myTeam.shortName} 역전 허용',
-          body: '${opponent.shortName}에게 리드를 내줬습니다. ${current.myScore}:${current.opponentScore}',
-          tag: '${game.gameId}:reversal:lose:${current.myScore}:${current.opponentScore}',
-        );
+      final previousLeader = previous.leadingTeamId;
+      final currentLeader = current.leadingTeamId;
+      if (previousLeader != currentLeader && currentLeader != null) {
+        if (isMyTeamGame && myTeam != null && opponent != null) {
+          final myLeading = currentLeader == myTeam.teamId;
+          await _showNow(
+            title: myLeading ? '${myTeam.shortName} 역전' : '${myTeam.shortName} 역전 허용',
+            body:
+                '${opponent.shortName}전 스코어 ${current.scoreForTeam(myTeam.teamId)}:${current.scoreForTeam(opponent.teamId)}',
+            tag:
+                '${game.gameId}:reversal:${current.awayScore}:${current.homeScore}',
+          );
+        } else {
+          final leader = currentLeader == game.away.teamId ? game.away : game.home;
+          await _showNow(
+            title: '${leader.shortName} 역전',
+            body:
+                '현재 ${game.away.shortName} ${current.awayScore} : ${current.homeScore} ${game.home.shortName}',
+            tag:
+                '${game.gameId}:reversal:${current.awayScore}:${current.homeScore}',
+          );
+        }
       }
     }
 
     if (settings.gameEnd &&
         previous.status != GameStatus.final_ &&
         current.status == GameStatus.final_) {
-      final result = current.myScore > current.opponentScore
-          ? '승리'
-          : current.myScore < current.opponentScore
-              ? '패배'
-              : '무승부';
-      await _showNow(
-        title: '${myTeam.shortName} 경기 종료',
-        body: '$result · ${current.myScore} : ${current.opponentScore} ${opponent.shortName}',
-        tag: '${game.gameId}:end:${current.myScore}:${current.opponentScore}',
-      );
+      if (isMyTeamGame && myTeam != null && opponent != null) {
+        final myScore = current.scoreForTeam(myTeam.teamId);
+        final opponentScore = current.scoreForTeam(opponent.teamId);
+        final result = myScore > opponentScore
+            ? '승리'
+            : myScore < opponentScore
+                ? '패배'
+                : '무승부';
+        await _showNow(
+          title: '${myTeam.shortName} 경기 종료',
+          body: '$result · $myScore : $opponentScore ${opponent.shortName}',
+          tag: '${game.gameId}:end:$myScore:$opponentScore',
+        );
+      } else {
+        await _showNow(
+          title: '${game.away.shortName} vs ${game.home.shortName} 경기 종료',
+          body:
+              '최종 ${current.awayScore} : ${current.homeScore} ${game.home.shortName}',
+          tag: '${game.gameId}:end:${current.awayScore}:${current.homeScore}',
+        );
+      }
     }
   }
 
@@ -177,6 +376,34 @@ class GameEventAlertService {
     }
   }
 
+  bool _isHomerunEvent(RelayItem item) {
+    final event = item.event.toUpperCase();
+    if (event.contains('HOMERUN')) {
+      return true;
+    }
+    return item.text.contains('홈런');
+  }
+
+  String _lineupSignature(GameLineupData lineup) {
+    final away = _teamLineupSignature(lineup.away);
+    final home = _teamLineupSignature(lineup.home);
+    if (away.isEmpty || home.isEmpty) {
+      return '';
+    }
+    return '$away||$home';
+  }
+
+  String _teamLineupSignature(TeamLineupData data) {
+    if (data.lineup.isEmpty) {
+      return '';
+    }
+    final starter = data.starterName ?? '';
+    final players = data.lineup
+        .map((entry) => '${entry.order}:${entry.position}:${entry.name}')
+        .join('|');
+    return '${data.teamId}#$starter#$players';
+  }
+
   Map<String, _GameAlertSnapshot> _readSnapshots(SharedPreferences prefs) {
     final raw = prefs.getString(_snapshotKey);
     if (raw == null || raw.isEmpty) {
@@ -194,31 +421,43 @@ class GameEventAlertService {
       return {};
     }
   }
-
-  bool _isMyTeamGame(Game game, String myTeamId) {
-    return game.away.teamId == myTeamId || game.home.teamId == myTeamId;
-  }
 }
 
 class _GameAlertSnapshot {
   final GameStatus status;
   final String inning;
-  final int myScore;
-  final int opponentScore;
+  final String awayTeamId;
+  final String homeTeamId;
+  final int awayScore;
+  final int homeScore;
+  final int lastRelaySeq;
+  final String lineupSignature;
 
   const _GameAlertSnapshot({
     required this.status,
     required this.inning,
-    required this.myScore,
-    required this.opponentScore,
+    required this.awayTeamId,
+    required this.homeTeamId,
+    required this.awayScore,
+    required this.homeScore,
+    required this.lastRelaySeq,
+    required this.lineupSignature,
   });
 
-  factory _GameAlertSnapshot.fromGame(Game game, {required bool isAway}) {
+  factory _GameAlertSnapshot.fromGame(
+    Game game, {
+    required int lastRelaySeq,
+    required String lineupSignature,
+  }) {
     return _GameAlertSnapshot(
       status: game.status,
       inning: game.inning,
-      myScore: isAway ? game.away.score : game.home.score,
-      opponentScore: isAway ? game.home.score : game.away.score,
+      awayTeamId: game.away.teamId,
+      homeTeamId: game.home.teamId,
+      awayScore: game.away.score,
+      homeScore: game.home.score,
+      lastRelaySeq: lastRelaySeq,
+      lineupSignature: lineupSignature,
     );
   }
 
@@ -229,17 +468,42 @@ class _GameAlertSnapshot {
         orElse: () => GameStatus.scheduled,
       ),
       inning: json['inning'] as String? ?? '',
-      myScore: json['myScore'] as int? ?? 0,
-      opponentScore: json['opponentScore'] as int? ?? 0,
+      awayTeamId: json['awayTeamId'] as String? ?? '',
+      homeTeamId: json['homeTeamId'] as String? ?? '',
+      awayScore: json['awayScore'] as int? ?? 0,
+      homeScore: json['homeScore'] as int? ?? 0,
+      lastRelaySeq: json['lastRelaySeq'] as int? ?? 0,
+      lineupSignature: json['lineupSignature'] as String? ?? '',
     );
+  }
+
+  int scoreForTeam(String teamId) {
+    if (teamId == awayTeamId) {
+      return awayScore;
+    }
+    if (teamId == homeTeamId) {
+      return homeScore;
+    }
+    return 0;
+  }
+
+  String? get leadingTeamId {
+    if (awayScore == homeScore) {
+      return null;
+    }
+    return awayScore > homeScore ? awayTeamId : homeTeamId;
   }
 
   Map<String, dynamic> toJson() {
     return {
       'status': status.name,
       'inning': inning,
-      'myScore': myScore,
-      'opponentScore': opponentScore,
+      'awayTeamId': awayTeamId,
+      'homeTeamId': homeTeamId,
+      'awayScore': awayScore,
+      'homeScore': homeScore,
+      'lastRelaySeq': lastRelaySeq,
+      'lineupSignature': lineupSignature,
     };
   }
 }

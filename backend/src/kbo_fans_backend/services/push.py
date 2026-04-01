@@ -82,6 +82,7 @@ class PushService:
             "reversal": payload.notifications.reversal,
             "game_end": payload.notifications.gameEnd,
             "lineup_opened": payload.notifications.lineupOpened,
+            "inning_change": payload.notifications.inningChange,
         }
 
         for topic_name, enabled in topic_flags.items():

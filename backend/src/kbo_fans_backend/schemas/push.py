@@ -12,6 +12,7 @@ class NotificationSettings(BaseModel):
     reversal: bool
     gameEnd: bool
     lineupOpened: bool = True
+    inningChange: bool = False
     allGames: bool
 
 
