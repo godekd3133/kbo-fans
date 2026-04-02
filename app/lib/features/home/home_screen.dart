@@ -1251,157 +1251,181 @@ class _MyTeamBriefCard extends StatelessWidget {
         ? (nextGame.awayId == myTeamId ? nextGame.homeId : nextGame.awayId)
         : null;
     final opponent = opponentId != null ? KboTeams.byId(opponentId) : null;
+    void openPrimaryDestination() {
+      if (todayGame != null) {
+        context.push('/game/${todayGame!.gameId}', extra: todayGame);
+      } else {
+        context.go('/schedule');
+      }
+    }
 
     return _sectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: openPrimaryDestination,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: (team?.primaryColor ?? AppColors.accent).withValues(
+            alpha: 0.14,
+          ),
+          highlightColor: (team?.primaryColor ?? AppColors.accent).withValues(
+            alpha: 0.08,
+          ),
+          overlayColor: WidgetStateProperty.resolveWith((states) {
+            final baseColor = team?.primaryColor ?? AppColors.accent;
+            if (states.contains(WidgetState.pressed)) {
+              return baseColor.withValues(alpha: 0.12);
+            }
+            if (states.contains(WidgetState.hovered) ||
+                states.contains(WidgetState.focused)) {
+              return baseColor.withValues(alpha: 0.06);
+            }
+            return null;
+          }),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: (team?.primaryColor ?? AppColors.live).withValues(
-                    alpha: 0.18,
-                  ),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: (team?.primaryColor ?? AppColors.live).withValues(
-                      alpha: 0.35,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (team?.primaryColor ?? AppColors.live).withValues(
+                        alpha: 0.18,
+                      ),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: (team?.primaryColor ?? AppColors.live)
+                            .withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Text(
+                      '마이팀 브리프',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: team?.primaryColor ?? AppColors.live,
+                      ),
                     ),
                   ),
-                ),
-                child: Text(
-                  '마이팀 브리프',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: team?.primaryColor ?? AppColors.live,
-                  ),
+                  const Spacer(),
+                  if (standing != null)
+                    Text(
+                      '${standing.rank}위 · ${standing.gb == '0' ? '선두권' : '${standing.gb}G차'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                team?.name ?? myTeamId!,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const Spacer(),
-              if (standing != null)
-                Text(
-                  '${standing.rank}위 · ${standing.gb == '0' ? '선두권' : '${standing.gb}G차'}',
-                  style: const TextStyle(
+              const SizedBox(height: 4),
+              Text(
+                todayGame == null && nextGame == null
+                    ? '다음 경기 정보가 아직 없습니다.'
+                    : todayGame != null
+                    ? '${todayGame!.startTime} · ${todayGame!.stadium} · ${opponent?.name ?? ''}전'
+                    : '다음 경기 ${nextGame!.time} · ${nextGame.stadium} · ${opponent?.name ?? ''}전',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _metricColumn(
+                      '최근 흐름',
+                      brief == null || brief!.recentGamesCount == 0
+                          ? '최근 결과 없음'
+                          : '${brief!.recentWins}승 ${brief!.recentLosses}패 ${brief!.recentDraws}무',
+                    ),
+                  ),
+                  Expanded(
+                    child: _metricColumn(
+                      '현재 순위',
+                      standing == null
+                          ? '집계 중'
+                          : '${standing.rank}위 (${standing.wins}-${standing.losses})',
+                    ),
+                  ),
+                  Expanded(
+                    child: _metricColumn(
+                      todayGame != null ? '경기 상태' : '다음 경기',
+                      todayGame != null
+                          ? todayGame!.inning
+                          : nextGame == null
+                          ? '-'
+                          : '${nextGame.time} ${opponent?.shortName ?? ''}전',
+                    ),
+                  ),
+                ],
+              ),
+              if (brief != null && brief!.recentSummaries.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text(
+                  '최근 3경기',
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            team?.name ?? myTeamId!,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            todayGame == null && nextGame == null
-                ? '다음 경기 정보가 아직 없습니다.'
-                : todayGame != null
-                ? '${todayGame!.startTime} · ${todayGame!.stadium} · ${opponent?.name ?? ''}전'
-                : '다음 경기 ${nextGame!.time} · ${nextGame.stadium} · ${opponent?.name ?? ''}전',
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _metricColumn(
-                  '최근 흐름',
-                  brief == null || brief!.recentGamesCount == 0
-                      ? '최근 결과 없음'
-                      : '${brief!.recentWins}승 ${brief!.recentLosses}패 ${brief!.recentDraws}무',
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final summary in brief!.recentSummaries)
+                      _recentGameChip(summary),
+                  ],
                 ),
-              ),
-              Expanded(
-                child: _metricColumn(
-                  '현재 순위',
-                  standing == null
-                      ? '집계 중'
-                      : '${standing.rank}위 (${standing.wins}-${standing.losses})',
-                ),
-              ),
-              Expanded(
-                child: _metricColumn(
-                  todayGame != null ? '경기 상태' : '다음 경기',
-                  todayGame != null
-                      ? todayGame!.inning
-                      : nextGame == null
-                      ? '-'
-                      : '${nextGame.time} ${opponent?.shortName ?? ''}전',
-                ),
-              ),
-            ],
-          ),
-          if (brief != null && brief!.recentSummaries.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const Text(
-              '최근 3경기',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final summary in brief!.recentSummaries)
-                  _recentGameChip(summary),
               ],
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    if (todayGame != null) {
-                      context.push(
-                        '/game/${todayGame!.gameId}',
-                        extra: todayGame,
-                      );
-                    } else {
-                      context.go('/schedule');
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: openPrimaryDestination,
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(todayGame != null ? '경기 상세' : '일정 보기'),
                     ),
                   ),
-                  child: Text(todayGame != null ? '경기 상세' : '일정 보기'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => context.go('/standings'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => context.go('/standings'),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text('순위 보기'),
                     ),
                   ),
-                  child: const Text('순위 보기'),
-                ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1457,8 +1481,7 @@ class _MyTeamBriefCard extends StatelessWidget {
             fit: BoxFit.contain,
             errorWidget: (_, _, _) =>
                 _teamMarkFallback(summary.opponentName, 22),
-            placeholder: (_, _) =>
-                _teamMarkFallback(summary.opponentName, 22),
+            placeholder: (_, _) => _teamMarkFallback(summary.opponentName, 22),
           ),
           const SizedBox(width: 8),
           Container(
@@ -1503,6 +1526,27 @@ class _MyTeamBriefCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _teamMarkFallback(String shortName, double size) {
+    final initial = shortName.isNotEmpty ? shortName.substring(0, 1) : '?';
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontSize: size * 0.45,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
 }
 
 class _TodayBaseballCard extends StatelessWidget {
@@ -1534,16 +1578,6 @@ class _TodayBaseballCard extends StatelessWidget {
                 ],
               ],
             ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(child: _summaryPill('전체', '${brief.totalGames}경기')),
-              const SizedBox(width: 8),
-              Expanded(child: _summaryPill('LIVE', '${brief.liveGames}경기')),
-              const SizedBox(width: 8),
-              Expanded(child: _summaryPill('종료', '${brief.finalGames}경기')),
-            ],
-          ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
@@ -1707,34 +1741,6 @@ class _TodayBaseballCard extends StatelessWidget {
         ),
         if (alignEnd) ...[const SizedBox(width: 8), logo],
       ],
-    );
-  }
-
-  Widget _summaryPill(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textDisabled,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
     );
   }
 

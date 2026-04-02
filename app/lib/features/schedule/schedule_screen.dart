@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/api/api_client.dart';
@@ -69,15 +70,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   void _changeMonth(int delta) {
-    if (_viewMode == ScheduleViewMode.stadium) {
-      setState(() {
-        _currentMonth = DateTime(
-          _currentMonth.year,
-          _currentMonth.month + delta,
-        );
-      });
-      return;
-    }
     _calendarPageController.animateToPage(
       _calendarInitialPage + _monthDeltaFromToday(_currentMonth) + delta,
       duration: const Duration(milliseconds: 260),
@@ -190,10 +182,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   Widget _buildBody(List<ScheduleDay> days) {
     final myTeamId = ref.watch(myTeamProvider);
     final filteredDays = _filterDays(days, myTeamId);
-    final stadiumFilteredDays = _filterDaysBySelectedTeam(
-      filteredDays,
-      _stadiumTeamId,
-    );
     final gameDays = <int>{};
     final myTeamDays = <int>{};
     for (final d in filteredDays) {
@@ -226,7 +214,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           Expanded(child: _buildGameList(selectedSchedule)),
         ] else ...[
           const Divider(color: AppColors.divider, height: 1),
-          Expanded(child: _buildStadiumList(stadiumFilteredDays)),
+          Expanded(child: _buildStadiumPager()),
         ],
       ],
     );
@@ -516,6 +504,46 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
+  Widget _buildStadiumPager() {
+    return PageView.builder(
+      controller: _calendarPageController,
+      onPageChanged: (page) {
+        final nextMonth = _monthForPage(page);
+        setState(() {
+          _currentMonth = nextMonth;
+          if (_selectedDay != null) {
+            final lastDay = DateTime(
+              nextMonth.year,
+              nextMonth.month + 1,
+              0,
+            ).day;
+            _selectedDay = _selectedDay!.clamp(1, lastDay);
+          }
+        });
+      },
+      itemBuilder: (context, index) {
+        final month = _monthForPage(index);
+        final myTeamId = ref.watch(myTeamProvider);
+        final yearMonth =
+            '${month.year}-${month.month.toString().padLeft(2, '0')}';
+        final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
+
+        return scheduleAsync.when(
+          loading: () => _buildStadiumList(const <ScheduleDay>[]),
+          error: (_, _) => _buildStadiumList(const <ScheduleDay>[]),
+          data: (days) {
+            final filteredDays = _filterDays(days, myTeamId);
+            final stadiumFilteredDays = _filterDaysBySelectedTeam(
+              filteredDays,
+              _stadiumTeamId,
+            );
+            return _buildStadiumList(stadiumFilteredDays);
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildCalendar(
     DateTime month,
     Set<int> gameDays,
@@ -747,7 +775,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               child: ScheduleGameCard(
                 game: g,
                 onTap: () => context.push('/game/${g.gameId}'),
-                ticketSummary: g.ticketInfo == null
+                ticketSummary:
+                    g.ticketInfo == null || isTerminalScheduleStatus(g.status)
                     ? null
                     : _ticketSummary(g.ticketInfo!),
               ),
@@ -811,7 +840,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   game: item.game,
                   dateLabel: _formatDateLabel(item.date),
                   onTap: () => context.push('/game/${item.game.gameId}'),
-                  ticketSummary: item.game.ticketInfo == null
+                  ticketSummary:
+                      item.game.ticketInfo == null ||
+                          isTerminalScheduleStatus(item.game.status)
                       ? null
                       : _ticketSummary(item.game.ticketInfo!),
                 ),
