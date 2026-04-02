@@ -11,19 +11,49 @@ class PlayerDetailScreen extends ConsumerWidget {
   final String playerId;
   final int season;
 
-  const PlayerDetailScreen({super.key, required this.playerId, required this.season});
+  const PlayerDetailScreen({
+    super.key,
+    required this.playerId,
+    required this.season,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playerAsync = ref.watch(playerDetailProvider('$playerId|$season'));
+    Future<void> refreshPlayer() async {
+      ref.invalidate(playerDetailProvider('$playerId|$season'));
+      await ref.read(playerDetailProvider('$playerId|$season').future);
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text('선수 프로필 · $season')),
       body: SafeArea(
-        child: playerAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
-          error: (_, stackTrace) => const Center(child: Text('선수 정보를 불러올 수 없습니다')),
-          data: (player) => _buildBody(player),
+        child: RefreshIndicator(
+          onRefresh: refreshPlayer,
+          color: AppColors.live,
+          child: playerAsync.when(
+            loading: () => ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(
+                  height: 420,
+                  child: Center(
+                    child: CircularProgressIndicator(color: AppColors.live),
+                  ),
+                ),
+              ],
+            ),
+            error: (_, stackTrace) => ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                SizedBox(
+                  height: 420,
+                  child: Center(child: Text('선수 정보를 불러올 수 없습니다')),
+                ),
+              ],
+            ),
+            data: (player) => _buildBody(player),
+          ),
         ),
       ),
     );
@@ -33,6 +63,7 @@ class PlayerDetailScreen extends ConsumerWidget {
     final team = KboTeams.byId(player.teamId);
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
       children: [
         Container(
@@ -51,15 +82,19 @@ class PlayerDetailScreen extends ConsumerWidget {
                     width: 88,
                     height: 112,
                     decoration: BoxDecoration(
-                      color: team?.primaryColor.withValues(alpha: 0.14) ?? AppColors.cardSub,
+                      color:
+                          team?.primaryColor.withValues(alpha: 0.14) ??
+                          AppColors.cardSub,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: player.imageUrl != null && player.imageUrl!.isNotEmpty
+                    child:
+                        player.imageUrl != null && player.imageUrl!.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: player.imageUrl!,
                             fit: BoxFit.cover,
-                            errorWidget: (_, _, _) => _photoFallback(player.number),
+                            errorWidget: (_, _, _) =>
+                                _photoFallback(player.number),
                           )
                         : _photoFallback(player.number),
                   ),
@@ -68,11 +103,20 @@ class PlayerDetailScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(player.name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                        Text(
+                          player.name,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           '${team?.name ?? player.teamId} · ${player.roleLabel}',
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -88,6 +132,7 @@ class PlayerDetailScreen extends ConsumerWidget {
                   _pill(player.handedness),
                   _pill(player.heightWeight),
                   _pill(player.birthDate),
+                  if (player.career.isNotEmpty) _pill(player.career),
                 ],
               ),
               if (player.statusNote != null) ...[
@@ -96,7 +141,9 @@ class PlayerDetailScreen extends ConsumerWidget {
                   player.statusNote!,
                   style: TextStyle(
                     fontSize: 13,
-                    color: player.status == PlayerAvailabilityStatus.injured ? AppColors.live : AppColors.textSecondary,
+                    color: player.status == PlayerAvailabilityStatus.injured
+                        ? AppColors.live
+                        : AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -118,7 +165,10 @@ class PlayerDetailScreen extends ConsumerWidget {
         _section(
           title: '최근 기록',
           child: player.recentGames.isEmpty
-              ? const Text('최근 기록이 없습니다', style: TextStyle(fontSize: 12, color: AppColors.textDisabled))
+              ? const Text(
+                  '최근 기록이 없습니다',
+                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                )
               : Column(
                   children: [
                     for (final game in player.recentGames)
@@ -135,16 +185,34 @@ class PlayerDetailScreen extends ConsumerWidget {
                             children: [
                               SizedBox(
                                 width: 54,
-                                child: Text(game.date, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+                                child: Text(
+                                  game.date,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textDisabled,
+                                  ),
+                                ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(game.opponent, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                    Text(
+                                      game.opponent,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                     const SizedBox(height: 4),
-                                    Text(game.summary, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                    Text(
+                                      game.summary,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -159,7 +227,10 @@ class PlayerDetailScreen extends ConsumerWidget {
         _section(
           title: '노트',
           child: player.highlights.isEmpty
-              ? const Text('표시할 메모가 없습니다', style: TextStyle(fontSize: 12, color: AppColors.textDisabled))
+              ? const Text(
+                  '표시할 메모가 없습니다',
+                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                )
               : Column(
                   children: [
                     for (final item in player.highlights) _statRow('메모', item),
@@ -173,11 +244,17 @@ class PlayerDetailScreen extends ConsumerWidget {
   Widget _section({required String title, required Widget child}) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 12),
           child,
         ],
@@ -191,7 +268,16 @@ class PlayerDetailScreen extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 68, child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled))),
+          SizedBox(
+            width: 68,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textDisabled,
+              ),
+            ),
+          ),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
         ],
       ),
@@ -201,8 +287,14 @@ class PlayerDetailScreen extends ConsumerWidget {
   Widget _pill(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: AppColors.cardSub, borderRadius: BorderRadius.circular(999)),
-      child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
     );
   }
 
@@ -212,7 +304,11 @@ class PlayerDetailScreen extends ConsumerWidget {
       alignment: Alignment.center,
       child: Text(
         '$number',
-        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+        style: const TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }

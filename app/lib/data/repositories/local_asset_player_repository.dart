@@ -13,13 +13,36 @@ import 'player_repository.dart';
 class LocalAssetPlayerRepository implements PlayerRepository {
   static const _teamPlayersDir = 'assets/bootstrap/team_players';
   static const _teamStatsDir = 'assets/bootstrap/team_stats';
+  static const _kboPersonImageBase =
+      'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
+  static List<String>? _assetPathsCache;
 
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
   final MockPlayerRepository _fallback = MockPlayerRepository();
 
+  Future<Map<String, String>> buildPlayerImageMap({required int season}) async {
+    final result = <String, String>{};
+    for (final teamId in _teamIds) {
+      final players = await getTeamPlayers(teamId, season: season);
+      for (final player in players) {
+        final imageUrl = _resolvePlayerImageUrl(player, season);
+        if (player.name.isEmpty || imageUrl == null || imageUrl.isEmpty) {
+          continue;
+        }
+        result[player.name] = imageUrl;
+      }
+    }
+    return result;
+  }
+
   @override
-  Future<List<PlayerProfile>> getTeamPlayers(String teamId, {required int season}) async {
-    final payload = await _loadSnapshot('$_teamPlayersDir/$teamId-$season.json');
+  Future<List<PlayerProfile>> getTeamPlayers(
+    String teamId, {
+    required int season,
+  }) async {
+    final payload = await _loadSnapshot(
+      await _resolveSeasonAssetPath(_teamPlayersDir, teamId, season),
+    );
     final players = payload?['players'] as List<dynamic>?;
     if (players == null || players.isEmpty) {
       return _fallback.getTeamPlayers(teamId, season: season);
@@ -30,10 +53,15 @@ class LocalAssetPlayerRepository implements PlayerRepository {
   }
 
   @override
-  Future<PlayerProfile> getPlayerDetail(String playerId, {required int season}) async {
+  Future<PlayerProfile> getPlayerDetail(
+    String playerId, {
+    required int season,
+  }) async {
     for (final teamId in _teamIds) {
       final players = await getTeamPlayers(teamId, season: season);
-      final match = players.where((player) => player.id == playerId).firstOrNull;
+      final match = players
+          .where((player) => player.id == playerId)
+          .firstOrNull;
       if (match != null) {
         return match;
       }
@@ -43,22 +71,29 @@ class LocalAssetPlayerRepository implements PlayerRepository {
 
   @override
   Future<TeamStats> getTeamStats(String teamId, {required int season}) async {
-    final payload = await _loadSnapshot('$_teamStatsDir/$teamId-$season.json');
+    final payload = await _loadSnapshot(
+      await _resolveSeasonAssetPath(_teamStatsDir, teamId, season),
+    );
     if (payload == null) {
       return _fallback.getTeamStats(teamId, season: season);
     }
     return TeamStats(
       teamId: payload['teamId'] as String? ?? teamId,
       season: payload['season'] as int? ?? season,
-      hitting: (payload['hitting'] as Map<String, dynamic>? ?? const {})
-          .map((key, value) => MapEntry(key, value.toString())),
-      pitching: (payload['pitching'] as Map<String, dynamic>? ?? const {})
-          .map((key, value) => MapEntry(key, value.toString())),
+      hitting: (payload['hitting'] as Map<String, dynamic>? ?? const {}).map(
+        (key, value) => MapEntry(key, value.toString()),
+      ),
+      pitching: (payload['pitching'] as Map<String, dynamic>? ?? const {}).map(
+        (key, value) => MapEntry(key, value.toString()),
+      ),
     );
   }
 
   @override
-  Future<TeamRecordsBundle> getTeamRecords(String teamId, {required int season}) async {
+  Future<TeamRecordsBundle> getTeamRecords(
+    String teamId, {
+    required int season,
+  }) async {
     final results = await Future.wait([
       getTeamPlayers(teamId, season: season),
       getTeamStats(teamId, season: season),
@@ -83,11 +118,39 @@ class LocalAssetPlayerRepository implements PlayerRepository {
       hrLeaders: _parseLeaders(leaders['hr'] as List<dynamic>? ?? const []),
       opsLeaders: _parseLeaders(leaders['ops'] as List<dynamic>? ?? const []),
       eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
-      todayHitter: _parseFeatured(featured['todayHitter'] as Map<String, dynamic>? ?? const {'label': '오늘의 타자'}),
-      todayPitcher: _parseFeatured(featured['todayPitcher'] as Map<String, dynamic>? ?? const {'label': '오늘의 투수'}),
-      monthHitter: _parseFeatured(featured['monthHitter'] as Map<String, dynamic>? ?? const {'label': '이달의 타자'}),
-      monthPitcher: _parseFeatured(featured['monthPitcher'] as Map<String, dynamic>? ?? const {'label': '이달의 투수'}),
+      todayHitter: _parseFeatured(
+        featured['todayHitter'] as Map<String, dynamic>? ??
+            const {'label': '오늘의 타자'},
+      ),
+      todayPitcher: _parseFeatured(
+        featured['todayPitcher'] as Map<String, dynamic>? ??
+            const {'label': '오늘의 투수'},
+      ),
+      monthHitter: _parseFeatured(
+        featured['monthHitter'] as Map<String, dynamic>? ??
+            const {'label': '이달의 타자'},
+      ),
+      monthPitcher: _parseFeatured(
+        featured['monthPitcher'] as Map<String, dynamic>? ??
+            const {'label': '이달의 투수'},
+      ),
     );
+  }
+
+  @override
+  Future<List<RecordLeader>> getLeaderboard({
+    required int season,
+    required LeaderboardMetric metric,
+  }) async {
+    final overview = await getRecordsOverview(season: season);
+    return switch (metric) {
+      LeaderboardMetric.avg => overview.avgLeaders,
+      LeaderboardMetric.hr => overview.hrLeaders,
+      LeaderboardMetric.ops => overview.opsLeaders,
+      LeaderboardMetric.era => overview.eraLeaders,
+      LeaderboardMetric.war => const [],
+      LeaderboardMetric.wrcPlus => const [],
+    };
   }
 
   Future<Map<String, dynamic>?> _loadSnapshot(String assetPath) async {
@@ -100,6 +163,53 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     }
   }
 
+  Future<String> _resolveSeasonAssetPath(
+    String dir,
+    String teamId,
+    int season,
+  ) async {
+    final exact = '$dir/$teamId-$season.json';
+    final paths = await _assetPaths();
+    if (paths.contains(exact)) {
+      return exact;
+    }
+
+    final prefix = '$dir/$teamId-';
+    final candidates =
+        paths
+            .where((path) => path.startsWith(prefix) && path.endsWith('.json'))
+            .map((path) {
+              final yearText = path.substring(prefix.length, path.length - 5);
+              final year = int.tryParse(yearText);
+              return (path: path, year: year);
+            })
+            .where((item) => item.year != null)
+            .toList()
+          ..sort((a, b) => a.year!.compareTo(b.year!));
+
+    if (candidates.isEmpty) {
+      return exact;
+    }
+
+    for (final candidate in candidates.reversed) {
+      if (candidate.year! <= season) {
+        return candidate.path;
+      }
+    }
+
+    return candidates.last.path;
+  }
+
+  Future<List<String>> _assetPaths() async {
+    if (_assetPathsCache != null) {
+      return _assetPathsCache!;
+    }
+    final raw = await rootBundle.loadString('AssetManifest.json');
+    final decoded = jsonDecode(raw) as Map<String, dynamic>;
+    _assetPathsCache = decoded.keys.toList(growable: false);
+    return _assetPathsCache!;
+  }
+
   PlayerProfile _parsePlayer(Map<String, dynamic> json) {
     final seasonStats = (json['seasonStats'] as List<dynamic>? ?? const [])
         .map((item) => item.toString())
@@ -107,22 +217,25 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     final highlights = (json['highlights'] as List<dynamic>? ?? const [])
         .map((item) => item.toString())
         .toList();
-    final recentGames = (json['recentGames'] as List<dynamic>? ?? const [])
-        .map((item) {
-          final map = item as Map<String, dynamic>;
-          return PlayerRecentGame(
-            date: map['date'] as String? ?? '',
-            opponent: map['opponent'] as String? ?? '',
-            summary: map['summary'] as String? ?? '',
-          );
-        })
-        .toList();
-    final sortMetrics = json['sortMetrics'] as Map<String, dynamic>? ?? const {};
+    final recentGames = (json['recentGames'] as List<dynamic>? ?? const []).map(
+      (item) {
+        final map = item as Map<String, dynamic>;
+        return PlayerRecentGame(
+          date: map['date'] as String? ?? '',
+          opponent: map['opponent'] as String? ?? '',
+          summary: map['summary'] as String? ?? '',
+          score: (map['score'] as num?)?.toDouble(),
+        );
+      },
+    ).toList();
+    final sortMetrics =
+        json['sortMetrics'] as Map<String, dynamic>? ?? const {};
 
     return PlayerProfile(
       id: json['id'] as String? ?? '',
       teamId: json['teamId'] as String? ?? '',
-      playerType: (json['playerType'] as String? ?? '').toLowerCase() == 'pitcher'
+      playerType:
+          (json['playerType'] as String? ?? '').toLowerCase() == 'pitcher'
           ? PlayerType.pitcher
           : PlayerType.hitter,
       imageUrl: json['imageUrl'] as String?,
@@ -133,6 +246,7 @@ class LocalAssetPlayerRepository implements PlayerRepository {
       handedness: json['handedness'] as String? ?? '',
       heightWeight: json['heightWeight'] as String? ?? '',
       birthDate: json['birthDate'] as String? ?? '',
+      career: json['career'] as String? ?? '',
       status: _parseStatus(json['status'] as String? ?? ''),
       rosterGroup: (json['rosterGroup'] as String? ?? '') == 'reserve'
           ? PlayerRosterGroup.reserve
@@ -186,6 +300,17 @@ class LocalAssetPlayerRepository implements PlayerRepository {
       default:
         return PlayerAvailabilityStatus.available;
     }
+  }
+
+  String? _resolvePlayerImageUrl(PlayerProfile player, int season) {
+    final imageUrl = player.imageUrl;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return imageUrl;
+    }
+    if (player.id.isEmpty) {
+      return null;
+    }
+    return '$_kboPersonImageBase/$season/${player.id}.jpg';
   }
 }
 

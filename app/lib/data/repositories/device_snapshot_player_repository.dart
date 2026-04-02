@@ -1,0 +1,422 @@
+import 'dart:convert';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../models/player.dart';
+import '../models/records_overview.dart';
+import '../models/team_records_bundle.dart';
+import '../models/team_stats.dart';
+import 'player_repository.dart';
+
+class DeviceSnapshotPlayerRepository implements PlayerRepository {
+  static const _prefix = 'player_snapshot:';
+
+  final PlayerRepository primary;
+  final PlayerRepository fallback;
+
+  DeviceSnapshotPlayerRepository({
+    required this.primary,
+    required this.fallback,
+  });
+
+  @override
+  Future<List<PlayerProfile>> getTeamPlayers(
+    String teamId, {
+    required int season,
+  }) async {
+    final cacheKey = 'teamPlayers:$teamId:$season';
+    final fresh = await _tryPrimary(
+      cacheKey,
+      () => primary.getTeamPlayers(teamId, season: season),
+      _encodePlayers,
+    );
+    if (fresh != null) return fresh;
+
+    final cached = await _readSnapshot(cacheKey, _decodePlayers);
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    return fallback.getTeamPlayers(teamId, season: season);
+  }
+
+  @override
+  Future<PlayerProfile> getPlayerDetail(
+    String playerId, {
+    required int season,
+  }) async {
+    final cacheKey = 'playerDetail:$playerId:$season';
+    final fresh = await _tryPrimary(
+      cacheKey,
+      () => primary.getPlayerDetail(playerId, season: season),
+      _encodePlayer,
+    );
+    if (fresh != null) return fresh;
+
+    final cached = await _readSnapshot(cacheKey, _decodePlayer);
+    if (cached != null && cached.id.isNotEmpty) return cached;
+
+    return fallback.getPlayerDetail(playerId, season: season);
+  }
+
+  @override
+  Future<TeamStats> getTeamStats(String teamId, {required int season}) async {
+    final cacheKey = 'teamStats:$teamId:$season';
+    final fresh = await _tryPrimary(
+      cacheKey,
+      () => primary.getTeamStats(teamId, season: season),
+      _encodeTeamStats,
+    );
+    if (fresh != null) return fresh;
+
+    final cached = await _readSnapshot(cacheKey, _decodeTeamStats);
+    if (cached != null &&
+        (cached.hitting.isNotEmpty || cached.pitching.isNotEmpty)) {
+      return cached;
+    }
+
+    return fallback.getTeamStats(teamId, season: season);
+  }
+
+  @override
+  Future<TeamRecordsBundle> getTeamRecords(
+    String teamId, {
+    required int season,
+  }) async {
+    final cacheKey = 'teamRecords:$teamId:$season';
+    final fresh = await _tryPrimary(
+      cacheKey,
+      () => primary.getTeamRecords(teamId, season: season),
+      _encodeTeamRecordsBundle,
+    );
+    if (fresh != null) return fresh;
+
+    final cached = await _readSnapshot(cacheKey, _decodeTeamRecordsBundle);
+    if (cached != null &&
+        (cached.players.isNotEmpty ||
+            cached.teamStats.hitting.isNotEmpty ||
+            cached.teamStats.pitching.isNotEmpty)) {
+      return cached;
+    }
+
+    return fallback.getTeamRecords(teamId, season: season);
+  }
+
+  @override
+  Future<RecordsOverview> getRecordsOverview({required int season}) async {
+    final cacheKey = 'recordsOverview:$season';
+    final fresh = await _tryPrimary(
+      cacheKey,
+      () => primary.getRecordsOverview(season: season),
+      _encodeRecordsOverview,
+    );
+    if (fresh != null) return fresh;
+
+    final cached = await _readSnapshot(cacheKey, _decodeRecordsOverview);
+    if (cached != null &&
+        (cached.avgLeaders.isNotEmpty ||
+            cached.hrLeaders.isNotEmpty ||
+            cached.opsLeaders.isNotEmpty ||
+            cached.eraLeaders.isNotEmpty)) {
+      return cached;
+    }
+
+    return fallback.getRecordsOverview(season: season);
+  }
+
+  @override
+  Future<List<RecordLeader>> getLeaderboard({
+    required int season,
+    required LeaderboardMetric metric,
+  }) async {
+    final cacheKey = 'leaderboard:${metric.key}:$season';
+    final fresh = await _tryPrimary(
+      cacheKey,
+      () => primary.getLeaderboard(season: season, metric: metric),
+      _encodeLeaders,
+    );
+    if (fresh != null) return fresh;
+
+    final cached = await _readSnapshot(cacheKey, _decodeLeadersPayload);
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    return fallback.getLeaderboard(season: season, metric: metric);
+  }
+
+  Future<T?> _tryPrimary<T>(
+    String cacheKey,
+    Future<T> Function() action,
+    Object Function(T value) encoder,
+  ) async {
+    try {
+      final value = await action();
+      await _writeSnapshot(cacheKey, encoder(value));
+      return value;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _writeSnapshot(String cacheKey, Object payload) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('$_prefix$cacheKey', jsonEncode(payload));
+  }
+
+  Future<T?> _readSnapshot<T>(
+    String cacheKey,
+    T Function(Map<String, dynamic> json) decoder,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('$_prefix$cacheKey');
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    try {
+      return decoder(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Object _encodePlayers(List<PlayerProfile> players) => {
+    'players': players.map(_encodePlayer).toList(),
+  };
+
+  List<PlayerProfile> _decodePlayers(Map<String, dynamic> json) =>
+      (json['players'] as List<dynamic>? ?? const [])
+          .map((item) => _decodePlayer(item as Map<String, dynamic>))
+          .toList();
+
+  Object _encodeLeaders(List<RecordLeader> leaders) => {
+    'leaders': leaders
+        .map(
+          (leader) => {
+            'rank': leader.rank,
+            'playerId': leader.playerId,
+            'playerType': leader.playerType,
+            'name': leader.name,
+            'teamId': leader.teamId,
+            'value': leader.value,
+          },
+        )
+        .toList(),
+  };
+
+  List<RecordLeader> _decodeLeadersPayload(Map<String, dynamic> json) =>
+      (json['leaders'] as List<dynamic>? ?? const [])
+          .map((item) {
+            final map = item as Map<String, dynamic>;
+            return RecordLeader(
+              rank: map['rank'] as int? ?? 0,
+              playerId: map['playerId'] as String? ?? '',
+              playerType: map['playerType'] as String? ?? '',
+              name: map['name'] as String? ?? '',
+              teamId: map['teamId'] as String? ?? '',
+              value: map['value'] as String? ?? '',
+            );
+          })
+          .toList();
+
+  Object _encodePlayer(PlayerProfile player) => {
+    'id': player.id,
+    'teamId': player.teamId,
+    'playerType': player.playerType.name,
+    'imageUrl': player.imageUrl,
+    'name': player.name,
+    'number': player.number,
+    'position': player.position,
+    'roleLabel': player.roleLabel,
+    'handedness': player.handedness,
+    'heightWeight': player.heightWeight,
+    'birthDate': player.birthDate,
+    'career': player.career,
+    'status': player.status.name,
+    'rosterGroup': player.rosterGroup.name,
+    'statusNote': player.statusNote,
+    'headlineStat': player.headlineStat,
+    'secondaryStat': player.secondaryStat,
+    'seasonStats': player.seasonStats,
+    'highlights': player.highlights,
+    'recentGames': player.recentGames
+        .map(
+          (game) => {
+            'date': game.date,
+            'opponent': game.opponent,
+            'summary': game.summary,
+            'score': game.score,
+          },
+        )
+        .toList(),
+    'avg': player.avg,
+    'ops': player.ops,
+    'era': player.era,
+    'whip': player.whip,
+  };
+
+  PlayerProfile _decodePlayer(Map<String, dynamic> json) {
+    return PlayerProfile(
+      id: json['id'] as String? ?? '',
+      teamId: json['teamId'] as String? ?? '',
+      playerType: (json['playerType'] as String? ?? '') == 'pitcher'
+          ? PlayerType.pitcher
+          : PlayerType.hitter,
+      imageUrl: json['imageUrl'] as String?,
+      name: json['name'] as String? ?? '',
+      number: json['number'] as int? ?? 0,
+      position: json['position'] as String? ?? '',
+      roleLabel: json['roleLabel'] as String? ?? '',
+      handedness: json['handedness'] as String? ?? '',
+      heightWeight: json['heightWeight'] as String? ?? '',
+      birthDate: json['birthDate'] as String? ?? '',
+      career: json['career'] as String? ?? '',
+      status: _decodeStatus(json['status'] as String?),
+      rosterGroup: (json['rosterGroup'] as String? ?? '') == 'reserve'
+          ? PlayerRosterGroup.reserve
+          : PlayerRosterGroup.entry,
+      statusNote: json['statusNote'] as String?,
+      headlineStat: json['headlineStat'] as String? ?? '',
+      secondaryStat: json['secondaryStat'] as String? ?? '',
+      seasonStats: (json['seasonStats'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      highlights: (json['highlights'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      recentGames: (json['recentGames'] as List<dynamic>? ?? const []).map((
+        item,
+      ) {
+        final map = item as Map<String, dynamic>;
+        return PlayerRecentGame(
+          date: map['date'] as String? ?? '',
+          opponent: map['opponent'] as String? ?? '',
+          summary: map['summary'] as String? ?? '',
+          score: (map['score'] as num?)?.toDouble(),
+        );
+      }).toList(),
+      avg: (json['avg'] as num?)?.toDouble(),
+      ops: (json['ops'] as num?)?.toDouble(),
+      era: (json['era'] as num?)?.toDouble(),
+      whip: (json['whip'] as num?)?.toDouble(),
+    );
+  }
+
+  Object _encodeTeamStats(TeamStats stats) => {
+    'teamId': stats.teamId,
+    'season': stats.season,
+    'hitting': stats.hitting,
+    'pitching': stats.pitching,
+  };
+
+  TeamStats _decodeTeamStats(Map<String, dynamic> json) => TeamStats(
+    teamId: json['teamId'] as String? ?? '',
+    season: json['season'] as int? ?? 0,
+    hitting: (json['hitting'] as Map<String, dynamic>? ?? const {}).map(
+      (key, value) => MapEntry(key, value.toString()),
+    ),
+    pitching: (json['pitching'] as Map<String, dynamic>? ?? const {}).map(
+      (key, value) => MapEntry(key, value.toString()),
+    ),
+  );
+
+  Object _encodeTeamRecordsBundle(TeamRecordsBundle bundle) => {
+    'players': bundle.players.map(_encodePlayer).toList(),
+    'teamStats': _encodeTeamStats(bundle.teamStats),
+  };
+
+  TeamRecordsBundle _decodeTeamRecordsBundle(Map<String, dynamic> json) =>
+      TeamRecordsBundle(
+        players: (json['players'] as List<dynamic>? ?? const [])
+            .map((item) => _decodePlayer(item as Map<String, dynamic>))
+            .toList(),
+        teamStats: _decodeTeamStats(
+          json['teamStats'] as Map<String, dynamic>? ?? const {},
+        ),
+      );
+
+  Object _encodeRecordsOverview(RecordsOverview overview) => {
+    'season': overview.season,
+    'avgLeaders': overview.avgLeaders.map(_encodeLeader).toList(),
+    'hrLeaders': overview.hrLeaders.map(_encodeLeader).toList(),
+    'opsLeaders': overview.opsLeaders.map(_encodeLeader).toList(),
+    'eraLeaders': overview.eraLeaders.map(_encodeLeader).toList(),
+    'todayHitter': _encodeFeatured(overview.todayHitter),
+    'todayPitcher': _encodeFeatured(overview.todayPitcher),
+    'monthHitter': _encodeFeatured(overview.monthHitter),
+    'monthPitcher': _encodeFeatured(overview.monthPitcher),
+  };
+
+  RecordsOverview _decodeRecordsOverview(Map<String, dynamic> json) =>
+      RecordsOverview(
+        season: json['season'] as int? ?? 0,
+        avgLeaders: _decodeLeaders(json['avgLeaders'] as List<dynamic>?),
+        hrLeaders: _decodeLeaders(json['hrLeaders'] as List<dynamic>?),
+        opsLeaders: _decodeLeaders(json['opsLeaders'] as List<dynamic>?),
+        eraLeaders: _decodeLeaders(json['eraLeaders'] as List<dynamic>?),
+        todayHitter: _decodeFeatured(
+          json['todayHitter'] as Map<String, dynamic>? ?? const {},
+        ),
+        todayPitcher: _decodeFeatured(
+          json['todayPitcher'] as Map<String, dynamic>? ?? const {},
+        ),
+        monthHitter: _decodeFeatured(
+          json['monthHitter'] as Map<String, dynamic>? ?? const {},
+        ),
+        monthPitcher: _decodeFeatured(
+          json['monthPitcher'] as Map<String, dynamic>? ?? const {},
+        ),
+      );
+
+  Object _encodeLeader(RecordLeader leader) => {
+    'rank': leader.rank,
+    'playerId': leader.playerId,
+    'playerType': leader.playerType,
+    'name': leader.name,
+    'teamId': leader.teamId,
+    'value': leader.value,
+  };
+
+  List<RecordLeader> _decodeLeaders(List<dynamic>? list) =>
+      (list ?? const []).map((item) {
+        final map = item as Map<String, dynamic>;
+        return RecordLeader(
+          rank: map['rank'] as int? ?? 0,
+          playerId: map['playerId'] as String? ?? '',
+          playerType: map['playerType'] as String? ?? '',
+          name: map['name'] as String? ?? '',
+          teamId: map['teamId'] as String? ?? '',
+          value: map['value'] as String? ?? '',
+        );
+      }).toList();
+
+  Object _encodeFeatured(FeaturedPlayerCard card) => {
+    'label': card.label,
+    'playerId': card.playerId,
+    'playerType': card.playerType,
+    'name': card.name,
+    'teamId': card.teamId,
+    'headline': card.headline,
+    'summary': card.summary,
+    'imageUrl': card.imageUrl,
+  };
+
+  FeaturedPlayerCard _decodeFeatured(Map<String, dynamic> json) =>
+      FeaturedPlayerCard(
+        label: json['label'] as String? ?? '',
+        playerId: json['playerId'] as String?,
+        playerType: json['playerType'] as String?,
+        name: json['name'] as String?,
+        teamId: json['teamId'] as String?,
+        headline: json['headline'] as String?,
+        summary: json['summary'] as String?,
+        imageUrl: json['imageUrl'] as String?,
+      );
+
+  PlayerAvailabilityStatus _decodeStatus(String? raw) {
+    switch (raw) {
+      case 'injured':
+        return PlayerAvailabilityStatus.injured;
+      case 'inactive':
+        return PlayerAvailabilityStatus.inactive;
+      default:
+        return PlayerAvailabilityStatus.available;
+    }
+  }
+}

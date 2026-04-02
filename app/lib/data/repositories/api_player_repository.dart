@@ -15,7 +15,10 @@ class ApiPlayerRepository implements PlayerRepository {
   ApiPlayerRepository(this._client);
 
   @override
-  Future<List<PlayerProfile>> getTeamPlayers(String teamId, {required int season}) async {
+  Future<List<PlayerProfile>> getTeamPlayers(
+    String teamId, {
+    required int season,
+  }) async {
     final data = await _client.getCached(
       '/team/$teamId/players',
       queryParameters: {'season': season},
@@ -24,11 +27,16 @@ class ApiPlayerRepository implements PlayerRepository {
       maxAge: _stableCacheAge,
     );
     final players = data['players'] as List<dynamic>? ?? [];
-    return players.map((item) => _parsePlayer(item as Map<String, dynamic>)).toList();
+    return players
+        .map((item) => _parsePlayer(item as Map<String, dynamic>))
+        .toList();
   }
 
   @override
-  Future<PlayerProfile> getPlayerDetail(String playerId, {required int season}) async {
+  Future<PlayerProfile> getPlayerDetail(
+    String playerId, {
+    required int season,
+  }) async {
     final data = await _client.getCached(
       '/player/$playerId',
       queryParameters: {'season': season},
@@ -48,11 +56,18 @@ class ApiPlayerRepository implements PlayerRepository {
       preferCache: true,
       maxAge: _stableCacheAge,
     );
-    return _parseTeamStats(data, fallbackTeamId: teamId, fallbackSeason: season);
+    return _parseTeamStats(
+      data,
+      fallbackTeamId: teamId,
+      fallbackSeason: season,
+    );
   }
 
   @override
-  Future<TeamRecordsBundle> getTeamRecords(String teamId, {required int season}) async {
+  Future<TeamRecordsBundle> getTeamRecords(
+    String teamId, {
+    required int season,
+  }) async {
     final data = await _client.getCached(
       '/team/$teamId/records',
       queryParameters: {'season': season},
@@ -62,7 +77,9 @@ class ApiPlayerRepository implements PlayerRepository {
     );
     final players = data['players'] as List<dynamic>? ?? [];
     return TeamRecordsBundle(
-      players: players.map((item) => _parsePlayer(item as Map<String, dynamic>)).toList(),
+      players: players
+          .map((item) => _parsePlayer(item as Map<String, dynamic>))
+          .toList(),
       teamStats: _parseTeamStats(
         data['teamStats'] as Map<String, dynamic>? ?? const {},
         fallbackTeamId: teamId,
@@ -112,30 +129,70 @@ class ApiPlayerRepository implements PlayerRepository {
       hrLeaders: _parseLeaders(leaders['hr'] as List<dynamic>? ?? const []),
       opsLeaders: _parseLeaders(leaders['ops'] as List<dynamic>? ?? const []),
       eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
-      todayHitter: _parseFeatured(featured['todayHitter'] as Map<String, dynamic>? ?? const {'label': '오늘의 타자'}),
-      todayPitcher: _parseFeatured(featured['todayPitcher'] as Map<String, dynamic>? ?? const {'label': '오늘의 투수'}),
-      monthHitter: _parseFeatured(featured['monthHitter'] as Map<String, dynamic>? ?? const {'label': '이달의 타자'}),
-      monthPitcher: _parseFeatured(featured['monthPitcher'] as Map<String, dynamic>? ?? const {'label': '이달의 투수'}),
+      todayHitter: _parseFeatured(
+        featured['todayHitter'] as Map<String, dynamic>? ??
+            const {'label': '오늘의 타자'},
+      ),
+      todayPitcher: _parseFeatured(
+        featured['todayPitcher'] as Map<String, dynamic>? ??
+            const {'label': '오늘의 투수'},
+      ),
+      monthHitter: _parseFeatured(
+        featured['monthHitter'] as Map<String, dynamic>? ??
+            const {'label': '이달의 타자'},
+      ),
+      monthPitcher: _parseFeatured(
+        featured['monthPitcher'] as Map<String, dynamic>? ??
+            const {'label': '이달의 투수'},
+      ),
     );
   }
 
+  @override
+  Future<List<RecordLeader>> getLeaderboard({
+    required int season,
+    required LeaderboardMetric metric,
+  }) async {
+    if (!metric.supportedByOfficialSource) {
+      return const [];
+    }
+
+    final data = await _client.getCached(
+      '/records/leaderboard',
+      queryParameters: {'season': season, 'metric': metric.key},
+      cacheKey: 'leaderboard:${metric.key}:$season',
+      preferCache: true,
+      maxAge: _stableCacheAge,
+    );
+    return _parseLeaders(data['leaders'] as List<dynamic>? ?? const []);
+  }
+
   PlayerProfile _parsePlayer(Map<String, dynamic> json) {
-    final seasonStats = (json['seasonStats'] as List<dynamic>? ?? []).map((item) => item.toString()).toList();
-    final highlights = (json['highlights'] as List<dynamic>? ?? []).map((item) => item.toString()).toList();
-    final recentGames = (json['recentGames'] as List<dynamic>? ?? []).map((item) {
+    final seasonStats = (json['seasonStats'] as List<dynamic>? ?? [])
+        .map((item) => item.toString())
+        .toList();
+    final highlights = (json['highlights'] as List<dynamic>? ?? [])
+        .map((item) => item.toString())
+        .toList();
+    final recentGames = (json['recentGames'] as List<dynamic>? ?? []).map((
+      item,
+    ) {
       final map = item as Map<String, dynamic>;
       return PlayerRecentGame(
         date: map['date'] as String? ?? '',
         opponent: map['opponent'] as String? ?? '',
         summary: map['summary'] as String? ?? '',
+        score: (map['score'] as num?)?.toDouble(),
       );
     }).toList();
-    final sortMetrics = json['sortMetrics'] as Map<String, dynamic>? ?? const {};
+    final sortMetrics =
+        json['sortMetrics'] as Map<String, dynamic>? ?? const {};
 
     return PlayerProfile(
       id: json['id'] as String? ?? '',
       teamId: json['teamId'] as String? ?? '',
-      playerType: (json['playerType'] as String? ?? '').toLowerCase() == 'pitcher'
+      playerType:
+          (json['playerType'] as String? ?? '').toLowerCase() == 'pitcher'
           ? PlayerType.pitcher
           : PlayerType.hitter,
       imageUrl: json['imageUrl'] as String?,
@@ -146,6 +203,7 @@ class ApiPlayerRepository implements PlayerRepository {
       handedness: json['handedness'] as String? ?? '',
       heightWeight: json['heightWeight'] as String? ?? '',
       birthDate: json['birthDate'] as String? ?? '',
+      career: json['career'] as String? ?? '',
       status: _parseStatus(json['status'] as String? ?? ''),
       rosterGroup: (json['rosterGroup'] as String? ?? '') == 'reserve'
           ? PlayerRosterGroup.reserve

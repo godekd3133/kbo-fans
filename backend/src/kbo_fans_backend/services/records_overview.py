@@ -19,6 +19,9 @@ class RecordsOverviewService:
         self._overview_cache: TtlCache[int, Dict[str, Any]] = TtlCache(
             self._OVERVIEW_CACHE_TTL_SECONDS
         )
+        self._leaderboard_cache: TtlCache[str, Dict[str, Any]] = TtlCache(
+            self._OVERVIEW_CACHE_TTL_SECONDS
+        )
 
     def get_overview(self, season: int) -> Dict[str, Any]:
         cached = self._overview_cache.get(season)
@@ -42,4 +45,22 @@ class RecordsOverviewService:
 
         self._overview_cache.set(season, payload)
         self.snapshot_store.save("records_overview", str(season), payload)
+        return payload
+
+    def get_leaderboard(self, season: int, metric: str) -> Dict[str, Any]:
+        cache_key = f"{season}:{metric}"
+        cached = self._leaderboard_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            leaders = self.crawler.get_leaderboard(season, metric)
+        except Exception:
+            stale = self._leaderboard_cache.get_stale(cache_key)
+            if stale is not None:
+                return stale
+            raise
+
+        payload = {"season": season, "metric": metric, "leaders": leaders}
+        self._leaderboard_cache.set(cache_key, payload)
         return payload

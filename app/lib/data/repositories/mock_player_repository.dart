@@ -64,4 +64,20 @@ class MockPlayerRepository implements PlayerRepository {
       monthPitcher: FeaturedPlayerCard(label: '이달의 투수', name: '켈리', teamId: 'LG', headline: 'ERA 2.45', summary: 'ERA 상위권 + 2승'),
     );
   }
+
+  @override
+  Future<List<RecordLeader>> getLeaderboard({
+    required int season,
+    required LeaderboardMetric metric,
+  }) async {
+    final overview = await getRecordsOverview(season: season);
+    return switch (metric) {
+      LeaderboardMetric.avg => overview.avgLeaders,
+      LeaderboardMetric.hr => overview.hrLeaders,
+      LeaderboardMetric.ops => overview.opsLeaders,
+      LeaderboardMetric.era => overview.eraLeaders,
+      LeaderboardMetric.war => const [],
+      LeaderboardMetric.wrcPlus => const [],
+    };
+  }
 }

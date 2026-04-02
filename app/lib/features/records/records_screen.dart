@@ -16,6 +16,7 @@ import '../../data/models/team_stats.dart';
 import '../../data/providers.dart';
 
 enum PlayerListFilter { all, entryOnly, reserveOnly }
+
 enum PlayerSortOption { name, avg, ops, era, whip }
 
 class RecordsScreen extends ConsumerStatefulWidget {
@@ -27,7 +28,8 @@ class RecordsScreen extends ConsumerStatefulWidget {
   ConsumerState<RecordsScreen> createState() => _RecordsScreenState();
 }
 
-class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTickerProviderStateMixin {
+class _RecordsScreenState extends ConsumerState<RecordsScreen>
+    with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   PlayerListFilter _filter = PlayerListFilter.all;
   PlayerSortOption _sort = PlayerSortOption.avg;
@@ -45,7 +47,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       setState(() {
-        _sort = _tabController.index == 0 ? PlayerSortOption.avg : PlayerSortOption.era;
+        _sort = _tabController.index == 0
+            ? PlayerSortOption.avg
+            : PlayerSortOption.era;
       });
     });
   }
@@ -62,6 +66,20 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
       return _buildTeamChooser();
     }
     return _buildTeamRecords(widget.teamId!);
+  }
+
+  Future<void> _refreshOverview() async {
+    ref.invalidate(recordsOverviewProvider(_selectedSeason));
+    await ref.read(recordsOverviewProvider(_selectedSeason).future);
+  }
+
+  Future<void> _refreshTeamRecords(String teamId) async {
+    ref.invalidate(teamRecordsProvider('$teamId|$_selectedSeason'));
+    ref.invalidate(standingsProvider(_selectedSeason));
+    await Future.wait([
+      ref.read(teamRecordsProvider('$teamId|$_selectedSeason').future),
+      ref.read(standingsProvider(_selectedSeason).future),
+    ]);
   }
 
   Widget _buildTeamChooser() {
@@ -81,72 +99,117 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
 
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-          children: [
-            const Text('기록실', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
-            const Text(
-              '팀을 선택하면 해당 팀의 선수 기록실로 이동합니다.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 18),
-            _seasonSelector(),
-            const SizedBox(height: 14),
-            overviewAsync.when(
-              loading: () => const SizedBox.shrink(),
-              error: (error, stackTrace) => const SizedBox.shrink(),
-              data: (overview) => Column(
+        child: RefreshIndicator(
+          onRefresh: _refreshOverview,
+          color: AppColors.live,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+            children: [
+              const Text(
+                '기록실',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Row(
                 children: [
-                  _featuredCards(overview),
-                  const SizedBox(height: 14),
-                  _leaderboardCard('리그 타율 리더보드', overview.avgLeaders),
-                  const SizedBox(height: 10),
-                  _leaderboardCard('리그 홈런 리더보드', overview.hrLeaders),
-                  const SizedBox(height: 10),
-                  _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
-                  const SizedBox(height: 10),
-                  _leaderboardCard('리그 ERA 리더보드', overview.eraLeaders),
-                  const SizedBox(height: 14),
+                  const Expanded(
+                    child: Text(
+                      '팀을 선택하면 해당 팀의 선수 기록실로 이동합니다.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '기록실 새로고침',
+                    onPressed: () {
+                      unawaited(_refreshOverview());
+                      setState(() {});
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
                 ],
               ),
-            ),
-            TextField(
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: '팀 검색',
-                hintStyle: const TextStyle(color: AppColors.textDisabled),
-                prefixIcon: const Icon(Icons.search, color: AppColors.textDisabled),
-                filled: true,
-                fillColor: AppColors.card,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.divider),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.divider),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.textSecondary),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            for (final team in visibleTeams)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _teamChooserCard(team, isMyTeam: myTeamId == team.id),
-              ),
-            if (visibleTeams.isEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 48),
-                child: Center(
-                  child: Text('검색 결과가 없습니다', style: TextStyle(color: AppColors.textDisabled)),
+              const SizedBox(height: 18),
+              _seasonSelector(),
+              const SizedBox(height: 14),
+              overviewAsync.when(
+                loading: () => const SizedBox.shrink(),
+                error: (error, stackTrace) => const SizedBox.shrink(),
+                data: (overview) => Column(
+                  children: [
+                    _featuredCards(overview),
+                    const SizedBox(height: 14),
+                    _leaderboardCard('리그 타율 리더보드', overview.avgLeaders),
+                    const SizedBox(height: 10),
+                    _leaderboardCard('리그 홈런 리더보드', overview.hrLeaders),
+                    const SizedBox(height: 10),
+                    _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
+                    const SizedBox(height: 10),
+                    _leaderboardCard('리그 ERA 리더보드', overview.eraLeaders),
+                    const SizedBox(height: 10),
+                    _leaderboardCard(
+                      LeaderboardMetric.war.title,
+                      const [],
+                      metric: LeaderboardMetric.war,
+                    ),
+                    const SizedBox(height: 10),
+                    _leaderboardCard(
+                      LeaderboardMetric.wrcPlus.title,
+                      const [],
+                      metric: LeaderboardMetric.wrcPlus,
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                 ),
               ),
-          ],
+              TextField(
+                onChanged: (value) => setState(() => _searchQuery = value),
+                decoration: InputDecoration(
+                  hintText: '팀 검색',
+                  hintStyle: const TextStyle(color: AppColors.textDisabled),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.textDisabled,
+                  ),
+                  filled: true,
+                  fillColor: AppColors.card,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.divider),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppColors.divider),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              for (final team in visibleTeams)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _teamChooserCard(team, isMyTeam: myTeamId == team.id),
+                ),
+              if (visibleTeams.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 48),
+                  child: Center(
+                    child: Text(
+                      '검색 결과가 없습니다',
+                      style: TextStyle(color: AppColors.textDisabled),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -160,7 +223,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isMyTeam ? team.primaryColor : AppColors.divider),
+          border: Border.all(
+            color: isMyTeam ? team.primaryColor : AppColors.divider,
+          ),
         ),
         child: Row(
           children: [
@@ -178,10 +243,23 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                   Row(
                     children: [
                       Expanded(
-                        child: Text(team.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        child: Text(
+                          team.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                       if (isMyTeam)
-                        Text('마이팀', style: TextStyle(fontSize: 12, color: team.primaryColor, fontWeight: FontWeight.w700)),
+                        Text(
+                          '마이팀',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: team.primaryColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -189,7 +267,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                     isMyTeam ? '마이팀 기록실 열기' : '선수 기록 보기',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isMyTeam ? team.primaryColor : AppColors.textSecondary,
+                      color: isMyTeam
+                          ? team.primaryColor
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -204,7 +284,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
 
   Widget _buildTeamRecords(String teamId) {
     final team = KboTeams.byId(teamId);
-    final teamRecordsAsync = ref.watch(teamRecordsProvider('$teamId|$_selectedSeason'));
+    final teamRecordsAsync = ref.watch(
+      teamRecordsProvider('$teamId|$_selectedSeason'),
+    );
     final standingsAsync = ref.watch(standingsProvider(_selectedSeason));
     _logTeamRecordsLoad(teamId, teamRecordsAsync);
 
@@ -225,21 +307,36 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('기록실', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                        const Text(
+                          '기록실',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         Text(
                           '${team?.name ?? teamId} $_selectedSeason 시즌 기록실',
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    tooltip: '팀 기록 새로고침',
+                    onPressed: () => unawaited(_refreshTeamRecords(teamId)),
+                    icon: const Icon(Icons.refresh_rounded),
                   ),
                   if (team != null)
                     CachedNetworkImage(
                       imageUrl: team.logoUrl,
                       width: 34,
                       height: 34,
-                      errorWidget: (_, _, _) => _logoFallback(team.shortName, 34),
+                      errorWidget: (_, _, _) =>
+                          _logoFallback(team.shortName, 34),
                     ),
                 ],
               ),
@@ -303,11 +400,33 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: [
-                  Expanded(child: _filterButton(label: '전체', selected: _filter == PlayerListFilter.all, onTap: () => setState(() => _filter = PlayerListFilter.all))),
+                  Expanded(
+                    child: _filterButton(
+                      label: '전체',
+                      selected: _filter == PlayerListFilter.all,
+                      onTap: () =>
+                          setState(() => _filter = PlayerListFilter.all),
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _filterButton(label: '엔트리', selected: _filter == PlayerListFilter.entryOnly, onTap: () => setState(() => _filter = PlayerListFilter.entryOnly))),
+                  Expanded(
+                    child: _filterButton(
+                      label: '엔트리',
+                      selected: _filter == PlayerListFilter.entryOnly,
+                      onTap: () =>
+                          setState(() => _filter = PlayerListFilter.entryOnly),
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: _filterButton(label: '엔트리 제외', selected: _filter == PlayerListFilter.reserveOnly, onTap: () => setState(() => _filter = PlayerListFilter.reserveOnly))),
+                  Expanded(
+                    child: _filterButton(
+                      label: '엔트리 제외',
+                      selected: _filter == PlayerListFilter.reserveOnly,
+                      onTap: () => setState(
+                        () => _filter = PlayerListFilter.reserveOnly,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -329,15 +448,39 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: teamRecordsAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator(color: AppColors.live)),
-                error: (error, _) => Center(
-                  child: Text(
-                    '선수 기록을 불러올 수 없습니다',
-                    style: const TextStyle(color: AppColors.textDisabled),
+              child: RefreshIndicator(
+                onRefresh: () => _refreshTeamRecords(teamId),
+                color: AppColors.live,
+                child: teamRecordsAsync.when(
+                  loading: () => ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(
+                        height: 420,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.live,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  error: (error, _) => ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(
+                        height: 420,
+                        child: Center(
+                          child: Text(
+                            '선수 기록을 불러올 수 없습니다',
+                            style: TextStyle(color: AppColors.textDisabled),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  data: (teamRecords) => _buildList(teamRecords.players),
                 ),
-                data: (teamRecords) => _buildList(teamRecords.players),
               ),
             ),
           ],
@@ -355,8 +498,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     }
 
     if (!teamRecordsAsync.hasValue) {
-      _teamRecordsLoadStartedAtMicros ??=
-          DateTime.now().microsecondsSinceEpoch;
+      _teamRecordsLoadStartedAtMicros ??= DateTime.now().microsecondsSinceEpoch;
       return;
     }
 
@@ -396,10 +538,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     }
     _lastTeamRecordsDiagKey = diagKey;
     unawaited(() async {
-      final diagnostics = await ref.read(apiClientProvider).diagnoseTeamRecords(
-        teamId: teamId,
-        season: _selectedSeason,
-      );
+      final diagnostics = await ref
+          .read(apiClientProvider)
+          .diagnoseTeamRecords(teamId: teamId, season: _selectedSeason);
       DevConsole.instance.warn(
         'RECORDS DIAG team=$teamId season=$_selectedSeason',
       );
@@ -411,10 +552,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
 
   Widget _buildList(List<PlayerProfile> players) {
     final filtered = _sortPlayers(_applyFilters(players));
-    final entryPlayers = filtered.where((player) => player.rosterGroup == PlayerRosterGroup.entry).toList();
-    final reservePlayers = filtered.where((player) => player.rosterGroup == PlayerRosterGroup.reserve).toList();
+    final entryPlayers = filtered
+        .where((player) => player.rosterGroup == PlayerRosterGroup.entry)
+        .toList();
+    final reservePlayers = filtered
+        .where((player) => player.rosterGroup == PlayerRosterGroup.reserve)
+        .toList();
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
       children: [
         _summaryCard(entryPlayers.length, reservePlayers.length),
@@ -433,22 +579,35 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
         if (filtered.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 48),
-            child: Center(child: Text('조건에 맞는 선수가 없습니다', style: TextStyle(color: AppColors.textDisabled))),
+            child: Center(
+              child: Text(
+                '조건에 맞는 선수가 없습니다',
+                style: TextStyle(color: AppColors.textDisabled),
+              ),
+            ),
           ),
       ],
     );
   }
 
   List<PlayerProfile> _applyFilters(List<PlayerProfile> players) {
-    final targetType = _tabController.index == 0 ? PlayerType.hitter : PlayerType.pitcher;
-    var filtered = players.where((player) => player.playerType == targetType).toList();
+    final targetType = _tabController.index == 0
+        ? PlayerType.hitter
+        : PlayerType.pitcher;
+    var filtered = players
+        .where((player) => player.playerType == targetType)
+        .toList();
 
     switch (_filter) {
       case PlayerListFilter.entryOnly:
-        filtered = filtered.where((player) => player.rosterGroup == PlayerRosterGroup.entry).toList();
+        filtered = filtered
+            .where((player) => player.rosterGroup == PlayerRosterGroup.entry)
+            .toList();
         break;
       case PlayerListFilter.reserveOnly:
-        filtered = filtered.where((player) => player.rosterGroup == PlayerRosterGroup.reserve).toList();
+        filtered = filtered
+            .where((player) => player.rosterGroup == PlayerRosterGroup.reserve)
+            .toList();
         break;
       case PlayerListFilter.all:
         break;
@@ -477,9 +636,17 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
 
   List<PlayerSortOption> _sortOptionsForCurrentTab() {
     if (_tabController.index == 0) {
-      return const [PlayerSortOption.name, PlayerSortOption.avg, PlayerSortOption.ops];
+      return const [
+        PlayerSortOption.name,
+        PlayerSortOption.avg,
+        PlayerSortOption.ops,
+      ];
     }
-    return const [PlayerSortOption.name, PlayerSortOption.era, PlayerSortOption.whip];
+    return const [
+      PlayerSortOption.name,
+      PlayerSortOption.era,
+      PlayerSortOption.whip,
+    ];
   }
 
   String _sortLabel(PlayerSortOption option) {
@@ -500,7 +667,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   Widget _summaryCard(int entryCount, int reserveCount) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
         children: [
           Expanded(child: _summaryMetric('엔트리', '$entryCount명')),
@@ -514,24 +684,39 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   Widget _summaryMetric(String label, String value) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+        ),
         const SizedBox(height: 6),
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
       ],
     );
   }
 
-  Widget _sectionTitle(String title) => Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700));
+  Widget _sectionTitle(String title) => Text(
+    title,
+    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+  );
 
   Widget _playerCard(PlayerProfile player) {
     final team = KboTeams.byId(player.teamId);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GestureDetector(
-        onTap: () => context.push('/records/player/${player.id}?season=$_selectedSeason'),
+        onTap: () => context.push(
+          '/records/player/${player.id}?season=$_selectedSeason',
+        ),
         child: Container(
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.divider)),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.divider),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -543,7 +728,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                   children: [
                     Row(
                       children: [
-                        Flexible(child: Text(player.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                        Flexible(
+                          child: Text(
+                            player.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         _numberBadge(player.number, team),
                         const SizedBox(width: 8),
@@ -551,26 +744,50 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text('${player.roleLabel} · ${player.position} · ${player.handedness}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text(
+                      _playerMetaLine(player),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     const SizedBox(height: 10),
-                    Text(player.headlineStat, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                    Text(
+                      player.headlineStat,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: 3),
-                    Text(player.secondaryStat, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text(
+                      player.secondaryStat,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
                     if (_primarySeasonMetrics(player).isNotEmpty) ...[
                       const SizedBox(height: 10),
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: _primarySeasonMetrics(player)
-                            .map((metric) => _statPill(metric))
-                            .toList(),
+                        children: _primarySeasonMetrics(
+                          player,
+                        ).map((metric) => _statPill(metric)).toList(),
                       ),
                     ],
                     if (player.statusNote != null) ...[
                       const SizedBox(height: 8),
                       Text(
                         player.statusNote!,
-                        style: TextStyle(fontSize: 12, color: player.status == PlayerAvailabilityStatus.injured ? AppColors.live : AppColors.textDisabled),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color:
+                              player.status == PlayerAvailabilityStatus.injured
+                              ? AppColors.live
+                              : AppColors.textDisabled,
+                        ),
                       ),
                     ],
                   ],
@@ -635,7 +852,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: (team?.primaryColor ?? AppColors.textSecondary).withValues(alpha: 0.14),
+        color: (team?.primaryColor ?? AppColors.textSecondary).withValues(
+          alpha: 0.14,
+        ),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -652,8 +871,18 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   Widget _pill(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
     );
   }
 
@@ -672,6 +901,24 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     );
   }
 
+  String _playerMetaLine(PlayerProfile player) {
+    final parts = <String>[];
+    final roleLabel = player.roleLabel.trim();
+    final position = player.position.trim();
+    final handedness = player.handedness.trim();
+
+    if (roleLabel.isNotEmpty) {
+      parts.add(roleLabel);
+    }
+    if (position.isNotEmpty && position != roleLabel) {
+      parts.add(position);
+    }
+    if (handedness.isNotEmpty) {
+      parts.add(handedness);
+    }
+    return parts.join(' · ');
+  }
+
   List<String> _primarySeasonMetrics(PlayerProfile player) {
     final stats = player.seasonStats;
     if (stats.isEmpty) {
@@ -679,13 +926,31 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     }
 
     if (player.playerType == PlayerType.pitcher) {
-      return _pickMetrics(stats, const ['G ', 'IP ', 'SO ', 'ER ', 'W ', 'L '], maxCount: 4);
+      return _pickMetrics(stats, const [
+        'G ',
+        'IP ',
+        'SO ',
+        'ER ',
+        'W ',
+        'L ',
+      ], maxCount: 4);
     }
 
-    return _pickMetrics(stats, const ['G ', 'PA ', 'AB ', 'H ', 'HR ', 'RBI '], maxCount: 4);
+    return _pickMetrics(stats, const [
+      'G ',
+      'PA ',
+      'AB ',
+      'H ',
+      'HR ',
+      'RBI ',
+    ], maxCount: 4);
   }
 
-  List<String> _pickMetrics(List<String> stats, List<String> preferredPrefixes, {required int maxCount}) {
+  List<String> _pickMetrics(
+    List<String> stats,
+    List<String> preferredPrefixes, {
+    required int maxCount,
+  }) {
     final picked = <String>[];
 
     for (final prefix in preferredPrefixes) {
@@ -710,7 +975,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     return picked;
   }
 
-  Widget _filterButton({required String label, required bool selected, required VoidCallback onTap}) {
+  Widget _filterButton({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -721,12 +990,23 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
           borderRadius: BorderRadius.circular(10),
           border: selected ? null : Border.all(color: AppColors.divider),
         ),
-        child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? AppColors.background : AppColors.textSecondary)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: selected ? AppColors.background : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _sortChip({required String label, required bool selected, required VoidCallback onTap}) {
+  Widget _sortChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -734,9 +1014,18 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
         decoration: BoxDecoration(
           color: selected ? AppColors.cardSub : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: selected ? AppColors.textSecondary : AppColors.divider),
+          border: Border.all(
+            color: selected ? AppColors.textSecondary : AppColors.divider,
+          ),
         ),
-        child: Text(label, style: TextStyle(fontSize: 12, color: selected ? AppColors.textPrimary : AppColors.textDisabled, fontWeight: selected ? FontWeight.w600 : FontWeight.normal)),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }
@@ -745,14 +1034,22 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(color: AppColors.cardSub, borderRadius: BorderRadius.circular(size / 2)),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(size / 2),
+      ),
       alignment: Alignment.center,
-      child: Text(text, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+      ),
     );
   }
 
   Widget _seasonSelector() {
-    final seasons = [for (int year = DateTime.now().year; year >= 2001; year--) year];
+    final seasons = [
+      for (int year = DateTime.now().year; year >= 2001; year--) year,
+    ];
     return Container(
       height: 42,
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -763,17 +1060,25 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
       ),
       child: Row(
         children: [
-          const Text('시즌', style: TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+          const Text(
+            '시즌',
+            style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          ),
           const Spacer(),
           DropdownButton<int>(
             value: _selectedSeason,
             dropdownColor: AppColors.card,
             underline: const SizedBox.shrink(),
             items: seasons
-                .map((season) => DropdownMenuItem<int>(
-                      value: season,
-                      child: Text('$season', style: const TextStyle(fontSize: 14)),
-                    ))
+                .map(
+                  (season) => DropdownMenuItem<int>(
+                    value: season,
+                    child: Text(
+                      '$season',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                )
                 .toList(),
             onChanged: (value) {
               if (value == null) return;
@@ -785,10 +1090,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     );
   }
 
-  Widget _teamStatsCard(
-    TeamStats teamStats,
-    List<TeamStanding>? standings,
-  ) {
+  Widget _teamStatsCard(TeamStats teamStats, List<TeamStanding>? standings) {
     final teamStanding = standings
         ?.where((standing) => standing.teamId == teamStats.teamId)
         .firstOrNull;
@@ -837,13 +1139,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                     child: _summaryMetric('팀 순위', '${teamStanding.rank}위'),
                   ),
                   Container(width: 1, height: 36, color: AppColors.divider),
-                  Expanded(
-                    child: _summaryMetric('팀 승률', teamStanding.pct),
-                  ),
+                  Expanded(child: _summaryMetric('팀 승률', teamStanding.pct)),
                   Container(width: 1, height: 36, color: AppColors.divider),
-                  Expanded(
-                    child: _summaryMetric('게임차', teamStanding.gb),
-                  ),
+                  Expanded(child: _summaryMetric('게임차', teamStanding.gb)),
                 ],
               ),
             ),
@@ -851,12 +1149,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
             const SizedBox(height: 14),
             Row(
               children: [
-                Expanded(
-                  child: _summaryMetric('팀 ERA', teamEra),
-                ),
+                Expanded(child: _summaryMetric('팀 ERA', teamEra)),
                 Container(width: 1, height: 36, color: AppColors.divider),
                 Expanded(
-                  child: _summaryMetric('WHIP', teamStats.pitching['WHIP'] ?? '-'),
+                  child: _summaryMetric(
+                    'WHIP',
+                    teamStats.pitching['WHIP'] ?? '-',
+                  ),
                 ),
                 Container(width: 1, height: 36, color: AppColors.divider),
                 Expanded(
@@ -873,16 +1172,26 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
   Widget _heroTeamMetric(String label, String value, String detail) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+        ),
         const SizedBox(height: 8),
-        Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 6),
         Text(
           detail,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
+          style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+            height: 1.35,
+          ),
         ),
       ],
     );
@@ -921,9 +1230,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(card.label, style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
+          Text(
+            card.label,
+            style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          ),
           const SizedBox(height: 10),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (card.imageUrl != null && card.imageUrl!.isNotEmpty)
                 ClipRRect(
@@ -933,7 +1246,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                     width: 56,
                     height: 72,
                     fit: BoxFit.cover,
-                    errorWidget: (_, _, _) => _logoFallback(team?.shortName ?? '', 56),
+                    errorWidget: (_, _, _) =>
+                        _logoFallback(team?.shortName ?? '', 56),
                   ),
                 )
               else
@@ -943,13 +1257,31 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(card.name ?? '-', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(
+                      card.name ?? '-',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        height: 1.2,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text(card.headline ?? '-', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    Text(
+                      card.headline ?? '-',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
                     const SizedBox(height: 6),
                     Text(
                       card.summary ?? '-',
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12),
                     ),
@@ -963,39 +1295,111 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen> with SingleTicker
     );
   }
 
-  Widget _leaderboardCard(String title, List<RecordLeader> leaders) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          for (final leader in leaders)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 24,
-                    child: Text('${leader.rank}', style: const TextStyle(fontSize: 12, color: AppColors.textDisabled)),
-                  ),
-                  Expanded(
-                    child: Text(leader.name, style: const TextStyle(fontSize: 13)),
-                  ),
-                  Text(
-                    leader.value,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                  ),
-                ],
+  Widget _leaderboardCard(
+    String title,
+    List<RecordLeader> leaders, {
+    LeaderboardMetric? metric,
+  }) {
+    final resolvedMetric = metric ?? _metricFromTitle(title);
+    final supported = resolvedMetric?.supportedByOfficialSource ?? true;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: resolvedMetric == null
+          ? null
+          : () => context.push(
+                '/records/leaderboard/${resolvedMetric.key}?season=$_selectedSeason',
               ),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Text(
+                  supported ? '전체 보기' : '준비 중',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: supported
+                        ? AppColors.textSecondary
+                        : AppColors.textDisabled,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right,
+                  size: 16,
+                  color: supported
+                      ? AppColors.textSecondary
+                      : AppColors.textDisabled,
+                ),
+              ],
             ),
-        ],
+            const SizedBox(height: 10),
+            if (leaders.isEmpty)
+              const Text(
+                '현재 공식 소스 기준 리더보드 준비 중',
+                style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+              )
+            else
+              for (final leader in leaders)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 24,
+                        child: Text(
+                          '${leader.rank}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textDisabled,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          leader.name,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                      Text(
+                        leader.value,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ],
+        ),
       ),
     );
+  }
+
+  LeaderboardMetric? _metricFromTitle(String title) {
+    for (final metric in LeaderboardMetric.values) {
+      if (metric.title == title) {
+        return metric;
+      }
+    }
+    return null;
   }
 }

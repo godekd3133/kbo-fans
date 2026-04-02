@@ -8,11 +8,13 @@ class PlayerRecentGame {
   final String date;
   final String opponent;
   final String summary;
+  final double? score;
 
   const PlayerRecentGame({
     required this.date,
     required this.opponent,
     required this.summary,
+    this.score,
   });
 }
 
@@ -28,6 +30,7 @@ class PlayerProfile {
   final String handedness;
   final String heightWeight;
   final String birthDate;
+  final String career;
   final PlayerAvailabilityStatus status;
   final PlayerRosterGroup rosterGroup;
   final String? statusNote;
@@ -53,6 +56,7 @@ class PlayerProfile {
     required this.handedness,
     required this.heightWeight,
     required this.birthDate,
+    this.career = '',
     required this.status,
     required this.rosterGroup,
     this.statusNote,

@@ -9,4 +9,8 @@ abstract class PlayerRepository {
   Future<TeamStats> getTeamStats(String teamId, {required int season});
   Future<TeamRecordsBundle> getTeamRecords(String teamId, {required int season});
   Future<RecordsOverview> getRecordsOverview({required int season});
+  Future<List<RecordLeader>> getLeaderboard({
+    required int season,
+    required LeaderboardMetric metric,
+  });
 }

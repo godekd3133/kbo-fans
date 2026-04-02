@@ -19,7 +19,7 @@ class PlayerStatsCrawler(BaseCrawler):
     _PITCHER_DETAIL_URL = "/Record/Player/PitcherDetail/Basic.aspx?playerId={player_id}"
     _HITTER_TOTAL_URL = "/Record/Player/HitterDetail/Total.aspx?playerId={player_id}"
     _PITCHER_TOTAL_URL = "/Record/Player/PitcherDetail/Total.aspx?playerId={player_id}"
-    _PLAYER_IMAGE_URL = "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/{player_id}.jpg"
+    _PLAYER_IMAGE_URL = "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{season}/{player_id}.jpg"
     _TEAM_SEARCH_CODE_MAP = {
         "LG": "lg",
         "KT": "kt",
@@ -64,6 +64,7 @@ class PlayerStatsCrawler(BaseCrawler):
                 profile_summary = self._fetch_player_profile_summary(
                     player_id=player["id"],
                     player_type=player["playerType"],
+                    season=season,
                 )
                 player = {**player, **profile_summary}
             except Exception:
@@ -107,13 +108,14 @@ class PlayerStatsCrawler(BaseCrawler):
         *,
         player_id: str,
         player_type: str,
+        season: int,
     ) -> Dict[str, Any]:
         detail_url = self._detail_url(player_id, player_type)
         html = self._get_text(
             f"{self.base_url}{detail_url}",
             breaker_key="kbo_player_detail",
         )
-        return self._parse_profile(html, player_id, player_type)
+        return self._parse_profile(html, player_id, player_type, season)
 
     def get_player_detail(
         self,
@@ -137,7 +139,7 @@ class PlayerStatsCrawler(BaseCrawler):
         )
 
         profile = dict(base_profile or {})
-        profile.update(self._parse_profile(html, player_id, player_type))
+        profile.update(self._parse_profile(html, player_id, player_type, season))
 
         season_stats = self._parse_season_stats(total_html, season)
         current_season = self._extract_current_season(html)
@@ -277,7 +279,13 @@ class PlayerStatsCrawler(BaseCrawler):
             return self._PITCHER_TOTAL_URL.format(player_id=player_id)
         return self._HITTER_TOTAL_URL.format(player_id=player_id)
 
-    def _parse_profile(self, html: str, player_id: str, player_type: str) -> Dict[str, Any]:
+    def _parse_profile(
+        self,
+        html: str,
+        player_id: str,
+        player_type: str,
+        season: int,
+    ) -> Dict[str, Any]:
         name = self._extract_profile_field(html, "lblName")
         number = self._parse_int(self._extract_profile_field(html, "lblBackNo")) or 0
         birth_date = self._extract_profile_field(html, "lblBirthday")
@@ -295,7 +303,9 @@ class PlayerStatsCrawler(BaseCrawler):
         return {
             "id": player_id,
             "playerType": player_type,
-            "imageUrl": self._PLAYER_IMAGE_URL.format(player_id=player_id),
+            "imageUrl": self._PLAYER_IMAGE_URL.format(
+                season=season, player_id=player_id
+            ),
             "name": name,
             "number": number,
             "position": position,
@@ -504,15 +514,17 @@ class PlayerStatsCrawler(BaseCrawler):
             "id": player["id"],
             "teamId": player["teamId"],
             "playerType": player_type,
-            "imageUrl": self._PLAYER_IMAGE_URL.format(player_id=player["id"]),
+            "imageUrl": self._PLAYER_IMAGE_URL.format(
+                season=season, player_id=player["id"]
+            ),
             "name": player.get("name", ""),
             "number": player.get("number", 0),
             "position": position,
-            "roleLabel": position,
-            "handedness": "",
+            "roleLabel": player.get("roleLabel", position),
+            "handedness": player.get("handedness", ""),
             "birthDate": player.get("birthDate", ""),
             "heightWeight": player.get("heightWeight", ""),
-            "career": "",
+            "career": player.get("career", ""),
             "season": season,
             "seasonStats": self._build_season_stat_list(player_type, season_stats),
             "highlights": self._build_highlights(player_type, season_stats),

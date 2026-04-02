@@ -14,8 +14,14 @@ class RecordsOverviewCrawler(BaseCrawler):
     _HITTER_OPS_URL = "/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT"
     _PITCHER_ERA_URL = "/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT"
     _PLAYER_IMAGE_URL = (
-        "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/{player_id}.jpg"
+        "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{season}/{player_id}.jpg"
     )
+    _LEADERBOARD_METRICS = {
+        "avg": (_HITTER_AVG_URL, "AVG", "hitter"),
+        "hr": (_HITTER_HR_URL, "HR", "hitter"),
+        "ops": (_HITTER_OPS_URL, "OPS", "hitter"),
+        "era": (_PITCHER_ERA_URL, "ERA", "pitcher"),
+    }
 
     def get_overview(self, season: int) -> Dict[str, Any]:
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
@@ -56,24 +62,28 @@ class RecordsOverviewCrawler(BaseCrawler):
             },
             "featured": {
                 "todayHitter": self._build_featured_player(
+                    season=season,
                     label="오늘의 타자",
                     leader_groups=hitter_groups,
                     target_type="hitter",
                     period_label="오늘",
                 ),
                 "todayPitcher": self._build_featured_player(
+                    season=season,
                     label="오늘의 투수",
                     leader_groups=pitcher_groups,
                     target_type="pitcher",
                     period_label="오늘",
                 ),
                 "monthHitter": self._build_featured_player(
+                    season=season,
                     label="이달의 타자",
                     leader_groups=hitter_groups,
                     target_type="hitter",
                     period_label="이달",
                 ),
                 "monthPitcher": self._build_featured_player(
+                    season=season,
                     label="이달의 투수",
                     leader_groups=pitcher_groups,
                     target_type="pitcher",
@@ -133,6 +143,62 @@ class RecordsOverviewCrawler(BaseCrawler):
                 break
         return leaders
 
+    def get_leaderboard(self, season: int, metric: str) -> List[Dict[str, Any]]:
+        metric_info = self._LEADERBOARD_METRICS.get(metric)
+        if metric_info is None:
+            return []
+        path, metric_key, player_type = metric_info
+        return self._fetch_leaderboard(path, season, metric_key, player_type)
+
+    def _fetch_leaderboard(
+        self, path: str, season: int, metric_key: str, player_type: str
+    ) -> List[Dict[str, Any]]:
+        html = self._get_text(
+            f"{self.base_url}{path}",
+            breaker_key=f"kbo:records_leaderboard:{path}",
+        )
+        payload = {
+            "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
+            "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
+            "__EVENTVALIDATION": self._extract_hidden(html, "__EVENTVALIDATION"),
+            "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason": str(
+                season
+            ),
+            "__EVENTTARGET": "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason",
+            "__EVENTARGUMENT": "",
+        }
+        html = self._post_text(
+            f"{self.base_url}{path}",
+            breaker_key=f"kbo:records_leaderboard:{path}",
+            data=payload,
+        )
+
+        rows = re.findall(r"<tr>(.*?)</tr>", html, re.S)
+        value_index = self._resolve_metric_index(rows, metric_key)
+        leaders: List[Dict[str, Any]] = []
+        for row in rows:
+            cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+            if len(cells) <= value_index:
+                continue
+            player_link = re.search(
+                r'href="/Record/Player/(?:Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)"',
+                cells[1],
+            )
+            if not player_link:
+                continue
+            leaders.append(
+                {
+                    "rank": int(strip_tags(cells[0])),
+                    "playerId": player_link.group(1),
+                    "playerType": player_type,
+                    "metricKey": metric_key,
+                    "name": strip_tags(cells[1]),
+                    "teamId": self._team_name_to_id(strip_tags(cells[2])),
+                    "value": strip_tags(cells[value_index]),
+                }
+            )
+        return leaders
+
     @staticmethod
     def _resolve_metric_index(rows: List[str], metric_key: str) -> int:
         for row in rows:
@@ -144,6 +210,7 @@ class RecordsOverviewCrawler(BaseCrawler):
 
     def _build_featured_player(
         self,
+        season: int,
         label: str,
         leader_groups: Dict[str, List[Dict[str, Any]]],
         target_type: str,
@@ -177,7 +244,9 @@ class RecordsOverviewCrawler(BaseCrawler):
                 target_type=target_type,
                 period_label=period_label,
             ),
-            "imageUrl": self._PLAYER_IMAGE_URL.format(player_id=leader["playerId"]),
+            "imageUrl": self._PLAYER_IMAGE_URL.format(
+                season=season, player_id=leader["playerId"]
+            ),
         }
 
     def _feature_reason(
@@ -197,7 +266,7 @@ class RecordsOverviewCrawler(BaseCrawler):
                     reasons.append(f"{metric.upper()} {leader['rank']}위")
         if not reasons:
             return ""
-        return f"{period_label} 리더보드 기준 {' + '.join(reasons[:2])}"
+        return " + ".join(reasons[:2])
 
     @staticmethod
     def _headline_for_leader(leader: Dict[str, Any]) -> str:
