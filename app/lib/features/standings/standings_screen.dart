@@ -144,13 +144,17 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
 
     final team = KboTeams.byId(myTeamId);
     final teamColor = team?.primaryColor ?? AppColors.live;
+    final cardTint = Color.alphaBlend(
+      teamColor.withValues(alpha: 0.16),
+      AppColors.card,
+    );
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: cardTint,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: teamColor.withValues(alpha: 0.5)),
+        border: Border.all(color: teamColor.withValues(alpha: 0.24)),
         boxShadow: const [
           BoxShadow(
             color: Color(0x1A000000),
@@ -186,15 +190,16 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
-              color: teamColor.withValues(alpha: 0.14),
+              color: AppColors.background.withValues(alpha: 0.55),
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: teamColor.withValues(alpha: 0.22)),
             ),
             child: Text(
-              current.gb == '0' ? '공동 선두' : '${current.gb}G차',
-              style: TextStyle(
+              _gbLabel(current.gb),
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: teamColor,
+                color: AppColors.textPrimary,
               ),
             ),
           ),
@@ -216,15 +221,21 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
           final isMyTeam = s.teamId == myTeamId;
           final team = KboTeams.byId(s.teamId);
           final teamColor = team?.primaryColor ?? AppColors.live;
+          final rowTint = Color.alphaBlend(
+            teamColor.withValues(alpha: 0.12),
+            AppColors.card,
+          );
 
           return Container(
             height: 56,
+            margin: const EdgeInsets.symmetric(vertical: 2),
             decoration: BoxDecoration(
               color: isMyTeam
-                  ? teamColor.withValues(alpha: 0.1)
+                  ? rowTint
                   : (index.isOdd ? AppColors.card : Colors.transparent),
+              borderRadius: BorderRadius.circular(14),
               border: isMyTeam
-                  ? Border(left: BorderSide(color: teamColor, width: 4))
+                  ? Border.all(color: teamColor.withValues(alpha: 0.22))
                   : null,
             ),
             child: Row(
@@ -237,7 +248,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: isMyTeam ? FontWeight.w800 : FontWeight.w600,
-                        color: isMyTeam ? teamColor : AppColors.textPrimary,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -334,13 +345,18 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                   ),
                 ),
                 SizedBox(
-                  width: 28,
+                  width: 42,
                   child: Center(
                     child: Text(
-                      s.gb,
-                      style: const TextStyle(
+                      _gbText(s.gb),
+                      style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.textSecondary,
+                        color: isMyTeam
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                        fontWeight: isMyTeam
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                       ),
                     ),
                   ),
@@ -386,12 +402,31 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
             child: Center(child: Text('승률', style: style)),
           ),
           SizedBox(
-            width: 28,
+            width: 42,
             child: Center(child: Text('차', style: style)),
           ),
         ],
       ),
     );
+  }
+
+  String _gbText(String gb) {
+    final value = gb.trim();
+    if (value == '0') {
+      return '-';
+    }
+    return value;
+  }
+
+  String _gbLabel(String gb) {
+    final value = gb.trim();
+    if (value == '0') {
+      return '공동 선두';
+    }
+    if (value.endsWith('G')) {
+      return '$value 차';
+    }
+    return '$value G차';
   }
 
   Widget _seasonDropdown() {

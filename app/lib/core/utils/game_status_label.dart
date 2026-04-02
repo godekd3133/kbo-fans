@@ -1,5 +1,28 @@
 import '../../data/models/game.dart';
 
+bool isTerminalGameStatus(GameStatus status) {
+  switch (status) {
+    case GameStatus.final_:
+    case GameStatus.cancelled:
+    case GameStatus.suspended:
+      return true;
+    case GameStatus.live:
+    case GameStatus.scheduled:
+      return false;
+  }
+}
+
+bool isTerminalScheduleStatus(String status) {
+  switch (status.toUpperCase()) {
+    case 'FINAL':
+    case 'CANCELLED':
+    case 'SUSPENDED':
+      return true;
+    default:
+      return false;
+  }
+}
+
 String labelForGameStatus(GameStatus status) {
   switch (status) {
     case GameStatus.live:

@@ -14,6 +14,14 @@ class _FailingRelayCrawler:
         raise RuntimeError("relay unavailable")
 
 
+class _StubRelayCrawler:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def get_relay(self, game_id: str):
+        return self._payload
+
+
 def test_relay_service_builds_summary_items_for_final_game() -> None:
     service = RelayService(
         relay_crawler=_FailingRelayCrawler(),
@@ -75,6 +83,59 @@ def test_relay_service_builds_current_at_bat_for_live_game() -> None:
         "strikes": 1,
         "outs": 1,
     }
+
+
+def test_relay_service_uses_full_relay_for_final_game_when_available() -> None:
+    service = RelayService(
+        relay_crawler=_StubRelayCrawler(
+            {
+                "gameId": "20260329LTSS0",
+                "currentAtBat": None,
+                "relayItems": [
+                    {
+                        "seqNo": 142,
+                        "inning": 7,
+                        "half": "top",
+                        "event": "HIT",
+                        "isScoring": True,
+                        "text": "나승엽: 2타점 적시 2루타",
+                        "pitchSequence": "B-S-F-HIT",
+                    },
+                    {
+                        "seqNo": 141,
+                        "inning": 7,
+                        "half": "top",
+                        "event": "SUBSTITUTION",
+                        "isScoring": False,
+                        "text": "대타 정훈 : 김민석",
+                        "pitchSequence": None,
+                    },
+                ],
+            }
+        ),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": "20260329LTSS0",
+                "status": "FINAL",
+                "away": {
+                    "shortName": "롯데",
+                    "score": 6,
+                    "scores": [0, 0, 0, 1, 1, 0, 4, 0, 0],
+                },
+                "home": {
+                    "shortName": "삼성",
+                    "score": 2,
+                    "scores": [0, 0, 0, 0, 1, 0, 1, 0, 0],
+                },
+            }
+        ),
+    )
+
+    relay = service.get_relay("20260329LTSS0")
+
+    assert relay["relayItems"][0]["event"] == "HIT"
+    assert relay["relayItems"][0]["text"] == "나승엽: 2타점 적시 2루타"
+    assert relay["relayItems"][1]["event"] == "SUBSTITUTION"
 
 
 def test_relay_service_skips_crawler_for_scheduled_game() -> None:

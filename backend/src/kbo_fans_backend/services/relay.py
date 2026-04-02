@@ -21,8 +21,9 @@ class RelayService:
     def get_relay(self, game_id: str, after: Optional[int] = None) -> dict[str, Any]:
         game = self.scoreboard_service.get_game(game_id)
         snapshot = self.snapshot_store.load_payload("relay", game_id)
+        game_status = game.get("status") if game is not None else None
 
-        if game is not None and game.get("status") != "LIVE":
+        if game_status in {"SCHEDULED", "CANCELLED", "SUSPENDED"}:
             relay_items = self._build_summary_items(game)
             if after is not None:
                 relay_items = [
@@ -33,8 +34,6 @@ class RelayService:
                 "currentAtBat": None,
                 "relayItems": relay_items,
             }
-            if game.get("status") == "FINAL":
-                self.snapshot_store.save("relay", game_id, payload)
             return payload
 
         try:
@@ -53,11 +52,11 @@ class RelayService:
                 "currentAtBat": current_at_bat,
                 "relayItems": relay_items,
             }
-            if game is not None and game.get("status") == "FINAL":
+            if game_status == "FINAL":
                 self.snapshot_store.save("relay", game_id, payload)
             return payload
         except Exception:
-            if snapshot is not None:
+            if snapshot is not None and self._has_detailed_items(snapshot.get("relayItems", [])):
                 if after is not None:
                     snapshot = {
                         **snapshot,
@@ -83,8 +82,6 @@ class RelayService:
             "currentAtBat": self._build_current_at_bat(game),
             "relayItems": relay_items,
         }
-        if game.get("status") == "FINAL":
-            self.snapshot_store.save("relay", game_id, payload)
         return payload
 
     def _build_summary_items(self, game: dict[str, Any]) -> list[dict[str, Any]]:
@@ -182,3 +179,14 @@ class RelayService:
         if value in (None, "", "-"):
             return None
         return int(value)
+
+    @staticmethod
+    def _has_detailed_items(items: list[dict[str, Any]]) -> bool:
+        for item in items:
+            event = item.get("event")
+            text = item.get("text") or ""
+            if event not in {"RUNS", "GAME_END", "INNING_CHANGE"}:
+                return True
+            if ":" in text or item.get("pitchSequence"):
+                return True
+        return False

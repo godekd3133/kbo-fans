@@ -67,12 +67,14 @@ class LineupEntry {
   final String position;
   final String positionKo;
   final String name;
+  final String? changeLabel;
 
   const LineupEntry({
     required this.order,
     required this.position,
     required this.positionKo,
     required this.name,
+    this.changeLabel,
   });
 }
 

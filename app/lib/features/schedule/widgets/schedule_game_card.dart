@@ -3,8 +3,15 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/game_status_label.dart';
 import '../../../core/widgets/game_status_badge.dart';
 import '../../../data/models/schedule.dart';
+
+const _kboImageHeaders = {
+  'Referer': 'https://www.koreabaseball.com/',
+  'User-Agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+};
 
 class ScheduleGameCard extends StatelessWidget {
   final ScheduleGame game;
@@ -93,7 +100,8 @@ class ScheduleGameCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (ticketSummary != null) ...[
+            if (ticketSummary != null &&
+                !isTerminalScheduleStatus(game.status)) ...[
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -201,6 +209,7 @@ class _TeamLogo extends StatelessWidget {
     final team = KboTeams.byId(teamId);
     return CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
+      httpHeaders: _kboImageHeaders,
       width: size,
       height: size,
       placeholder: (_, _) => Container(

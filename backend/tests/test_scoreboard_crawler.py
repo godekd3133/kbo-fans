@@ -44,3 +44,30 @@ def test_get_game_scoreboard_handles_scheduled_payload_without_tables() -> None:
     assert result["home"]["scores"] == [None] * 9
     assert result["away"]["hits"] is None
     assert result["home"]["errors"] is None
+
+
+def test_parse_view1_scoreboard_detail_extracts_totals() -> None:
+    crawler = ScoreboardCrawler()
+
+    result = crawler._parse_view1_scoreboard_detail(
+        """
+        <table id="tblScoreBoard2">
+          <tbody>
+            <tr><td>0</td><td>1</td><td>2</td></tr>
+            <tr><td>0</td><td>0</td><td>1</td></tr>
+          </tbody>
+        </table>
+        <table id="tblScoreBoard3">
+          <tbody>
+            <tr><td>두산</td><td>10</td><td>0</td><td>6</td></tr>
+            <tr><td>삼성</td><td>4</td><td>0</td><td>1</td></tr>
+          </tbody>
+        </table>
+        """
+    )
+
+    assert result is not None
+    assert result["awayScores"] == [0, 1, 2]
+    assert result["homeScores"] == [0, 0, 1]
+    assert result["awayTotals"] == {"hits": 10, "errors": 0, "balls": 6}
+    assert result["homeTotals"] == {"hits": 4, "errors": 0, "balls": 1}

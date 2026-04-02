@@ -7,6 +7,12 @@ import '../../../core/utils/game_status_label.dart';
 import '../../../core/widgets/game_status_badge.dart';
 import '../../../data/models/game.dart';
 
+const _kboImageHeaders = {
+  'Referer': 'https://www.koreabaseball.com/',
+  'User-Agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+};
+
 class GameCard extends StatelessWidget {
   final Game game;
   final VoidCallback? onTap;
@@ -132,12 +138,16 @@ class GameCard extends StatelessWidget {
       name: shortName,
       shortName: shortName,
     );
-    return CachedNetworkImage(
-      imageUrl: team?.logoUrl ?? '',
+    final imageUrl = team?.logoUrl ?? '';
+    if (imageUrl.isEmpty) {
+      return _logoFallback(team?.shortName ?? shortName, size);
+    }
+    return Image(
+      image: CachedNetworkImageProvider(imageUrl, headers: _kboImageHeaders),
       width: size,
       height: size,
-      placeholder: (_, _) => _logoFallback(team?.shortName ?? shortName, size),
-      errorWidget: (_, _, _) => _logoFallback(team?.shortName ?? shortName, size),
+      errorBuilder: (_, _, _) =>
+          _logoFallback(team?.shortName ?? shortName, size),
     );
   }
 

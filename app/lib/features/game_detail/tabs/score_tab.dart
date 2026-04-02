@@ -9,29 +9,64 @@ import '../../../data/providers.dart';
 class ScoreTab extends ConsumerWidget {
   final String gameId;
   final Game game;
+  final Future<void> Function()? onRefresh;
 
-  const ScoreTab({super.key, required this.gameId, required this.game});
+  const ScoreTab({
+    super.key,
+    required this.gameId,
+    required this.game,
+    this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final relayDataAsync = ref.watch(relayDataProvider(gameId));
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: relayDataAsync.when(
-        loading: () => _buildInningTable(context, const []),
-        error: (_, _) => _buildInningTable(context, const []),
-        data: (relayData) => _buildInningTable(context, relayData.relayItems),
+    return RefreshIndicator(
+      onRefresh: onRefresh ?? () async {},
+      color: AppColors.live,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: relayDataAsync.when(
+          loading: () => _buildInningTable(context, const []),
+          error: (_, _) => _buildInningTable(context, const []),
+          data: (relayData) => _buildInningTable(context, relayData.relayItems),
+        ),
       ),
     );
   }
 
   Widget _buildInningTable(BuildContext context, List<RelayItem> relayItems) {
-    final headers = ['TEAM', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'R', 'H', 'E', 'B'];
-    const headerStyle = TextStyle(fontSize: 12, color: AppColors.textDisabled, fontWeight: FontWeight.w500);
+    final headers = [
+      'TEAM',
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+      'R',
+      'H',
+      'E',
+      'B',
+    ];
+    const headerStyle = TextStyle(
+      fontSize: 12,
+      color: AppColors.textDisabled,
+      fontWeight: FontWeight.w500,
+    );
     const dataStyle = TextStyle(fontSize: 14, color: AppColors.textPrimary);
-    const boldStyle = TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w700);
-    final currentInning = int.tryParse(game.inning.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    const boldStyle = TextStyle(
+      fontSize: 14,
+      color: AppColors.textPrimary,
+      fontWeight: FontWeight.w700,
+    );
+    final currentInning =
+        int.tryParse(game.inning.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,7 +76,10 @@ class ScoreTab extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
               '이닝을 누르면 해당 회차 주요 장면을 볼 수 있습니다.',
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
         Container(
@@ -58,7 +96,8 @@ class ScoreTab extends ConsumerWidget {
                   final idx = entry.key;
                   final text = entry.value;
                   final inningNo = idx >= 1 && idx <= 9 ? idx : null;
-                  final isCurrentInning = inningNo != null && inningNo == currentInning;
+                  final isCurrentInning =
+                      inningNo != null && inningNo == currentInning;
                   return _tableCell(
                     context,
                     text,
@@ -71,13 +110,33 @@ class ScoreTab extends ConsumerWidget {
                 }).toList(),
               ),
               TableRow(
-                children: List.generate(14, (_) => const Divider(height: 1, color: AppColors.divider)),
+                children: List.generate(
+                  14,
+                  (_) => const Divider(height: 1, color: AppColors.divider),
+                ),
               ),
-              _scoreRow(context, game.away, currentInning, dataStyle, boldStyle, relayItems),
+              _scoreRow(
+                context,
+                game.away,
+                currentInning,
+                dataStyle,
+                boldStyle,
+                relayItems,
+              ),
               TableRow(
-                children: List.generate(14, (_) => const Divider(height: 1, color: AppColors.divider)),
+                children: List.generate(
+                  14,
+                  (_) => const Divider(height: 1, color: AppColors.divider),
+                ),
               ),
-              _scoreRow(context, game.home, currentInning, dataStyle, boldStyle, relayItems),
+              _scoreRow(
+                context,
+                game.home,
+                currentInning,
+                dataStyle,
+                boldStyle,
+                relayItems,
+              ),
             ],
           ),
         ),
@@ -99,10 +158,14 @@ class ScoreTab extends ConsumerWidget {
         for (int i = 0; i < 9; i++)
           _tableCell(
             context,
-            i < team.innings.length && team.innings[i] != null ? '${team.innings[i]}' : '-',
+            i < team.innings.length && team.innings[i] != null
+                ? '${team.innings[i]}'
+                : '-',
             dataStyle,
             isHighlight: (i + 1) == currentInning,
-            onTap: relayItems.isEmpty ? null : () => _openInningSheet(context, i + 1, relayItems),
+            onTap: relayItems.isEmpty
+                ? null
+                : () => _openInningSheet(context, i + 1, relayItems),
           ),
         _tableCell(context, '${team.score}', boldStyle),
         _tableCell(context, '${team.hits}', boldStyle),
@@ -132,8 +195,14 @@ class ScoreTab extends ConsumerWidget {
     return InkWell(onTap: onTap, child: child);
   }
 
-  void _openInningSheet(BuildContext context, int inning, List<RelayItem> relayItems) {
-    final items = relayItems.where((item) => item.inning == inning && item.event != 'INNING_CHANGE').toList();
+  void _openInningSheet(
+    BuildContext context,
+    int inning,
+    List<RelayItem> relayItems,
+  ) {
+    final items = relayItems
+        .where((item) => item.inning == inning && item.event != 'INNING_CHANGE')
+        .toList();
 
     showModalBottomSheet<void>(
       context: context,
@@ -149,7 +218,10 @@ class ScoreTab extends ConsumerWidget {
               children: [
                 Text(
                   '$inning회 주요 장면',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 if (items.isEmpty)
@@ -171,10 +243,14 @@ class ScoreTab extends ConsumerWidget {
                         return Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: item.isScoring ? const Color(0xFF1C1111) : AppColors.cardSub,
+                            color: item.isScoring
+                                ? const Color(0xFF1C1111)
+                                : AppColors.cardSub,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: item.isScoring ? AppColors.live : AppColors.divider,
+                              color: item.isScoring
+                                  ? AppColors.live
+                                  : AppColors.divider,
                             ),
                           ),
                           child: Column(
@@ -184,14 +260,20 @@ class ScoreTab extends ConsumerWidget {
                                 '${item.half == 'top' ? '초' : '말'} · ${item.text}',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  fontWeight: item.isScoring ? FontWeight.w700 : FontWeight.w600,
+                                  fontWeight: item.isScoring
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
                                 ),
                               ),
-                              if (item.pitchSequence != null && item.pitchSequence!.isNotEmpty) ...[
+                              if (item.pitchSequence != null &&
+                                  item.pitchSequence!.isNotEmpty) ...[
                                 const SizedBox(height: 6),
                                 Text(
                                   item.pitchSequence!,
-                                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
                               ],
                             ],

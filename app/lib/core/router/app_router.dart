@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../data/models/game.dart';
+import '../../data/models/records_overview.dart';
 import '../../features/game_detail/game_detail_screen.dart';
+import '../../features/records/leaderboard_screen.dart';
 import '../../features/records/player_detail_screen.dart';
 import '../../features/records/records_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
@@ -97,11 +99,31 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/records/player/:playerId',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => PlayerDetailScreen(
-          playerId: state.pathParameters['playerId']!,
-          season:
-              int.tryParse(state.uri.queryParameters['season'] ?? '') ??
-              DateTime.now().year,
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: PlayerDetailScreen(
+            playerId: state.pathParameters['playerId']!,
+            season:
+                int.tryParse(state.uri.queryParameters['season'] ?? '') ??
+                DateTime.now().year,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/records/leaderboard/:metric',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) => CupertinoPage(
+          key: state.pageKey,
+          child: LeaderboardScreen(
+            metric:
+                LeaderboardMetricX.fromKey(
+                  state.pathParameters['metric'] ?? '',
+                ) ??
+                LeaderboardMetric.avg,
+            season:
+                int.tryParse(state.uri.queryParameters['season'] ?? '') ??
+                DateTime.now().year,
+          ),
         ),
       ),
       GoRoute(

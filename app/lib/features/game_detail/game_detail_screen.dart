@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -18,6 +20,28 @@ import 'tabs/lineup_tab.dart';
 import 'tabs/relay_tab.dart';
 import 'tabs/score_tab.dart';
 
+const _kboImageHeaders = {
+  'Referer': 'https://www.koreabaseball.com/',
+  'User-Agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+};
+
+const _stadiumFullNameMap = {
+  '잠실': '서울종합운동장 야구장',
+  '문학': '인천 SSG랜더스필드',
+  '대구': '대구삼성 라이온즈파크',
+  '창원': '창원NC파크',
+  '대전': '대전 한화생명 볼파크',
+  '광주': '광주-기아 챔피언스 필드',
+  '수원': '수원KT위즈파크',
+  '사직': '사직야구장',
+  '고척': '고척스카이돔',
+};
+
+String _displayStadiumName(String stadium) {
+  return _stadiumFullNameMap[stadium] ?? stadium;
+}
+
 class GameDetailScreen extends ConsumerWidget {
   final String gameId;
   final Game? game;
@@ -26,45 +50,131 @@ class GameDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final gameAsync = game != null
-        ? AsyncValue.data(game)
-        : ref.watch(gameProvider(gameId));
+    final gameAsync = ref.watch(gameProvider(gameId));
 
     return gameAsync.when(
-      loading: () => const Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.live),
+      loading: () {
+        if (game != null) {
+          return _GameDetailBody(game: game!, gameId: gameId);
+        }
+        return const Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.live),
+            ),
           ),
-        ),
-      ),
+        );
+      },
       error: (_, _) => Scaffold(
         appBar: AppBar(title: const Text('경기 상세')),
-        body: const Center(child: Text('경기를 불러올 수 없습니다')),
+        body: Center(
+          child: Text(game != null ? '최신 경기 정보를 불러올 수 없습니다' : '경기를 불러올 수 없습니다'),
+        ),
       ),
       data: (loadedGame) {
-        if (loadedGame == null) {
+        final resolvedGame = loadedGame ?? game;
+        if (resolvedGame == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('경기 상세')),
             body: const Center(child: Text('경기를 찾을 수 없습니다')),
           );
         }
 
-        return _GameDetailBody(game: loadedGame, gameId: gameId);
+        return _GameDetailBody(game: resolvedGame, gameId: gameId);
       },
     );
   }
 }
 
-class _GameDetailBody extends ConsumerWidget {
+class _GameDetailBody extends ConsumerStatefulWidget {
   final String gameId;
   final Game game;
 
   const _GameDetailBody({required this.gameId, required this.game});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_GameDetailBody> createState() => _GameDetailBodyState();
+}
+
+class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
+    with WidgetsBindingObserver {
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _startRefreshTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _GameDetailBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.gameId != widget.gameId) {
+      _refreshTimer?.cancel();
+      _startRefreshTimer();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startRefreshTimer();
+      unawaited(_refreshGameDetail());
+      return;
+    }
+
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      _refreshTimer?.cancel();
+    }
+  }
+
+  void _startRefreshTimer() {
+    _refreshTimer?.cancel();
+    final interval = widget.game.status == GameStatus.live
+        ? const Duration(seconds: 10)
+        : const Duration(seconds: 15);
+    _refreshTimer = Timer.periodic(interval, (_) {
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
+        return;
+      }
+      unawaited(_refreshGameDetail());
+    });
+  }
+
+  Future<void> _refreshGameDetail() async {
+    final gameId = widget.gameId;
+
+    ref.invalidate(gameProvider(gameId));
+    ref.invalidate(relayDataProvider(gameId));
+    ref.invalidate(gameBoxscoreProvider(gameId));
+    ref.invalidate(gameLineupProvider(gameId));
+
+    await Future.wait([
+      ref.read(gameProvider(gameId).future),
+      ref.read(relayDataProvider(gameId).future),
+      ref.read(gameBoxscoreProvider(gameId).future),
+      ref.read(gameLineupProvider(gameId).future),
+    ]);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final game = widget.game;
+    final gameId = widget.gameId;
     final isLive = game.status == GameStatus.live;
+    final showTicketInfo =
+        game.ticketInfo != null && !isTerminalGameStatus(game.status);
     const tabBar = TabBar(
       isScrollable: true,
       indicatorColor: AppColors.textPrimary,
@@ -101,7 +211,7 @@ class _GameDetailBody extends ConsumerWidget {
                       ),
                       Expanded(
                         child: Text(
-                          '${game.stadium}${game.crowd != null ? " · ${_formatNumber(game.crowd!)}명" : ""}',
+                          _displayStadiumName(game.stadium),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 14,
@@ -167,7 +277,7 @@ class _GameDetailBody extends ConsumerWidget {
                   ),
                 ),
               ),
-              if (game.ticketInfo != null)
+              if (showTicketInfo)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -188,22 +298,35 @@ class _GameDetailBody extends ConsumerWidget {
             ],
             body: TabBarView(
               children: [
-                ScoreTab(gameId: gameId, game: game),
-                RelayTab(gameId: gameId, gameStatus: game.status),
+                ScoreTab(
+                  gameId: gameId,
+                  game: game,
+                  onRefresh: _refreshGameDetail,
+                ),
+                RelayTab(
+                  gameId: gameId,
+                  gameStatus: game.status,
+                  game: game,
+                  onRefresh: _refreshGameDetail,
+                ),
                 BoxscoreTab(
+                  gameId: gameId,
+                  game: game,
+                  gameStatus: game.status,
+                  awayName: game.away.shortName,
+                  homeName: game.home.shortName,
+                  awayTeamId: game.away.teamId,
+                  homeTeamId: game.home.teamId,
+                  onRefresh: _refreshGameDetail,
+                ),
+                LineupTab(
                   gameId: gameId,
                   gameStatus: game.status,
                   awayName: game.away.shortName,
                   homeName: game.home.shortName,
                   awayTeamId: game.away.teamId,
                   homeTeamId: game.home.teamId,
-                ),
-                LineupTab(
-                  gameId: gameId,
-                  awayName: game.away.shortName,
-                  homeName: game.home.shortName,
-                  awayTeamId: game.away.teamId,
-                  homeTeamId: game.home.teamId,
+                  onRefresh: _refreshGameDetail,
                 ),
               ],
             ),
@@ -219,6 +342,7 @@ class _GameDetailBody extends ConsumerWidget {
       children: [
         CachedNetworkImage(
           imageUrl: team?.logoUrl ?? '',
+          httpHeaders: _kboImageHeaders,
           width: 40,
           height: 40,
           placeholder: (_, _) => Container(
@@ -573,6 +697,8 @@ class _HighlightCardState extends State<_HighlightCard> {
                         placeholder: (_, _) =>
                             Container(color: AppColors.cardSub),
                       )
+                    else if (isSearchFallback)
+                      _searchFallbackThumbnail()
                     else
                       _thumbnailFallback(),
                     Container(color: Colors.black.withValues(alpha: 0.22)),
@@ -641,26 +767,28 @@ class _HighlightCardState extends State<_HighlightCard> {
                         isSearchFallback
                             ? '유튜브 검색 열기'
                             : _playingVideoId == video.videoId
-                                ? '재생 중'
-                                : '바로 재생',
+                            ? '재생 중'
+                            : '바로 재생',
                       ),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      onPressed: () => _openUrl(video.videoUrl),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  if (!isSearchFallback) ...[
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => _openUrl(video.videoUrl),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                        label: const Text('열기'),
                       ),
-                      icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                      label: const Text('열기'),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -678,6 +806,152 @@ class _HighlightCardState extends State<_HighlightCard> {
         Icons.ondemand_video_rounded,
         color: AppColors.textSecondary,
         size: 42,
+      ),
+    );
+  }
+
+  Widget _searchFallbackThumbnail() {
+    final awayTeam = KboTeams.resolve(
+      id: widget.game.away.teamId,
+      name: widget.game.away.shortName,
+      shortName: widget.game.away.shortName,
+    );
+    final homeTeam = KboTeams.resolve(
+      id: widget.game.home.teamId,
+      name: widget.game.home.shortName,
+      shortName: widget.game.home.shortName,
+    );
+
+    Widget teamBadge(KboTeam? team, String shortName) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CachedNetworkImage(
+            imageUrl: team?.logoUrl ?? '',
+            width: 34,
+            height: 34,
+            errorWidget: (_, _, _) => _teamBadgeFallback(shortName),
+            placeholder: (_, _) => _teamBadgeFallback(shortName),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            shortName,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF1A1A1A),
+            AppColors.cardSub,
+            const Color(0xFF161616),
+          ],
+        ),
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.25),
+                  radius: 1.05,
+                  colors: [
+                    AppColors.live.withValues(alpha: 0.16),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Column(
+              children: [
+                const Align(
+                  alignment: Alignment.topLeft,
+                  child: Text(
+                    'YOUTUBE SEARCH',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textDisabled,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    teamBadge(awayTeam, widget.game.away.shortName),
+                    const Text(
+                      'VS',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textDisabled,
+                      ),
+                    ),
+                    teamBadge(homeTeam, widget.game.home.shortName),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '${widget.game.away.shortName} vs ${widget.game.home.shortName}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '유튜브 검색 결과로 이동',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _teamBadgeFallback(String shortName) {
+    final initial = shortName.isNotEmpty ? shortName.substring(0, 1) : '?';
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textPrimary,
+        ),
       ),
     );
   }
@@ -784,12 +1058,12 @@ class _HighlightCardState extends State<_HighlightCard> {
   double _videoListHeight(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
     if (height < 760) {
-      return 196;
+      return 270;
     }
     if (height < 860) {
-      return 208;
+      return 284;
     }
-    return 220;
+    return 296;
   }
 }
 

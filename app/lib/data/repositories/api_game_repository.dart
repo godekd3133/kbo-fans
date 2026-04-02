@@ -37,7 +37,7 @@ class ApiGameRepository implements GameRepository {
     final data = await _client.getCached(
       '/game/$gameId',
       cacheKey: 'game:$gameId',
-      preferCache: true,
+      preferCache: false,
       maxAge: _liveishCacheAge,
     );
     final game = data['game'] as Map<String, dynamic>?;

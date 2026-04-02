@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any, List, Optional
 
+from bs4 import BeautifulSoup
+
 from kbo_fans_backend.crawlers.base import BaseCrawler
 
 
@@ -60,6 +62,23 @@ class ScoreboardCrawler(BaseCrawler):
                 "balls": home_totals["balls"],
             },
         }
+
+    def get_view1_scoreboard_detail(self, game_id: str) -> Optional[dict[str, Any]]:
+        html = self._post_text(
+            f"{self.base_url}/Game/LiveTextView1.aspx",
+            breaker_key=f"kbo:scoreboard_view1:{game_id}",
+            data={
+                "leagueId": 1,
+                "seriesId": 0,
+                "gameId": game_id,
+                "gyear": game_id[:4],
+            },
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+            },
+        )
+        return self._parse_view1_scoreboard_detail(html)
 
     @staticmethod
     def _normalize_logo_url(value: Optional[str]) -> Optional[str]:
@@ -141,3 +160,32 @@ class ScoreboardCrawler(BaseCrawler):
         if not payload.get("table2"):
             return f"{start_time} 예정".strip() or "예정"
         return "경기중"
+
+    def _parse_view1_scoreboard_detail(self, html: str) -> Optional[dict[str, Any]]:
+        soup = BeautifulSoup(html, "html.parser")
+        score_rows = soup.select("#tblScoreBoard2 tbody tr")
+        total_rows = soup.select("#tblScoreBoard3 tbody tr")
+        if len(score_rows) < 2:
+            return None
+
+        def parse_scores(row) -> List[Optional[int]]:
+            values = []
+            for cell in row.select("td"):
+                text = cell.get_text(strip=True)
+                values.append(self._parse_int(text))
+            return values
+
+        def parse_totals(row) -> dict[str, Optional[int]]:
+            cells = row.select("td") if row is not None else []
+            return {
+                "hits": self._parse_int(cells[1].get_text(strip=True)) if len(cells) > 1 else None,
+                "errors": self._parse_int(cells[2].get_text(strip=True)) if len(cells) > 2 else None,
+                "balls": self._parse_int(cells[3].get_text(strip=True)) if len(cells) > 3 else None,
+            }
+
+        return {
+            "awayScores": parse_scores(score_rows[0]),
+            "homeScores": parse_scores(score_rows[1]),
+            "awayTotals": parse_totals(total_rows[0] if len(total_rows) > 0 else None),
+            "homeTotals": parse_totals(total_rows[1] if len(total_rows) > 1 else None),
+        }

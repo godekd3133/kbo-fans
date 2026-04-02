@@ -43,6 +43,10 @@
 - iOS 는 기본값으로 unsigned simulator 빌드만 생성된다.
 - 실제 TestFlight 업로드용 IPA 는 iOS 인증서/프로비저닝 시크릿이 준비된 경우에만 CI에서 뽑는다.
 
+남은 수작업 TODO:
+
+- `docs/GITHUB_ACTIONS_BUILD_TODO.md`
+
 ## iOS 배포
 
 ### 가장 현실적인 방법: TestFlight

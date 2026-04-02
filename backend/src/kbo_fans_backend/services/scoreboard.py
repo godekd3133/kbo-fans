@@ -165,15 +165,18 @@ class ScoreboardService:
                 detail = self.scoreboard_crawler.get_game_scoreboard(game_id)
             except Exception:
                 detail = self._scheduled_fallback_detail(game)
+        if resolved_status == "LIVE":
+            detail = self._merge_live_scoreboard_fallback(detail, game_id)
         detail = self._backfill_team_identity(game, detail)
         return {
             **game,
-            **self._merge_main_game(main_game),
             **detail,
+            **self._merge_main_game(main_game),
             "ticketInfo": self.ticketing_service.build_ticket_info(
                 home_team_id=game.get("homeId"),
                 game_id=game_id,
                 start_time=main_game.get("G_TM") or game.get("time"),
+                status=resolved_status,
             ),
             "highlightInfo": {
                 "officialUrl": self._build_official_highlight_url(game_id),
@@ -233,6 +236,48 @@ class ScoreboardService:
             home["teamName"] = game.get("homeName")
         if not home.get("shortName"):
             home["shortName"] = game.get("homeName")
+
+        return {
+            **detail,
+            "away": away,
+            "home": home,
+        }
+
+    def _merge_live_scoreboard_fallback(
+        self,
+        detail: dict[str, Any],
+        game_id: str,
+    ) -> dict[str, Any]:
+        away = dict(detail.get("away", {}))
+        home = dict(detail.get("home", {}))
+        needs_view1 = any(
+            team.get("hits") is None or team.get("errors") is None or team.get("balls") is None
+            for team in (away, home)
+        )
+        if not needs_view1:
+            return detail
+
+        try:
+            view1 = self.scoreboard_crawler.get_view1_scoreboard_detail(game_id)
+        except Exception:
+            view1 = None
+
+        if view1 is None:
+            return detail
+
+        away_scores = view1.get("awayScores")
+        home_scores = view1.get("homeScores")
+        away_totals = view1.get("awayTotals", {})
+        home_totals = view1.get("homeTotals", {})
+
+        away["scores"] = away_scores or away.get("scores")
+        home["scores"] = home_scores or home.get("scores")
+        away["hits"] = away_totals.get("hits", away.get("hits"))
+        away["errors"] = away_totals.get("errors", away.get("errors"))
+        away["balls"] = away_totals.get("balls", away.get("balls"))
+        home["hits"] = home_totals.get("hits", home.get("hits"))
+        home["errors"] = home_totals.get("errors", home.get("errors"))
+        home["balls"] = home_totals.get("balls", home.get("balls"))
 
         return {
             **detail,

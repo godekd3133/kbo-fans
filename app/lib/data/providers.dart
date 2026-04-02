@@ -1,13 +1,18 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../core/config/app_config.dart';
 
 import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
 import 'repositories/api_game_repository.dart';
+import 'repositories/fallback_game_repository.dart';
 import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
+import 'repositories/device_snapshot_player_repository.dart';
+import 'repositories/fallback_player_repository.dart';
+import 'repositories/kbo_direct_player_repository.dart';
 import 'repositories/local_asset_player_repository.dart';
 import 'models/game.dart';
 import 'models/highlight_info.dart';
@@ -22,18 +27,32 @@ import 'models/team_stats.dart';
 import '../services/push_notification_service.dart';
 import '../services/ticket_alert_service.dart';
 
+const _kboPersonImageBase =
+    'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
+
 /// API 클라이언트 (RELEASE에서만 실제 사용)
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 /// GameRepository — 환경에 따라 자동 전환
 final gameRepositoryProvider = Provider<GameRepository>((ref) {
   final apiRepository = ApiGameRepository(ref.read(apiClientProvider));
+  final directRepository = KboDirectRepository();
 
   if (kIsWeb) {
     return apiRepository;
   }
 
-  return KboDirectRepository();
+  if (AppConfig.instance.preferDirectScrape) {
+    return FallbackGameRepository(
+      primary: directRepository,
+      fallback: apiRepository,
+    );
+  }
+
+  return FallbackGameRepository(
+    primary: apiRepository,
+    fallback: directRepository,
+  );
 });
 
 // ── 마이팀 전역 상태 ──
@@ -76,7 +95,10 @@ final gameProvider = FutureProvider.family<Game?, String>((ref, gameId) {
   return ref.watch(gameRepositoryProvider).getGame(gameId);
 });
 
-final highlightInfoProvider = FutureProvider.family<HighlightInfo?, String>((ref, gameId) {
+final highlightInfoProvider = FutureProvider.family<HighlightInfo?, String>((
+  ref,
+  gameId,
+) {
   return ref.watch(gameRepositoryProvider).getHighlightInfo(gameId);
 });
 
@@ -125,9 +147,9 @@ final battersProvider = FutureProvider.family<List<BatterRecord>, String>((
   final parts = key.split('|');
   final gameId = parts[0];
   final isAway = parts[1] == 'true';
-  return ref.watch(gameBoxscoreProvider(gameId).future).then(
-    (data) => (isAway ? data.away : data.home).batters,
-  );
+  return ref
+      .watch(gameBoxscoreProvider(gameId).future)
+      .then((data) => (isAway ? data.away : data.home).batters);
 });
 
 final pitchersProvider = FutureProvider.family<List<PitcherRecord>, String>((
@@ -137,9 +159,9 @@ final pitchersProvider = FutureProvider.family<List<PitcherRecord>, String>((
   final parts = key.split('|');
   final gameId = parts[0];
   final isAway = parts[1] == 'true';
-  return ref.watch(gameBoxscoreProvider(gameId).future).then(
-    (data) => (isAway ? data.away : data.home).pitchers,
-  );
+  return ref
+      .watch(gameBoxscoreProvider(gameId).future)
+      .then((data) => (isAway ? data.away : data.home).pitchers);
 });
 
 final gameLineupProvider = FutureProvider.family<GameLineupData, String>((
@@ -156,9 +178,9 @@ final lineupProvider = FutureProvider.family<List<LineupEntry>, String>((
   final parts = key.split('|');
   final gameId = parts[0];
   final isAway = parts[1] == 'true';
-  return ref.watch(gameLineupProvider(gameId).future).then(
-    (data) => (isAway ? data.away : data.home).lineup,
-  );
+  return ref
+      .watch(gameLineupProvider(gameId).future)
+      .then((data) => (isAway ? data.away : data.home).lineup);
 });
 
 // ── 일정/순위 ──
@@ -203,40 +225,125 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
 });
 
 final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
+  final apiRepository = ApiPlayerRepository(ref.read(apiClientProvider));
+  final directRepository = KboDirectPlayerRepository();
   if (kIsWeb) {
-    return ApiPlayerRepository(ref.read(apiClientProvider));
+    return apiRepository;
   }
-  return LocalAssetPlayerRepository();
+  if (AppConfig.instance.preferDirectScrape) {
+    return DeviceSnapshotPlayerRepository(
+      primary: directRepository,
+      fallback: FallbackPlayerRepository(
+        primary: LocalAssetPlayerRepository(),
+        secondary: apiRepository,
+      ),
+    );
+  }
+  return DeviceSnapshotPlayerRepository(
+    primary: apiRepository,
+    fallback: FallbackPlayerRepository(
+      primary: directRepository,
+      secondary: LocalAssetPlayerRepository(),
+    ),
+  );
 });
 
-final teamPlayersProvider = FutureProvider.family<List<PlayerProfile>, String>((ref, key) {
+final allPlayerImageMapProvider =
+    FutureProvider.family<Map<String, String>, int>((ref, season) async {
+      final repository = ref.watch(playerRepositoryProvider);
+      if (repository is LocalAssetPlayerRepository) {
+        return repository.buildPlayerImageMap(season: season);
+      }
+
+      final result = <String, String>{};
+      for (final teamId in const [
+        'LG',
+        'KT',
+        'SK',
+        'SS',
+        'NC',
+        'HH',
+        'LT',
+        'HT',
+        'OB',
+        'WO',
+      ]) {
+        final players = await repository.getTeamPlayers(teamId, season: season);
+        for (final player in players) {
+          final imageUrl =
+              (player.imageUrl != null && player.imageUrl!.isNotEmpty)
+              ? player.imageUrl
+              : (player.id.isNotEmpty
+                    ? '$_kboPersonImageBase/$season/${player.id}.jpg'
+                    : null);
+          if (player.name.isEmpty || imageUrl == null || imageUrl.isEmpty) {
+            continue;
+          }
+          result[player.name] = imageUrl;
+        }
+      }
+      return result;
+    });
+
+final teamPlayersProvider = FutureProvider.family<List<PlayerProfile>, String>((
+  ref,
+  key,
+) {
   final parts = key.split('|');
   final teamId = parts[0];
   final season = int.parse(parts[1]);
-  return ref.watch(playerRepositoryProvider).getTeamPlayers(teamId, season: season);
+  return ref
+      .watch(playerRepositoryProvider)
+      .getTeamPlayers(teamId, season: season);
 });
 
-final playerDetailProvider = FutureProvider.family<PlayerProfile, String>((ref, key) {
+final playerDetailProvider = FutureProvider.family<PlayerProfile, String>((
+  ref,
+  key,
+) {
   final parts = key.split('|');
   final playerId = parts[0];
   final season = int.parse(parts[1]);
-  return ref.watch(playerRepositoryProvider).getPlayerDetail(playerId, season: season);
+  return ref
+      .watch(playerRepositoryProvider)
+      .getPlayerDetail(playerId, season: season);
 });
 
 final teamStatsProvider = FutureProvider.family<TeamStats, String>((ref, key) {
   final parts = key.split('|');
   final teamId = parts[0];
   final season = int.parse(parts[1]);
-  return ref.watch(playerRepositoryProvider).getTeamStats(teamId, season: season);
+  return ref
+      .watch(playerRepositoryProvider)
+      .getTeamStats(teamId, season: season);
 });
 
-final teamRecordsProvider = FutureProvider.family<TeamRecordsBundle, String>((ref, key) {
+final teamRecordsProvider = FutureProvider.family<TeamRecordsBundle, String>((
+  ref,
+  key,
+) {
   final parts = key.split('|');
   final teamId = parts[0];
   final season = int.parse(parts[1]);
-  return ref.watch(playerRepositoryProvider).getTeamRecords(teamId, season: season);
+  return ref
+      .watch(playerRepositoryProvider)
+      .getTeamRecords(teamId, season: season);
 });
 
-final recordsOverviewProvider = FutureProvider.family<RecordsOverview, int>((ref, season) {
+final recordsOverviewProvider = FutureProvider.family<RecordsOverview, int>((
+  ref,
+  season,
+) {
   return ref.watch(playerRepositoryProvider).getRecordsOverview(season: season);
 });
+
+final leaderboardProvider =
+    FutureProvider.family<List<RecordLeader>, String>((ref, key) {
+      final parts = key.split('|');
+      final season = int.parse(parts[0]);
+      final metric =
+          LeaderboardMetricX.fromKey(parts[1]) ?? LeaderboardMetric.avg;
+      return ref
+          .watch(playerRepositoryProvider)
+          .getLeaderboard(season: season, metric: metric);
+    });
