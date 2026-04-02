@@ -7,6 +7,12 @@ import '../../../core/utils/game_status_label.dart';
 import '../../../core/widgets/game_status_badge.dart';
 import '../../../data/models/game.dart';
 
+const _kboImageHeaders = {
+  'Referer': 'https://www.koreabaseball.com/',
+  'User-Agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+};
+
 class MyTeamGameCard extends StatelessWidget {
   final Game game;
   final VoidCallback? onTap;
@@ -32,12 +38,26 @@ class MyTeamGameCard extends StatelessWidget {
             // MY TEAM 라벨
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                'MY TEAM',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: awayTeam?.primaryColor ?? AppColors.live,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: (awayTeam?.primaryColor ?? AppColors.live).withValues(
+                    alpha: 0.16,
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: (awayTeam?.primaryColor ?? AppColors.live)
+                        .withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Text(
+                  'MY TEAM',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                    color: awayTeam?.primaryColor ?? AppColors.live,
+                  ),
                 ),
               ),
             ),
@@ -239,12 +259,16 @@ class MyTeamGameCard extends StatelessWidget {
       name: shortName,
       shortName: shortName,
     );
-    return CachedNetworkImage(
-      imageUrl: team?.logoUrl ?? '',
+    final imageUrl = team?.logoUrl ?? '';
+    if (imageUrl.isEmpty) {
+      return _logoFallback(team?.shortName ?? shortName, size);
+    }
+    return Image(
+      image: CachedNetworkImageProvider(imageUrl, headers: _kboImageHeaders),
       width: size,
       height: size,
-      placeholder: (_, _) => _logoFallback(team?.shortName ?? shortName, size),
-      errorWidget: (_, _, _) => _logoFallback(team?.shortName ?? shortName, size),
+      errorBuilder: (_, _, _) =>
+          _logoFallback(team?.shortName ?? shortName, size),
     );
   }
 

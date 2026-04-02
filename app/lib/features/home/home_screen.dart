@@ -130,9 +130,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           data: (games) {
             unawaited(_saveCachedScoreboard(today, games));
             _scheduleRefresh(games, myTeamId);
-            if (!AppConfig.instance.isLocal) {
-              _syncWidget(games, myTeamId);
-            }
+            _syncWidget(games, myTeamId);
             unawaited(
               GameEventAlertService.instance.processGames(
                 games: games,
@@ -897,6 +895,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       title: item.title,
       subtitle: item.subtitle,
       route: item.route,
+      teamId: item.teamId,
+      imageUrl: item.imageUrl,
+      fallbackLabel: item.fallbackLabel,
     );
   }
 
@@ -1008,9 +1009,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _syncWidget(List<Game> games, String? myTeamId) {
-    if (AppConfig.instance.isLocal) {
-      return;
-    }
     final signature =
         '${games.length}|${games.map((g) => '${g.gameId}:${g.inning}:${g.away.score}:${g.home.score}').join(',')}|$myTeamId';
     if (_lastSyncSignature == signature) {
@@ -1262,20 +1260,25 @@ class _MyTeamBriefCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
+                  horizontal: 12,
+                  vertical: 7,
                 ),
                 decoration: BoxDecoration(
                   color: (team?.primaryColor ?? AppColors.live).withValues(
-                    alpha: 0.14,
+                    alpha: 0.18,
                   ),
                   borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: (team?.primaryColor ?? AppColors.live).withValues(
+                      alpha: 0.35,
+                    ),
+                  ),
                 ),
                 child: Text(
                   '마이팀 브리프',
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
                     color: team?.primaryColor ?? AppColors.live,
                   ),
                 ),
@@ -1343,7 +1346,11 @@ class _MyTeamBriefCard extends StatelessWidget {
             const SizedBox(height: 14),
             const Text(
               '최근 3경기',
-              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 6),
             Wrap(
@@ -1422,6 +1429,16 @@ class _MyTeamBriefCard extends StatelessWidget {
       '패' => AppColors.live,
       _ => AppColors.accent,
     };
+    final team = KboTeams.resolve(
+      id: null,
+      name: summary.opponentName,
+      shortName: summary.opponentName,
+    );
+    final symbol = switch (summary.result) {
+      '승' => 'W',
+      '패' => 'L',
+      _ => 'D',
+    };
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1433,6 +1450,17 @@ class _MyTeamBriefCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          CachedNetworkImage(
+            imageUrl: team?.logoUrl ?? '',
+            width: 22,
+            height: 22,
+            fit: BoxFit.contain,
+            errorWidget: (_, _, _) =>
+                _teamMarkFallback(summary.opponentName, 22),
+            placeholder: (_, _) =>
+                _teamMarkFallback(summary.opponentName, 22),
+          ),
+          const SizedBox(width: 8),
           Container(
             width: 24,
             height: 24,
@@ -1442,7 +1470,7 @@ class _MyTeamBriefCard extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              summary.result,
+              symbol,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
@@ -1577,10 +1605,11 @@ class _TodayBaseballCard extends StatelessWidget {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   const Text(
-                    '주목 경기',
+                    'MY TEAM',
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textDisabled,
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                   _gameStatusChip(game),
@@ -1785,12 +1814,25 @@ class _TodayBaseballCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(
-                  '${item.awayScore} : ${item.homeScore}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
+                Column(
+                  children: [
+                    Text(
+                      '${item.awayScore} : ${item.homeScore}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (item.isMyTeamGame)
+                      const Text(
+                        'MY TEAM',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 8),
                 _teamMarkIcon(item.homeTeamId, item.homeShortName),
@@ -1939,7 +1981,7 @@ class _QuickContentListItem extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(child: _quickItemAvatar(item, accent)),
+            _quickItemAvatar(item, accent),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1955,7 +1997,6 @@ class _QuickContentListItem extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
                   const SizedBox(height: 8),
                   Text(
                     item.title,
@@ -2079,8 +2120,8 @@ Widget _quickItemAvatarFallback(
   final label = (item.fallbackLabel ?? item.title).trim();
   final initial = label.isEmpty ? _quickItemIcon(item) : label.characters.first;
   return Container(
-    width: 40,
-    height: 40,
+    width: 52,
+    height: 52,
     decoration: BoxDecoration(
       color: accent.withValues(alpha: 0.14),
       borderRadius: BorderRadius.circular(12),
@@ -2089,7 +2130,7 @@ Widget _quickItemAvatarFallback(
     child: Text(
       initial,
       style: TextStyle(
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: FontWeight.w800,
         color: team?.primaryColor ?? accent,
       ),

@@ -34,10 +34,13 @@ class ScheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
+  static const _calendarInitialPage = 1200;
   late DateTime _currentMonth;
+  late final PageController _calendarPageController;
   int? _selectedDay;
   ScheduleViewMode _viewMode = ScheduleViewMode.calendar;
   ScheduleTeamFilter _teamFilter = ScheduleTeamFilter.all;
+  String? _stadiumTeamId;
   int? _scheduleLoadStartedAtMicros;
   String? _lastScheduleLoadLogKey;
 
@@ -46,18 +49,40 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     super.initState();
     final now = DateTime.now();
     _currentMonth = DateTime(now.year, now.month);
+    _calendarPageController = PageController(initialPage: _calendarInitialPage);
     _selectedDay = now.day;
     _scheduleLoadStartedAtMicros = DateTime.now().microsecondsSinceEpoch;
+  }
+
+  @override
+  void dispose() {
+    _calendarPageController.dispose();
+    super.dispose();
   }
 
   String get _yearMonth =>
       '${_currentMonth.year}-${_currentMonth.month.toString().padLeft(2, '0')}';
 
+  Future<void> _refreshSchedule() async {
+    ref.invalidate(scheduleProvider(_yearMonth));
+    await ref.read(scheduleProvider(_yearMonth).future);
+  }
+
   void _changeMonth(int delta) {
-    setState(() {
-      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + delta);
-      _selectedDay = null; // 월 변경 시 선택 초기화
-    });
+    if (_viewMode == ScheduleViewMode.stadium) {
+      setState(() {
+        _currentMonth = DateTime(
+          _currentMonth.year,
+          _currentMonth.month + delta,
+        );
+      });
+      return;
+    }
+    _calendarPageController.animateToPage(
+      _calendarInitialPage + _monthDeltaFromToday(_currentMonth) + delta,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
@@ -73,27 +98,58 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               _buildMonthHeader(),
               Expanded(
                 child: scheduleAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.live),
+                  loading: () => RefreshIndicator(
+                    onRefresh: _refreshSchedule,
+                    color: AppColors.live,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(
+                          height: 420,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.live,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  error: (e, _) => Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                  error: (e, _) => RefreshIndicator(
+                    onRefresh: _refreshSchedule,
+                    color: AppColors.live,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       children: [
-                        const Text(
-                          '일정을 불러올 수 없습니다',
-                          style: TextStyle(color: AppColors.textDisabled),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          describeAsyncError(e),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
-                        ),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () => ref.invalidate(scheduleProvider(_yearMonth)),
-                          child: const Text('다시 시도'),
+                        SizedBox(
+                          height: 420,
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  '일정을 불러올 수 없습니다',
+                                  style: TextStyle(
+                                    color: AppColors.textDisabled,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  describeAsyncError(e),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textDisabled,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextButton(
+                                  onPressed: _refreshSchedule,
+                                  child: const Text('다시 시도'),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -134,6 +190,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   Widget _buildBody(List<ScheduleDay> days) {
     final myTeamId = ref.watch(myTeamProvider);
     final filteredDays = _filterDays(days, myTeamId);
+    final stadiumFilteredDays = _filterDaysBySelectedTeam(
+      filteredDays,
+      _stadiumTeamId,
+    );
     final gameDays = <int>{};
     final myTeamDays = <int>{};
     for (final d in filteredDays) {
@@ -161,12 +221,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       children: [
         _buildControls(),
         if (_viewMode == ScheduleViewMode.calendar) ...[
-          _buildCalendar(gameDays, myTeamDays),
+          _buildCalendarPager(),
           const Divider(color: AppColors.divider, height: 1),
           Expanded(child: _buildGameList(selectedSchedule)),
         ] else ...[
           const Divider(color: AppColors.divider, height: 1),
-          Expanded(child: _buildStadiumList(filteredDays)),
+          Expanded(child: _buildStadiumList(stadiumFilteredDays)),
         ],
       ],
     );
@@ -193,6 +253,28 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       }
     }
 
+    return filtered;
+  }
+
+  List<ScheduleDay> _filterDaysBySelectedTeam(
+    List<ScheduleDay> days,
+    String? teamId,
+  ) {
+    if (teamId == null || teamId.isEmpty) {
+      return days;
+    }
+
+    final filtered = <ScheduleDay>[];
+    for (final day in days) {
+      final games = day.games.where((game) {
+        return game.awayId == teamId || game.homeId == teamId;
+      }).toList();
+      if (games.isNotEmpty) {
+        filtered.add(
+          ScheduleDay(date: day.date, label: day.label, games: games),
+        );
+      }
+    }
     return filtered;
   }
 
@@ -260,6 +342,30 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           if (_viewMode == ScheduleViewMode.calendar) ...[
             const SizedBox(height: 6),
             _legendRow(),
+          ] else ...[
+            const SizedBox(height: 6),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _filterChip(
+                    label: '전체 팀',
+                    selected: _stadiumTeamId == null,
+                    onTap: () => setState(() => _stadiumTeamId = null),
+                  ),
+                  ...KboTeams.teams.map((team) {
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: _filterChip(
+                        label: team.shortName,
+                        selected: _stadiumTeamId == team.id,
+                        onTap: () => setState(() => _stadiumTeamId = team.id),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
           ],
         ],
       ),
@@ -358,14 +464,71 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildCalendar(Set<int> gameDays, Set<int> myTeamDays) {
+  Widget _buildCalendarPager() {
+    return SizedBox(
+      height: 330,
+      child: PageView.builder(
+        controller: _calendarPageController,
+        onPageChanged: (page) {
+          final nextMonth = _monthForPage(page);
+          setState(() {
+            _currentMonth = nextMonth;
+            if (_selectedDay != null) {
+              final lastDay = DateTime(
+                nextMonth.year,
+                nextMonth.month + 1,
+                0,
+              ).day;
+              _selectedDay = _selectedDay!.clamp(1, lastDay);
+            }
+          });
+        },
+        itemBuilder: (context, index) {
+          final month = _monthForPage(index);
+          final myTeamId = ref.watch(myTeamProvider);
+          final yearMonth =
+              '${month.year}-${month.month.toString().padLeft(2, '0')}';
+          final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
+
+          return scheduleAsync.when(
+            loading: () => _buildCalendar(month, const <int>{}, const <int>{}),
+            error: (_, _) =>
+                _buildCalendar(month, const <int>{}, const <int>{}),
+            data: (days) {
+              final filteredDays = _filterDays(days, myTeamId);
+              final gameDays = <int>{};
+              final myTeamDays = <int>{};
+              for (final d in filteredDays) {
+                final day = int.tryParse(d.date.split('-').last) ?? 0;
+                gameDays.add(day);
+                if (myTeamId != null) {
+                  final hasMyTeam = d.games.any(
+                    (g) => g.awayId == myTeamId || g.homeId == myTeamId,
+                  );
+                  if (hasMyTeam) myTeamDays.add(day);
+                }
+              }
+              return _buildCalendar(month, gameDays, myTeamDays);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCalendar(
+    DateTime month,
+    Set<int> gameDays,
+    Set<int> myTeamDays,
+  ) {
     final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final firstDay = DateTime(_currentMonth.year, _currentMonth.month, 1);
-    final lastDay = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
+    final firstDay = DateTime(month.year, month.month, 1);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
     final startWeekday = firstDay.weekday;
+    final leadingDays = startWeekday - 1;
+    final totalCells = ((leadingDays + lastDay.day + 6) ~/ 7) * 7;
+    final firstVisibleDay = firstDay.subtract(Duration(days: leadingDays));
     final today = DateTime.now();
-    final isCurrentMonth =
-        _currentMonth.year == today.year && _currentMonth.month == today.month;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -386,33 +549,49 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             }).toList(),
           ),
           const SizedBox(height: 6),
-          ...List.generate(((startWeekday - 1 + lastDay.day + 6) ~/ 7), (week) {
+          ...List.generate(totalCells ~/ 7, (week) {
             return Row(
               children: List.generate(7, (weekday) {
                 final cellIndex = week * 7 + weekday;
-                final day = cellIndex - (startWeekday - 2);
-                if (day < 1 || day > lastDay.day) {
-                  return const Expanded(child: SizedBox(height: 44));
-                }
-                final isSelected = day == _selectedDay;
-                final isToday = isCurrentMonth && day == today.day;
-                final hasGame = gameDays.contains(day);
-                final isMyTeam = myTeamDays.contains(day);
-                final isPast = DateTime(
-                  _currentMonth.year,
-                  _currentMonth.month,
-                  day,
-                ).isBefore(DateTime(today.year, today.month, today.day));
+                final date = firstVisibleDay.add(Duration(days: cellIndex));
+                final isInCurrentMonth =
+                    date.year == month.year && date.month == month.month;
+                final day = date.day;
+                final isSelected =
+                    isInCurrentMonth &&
+                    month.year == _currentMonth.year &&
+                    month.month == _currentMonth.month &&
+                    day == _selectedDay;
+                final isToday =
+                    date.year == today.year &&
+                    date.month == today.month &&
+                    date.day == today.day;
+                final hasGame = isInCurrentMonth && gameDays.contains(day);
+                final isMyTeam = isInCurrentMonth && myTeamDays.contains(day);
+                final isPast = date.isBefore(
+                  DateTime(today.year, today.month, today.day),
+                );
 
                 return Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _selectedDay = day),
+                    onTap: () => setState(() {
+                      _currentMonth = DateTime(date.year, date.month);
+                      _selectedDay = date.day;
+                      final targetPage =
+                          _calendarInitialPage +
+                          _monthDeltaFromToday(_currentMonth);
+                      if (_calendarPageController.hasClients &&
+                          _calendarPageController.page?.round() != targetPage) {
+                        _calendarPageController.jumpToPage(targetPage);
+                      }
+                    }),
                     child: SizedBox(
                       height: 44,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
                             width: 32,
                             height: 32,
                             alignment: Alignment.center,
@@ -430,6 +609,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                 fontSize: 14,
                                 color: isSelected
                                     ? AppColors.background
+                                    : !isInCurrentMonth
+                                    ? AppColors.textDisabled.withValues(
+                                        alpha: 0.55,
+                                      )
                                     : isPast
                                     ? AppColors.textDisabled
                                     : AppColors.textPrimary,
@@ -468,26 +651,64 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
+  int _monthDeltaFromToday(DateTime month) {
+    final now = DateTime.now();
+    return (month.year - now.year) * 12 + (month.month - now.month);
+  }
+
+  DateTime _monthForPage(int page) {
+    final now = DateTime.now();
+    final delta = page - _calendarInitialPage;
+    return DateTime(now.year, now.month + delta);
+  }
+
   Widget _buildGameList(ScheduleDay? schedule) {
     if (_selectedDay == null) {
-      return Center(
-        child: Text(
-          '날짜를 탭해 경기 일정을 보세요',
-          style: TextStyle(color: AppColors.textDisabled),
+      return RefreshIndicator(
+        onRefresh: _refreshSchedule,
+        color: AppColors.live,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: 320,
+              child: Center(
+                child: Text(
+                  '날짜를 탭해 경기 일정을 보세요',
+                  style: TextStyle(color: AppColors.textDisabled),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
 
     if (schedule == null || schedule.games.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      return RefreshIndicator(
+        onRefresh: _refreshSchedule,
+        color: AppColors.live,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Icon(Icons.event_busy, size: 48, color: AppColors.divider),
-            const SizedBox(height: 12),
-            Text(
-              '선택한 날짜에 경기가 없습니다',
-              style: TextStyle(fontSize: 16, color: AppColors.textDisabled),
+            SizedBox(
+              height: 320,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.event_busy, size: 48, color: AppColors.divider),
+                    const SizedBox(height: 12),
+                    Text(
+                      '선택한 날짜에 경기가 없습니다',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textDisabled,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -506,29 +727,34 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         ? '$dateLabel — ${schedule.label}'
         : dateLabel;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ),
-        ...schedule.games.map(
-          (g) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: ScheduleGameCard(
-              game: g,
-              onTap: () => context.push('/game/${g.gameId}'),
-              ticketSummary: g.ticketInfo == null
-                  ? null
-                  : _ticketSummary(g.ticketInfo!),
+    return RefreshIndicator(
+      onRefresh: _refreshSchedule,
+      color: AppColors.live,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 12),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
-        ),
-      ],
+          ...schedule.games.map(
+            (g) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: ScheduleGameCard(
+                game: g,
+                onTap: () => context.push('/game/${g.gameId}'),
+                ticketSummary: g.ticketInfo == null
+                    ? null
+                    : _ticketSummary(g.ticketInfo!),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -553,39 +779,47 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 4, bottom: 12),
-          child: Text(
-            '구장별 일정',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-        ),
-        for (final stadium in stadiums) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+    return RefreshIndicator(
+      onRefresh: _refreshSchedule,
+      color: AppColors.live,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 12),
             child: Text(
-              stadium,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              '구장별 일정',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
-          ...stadiumMap[stadium]!.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: ScheduleGameCard(
-                game: item.game,
-                dateLabel: _formatDateLabel(item.date),
-                onTap: () => context.push('/game/${item.game.gameId}'),
-                ticketSummary: item.game.ticketInfo == null
-                    ? null
-                    : _ticketSummary(item.game.ticketInfo!),
+          for (final stadium in stadiums) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+              child: Text(
+                stadium,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
+            ...stadiumMap[stadium]!.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: ScheduleGameCard(
+                  game: item.game,
+                  dateLabel: _formatDateLabel(item.date),
+                  onTap: () => context.push('/game/${item.game.gameId}'),
+                  ticketSummary: item.game.ticketInfo == null
+                      ? null
+                      : _ticketSummary(item.game.ticketInfo!),
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 

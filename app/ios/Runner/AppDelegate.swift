@@ -5,20 +5,33 @@ import workmanager_apple
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  private let startupBeganAt = CFAbsoluteTimeGetCurrent()
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    logStartup("didFinishLaunching start")
     WorkmanagerPlugin.setPluginRegistrantCallback { registry in
       GeneratedPluginRegistrant.register(with: registry)
     }
+
+    let superStartedAt = CFAbsoluteTimeGetCurrent()
     let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    logStartup(
+      "super.application finished (\(elapsedMs(since: superStartedAt))ms)"
+    )
     setUpLiveActivityChannel()
+    logStartup("didFinishLaunching end")
     return result
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    let startedAt = CFAbsoluteTimeGetCurrent()
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    logStartup(
+      "implicit engine plugin registration finished (\(elapsedMs(since: startedAt))ms)"
+    )
   }
 
   private func setUpLiveActivityChannel() {
@@ -49,6 +62,7 @@ import workmanager_apple
 
         switch call.method {
         case "syncCurrentScore":
+          NSLog("[KBOFansLiveActivity] syncCurrentScore call received")
           guard let args = call.arguments as? [String: Any] else {
             result(
               FlutterError(
@@ -61,6 +75,7 @@ import workmanager_apple
           }
           self.syncCurrentScoreActivity(arguments: args, result: result)
         case "endCurrentScore":
+          NSLog("[KBOFansLiveActivity] endCurrentScore call received")
           self.endCurrentScoreActivity(result: result)
         default:
           result(FlutterMethodNotImplemented)
@@ -74,11 +89,13 @@ import workmanager_apple
     result: @escaping FlutterResult
   ) {
     guard #available(iOS 16.1, *) else {
+      NSLog("[KBOFansLiveActivity] ActivityKit unavailable on this iOS version")
       result(false)
       return
     }
 
     guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+      NSLog("[KBOFansLiveActivity] Activities disabled in system settings")
       result(false)
       return
     }
@@ -112,6 +129,9 @@ import workmanager_apple
         inning: inning,
         batter: arguments["batter"] as? String ?? "",
         pitcher: arguments["pitcher"] as? String ?? "",
+        balls: arguments["balls"] as? Int ?? 0,
+        strikes: arguments["strikes"] as? Int ?? 0,
+        outs: arguments["outs"] as? Int ?? 0,
         stadium: stadium,
         updatedAt: updatedAt
       )
@@ -121,6 +141,7 @@ import workmanager_apple
         let existingActivities = Activity<KboFansScoreAttributes>.activities
         if let existing = existingActivities.first(where: { $0.attributes.gameId == gameId }) {
           await existing.update(using: state)
+          NSLog("[KBOFansLiveActivity] updated existing activity for %@", gameId)
         } else {
           for activity in existingActivities {
             await activity.end(dismissalPolicy: .immediate)
@@ -130,9 +151,11 @@ import workmanager_apple
             contentState: state,
             pushType: nil
           )
+          NSLog("[KBOFansLiveActivity] started new activity for %@", gameId)
         }
         result(true)
       } catch {
+        NSLog("[KBOFansLiveActivity] sync failed: %@", error.localizedDescription)
         result(
           FlutterError(
             code: "activity_error",
@@ -146,6 +169,7 @@ import workmanager_apple
 
   private func endCurrentScoreActivity(result: @escaping FlutterResult) {
     guard #available(iOS 16.1, *) else {
+      NSLog("[KBOFansLiveActivity] end ignored: ActivityKit unavailable")
       result(false)
       return
     }
@@ -154,6 +178,7 @@ import workmanager_apple
       for activity in Activity<KboFansScoreAttributes>.activities {
         await activity.end(dismissalPolicy: .immediate)
       }
+      NSLog("[KBOFansLiveActivity] ended %ld activities", Activity<KboFansScoreAttributes>.activities.count)
       result(true)
     }
   }
@@ -175,5 +200,17 @@ import workmanager_apple
       }
     }
     return nil
+  }
+
+  private func logStartup(_ message: String) {
+    NSLog(
+      "[KBOFansStartup] %@ | +%@ms",
+      message,
+      elapsedMs(since: startupBeganAt)
+    )
+  }
+
+  private func elapsedMs(since start: CFAbsoluteTime) -> String {
+    String(format: "%.0f", (CFAbsoluteTimeGetCurrent() - start) * 1000)
   }
 }

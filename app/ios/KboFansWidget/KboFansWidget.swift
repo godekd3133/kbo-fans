@@ -12,6 +12,9 @@ struct KboFansWidgetEntry: TimelineEntry {
   let score: String
   let batter: String
   let pitcher: String
+  let balls: Int
+  let strikes: Int
+  let outs: Int
   let updatedAt: String
 }
 
@@ -23,8 +26,11 @@ struct KboFansWidgetProvider: TimelineProvider {
       subtitle: "잠실",
       status: "4회초",
       score: "6 : 2",
-      batter: "타자 박해민",
-      pitcher: "투수 켈리",
+      batter: "박해민",
+      pitcher: "켈리",
+      balls: 2,
+      strikes: 1,
+      outs: 1,
       updatedAt: "14:32"
     )
   }
@@ -49,6 +55,9 @@ struct KboFansWidgetProvider: TimelineProvider {
       score: data?.string(forKey: "widget_score") ?? "",
       batter: data?.string(forKey: "widget_batter") ?? "",
       pitcher: data?.string(forKey: "widget_pitcher") ?? "",
+      balls: Int(data?.string(forKey: "widget_balls") ?? "0") ?? 0,
+      strikes: Int(data?.string(forKey: "widget_strikes") ?? "0") ?? 0,
+      outs: Int(data?.string(forKey: "widget_outs") ?? "0") ?? 0,
       updatedAt: data?.string(forKey: "widget_updated_at") ?? "--:--"
     )
   }
@@ -66,28 +75,28 @@ struct KboFansWidgetEntryView: View {
         .font(.caption)
         .foregroundStyle(.gray)
       Spacer(minLength: 6)
+      HStack(alignment: .center) {
+        Text(entry.score)
+          .font(.title2)
+          .bold()
+          .foregroundStyle(.white)
+        Spacer(minLength: 10)
+        _countBadges(balls: entry.balls, strikes: entry.strikes, outs: entry.outs)
+      }
       Text(entry.status)
         .font(.subheadline)
         .foregroundStyle(Color(red: 1.0, green: 0.27, blue: 0.27))
-      Text(entry.score)
-        .font(.title2)
-        .bold()
-        .foregroundStyle(.white)
-      if !entry.batter.isEmpty || !entry.pitcher.isEmpty {
-        VStack(alignment: .leading, spacing: 2) {
-          if !entry.batter.isEmpty {
-            Text(entry.batter)
-              .font(.caption)
-              .foregroundStyle(.secondary)
-              .lineLimit(1)
-          }
-          if !entry.pitcher.isEmpty {
-            Text(entry.pitcher)
-              .font(.caption)
-              .foregroundStyle(.secondary)
-              .lineLimit(1)
-          }
-        }
+      if !entry.batter.isEmpty {
+        Text("타석 \(entry.batter)")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+      if !entry.pitcher.isEmpty {
+        Text("투수 \(entry.pitcher)")
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
       }
       Text("업데이트 \(entry.updatedAt)")
         .font(.caption2)
@@ -141,10 +150,10 @@ struct KboFansLiveActivityView: View {
           .font(.caption2)
           .foregroundStyle(.secondary)
       }
-      if !context.state.batter.isEmpty || !context.state.pitcher.isEmpty {
+      HStack(alignment: .top, spacing: 12) {
         VStack(alignment: .leading, spacing: 2) {
           if !context.state.batter.isEmpty {
-            Text("타자 \(context.state.batter)")
+            Text("타석 \(context.state.batter)")
               .font(.caption)
               .foregroundStyle(.secondary)
           }
@@ -154,6 +163,12 @@ struct KboFansLiveActivityView: View {
               .foregroundStyle(.secondary)
           }
         }
+        Spacer(minLength: 8)
+        _countBadges(
+          balls: context.state.balls,
+          strikes: context.state.strikes,
+          outs: context.state.outs
+        )
       }
     }
     .padding(.horizontal, 16)
@@ -226,22 +241,29 @@ struct KboFansLiveActivityWidget: Widget {
           }
         }
         DynamicIslandExpandedRegion(.bottom) {
-          HStack {
-            Label(context.state.stadium, systemImage: "baseball")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-            Spacer()
+          VStack(alignment: .leading, spacing: 4) {
+            HStack {
+              Label(context.state.stadium, systemImage: "baseball")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+              Spacer()
+              _countBadges(
+                balls: context.state.balls,
+                strikes: context.state.strikes,
+                outs: context.state.outs
+              )
+            }
+            if !context.state.batter.isEmpty {
+              Text("타석 \(context.state.batter)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+            if !context.state.pitcher.isEmpty {
+              Text("투수 \(context.state.pitcher)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
             Text("업데이트 \(context.state.updatedAt)")
-              .font(.caption2)
-              .foregroundStyle(.secondary)
-          }
-          if !context.state.batter.isEmpty {
-            Text("타자 \(context.state.batter)")
-              .font(.caption2)
-              .foregroundStyle(.secondary)
-          }
-          if !context.state.pitcher.isEmpty {
-            Text("투수 \(context.state.pitcher)")
               .font(.caption2)
               .foregroundStyle(.secondary)
           }
@@ -262,6 +284,32 @@ struct KboFansLiveActivityWidget: Widget {
       .keylineTint(Color(red: 1.0, green: 0.27, blue: 0.27))
     }
   }
+}
+
+@ViewBuilder
+private func _countBadges(balls: Int, strikes: Int, outs: Int) -> some View {
+  HStack(spacing: 6) {
+    _countBadge(label: "B", value: balls, tint: Color(red: 1.0, green: 0.84, blue: 0.0))
+    _countBadge(label: "S", value: strikes, tint: Color(red: 1.0, green: 0.27, blue: 0.27))
+    _countBadge(label: "O", value: outs, tint: .white)
+  }
+}
+
+private func _countBadge(label: String, value: Int, tint: Color) -> some View {
+  VStack(spacing: 1) {
+    Text(label)
+      .font(.system(size: 9, weight: .bold))
+      .foregroundStyle(tint.opacity(0.85))
+    Text("\(value)")
+      .font(.system(size: 13, weight: .bold, design: .rounded))
+      .foregroundStyle(.white)
+  }
+  .padding(.horizontal, 7)
+  .padding(.vertical, 4)
+  .background(
+    RoundedRectangle(cornerRadius: 10, style: .continuous)
+      .fill(tint.opacity(0.14))
+  )
 }
 
 @main

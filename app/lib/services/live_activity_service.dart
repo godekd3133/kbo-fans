@@ -2,13 +2,11 @@ import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
 
-import '../core/config/app_config.dart';
 import '../core/utils/game_status_label.dart';
+import '../core/widgets/dev_console.dart';
 import '../data/models/game.dart';
 import '../data/models/relay.dart';
-import '../data/repositories/api_game_repository.dart';
 import '../data/repositories/kbo_direct_repository.dart';
-import '../data/api/api_client.dart';
 
 class LiveActivityService {
   LiveActivityService._();
@@ -26,14 +24,13 @@ class LiveActivityService {
 
     final targetGame = _selectTargetGame(games, myTeamId);
     if (targetGame == null) {
+      DevConsole.instance.info('Live Activity target missing; ending current');
       await endCurrentScore();
       return;
     }
 
     try {
-      final repository = AppConfig.instance.isRelease
-          ? ApiGameRepository(ApiClient())
-          : KboDirectRepository();
+      final repository = KboDirectRepository();
       CurrentAtBat? currentAtBat;
       try {
         currentAtBat = await repository.getCurrentAtBat(targetGame.gameId);
@@ -47,20 +44,30 @@ class LiveActivityService {
         'homeTeam': targetGame.home.shortName,
         'awayScore': targetGame.away.score,
         'homeScore': targetGame.home.score,
-        'inning': secondaryTextForGameStatus(
-          targetGame.status,
-          inning: targetGame.inning,
-          startTime: targetGame.startTime,
-        ),
+        'inning': targetGame.status == GameStatus.scheduled
+            ? '경기전'
+            : secondaryTextForGameStatus(
+                targetGame.status,
+                inning: targetGame.inning,
+                startTime: targetGame.startTime,
+              ),
         'batter': currentAtBat?.batterName ?? '',
         'pitcher': currentAtBat?.pitcherName ?? '',
+        'balls': currentAtBat?.balls ?? 0,
+        'strikes': currentAtBat?.strikes ?? 0,
+        'outs': currentAtBat?.outs ?? 0,
         'stadium': targetGame.stadium,
         'updatedAt': _updatedAtText(),
       });
+      DevConsole.instance.info(
+        'Live Activity sync sent: ${targetGame.gameId} ${targetGame.away.score}:${targetGame.home.score} ${targetGame.inning}',
+      );
     } on PlatformException {
       // Live Activity is optional. Fail silently when unavailable.
+      DevConsole.instance.warn('Live Activity sync failed: platform exception');
     } on MissingPluginException {
       // iOS native channel may be unavailable in some debug/background cases.
+      DevConsole.instance.warn('Live Activity sync failed: missing plugin');
     }
   }
 
@@ -71,10 +78,13 @@ class LiveActivityService {
 
     try {
       await _channel.invokeMethod('endCurrentScore');
+      DevConsole.instance.info('Live Activity end sent');
     } on PlatformException {
       // Ignore cleanup errors when the channel exists but ActivityKit is unavailable.
+      DevConsole.instance.warn('Live Activity end failed: platform exception');
     } on MissingPluginException {
       // Ignore cleanup errors in isolates that do not register the native channel.
+      DevConsole.instance.warn('Live Activity end failed: missing plugin');
     }
   }
 
@@ -98,12 +108,6 @@ class LiveActivityService {
 
     for (final game in games) {
       if (game.status == GameStatus.live) {
-        return game;
-      }
-    }
-
-    for (final game in games) {
-      if (game.status == GameStatus.scheduled) {
         return game;
       }
     }

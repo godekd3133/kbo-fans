@@ -1,13 +1,13 @@
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../core/config/app_config.dart';
-import '../data/api/api_client.dart';
+import '../core/widgets/dev_console.dart';
 import '../data/models/game.dart';
 import '../data/models/relay.dart';
-import '../data/repositories/api_game_repository.dart';
 import '../data/repositories/game_repository.dart';
 import '../data/repositories/kbo_direct_repository.dart';
 import 'live_activity_service.dart';
@@ -15,7 +15,8 @@ import 'live_activity_service.dart';
 const widgetRefreshTaskName = 'kbo_widget_refresh';
 const _widgetGroupId = 'group.com.kbofans.kbo_fans';
 const _androidWidgetName = 'KboFansScoreWidgetProvider';
-const _androidQualifiedWidgetName = 'com.kbofans.kbo_fans.KboFansScoreWidgetProvider';
+const _androidQualifiedWidgetName =
+    'com.kbofans.kbo_fans.KboFansScoreWidgetProvider';
 const _iosWidgetName = 'KboFansWidget';
 
 @pragma('vm:entry-point')
@@ -24,7 +25,8 @@ void widgetCallbackDispatcher() {
     try {
       AppConfig.initialize();
       await WidgetSyncService.instance.initialize();
-      final repository = WidgetSyncService.instance.createRepositoryForBackground();
+      final repository = WidgetSyncService.instance
+          .createRepositoryForBackground();
       final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
       final games = await repository.getScoreboard(date);
       final myTeamId = await HomeWidget.getWidgetData<String>('widget_my_team');
@@ -46,24 +48,14 @@ class WidgetSyncService {
   static final WidgetSyncService instance = WidgetSyncService._();
   String? _lastSyncSignature;
 
-  bool get _isLocalIosDebug =>
-      !kIsWeb &&
-      defaultTargetPlatform == TargetPlatform.iOS &&
-      AppConfig.instance.isLocal;
-
   Future<void> initialize() async {
-    if (_isLocalIosDebug) {
-      return;
-    }
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       await HomeWidget.setAppGroupId(_widgetGroupId);
+      DevConsole.instance.info('Widget app group initialized');
     }
   }
 
   GameRepository createRepositoryForBackground() {
-    if (AppConfig.instance.isRelease) {
-      return ApiGameRepository(ApiClient());
-    }
     return KboDirectRepository();
   }
 
@@ -72,16 +64,22 @@ class WidgetSyncService {
     required String? myTeamId,
     GameRepository? repository,
   }) async {
-    if (kIsWeb || _isLocalIosDebug) {
+    if (kIsWeb) {
       return;
     }
+
+    await initialize();
 
     final selected = _selectGame(games, myTeamId);
     final signature = _buildSignature(games: games, myTeamId: myTeamId);
     if (_lastSyncSignature == signature) {
+      DevConsole.instance.info('Widget sync skipped: same signature');
       return;
     }
     _lastSyncSignature = signature;
+    DevConsole.instance.info(
+      'Widget sync begin: game=${selected?.gameId ?? '-'} myTeam=${myTeamId ?? '-'}',
+    );
     await HomeWidget.saveWidgetData<String>('widget_my_team', myTeamId);
 
     if (selected == null) {
@@ -92,10 +90,14 @@ class WidgetSyncService {
         HomeWidget.saveWidgetData<String>('widget_score', ''),
         HomeWidget.saveWidgetData<String>('widget_batter', ''),
         HomeWidget.saveWidgetData<String>('widget_pitcher', ''),
-        HomeWidget.saveWidgetData<String>('widget_updated_at', _updatedAtText()),
+        HomeWidget.saveWidgetData<String>(
+          'widget_updated_at',
+          _updatedAtText(),
+        ),
       ]);
       await _updateWidget();
       await LiveActivityService.instance.endCurrentScore();
+      DevConsole.instance.info('Widget sync complete: no selected game');
       return;
     }
 
@@ -121,8 +123,14 @@ class WidgetSyncService {
         'widget_score',
         '${selected.away.score} : ${selected.home.score}',
       ),
-      HomeWidget.saveWidgetData<String>('widget_batter', _batterText(currentAtBat)),
-      HomeWidget.saveWidgetData<String>('widget_pitcher', _pitcherText(currentAtBat)),
+      HomeWidget.saveWidgetData<String>(
+        'widget_batter',
+        _batterText(currentAtBat),
+      ),
+      HomeWidget.saveWidgetData<String>(
+        'widget_pitcher',
+        _pitcherText(currentAtBat),
+      ),
       HomeWidget.saveWidgetData<String>('widget_updated_at', _updatedAtText()),
       HomeWidget.saveWidgetData<String>('widget_game_id', selected.gameId),
     ]);
@@ -132,12 +140,10 @@ class WidgetSyncService {
       games: games,
       myTeamId: myTeamId,
     );
+    DevConsole.instance.info('Widget sync complete: ${selected.gameId}');
   }
 
   Future<void> registerBackgroundRefresh() async {
-    if (_isLocalIosDebug) {
-      return;
-    }
     await Workmanager().registerPeriodicTask(
       'kbo-widget-periodic',
       widgetRefreshTaskName,
@@ -147,12 +153,16 @@ class WidgetSyncService {
   }
 
   Future<void> _updateWidget() async {
-    await HomeWidget.updateWidget(name: _androidWidgetName, iOSName: _iosWidgetName);
+    await HomeWidget.updateWidget(
+      name: _androidWidgetName,
+      iOSName: _iosWidgetName,
+    );
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       await HomeWidget.updateWidget(
         qualifiedAndroidName: _androidQualifiedWidgetName,
       );
     }
+    DevConsole.instance.info('Widget update request sent');
   }
 
   Game? _selectGame(List<Game> games, String? myTeamId) {
@@ -160,18 +170,9 @@ class WidgetSyncService {
       return null;
     }
 
-    final liveMyTeamGame = _findGame(
-      games,
-      myTeamId: myTeamId,
-      onlyLive: true,
-    );
+    final liveMyTeamGame = _findGame(games, myTeamId: myTeamId, onlyLive: true);
     if (liveMyTeamGame != null) {
       return liveMyTeamGame;
-    }
-
-    final liveGame = _findGame(games, onlyLive: true);
-    if (liveGame != null) {
-      return liveGame;
     }
 
     final myTeamGame = _findGame(games, myTeamId: myTeamId);
@@ -179,14 +180,15 @@ class WidgetSyncService {
       return myTeamGame;
     }
 
-    return games.first;
+    final liveGame = _findGame(games, onlyLive: true);
+    if (liveGame != null) {
+      return liveGame;
+    }
+
+    return null;
   }
 
-  Game? _findGame(
-    List<Game> games, {
-    String? myTeamId,
-    bool onlyLive = false,
-  }) {
+  Game? _findGame(List<Game> games, {String? myTeamId, bool onlyLive = false}) {
     for (final game in games) {
       if (onlyLive && game.status != GameStatus.live) {
         continue;
