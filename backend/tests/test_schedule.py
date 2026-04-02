@@ -1,4 +1,5 @@
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
+from kbo_fans_backend.services.ticketing import TicketingService
 
 
 def test_derive_status_marks_start_pit_as_scheduled() -> None:
@@ -23,3 +24,16 @@ def test_parse_play_score_extracts_final_score() -> None:
 
     assert away_score == 11
     assert home_score == 7
+
+
+def test_ticket_info_is_omitted_for_terminal_schedule_status() -> None:
+    service = TicketingService()
+
+    ticket_info = service.build_ticket_info(
+        home_team_id="LG",
+        game_id="20260328KTLG0",
+        start_time="14:00",
+        status="FINAL",
+    )
+
+    assert ticket_info is None

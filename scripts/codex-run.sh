@@ -13,6 +13,9 @@ usage() {
   cat <<'EOF'
 Usage:
   ./scripts/codex-run.sh ios
+  ./scripts/codex-run.sh ios-debug
+  ./scripts/codex-run.sh ios-profile
+  ./scripts/codex-run.sh ios-release
   ./scripts/codex-run.sh android
   ./scripts/codex-run.sh web
   ./scripts/codex-run.sh web-static
@@ -20,7 +23,10 @@ Usage:
   ./scripts/codex-run.sh doctor
 
 Commands:
-  ios      Run the Flutter app on a connected iOS device (fallback: Simulator)
+  ios      Run the Flutter app on a connected iOS device in profile mode (fallback: Simulator)
+  ios-debug    Run the Flutter app on a connected iOS device in debug mode
+  ios-profile  Run the Flutter app on a connected iPhone in profile mode
+  ios-release  Run the Flutter app on a connected iPhone in release mode
   android  Run the Flutter app on Android device/emulator
   web      Run the Flutter app in Chrome
   web-static  Build web release and serve it locally on port 7357
@@ -460,6 +466,7 @@ run_flutter() {
 }
 
 run_ios() {
+  local flutter_mode="${1:-profile}"
   local device_id
   local device_name
   local destination_issue
@@ -494,11 +501,12 @@ EOF
     fi
 
     echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
+    echo "Using ${flutter_mode} mode for iOS device."
     if [[ "$backend_running" == "1" && -n "$lan_ip" ]]; then
       api_define=" --dart-define=API_BASE_URL=http://$lan_ip:8000/api"
       echo "Using local backend for iOS device: http://$lan_ip:8000/api"
     fi
-    run_flutter run -d "$device_id" --dart-define=APP_ENV=local$api_define
+    run_flutter run --"$flutter_mode" -d "$device_id" --dart-define=APP_ENV=local$api_define
     return
   fi
 
@@ -573,8 +581,10 @@ EOF
       api_define=" --dart-define=API_BASE_URL=http://10.0.2.2:8000/api"
       echo "Using local backend for Android: http://10.0.2.2:8000/api"
     fi
+    echo "Cleaning Flutter build outputs"
+    eval "$flutter clean"
     eval "$flutter pub get"
-    eval "$flutter run -d $serial --dart-define=APP_ENV=local$api_define"
+    eval "$flutter run --uninstall-first -d $serial --dart-define=APP_ENV=local$api_define"
   )
 }
 
@@ -668,7 +678,16 @@ main() {
 
   case "$command" in
     ios)
-      run_ios
+      run_ios profile
+      ;;
+    ios-debug)
+      run_ios debug
+      ;;
+    ios-profile)
+      run_ios profile
+      ;;
+    ios-release)
+      run_ios release
       ;;
     android)
       run_android

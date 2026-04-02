@@ -68,6 +68,7 @@ class ScheduleService:
                         home_team_id=row["homeId"],
                         game_id=row["gameId"],
                         start_time=row["time"],
+                        status=row["status"],
                     ),
                 }
             )

@@ -9,25 +9,35 @@ class AppConfig {
   final AppEnvironment environment;
   final String apiBaseUrl;
   final bool useMockData;
+  final bool preferDirectScrape;
 
   AppConfig._({
     required this.environment,
     required this.apiBaseUrl,
     required this.useMockData,
+    required this.preferDirectScrape,
   });
 
   /// `--dart-define=APP_ENV=local|dev|release` 로 빌드 시 환경 결정
   static void initialize() {
     const envString = String.fromEnvironment('APP_ENV', defaultValue: 'local');
+    const preferDirectScrapeFlag = String.fromEnvironment(
+      'PREFER_DIRECT_SCRAPE',
+      defaultValue: '',
+    );
     final env = AppEnvironment.values.firstWhere(
       (e) => e.name == envString,
       orElse: () => AppEnvironment.local,
     );
+    final preferDirectScrape = preferDirectScrapeFlag.isNotEmpty
+        ? preferDirectScrapeFlag == 'true'
+        : (env == AppEnvironment.local && !kIsWeb);
 
     _instance = AppConfig._(
       environment: env,
       apiBaseUrl: _baseUrlFor(env),
       useMockData: false, // 모든 환경에서 실제 데이터 사용 (웹은 providers에서 CORS fallback)
+      preferDirectScrape: preferDirectScrape,
     );
   }
 

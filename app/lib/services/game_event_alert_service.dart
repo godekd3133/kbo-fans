@@ -19,6 +19,8 @@ class GameEventAlertService {
   static const _channelId = 'game_event_alerts';
   static const _channelName = '경기 이벤트 알림';
   static const _channelDescription = '경기 이벤트 로컬 알림';
+  static const _scheduledLineupCheckInterval = Duration(minutes: 5);
+  static const _liveLineupCheckInterval = Duration(minutes: 20);
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -84,7 +86,7 @@ class GameEventAlertService {
         settings: settings,
         myTeamId: myTeamId,
       );
-      final nextLineupSignature = await _processLineupEvents(
+      final lineupResult = await _processLineupEvents(
         repository: repository,
         game: game,
         previous: previous,
@@ -94,7 +96,10 @@ class GameEventAlertService {
       final current = _GameAlertSnapshot.fromGame(
         game,
         lastRelaySeq: nextRelaySeq ?? previousRelaySeq,
-        lineupSignature: nextLineupSignature ?? previous?.lineupSignature ?? '',
+        lineupSignature:
+            lineupResult.signature ?? previous?.lineupSignature ?? '',
+        lastLineupCheckedAtMs:
+            lineupResult.checkedAtMs ?? previous?.lastLineupCheckedAtMs ?? 0,
       );
 
       if (previous != null) {
@@ -164,7 +169,7 @@ class GameEventAlertService {
         ..sort((a, b) => a.seqNo.compareTo(b.seqNo));
 
       var maxSeq = previous?.lastRelaySeq ?? 0;
-      final shouldNotify = previous != null;
+      final shouldNotify = previous != null && maxSeq > 0;
       for (final item in relayItems) {
         if (item.seqNo > maxSeq) {
           maxSeq = item.seqNo;
@@ -197,26 +202,42 @@ class GameEventAlertService {
     }
   }
 
-  Future<String?> _processLineupEvents({
+  Future<_LineupCheckResult> _processLineupEvents({
     required GameRepository repository,
     required Game game,
     required _GameAlertSnapshot? previous,
     required PushNotificationSettings settings,
   }) async {
     if (!settings.lineupOpened) {
-      return previous?.lineupSignature;
+      return _LineupCheckResult(
+        signature: previous?.lineupSignature,
+        checkedAtMs: previous?.lastLineupCheckedAtMs,
+      );
     }
     if (game.status == GameStatus.final_ ||
         game.status == GameStatus.cancelled ||
         game.status == GameStatus.suspended) {
-      return previous?.lineupSignature;
+      return _LineupCheckResult(
+        signature: previous?.lineupSignature,
+        checkedAtMs: previous?.lastLineupCheckedAtMs,
+      );
+    }
+    if (!_shouldCheckLineupNow(game: game, previous: previous)) {
+      return _LineupCheckResult(
+        signature: previous?.lineupSignature,
+        checkedAtMs: previous?.lastLineupCheckedAtMs,
+      );
     }
 
+    final checkedAtMs = DateTime.now().millisecondsSinceEpoch;
     try {
       final lineup = await repository.getLineupData(game.gameId);
       final signature = _lineupSignature(lineup);
       if (signature.isEmpty) {
-        return previous?.lineupSignature ?? '';
+        return _LineupCheckResult(
+          signature: previous?.lineupSignature ?? '',
+          checkedAtMs: checkedAtMs,
+        );
       }
 
       if (previous != null && previous.lineupSignature != signature) {
@@ -230,11 +251,55 @@ class GameEventAlertService {
         );
       }
 
-      return signature;
+      return _LineupCheckResult(signature: signature, checkedAtMs: checkedAtMs);
     } catch (error) {
-      DevConsole.instance.warn('Lineup alert processing failed: $error');
-      return previous?.lineupSignature;
+      final lastChecked = previous?.lastLineupCheckedAtMs ?? 0;
+      final shouldLog =
+          checkedAtMs - lastChecked >= const Duration(minutes: 1).inMilliseconds;
+      if (shouldLog) {
+        DevConsole.instance.warn('Lineup alert processing failed: $error');
+      }
+      return _LineupCheckResult(
+        signature: previous?.lineupSignature,
+        checkedAtMs: checkedAtMs,
+      );
     }
+  }
+
+  bool _shouldCheckLineupNow({
+    required Game game,
+    required _GameAlertSnapshot? previous,
+  }) {
+    if (game.status == GameStatus.scheduled) {
+      return _isLineupCheckDue(
+        previous?.lastLineupCheckedAtMs ?? 0,
+        _scheduledLineupCheckInterval,
+      );
+    }
+
+    if (game.status == GameStatus.live) {
+      if ((previous?.lineupSignature ?? '').isEmpty) {
+        return _isLineupCheckDue(
+          previous?.lastLineupCheckedAtMs ?? 0,
+          _scheduledLineupCheckInterval,
+        );
+      }
+
+      return _isLineupCheckDue(
+        previous?.lastLineupCheckedAtMs ?? 0,
+        _liveLineupCheckInterval,
+      );
+    }
+
+    return false;
+  }
+
+  bool _isLineupCheckDue(int lastCheckedAtMs, Duration interval) {
+    if (lastCheckedAtMs <= 0) {
+      return true;
+    }
+    final elapsedMs = DateTime.now().millisecondsSinceEpoch - lastCheckedAtMs;
+    return elapsedMs >= interval.inMilliseconds;
   }
 
   Future<void> _maybeNotifyScoreboardEvents({
@@ -432,6 +497,7 @@ class _GameAlertSnapshot {
   final int homeScore;
   final int lastRelaySeq;
   final String lineupSignature;
+  final int lastLineupCheckedAtMs;
 
   const _GameAlertSnapshot({
     required this.status,
@@ -442,12 +508,14 @@ class _GameAlertSnapshot {
     required this.homeScore,
     required this.lastRelaySeq,
     required this.lineupSignature,
+    required this.lastLineupCheckedAtMs,
   });
 
   factory _GameAlertSnapshot.fromGame(
     Game game, {
     required int lastRelaySeq,
     required String lineupSignature,
+    required int lastLineupCheckedAtMs,
   }) {
     return _GameAlertSnapshot(
       status: game.status,
@@ -458,6 +526,7 @@ class _GameAlertSnapshot {
       homeScore: game.home.score,
       lastRelaySeq: lastRelaySeq,
       lineupSignature: lineupSignature,
+      lastLineupCheckedAtMs: lastLineupCheckedAtMs,
     );
   }
 
@@ -474,6 +543,7 @@ class _GameAlertSnapshot {
       homeScore: json['homeScore'] as int? ?? 0,
       lastRelaySeq: json['lastRelaySeq'] as int? ?? 0,
       lineupSignature: json['lineupSignature'] as String? ?? '',
+      lastLineupCheckedAtMs: json['lastLineupCheckedAtMs'] as int? ?? 0,
     );
   }
 
@@ -504,6 +574,14 @@ class _GameAlertSnapshot {
       'homeScore': homeScore,
       'lastRelaySeq': lastRelaySeq,
       'lineupSignature': lineupSignature,
+      'lastLineupCheckedAtMs': lastLineupCheckedAtMs,
     };
   }
+}
+
+class _LineupCheckResult {
+  final String? signature;
+  final int? checkedAtMs;
+
+  const _LineupCheckResult({this.signature, this.checkedAtMs});
 }

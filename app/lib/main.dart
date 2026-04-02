@@ -217,10 +217,39 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     _warm(ref.read(standingsProvider(season).future));
     _warm(ref.read(recordsOverviewProvider(season).future));
     _warm(ref.read(allPlayerImageMapProvider(season).future));
+    unawaited(_warmHistoricalSeasons(currentSeason: season));
     if (myTeamId != null && myTeamId.isNotEmpty) {
       _warm(ref.read(teamRecordsProvider('$myTeamId|$season').future));
       _warm(ref.read(homeAggregateProvider('$today|$myTeamId').future));
     }
+  }
+
+  Future<void> _warmHistoricalSeasons({required int currentSeason}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = _todayKey();
+    final warmedKey =
+        'historical_prefetch_done:${AppConfig.instance.environment.name}:$today';
+    if (prefs.getBool(warmedKey) ?? false) {
+      return;
+    }
+
+    await Future<void>.delayed(const Duration(seconds: 4));
+
+    for (var season = currentSeason - 1; season >= 2001; season--) {
+      try {
+        DevConsole.instance.info('HISTORY warm season $season');
+        await ref.read(standingsProvider(season).future);
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        await ref.read(recordsOverviewProvider(season).future);
+      } catch (error) {
+        DevConsole.instance.warn('HISTORY warm season $season skipped: $error');
+      }
+
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+    }
+
+    await prefs.setBool(warmedKey, true);
+    DevConsole.instance.info('HISTORY warm complete through ${currentSeason - 1}');
   }
 
   Future<void> _runBlockingStartupPrefetch({

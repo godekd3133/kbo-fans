@@ -64,8 +64,12 @@ class TicketingService:
         home_team_id: Optional[str],
         game_id: Optional[str],
         start_time: Optional[str],
+        status: Optional[str] = None,
     ) -> Optional[dict[str, Any]]:
         if not home_team_id or not game_id or not start_time:
+            return None
+
+        if status and status.upper() in {"FINAL", "CANCELLED", "SUSPENDED"}:
             return None
 
         vendor = self._VENDOR_BY_TEAM.get(home_team_id)
