@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:31.253148+00:00",
+  "payload": {
+    "id": "51764",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51764.jpg",
+    "name": "정민규",
+    "number": 2,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 01월 10일",
+    "heightWeight": "183cm / 101kg",
+    "career": "광일초(부산서구리틀)-경남중-부산고-한화-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

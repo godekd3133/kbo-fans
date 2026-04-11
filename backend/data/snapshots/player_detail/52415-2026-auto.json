@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:34.775059+00:00",
+  "payload": {
+    "id": "52415",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52415.jpg",
+    "name": "이재현",
+    "number": 7,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 02월 04일",
+    "heightWeight": "180cm / 82kg",
+    "career": "서울이수초-선린중-서울고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.107",
+      "G 10",
+      "H 3",
+      "HR 0",
+      "RBI 1",
+      "SB 0",
+      "OBP 0.286",
+      "SLG 0.143"
+    ],
+    "highlights": [
+      "타율 0.107",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.107",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.107,
+      "ops": null
+    }
+  }
+}

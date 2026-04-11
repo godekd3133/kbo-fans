@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:34.615162+00:00",
+  "payload": {
+    "id": "65653",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65653.jpg",
+    "name": "김호령",
+    "number": 27,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1992년 04월 30일",
+    "heightWeight": "178cm / 85kg",
+    "career": "관산초-안산중앙중-군산상고-동국대-KIA-경찰",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.273",
+      "G 11",
+      "H 12",
+      "HR 0",
+      "RBI 4",
+      "SB 2",
+      "OBP 0.333",
+      "SLG 0.364"
+    ],
+    "highlights": [
+      "타율 0.273",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.273",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.273,
+      "ops": null
+    }
+  }
+}

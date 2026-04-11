@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:47.147887+00:00",
+  "payload": {
+    "id": "63543",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63543.jpg",
+    "name": "구승민",
+    "number": 22,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1990년 06월 12일",
+    "heightWeight": "182cm / 86kg",
+    "career": "동일초(도봉구리틀)-청원중-청원고-홍익대-롯데-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

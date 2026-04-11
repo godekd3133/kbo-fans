@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:16:56.479667+00:00",
+  "payload": {
+    "id": "52154",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52154.jpg",
+    "name": "이주헌",
+    "number": 63,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 03월 04일",
+    "heightWeight": "185cm / 92kg",
+    "career": "서울이수초-성남중-성남고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.333",
+      "G 6",
+      "H 2",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.333",
+      "SLG 0.333"
+    ],
+    "highlights": [
+      "타율 0.333",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.333",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.333,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:59.550039+00:00",
+  "payload": {
+    "id": "55511",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55511.jpg",
+    "name": "이태경",
+    "number": 69,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2002년 11월 24일",
+    "heightWeight": "176cm / 77kg",
+    "career": "광주송정동초-무등중-광주제일고-한일장신대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

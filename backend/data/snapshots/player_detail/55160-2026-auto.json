@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:08.945060+00:00",
+  "payload": {
+    "id": "55160",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55160.jpg",
+    "name": "서영준",
+    "number": 60,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 03월 18일",
+    "heightWeight": "186cm / 90kg",
+    "career": "화정초-진흥중-전주고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

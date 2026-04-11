@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:01.288796+00:00",
+  "payload": {
+    "id": "55252",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55252.jpg",
+    "name": "박준순",
+    "number": 52,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 07월 13일",
+    "heightWeight": "180cm / 80kg",
+    "career": "배봉초(동대문구리틀)-청량중-덕수고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.394",
+      "G 9",
+      "H 13",
+      "HR 1",
+      "RBI 8",
+      "SB 0",
+      "OBP 0.412",
+      "SLG 0.606"
+    ],
+    "highlights": [
+      "타율 0.394",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.394",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.394,
+      "ops": null
+    }
+  }
+}

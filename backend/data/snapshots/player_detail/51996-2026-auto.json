@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:03.336937+00:00",
+  "payload": {
+    "id": "51996",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51996.jpg",
+    "name": "오태양",
+    "number": 6,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2002년 04월 25일",
+    "heightWeight": "180cm / 78kg",
+    "career": "방배초-대치중-청원고-NC-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

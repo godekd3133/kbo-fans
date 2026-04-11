@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:30.946698+00:00",
+  "payload": {
+    "id": "69428",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69428.jpg",
+    "name": "이병헌",
+    "number": 23,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 10월 26일",
+    "heightWeight": "180cm / 87kg",
+    "career": "인천숭의초-인천신흥중-제물포고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

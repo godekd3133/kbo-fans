@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:08.437993+00:00",
+  "payload": {
+    "id": "63342",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63342.jpg",
+    "name": "조상우",
+    "number": 11,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1994년 09월 04일",
+    "heightWeight": "186cm / 97kg",
+    "career": "서화초-상인천중-대전고-히어로즈-키움",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

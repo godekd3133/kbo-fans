@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:46.498021+00:00",
+  "payload": {
+    "id": "75867",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/75867.jpg",
+    "name": "김진성",
+    "number": 42,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1985년 03월 07일",
+    "heightWeight": "186cm / 90kg",
+    "career": "인헌초-성남중-성남서고-SK-NC",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

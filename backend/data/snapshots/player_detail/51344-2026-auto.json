@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:02.458949+00:00",
+  "payload": {
+    "id": "51344",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51344.jpg",
+    "name": "김휘집",
+    "number": 44,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2002년 01월 01일",
+    "heightWeight": "180cm / 92kg",
+    "career": "양목초(히어로즈리틀)-대치중-신일고-키움",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.293",
+      "G 11",
+      "H 12",
+      "HR 0",
+      "RBI 8",
+      "SB 1",
+      "OBP 0.370",
+      "SLG 0.317"
+    ],
+    "highlights": [
+      "타율 0.293",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.293",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.293,
+      "ops": null
+    }
+  }
+}

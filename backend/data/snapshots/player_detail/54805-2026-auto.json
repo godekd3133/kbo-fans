@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:12.944148+00:00",
+  "payload": {
+    "id": "54805",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54805.jpg",
+    "name": "박지환",
+    "number": 93,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 07월 12일",
+    "heightWeight": "183cm / 75kg",
+    "career": "군산남초-군산중-세광고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

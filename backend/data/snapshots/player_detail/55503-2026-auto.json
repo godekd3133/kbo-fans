@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:50.062500+00:00",
+  "payload": {
+    "id": "55503",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55503.jpg",
+    "name": "이영재",
+    "number": 40,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2006년 10월 20일",
+    "heightWeight": "180cm / 71kg",
+    "career": "태봉초(의정부시유소년야구단)-신흥중-신흥고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:23.809223+00:00",
+  "payload": {
+    "id": "52764",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52764.jpg",
+    "name": "허인서",
+    "number": 59,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 07월 11일",
+    "heightWeight": "182cm / 93kg",
+    "career": "순천북초-여수중-효천고-한화-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.143",
+      "G 7",
+      "H 1",
+      "HR 1",
+      "RBI 3",
+      "SB 0",
+      "OBP 0.417",
+      "SLG 0.571"
+    ],
+    "highlights": [
+      "타율 0.143",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.143",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.143,
+      "ops": null
+    }
+  }
+}

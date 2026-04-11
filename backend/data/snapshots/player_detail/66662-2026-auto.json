@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:57.627706+00:00",
+  "payload": {
+    "id": "66662",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66662.jpg",
+    "name": "신범수",
+    "number": 25,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투좌타",
+    "birthDate": "1998년 01월 25일",
+    "heightWeight": "177cm / 83kg",
+    "career": "광주대성초-광주동성중-광주동성고-KIA",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

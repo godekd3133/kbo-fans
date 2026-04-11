@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:33.072366+00:00",
+  "payload": {
+    "id": "55712",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55712.jpg",
+    "name": "이승현",
+    "number": 4,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2002년 07월 23일",
+    "heightWeight": "172cm / 77kg",
+    "career": "부천상인초(원미구리틀)-부천중-포항제철고-성균관대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

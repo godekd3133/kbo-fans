@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:06.854703+00:00",
+  "payload": {
+    "id": "66108",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66108.jpg",
+    "name": "홍창기",
+    "number": 51,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1993년 11월 21일",
+    "heightWeight": "189cm / 94kg",
+    "career": "대일초-매송중-안산공고-건국대-LG-경찰",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.163",
+      "G 11",
+      "H 7",
+      "HR 0",
+      "RBI 2",
+      "SB 2",
+      "OBP 0.333",
+      "SLG 0.209"
+    ],
+    "highlights": [
+      "타율 0.163",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.163",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.163,
+      "ops": null
+    }
+  }
+}

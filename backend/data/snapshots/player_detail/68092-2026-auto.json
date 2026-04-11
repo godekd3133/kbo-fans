@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:43.392485+00:00",
+  "payload": {
+    "id": "68092",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68092.jpg",
+    "name": "한두솔",
+    "number": 34,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1997년 01월 15일",
+    "heightWeight": "177cm / 86kg",
+    "career": "광주수창초-진흥중-광주제일고-일본 오사카 리세이샤 전문대학-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

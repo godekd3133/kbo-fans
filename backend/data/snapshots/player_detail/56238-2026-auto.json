@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:06.472899+00:00",
+  "payload": {
+    "id": "56238",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56238.jpg",
+    "name": "신우열",
+    "number": 38,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 12월 30일",
+    "heightWeight": "182cm / 100kg",
+    "career": "화곡초-영남중-배재고-미국 마이애미데이드대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

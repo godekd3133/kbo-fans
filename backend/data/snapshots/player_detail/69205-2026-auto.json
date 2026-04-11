@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:49.570956+00:00",
+  "payload": {
+    "id": "69205",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69205.jpg",
+    "name": "이교훈",
+    "number": 36,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2000년 05월 29일",
+    "heightWeight": "181cm / 83kg",
+    "career": "구리초(남양주리틀)-청원중-서울고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

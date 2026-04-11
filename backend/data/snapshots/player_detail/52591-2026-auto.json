@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:09.965423+00:00",
+  "payload": {
+    "id": "52591",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52591.jpg",
+    "name": "윤동희",
+    "number": 91,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 09월 18일",
+    "heightWeight": "187cm / 85kg",
+    "career": "현산초-대원중-야탑고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.182",
+      "G 11",
+      "H 8",
+      "HR 3",
+      "RBI 6",
+      "SB 0",
+      "OBP 0.234",
+      "SLG 0.432"
+    ],
+    "highlights": [
+      "타율 0.182",
+      "3홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.182",
+    "secondaryStat": "3홈런",
+    "sortMetrics": {
+      "avg": 0.182,
+      "ops": null
+    }
+  }
+}

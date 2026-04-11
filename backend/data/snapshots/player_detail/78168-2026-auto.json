@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:27.763072+00:00",
+  "payload": {
+    "id": "78168",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/78168.jpg",
+    "name": "서건창",
+    "number": 14,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1989년 08월 22일",
+    "heightWeight": "176cm / 84kg",
+    "career": "송정동초-충장중-광주제일고-LG-히어로즈-키움-LG-KIA",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:34.032088+00:00",
+  "payload": {
+    "id": "55005",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55005.jpg",
+    "name": "오서진",
+    "number": 25,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 06월 22일",
+    "heightWeight": "188cm / 80kg",
+    "career": "수원신곡초-수원북중-유신고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

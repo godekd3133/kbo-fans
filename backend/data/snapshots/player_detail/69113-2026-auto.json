@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:18.079652+00:00",
+  "payload": {
+    "id": "69113",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69113.jpg",
+    "name": "임준형",
+    "number": 14,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2000년 11월 16일",
+    "heightWeight": "180cm / 82kg",
+    "career": "광주서석초-진흥중-진흥고-LG-상무-LG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

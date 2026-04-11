@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:08.247438+00:00",
+  "payload": {
+    "id": "76802",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/76802.jpg",
+    "name": "김성현",
+    "number": 6,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1987년 03월 09일",
+    "heightWeight": "172cm / 72kg",
+    "career": "송정동초-충장중-광주제일고-SK-상무-SK",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

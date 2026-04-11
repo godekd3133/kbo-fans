@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:45.302975+00:00",
+  "payload": {
+    "id": "64995",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64995.jpg",
+    "name": "배재환",
+    "number": 61,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1995년 02월 24일",
+    "heightWeight": "186cm / 95kg",
+    "career": "가동초-잠신중-서울고-NC-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

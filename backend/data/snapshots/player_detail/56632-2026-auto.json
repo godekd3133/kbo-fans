@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:27.696143+00:00",
+  "payload": {
+    "id": "56632",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56632.jpg",
+    "name": "데일",
+    "number": 32,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2000년 09월 11일",
+    "heightWeight": "188cm / 90kg",
+    "career": "호주 McKinnon(고)",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.324",
+      "G 10",
+      "H 12",
+      "HR 0",
+      "RBI 4",
+      "SB 0",
+      "OBP 0.405",
+      "SLG 0.432"
+    ],
+    "highlights": [
+      "타율 0.324",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.324",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.324,
+      "ops": null
+    }
+  }
+}

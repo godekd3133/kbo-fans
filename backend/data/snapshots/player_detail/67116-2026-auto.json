@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:16.464051+00:00",
+  "payload": {
+    "id": "67116",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67116.jpg",
+    "name": "오석주",
+    "number": 31,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1998년 04월 14일",
+    "heightWeight": "180cm / 74kg",
+    "career": "양정초-대천중-제주고-LG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:52.109697+00:00",
+  "payload": {
+    "id": "53898",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53898.jpg",
+    "name": "송영진",
+    "number": 90,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투양타",
+    "birthDate": "2004년 05월 28일",
+    "heightWeight": "185cm / 90kg",
+    "career": "대전유천초-한밭중-대전고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

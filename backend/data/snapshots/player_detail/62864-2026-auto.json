@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:59.186946+00:00",
+  "payload": {
+    "id": "62864",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62864.jpg",
+    "name": "김민식",
+    "number": 24,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투좌타",
+    "birthDate": "1989년 06월 28일",
+    "heightWeight": "180cm / 80kg",
+    "career": "양덕초-마산중-마산고-원광대-SK-상무-SK-KIA",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

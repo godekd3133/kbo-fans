@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:41.426576+00:00",
+  "payload": {
+    "id": "51013",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51013.jpg",
+    "name": "유준규",
+    "number": 67,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2002년 08월 16일",
+    "heightWeight": "176cm / 69kg",
+    "career": "군산신풍초-군산중-군산상고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

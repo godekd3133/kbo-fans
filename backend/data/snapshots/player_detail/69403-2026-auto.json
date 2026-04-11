@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:38.623476+00:00",
+  "payload": {
+    "id": "69403",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69403.jpg",
+    "name": "양우현",
+    "number": 53,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2000년 04월 13일",
+    "heightWeight": "175cm / 82kg",
+    "career": "남정초-충암중-충암고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.600",
+      "G 4",
+      "H 3",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.667",
+      "SLG 0.800"
+    ],
+    "highlights": [
+      "타율 0.600",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.600",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.6,
+      "ops": null
+    }
+  }
+}

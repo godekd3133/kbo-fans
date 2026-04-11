@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:41.477879+00:00",
+  "payload": {
+    "id": "51163",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51163.jpg",
+    "name": "조건희",
+    "number": 48,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2002년 03월 26일",
+    "heightWeight": "184cm / 84kg",
+    "career": "계상초(노원구리틀)-상명중-서울고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

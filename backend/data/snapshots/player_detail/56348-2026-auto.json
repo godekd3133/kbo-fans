@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:18.993627+00:00",
+  "payload": {
+    "id": "56348",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56348.jpg",
+    "name": "유토",
+    "number": 48,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1999년 11월 04일",
+    "heightWeight": "185cm / 87kg",
+    "career": "일본 이치하라 보요고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

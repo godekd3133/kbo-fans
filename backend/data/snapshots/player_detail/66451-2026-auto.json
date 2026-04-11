@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:39.534130+00:00",
+  "payload": {
+    "id": "66451",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66451.jpg",
+    "name": "최충연",
+    "number": 61,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1997년 03월 05일",
+    "heightWeight": "190cm / 85kg",
+    "career": "대구수창초-대구중-경북고-삼성",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

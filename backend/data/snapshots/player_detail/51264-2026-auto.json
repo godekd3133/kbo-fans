@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:41.109329+00:00",
+  "payload": {
+    "id": "51264",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51264.jpg",
+    "name": "최승용",
+    "number": 28,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2001년 05월 11일",
+    "heightWeight": "190cm / 87kg",
+    "career": "양오초-모가중-소래고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

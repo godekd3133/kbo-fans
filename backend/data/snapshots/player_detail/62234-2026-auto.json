@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:36.434612+00:00",
+  "payload": {
+    "id": "62234",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62234.jpg",
+    "name": "류지혁",
+    "number": 16,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1994년 01월 13일",
+    "heightWeight": "181cm / 75kg",
+    "career": "청원초-선린중-충암고-두산-상무-두산-KIA",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.432",
+      "G 11",
+      "H 16",
+      "HR 2",
+      "RBI 10",
+      "SB 4",
+      "OBP 0.533",
+      "SLG 0.784"
+    ],
+    "highlights": [
+      "타율 0.432",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.432",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.432,
+      "ops": null
+    }
+  }
+}

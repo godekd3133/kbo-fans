@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:55.010979+00:00",
+  "payload": {
+    "id": "51528",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51528.jpg",
+    "name": "손성빈",
+    "number": 28,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2002년 01월 14일",
+    "heightWeight": "186cm / 92kg",
+    "career": "희망대초-경기신흥중-장안고-롯데-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.100",
+      "G 9",
+      "H 1",
+      "HR 0",
+      "RBI 1",
+      "SB 0",
+      "OBP 0.167",
+      "SLG 0.100"
+    ],
+    "highlights": [
+      "타율 0.100",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.100",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.1,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:28.225703+00:00",
+  "payload": {
+    "id": "65610",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65610.jpg",
+    "name": "황대인",
+    "number": 34,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1996년 02월 10일",
+    "heightWeight": "178cm / 100kg",
+    "career": "군산신풍초-자양중-경기고-KIA-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

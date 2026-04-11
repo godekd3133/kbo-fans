@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:11.438625+00:00",
+  "payload": {
+    "id": "67391",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67391.jpg",
+    "name": "김재웅",
+    "number": 28,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1998년 10월 22일",
+    "heightWeight": "171cm / 86kg",
+    "career": "금교초(남양주리틀)-자양중-덕수고-키움-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:11.684658+00:00",
+  "payload": {
+    "id": "64768",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64768.jpg",
+    "name": "조이현",
+    "number": 54,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1995년 06월 27일",
+    "heightWeight": "185cm / 95kg",
+    "career": "송정동초-배재중-제주고-한화-SK-상무-SK-SSG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

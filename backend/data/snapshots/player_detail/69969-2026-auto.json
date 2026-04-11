@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:45.894618+00:00",
+  "payload": {
+    "id": "69969",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69969.jpg",
+    "name": "전사민",
+    "number": 57,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 07월 06일",
+    "heightWeight": "194cm / 85kg",
+    "career": "연서초(부산동래구리틀)-대신중-부산정보고-NC-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

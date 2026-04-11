@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:47.762058+00:00",
+  "payload": {
+    "id": "67246",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67246.jpg",
+    "name": "김명신",
+    "number": 46,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1993년 11월 29일",
+    "heightWeight": "178cm / 90kg",
+    "career": "남도초-대구중-경북고-경성대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

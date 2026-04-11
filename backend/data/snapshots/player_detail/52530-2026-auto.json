@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:48.232150+00:00",
+  "payload": {
+    "id": "52530",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52530.jpg",
+    "name": "이민석",
+    "number": 37,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 12월 10일",
+    "heightWeight": "189cm / 95kg",
+    "career": "부산수영초-대천중-개성고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

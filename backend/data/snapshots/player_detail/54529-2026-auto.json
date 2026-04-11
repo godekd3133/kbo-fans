@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:05.435119+00:00",
+  "payload": {
+    "id": "54529",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54529.jpg",
+    "name": "레이예스",
+    "number": 29,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투양타",
+    "birthDate": "1994년 10월 05일",
+    "heightWeight": "196cm / 87kg",
+    "career": "베네수엘라 Dr. Felipe Guevara(고)",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.333",
+      "G 11",
+      "H 14",
+      "HR 4",
+      "RBI 9",
+      "SB 1",
+      "OBP 0.451",
+      "SLG 0.643"
+    ],
+    "highlights": [
+      "타율 0.333",
+      "4홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.333",
+    "secondaryStat": "4홈런",
+    "sortMetrics": {
+      "avg": 0.333,
+      "ops": null
+    }
+  }
+}

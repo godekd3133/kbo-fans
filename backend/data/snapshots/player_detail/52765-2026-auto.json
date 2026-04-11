@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:37.304362+00:00",
+  "payload": {
+    "id": "52765",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52765.jpg",
+    "name": "유민",
+    "number": 65,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 01월 20일",
+    "heightWeight": "187cm / 92kg",
+    "career": "역삼초-대치중-배명고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

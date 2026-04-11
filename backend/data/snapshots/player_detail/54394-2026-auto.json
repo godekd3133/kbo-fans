@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:28.756482+00:00",
+  "payload": {
+    "id": "54394",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54394.jpg",
+    "name": "송지후",
+    "number": 86,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 01월 08일",
+    "heightWeight": "175cm / 74kg",
+    "career": "광주수창초-진흥중-광주제일고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

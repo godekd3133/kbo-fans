@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:43.691713+00:00",
+  "payload": {
+    "id": "53404",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53404.jpg",
+    "name": "류승민",
+    "number": 43,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "2004년 10월 11일",
+    "heightWeight": "185cm / 90kg",
+    "career": "광주화정초-무등중-광주제일고-삼성-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

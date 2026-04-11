@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:50.913097+00:00",
+  "payload": {
+    "id": "53139",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53139.jpg",
+    "name": "박명근",
+    "number": 39,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언우타",
+    "birthDate": "2004년 03월 27일",
+    "heightWeight": "174cm / 75kg",
+    "career": "수택초(구리리틀)-구리인창중-라온고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

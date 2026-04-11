@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:03.880666+00:00",
+  "payload": {
+    "id": "50600",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50600.jpg",
+    "name": "홍종표",
+    "number": 10,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2000년 05월 02일",
+    "heightWeight": "178cm / 72kg",
+    "career": "동막초-영남중-강릉고-KIA-상무-KIA",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

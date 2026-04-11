@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:27.970172+00:00",
+  "payload": {
+    "id": "55798",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55798.jpg",
+    "name": "배승수",
+    "number": 98,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 05월 15일",
+    "heightWeight": "184cm / 73kg",
+    "career": "가동초-자양중-덕수고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:18.532096+00:00",
+  "payload": {
+    "id": "63894",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63894.jpg",
+    "name": "김사윤",
+    "number": 21,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1994년 06월 08일",
+    "heightWeight": "182cm / 90kg",
+    "career": "광주화정초-무등중-화순고-SK-상무-SK-SSG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

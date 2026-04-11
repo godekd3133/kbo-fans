@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:38.879539+00:00",
+  "payload": {
+    "id": "56001",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56001.jpg",
+    "name": "임상우",
+    "number": 94,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2003년 01월 03일",
+    "heightWeight": "180cm / 75kg",
+    "career": "안현초(광명시리틀)-영동중-경기고-단국대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

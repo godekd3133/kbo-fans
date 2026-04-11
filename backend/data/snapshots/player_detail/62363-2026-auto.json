@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:40.765915+00:00",
+  "payload": {
+    "id": "62363",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62363.jpg",
+    "name": "한현희",
+    "number": 1,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언우타",
+    "birthDate": "1993년 06월 25일",
+    "heightWeight": "182cm / 98kg",
+    "career": "동삼초-경남중-경남고-히어로즈-키움",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

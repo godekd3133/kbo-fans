@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:57.361270+00:00",
+  "payload": {
+    "id": "75847",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/75847.jpg",
+    "name": "최정",
+    "number": 14,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1987년 02월 28일",
+    "heightWeight": "180cm / 90kg",
+    "career": "대일초-평촌중-유신고-SK",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.342",
+      "G 11",
+      "H 13",
+      "HR 2",
+      "RBI 8",
+      "SB 1",
+      "OBP 0.480",
+      "SLG 0.632"
+    ],
+    "highlights": [
+      "타율 0.342",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.342",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.342,
+      "ops": null
+    }
+  }
+}

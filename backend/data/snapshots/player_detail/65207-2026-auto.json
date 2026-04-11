@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:03.988522+00:00",
+  "payload": {
+    "id": "65207",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65207.jpg",
+    "name": "신민재",
+    "number": 4,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1996년 01월 21일",
+    "heightWeight": "171cm / 67kg",
+    "career": "서흥초-동인천중-인천고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.171",
+      "G 11",
+      "H 7",
+      "HR 0",
+      "RBI 2",
+      "SB 2",
+      "OBP 0.261",
+      "SLG 0.171"
+    ],
+    "highlights": [
+      "타율 0.171",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.171",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.171,
+      "ops": null
+    }
+  }
+}

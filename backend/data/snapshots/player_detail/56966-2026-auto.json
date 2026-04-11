@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:55.712863+00:00",
+  "payload": {
+    "id": "56966",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56966.jpg",
+    "name": "테일러",
+    "number": 66,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1995년 07월 25일",
+    "heightWeight": "198cm / 106kg",
+    "career": "캐나다 British Columbia(대)",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:29.305128+00:00",
+  "payload": {
+    "id": "66614",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66614.jpg",
+    "name": "김규성",
+    "number": 14,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1997년 03월 08일",
+    "heightWeight": "185cm / 88kg",
+    "career": "갈산초-선린중-선린인터넷고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.500",
+      "G 9",
+      "H 1",
+      "HR 0",
+      "RBI 0",
+      "SB 1",
+      "OBP 0.667",
+      "SLG 0.500"
+    ],
+    "highlights": [
+      "타율 0.500",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.500",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.5,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:47.280183+00:00",
+  "payload": {
+    "id": "68200",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68200.jpg",
+    "name": "김민규",
+    "number": 19,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1999년 05월 07일",
+    "heightWeight": "183cm / 90kg",
+    "career": "장평초(광진구리틀)-잠신중-휘문고-두산-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

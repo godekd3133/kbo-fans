@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:12.351915+00:00",
+  "payload": {
+    "id": "65060",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65060.jpg",
+    "name": "주권",
+    "number": 38,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1995년 05월 31일",
+    "heightWeight": "181cm / 82kg",
+    "career": "청주우암초-청주중-청주고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

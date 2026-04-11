@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:00.605118+00:00",
+  "payload": {
+    "id": "52514",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52514.jpg",
+    "name": "김세민",
+    "number": 5,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 06월 14일",
+    "heightWeight": "183cm / 78kg",
+    "career": "강릉중앙초-하슬라중-강릉고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

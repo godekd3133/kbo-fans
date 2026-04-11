@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:43.089489+00:00",
+  "payload": {
+    "id": "63248",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63248.jpg",
+    "name": "함덕주",
+    "number": 11,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1995년 01월 13일",
+    "heightWeight": "181cm / 78kg",
+    "career": "일산초-원주중-원주고-두산",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

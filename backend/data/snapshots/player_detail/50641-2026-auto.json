@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:12.807671+00:00",
+  "payload": {
+    "id": "50641",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50641.jpg",
+    "name": "장재혁",
+    "number": 38,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 08월 02일",
+    "heightWeight": "180cm / 86kg",
+    "career": "부산금강초(부산동래구리틀)-대신중-경남고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

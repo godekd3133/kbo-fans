@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:19.736056+00:00",
+  "payload": {
+    "id": "53706",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53706.jpg",
+    "name": "박재규",
+    "number": 39,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 07월 03일",
+    "heightWeight": "181cm / 83kg",
+    "career": "울산대현초-신정중-개성고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:27.446004+00:00",
+  "payload": {
+    "id": "53705",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53705.jpg",
+    "name": "최원준",
+    "number": 3,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2004년 05월 01일",
+    "heightWeight": "188cm / 84kg",
+    "career": "청주남평초(청주시리틀)-세광중-청담고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

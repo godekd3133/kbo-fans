@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:48.870835+00:00",
+  "payload": {
+    "id": "51867",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51867.jpg",
+    "name": "김건우",
+    "number": 39,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2002년 07월 12일",
+    "heightWeight": "186cm / 88kg",
+    "career": "가현초(인천서구리틀)-동산중-제물포고-SK-SSG-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

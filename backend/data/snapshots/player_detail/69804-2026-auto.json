@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:06.333584+00:00",
+  "payload": {
+    "id": "69804",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69804.jpg",
+    "name": "채현우",
+    "number": 15,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1995년 11월 21일",
+    "heightWeight": "182cm / 80kg",
+    "career": "칠성초-경복중-대구상원고-송원대-SK",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.500",
+      "G 8",
+      "H 1",
+      "HR 0",
+      "RBI 1",
+      "SB 0",
+      "OBP 0.333",
+      "SLG 0.500"
+    ],
+    "highlights": [
+      "타율 0.500",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.500",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.5,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:39.995428+00:00",
+  "payload": {
+    "id": "67263",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67263.jpg",
+    "name": "최원준",
+    "number": 61,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언우타",
+    "birthDate": "1994년 12월 21일",
+    "heightWeight": "182cm / 91kg",
+    "career": "수유초-신일중-신일고-동국대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

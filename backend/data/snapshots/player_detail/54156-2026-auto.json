@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:05.523455+00:00",
+  "payload": {
+    "id": "54156",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54156.jpg",
+    "name": "손용준",
+    "number": 15,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2000년 02월 15일",
+    "heightWeight": "178cm / 85kg",
+    "career": "김해화정초(김해리틀)-내동중-김해고-동원과학기술대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

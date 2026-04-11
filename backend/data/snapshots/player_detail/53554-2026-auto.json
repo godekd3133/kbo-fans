@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:07.404579+00:00",
+  "payload": {
+    "id": "53554",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53554.jpg",
+    "name": "김민석",
+    "number": 2,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2004년 05월 09일",
+    "heightWeight": "185cm / 83kg",
+    "career": "신도초-휘문중-휘문고-롯데",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.348",
+      "G 8",
+      "H 8",
+      "HR 1",
+      "RBI 7",
+      "SB 0",
+      "OBP 0.448",
+      "SLG 0.565"
+    ],
+    "highlights": [
+      "타율 0.348",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.348",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.348,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:21.414382+00:00",
+  "payload": {
+    "id": "76715",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/76715.jpg",
+    "name": "류현진",
+    "number": 99,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투우타",
+    "birthDate": "1987년 03월 25일",
+    "heightWeight": "190cm / 113kg",
+    "career": "창영초-동산중-동산고-(대전대)-한화-LA다저스-토론토",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

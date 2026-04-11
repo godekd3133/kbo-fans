@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:52.064149+00:00",
+  "payload": {
+    "id": "65639",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65639.jpg",
+    "name": "박정수",
+    "number": 17,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언좌타",
+    "birthDate": "1996년 01월 29일",
+    "heightWeight": "178cm / 74kg",
+    "career": "서울청구초-서울이수중-야탑고-KIA-경찰-KIA-NC",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

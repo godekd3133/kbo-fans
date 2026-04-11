@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:25.275853+00:00",
+  "payload": {
+    "id": "53613",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53613.jpg",
+    "name": "윤영철",
+    "number": 13,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2004년 04월 20일",
+    "heightWeight": "187cm / 87kg",
+    "career": "창서초(서대문구리틀)-충암중-충암고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

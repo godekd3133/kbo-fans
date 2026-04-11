@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:02.115910+00:00",
+  "payload": {
+    "id": "66209",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66209.jpg",
+    "name": "조수행",
+    "number": 51,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1993년 08월 30일",
+    "heightWeight": "178cm / 73kg",
+    "career": "노암초-경포중-강릉고-건국대-두산-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.333",
+      "G 7",
+      "H 1",
+      "HR 0",
+      "RBI 0",
+      "SB 1",
+      "OBP 0.333",
+      "SLG 0.333"
+    ],
+    "highlights": [
+      "타율 0.333",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.333",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.333,
+      "ops": null
+    }
+  }
+}

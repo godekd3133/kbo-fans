@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:29.715858+00:00",
+  "payload": {
+    "id": "65464",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65464.jpg",
+    "name": "최정용",
+    "number": 23,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1996년 10월 24일",
+    "heightWeight": "179cm / 84kg",
+    "career": "서원초-세광중-세광고-삼성-SK-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

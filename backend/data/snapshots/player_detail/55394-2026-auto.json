@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:15.759513+00:00",
+  "payload": {
+    "id": "55394",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55394.jpg",
+    "name": "박정훈",
+    "number": 94,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2006년 03월 23일",
+    "heightWeight": "192cm / 103kg",
+    "career": "삼일초-매향중-비봉고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

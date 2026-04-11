@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:47.904247+00:00",
+  "payload": {
+    "id": "56235",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56235.jpg",
+    "name": "이주호",
+    "number": 35,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2006년 11월 21일",
+    "heightWeight": "177cm / 83kg",
+    "career": "가평초(가평군리틀)-성일중-경기항공고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

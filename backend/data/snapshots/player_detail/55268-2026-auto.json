@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:41.446385+00:00",
+  "payload": {
+    "id": "55268",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55268.jpg",
+    "name": "최민석",
+    "number": 68,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 07월 02일",
+    "heightWeight": "188cm / 84kg",
+    "career": "중대초-양천중-서울고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

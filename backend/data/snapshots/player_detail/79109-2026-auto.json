@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:01.612108+00:00",
+  "payload": {
+    "id": "79109",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79109.jpg",
+    "name": "오지환",
+    "number": 10,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1990년 03월 12일",
+    "heightWeight": "185cm / 80kg",
+    "career": "군산초-자양중-경기고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.294",
+      "G 10",
+      "H 10",
+      "HR 1",
+      "RBI 12",
+      "SB 0",
+      "OBP 0.342",
+      "SLG 0.441"
+    ],
+    "highlights": [
+      "타율 0.294",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.294",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.294,
+      "ops": null
+    }
+  }
+}

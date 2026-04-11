@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:30.215696+00:00",
+  "payload": {
+    "id": "50901",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50901.jpg",
+    "name": "안인산",
+    "number": 50,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 02월 27일",
+    "heightWeight": "181cm / 95kg",
+    "career": "군포오금초(안양시리틀)-평촌중-야탑고-NC",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:00.706469+00:00",
+  "payload": {
+    "id": "64468",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64468.jpg",
+    "name": "박계범",
+    "number": 14,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1996년 01월 11일",
+    "heightWeight": "177cm / 84kg",
+    "career": "순천북초-순천이수중-효천고-삼성-상무-삼성",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

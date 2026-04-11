@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:35.603517+00:00",
+  "payload": {
+    "id": "50704",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50704.jpg",
+    "name": "임종찬",
+    "number": 9,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2001년 09월 28일",
+    "heightWeight": "184cm / 85kg",
+    "career": "청주우암초-청주중-북일고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

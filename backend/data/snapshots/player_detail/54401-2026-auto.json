@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:21.233006+00:00",
+  "payload": {
+    "id": "54401",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54401.jpg",
+    "name": "김대호",
+    "number": 44,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 10월 15일",
+    "heightWeight": "185cm / 100kg",
+    "career": "제주신광초-이평중-군산상고-고려대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:57.223405+00:00",
+  "payload": {
+    "id": "62558",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62558.jpg",
+    "name": "김준태",
+    "number": 44,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투좌타",
+    "birthDate": "1994년 07월 31일",
+    "heightWeight": "175cm / 91kg",
+    "career": "양정초-개성중-경남고-(영남사이버대)-롯데-상무-롯데-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

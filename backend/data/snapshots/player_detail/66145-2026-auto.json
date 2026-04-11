@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:44.977390+00:00",
+  "payload": {
+    "id": "66145",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66145.jpg",
+    "name": "김대현",
+    "number": 12,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1997년 03월 08일",
+    "heightWeight": "188cm / 100kg",
+    "career": "홍연초(마포구리틀)-홍은중-선린인터넷고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

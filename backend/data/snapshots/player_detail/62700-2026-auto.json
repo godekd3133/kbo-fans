@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:28.304010+00:00",
+  "payload": {
+    "id": "62700",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62700.jpg",
+    "name": "하주석",
+    "number": 16,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1994년 02월 25일",
+    "heightWeight": "185cm / 92kg",
+    "career": "강남초-덕수중-신일고-한화-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.317",
+      "G 11",
+      "H 13",
+      "HR 0",
+      "RBI 5",
+      "SB 0",
+      "OBP 0.364",
+      "SLG 0.341"
+    ],
+    "highlights": [
+      "타율 0.317",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.317",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.317,
+      "ops": null
+    }
+  }
+}

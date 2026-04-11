@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:09.590068+00:00",
+  "payload": {
+    "id": "61643",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/61643.jpg",
+    "name": "홍건희",
+    "number": 52,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1992년 09월 29일",
+    "heightWeight": "187cm / 97kg",
+    "career": "화순초-화순중-화순고-KIA-상무-KIA-두산",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

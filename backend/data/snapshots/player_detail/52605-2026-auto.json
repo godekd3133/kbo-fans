@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:30.261046+00:00",
+  "payload": {
+    "id": "52605",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52605.jpg",
+    "name": "김도영",
+    "number": 5,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 10월 02일",
+    "heightWeight": "183cm / 85kg",
+    "career": "광주대성초-광주동성중-광주동성고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.244",
+      "G 11",
+      "H 10",
+      "HR 3",
+      "RBI 6",
+      "SB 1",
+      "OBP 0.367",
+      "SLG 0.512"
+    ],
+    "highlights": [
+      "타율 0.244",
+      "3홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.244",
+    "secondaryStat": "3홈런",
+    "sortMetrics": {
+      "avg": 0.244,
+      "ops": null
+    }
+  }
+}

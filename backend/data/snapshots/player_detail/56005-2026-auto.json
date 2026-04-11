@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:43.561131+00:00",
+  "payload": {
+    "id": "56005",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56005.jpg",
+    "name": "이재원",
+    "number": 105,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2007년 04월 27일",
+    "heightWeight": "180cm / 80kg",
+    "career": "양덕초-창원신월중-마산고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:07.086460+00:00",
+  "payload": {
+    "id": "50854",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50854.jpg",
+    "name": "최지훈",
+    "number": 54,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1997년 07월 23일",
+    "heightWeight": "178cm / 82kg",
+    "career": "광주수창초-무등중-광주제일고-동국대-SK",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.243",
+      "G 11",
+      "H 9",
+      "HR 2",
+      "RBI 6",
+      "SB 2",
+      "OBP 0.378",
+      "SLG 0.486"
+    ],
+    "highlights": [
+      "타율 0.243",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.243",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.243,
+      "ops": null
+    }
+  }
+}

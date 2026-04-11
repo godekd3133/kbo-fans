@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:43.163150+00:00",
+  "payload": {
+    "id": "52903",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52903.jpg",
+    "name": "조민석",
+    "number": 47,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1998년 12월 21일",
+    "heightWeight": "180cm / 81kg",
+    "career": "천안남산초-천안북중-부천고-원광대-NC-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

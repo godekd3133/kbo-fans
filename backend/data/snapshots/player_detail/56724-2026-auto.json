@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:19.803258+00:00",
+  "payload": {
+    "id": "56724",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56724.jpg",
+    "name": "화이트",
+    "number": 24,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 08월 09일",
+    "heightWeight": "190cm / 90kg",
+    "career": "미국 Carson(고)",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:21.532291+00:00",
+  "payload": {
+    "id": "53615",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53615.jpg",
+    "name": "이도현",
+    "number": 66,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 01월 07일",
+    "heightWeight": "188cm / 90kg",
+    "career": "가동초-휘문중-휘문고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

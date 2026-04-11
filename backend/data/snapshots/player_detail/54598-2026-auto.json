@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:00.075460+00:00",
+  "payload": {
+    "id": "54598",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54598.jpg",
+    "name": "이호준",
+    "number": 30,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2004년 03월 20일",
+    "heightWeight": "172cm / 72kg",
+    "career": "대구옥산초-대구경운중-대구상원고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.000",
+      "G 7",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.400",
+      "SLG 0.000"
+    ],
+    "highlights": [
+      "타율 0.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.0,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:23.146540+00:00",
+  "payload": {
+    "id": "68619",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68619.jpg",
+    "name": "윤중현",
+    "number": 19,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언우타",
+    "birthDate": "1995년 04월 25일",
+    "heightWeight": "180cm / 84kg",
+    "career": "광주서석초-무등중-광주제일고-성균관대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:37.783599+00:00",
+  "payload": {
+    "id": "64504",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64504.jpg",
+    "name": "오윤석",
+    "number": 4,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1992년 02월 24일",
+    "heightWeight": "180cm / 87kg",
+    "career": "화중초-자양중-경기고-연세대-롯데-상무-롯데",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.414",
+      "G 9",
+      "H 12",
+      "HR 0",
+      "RBI 7",
+      "SB 0",
+      "OBP 0.433",
+      "SLG 0.552"
+    ],
+    "highlights": [
+      "타율 0.414",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.414",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.414,
+      "ops": null
+    }
+  }
+}

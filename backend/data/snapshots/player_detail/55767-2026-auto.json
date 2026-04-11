@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:29.651314+00:00",
+  "payload": {
+    "id": "55767",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55767.jpg",
+    "name": "한지윤",
+    "number": 36,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 04월 10일",
+    "heightWeight": "188cm / 98kg",
+    "career": "가동초-휘문중-경기상고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

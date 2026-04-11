@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:11.349218+00:00",
+  "payload": {
+    "id": "50662",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50662.jpg",
+    "name": "정해영",
+    "number": 62,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 08월 23일",
+    "heightWeight": "189cm / 98kg",
+    "career": "광주대성초-광주동성중-광주제일고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

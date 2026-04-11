@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:02.780340+00:00",
+  "payload": {
+    "id": "55530",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55530.jpg",
+    "name": "박찬형",
+    "number": 60,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2002년 10월 17일",
+    "heightWeight": "175cm / 78kg",
+    "career": "중대초-언북중-배재고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

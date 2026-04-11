@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:54.815272+00:00",
+  "payload": {
+    "id": "69134",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69134.jpg",
+    "name": "이정용",
+    "number": 31,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1996년 03월 26일",
+    "heightWeight": "186cm / 85kg",
+    "career": "영일초-성남중-성남고-동아대-LG-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

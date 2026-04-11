@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:39.437578+00:00",
+  "payload": {
+    "id": "53764",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53764.jpg",
+    "name": "문현빈",
+    "number": 51,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2004년 04월 20일",
+    "heightWeight": "174cm / 82kg",
+    "career": "대전유천초-온양중-북일고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.359",
+      "G 10",
+      "H 14",
+      "HR 2",
+      "RBI 12",
+      "SB 0",
+      "OBP 0.500",
+      "SLG 0.641"
+    ],
+    "highlights": [
+      "타율 0.359",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.359",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.359,
+      "ops": null
+    }
+  }
+}

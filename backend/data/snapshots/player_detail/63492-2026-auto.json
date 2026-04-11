@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:24.971883+00:00",
+  "payload": {
+    "id": "63492",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63492.jpg",
+    "name": "이재익",
+    "number": 45,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1994년 03월 18일",
+    "heightWeight": "180cm / 76kg",
+    "career": "삼일초-중앙중-유신고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

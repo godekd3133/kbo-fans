@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:40.628196+00:00",
+  "payload": {
+    "id": "56215",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56215.jpg",
+    "name": "최주형",
+    "number": 15,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2006년 08월 19일",
+    "heightWeight": "174cm / 70kg",
+    "career": "거제고현초(거제시리틀)-외포중-마산고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

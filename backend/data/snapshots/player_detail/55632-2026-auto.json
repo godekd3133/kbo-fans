@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:20.097592+00:00",
+  "payload": {
+    "id": "55632",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55632.jpg",
+    "name": "이성원",
+    "number": 58,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 05월 18일",
+    "heightWeight": "184cm / 90kg",
+    "career": "호동초(화성B리틀)-안산중앙중-유신고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

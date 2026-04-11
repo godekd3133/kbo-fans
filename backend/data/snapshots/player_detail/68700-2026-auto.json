@@ -1,0 +1,35 @@
+{
+  "savedAt": "2026-04-11T06:19:36.238696+00:00",
+  "payload": {
+    "id": "68700",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68700.jpg",
+    "name": "이원석",
+    "number": 37,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 03월 31일",
+    "heightWeight": "177cm / 80kg",
+    "career": "화곡초-충암중-충암고",
+    "season": 2026,
+    "seasonStats": [
+      "G 2",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0"
+    ],
+    "highlights": [
+      "타율 -",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

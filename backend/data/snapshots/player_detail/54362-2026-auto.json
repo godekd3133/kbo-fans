@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:07.541165+00:00",
+  "payload": {
+    "id": "54362",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54362.jpg",
+    "name": "전준표",
+    "number": 62,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 05월 07일",
+    "heightWeight": "186cm / 90kg",
+    "career": "잠일초(강동구리틀)-잠신중-서울고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

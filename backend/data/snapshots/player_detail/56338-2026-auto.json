@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:22.294715+00:00",
+  "payload": {
+    "id": "56338",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56338.jpg",
+    "name": "최재영",
+    "number": 38,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2007년 01월 08일",
+    "heightWeight": "183cm / 85kg",
+    "career": "강남초-강남중-휘문고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.231",
+      "G 6",
+      "H 3",
+      "HR 0",
+      "RBI 2",
+      "SB 0",
+      "OBP 0.286",
+      "SLG 0.308"
+    ],
+    "highlights": [
+      "타율 0.231",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.231",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.231,
+      "ops": null
+    }
+  }
+}

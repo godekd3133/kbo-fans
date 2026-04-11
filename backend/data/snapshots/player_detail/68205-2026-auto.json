@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:57.467030+00:00",
+  "payload": {
+    "id": "68205",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68205.jpg",
+    "name": "전민재",
+    "number": 13,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 06월 30일",
+    "heightWeight": "181cm / 73kg",
+    "career": "천안남산초-천안북중-대전고-두산",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.226",
+      "G 11",
+      "H 7",
+      "HR 0",
+      "RBI 2",
+      "SB 1",
+      "OBP 0.286",
+      "SLG 0.226"
+    ],
+    "highlights": [
+      "타율 0.226",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.226",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.226,
+      "ops": null
+    }
+  }
+}

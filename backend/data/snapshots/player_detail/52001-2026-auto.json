@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:35.649432+00:00",
+  "payload": {
+    "id": "52001",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52001.jpg",
+    "name": "안현민",
+    "number": 23,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 08월 22일",
+    "heightWeight": "183cm / 90kg",
+    "career": "임호초(김해리틀)-개성중-마산고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.333",
+      "G 10",
+      "H 13",
+      "HR 2",
+      "RBI 8",
+      "SB 1",
+      "OBP 0.500",
+      "SLG 0.590"
+    ],
+    "highlights": [
+      "타율 0.333",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.333",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.333,
+      "ops": null
+    }
+  }
+}

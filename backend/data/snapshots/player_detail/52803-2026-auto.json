@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:04.784795+00:00",
+  "payload": {
+    "id": "52803",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52803.jpg",
+    "name": "김태윤",
+    "number": 36,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2003년 02월 28일",
+    "heightWeight": "170cm / 65kg",
+    "career": "창우초(하남시리틀)-배명중-배명고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

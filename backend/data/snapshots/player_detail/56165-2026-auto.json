@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:55.035462+00:00",
+  "payload": {
+    "id": "56165",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56165.jpg",
+    "name": "양우진",
+    "number": 65,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2007년 06월 05일",
+    "heightWeight": "190cm / 98kg",
+    "career": "수원신곡초-수원북중-경기항공고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

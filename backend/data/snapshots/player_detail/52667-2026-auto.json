@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:33.203184+00:00",
+  "payload": {
+    "id": "52667",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52667.jpg",
+    "name": "윤도현",
+    "number": 16,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 05월 07일",
+    "heightWeight": "181cm / 84kg",
+    "career": "광주화정초-무등중-광주제일고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.167",
+      "G 5",
+      "H 3",
+      "HR 0",
+      "RBI 0",
+      "SB 1",
+      "OBP 0.211",
+      "SLG 0.167"
+    ],
+    "highlights": [
+      "타율 0.167",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.167",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.167,
+      "ops": null
+    }
+  }
+}

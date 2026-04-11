@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:01.121773+00:00",
+  "payload": {
+    "id": "52121",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52121.jpg",
+    "name": "문정빈",
+    "number": 56,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 08월 15일",
+    "heightWeight": "186cm / 90kg",
+    "career": "가동초-잠신중-서울고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

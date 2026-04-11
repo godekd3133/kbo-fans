@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:24.537494+00:00",
+  "payload": {
+    "id": "60146",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/60146.jpg",
+    "name": "이승현",
+    "number": 26,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1991년 11월 20일",
+    "heightWeight": "181cm / 92kg",
+    "career": "화순초-진흥중-화순고-LG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

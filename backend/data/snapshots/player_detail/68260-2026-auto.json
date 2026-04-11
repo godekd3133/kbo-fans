@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:43.191651+00:00",
+  "payload": {
+    "id": "68260",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68260.jpg",
+    "name": "현도훈",
+    "number": 17,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1993년 01월 13일",
+    "heightWeight": "188cm / 95kg",
+    "career": "풍양초(남양주리틀)-서울신일중-일본 교토고쿠사이고-일본 큐슈교리츠대-두산",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

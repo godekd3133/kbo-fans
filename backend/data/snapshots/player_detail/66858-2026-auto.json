@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:44.937750+00:00",
+  "payload": {
+    "id": "66858",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66858.jpg",
+    "name": "정동윤",
+    "number": 51,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1997년 10월 22일",
+    "heightWeight": "193cm / 103kg",
+    "career": "덕성초(안산리틀)-중앙중-야탑고-SK-상무-SK",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

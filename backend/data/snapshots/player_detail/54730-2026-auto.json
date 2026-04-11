@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:37.124139+00:00",
+  "payload": {
+    "id": "54730",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54730.jpg",
+    "name": "페라자",
+    "number": 30,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투양타",
+    "birthDate": "1998년 11월 10일",
+    "heightWeight": "175cm / 88kg",
+    "career": "베네수엘라 San Isidro Labrador(고)",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.435",
+      "G 11",
+      "H 20",
+      "HR 1",
+      "RBI 5",
+      "SB 3",
+      "OBP 0.519",
+      "SLG 0.630"
+    ],
+    "highlights": [
+      "타율 0.435",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.435",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.435,
+      "ops": null
+    }
+  }
+}

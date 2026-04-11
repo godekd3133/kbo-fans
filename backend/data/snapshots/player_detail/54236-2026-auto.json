@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:57.406582+00:00",
+  "payload": {
+    "id": "54236",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54236.jpg",
+    "name": "임종성",
+    "number": 3,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 03월 03일",
+    "heightWeight": "183cm / 90kg",
+    "career": "본리초-대구중-경북고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

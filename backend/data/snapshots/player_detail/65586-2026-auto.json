@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:34.913965+00:00",
+  "payload": {
+    "id": "65586",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65586.jpg",
+    "name": "전병우",
+    "number": 61,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1992년 10월 24일",
+    "heightWeight": "182cm / 93kg",
+    "career": "동삼초-경남중-개성고-동아대-롯데-키움",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.500",
+      "G 5",
+      "H 3",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.625",
+      "SLG 0.667"
+    ],
+    "highlights": [
+      "타율 0.500",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.500",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.5,
+      "ops": null
+    }
+  }
+}

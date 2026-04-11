@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:09.205540+00:00",
+  "payload": {
+    "id": "53827",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53827.jpg",
+    "name": "에레디아",
+    "number": 27,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투우타",
+    "birthDate": "1991년 01월 31일",
+    "heightWeight": "178cm / 88kg",
+    "career": "쿠바 Eide Luis Agusto Tursios Lima",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.300",
+      "G 11",
+      "H 15",
+      "HR 4",
+      "RBI 12",
+      "SB 0",
+      "OBP 0.314",
+      "SLG 0.560"
+    ],
+    "highlights": [
+      "타율 0.300",
+      "4홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.300",
+    "secondaryStat": "4홈런",
+    "sortMetrics": {
+      "avg": 0.3,
+      "ops": null
+    }
+  }
+}

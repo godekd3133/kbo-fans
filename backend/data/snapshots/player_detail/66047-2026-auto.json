@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:51.923013+00:00",
+  "payload": {
+    "id": "66047",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66047.jpg",
+    "name": "박세진",
+    "number": 41,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1997년 06월 27일",
+    "heightWeight": "178cm / 93kg",
+    "career": "본리초-경운중-경북고-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

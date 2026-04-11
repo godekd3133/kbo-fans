@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:18.244532+00:00",
+  "payload": {
+    "id": "52731",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52731.jpg",
+    "name": "박준영",
+    "number": 96,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 03월 02일",
+    "heightWeight": "190cm / 103kg",
+    "career": "청주우암초(청주시리틀)-세광중-세광고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

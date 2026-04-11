@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:04.014989+00:00",
+  "payload": {
+    "id": "79231",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79231.jpg",
+    "name": "정수빈",
+    "number": 31,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "1990년 10월 07일",
+    "heightWeight": "175cm / 70kg",
+    "career": "수원신곡초-수원북중-유신고-두산-경찰",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.184",
+      "G 11",
+      "H 7",
+      "HR 0",
+      "RBI 2",
+      "SB 3",
+      "OBP 0.354",
+      "SLG 0.184"
+    ],
+    "highlights": [
+      "타율 0.184",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.184",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.184,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:55.164144+00:00",
+  "payload": {
+    "id": "51526",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51526.jpg",
+    "name": "우강훈",
+    "number": 20,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언우타",
+    "birthDate": "2002년 10월 03일",
+    "heightWeight": "183cm / 88kg",
+    "career": "희망대초-매송중-야탑고-롯데",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

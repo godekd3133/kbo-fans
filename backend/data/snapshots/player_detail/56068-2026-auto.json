@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:13.826002+00:00",
+  "payload": {
+    "id": "56068",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56068.jpg",
+    "name": "고준혁",
+    "number": 68,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2005년 05월 29일",
+    "heightWeight": "186cm / 81kg",
+    "career": "인천문학초-인천연수중-중앙고-동원과학기술대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

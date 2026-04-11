@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:00.044820+00:00",
+  "payload": {
+    "id": "55917",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55917.jpg",
+    "name": "신민우",
+    "number": 62,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 08월 13일",
+    "heightWeight": "181cm / 88kg",
+    "career": "김해우암초(김해리틀)-내동중-마산고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

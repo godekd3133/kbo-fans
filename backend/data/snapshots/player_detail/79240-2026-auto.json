@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:28.292159+00:00",
+  "payload": {
+    "id": "79240",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79240.jpg",
+    "name": "허경민",
+    "number": 13,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1990년 08월 26일",
+    "heightWeight": "176cm / 69kg",
+    "career": "송정동초-충장중-광주제일고-두산-경찰-두산",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.600",
+      "G 3",
+      "H 6",
+      "HR 1",
+      "RBI 4",
+      "SB 0",
+      "OBP 0.667",
+      "SLG 0.900"
+    ],
+    "highlights": [
+      "타율 0.600",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.600",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.6,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:08.886437+00:00",
+  "payload": {
+    "id": "56949",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56949.jpg",
+    "name": "고준휘",
+    "number": 49,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "2007년 08월 12일",
+    "heightWeight": "181cm / 85kg",
+    "career": "선유초(영등포구리틀)-영동중-전주고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.000",
+      "G 3",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.250",
+      "SLG 0.000"
+    ],
+    "highlights": [
+      "타율 0.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.0,
+      "ops": null
+    }
+  }
+}

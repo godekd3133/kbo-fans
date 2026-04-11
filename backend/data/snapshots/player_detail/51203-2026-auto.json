@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:57.030109+00:00",
+  "payload": {
+    "id": "51203",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51203.jpg",
+    "name": "안재석",
+    "number": 62,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2002년 02월 15일",
+    "heightWeight": "185cm / 75kg",
+    "career": "성내초(강동구리틀)-배재중-서울고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.270",
+      "G 10",
+      "H 10",
+      "HR 1",
+      "RBI 5",
+      "SB 1",
+      "OBP 0.349",
+      "SLG 0.432"
+    ],
+    "highlights": [
+      "타율 0.270",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.270",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.27,
+      "ops": null
+    }
+  }
+}

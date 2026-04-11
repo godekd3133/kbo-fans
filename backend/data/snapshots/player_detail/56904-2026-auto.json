@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:00.761675+00:00",
+  "payload": {
+    "id": "56904",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56904.jpg",
+    "name": "허윤",
+    "number": 4,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2007년 03월 29일",
+    "heightWeight": "177cm / 73kg",
+    "career": "역삼초-대치중-충암고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.000",
+      "G 7",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 3",
+      "OBP 0.000",
+      "SLG 0.000"
+    ],
+    "highlights": [
+      "타율 0.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.0,
+      "ops": null
+    }
+  }
+}

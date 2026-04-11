@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:21.469446+00:00",
+  "payload": {
+    "id": "50030",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50030.jpg",
+    "name": "소형준",
+    "number": 30,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 09월 16일",
+    "heightWeight": "189cm / 92kg",
+    "career": "호암초(의정부리틀)-구리인창중-유신고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

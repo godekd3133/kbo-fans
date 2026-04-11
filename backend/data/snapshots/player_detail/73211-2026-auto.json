@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:48.522535+00:00",
+  "payload": {
+    "id": "73211",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/73211.jpg",
+    "name": "노경은",
+    "number": 38,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1984년 03월 11일",
+    "heightWeight": "187cm / 100kg",
+    "career": "화곡초-성남중-성남고-두산-롯데",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

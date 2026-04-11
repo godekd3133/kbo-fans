@@ -1,0 +1,35 @@
+{
+  "savedAt": "2026-04-11T06:21:35.284038+00:00",
+  "payload": {
+    "id": "52305",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52305.jpg",
+    "name": "박수종",
+    "number": 87,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 02월 25일",
+    "heightWeight": "178cm / 82kg",
+    "career": "도신초-강남중-충암고-경성대",
+    "season": 2026,
+    "seasonStats": [
+      "G 3",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0"
+    ],
+    "highlights": [
+      "타율 -",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

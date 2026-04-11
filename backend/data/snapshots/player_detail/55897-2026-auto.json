@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:03.060227+00:00",
+  "payload": {
+    "id": "55897",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55897.jpg",
+    "name": "홍대인",
+    "number": 97,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2001년 11월 23일",
+    "heightWeight": "174cm / 76kg",
+    "career": "서원초-세광중-세광고-사이버한국외대(얼리 드래프트)",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.500",
+      "G 4",
+      "H 1",
+      "HR 0",
+      "RBI 2",
+      "SB 0",
+      "OBP 0.667",
+      "SLG 1.000"
+    ],
+    "highlights": [
+      "타율 0.500",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.500",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.5,
+      "ops": null
+    }
+  }
+}

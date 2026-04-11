@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:32.124292+00:00",
+  "payload": {
+    "id": "69636",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69636.jpg",
+    "name": "오선우",
+    "number": 56,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "좌투좌타",
+    "birthDate": "1996년 12월 13일",
+    "heightWeight": "186cm / 95kg",
+    "career": "성동초-자양중-배명고-인하대",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.111",
+      "G 6",
+      "H 2",
+      "HR 1",
+      "RBI 1",
+      "SB 0",
+      "OBP 0.200",
+      "SLG 0.278"
+    ],
+    "highlights": [
+      "타율 0.111",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.111",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.111,
+      "ops": null
+    }
+  }
+}

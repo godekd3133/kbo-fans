@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:20.881130+00:00",
+  "payload": {
+    "id": "53375",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53375.jpg",
+    "name": "후라도",
+    "number": 75,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1996년 01월 30일",
+    "heightWeight": "188cm / 109kg",
+    "career": "파나마 San Judas Tadeo(고)-키움",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

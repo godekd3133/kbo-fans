@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:29.047451+00:00",
+  "payload": {
+    "id": "78548",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/78548.jpg",
+    "name": "장성우",
+    "number": 22,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1990년 01월 17일",
+    "heightWeight": "187cm / 100kg",
+    "career": "감천초-경남중-경남고-롯데-경찰-롯데",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.293",
+      "G 11",
+      "H 12",
+      "HR 3",
+      "RBI 11",
+      "SB 0",
+      "OBP 0.388",
+      "SLG 0.585"
+    ],
+    "highlights": [
+      "타율 0.293",
+      "3홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.293",
+    "secondaryStat": "3홈런",
+    "sortMetrics": {
+      "avg": 0.293,
+      "ops": null
+    }
+  }
+}

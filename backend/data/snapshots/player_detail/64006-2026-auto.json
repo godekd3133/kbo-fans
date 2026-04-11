@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:32.116115+00:00",
+  "payload": {
+    "id": "64006",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64006.jpg",
+    "name": "심우준",
+    "number": 7,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1995년 04월 28일",
+    "heightWeight": "183cm / 75kg",
+    "career": "송정동초-언북중-경기고-(영남사이버대)-KT-상무-KT",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.300",
+      "G 9",
+      "H 9",
+      "HR 2",
+      "RBI 9",
+      "SB 2",
+      "OBP 0.344",
+      "SLG 0.567"
+    ],
+    "highlights": [
+      "타율 0.300",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.300",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.3,
+      "ops": null
+    }
+  }
+}

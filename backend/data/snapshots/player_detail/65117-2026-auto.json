@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:19.307866+00:00",
+  "payload": {
+    "id": "65117",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65117.jpg",
+    "name": "이상규",
+    "number": 18,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1996년 10월 20일",
+    "heightWeight": "185cm / 77kg",
+    "career": "흥인초-청원중-청원고-LG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

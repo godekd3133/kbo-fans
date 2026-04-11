@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:46.836035+00:00",
+  "payload": {
+    "id": "51154",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51154.jpg",
+    "name": "김진수",
+    "number": 45,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1998년 08월 31일",
+    "heightWeight": "179cm / 82kg",
+    "career": "이세초-군산중-군산상고-중앙대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

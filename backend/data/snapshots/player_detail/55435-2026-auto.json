@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:33.152733+00:00",
+  "payload": {
+    "id": "55435",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55435.jpg",
+    "name": "차승준",
+    "number": 35,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2006년 11월 20일",
+    "heightWeight": "181cm / 88kg",
+    "career": "무학초-창원신월중-용마고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

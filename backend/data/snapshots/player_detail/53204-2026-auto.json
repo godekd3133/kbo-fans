@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:55.596322+00:00",
+  "payload": {
+    "id": "53204",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53204.jpg",
+    "name": "박민준",
+    "number": 26,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2002년 10월 21일",
+    "heightWeight": "183cm / 95kg",
+    "career": "아라초-마산동중-용마고-동강대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

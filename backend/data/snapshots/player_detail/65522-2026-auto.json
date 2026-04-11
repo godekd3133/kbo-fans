@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:44.302176+00:00",
+  "payload": {
+    "id": "65522",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65522.jpg",
+    "name": "김강현",
+    "number": 19,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1995년 02월 27일",
+    "heightWeight": "177cm / 84kg",
+    "career": "고명초-청원중-청원고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

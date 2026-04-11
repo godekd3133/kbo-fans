@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:59.794174+00:00",
+  "payload": {
+    "id": "55832",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55832.jpg",
+    "name": "이율예",
+    "number": 0,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 11월 21일",
+    "heightWeight": "183cm / 90kg",
+    "career": "중리초(함안리틀)-원동중-강릉고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:54.030730+00:00",
+  "payload": {
+    "id": "53296",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53296.jpg",
+    "name": "윤준호",
+    "number": 27,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2000년 11월 14일",
+    "heightWeight": "179cm / 90kg",
+    "career": "부산안락초(해운대리틀)-센텀중-경남고-동의대-두산-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.250",
+      "G 6",
+      "H 3",
+      "HR 0",
+      "RBI 2",
+      "SB 0",
+      "OBP 0.286",
+      "SLG 0.250"
+    ],
+    "highlights": [
+      "타율 0.250",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.250",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.25,
+      "ops": null
+    }
+  }
+}

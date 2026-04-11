@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:52.071180+00:00",
+  "payload": {
+    "id": "55860",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55860.jpg",
+    "name": "신지환",
+    "number": 60,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2006년 04월 17일",
+    "heightWeight": "180cm / 81kg",
+    "career": "강남초-성남중-성남고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

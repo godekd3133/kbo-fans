@@ -1,0 +1,35 @@
+{
+  "savedAt": "2026-04-11T06:17:39.862214+00:00",
+  "payload": {
+    "id": "67006",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67006.jpg",
+    "name": "안치영",
+    "number": 8,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1998년 05월 29일",
+    "heightWeight": "176cm / 72kg",
+    "career": "중동초(원미구리틀)-천안북중-북일고",
+    "season": 2026,
+    "seasonStats": [
+      "G 3",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0"
+    ],
+    "highlights": [
+      "타율 -",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

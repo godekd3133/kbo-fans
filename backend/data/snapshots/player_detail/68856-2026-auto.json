@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:44.932220+00:00",
+  "payload": {
+    "id": "68856",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68856.jpg",
+    "name": "최민준",
+    "number": 30,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 06월 11일",
+    "heightWeight": "178cm / 83kg",
+    "career": "부산수영초-경남중-경남고-SK-상무-SK",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:10.039452+00:00",
+  "payload": {
+    "id": "79140",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79140.jpg",
+    "name": "최동환",
+    "number": 16,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1989년 09월 19일",
+    "heightWeight": "184cm / 83kg",
+    "career": "인헌초-선린중-경동고-LG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

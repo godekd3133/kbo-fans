@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:04.121363+00:00",
+  "payload": {
+    "id": "52103",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52103.jpg",
+    "name": "최원영",
+    "number": 3,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 07월 18일",
+    "heightWeight": "174cm / 76kg",
+    "career": "부산수영초-사직중-부산고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.333",
+      "G 8",
+      "H 1",
+      "HR 0",
+      "RBI 1",
+      "SB 1",
+      "OBP 0.333",
+      "SLG 0.667"
+    ],
+    "highlights": [
+      "타율 0.333",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.333",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.333,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:02.821807+00:00",
+  "payload": {
+    "id": "54812",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54812.jpg",
+    "name": "정준재",
+    "number": 3,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2003년 01월 03일",
+    "heightWeight": "165cm / 68kg",
+    "career": "상인천초-동인천중-강릉고-동국대(얼리 드래프트)",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.095",
+      "G 10",
+      "H 2",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.174",
+      "SLG 0.095"
+    ],
+    "highlights": [
+      "타율 0.095",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.095",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.095,
+      "ops": null
+    }
+  }
+}

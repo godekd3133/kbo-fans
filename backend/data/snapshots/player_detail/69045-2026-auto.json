@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:06.922825+00:00",
+  "payload": {
+    "id": "69045",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69045.jpg",
+    "name": "알칸타라",
+    "number": 54,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1992년 12월 04일",
+    "heightWeight": "193cm / 100kg",
+    "career": "도미니카 Liceo secundario Emma Balaguer(고)-KT-두산",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

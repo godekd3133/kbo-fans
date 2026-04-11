@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:49.575821+00:00",
+  "payload": {
+    "id": "65933",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65933.jpg",
+    "name": "구창모",
+    "number": 59,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1997년 02월 17일",
+    "heightWeight": "183cm / 85kg",
+    "career": "천안남산초-덕수중-울산공고-NC-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

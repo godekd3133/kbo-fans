@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:10.351107+00:00",
+  "payload": {
+    "id": "65516",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65516.jpg",
+    "name": "배제성",
+    "number": 19,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1996년 09월 29일",
+    "heightWeight": "189cm / 85kg",
+    "career": "백마초-성남중-성남고-롯데-KT-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

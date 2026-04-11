@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:33.653079+00:00",
+  "payload": {
+    "id": "52628",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52628.jpg",
+    "name": "한승연",
+    "number": 31,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 06월 09일",
+    "heightWeight": "183cm / 92kg",
+    "career": "군산신풍초-군산중-전주고-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

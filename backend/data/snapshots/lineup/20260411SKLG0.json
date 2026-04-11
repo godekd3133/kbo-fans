@@ -1,0 +1,132 @@
+{
+  "savedAt": "2026-04-11T06:22:28.783942+00:00",
+  "payload": {
+    "gameId": "20260411SKLG0",
+    "away": {
+      "teamId": "SK",
+      "lineup": [
+        {
+          "order": 1,
+          "position": "SS",
+          "positionKo": "유격수",
+          "name": "박성한"
+        },
+        {
+          "order": 2,
+          "position": "LF",
+          "positionKo": "좌익수",
+          "name": "에레디아"
+        },
+        {
+          "order": 3,
+          "position": "3B",
+          "positionKo": "3루수",
+          "name": "최정"
+        },
+        {
+          "order": 4,
+          "position": "DH",
+          "positionKo": "지명타자",
+          "name": "김재환"
+        },
+        {
+          "order": 5,
+          "position": "1B",
+          "positionKo": "1루수",
+          "name": "고명준"
+        },
+        {
+          "order": 6,
+          "position": "RF",
+          "positionKo": "우익수",
+          "name": "한유섬"
+        },
+        {
+          "order": 7,
+          "position": "CF",
+          "positionKo": "중견수",
+          "name": "최지훈"
+        },
+        {
+          "order": 8,
+          "position": "C",
+          "positionKo": "포수",
+          "name": "조형우"
+        },
+        {
+          "order": 9,
+          "position": "2B",
+          "positionKo": "2루수",
+          "name": "정준재"
+        }
+      ],
+      "starter": {
+        "name": null,
+        "hand": null
+      }
+    },
+    "home": {
+      "teamId": "LG",
+      "lineup": [
+        {
+          "order": 1,
+          "position": "3B",
+          "positionKo": "3루수",
+          "name": "천성호"
+        },
+        {
+          "order": 2,
+          "position": "LF",
+          "positionKo": "좌익수",
+          "name": "문성주"
+        },
+        {
+          "order": 3,
+          "position": "1B",
+          "positionKo": "1루수",
+          "name": "오스틴"
+        },
+        {
+          "order": 4,
+          "position": "DH",
+          "positionKo": "지명타자",
+          "name": "문보경"
+        },
+        {
+          "order": 5,
+          "position": "SS",
+          "positionKo": "유격수",
+          "name": "오지환"
+        },
+        {
+          "order": 6,
+          "position": "RF",
+          "positionKo": "우익수",
+          "name": "홍창기"
+        },
+        {
+          "order": 7,
+          "position": "C",
+          "positionKo": "포수",
+          "name": "박동원"
+        },
+        {
+          "order": 8,
+          "position": "CF",
+          "positionKo": "중견수",
+          "name": "박해민"
+        },
+        {
+          "order": 9,
+          "position": "2B",
+          "positionKo": "2루수",
+          "name": "신민재"
+        }
+      ],
+      "starter": {
+        "name": null,
+        "hand": null
+      }
+    }
+  }
+}

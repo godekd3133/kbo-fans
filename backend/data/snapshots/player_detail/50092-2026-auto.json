@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:05.515841+00:00",
+  "payload": {
+    "id": "50092",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50092.jpg",
+    "name": "윤준혁",
+    "number": 31,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 07월 26일",
+    "heightWeight": "186cm / 86kg",
+    "career": "역촌초(은평구리틀)-충암중-충암고-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

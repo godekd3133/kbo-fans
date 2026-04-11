@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:37.048840+00:00",
+  "payload": {
+    "id": "53036",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53036.jpg",
+    "name": "류현인",
+    "number": 9,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2000년 11월 08일",
+    "heightWeight": "174cm / 80kg",
+    "career": "광주수창초-진흥중-진흥고-단국대-KT-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.290",
+      "G 11",
+      "H 9",
+      "HR 0",
+      "RBI 3",
+      "SB 0",
+      "OBP 0.333",
+      "SLG 0.355"
+    ],
+    "highlights": [
+      "타율 0.290",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.290",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.29,
+      "ops": null
+    }
+  }
+}

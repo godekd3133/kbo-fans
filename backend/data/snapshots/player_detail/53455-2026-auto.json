@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:22.871557+00:00",
+  "payload": {
+    "id": "53455",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53455.jpg",
+    "name": "이호성",
+    "number": 1,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2004년 08월 14일",
+    "heightWeight": "184cm / 87kg",
+    "career": "도원초(부천소사리틀)-동인천중-인천고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

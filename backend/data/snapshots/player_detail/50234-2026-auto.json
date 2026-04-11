@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:43.056648+00:00",
+  "payload": {
+    "id": "50234",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50234.jpg",
+    "name": "플렉센",
+    "number": 77,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1994년 07월 01일",
+    "heightWeight": "190cm / 99kg",
+    "career": "미국 Newark Memorial(고)",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

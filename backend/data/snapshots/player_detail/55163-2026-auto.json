@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:55.255487+00:00",
+  "payload": {
+    "id": "55163",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55163.jpg",
+    "name": "추세현",
+    "number": 35,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 04월 19일",
+    "heightWeight": "187cm / 90kg",
+    "career": "성신초(서울중구리틀)-청량중-경기상고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

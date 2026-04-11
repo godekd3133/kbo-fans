@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from kbo_fans_backend.services.scoreboard import ScoreboardService
+from kbo_fans_backend.storage import JsonSnapshotStore
 
 
 class _StubScheduleCrawler:
@@ -78,11 +81,14 @@ class _StubScoreboardCrawler:
         }
 
 
-def test_live_scoreboard_uses_view1_fallback_for_totals_and_main_inning() -> None:
+def test_live_scoreboard_uses_view1_fallback_for_totals_and_main_inning(
+    tmp_path: Path,
+) -> None:
     service = ScoreboardService(
         main_crawler=_StubMainCrawler(),
         schedule_crawler=_StubScheduleCrawler(),
         scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
     )
 
     payload = service.get_home_scoreboard("2026-03-31")

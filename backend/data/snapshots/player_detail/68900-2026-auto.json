@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:50.176158+00:00",
+  "payload": {
+    "id": "68900",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68900.jpg",
+    "name": "김영규",
+    "number": 17,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2000년 02월 10일",
+    "heightWeight": "188cm / 86kg",
+    "career": "광주서석초-무등중-광주제일고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

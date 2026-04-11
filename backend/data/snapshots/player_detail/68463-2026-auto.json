@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:44.859504+00:00",
+  "payload": {
+    "id": "68463",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68463.jpg",
+    "name": "윤정빈",
+    "number": 31,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1999년 06월 24일",
+    "heightWeight": "182cm / 93kg",
+    "career": "신도초-부천중-부천고-삼성-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

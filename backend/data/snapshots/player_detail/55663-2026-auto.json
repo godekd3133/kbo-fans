@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:20.617997+00:00",
+  "payload": {
+    "id": "55663",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55663.jpg",
+    "name": "이호민",
+    "number": 63,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 08월 26일",
+    "heightWeight": "182cm / 85kg",
+    "career": "해남북일초(해남군리틀)-이평중BC-전주고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

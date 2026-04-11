@@ -1,61 +1,25 @@
 {
-  "savedAt": "2026-03-31T09:03:33.595098+00:00",
+  "savedAt": "2026-04-02T03:53:11.548964+00:00",
   "payload": {
     "gameId": "20260329LTSS0",
     "currentAtBat": null,
     "relayItems": [
       {
-        "seqNo": 1,
-        "inning": 4,
-        "half": "top",
-        "event": "RUNS",
-        "isScoring": true,
-        "text": "4회초 롯데 1득점",
-        "pitchSequence": null
-      },
-      {
-        "seqNo": 2,
-        "inning": 5,
-        "half": "top",
-        "event": "RUNS",
-        "isScoring": true,
-        "text": "5회초 롯데 1득점",
-        "pitchSequence": null
-      },
-      {
-        "seqNo": 3,
-        "inning": 5,
-        "half": "bottom",
-        "event": "RUNS",
-        "isScoring": true,
-        "text": "5회말 삼성 1득점",
-        "pitchSequence": null
-      },
-      {
-        "seqNo": 4,
+        "seqNo": 142,
         "inning": 7,
         "half": "top",
-        "event": "RUNS",
+        "event": "HIT",
         "isScoring": true,
-        "text": "7회초 롯데 4득점",
-        "pitchSequence": null
+        "text": "나승엽: 2타점 적시 2루타",
+        "pitchSequence": "B-S-F-HIT"
       },
       {
-        "seqNo": 5,
+        "seqNo": 141,
         "inning": 7,
-        "half": "bottom",
-        "event": "RUNS",
-        "isScoring": true,
-        "text": "7회말 삼성 1득점",
-        "pitchSequence": null
-      },
-      {
-        "seqNo": 6,
-        "inning": 999,
-        "half": "bottom",
-        "event": "GAME_END",
+        "half": "top",
+        "event": "SUBSTITUTION",
         "isScoring": false,
-        "text": "경기종료 롯데 6 : 2 삼성",
+        "text": "대타 정훈 : 김민석",
         "pitchSequence": null
       }
     ]

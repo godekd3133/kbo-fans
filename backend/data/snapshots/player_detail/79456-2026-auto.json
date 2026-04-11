@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:00.176395+00:00",
+  "payload": {
+    "id": "79456",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79456.jpg",
+    "name": "이지영",
+    "number": 56,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1986년 02월 27일",
+    "heightWeight": "177cm / 88kg",
+    "career": "서화초-인천신흥중-제물포고-경성대-삼성-상무-삼성-키움",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.143",
+      "G 7",
+      "H 1",
+      "HR 0",
+      "RBI 0",
+      "SB 1",
+      "OBP 0.333",
+      "SLG 0.286"
+    ],
+    "highlights": [
+      "타율 0.143",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.143",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.143,
+      "ops": null
+    }
+  }
+}

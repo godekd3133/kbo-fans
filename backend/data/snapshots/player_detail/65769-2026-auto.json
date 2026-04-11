@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:14.256764+00:00",
+  "payload": {
+    "id": "65769",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65769.jpg",
+    "name": "김범수",
+    "number": 49,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1995년 10월 03일",
+    "heightWeight": "181cm / 92kg",
+    "career": "온양온천초-온양중-북일고-한화",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

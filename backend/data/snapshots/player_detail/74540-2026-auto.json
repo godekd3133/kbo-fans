@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:30.669398+00:00",
+  "payload": {
+    "id": "74540",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/74540.jpg",
+    "name": "강민호",
+    "number": 47,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1985년 08월 18일",
+    "heightWeight": "185cm / 100kg",
+    "career": "제주신광초-포철중-포철공고-(국제디지털대)-롯데",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.148",
+      "G 10",
+      "H 4",
+      "HR 0",
+      "RBI 6",
+      "SB 0",
+      "OBP 0.207",
+      "SLG 0.222"
+    ],
+    "highlights": [
+      "타율 0.148",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.148",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.148,
+      "ops": null
+    }
+  }
+}

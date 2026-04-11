@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:24.968525+00:00",
+  "payload": {
+    "id": "65898",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65898.jpg",
+    "name": "김웅빈",
+    "number": 10,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1996년 02월 09일",
+    "heightWeight": "182cm / 97kg",
+    "career": "서라벌초-울산제일중-울산공고-히어로즈-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

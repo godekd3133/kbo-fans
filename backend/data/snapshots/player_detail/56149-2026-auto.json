@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:50.250675+00:00",
+  "payload": {
+    "id": "56149",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56149.jpg",
+    "name": "권우준",
+    "number": 49,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2007년 01월 08일",
+    "heightWeight": "187cm / 92kg",
+    "career": "인천숭의초-재능중-제물포고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

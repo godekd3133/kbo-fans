@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:41.362172+00:00",
+  "payload": {
+    "id": "68419",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68419.jpg",
+    "name": "최지명",
+    "number": 16,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1995년 01월 22일",
+    "heightWeight": "186cm / 97kg",
+    "career": "동천초-포항중-대구상원고-한양대-삼성-상무-삼성",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

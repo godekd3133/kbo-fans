@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:01.851519+00:00",
+  "payload": {
+    "id": "69100",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69100.jpg",
+    "name": "구본혁",
+    "number": 6,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1997년 01월 11일",
+    "heightWeight": "177cm / 75kg",
+    "career": "중대초-잠신중-장충고-동국대-LG-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.143",
+      "G 11",
+      "H 3",
+      "HR 0",
+      "RBI 3",
+      "SB 0",
+      "OBP 0.217",
+      "SLG 0.143"
+    ],
+    "highlights": [
+      "타율 0.143",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.143",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.143,
+      "ops": null
+    }
+  }
+}

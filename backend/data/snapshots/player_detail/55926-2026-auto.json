@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:28.787270+00:00",
+  "payload": {
+    "id": "55926",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55926.jpg",
+    "name": "정현창",
+    "number": 12,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2006년 07월 14일",
+    "heightWeight": "177cm / 70kg",
+    "career": "김해부곡초-부산토현중-부산공고-NC",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.000",
+      "G 8",
+      "H 0",
+      "HR 0",
+      "RBI 1",
+      "SB 0",
+      "OBP 0.000",
+      "SLG 0.000"
+    ],
+    "highlights": [
+      "타율 0.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.0,
+      "ops": null
+    }
+  }
+}

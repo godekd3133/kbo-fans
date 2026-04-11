@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:51.425611+00:00",
+  "payload": {
+    "id": "51111",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51111.jpg",
+    "name": "송승기",
+    "number": 13,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2002년 04월 10일",
+    "heightWeight": "181cm / 90kg",
+    "career": "삼일초-매향중-야탑고-LG-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

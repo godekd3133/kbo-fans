@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:10.491445+00:00",
+  "payload": {
+    "id": "56345",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56345.jpg",
+    "name": "정다훈",
+    "number": 45,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 07월 06일",
+    "heightWeight": "183cm / 85kg",
+    "career": "백운초-현도중-청주고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

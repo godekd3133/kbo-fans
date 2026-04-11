@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:47.029366+00:00",
+  "payload": {
+    "id": "56840",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56840.jpg",
+    "name": "김민준",
+    "number": 40,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 04월 08일",
+    "heightWeight": "183cm / 100kg",
+    "career": "봉황초(경주시리틀)-포항중-대구고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

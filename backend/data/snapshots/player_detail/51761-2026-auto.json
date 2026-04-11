@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:10.160452+00:00",
+  "payload": {
+    "id": "51761",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51761.jpg",
+    "name": "배동현",
+    "number": 61,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투좌타",
+    "birthDate": "1998년 03월 16일",
+    "heightWeight": "183cm / 85kg",
+    "career": "판곡초(양평리틀)-언북중-경기고-한일장신대-한화-상무-한화",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

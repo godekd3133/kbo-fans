@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:03.045526+00:00",
+  "payload": {
+    "id": "50007",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50007.jpg",
+    "name": "문상준",
+    "number": 53,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 03월 14일",
+    "heightWeight": "183cm / 80kg",
+    "career": "가동초-휘문중-휘문고-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

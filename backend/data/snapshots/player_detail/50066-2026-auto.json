@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:26.871121+00:00",
+  "payload": {
+    "id": "50066",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50066.jpg",
+    "name": "강현우",
+    "number": 55,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 04월 13일",
+    "heightWeight": "180cm / 90kg",
+    "career": "원종초(부천시리틀)-부천중-유신고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

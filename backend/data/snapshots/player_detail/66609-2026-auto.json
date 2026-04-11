@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:13.515563+00:00",
+  "payload": {
+    "id": "66609",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66609.jpg",
+    "name": "전상현",
+    "number": 51,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1996년 04월 18일",
+    "heightWeight": "180cm / 88kg",
+    "career": "남도초-경복중-대구상원고-KIA-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

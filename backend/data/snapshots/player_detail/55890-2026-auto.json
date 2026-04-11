@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:45.889961+00:00",
+  "payload": {
+    "id": "55890",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55890.jpg",
+    "name": "천범석",
+    "number": 68,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 03월 06일",
+    "heightWeight": "183cm / 86kg",
+    "career": "과천문원초(안양시리틀)-수원북중-강릉고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

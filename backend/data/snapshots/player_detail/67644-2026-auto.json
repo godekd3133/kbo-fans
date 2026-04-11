@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:42.867994+00:00",
+  "payload": {
+    "id": "67644",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67644.jpg",
+    "name": "이정훈",
+    "number": 33,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1994년 12월 07일",
+    "heightWeight": "185cm / 90kg",
+    "career": "교문초-배재중-휘문고-경희대-KIA-상무-KIA-롯데",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.667",
+      "G 5",
+      "H 4",
+      "HR 0",
+      "RBI 2",
+      "SB 0",
+      "OBP 0.714",
+      "SLG 0.667"
+    ],
+    "highlights": [
+      "타율 0.667",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.667",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.667,
+      "ops": null
+    }
+  }
+}

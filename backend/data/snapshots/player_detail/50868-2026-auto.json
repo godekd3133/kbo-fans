@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:18.455368+00:00",
+  "payload": {
+    "id": "50868",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50868.jpg",
+    "name": "류효승",
+    "number": 45,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1996년 07월 16일",
+    "heightWeight": "190cm / 100kg",
+    "career": "칠성초-경상중-대구상원고-성균관대-SK",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

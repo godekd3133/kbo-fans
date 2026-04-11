@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:42.168457+00:00",
+  "payload": {
+    "id": "51007",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51007.jpg",
+    "name": "최성민",
+    "number": 31,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "2002년 07월 05일",
+    "heightWeight": "179cm / 84kg",
+    "career": "송정동초-무등중-광주동성고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

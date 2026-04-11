@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:18.486844+00:00",
+  "payload": {
+    "id": "55046",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55046.jpg",
+    "name": "박건우",
+    "number": 46,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 11월 28일",
+    "heightWeight": "182cm / 95kg",
+    "career": "서울행당초(성동구유소년야구단)-충암중-충암고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:08.800353+00:00",
+  "payload": {
+    "id": "63963",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63963.jpg",
+    "name": "권희동",
+    "number": 36,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1990년 12월 30일",
+    "heightWeight": "177cm / 85kg",
+    "career": "동천초-경주중-경주고-경남대-NC-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.333",
+      "G 2",
+      "H 1",
+      "HR 0",
+      "RBI 1",
+      "SB 0",
+      "OBP 0.600",
+      "SLG 0.333"
+    ],
+    "highlights": [
+      "타율 0.333",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.333",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.333,
+      "ops": null
+    }
+  }
+}

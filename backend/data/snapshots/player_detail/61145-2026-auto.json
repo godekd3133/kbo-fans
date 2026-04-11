@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:49.322754+00:00",
+  "payload": {
+    "id": "61145",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/61145.jpg",
+    "name": "이우찬",
+    "number": 21,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1992년 08월 04일",
+    "heightWeight": "185cm / 97kg",
+    "career": "온양온천초-온양중-북일고-LG-경찰",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

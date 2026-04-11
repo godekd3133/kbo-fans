@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:59.250925+00:00",
+  "payload": {
+    "id": "56217",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56217.jpg",
+    "name": "심건보",
+    "number": 117,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2003년 11월 17일",
+    "heightWeight": "183cm / 85kg",
+    "career": "백마초-신일중-소래고-한양대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

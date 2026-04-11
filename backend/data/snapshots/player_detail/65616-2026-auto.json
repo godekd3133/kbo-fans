@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:18.723918+00:00",
+  "payload": {
+    "id": "65616",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65616.jpg",
+    "name": "이민우",
+    "number": 27,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1993년 02월 09일",
+    "heightWeight": "185cm / 104kg",
+    "career": "순천북초-순천이수중-효천고-경성대-KIA",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

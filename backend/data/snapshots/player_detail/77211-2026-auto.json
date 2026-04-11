@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:50.110645+00:00",
+  "payload": {
+    "id": "77211",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/77211.jpg",
+    "name": "이용찬",
+    "number": 45,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1989년 01월 02일",
+    "heightWeight": "185cm / 85kg",
+    "career": "신원초-양천중-장충고-두산-상무-두산-NC",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

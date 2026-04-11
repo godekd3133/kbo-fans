@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:43.696426+00:00",
+  "payload": {
+    "id": "61101",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/61101.jpg",
+    "name": "임찬규",
+    "number": 1,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1992년 11월 20일",
+    "heightWeight": "185cm / 80kg",
+    "career": "가동초-청원중-휘문고-LG-경찰",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "savedAt": "2026-04-02T03:31:23.249809+00:00",
+  "payload": {
+    "date": "2026-03-31",
+    "time": "18:30",
+    "gameId": "20260331HTLG0",
+    "awayId": "HT",
+    "awayName": "KIA",
+    "homeId": "LG",
+    "homeName": "LG",
+    "stadium": "잠실",
+    "status": "SCHEDULED",
+    "inning": "18:30 예정",
+    "crowd": null,
+    "startTime": "18:30",
+    "away": {
+      "teamId": "HT",
+      "teamName": "KIA",
+      "shortName": "KIA",
+      "logoUrl": null,
+      "score": null,
+      "scores": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "hits": null,
+      "errors": null,
+      "balls": null
+    },
+    "home": {
+      "teamId": "LG",
+      "teamName": "LG",
+      "shortName": "LG",
+      "logoUrl": null,
+      "score": null,
+      "scores": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "hits": null,
+      "errors": null,
+      "balls": null
+    },
+    "current": {
+      "balls": null,
+      "strikes": null,
+      "outs": null,
+      "batterName": null,
+      "pitcherName": null
+    },
+    "ticketInfo": {
+      "vendorKey": "interpark",
+      "vendorName": "인터파크 티켓",
+      "vendorUrl": "https://tickets.interpark.com",
+      "openAt": "2026-03-24T11:00:00",
+      "source": "inferred",
+      "note": "홈팀 기본 예매 정책 기준 추정값"
+    },
+    "highlightInfo": {
+      "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260331&gameId=20260331HTLG0&section=HIGHLIGHT",
+      "youtubeVideos": []
+    }
+  }
+}

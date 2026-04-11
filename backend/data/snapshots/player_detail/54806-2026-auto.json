@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:17.339023+00:00",
+  "payload": {
+    "id": "54806",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54806.jpg",
+    "name": "이승민",
+    "number": 9,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "2005년 01월 06일",
+    "heightWeight": "187cm / 90kg",
+    "career": "서울도곡초-휘문중-휘문고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

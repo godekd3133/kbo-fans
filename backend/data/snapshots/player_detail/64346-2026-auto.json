@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:32.866067+00:00",
+  "payload": {
+    "id": "64346",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64346.jpg",
+    "name": "임병욱",
+    "number": 17,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1995년 09월 30일",
+    "heightWeight": "187cm / 94kg",
+    "career": "수원신곡초-배명중-덕수고-히어로즈-키움-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:30.252127+00:00",
+  "payload": {
+    "id": "56794",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56794.jpg",
+    "name": "권현규",
+    "number": 94,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2007년 03월 23일",
+    "heightWeight": "177cm / 70kg",
+    "career": "대구옥산초-경운중-경북고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

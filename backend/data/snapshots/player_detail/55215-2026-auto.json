@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:53.408679+00:00",
+  "payload": {
+    "id": "55215",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55215.jpg",
+    "name": "양재훈",
+    "number": 30,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 05월 01일",
+    "heightWeight": "186cm / 89kg",
+    "career": "부산수영초-사직중-개성고-동의과학대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

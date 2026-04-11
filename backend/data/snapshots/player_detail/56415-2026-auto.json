@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:26.027133+00:00",
+  "payload": {
+    "id": "56415",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56415.jpg",
+    "name": "미야지",
+    "number": 15,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 08월 02일",
+    "heightWeight": "186cm / 90kg",
+    "career": "일본 도카이대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:22.575550+00:00",
+  "payload": {
+    "id": "54702",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54702.jpg",
+    "name": "원종혁",
+    "number": 48,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 08월 27일",
+    "heightWeight": "184cm / 92kg",
+    "career": "서울도곡초-휘문중-구리인창고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

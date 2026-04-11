@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:03.361498+00:00",
+  "payload": {
+    "id": "64153",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64153.jpg",
+    "name": "양석환",
+    "number": 53,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1991년 07월 15일",
+    "heightWeight": "185cm / 90kg",
+    "career": "백운초-신일중-신일고-동국대-LG-상무-LG",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.167",
+      "G 10",
+      "H 6",
+      "HR 1",
+      "RBI 3",
+      "SB 0",
+      "OBP 0.244",
+      "SLG 0.278"
+    ],
+    "highlights": [
+      "타율 0.167",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.167",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.167,
+      "ops": null
+    }
+  }
+}

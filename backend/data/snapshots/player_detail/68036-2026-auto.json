@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:40.031869+00:00",
+  "payload": {
+    "id": "68036",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68036.jpg",
+    "name": "최이준",
+    "number": 49,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 04월 10일",
+    "heightWeight": "182cm / 90kg",
+    "career": "서울이수초-대치중-장충고-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

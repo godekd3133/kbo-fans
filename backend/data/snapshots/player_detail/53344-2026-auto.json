@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:21.158596+00:00",
+  "payload": {
+    "id": "53344",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53344.jpg",
+    "name": "김동헌",
+    "number": 44,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2004년 07월 15일",
+    "heightWeight": "182cm / 91kg",
+    "career": "영문초(영등포구리틀)-충암중-충암고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

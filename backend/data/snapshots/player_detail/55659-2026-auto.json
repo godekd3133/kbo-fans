@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:24.863744+00:00",
+  "payload": {
+    "id": "55659",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55659.jpg",
+    "name": "양수호",
+    "number": 47,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 09월 09일",
+    "heightWeight": "187cm / 82kg",
+    "career": "보성초(대전중구리틀)-공주중-공주고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

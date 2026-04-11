@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:00.951902+00:00",
+  "payload": {
+    "id": "50208",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50208.jpg",
+    "name": "오명진",
+    "number": 6,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2001년 09월 04일",
+    "heightWeight": "179cm / 79kg",
+    "career": "대전신흥초-한밭중-세광고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.000",
+      "G 6",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.000",
+      "SLG 0.000"
+    ],
+    "highlights": [
+      "타율 0.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.0,
+      "ops": null
+    }
+  }
+}

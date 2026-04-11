@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:20.915521+00:00",
+  "payload": {
+    "id": "67703",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67703.jpg",
+    "name": "박상원",
+    "number": 58,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1994년 09월 09일",
+    "heightWeight": "187cm / 98kg",
+    "career": "백운초-서울이수중-휘문고-연세대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

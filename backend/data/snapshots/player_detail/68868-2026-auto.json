@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:09.880315+00:00",
+  "payload": {
+    "id": "68868",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68868.jpg",
+    "name": "최준우",
+    "number": 7,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1999년 03월 25일",
+    "heightWeight": "175cm / 78kg",
+    "career": "방배초-대치중-장충고-SK-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

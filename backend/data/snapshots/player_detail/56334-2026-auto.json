@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:19.975428+00:00",
+  "payload": {
+    "id": "56334",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56334.jpg",
+    "name": "와일스",
+    "number": 34,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1998년 07월 02일",
+    "heightWeight": "193cm / 103kg",
+    "career": "미국 Oklahoma(대)",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

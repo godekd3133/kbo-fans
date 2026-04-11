@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:07.210860+00:00",
+  "payload": {
+    "id": "56595",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56595.jpg",
+    "name": "김한홀",
+    "number": 95,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2006년 12월 12일",
+    "heightWeight": "189cm / 83kg",
+    "career": "서울도곡초-휘문중-휘문고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

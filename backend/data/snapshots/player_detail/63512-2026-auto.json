@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:17.288115+00:00",
+  "payload": {
+    "id": "63512",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63512.jpg",
+    "name": "박진형",
+    "number": 40,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1994년 06월 10일",
+    "heightWeight": "181cm / 77kg",
+    "career": "영랑초-경포중-강릉고-롯데",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

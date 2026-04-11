@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:54.216454+00:00",
+  "payload": {
+    "id": "54810",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54810.jpg",
+    "name": "김규민",
+    "number": 44,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투좌타",
+    "birthDate": "2002년 08월 23일",
+    "heightWeight": "180cm / 94kg",
+    "career": "동수원초(수원영통구리틀)-매향중-공주고-여주대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

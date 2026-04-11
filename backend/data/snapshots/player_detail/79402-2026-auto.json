@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:32.760061+00:00",
+  "payload": {
+    "id": "79402",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79402.jpg",
+    "name": "김상수",
+    "number": 7,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1990년 03월 23일",
+    "heightWeight": "175cm / 68kg",
+    "career": "대구옥산초-경복중-경북고-삼성",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.270",
+      "G 10",
+      "H 10",
+      "HR 0",
+      "RBI 2",
+      "SB 0",
+      "OBP 0.386",
+      "SLG 0.297"
+    ],
+    "highlights": [
+      "타율 0.270",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.270",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.27,
+      "ops": null
+    }
+  }
+}

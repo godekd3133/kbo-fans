@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:51.255038+00:00",
+  "payload": {
+    "id": "56241",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56241.jpg",
+    "name": "서준오",
+    "number": 41,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 03월 05일",
+    "heightWeight": "178cm / 83kg",
+    "career": "마산월포초(와이번스리틀)-연수MBC-동산고-한양대(얼리 드래프트)",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

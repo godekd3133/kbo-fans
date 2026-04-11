@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:47.838844+00:00",
+  "payload": {
+    "id": "68043",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68043.jpg",
+    "name": "김민",
+    "number": 1,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 04월 14일",
+    "heightWeight": "185cm / 88kg",
+    "career": "인천숭의초-평촌중-유신고-KT-상무-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

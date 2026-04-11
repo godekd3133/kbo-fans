@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:34.786573+00:00",
+  "payload": {
+    "id": "64007",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64007.jpg",
+    "name": "문상철",
+    "number": 24,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1991년 04월 06일",
+    "heightWeight": "184cm / 85kg",
+    "career": "중대초-잠신중-배명고-고려대-KT-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

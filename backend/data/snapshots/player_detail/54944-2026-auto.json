@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:59.589864+00:00",
+  "payload": {
+    "id": "54944",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54944.jpg",
+    "name": "데이비슨",
+    "number": 24,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1991년 03월 26일",
+    "heightWeight": "190cm / 104kg",
+    "career": "미국 Yucaipa(고)",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.268",
+      "G 11",
+      "H 11",
+      "HR 2",
+      "RBI 6",
+      "SB 1",
+      "OBP 0.362",
+      "SLG 0.463"
+    ],
+    "highlights": [
+      "타율 0.268",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.268",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.268,
+      "ops": null
+    }
+  }
+}

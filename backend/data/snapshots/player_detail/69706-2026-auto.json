@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:22.848332+00:00",
+  "payload": {
+    "id": "69706",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69706.jpg",
+    "name": "허관회",
+    "number": 26,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 02월 12일",
+    "heightWeight": "176cm / 93kg",
+    "career": "경동초(의정부리틀)-건대부중-경기고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

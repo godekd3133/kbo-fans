@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:33.269220+00:00",
+  "payload": {
+    "id": "50357",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50357.jpg",
+    "name": "박주홍",
+    "number": 57,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "2001년 04월 16일",
+    "heightWeight": "187cm / 87kg",
+    "career": "자양초(하남시리틀)-건대부중-장충고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.357",
+      "G 6",
+      "H 5",
+      "HR 0",
+      "RBI 2",
+      "SB 0",
+      "OBP 0.400",
+      "SLG 0.500"
+    ],
+    "highlights": [
+      "타율 0.357",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.357",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.357,
+      "ops": null
+    }
+  }
+}

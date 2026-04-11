@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:53.035514+00:00",
+  "payload": {
+    "id": "63959",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63959.jpg",
+    "name": "임정호",
+    "number": 30,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1990년 04월 16일",
+    "heightWeight": "188cm / 90kg",
+    "career": "성동초-잠신중-신일고-성균관대-NC-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

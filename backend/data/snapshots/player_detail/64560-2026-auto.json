@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:38.167503+00:00",
+  "payload": {
+    "id": "64560",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64560.jpg",
+    "name": "이창진",
+    "number": 8,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1991년 03월 04일",
+    "heightWeight": "173cm / 85kg",
+    "career": "신도초-동인천중-인천고-건국대-롯데-KT-상무-KT",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.000",
+      "G 1",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.000",
+      "SLG 0.000"
+    ],
+    "highlights": [
+      "타율 0.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.0,
+      "ops": null
+    }
+  }
+}

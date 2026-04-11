@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:35.758729+00:00",
+  "payload": {
+    "id": "53659",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53659.jpg",
+    "name": "정해원",
+    "number": 9,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2004년 05월 21일",
+    "heightWeight": "185cm / 87kg",
+    "career": "제주신광초-덕수중-휘문고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

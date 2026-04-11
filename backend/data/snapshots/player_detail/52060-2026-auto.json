@@ -1,0 +1,35 @@
+{
+  "savedAt": "2026-04-11T06:17:22.472440+00:00",
+  "payload": {
+    "id": "52060",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52060.jpg",
+    "name": "박영현",
+    "number": 60,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 10월 11일",
+    "heightWeight": "183cm / 91kg",
+    "career": "부천북초-부천중-유신고",
+    "season": 2026,
+    "seasonStats": [
+      "G 2",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0"
+    ],
+    "highlights": [
+      "타율 -",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

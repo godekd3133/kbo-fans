@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:52.437605+00:00",
+  "payload": {
+    "id": "67143",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67143.jpg",
+    "name": "손주영",
+    "number": 29,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1998년 12월 02일",
+    "heightWeight": "191cm / 95kg",
+    "career": "울산대현초-개성중-경남고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:33.553113+00:00",
+  "payload": {
+    "id": "78603",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/78603.jpg",
+    "name": "김선빈",
+    "number": 3,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1989년 12월 18일",
+    "heightWeight": "165cm / 77kg",
+    "career": "화순초-화순중-화순고-KIA-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.333",
+      "G 11",
+      "H 12",
+      "HR 1",
+      "RBI 6",
+      "SB 0",
+      "OBP 0.500",
+      "SLG 0.472"
+    ],
+    "highlights": [
+      "타율 0.333",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.333",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.333,
+      "ops": null
+    }
+  }
+}

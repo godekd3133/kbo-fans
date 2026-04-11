@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:31.518769+00:00",
+  "payload": {
+    "id": "68504",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68504.jpg",
+    "name": "이호연",
+    "number": 36,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1995년 06월 03일",
+    "heightWeight": "177cm / 87kg",
+    "career": "광주수창초-진흥중-광주제일고-성균관대-롯데-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

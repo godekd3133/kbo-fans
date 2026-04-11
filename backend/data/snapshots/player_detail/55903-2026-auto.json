@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:53.859860+00:00",
+  "payload": {
+    "id": "55903",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55903.jpg",
+    "name": "라일리",
+    "number": 3,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1996년 07월 09일",
+    "heightWeight": "190cm / 100kg",
+    "career": "미국 Louisville(대)",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

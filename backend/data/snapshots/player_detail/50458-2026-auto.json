@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:41.048108+00:00",
+  "payload": {
+    "id": "50458",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50458.jpg",
+    "name": "김지찬",
+    "number": 58,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2001년 03월 08일",
+    "heightWeight": "163cm / 64kg",
+    "career": "백사초(이천시리틀)-모가중-라온고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.216",
+      "G 11",
+      "H 8",
+      "HR 0",
+      "RBI 3",
+      "SB 0",
+      "OBP 0.383",
+      "SLG 0.297"
+    ],
+    "highlights": [
+      "타율 0.216",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.216",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.216,
+      "ops": null
+    }
+  }
+}

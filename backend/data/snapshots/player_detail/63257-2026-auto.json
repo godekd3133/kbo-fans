@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:06.128576+00:00",
+  "payload": {
+    "id": "63257",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/63257.jpg",
+    "name": "김인태",
+    "number": 33,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "1994년 07월 03일",
+    "heightWeight": "178cm / 78kg",
+    "career": "포항제철서초-천안북중-북일고-두산-경찰",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.143",
+      "G 8",
+      "H 1",
+      "HR 1",
+      "RBI 2",
+      "SB 0",
+      "OBP 0.400",
+      "SLG 0.571"
+    ],
+    "highlights": [
+      "타율 0.143",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.143",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.143,
+      "ops": null
+    }
+  }
+}

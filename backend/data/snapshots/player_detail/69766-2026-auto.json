@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:37.806136+00:00",
+  "payload": {
+    "id": "69766",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69766.jpg",
+    "name": "유로결",
+    "number": 33,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2000년 05월 30일",
+    "heightWeight": "186cm / 83kg",
+    "career": "광주서림초-광주동성중-광주제일고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

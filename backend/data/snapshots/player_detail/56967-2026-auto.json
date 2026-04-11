@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:48.428107+00:00",
+  "payload": {
+    "id": "56967",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56967.jpg",
+    "name": "최요한",
+    "number": 67,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2007년 10월 16일",
+    "heightWeight": "180cm / 80kg",
+    "career": "희망대초-송전중-비봉고(용인시야구단)",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

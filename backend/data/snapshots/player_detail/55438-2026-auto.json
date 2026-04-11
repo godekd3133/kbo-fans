@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:35.180031+00:00",
+  "payload": {
+    "id": "55438",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55438.jpg",
+    "name": "심재훈",
+    "number": 6,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 03월 03일",
+    "heightWeight": "180cm / 80kg",
+    "career": "삼일초-평촌중-유신고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.000",
+      "G 2",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.000",
+      "SLG 0.000"
+    ],
+    "highlights": [
+      "타율 0.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.0,
+      "ops": null
+    }
+  }
+}

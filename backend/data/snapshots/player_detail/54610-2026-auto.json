@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:23.634100+00:00",
+  "payload": {
+    "id": "54610",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54610.jpg",
+    "name": "성영탁",
+    "number": 65,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2004년 07월 28일",
+    "heightWeight": "180cm / 89kg",
+    "career": "동주초(부산서구리틀)-개성중-부산고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

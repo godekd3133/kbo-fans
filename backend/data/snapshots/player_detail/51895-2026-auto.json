@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:45.163206+00:00",
+  "payload": {
+    "id": "51895",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51895.jpg",
+    "name": "장지훈",
+    "number": 21,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1998년 12월 06일",
+    "heightWeight": "177cm / 78kg",
+    "career": "김해삼성초-내동중-김해고-동의대-SK-SSG-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:16:52.871906+00:00",
+  "payload": {
+    "id": "68159",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68159.jpg",
+    "name": "성동현",
+    "number": 34,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 05월 18일",
+    "heightWeight": "189cm / 108kg",
+    "career": "백마초-홍은중-장충고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

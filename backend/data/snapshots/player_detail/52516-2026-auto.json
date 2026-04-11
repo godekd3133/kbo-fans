@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:03.151490+00:00",
+  "payload": {
+    "id": "52516",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52516.jpg",
+    "name": "조세진",
+    "number": 12,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 11월 21일",
+    "heightWeight": "181cm / 86kg",
+    "career": "장안초(성남중원구리틀)-선린중-서울고-롯데-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

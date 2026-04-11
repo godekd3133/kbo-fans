@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:50.435112+00:00",
+  "payload": {
+    "id": "64021",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64021.jpg",
+    "name": "박세웅",
+    "number": 21,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1995년 11월 30일",
+    "heightWeight": "182cm / 85kg",
+    "career": "대구경운초-경운중-경북고-KT",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

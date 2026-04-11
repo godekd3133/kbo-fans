@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:21.919133+00:00",
+  "payload": {
+    "id": "56032",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56032.jpg",
+    "name": "사우어",
+    "number": 32,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 01월 21일",
+    "heightWeight": "193cm / 104kg",
+    "career": "미국 Righetti(고)",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

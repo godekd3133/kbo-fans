@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:31.455108+00:00",
+  "payload": {
+    "id": "50709",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50709.jpg",
+    "name": "박정현",
+    "number": 63,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 07월 27일",
+    "heightWeight": "183cm / 80kg",
+    "career": "부천북초-부천중-유신고-한화-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

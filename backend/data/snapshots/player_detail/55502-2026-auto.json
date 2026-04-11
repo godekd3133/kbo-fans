@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:04.934801+00:00",
+  "payload": {
+    "id": "55502",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55502.jpg",
+    "name": "김동현",
+    "number": 64,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2004년 12월 30일",
+    "heightWeight": "185cm / 100kg",
+    "career": "인천병방초(인천서구리틀)-재능중-제물포고-부산과학기술대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

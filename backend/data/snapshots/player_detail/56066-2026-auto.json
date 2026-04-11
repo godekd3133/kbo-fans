@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:21.080970+00:00",
+  "payload": {
+    "id": "56066",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56066.jpg",
+    "name": "박지훈",
+    "number": 66,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2007년 01월 19일",
+    "heightWeight": "188cm / 90kg",
+    "career": "천안남산초-개군중-전주고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

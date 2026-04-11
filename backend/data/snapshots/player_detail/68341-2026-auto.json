@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:09.212608+00:00",
+  "payload": {
+    "id": "68341",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68341.jpg",
+    "name": "안우진",
+    "number": 41,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 08월 30일",
+    "heightWeight": "192cm / 90kg",
+    "career": "강남초-서울이수중-휘문고-히어로즈",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

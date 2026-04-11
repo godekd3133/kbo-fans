@@ -1,0 +1,35 @@
+{
+  "savedAt": "2026-04-11T06:20:53.472407+00:00",
+  "payload": {
+    "id": "52202",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52202.jpg",
+    "name": "윤태호",
+    "number": 65,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2003년 10월 10일",
+    "heightWeight": "190cm / 88kg",
+    "career": "상인천초-동인천중-인천고",
+    "season": 2026,
+    "seasonStats": [
+      "G 1",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0"
+    ],
+    "highlights": [
+      "타율 -",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

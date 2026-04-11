@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:57.961814+00:00",
+  "payload": {
+    "id": "67207",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67207.jpg",
+    "name": "이유찬",
+    "number": 13,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1998년 08월 05일",
+    "heightWeight": "175cm / 68kg",
+    "career": "동막초-천안북중-북일고-두산-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.091",
+      "G 9",
+      "H 1",
+      "HR 0",
+      "RBI 3",
+      "SB 0",
+      "OBP 0.267",
+      "SLG 0.091"
+    ],
+    "highlights": [
+      "타율 0.091",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.091",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.091,
+      "ops": null
+    }
+  }
+}

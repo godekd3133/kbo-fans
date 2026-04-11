@@ -1,0 +1,35 @@
+{
+  "savedAt": "2026-04-11T06:19:59.121245+00:00",
+  "payload": {
+    "id": "56563",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56563.jpg",
+    "name": "이서준",
+    "number": 63,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2007년 10월 10일",
+    "heightWeight": "183cm / 83kg",
+    "career": "부산수영초-경남중-부산고",
+    "season": 2026,
+    "seasonStats": [
+      "G 1",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0"
+    ],
+    "highlights": [
+      "타율 -",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

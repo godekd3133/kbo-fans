@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:25.553056+00:00",
+  "payload": {
+    "id": "66707",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66707.jpg",
+    "name": "박상언",
+    "number": 42,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1997년 03월 03일",
+    "heightWeight": "185cm / 90kg",
+    "career": "무원초-영남중-유신고-한화-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

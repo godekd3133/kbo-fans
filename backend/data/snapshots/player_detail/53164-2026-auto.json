@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:12.923216+00:00",
+  "payload": {
+    "id": "53164",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53164.jpg",
+    "name": "김동규",
+    "number": 99,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2004년 07월 09일",
+    "heightWeight": "194cm / 100kg",
+    "career": "서울청구초-영남중-성남고-LG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

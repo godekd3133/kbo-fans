@@ -1,0 +1,36 @@
+{
+  "savedAt": "2026-04-11T06:17:23.711234+00:00",
+  "payload": {
+    "id": "68089",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68089.jpg",
+    "name": "조대현",
+    "number": 42,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 08월 06일",
+    "heightWeight": "183cm / 81kg",
+    "career": "길동초-매송중-유신고",
+    "season": 2026,
+    "seasonStats": [
+      "G 2",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 1.000"
+    ],
+    "highlights": [
+      "타율 -",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:16.036618+00:00",
+  "payload": {
+    "id": "62754",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62754.jpg",
+    "name": "임기영",
+    "number": 38,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언우타",
+    "birthDate": "1993년 04월 16일",
+    "heightWeight": "184cm / 86kg",
+    "career": "대구수창초-경운중-경북고-한화-상무-KIA",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

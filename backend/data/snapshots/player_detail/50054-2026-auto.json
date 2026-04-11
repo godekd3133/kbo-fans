@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:16:58.630203+00:00",
+  "payload": {
+    "id": "50054",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50054.jpg",
+    "name": "천성호",
+    "number": 53,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1997년 10월 30일",
+    "heightWeight": "183cm / 85kg",
+    "career": "광주화정초-충장중-진흥고-단국대-KT-상무-KT",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.481",
+      "G 10",
+      "H 13",
+      "HR 1",
+      "RBI 3",
+      "SB 2",
+      "OBP 0.563",
+      "SLG 0.704"
+    ],
+    "highlights": [
+      "타율 0.481",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.481",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.481,
+      "ops": null
+    }
+  }
+}

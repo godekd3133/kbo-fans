@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:44.847365+00:00",
+  "payload": {
+    "id": "68220",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68220.jpg",
+    "name": "곽빈",
+    "number": 47,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 05월 28일",
+    "heightWeight": "187cm / 95kg",
+    "career": "서울학동초-자양중-배명고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

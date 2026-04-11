@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:34.370810+00:00",
+  "payload": {
+    "id": "54400",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54400.jpg",
+    "name": "디아즈",
+    "number": 0,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "좌투좌타",
+    "birthDate": "1996년 11월 19일",
+    "heightWeight": "188cm / 105kg",
+    "career": "도미니카 Daniel Smith(고)",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.333",
+      "G 11",
+      "H 15",
+      "HR 2",
+      "RBI 8",
+      "SB 0",
+      "OBP 0.367",
+      "SLG 0.533"
+    ],
+    "highlights": [
+      "타율 0.333",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.333",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.333,
+      "ops": null
+    }
+  }
+}

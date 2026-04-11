@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:04.348646+00:00",
+  "payload": {
+    "id": "68119",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/68119.jpg",
+    "name": "문성주",
+    "number": 8,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "1997년 02월 20일",
+    "heightWeight": "175cm / 78kg",
+    "career": "포항서초-포항제철중-경북고-강릉영동대",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.400",
+      "G 11",
+      "H 14",
+      "HR 0",
+      "RBI 4",
+      "SB 1",
+      "OBP 0.488",
+      "SLG 0.429"
+    ],
+    "highlights": [
+      "타율 0.400",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.400",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.4,
+      "ops": null
+    }
+  }
+}

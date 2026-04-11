@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:41.964055+00:00",
+  "payload": {
+    "id": "53259",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53259.jpg",
+    "name": "최준호",
+    "number": 59,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2004년 06월 03일",
+    "heightWeight": "188cm / 90kg",
+    "career": "온양온천초-온양중-북일고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

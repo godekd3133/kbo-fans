@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:44.127585+00:00",
+  "payload": {
+    "id": "54903",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54903.jpg",
+    "name": "최우석",
+    "number": 64,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2005년 03월 31일",
+    "heightWeight": "190cm / 90kg",
+    "career": "서흥초-동인천중-비봉고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

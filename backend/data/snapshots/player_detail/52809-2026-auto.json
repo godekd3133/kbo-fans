@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:44.955947+00:00",
+  "payload": {
+    "id": "52809",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52809.jpg",
+    "name": "전영준",
+    "number": 28,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2002년 04월 16일",
+    "heightWeight": "190cm / 100kg",
+    "career": "부곡초-휘문중-대구고-SSG-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

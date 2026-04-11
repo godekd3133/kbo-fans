@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:30.384931+00:00",
+  "payload": {
+    "id": "69332",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69332.jpg",
+    "name": "주성원",
+    "number": 25,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "2000년 08월 30일",
+    "heightWeight": "182cm / 95kg",
+    "career": "부산대연초(남구리틀)-부산신정중-개성고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:36.671588+00:00",
+  "payload": {
+    "id": "66704",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66704.jpg",
+    "name": "김태연",
+    "number": 25,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1997년 06월 10일",
+    "heightWeight": "178cm / 96kg",
+    "career": "서울청구초-덕수중-야탑고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.200",
+      "G 5",
+      "H 1",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.333",
+      "SLG 0.200"
+    ],
+    "highlights": [
+      "타율 0.200",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.200",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.2,
+      "ops": null
+    }
+  }
+}

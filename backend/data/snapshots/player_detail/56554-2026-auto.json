@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:49.876303+00:00",
+  "payload": {
+    "id": "56554",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56554.jpg",
+    "name": "이준서",
+    "number": 54,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 08월 05일",
+    "heightWeight": "177cm / 77kg",
+    "career": "늘푸른초(처인구리틀)-매송중-유신고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

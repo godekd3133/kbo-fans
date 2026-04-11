@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:09.712553+00:00",
+  "payload": {
+    "id": "50996",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50996.jpg",
+    "name": "박시원",
+    "number": 53,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2001년 05월 30일",
+    "heightWeight": "185cm / 85kg",
+    "career": "광주서림초-광주동성중-광주제일고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

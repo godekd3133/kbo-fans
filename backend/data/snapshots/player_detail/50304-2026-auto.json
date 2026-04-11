@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:26.758146+00:00",
+  "payload": {
+    "id": "50304",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50304.jpg",
+    "name": "김병휘",
+    "number": 23,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2001년 02월 16일",
+    "heightWeight": "177cm / 79kg",
+    "career": "효제초-홍은중-장충고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

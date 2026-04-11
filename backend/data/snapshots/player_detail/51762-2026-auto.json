@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:25.313339+00:00",
+  "payload": {
+    "id": "51762",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51762.jpg",
+    "name": "장규현",
+    "number": 32,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투좌타",
+    "birthDate": "2002년 06월 28일",
+    "heightWeight": "183cm / 96kg",
+    "career": "인성초(미추홀구리틀)-동인천중-인천고-한화-상무",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 1.000",
+      "G 1",
+      "H 1",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 1.000",
+      "SLG 1.000"
+    ],
+    "highlights": [
+      "타율 1.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 1.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 1.0,
+      "ops": null
+    }
+  }
+}

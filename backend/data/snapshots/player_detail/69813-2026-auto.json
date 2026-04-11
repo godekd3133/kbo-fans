@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:09.474088+00:00",
+  "payload": {
+    "id": "69813",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69813.jpg",
+    "name": "하재훈",
+    "number": 13,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1990년 10월 29일",
+    "heightWeight": "182cm / 90kg",
+    "career": "양덕초-마산동중-용마고-SK",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

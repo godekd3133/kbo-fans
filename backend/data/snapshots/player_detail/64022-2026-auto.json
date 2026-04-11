@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:57.684207+00:00",
+  "payload": {
+    "id": "64022",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/64022.jpg",
+    "name": "안중열",
+    "number": 22,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "1995년 09월 01일",
+    "heightWeight": "176cm / 87kg",
+    "career": "가야초-개성중-부산고-(영남사이버대)-KT-롯데-상무-롯데",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

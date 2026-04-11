@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:19.013628+00:00",
+  "payload": {
+    "id": "65665",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65665.jpg",
+    "name": "이준영",
+    "number": 20,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1992년 08월 10일",
+    "heightWeight": "177cm / 85kg",
+    "career": "군산남초-군산중-군산상고-중앙대-KIA-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

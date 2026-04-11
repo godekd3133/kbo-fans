@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:13.532956+00:00",
+  "payload": {
+    "id": "55382",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55382.jpg",
+    "name": "임진묵",
+    "number": 69,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 04월 23일",
+    "heightWeight": "181cm / 85kg",
+    "career": "천안청룡초-상명중-경기상고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

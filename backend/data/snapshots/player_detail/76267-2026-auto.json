@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:23.229846+00:00",
+  "payload": {
+    "id": "76267",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/76267.jpg",
+    "name": "최주환",
+    "number": 53,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "1988년 02월 28일",
+    "heightWeight": "177cm / 73kg",
+    "career": "학강초-광주동성중-광주동성고-두산-상무-두산-SK-SSG",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.313",
+      "G 9",
+      "H 10",
+      "HR 1",
+      "RBI 6",
+      "SB 0",
+      "OBP 0.361",
+      "SLG 0.469"
+    ],
+    "highlights": [
+      "타율 0.313",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.313",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.313,
+      "ops": null
+    }
+  }
+}

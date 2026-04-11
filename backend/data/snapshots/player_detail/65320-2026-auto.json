@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:17.952449+00:00",
+  "payload": {
+    "id": "65320",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65320.jpg",
+    "name": "최원태",
+    "number": 20,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1997년 01월 07일",
+    "heightWeight": "184cm / 104kg",
+    "career": "인헌초(용산구리틀)-서울경원중-서울고-히어로즈-키움-LG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

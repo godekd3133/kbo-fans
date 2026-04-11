@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:17:47.244998+00:00",
+  "payload": {
+    "id": "77829",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/77829.jpg",
+    "name": "김광현",
+    "number": 29,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "1988년 07월 22일",
+    "heightWeight": "188cm / 88kg",
+    "career": "덕성초(안산리틀)-안산중앙중-안산공고-SK-세인트루이스",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

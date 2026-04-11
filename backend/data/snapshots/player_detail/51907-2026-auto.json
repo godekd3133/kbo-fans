@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:02.127921+00:00",
+  "payload": {
+    "id": "51907",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/51907.jpg",
+    "name": "김주원",
+    "number": 7,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투양타",
+    "birthDate": "2002년 07월 30일",
+    "heightWeight": "185cm / 83kg",
+    "career": "삼일초(군포시리틀)-안산중앙중-유신고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.136",
+      "G 11",
+      "H 6",
+      "HR 1",
+      "RBI 1",
+      "SB 3",
+      "OBP 0.283",
+      "SLG 0.227"
+    ],
+    "highlights": [
+      "타율 0.136",
+      "1홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.136",
+    "secondaryStat": "1홈런",
+    "sortMetrics": {
+      "avg": 0.136,
+      "ops": null
+    }
+  }
+}

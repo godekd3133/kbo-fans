@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:02.652057+00:00",
+  "payload": {
+    "id": "54214",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/54214.jpg",
+    "name": "전다민",
+    "number": 9,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2001년 08월 21일",
+    "heightWeight": "177cm / 75kg",
+    "career": "길동초-청원중-설악고-강릉영동대",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

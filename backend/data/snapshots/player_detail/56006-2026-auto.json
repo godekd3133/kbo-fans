@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:29.759086+00:00",
+  "payload": {
+    "id": "56006",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56006.jpg",
+    "name": "이강민",
+    "number": 6,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2007년 01월 27일",
+    "heightWeight": "181cm / 82kg",
+    "career": "송호초-안산중앙중-유신고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.282",
+      "G 11",
+      "H 11",
+      "HR 0",
+      "RBI 4",
+      "SB 0",
+      "OBP 0.317",
+      "SLG 0.308"
+    ],
+    "highlights": [
+      "타율 0.282",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.282",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.282,
+      "ops": null
+    }
+  }
+}

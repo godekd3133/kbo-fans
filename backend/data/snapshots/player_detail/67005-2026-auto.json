@@ -1,0 +1,35 @@
+{
+  "savedAt": "2026-04-11T06:18:39.770149+00:00",
+  "payload": {
+    "id": "67005",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67005.jpg",
+    "name": "홍현빈",
+    "number": 51,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1997년 08월 29일",
+    "heightWeight": "174cm / 70kg",
+    "career": "수원신곡초-매송중-유신고-KT-상무-KT",
+    "season": 2026,
+    "seasonStats": [
+      "G 2",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0"
+    ],
+    "highlights": [
+      "타율 -",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:10.184883+00:00",
+  "payload": {
+    "id": "56797",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56797.jpg",
+    "name": "하동준",
+    "number": 97,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2007년 06월 11일",
+    "heightWeight": "189cm / 80kg",
+    "career": "평택청아초(경기평택안중유소년)-경기PB클럽-라온고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

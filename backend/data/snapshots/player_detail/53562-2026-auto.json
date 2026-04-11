@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:46.730691+00:00",
+  "payload": {
+    "id": "53562",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53562.jpg",
+    "name": "이진하",
+    "number": 45,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "2004년 06월 02일",
+    "heightWeight": "191cm / 96kg",
+    "career": "백송초(일산리틀)-영남중-장충고-롯데-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

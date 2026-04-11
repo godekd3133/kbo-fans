@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:34.234753+00:00",
+  "payload": {
+    "id": "74163",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/74163.jpg",
+    "name": "이용규",
+    "number": 15,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "좌투좌타",
+    "birthDate": "1985년 08월 26일",
+    "heightWeight": "170cm / 74kg",
+    "career": "성동초-잠신중-덕수정보고-LG-KIA-한화",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

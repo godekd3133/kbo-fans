@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:50.952594+00:00",
+  "payload": {
+    "id": "60263",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/60263.jpg",
+    "name": "이재학",
+    "number": 51,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언우타",
+    "birthDate": "1990년 10월 04일",
+    "heightWeight": "181cm / 84kg",
+    "career": "대구옥산초-경복중-대구고-두산",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:30.096161+00:00",
+  "payload": {
+    "id": "65132",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/65132.jpg",
+    "name": "김재성",
+    "number": 2,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투좌타",
+    "birthDate": "1996년 10월 30일",
+    "heightWeight": "185cm / 85kg",
+    "career": "신광초-성남중-덕수고-LG-경찰-LG",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

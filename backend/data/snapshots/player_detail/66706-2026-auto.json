@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:17:37.773427+00:00",
+  "payload": {
+    "id": "66706",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66706.jpg",
+    "name": "장진혁",
+    "number": 51,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "1993년 09월 30일",
+    "heightWeight": "184cm / 90kg",
+    "career": "광주화정초-충장중-광주제일고-단국대-한화",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.000",
+      "G 5",
+      "H 0",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.000",
+      "SLG 0.000"
+    ],
+    "highlights": [
+      "타율 0.000",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.000",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.0,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:07.211069+00:00",
+  "payload": {
+    "id": "56846",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56846.jpg",
+    "name": "김요셉",
+    "number": 46,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투좌타",
+    "birthDate": "2007년 05월 03일",
+    "heightWeight": "188cm / 81kg",
+    "career": "대전유천초-한밭중-세광고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

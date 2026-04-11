@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:18:33.955461+00:00",
+  "payload": {
+    "id": "62244",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/62244.jpg",
+    "name": "박세혁",
+    "number": 52,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투좌타",
+    "birthDate": "1990년 01월 09일",
+    "heightWeight": "181cm / 86kg",
+    "career": "수유초-신일중-신일고-고려대-두산-상무-두산-NC",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.067",
+      "G 7",
+      "H 1",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.067",
+      "SLG 0.133"
+    ],
+    "highlights": [
+      "타율 0.067",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.067",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.067,
+      "ops": null
+    }
+  }
+}

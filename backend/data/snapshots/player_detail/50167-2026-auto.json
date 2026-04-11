@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:21:30.852467+00:00",
+  "payload": {
+    "id": "50167",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50167.jpg",
+    "name": "이주형",
+    "number": 2,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2001년 04월 02일",
+    "heightWeight": "181cm / 80kg",
+    "career": "송수초(해운대리틀)-센텀중-경남고-LG",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.261",
+      "G 11",
+      "H 12",
+      "HR 0",
+      "RBI 9",
+      "SB 3",
+      "OBP 0.358",
+      "SLG 0.413"
+    ],
+    "highlights": [
+      "타율 0.261",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.261",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.261,
+      "ops": null
+    }
+  }
+}

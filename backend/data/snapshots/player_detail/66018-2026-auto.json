@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:10.934870+00:00",
+  "payload": {
+    "id": "66018",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66018.jpg",
+    "name": "김선기",
+    "number": 49,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우투우타",
+    "birthDate": "1991년 09월 01일",
+    "heightWeight": "187cm / 98kg",
+    "career": "석교초-세광중-세광고-상무-히어로즈",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

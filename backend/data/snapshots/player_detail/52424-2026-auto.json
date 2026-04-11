@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:39.211420+00:00",
+  "payload": {
+    "id": "52424",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52424.jpg",
+    "name": "김재혁",
+    "number": 8,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투우타",
+    "birthDate": "1999년 12월 26일",
+    "heightWeight": "182cm / 85kg",
+    "career": "제주남초-제주제일중-제주고-동아대-삼성-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

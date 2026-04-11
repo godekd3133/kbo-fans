@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:31.145489+00:00",
+  "payload": {
+    "id": "52634",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52634.jpg",
+    "name": "박상준",
+    "number": 50,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "좌투좌타",
+    "birthDate": "2001년 08월 21일",
+    "heightWeight": "178cm / 104kg",
+    "career": "석교초-세광중-세광고-강릉영동대",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.231",
+      "G 5",
+      "H 3",
+      "HR 0",
+      "RBI 0",
+      "SB 0",
+      "OBP 0.474",
+      "SLG 0.231"
+    ],
+    "highlights": [
+      "타율 0.231",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.231",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.231,
+      "ops": null
+    }
+  }
+}

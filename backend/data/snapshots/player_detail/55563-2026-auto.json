@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:55.399938+00:00",
+  "payload": {
+    "id": "55563",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55563.jpg",
+    "name": "박재엽",
+    "number": 26,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 01월 23일",
+    "heightWeight": "184cm / 92kg",
+    "career": "부산대연초-개성중-부산고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

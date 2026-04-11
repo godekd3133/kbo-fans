@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:18:25.363799+00:00",
+  "payload": {
+    "id": "50464",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/50464.jpg",
+    "name": "이승민",
+    "number": 28,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "좌투좌타",
+    "birthDate": "2000년 08월 26일",
+    "heightWeight": "174cm / 79kg",
+    "career": "본리초-경상중-대구고-삼성-상무",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:19:11.324918+00:00",
+  "payload": {
+    "id": "69974",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/69974.jpg",
+    "name": "배민서",
+    "number": 45,
+    "position": "투수",
+    "roleLabel": "투수",
+    "handedness": "우언우타",
+    "birthDate": "1999년 11월 18일",
+    "heightWeight": "184cm / 90kg",
+    "career": "대구수창초-경운중-대구상원고-NC-상무-NC",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:20:36.497649+00:00",
+  "payload": {
+    "id": "55636",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55636.jpg",
+    "name": "박재현",
+    "number": 15,
+    "position": "외야수",
+    "roleLabel": "외야수",
+    "handedness": "우투좌타",
+    "birthDate": "2006년 12월 08일",
+    "heightWeight": "180cm / 73kg",
+    "career": "동막초-재능중-인천고",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.357",
+      "G 9",
+      "H 5",
+      "HR 0",
+      "RBI 2",
+      "SB 1",
+      "OBP 0.400",
+      "SLG 0.429"
+    ],
+    "highlights": [
+      "타율 0.357",
+      "0홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.357",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": 0.357,
+      "ops": null
+    }
+  }
+}

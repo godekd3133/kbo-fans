@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:21:29.700717+00:00",
+  "payload": {
+    "id": "55370",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55370.jpg",
+    "name": "양현종",
+    "number": 60,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "2006년 08월 15일",
+    "heightWeight": "177cm / 84kg",
+    "career": "대구옥산초-협성경복중-대구고",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}

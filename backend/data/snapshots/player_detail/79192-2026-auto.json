@@ -1,0 +1,38 @@
+{
+  "savedAt": "2026-04-11T06:19:27.178088+00:00",
+  "payload": {
+    "id": "79192",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/79192.jpg",
+    "name": "채은성",
+    "number": 22,
+    "position": "내야수",
+    "roleLabel": "내야수",
+    "handedness": "우투우타",
+    "birthDate": "1990년 02월 06일",
+    "heightWeight": "186cm / 92kg",
+    "career": "순천북초-순천이수중-효천고-LG",
+    "season": 2026,
+    "seasonStats": [
+      "AVG 0.295",
+      "G 11",
+      "H 13",
+      "HR 2",
+      "RBI 8",
+      "SB 1",
+      "OBP 0.340",
+      "SLG 0.455"
+    ],
+    "highlights": [
+      "타율 0.295",
+      "2홈런"
+    ],
+    "recentGames": [],
+    "headlineStat": "타율 0.295",
+    "secondaryStat": "2홈런",
+    "sortMetrics": {
+      "avg": 0.295,
+      "ops": null
+    }
+  }
+}

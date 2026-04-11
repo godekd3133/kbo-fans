@@ -1,0 +1,26 @@
+{
+  "savedAt": "2026-04-11T06:20:27.205060+00:00",
+  "payload": {
+    "id": "66354",
+    "playerType": "hitter",
+    "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66354.jpg",
+    "name": "주효상",
+    "number": 22,
+    "position": "포수",
+    "roleLabel": "포수",
+    "handedness": "우투좌타",
+    "birthDate": "1997년 11월 11일",
+    "heightWeight": "183cm / 95kg",
+    "career": "역북초-강남중-서울고-히어로즈-키움",
+    "season": 2026,
+    "seasonStats": [],
+    "highlights": [],
+    "recentGames": [],
+    "headlineStat": "타율 -",
+    "secondaryStat": "0홈런",
+    "sortMetrics": {
+      "avg": null,
+      "ops": null
+    }
+  }
+}
