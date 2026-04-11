@@ -36,6 +36,8 @@ Thumbs.db
 npm-debug.log*
 *.egg-info/
 ~$*.docx
+*.bak
+app/test/features/schedule/widgets/failures/
 
 # MCP (토큰 포함)
 .mcp.json
