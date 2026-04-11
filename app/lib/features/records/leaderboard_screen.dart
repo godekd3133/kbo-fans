@@ -145,8 +145,8 @@ class LeaderboardScreen extends ConsumerWidget {
                   if (team != null) ...[
                     CachedNetworkImage(
                       imageUrl: team.logoUrl,
-                      width: 20,
-                      height: 20,
+                      width: 26,
+                      height: 26,
                       errorWidget: (_, _, _) =>
                           _teamLogoFallback(team.shortName),
                     ),

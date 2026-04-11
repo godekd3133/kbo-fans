@@ -372,19 +372,19 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         CachedNetworkImage(
           imageUrl: team?.logoUrl ?? '',
           httpHeaders: _kboImageHeaders,
-          width: 40,
-          height: 40,
+          width: 48,
+          height: 48,
           placeholder: (_, _) => Container(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: AppColors.cardSub,
               shape: BoxShape.circle,
             ),
           ),
           errorWidget: (_, _, _) => Container(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: AppColors.cardSub,
               shape: BoxShape.circle,
@@ -403,7 +403,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         const SizedBox(height: 4),
         Text(
           shortName,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
       ],
     );

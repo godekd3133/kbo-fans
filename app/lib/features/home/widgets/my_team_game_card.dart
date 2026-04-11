@@ -73,7 +73,7 @@ class MyTeamGameCard extends StatelessWidget {
                     children: [
                       Column(
                         children: [
-                          _teamLogo(game.away.teamId, game.away.shortName, 48),
+                          _teamLogo(game.away.teamId, game.away.shortName, 58),
                           const SizedBox(height: 4),
                           Text(
                             game.away.shortName,
@@ -149,7 +149,7 @@ class MyTeamGameCard extends StatelessWidget {
                       const SizedBox(width: 16),
                       Column(
                         children: [
-                          _teamLogo(game.home.teamId, game.home.shortName, 48),
+                          _teamLogo(game.home.teamId, game.home.shortName, 58),
                           const SizedBox(height: 4),
                           Text(
                             game.home.shortName,

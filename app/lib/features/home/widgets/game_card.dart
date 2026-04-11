@@ -27,7 +27,7 @@ class GameCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 82,
+        height: 92,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: AppColors.card,
@@ -40,7 +40,7 @@ class GameCard extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  _teamLogo(game.away.teamId, game.away.shortName, 28),
+                  _teamLogo(game.away.teamId, game.away.shortName, 34),
                   const SizedBox(width: 8),
                   Text(
                     game.away.shortName,
@@ -112,7 +112,7 @@ class GameCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _teamLogo(game.home.teamId, game.home.shortName, 28),
+                  _teamLogo(game.home.teamId, game.home.shortName, 34),
                 ],
               ),
             ),

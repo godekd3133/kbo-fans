@@ -1146,8 +1146,8 @@ class _TeamLogo extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
       httpHeaders: _kboImageHeaders,
-      width: 38,
-      height: 38,
+      width: 46,
+      height: 46,
       placeholder: (_, _) => _fallbackAvatar(team, fallback),
       errorWidget: (_, _, _) => _fallbackAvatar(team, fallback),
     );
@@ -1155,8 +1155,8 @@ class _TeamLogo extends StatelessWidget {
 
   Widget _fallbackAvatar(KboTeam? team, String fallback) {
     return Container(
-      width: 38,
-      height: 38,
+      width: 46,
+      height: 46,
       decoration: BoxDecoration(
         color: (team?.primaryColor ?? AppColors.cardSub).withValues(
           alpha: 0.18,
@@ -1166,7 +1166,7 @@ class _TeamLogo extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         fallback.isNotEmpty ? fallback.substring(0, 1) : '?',
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
       ),
     );
   }

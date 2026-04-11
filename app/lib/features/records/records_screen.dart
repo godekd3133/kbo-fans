@@ -232,9 +232,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           children: [
             CachedNetworkImage(
               imageUrl: team.logoUrl,
-              width: 34,
-              height: 34,
-              errorWidget: (_, _, _) => _logoFallback(team.shortName, 34),
+              width: 40,
+              height: 40,
+              errorWidget: (_, _, _) => _logoFallback(team.shortName, 40),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -348,10 +348,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   if (team != null)
                     CachedNetworkImage(
                       imageUrl: team.logoUrl,
-                      width: 34,
-                      height: 34,
+                      width: 40,
+                      height: 40,
                       errorWidget: (_, _, _) =>
-                          _logoFallback(team.shortName, 34),
+                          _logoFallback(team.shortName, 40),
                     ),
                 ],
               ),

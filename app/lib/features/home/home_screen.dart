@@ -1498,13 +1498,13 @@ class _MyTeamBriefCard extends StatelessWidget {
             children: [
               CachedNetworkImage(
                 imageUrl: team?.logoUrl ?? '',
-                width: 22,
-                height: 22,
+                width: 26,
+                height: 26,
                 fit: BoxFit.contain,
                 errorWidget: (_, _, _) =>
-                    _teamMarkFallback(summary.opponentName, 22),
+                    _teamMarkFallback(summary.opponentName, 26),
                 placeholder: (_, _) =>
-                    _teamMarkFallback(summary.opponentName, 22),
+                    _teamMarkFallback(summary.opponentName, 26),
               ),
               const SizedBox(width: 8),
               Container(
@@ -1751,11 +1751,11 @@ class _TodayBaseballCard extends StatelessWidget {
     final team = KboTeams.byId(teamId);
     final logo = CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
-      width: 28,
-      height: 28,
+      width: 34,
+      height: 34,
       fit: BoxFit.contain,
-      errorWidget: (_, _, _) => _teamMarkFallback(shortName, 28),
-      placeholder: (_, _) => _teamMarkFallback(shortName, 28),
+      errorWidget: (_, _, _) => _teamMarkFallback(shortName, 34),
+      placeholder: (_, _) => _teamMarkFallback(shortName, 34),
     );
 
     return Row(
@@ -1927,11 +1927,11 @@ class _TodayBaseballCard extends StatelessWidget {
     final team = KboTeams.byId(teamId);
     return CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
-      width: 22,
-      height: 22,
+      width: 28,
+      height: 28,
       fit: BoxFit.contain,
-      errorWidget: (_, _, _) => _teamMarkFallback(shortName, 22),
-      placeholder: (_, _) => _teamMarkFallback(shortName, 22),
+      errorWidget: (_, _, _) => _teamMarkFallback(shortName, 28),
+      placeholder: (_, _) => _teamMarkFallback(shortName, 28),
     );
   }
 

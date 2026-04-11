@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
@@ -60,6 +61,13 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             player.imageUrl!.isNotEmpty)
           player.name: player.imageUrl!,
     };
+    final playersByName = {
+      for (final player in [
+        ...awayPlayers.asData?.value ?? const <PlayerProfile>[],
+        ...homePlayers.asData?.value ?? const <PlayerProfile>[],
+      ])
+        if (player.name.isNotEmpty) player.name: player,
+    };
     final allImageMap =
         ref.watch(allPlayerImageMapProvider(season)).asData?.value ??
         const <String, String>{};
@@ -82,6 +90,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             relayData.relayItems,
             relayData.currentAtBat,
             mergedImageMap,
+            playersByName,
           );
         },
       ),
@@ -121,6 +130,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     List<RelayItem> items,
     CurrentAtBat? atBat,
     Map<String, String> imageMap,
+    Map<String, PlayerProfile> playersByName,
   ) {
     final sortedItems = List<RelayItem>.from(items)
       ..sort((a, b) => b.seqNo.compareTo(a.seqNo));
@@ -164,6 +174,17 @@ class _RelayTabState extends ConsumerState<RelayTab> {
               child: _buildInningChips(sortedItems),
             ),
           ),
+        if (_selectedInningLabel != null)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+              child: _SelectedInningHeader(
+                label: _selectedInningLabel!,
+                game: game,
+                currentAtBat: atBat,
+              ),
+            ),
+          ),
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
@@ -181,7 +202,10 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                     ),
                     child: _RelayMomentCard(
                       moment: filteredMoments[index],
+                      game: game,
                       imageMap: imageMap,
+                      playersByName: playersByName,
+                      currentAtBat: atBat,
                     ),
                   ),
                   if (index != filteredMoments.length - 1)
@@ -622,6 +646,38 @@ class _LineScoreRow extends StatelessWidget {
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+class _SelectedInningHeader extends StatelessWidget {
+  final String label;
+  final Game game;
+  final CurrentAtBat? currentAtBat;
+
+  const _SelectedInningHeader({
+    required this.label,
+    required this.game,
+    required this.currentAtBat,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isTop = label.endsWith('회초');
+    final offenseTeam = isTop ? game.away.shortName : game.home.shortName;
+    final matchesCurrentInning =
+        currentAtBat != null && currentAtBat!.inningText.startsWith(label);
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$label - $offenseTeam 공격',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+          ),
+        ),
+        if (matchesCurrentInning) _OutStateIndicator(outs: currentAtBat!.outs),
       ],
     );
   }
@@ -1188,13 +1244,11 @@ class _CompactBsoSummary extends StatelessWidget {
   final int balls;
   final int strikes;
   final int outs;
-  final bool showOuts;
 
   const _CompactBsoSummary({
     required this.balls,
     required this.strikes,
     required this.outs,
-    this.showOuts = true,
   });
 
   @override
@@ -1210,22 +1264,13 @@ class _CompactBsoSummary extends StatelessWidget {
         spacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _MiniCountBadge(
-            label: 'B',
-            value: balls,
-            color: AppColors.positive,
-          ),
+          _MiniCountBadge(label: 'B', value: balls, color: AppColors.positive),
           _MiniCountBadge(
             label: 'S',
             value: strikes,
             color: AppColors.ballYellow,
           ),
-          if (showOuts)
-            _MiniCountBadge(
-              label: 'O',
-              value: outs,
-              color: AppColors.live,
-            ),
+          _MiniCountBadge(label: 'O', value: outs, color: AppColors.live),
         ],
       ),
     );
@@ -1351,9 +1396,18 @@ class _CountSummaryCard extends StatelessWidget {
 
 class _RelayMomentCard extends StatelessWidget {
   final _RelayMoment moment;
+  final Game game;
   final Map<String, String> imageMap;
+  final Map<String, PlayerProfile> playersByName;
+  final CurrentAtBat? currentAtBat;
 
-  const _RelayMomentCard({required this.moment, required this.imageMap});
+  const _RelayMomentCard({
+    required this.moment,
+    required this.game,
+    required this.imageMap,
+    required this.playersByName,
+    required this.currentAtBat,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1364,33 +1418,47 @@ class _RelayMomentCard extends StatelessWidget {
         : AppColors.textSecondary;
     final eventLabel = _eventLabel(moment.lead.event);
     final actorLabel = _actorLabel(moment.lead.text);
+    final actorProfile = actorLabel == null
+        ? null
+        : _resolvePlayerProfile(playersByName, actorLabel);
     final actorImageUrl = actorLabel == null
         ? null
-        : _resolveImageUrl(imageMap, actorLabel);
+        : (actorProfile?.imageUrl ?? _resolveImageUrl(imageMap, actorLabel));
+    final offenseTeam = _offenseTeam();
+    final defenseTeam = _defenseTeam();
+    final pitcherName = _pitcherNameForMoment();
     final pitchLogs = _buildPitchLogs(moment.pitchItems);
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: moment.isScoring ? const Color(0xFF1C1111) : AppColors.cardSub,
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: moment.isScoring
               ? AppColors.live.withValues(alpha: 0.45)
               : AppColors.divider,
         ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _RelayPill(
                 label: moment.inningLabel,
                 color: AppColors.textPrimary,
                 subtle: true,
               ),
-              const SizedBox(width: 8),
               if (moment.isScoring)
                 const _RelayPill(label: '득점 장면', color: AppColors.live),
               if (moment.isSubstitution)
@@ -1400,70 +1468,92 @@ class _RelayMomentCard extends StatelessWidget {
               if (!moment.isScoring &&
                   !moment.isSubstitution &&
                   !moment.isGameEnd &&
-                  eventLabel != null) ...[
-                const SizedBox(width: 8),
+                  eventLabel != null)
                 _RelayPill(label: eventLabel, color: accent),
-              ],
             ],
           ),
           if (actorLabel != null) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                _RelayPlayerAvatar(
-                  imageUrl: actorImageUrl,
-                  fallbackLabel: actorLabel,
-                  size: 40,
-                  radius: 12,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    actorLabel,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 14),
+            _MomentPlayerSummary(
+              playerName: actorLabel,
+              imageUrl: actorImageUrl,
+              playerProfile: actorProfile,
+              offenseTeam: offenseTeam,
+              defenseTeam: defenseTeam,
+              pitcherName: pitcherName,
             ),
           ],
-          if (pitchLogs.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            for (int index = 0; index < pitchLogs.length; index++) ...[
-              _PitchLogRow(log: pitchLogs[index]),
-              if (index != pitchLogs.length - 1) const SizedBox(height: 6),
-            ],
-          ],
-          const SizedBox(height: 10),
-          Text(
-            moment.lead.text,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: moment.isScoring || moment.isGameEnd
-                  ? FontWeight.w800
-                  : FontWeight.w700,
-              color: AppColors.textPrimary,
-              height: 1.35,
-            ),
-          ),
-          if (moment.lead.pitchSequence != null &&
-              moment.lead.pitchSequence!.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(
-              moment.lead.pitchSequence!,
-              style: TextStyle(
-                fontSize: 11,
-                color: accent,
-                fontWeight: FontWeight.w600,
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: AppColors.divider.withValues(alpha: 0.7),
+                ),
+                bottom: BorderSide(
+                  color: AppColors.divider.withValues(alpha: 0.7),
+                ),
               ),
             ),
+            child: Text(
+              moment.lead.text,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: moment.isScoring || moment.isGameEnd
+                    ? FontWeight.w800
+                    : FontWeight.w700,
+                color: moment.isScoring
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ),
+          if (pitchLogs.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            for (int index = 0; index < pitchLogs.length; index++) ...[
+              _PitchLogRow(log: pitchLogs[index]),
+              if (index != pitchLogs.length - 1) const SizedBox(height: 8),
+            ],
+          ],
+          if (moment.lead.pitchSequence != null &&
+              moment.lead.pitchSequence!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _SequencePill(sequence: moment.lead.pitchSequence!),
           ],
         ],
       ),
     );
+  }
+
+  KboTeam? _offenseTeam() {
+    final isTop = moment.lead.half == 'top';
+    return KboTeams.byId(isTop ? game.away.teamId : game.home.teamId);
+  }
+
+  KboTeam? _defenseTeam() {
+    final isTop = moment.lead.half == 'top';
+    return KboTeams.byId(isTop ? game.home.teamId : game.away.teamId);
+  }
+
+  String? _pitcherNameForMoment() {
+    if (currentAtBat != null &&
+        currentAtBat!.pitcherName.isNotEmpty &&
+        currentAtBat!.inningText.startsWith(moment.inningLabel)) {
+      return currentAtBat!.pitcherName;
+    }
+
+    final substitutionMatch = RegExp(
+      r'투수\s+(.+?)\s*:\s*투수\s+(.+?)\s+\(으\)로\s+교체',
+    ).firstMatch(moment.lead.text);
+    final nextPitcher = substitutionMatch?.group(2)?.trim();
+    if (nextPitcher != null && nextPitcher.isNotEmpty) {
+      return nextPitcher;
+    }
+
+    return null;
   }
 
   String? _eventLabel(String event) {
@@ -1499,7 +1589,7 @@ class _RelayMomentCard extends StatelessWidget {
 
   List<_PitchLogViewData> _buildPitchLogs(List<RelayItem> pitchItems) {
     if (pitchItems.isEmpty) {
-      return const [];
+      return _buildPitchLogsFromSequence(moment.lead.pitchSequence);
     }
 
     final ordered = List<RelayItem>.from(pitchItems)
@@ -1528,12 +1618,54 @@ class _RelayMomentCard extends StatelessWidget {
 
       rows.add(
         _PitchLogViewData(
-          text: item.text,
+          text: _pitchDetailLabel(item.text, action),
           pitchNumber: _pitchNumber(item.text),
           actionLabel: _pitchActionLabel(action),
           actionColor: _pitchActionColor(action),
-          balls: balls,
-          strikes: strikes,
+          countText: _countText(balls, strikes),
+        ),
+      );
+    }
+
+    return rows;
+  }
+
+  List<_PitchLogViewData> _buildPitchLogsFromSequence(String? pitchSequence) {
+    if (pitchSequence == null || pitchSequence.isEmpty) {
+      return const [];
+    }
+
+    final tokens = pitchSequence
+        .split('→')
+        .map((token) => token.trim())
+        .where((token) => token.isNotEmpty)
+        .toList();
+    if (tokens.isEmpty) {
+      return const [];
+    }
+
+    var balls = 0;
+    var strikes = 0;
+    final rows = <_PitchLogViewData>[];
+
+    for (int index = 0; index < tokens.length; index++) {
+      final token = tokens[index];
+      final action = _pitchActionFromSequence(token);
+      if (action == _PitchAction.ball) {
+        balls = balls < 4 ? balls + 1 : balls;
+      } else if (action == _PitchAction.strike) {
+        strikes = strikes < 3 ? strikes + 1 : strikes;
+      } else if (action == _PitchAction.foul && strikes < 2) {
+        strikes += 1;
+      }
+
+      rows.add(
+        _PitchLogViewData(
+          text: _sequenceTokenLabel(token),
+          pitchNumber: index + 1,
+          actionLabel: _pitchActionLabel(action),
+          actionColor: _pitchActionColor(action),
+          countText: _countText(balls, strikes),
         ),
       );
     }
@@ -1562,6 +1694,39 @@ class _RelayMomentCard extends StatelessWidget {
     return _PitchAction.other;
   }
 
+  _PitchAction _pitchActionFromSequence(String token) {
+    final normalized = token.toUpperCase();
+    if (normalized == 'B' || token.contains('볼')) {
+      return _PitchAction.ball;
+    }
+    if (normalized == 'S' || token.contains('스트라이크') || token.contains('헛스윙')) {
+      return _PitchAction.strike;
+    }
+    if (normalized == 'F' || token.contains('파울')) {
+      return _PitchAction.foul;
+    }
+    if (token.contains('타격')) {
+      return _PitchAction.inPlay;
+    }
+    return _PitchAction.other;
+  }
+
+  String _sequenceTokenLabel(String token) {
+    final normalized = token.toUpperCase();
+    if (normalized == 'B') return '볼';
+    if (normalized == 'S') return '스트라이크';
+    if (normalized == 'F') return '파울';
+    return token;
+  }
+
+  String _pitchDetailLabel(String text, _PitchAction action) {
+    final cleaned = text.replaceFirst('- ', '').trim();
+    if (cleaned.isNotEmpty) {
+      return cleaned;
+    }
+    return _pitchActionLabel(action) ?? '투구';
+  }
+
   String? _pitchActionLabel(_PitchAction action) {
     switch (action) {
       case _PitchAction.ball:
@@ -1584,12 +1749,41 @@ class _RelayMomentCard extends StatelessWidget {
       case _PitchAction.strike:
         return AppColors.ballYellow;
       case _PitchAction.foul:
-        return AppColors.textPrimary;
+        return AppColors.accent;
       case _PitchAction.inPlay:
-        return AppColors.positive;
+        return AppColors.accent;
       case _PitchAction.other:
         return AppColors.textSecondary;
     }
+  }
+
+  String _countText(int balls, int strikes) {
+    return '$balls-$strikes';
+  }
+
+  PlayerProfile? _resolvePlayerProfile(
+    Map<String, PlayerProfile> playersByName,
+    String rawName,
+  ) {
+    if (rawName.isEmpty) {
+      return null;
+    }
+
+    if (playersByName.containsKey(rawName)) {
+      return playersByName[rawName];
+    }
+
+    final normalizedTarget = _normalizeName(rawName);
+    for (final entry in playersByName.entries) {
+      final normalizedKey = _normalizeName(entry.key);
+      if (normalizedKey == normalizedTarget ||
+          normalizedKey.contains(normalizedTarget) ||
+          normalizedTarget.contains(normalizedKey)) {
+        return entry.value;
+      }
+    }
+
+    return null;
   }
 
   String? _resolveImageUrl(Map<String, String> imageMap, String rawName) {
@@ -1625,6 +1819,220 @@ class _RelayMomentCard extends StatelessWidget {
   }
 }
 
+class _MomentPlayerSummary extends StatelessWidget {
+  final String playerName;
+  final String? imageUrl;
+  final PlayerProfile? playerProfile;
+  final KboTeam? offenseTeam;
+  final KboTeam? defenseTeam;
+  final String? pitcherName;
+
+  const _MomentPlayerSummary({
+    required this.playerName,
+    required this.imageUrl,
+    required this.playerProfile,
+    required this.offenseTeam,
+    required this.defenseTeam,
+    required this.pitcherName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final teamLogo = offenseTeam?.logoUrl ?? '';
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _RelayPlayerAvatar(
+          imageUrl: imageUrl,
+          fallbackLabel: playerName,
+          size: 64,
+          radius: 14,
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (teamLogo.isNotEmpty)
+                    CachedNetworkImage(
+                      imageUrl: teamLogo,
+                      httpHeaders: _RelayPlayerAvatar._imageHeaders,
+                      width: 22,
+                      height: 22,
+                      fit: BoxFit.contain,
+                      errorWidget: (_, _, _) => const SizedBox(width: 22),
+                      placeholder: (_, _) => const SizedBox(width: 22),
+                    ),
+                  if (teamLogo.isNotEmpty) const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _nameLine(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _statLine(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              pitcherName == null ? '상대팀' : '상대투수',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textDisabled,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              pitcherName ?? defenseTeam?.shortName ?? '-',
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _nameLine() {
+    final number = (playerProfile?.number ?? 0) > 0
+        ? '${playerProfile!.number}번 '
+        : '';
+    final metric = _primaryMetric();
+    return '$number$playerName${metric == null ? '' : '  $metric'}';
+  }
+
+  String _statLine() {
+    if (playerProfile == null) {
+      return '선수 정보 확인 중';
+    }
+
+    final values = <String>[
+      if (playerProfile!.headlineStat.isNotEmpty) playerProfile!.headlineStat,
+      if (playerProfile!.secondaryStat.isNotEmpty) playerProfile!.secondaryStat,
+    ];
+    if (values.isEmpty) {
+      return playerProfile!.roleLabel;
+    }
+    return values.join(' | ');
+  }
+
+  String? _primaryMetric() {
+    if (playerProfile == null) {
+      return null;
+    }
+    if (playerProfile!.playerType == PlayerType.pitcher) {
+      if (playerProfile!.era != null) {
+        return 'ERA ${playerProfile!.era!.toStringAsFixed(2)}';
+      }
+      return null;
+    }
+    if (playerProfile!.avg != null) {
+      return '타율 ${playerProfile!.avg!.toStringAsFixed(3)}';
+    }
+    return null;
+  }
+}
+
+class _OutStateIndicator extends StatelessWidget {
+  final int outs;
+
+  const _OutStateIndicator({required this.outs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 1; i <= 3; i++) ...[
+          Container(
+            width: 26,
+            height: 26,
+            margin: EdgeInsets.only(right: i == 3 ? 6 : 4),
+            decoration: BoxDecoration(
+              color: i <= outs
+                  ? AppColors.live
+                  : AppColors.textDisabled.withValues(alpha: 0.35),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$i',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+        ],
+        const Text(
+          'OUT',
+          style: TextStyle(
+            fontSize: 13,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SequencePill extends StatelessWidget {
+  final String sequence;
+
+  const _SequencePill({required this.sequence});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.64),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        sequence,
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 class _PitchLogRow extends StatelessWidget {
   final _PitchLogViewData log;
 
@@ -1634,70 +2042,50 @@ class _PitchLogRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.55)),
+        ),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (log.pitchNumber != null) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.cardSub,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Text(
-                '${log.pitchNumber}구',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                ),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: log.actionColor,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${log.pitchNumber ?? '-'}',
+              style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: AppColors.background,
               ),
             ),
-            const SizedBox(width: 8),
-          ],
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  log.text.replaceFirst('- ', ''),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (log.actionLabel != null ||
-                    log.balls != null ||
-                    log.strikes != null) ...[
-                  const SizedBox(height: 7),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (log.actionLabel != null)
-                        _RelayPill(
-                          label: log.actionLabel!,
-                          color: log.actionColor,
-                        ),
-                      if (log.balls != null && log.strikes != null)
-                        _CompactBsoSummary(
-                          balls: log.balls!,
-                          strikes: log.strikes!,
-                          outs: 0,
-                          showOuts: false,
-                        ),
-                    ],
-                  ),
-                ],
-              ],
+            child: Text(
+              log.text,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            log.countText ?? '',
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -1711,16 +2099,14 @@ class _PitchLogViewData {
   final int? pitchNumber;
   final String? actionLabel;
   final Color actionColor;
-  final int? balls;
-  final int? strikes;
+  final String? countText;
 
   const _PitchLogViewData({
     required this.text,
     this.pitchNumber,
     required this.actionLabel,
     required this.actionColor,
-    this.balls,
-    this.strikes,
+    this.countText,
   });
 }
 

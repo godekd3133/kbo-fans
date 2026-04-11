@@ -163,11 +163,11 @@ class _TeamInfo extends StatelessWidget {
           ),
           const SizedBox(width: 8),
         ],
-        if (showLogo) _TeamLogo(teamId: teamId, size: 28),
+        if (showLogo) _TeamLogo(teamId: teamId, size: 34),
         if (!showLogo)
           Container(
-            width: 28,
-            height: 28,
+            width: 34,
+            height: 34,
             decoration: const BoxDecoration(
               color: AppColors.cardSub,
               shape: BoxShape.circle,
