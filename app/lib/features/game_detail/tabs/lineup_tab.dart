@@ -8,6 +8,8 @@ import '../../../data/models/game.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/player.dart';
 import '../../../data/models/relay.dart';
+import '../../../data/models/schedule.dart';
+import '../../../data/models/team_stats.dart';
 import '../../../data/providers.dart';
 
 const _kboImageHeaders = {
@@ -61,6 +63,23 @@ class LineupTab extends ConsumerWidget {
     final allImageMap =
         ref.watch(allPlayerImageMapProvider(season)).asData?.value ??
         const <String, String>{};
+    final standingsAsync = ref.watch(standingsProvider(season));
+    final gameDate = _gameDateFromGameId(gameId) ?? DateTime.now();
+    final yearMonth =
+        '${gameDate.year.toString().padLeft(4, '0')}-${gameDate.month.toString().padLeft(2, '0')}';
+    final previousMonthDate = DateTime(gameDate.year, gameDate.month - 1);
+    final previousYearMonth =
+        '${previousMonthDate.year.toString().padLeft(4, '0')}-${previousMonthDate.month.toString().padLeft(2, '0')}';
+    final currentScheduleAsync = ref.watch(scheduleProvider(yearMonth));
+    final previousScheduleAsync = ref.watch(
+      scheduleProvider(previousYearMonth),
+    );
+    final awayTeamStatsAsync = awayTeamId.isEmpty
+        ? const AsyncValue<TeamStats>.loading()
+        : ref.watch(teamStatsProvider('$awayTeamId|$season'));
+    final homeTeamStatsAsync = homeTeamId.isEmpty
+        ? const AsyncValue<TeamStats>.loading()
+        : ref.watch(teamStatsProvider('$homeTeamId|$season'));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -123,15 +142,53 @@ class LineupTab extends ConsumerWidget {
                             player.imageUrl!.isNotEmpty)
                           player.name: player.imageUrl!,
                     };
+                    final compareData = _buildMatchupCompareData(
+                      awayTeamId: awayTeamId,
+                      awayName: awayName,
+                      homeTeamId: homeTeamId,
+                      homeName: homeName,
+                      standings: standingsAsync.asData?.value ?? const [],
+                      scheduleDays: [
+                        ...(previousScheduleAsync.asData?.value ?? const []),
+                        ...(currentScheduleAsync.asData?.value ?? const []),
+                      ],
+                      awayTeamStats: awayTeamStatsAsync.asData?.value,
+                      homeTeamStats: homeTeamStatsAsync.asData?.value,
+                      awayStarter: _starterPitcher(
+                        awayPitchers,
+                        gameLineup.away.starterName,
+                      ),
+                      homeStarter: _starterPitcher(
+                        homePitchers,
+                        gameLineup.home.starterName,
+                      ),
+                      awayStarterName: gameLineup.away.starterName,
+                      homeStarterName: gameLineup.home.starterName,
+                      awayStarterImageUrl: _resolveImageUrl(
+                        awayImageMap,
+                        gameLineup.away.starterName ??
+                            awayPitchers.firstOrNull?.name ??
+                            '',
+                      ),
+                      homeStarterImageUrl: _resolveImageUrl(
+                        homeImageMap,
+                        gameLineup.home.starterName ??
+                            homePitchers.firstOrNull?.name ??
+                            '',
+                      ),
+                    );
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _LineupHero(
-                          awayTeamId: awayTeamId,
-                          awayName: awayName,
-                          homeTeamId: homeTeamId,
-                          homeName: homeName,
+                        _MatchupCompareSection(
+                          data: compareData,
+                          awayAccent:
+                              KboTeams.byId(awayTeamId)?.primaryColor ??
+                              AppColors.live,
+                          homeAccent:
+                              KboTeams.byId(homeTeamId)?.primaryColor ??
+                              AppColors.accent,
                         ),
                         const SizedBox(height: 16),
                         _CompareSection(
@@ -191,67 +248,212 @@ class LineupTab extends ConsumerWidget {
   }
 }
 
-class _LineupHero extends StatelessWidget {
-  final String awayTeamId;
-  final String awayName;
-  final String homeTeamId;
-  final String homeName;
+DateTime? _gameDateFromGameId(String gameId) {
+  if (gameId.length < 8) {
+    return null;
+  }
+  final year = int.tryParse(gameId.substring(0, 4));
+  final month = int.tryParse(gameId.substring(4, 6));
+  final day = int.tryParse(gameId.substring(6, 8));
+  if (year == null || month == null || day == null) {
+    return null;
+  }
+  return DateTime(year, month, day);
+}
 
-  const _LineupHero({
-    required this.awayTeamId,
-    required this.awayName,
-    required this.homeTeamId,
-    required this.homeName,
+_MatchupCompareData _buildMatchupCompareData({
+  required String awayTeamId,
+  required String awayName,
+  required String homeTeamId,
+  required String homeName,
+  required List<TeamStanding> standings,
+  required List<ScheduleDay> scheduleDays,
+  required TeamStats? awayTeamStats,
+  required TeamStats? homeTeamStats,
+  required PitcherRecord? awayStarter,
+  required PitcherRecord? homeStarter,
+  required String? awayStarterName,
+  required String? homeStarterName,
+  required String? awayStarterImageUrl,
+  required String? homeStarterImageUrl,
+}) {
+  final awayStanding = standings
+      .where((item) => item.teamId == awayTeamId)
+      .firstOrNull;
+  final homeStanding = standings
+      .where((item) => item.teamId == homeTeamId)
+      .firstOrNull;
+  final allGames = [
+    for (final day in scheduleDays)
+      for (final game in day.games) (date: day.date, game: game),
+  ]..sort((a, b) => a.date.compareTo(b.date));
+
+  List<_RecentResultChipData> recentResults(String teamId) {
+    final finished =
+        allGames
+            .where(
+              (entry) =>
+                  entry.game.awayScore != null && entry.game.homeScore != null,
+            )
+            .where(
+              (entry) =>
+                  entry.game.awayId == teamId || entry.game.homeId == teamId,
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+
+    return finished.take(5).map((entry) {
+      final isAway = entry.game.awayId == teamId;
+      final myScore = isAway ? entry.game.awayScore! : entry.game.homeScore!;
+      final opponentScore = isAway
+          ? entry.game.homeScore!
+          : entry.game.awayScore!;
+      final result = myScore > opponentScore
+          ? '승'
+          : myScore < opponentScore
+          ? '패'
+          : '무';
+      return _RecentResultChipData(result: result);
+    }).toList();
+  }
+
+  String headToHeadSummary(String teamId, String opponentTeamId) {
+    var wins = 0;
+    var losses = 0;
+    var draws = 0;
+    for (final entry in allGames) {
+      final game = entry.game;
+      final isMatchup =
+          (game.awayId == teamId && game.homeId == opponentTeamId) ||
+          (game.awayId == opponentTeamId && game.homeId == teamId);
+      if (!isMatchup || game.awayScore == null || game.homeScore == null) {
+        continue;
+      }
+      final isAway = game.awayId == teamId;
+      final myScore = isAway ? game.awayScore! : game.homeScore!;
+      final opponentScore = isAway ? game.homeScore! : game.awayScore!;
+      if (myScore > opponentScore) {
+        wins += 1;
+      } else if (myScore < opponentScore) {
+        losses += 1;
+      } else {
+        draws += 1;
+      }
+    }
+    return '$wins승 $draws무 $losses패';
+  }
+
+  String safeStat(Map<String, String>? stats, String key) {
+    return stats?[key] ?? '-';
+  }
+
+  return _MatchupCompareData(
+    away: _TeamCompareData(
+      teamId: awayTeamId,
+      teamName: awayName,
+      standingText: awayStanding == null ? '-' : '${awayStanding.rank}위',
+      recordText: awayStanding == null
+          ? '-'
+          : '${awayStanding.wins}승 ${awayStanding.draws}무 ${awayStanding.losses}패',
+      recentResults: recentResults(awayTeamId),
+      winPct: awayStanding?.pct ?? safeStat(awayTeamStats?.pitching, 'WPCT'),
+      avg: safeStat(awayTeamStats?.hitting, 'AVG'),
+      era: safeStat(awayTeamStats?.pitching, 'ERA'),
+      headToHead: headToHeadSummary(awayTeamId, homeTeamId),
+      starter: _StarterCompareData(
+        name: awayStarterName ?? awayStarter?.name ?? '선발 미발표',
+        imageUrl: awayStarterImageUrl,
+        winsLosses: awayStarter?.decision ?? '0승 0패',
+        innings: awayStarter?.innings ?? '0',
+        era: awayStarter == null
+            ? '0.00'
+            : awayStarter.earnedRuns.toStringAsFixed(2),
+        whip: awayStarter == null ? '0.00' : _pitcherWhip(awayStarter),
+      ),
+    ),
+    home: _TeamCompareData(
+      teamId: homeTeamId,
+      teamName: homeName,
+      standingText: homeStanding == null ? '-' : '${homeStanding.rank}위',
+      recordText: homeStanding == null
+          ? '-'
+          : '${homeStanding.wins}승 ${homeStanding.draws}무 ${homeStanding.losses}패',
+      recentResults: recentResults(homeTeamId),
+      winPct: homeStanding?.pct ?? safeStat(homeTeamStats?.pitching, 'WPCT'),
+      avg: safeStat(homeTeamStats?.hitting, 'AVG'),
+      era: safeStat(homeTeamStats?.pitching, 'ERA'),
+      headToHead: headToHeadSummary(homeTeamId, awayTeamId),
+      starter: _StarterCompareData(
+        name: homeStarterName ?? homeStarter?.name ?? '선발 미발표',
+        imageUrl: homeStarterImageUrl,
+        winsLosses: homeStarter?.decision ?? '0승 0패',
+        innings: homeStarter?.innings ?? '0',
+        era: homeStarter == null
+            ? '0.00'
+            : homeStarter.earnedRuns.toStringAsFixed(2),
+        whip: homeStarter == null ? '0.00' : _pitcherWhip(homeStarter),
+      ),
+    ),
+  );
+}
+
+String _pitcherWhip(PitcherRecord pitcher) {
+  final outs = _inningsTextToOuts(pitcher.innings);
+  if (outs <= 0) {
+    return '0.00';
+  }
+  final innings = outs / 3;
+  final whip = (pitcher.hits + pitcher.walks) / innings;
+  return whip.toStringAsFixed(2);
+}
+
+int _inningsTextToOuts(String innings) {
+  if (innings.isEmpty) {
+    return 0;
+  }
+  final parts = innings.split('.');
+  final whole = int.tryParse(parts.first) ?? 0;
+  final fraction = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+  return whole * 3 + fraction;
+}
+
+class _MatchupCompareSection extends StatelessWidget {
+  final _MatchupCompareData data;
+  final Color awayAccent;
+  final Color homeAccent;
+
+  const _MatchupCompareSection({
+    required this.data,
+    required this.awayAccent,
+    required this.homeAccent,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.divider),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x16000000),
-            blurRadius: 16,
-            offset: Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
         children: [
-          const Text(
-            '라인업',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          _MatchupHeader(data: data),
+          const SizedBox(height: 22),
+          _RecentTrendSection(
+            away: data.away,
+            home: data.home,
+            awayAccent: awayAccent,
+            homeAccent: homeAccent,
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroTeamMark(
-                  teamId: awayTeamId,
-                  teamName: awayName,
-                  alignEnd: true,
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'VS',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textDisabled,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: _HeroTeamMark(teamId: homeTeamId, teamName: homeName),
-              ),
-            ],
+          const SizedBox(height: 28),
+          _StarterDuelSection(
+            away: data.away.starter,
+            home: data.home.starter,
+            awayAccent: awayAccent,
+            homeAccent: homeAccent,
           ),
         ],
       ),
@@ -259,49 +461,596 @@ class _LineupHero extends StatelessWidget {
   }
 }
 
-class _HeroTeamMark extends StatelessWidget {
-  final String teamId;
-  final String teamName;
-  final bool alignEnd;
+class _MatchupHeader extends StatelessWidget {
+  final _MatchupCompareData data;
 
-  const _HeroTeamMark({
-    required this.teamId,
-    required this.teamName,
-    this.alignEnd = false,
+  const _MatchupHeader({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget teamBlock(_TeamCompareData team, {required bool alignEnd}) {
+      return Column(
+        crossAxisAlignment: alignEnd
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
+        children: [
+          Text(
+            team.teamName,
+            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            team.standingText,
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            team.recordText,
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(child: teamBlock(data.away, alignEnd: true)),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 18),
+          child: Text(
+            'VS',
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF555555),
+            ),
+          ),
+        ),
+        Expanded(child: teamBlock(data.home, alignEnd: false)),
+      ],
+    );
+  }
+}
+
+class _RecentTrendSection extends StatelessWidget {
+  final _TeamCompareData away;
+  final _TeamCompareData home;
+  final Color awayAccent;
+  final Color homeAccent;
+
+  const _RecentTrendSection({
+    required this.away,
+    required this.home,
+    required this.awayAccent,
+    required this.homeAccent,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: alignEnd
-          ? MainAxisAlignment.end
-          : MainAxisAlignment.start,
+    return Column(
       children: [
-        if (alignEnd)
-          Flexible(
-            child: Text(
-              teamName,
-              textAlign: TextAlign.right,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
+        const Divider(color: AppColors.divider, height: 1),
+        const SizedBox(height: 20),
+        const Text(
+          '최근 5경기',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
           ),
-        if (alignEnd) const SizedBox(width: 10),
-        _TeamLogo(teamId: teamId, fallback: teamName),
-        if (!alignEnd) const SizedBox(width: 10),
-        if (!alignEnd)
-          Flexible(
-            child: Text(
-              teamName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _RecentResultRow(
+                items: away.recentResults,
+                accent: awayAccent,
+                alignEnd: true,
+              ),
             ),
-          ),
+            const SizedBox(width: 24),
+            Expanded(
+              child: _RecentResultRow(
+                items: home.recentResults,
+                accent: homeAccent,
+                alignEnd: false,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        _CompareMetricBarRow(
+          label: '승률',
+          leftValue: away.winPct,
+          rightValue: home.winPct,
+          leftAccent: awayAccent,
+          rightAccent: homeAccent,
+        ),
+        const SizedBox(height: 16),
+        _CompareMetricBarRow(
+          label: '타율',
+          leftValue: away.avg,
+          rightValue: home.avg,
+          leftAccent: awayAccent,
+          rightAccent: homeAccent,
+        ),
+        const SizedBox(height: 16),
+        _CompareMetricBarRow(
+          label: '평균자책',
+          leftValue: away.era,
+          rightValue: home.era,
+          leftAccent: awayAccent,
+          rightAccent: homeAccent,
+          lowerIsBetter: true,
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                away.headToHead,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '상대전적',
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                home.headToHead,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
+}
+
+class _RecentResultRow extends StatelessWidget {
+  final List<_RecentResultChipData> items;
+  final Color accent;
+  final bool alignEnd;
+
+  const _RecentResultRow({
+    required this.items,
+    required this.accent,
+    required this.alignEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final chips = items
+        .take(5)
+        .map((item) => _RecentResultBubble(result: item.result, accent: accent))
+        .toList();
+    return Wrap(
+      alignment: alignEnd ? WrapAlignment.end : WrapAlignment.start,
+      spacing: 4,
+      runSpacing: 6,
+      children: chips,
+    );
+  }
+}
+
+class _RecentResultBubble extends StatelessWidget {
+  final String result;
+  final Color accent;
+
+  const _RecentResultBubble({required this.result, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final background = switch (result) {
+      '승' => const Color(0xFF18C8F7),
+      '패' => const Color(0xFFD41438),
+      _ => const Color(0xFF585858),
+    };
+    final labelColor = result == '무'
+        ? AppColors.textSecondary
+        : AppColors.background;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+        alignment: Alignment.center,
+        child: Text(
+          result,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: labelColor,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompareMetricBarRow extends StatelessWidget {
+  final String label;
+  final String leftValue;
+  final String rightValue;
+  final Color leftAccent;
+  final Color rightAccent;
+  final bool lowerIsBetter;
+
+  const _CompareMetricBarRow({
+    required this.label,
+    required this.leftValue,
+    required this.rightValue,
+    required this.leftAccent,
+    required this.rightAccent,
+    this.lowerIsBetter = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final leftNumber = double.tryParse(leftValue.replaceAll('%', ''));
+    final rightNumber = double.tryParse(rightValue.replaceAll('%', ''));
+    double leftRatio = 0.5;
+    double rightRatio = 0.5;
+    if (leftNumber != null &&
+        rightNumber != null &&
+        leftNumber + rightNumber > 0) {
+      if (lowerIsBetter) {
+        final leftAdjusted = 1 / leftNumber;
+        final rightAdjusted = 1 / rightNumber;
+        final total = leftAdjusted + rightAdjusted;
+        leftRatio = leftAdjusted / total;
+        rightRatio = rightAdjusted / total;
+      } else {
+        final total = leftNumber + rightNumber;
+        leftRatio = leftNumber / total;
+        rightRatio = rightNumber / total;
+      }
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: _MetricSideBar(
+            value: leftValue,
+            ratio: leftRatio,
+            accent: leftAccent,
+            alignEnd: true,
+          ),
+        ),
+        SizedBox(
+          width: 116,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        Expanded(
+          child: _MetricSideBar(
+            value: rightValue,
+            ratio: rightRatio,
+            accent: rightAccent,
+            alignEnd: false,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MetricSideBar extends StatelessWidget {
+  final String value;
+  final double ratio;
+  final Color accent;
+  final bool alignEnd;
+
+  const _MetricSideBar({
+    required this.value,
+    required this.ratio,
+    required this.accent,
+    required this.alignEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bar = Container(
+      height: 12,
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Align(
+        alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
+        child: FractionallySizedBox(
+          widthFactor: ratio.clamp(0.18, 1.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 8),
+        bar,
+      ],
+    );
+  }
+}
+
+class _StarterDuelSection extends StatelessWidget {
+  final _StarterCompareData away;
+  final _StarterCompareData home;
+  final Color awayAccent;
+  final Color homeAccent;
+
+  const _StarterDuelSection({
+    required this.away,
+    required this.home,
+    required this.awayAccent,
+    required this.homeAccent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Divider(color: AppColors.divider, height: 1),
+        const SizedBox(height: 26),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _StarterHeroCard(data: away, accent: awayAccent),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 34, 18, 0),
+              child: Column(
+                children: [
+                  Text(
+                    '선발',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'VS',
+                    style: TextStyle(
+                      fontSize: 56,
+                      color: Color(0xFF555555),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _StarterHeroCard(data: home, accent: homeAccent),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            Expanded(child: _StarterStatColumn(data: away, alignEnd: true)),
+            const SizedBox(
+              width: 116,
+              child: Column(
+                children: [
+                  _CenterStatLabel('승패'),
+                  SizedBox(height: 18),
+                  _CenterStatLabel('이닝'),
+                  SizedBox(height: 18),
+                  _CenterStatLabel('평균자책'),
+                  SizedBox(height: 18),
+                  _CenterStatLabel('WHIP'),
+                ],
+              ),
+            ),
+            Expanded(child: _StarterStatColumn(data: home, alignEnd: false)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _StarterHeroCard extends StatelessWidget {
+  final _StarterCompareData data;
+  final Color accent;
+
+  const _StarterHeroCard({required this.data, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          height: 288,
+          decoration: BoxDecoration(
+            color: AppColors.cardSub,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: accent.withValues(alpha: 0.24)),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: data.imageUrl != null && data.imageUrl!.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: data.imageUrl!,
+                    httpHeaders: _kboImageHeaders,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    placeholder: (_, _) => _starterFallback(accent, data.name),
+                    errorWidget: (_, _, _) =>
+                        _starterFallback(accent, data.name),
+                  )
+                : _starterFallback(accent, data.name),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          data.name,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+        ),
+      ],
+    );
+  }
+
+  Widget _starterFallback(Color accent, String name) {
+    return Container(
+      color: AppColors.cardSub,
+      alignment: Alignment.center,
+      child: Text(
+        name.isEmpty ? '?' : name.substring(0, 1),
+        style: TextStyle(
+          fontSize: 64,
+          fontWeight: FontWeight.w800,
+          color: accent.withValues(alpha: 0.9),
+        ),
+      ),
+    );
+  }
+}
+
+class _StarterStatColumn extends StatelessWidget {
+  final _StarterCompareData data;
+  final bool alignEnd;
+
+  const _StarterStatColumn({required this.data, required this.alignEnd});
+
+  @override
+  Widget build(BuildContext context) {
+    TextStyle style = const TextStyle(
+      fontSize: 17,
+      fontWeight: FontWeight.w700,
+    );
+    return Column(
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        Text(data.winsLosses, style: style),
+        const SizedBox(height: 14),
+        Text(data.innings, style: style),
+        const SizedBox(height: 14),
+        Text(data.era, style: style),
+        const SizedBox(height: 14),
+        Text(data.whip, style: style),
+      ],
+    );
+  }
+}
+
+class _CenterStatLabel extends StatelessWidget {
+  final String label;
+
+  const _CenterStatLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      textAlign: TextAlign.center,
+      style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+    );
+  }
+}
+
+class _MatchupCompareData {
+  final _TeamCompareData away;
+  final _TeamCompareData home;
+
+  const _MatchupCompareData({required this.away, required this.home});
+}
+
+class _TeamCompareData {
+  final String teamId;
+  final String teamName;
+  final String standingText;
+  final String recordText;
+  final List<_RecentResultChipData> recentResults;
+  final String winPct;
+  final String avg;
+  final String era;
+  final String headToHead;
+  final _StarterCompareData starter;
+
+  const _TeamCompareData({
+    required this.teamId,
+    required this.teamName,
+    required this.standingText,
+    required this.recordText,
+    required this.recentResults,
+    required this.winPct,
+    required this.avg,
+    required this.era,
+    required this.headToHead,
+    required this.starter,
+  });
+}
+
+class _RecentResultChipData {
+  final String result;
+
+  const _RecentResultChipData({required this.result});
+}
+
+class _StarterCompareData {
+  final String name;
+  final String? imageUrl;
+  final String winsLosses;
+  final String innings;
+  final String era;
+  final String whip;
+
+  const _StarterCompareData({
+    required this.name,
+    required this.imageUrl,
+    required this.winsLosses,
+    required this.innings,
+    required this.era,
+    required this.whip,
+  });
 }
 
 class _CompareSection extends StatelessWidget {
@@ -433,7 +1182,7 @@ class _LineupColumn extends StatelessWidget {
         children: [
           Row(
             children: [
-              _TeamLogo(teamId: teamId, fallback: teamName, size: 26),
+              _TeamLogo(teamId: teamId, fallback: teamName, size: 30),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -519,9 +1268,7 @@ class _LineupColumn extends StatelessWidget {
           ],
           if (displayedLineup.isEmpty) ...[
             const SizedBox(height: 12),
-            _EmptyLabel(
-              label: isLive ? '실시간 타자 라인업 집계 중' : '타자 라인업 데이터 없음',
-            ),
+            _EmptyLabel(label: isLive ? '실시간 타자 라인업 집계 중' : '타자 라인업 데이터 없음'),
           ],
           const SizedBox(height: 14),
           for (final entry in displayedLineup) ...[
@@ -816,7 +1563,10 @@ class _StarterRow extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
@@ -964,10 +1714,7 @@ class _LineupAvatar extends StatelessWidget {
     }
     return Stack(
       clipBehavior: Clip.none,
-      children: [
-        _fallback(),
-        if (badgeLabel != null) _orderBadge(),
-      ],
+      children: [_fallback(), if (badgeLabel != null) _orderBadge()],
     );
   }
 
@@ -1033,7 +1780,7 @@ class _TeamLogo extends StatelessWidget {
   const _TeamLogo({
     required this.teamId,
     required this.fallback,
-    this.size = 34,
+    this.size = 40,
   });
 
   @override
