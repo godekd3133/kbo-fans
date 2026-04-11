@@ -24,6 +24,9 @@ dist/
 .env.local
 .env.production
 app/android/key.properties
+app/android/app/google-services.json
+app/ios/Runner/GoogleService-Info.plist
+backend/firebase-service-account.json
 *.jks
 *.keystore
 
