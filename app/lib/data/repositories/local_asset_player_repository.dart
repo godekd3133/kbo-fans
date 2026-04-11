@@ -117,6 +117,9 @@ class LocalAssetPlayerRepository implements PlayerRepository {
       avgLeaders: _parseLeaders(leaders['avg'] as List<dynamic>? ?? const []),
       hrLeaders: _parseLeaders(leaders['hr'] as List<dynamic>? ?? const []),
       opsLeaders: _parseLeaders(leaders['ops'] as List<dynamic>? ?? const []),
+      opsPlusLeaders: _parseLeaders(
+        leaders['opsPlus'] as List<dynamic>? ?? const [],
+      ),
       eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
       todayHitter: _parseFeatured(
         featured['todayHitter'] as Map<String, dynamic>? ??
@@ -147,9 +150,9 @@ class LocalAssetPlayerRepository implements PlayerRepository {
       LeaderboardMetric.avg => overview.avgLeaders,
       LeaderboardMetric.hr => overview.hrLeaders,
       LeaderboardMetric.ops => overview.opsLeaders,
+      LeaderboardMetric.opsPlus => overview.opsPlusLeaders,
       LeaderboardMetric.era => overview.eraLeaders,
       LeaderboardMetric.war => const [],
-      LeaderboardMetric.wrcPlus => const [],
     };
   }
 

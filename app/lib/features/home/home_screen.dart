@@ -401,14 +401,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     myTeamBrief = null;
                     baseQuickItems = const <_QuickContentItemData>[];
                   } else {
+                    final currentDate = DateTime.now();
+                    final currentMonthDate = DateTime(
+                      currentDate.year,
+                      currentDate.month,
+                    );
+                    final previousMonthDate = DateTime(
+                      currentMonthDate.year,
+                      currentMonthDate.month - 1,
+                    );
+                    final previousYearMonth =
+                        '${previousMonthDate.year.toString().padLeft(4, '0')}-${previousMonthDate.month.toString().padLeft(2, '0')}';
                     final scheduleAsync = ref.watch(
                       scheduleProvider(yearMonth),
+                    );
+                    final previousScheduleAsync = ref.watch(
+                      scheduleProvider(previousYearMonth),
                     );
                     final standingsAsync = ref.watch(standingsProvider(season));
                     myTeamBrief = _buildMyTeamBrief(
                       myTeamId: myTeamId,
                       myGame: myGame,
-                      scheduleDays: scheduleAsync.asData?.value ?? const [],
+                      scheduleDays: [
+                        ...(previousScheduleAsync.asData?.value ?? const []),
+                        ...(scheduleAsync.asData?.value ?? const []),
+                      ],
                       standings: standingsAsync.asData?.value ?? const [],
                       today: today,
                     );
@@ -632,6 +649,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
       recentSummaries.add(
         _RecentGameSummaryData(
+          gameId: entry.game.gameId,
           result: resultLabel,
           opponentName: opponentName,
           score: '$myScore:$opponentScore',
@@ -880,6 +898,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       recentSummaries: brief.recentSummaries
           .map(
             (item) => _RecentGameSummaryData(
+              gameId: item.gameId,
               result: item.result,
               opponentName: item.opponentName,
               score: item.score,
@@ -914,8 +933,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   Widget _buildHeader(BuildContext context, bool hasLive) {
     final now = DateTime.now();
-    final dayNames = ['', '월', '화', '수', '목', '금', '토', '일'];
-    final dateStr = '${now.month}.${now.day} ${dayNames[now.weekday]}';
+    final dateStr =
+        '${(now.year % 100).toString().padLeft(2, '0')}.${now.month}.${now.day}';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -1293,13 +1312,11 @@ class _MyTeamBriefCard extends StatelessWidget {
                       vertical: 7,
                     ),
                     decoration: BoxDecoration(
-                      color: (team?.primaryColor ?? AppColors.live).withValues(
-                        alpha: 0.18,
-                      ),
+                      color: AppColors.background.withValues(alpha: 0.88),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
                         color: (team?.primaryColor ?? AppColors.live)
-                            .withValues(alpha: 0.35),
+                            .withValues(alpha: 0.55),
                       ),
                     ),
                     child: Text(
@@ -1307,7 +1324,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: team?.primaryColor ?? AppColors.live,
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -1335,8 +1352,8 @@ class _MyTeamBriefCard extends StatelessWidget {
                 todayGame == null && nextGame == null
                     ? '다음 경기 정보가 아직 없습니다.'
                     : todayGame != null
-                    ? '${todayGame!.startTime} · ${todayGame!.stadium} · ${opponent?.name ?? ''}전'
-                    : '다음 경기 ${nextGame!.time} · ${nextGame.stadium} · ${opponent?.name ?? ''}전',
+                    ? '${todayGame!.startTime} · ${todayGame!.stadium} · vs ${opponent?.name ?? '-'}'
+                    : '다음 경기 ${nextGame!.time} · ${nextGame.stadium} · vs ${opponent?.name ?? '-'}',
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -1368,7 +1385,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                           ? todayGame!.inning
                           : nextGame == null
                           ? '-'
-                          : '${nextGame.time} ${opponent?.shortName ?? ''}전',
+                          : '${nextGame.time} vs ${opponent?.shortName ?? '-'}',
                     ),
                   ),
                 ],
@@ -1389,7 +1406,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     for (final summary in brief!.recentSummaries)
-                      _recentGameChip(summary),
+                      _recentGameChip(context, summary),
                   ],
                 ),
               ],
@@ -1447,7 +1464,7 @@ class _MyTeamBriefCard extends StatelessWidget {
     );
   }
 
-  Widget _recentGameChip(_RecentGameSummaryData summary) {
+  Widget _recentGameChip(BuildContext context, _RecentGameSummaryData summary) {
     final color = switch (summary.result) {
       '승' => AppColors.positive,
       '패' => AppColors.live,
@@ -1464,89 +1481,111 @@ class _MyTeamBriefCard extends StatelessWidget {
       _ => 'D',
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push('/game/${summary.gameId}'),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CachedNetworkImage(
-            imageUrl: team?.logoUrl ?? '',
-            width: 22,
-            height: 22,
-            fit: BoxFit.contain,
-            errorWidget: (_, _, _) =>
-                _teamMarkFallback(summary.opponentName, 22),
-            placeholder: (_, _) => _teamMarkFallback(summary.opponentName, 22),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: AppColors.cardSub,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.divider),
           ),
-          const SizedBox(width: 8),
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              symbol,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: color,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                summary.opponentName,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+              CachedNetworkImage(
+                imageUrl: team?.logoUrl ?? '',
+                width: 22,
+                height: 22,
+                fit: BoxFit.contain,
+                errorWidget: (_, _, _) =>
+                    _teamMarkFallback(summary.opponentName, 22),
+                placeholder: (_, _) =>
+                    _teamMarkFallback(summary.opponentName, 22),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  symbol,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
                 ),
               ),
-              Text(
-                summary.score,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    summary.opponentName,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    summary.score,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _teamMarkFallback(String shortName, double size) {
-    final initial = shortName.isNotEmpty ? shortName.substring(0, 1) : '?';
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: TextStyle(
-          fontSize: size * 0.45,
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
+}
+
+class _RecentGameSummaryData {
+  final String gameId;
+  final String result;
+  final String opponentName;
+  final String score;
+
+  const _RecentGameSummaryData({
+    required this.gameId,
+    required this.result,
+    required this.opponentName,
+    required this.score,
+  });
+}
+
+Widget _teamMarkFallback(String shortName, double size) {
+  final initial = shortName.isNotEmpty ? shortName.substring(0, 1) : '?';
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(999),
+    ),
+    alignment: Alignment.center,
+    child: Text(
+      initial,
+      style: TextStyle(
+        fontSize: size * 0.45,
+        color: AppColors.textSecondary,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 class _TodayBaseballCard extends StatelessWidget {
@@ -1642,8 +1681,9 @@ class _TodayBaseballCard extends StatelessWidget {
                     'MY TEAM',
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.accent,
+                      color: AppColors.textPrimary,
                       fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
                     ),
                   ),
                   _gameStatusChip(game),
@@ -1801,7 +1841,7 @@ class _TodayBaseballCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.accent,
+                                color: AppColors.textPrimary,
                               ),
                             ),
                         ],
@@ -1830,12 +1870,26 @@ class _TodayBaseballCard extends StatelessWidget {
                       ),
                     ),
                     if (item.isMyTeamGame)
-                      const Text(
-                        'MY TEAM',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w800,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.background.withValues(alpha: 0.82),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: AppColors.accent.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const Text(
+                          'MY TEAM',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
                         ),
                       ),
                   ],
@@ -1960,19 +2014,20 @@ class _QuickContentSection extends StatelessWidget {
   }
 }
 
-class _QuickContentListItem extends StatelessWidget {
+class _QuickContentListItem extends ConsumerWidget {
   final _QuickContentItemData item;
 
   const _QuickContentListItem({required this.item});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final accent = _quickItemAccent(item);
     final isPrimary =
         item.eyebrow.contains('마이팀') || item.eyebrow.contains('예매');
+    final playerRoute = _PlayerQuickRoute.tryParse(item.route);
 
     return GestureDetector(
-      onTap: () => context.push(item.route),
+      onTap: () => _handleTap(context, ref, playerRoute),
       child: Container(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         decoration: BoxDecoration(
@@ -2038,6 +2093,204 @@ class _QuickContentListItem extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _handleTap(
+    BuildContext context,
+    WidgetRef ref,
+    _PlayerQuickRoute? playerRoute,
+  ) async {
+    if (playerRoute == null) {
+      context.push(item.route);
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final playerAsync = ref.watch(
+              playerDetailProvider(
+                '${playerRoute.playerId}|${playerRoute.season}',
+              ),
+            );
+
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                child: playerAsync.when(
+                  loading: () => const SizedBox(
+                    height: 220,
+                    child: Center(
+                      child: CircularProgressIndicator(color: AppColors.live),
+                    ),
+                  ),
+                  error: (error, stackTrace) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _playerBottomSheetHeader(item: item),
+                      const SizedBox(height: 12),
+                      const Text(
+                        '최근 기록을 불러오지 못했습니다',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _playerBottomSheetButton(context),
+                    ],
+                  ),
+                  data: (player) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _playerBottomSheetHeader(
+                        item: item,
+                        playerName: player.name,
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        '최근 기록',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      if (player.recentGames.isEmpty)
+                        const Text(
+                          '표시할 최근 기록이 없습니다',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        )
+                      else
+                        ...player.recentGames
+                            .take(3)
+                            .map(
+                              (game) => Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.cardSub,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: AppColors.divider,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${game.date} · ${game.opponent}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textDisabled,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        game.summary,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textPrimary,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                      const SizedBox(height: 6),
+                      _playerBottomSheetButton(context),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _playerBottomSheetHeader({
+    required _QuickContentItemData item,
+    String? playerName,
+  }) {
+    final accent = _quickItemAccent(item);
+    return Row(
+      children: [
+        _quickItemAvatar(item, accent),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                item.eyebrow,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: accent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                playerName ?? item.title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                item.subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _playerBottomSheetButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () {
+          Navigator.of(context).pop();
+          context.push(item.route);
+        },
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size.fromHeight(48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: const Text('선수 상세 열기'),
       ),
     );
   }
@@ -2177,18 +2430,6 @@ class _MyTeamBriefData {
   });
 }
 
-class _RecentGameSummaryData {
-  final String result;
-  final String opponentName;
-  final String score;
-
-  const _RecentGameSummaryData({
-    required this.result,
-    required this.opponentName,
-    required this.score,
-  });
-}
-
 class _TodayBaseballBriefData {
   final String headline;
   final String detail;
@@ -2257,4 +2498,34 @@ class _QuickContentItemData {
     this.imageUrl,
     this.fallbackLabel,
   });
+}
+
+class _PlayerQuickRoute {
+  final String playerId;
+  final int season;
+
+  const _PlayerQuickRoute({required this.playerId, required this.season});
+
+  static _PlayerQuickRoute? tryParse(String route) {
+    final uri = Uri.tryParse(route);
+    if (uri == null) {
+      return null;
+    }
+
+    if (uri.pathSegments.length < 3 ||
+        uri.pathSegments[0] != 'records' ||
+        uri.pathSegments[1] != 'player') {
+      return null;
+    }
+
+    final playerId = uri.pathSegments[2];
+    if (playerId.isEmpty) {
+      return null;
+    }
+
+    final season =
+        int.tryParse(uri.queryParameters['season'] ?? '') ??
+        DateTime.now().year;
+    return _PlayerQuickRoute(playerId: playerId, season: season);
+  }
 }

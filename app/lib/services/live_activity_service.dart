@@ -40,7 +40,9 @@ class LiveActivityService {
 
       await _channel.invokeMethod('syncCurrentScore', {
         'gameId': targetGame.gameId,
+        'awayTeamId': targetGame.away.teamId,
         'awayTeam': targetGame.away.shortName,
+        'homeTeamId': targetGame.home.teamId,
         'homeTeam': targetGame.home.shortName,
         'awayScore': targetGame.away.score,
         'homeScore': targetGame.home.score,
@@ -53,6 +55,7 @@ class LiveActivityService {
               ),
         'batter': currentAtBat?.batterName ?? '',
         'pitcher': currentAtBat?.pitcherName ?? '',
+        'pitchCount': currentAtBat?.pitchCount ?? 0,
         'balls': currentAtBat?.balls ?? 0,
         'strikes': currentAtBat?.strikes ?? 0,
         'outs': currentAtBat?.outs ?? 0,

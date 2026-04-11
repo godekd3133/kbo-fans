@@ -32,12 +32,14 @@ class KboDirectPlayerRepository implements PlayerRepository {
       '$_kboBase/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT';
   static const _pitcherEraUrl =
       '$_kboBase/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT';
-  static const _leaderboardMetrics = <LeaderboardMetric, (String, String, String)>{
-    LeaderboardMetric.avg: (_hitterAvgUrl, 'AVG', 'hitter'),
-    LeaderboardMetric.hr: (_hitterHrUrl, 'HR', 'hitter'),
-    LeaderboardMetric.ops: (_hitterOpsUrl, 'OPS', 'hitter'),
-    LeaderboardMetric.era: (_pitcherEraUrl, 'ERA', 'pitcher'),
-  };
+  static const _leaderboardMetrics =
+      <LeaderboardMetric, (String, String, String)>{
+        LeaderboardMetric.avg: (_hitterAvgUrl, 'AVG', 'hitter'),
+        LeaderboardMetric.hr: (_hitterHrUrl, 'HR', 'hitter'),
+        LeaderboardMetric.ops: (_hitterOpsUrl, 'OPS', 'hitter'),
+        LeaderboardMetric.opsPlus: (_hitterOpsUrl, 'OPS', 'hitter'),
+        LeaderboardMetric.era: (_pitcherEraUrl, 'ERA', 'pitcher'),
+      };
   static const _teamHitterUrl = '$_kboBase/Record/Team/Hitter/Basic1.aspx';
   static const _teamPitcherUrl = '$_kboBase/Record/Team/Pitcher/Basic1.aspx';
 
@@ -219,19 +221,22 @@ class KboDirectPlayerRepository implements PlayerRepository {
       _fetchLeaders(_hitterAvgUrl, season, 'AVG', 'hitter'),
       _fetchLeaders(_hitterHrUrl, season, 'HR', 'hitter'),
       _fetchLeaders(_hitterOpsUrl, season, 'OPS', 'hitter'),
+      _fetchLeaderboard(_hitterOpsUrl, season, 'OPS', 'hitter'),
       _fetchLeaders(_pitcherEraUrl, season, 'ERA', 'pitcher'),
     ]);
 
     final avgLeaders = results[0];
     final hrLeaders = results[1];
     final opsLeaders = results[2];
-    final eraLeaders = results[3];
+    final opsPlusLeaders = computeOpsPlusLeaders(results[3]);
+    final eraLeaders = results[4];
 
     return RecordsOverview(
       season: season,
       avgLeaders: avgLeaders,
       hrLeaders: hrLeaders,
       opsLeaders: opsLeaders,
+      opsPlusLeaders: opsPlusLeaders.take(5).toList(),
       eraLeaders: eraLeaders,
       todayHitter: _buildFeaturedPlayer(
         season: season,
@@ -269,11 +274,25 @@ class KboDirectPlayerRepository implements PlayerRepository {
     required int season,
     required LeaderboardMetric metric,
   }) async {
+    if (metric == LeaderboardMetric.opsPlus) {
+      final opsLeaders = await _fetchLeaderboard(
+        _hitterOpsUrl,
+        season,
+        'OPS',
+        'hitter',
+      );
+      return computeOpsPlusLeaders(opsLeaders);
+    }
     final metricInfo = _leaderboardMetrics[metric];
     if (metricInfo == null) {
       return const [];
     }
-    return _fetchLeaderboard(metricInfo.$1, season, metricInfo.$2, metricInfo.$3);
+    return _fetchLeaderboard(
+      metricInfo.$1,
+      season,
+      metricInfo.$2,
+      metricInfo.$3,
+    );
   }
 
   Future<String> _getText(String url) async {

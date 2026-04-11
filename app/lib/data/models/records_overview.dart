@@ -1,4 +1,4 @@
-enum LeaderboardMetric { avg, hr, ops, era, war, wrcPlus }
+enum LeaderboardMetric { avg, hr, ops, era, war, opsPlus }
 
 extension LeaderboardMetricX on LeaderboardMetric {
   String get key => switch (this) {
@@ -7,7 +7,7 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.ops => 'ops',
     LeaderboardMetric.era => 'era',
     LeaderboardMetric.war => 'war',
-    LeaderboardMetric.wrcPlus => 'wrcPlus',
+    LeaderboardMetric.opsPlus => 'opsPlus',
   };
 
   String get title => switch (this) {
@@ -16,7 +16,7 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.ops => '리그 OPS 리더보드',
     LeaderboardMetric.era => '리그 ERA 리더보드',
     LeaderboardMetric.war => '리그 WAR 리더보드',
-    LeaderboardMetric.wrcPlus => '리그 wRC+ 리더보드',
+    LeaderboardMetric.opsPlus => '리그 OPS+ 리더보드',
   };
 
   String get shortLabel => switch (this) {
@@ -25,7 +25,7 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.ops => 'OPS',
     LeaderboardMetric.era => 'ERA',
     LeaderboardMetric.war => 'WAR',
-    LeaderboardMetric.wrcPlus => 'wRC+',
+    LeaderboardMetric.opsPlus => 'OPS+',
   };
 
   bool get supportedByOfficialSource => switch (this) {
@@ -34,7 +34,7 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.ops => true,
     LeaderboardMetric.era => true,
     LeaderboardMetric.war => false,
-    LeaderboardMetric.wrcPlus => false,
+    LeaderboardMetric.opsPlus => true,
   };
 
   static LeaderboardMetric? fromKey(String value) {
@@ -92,6 +92,7 @@ class RecordsOverview {
   final List<RecordLeader> avgLeaders;
   final List<RecordLeader> hrLeaders;
   final List<RecordLeader> opsLeaders;
+  final List<RecordLeader> opsPlusLeaders;
   final List<RecordLeader> eraLeaders;
   final FeaturedPlayerCard todayHitter;
   final FeaturedPlayerCard todayPitcher;
@@ -103,10 +104,51 @@ class RecordsOverview {
     required this.avgLeaders,
     required this.hrLeaders,
     required this.opsLeaders,
+    required this.opsPlusLeaders,
     required this.eraLeaders,
     required this.todayHitter,
     required this.todayPitcher,
     required this.monthHitter,
     required this.monthPitcher,
   });
+}
+
+List<RecordLeader> computeOpsPlusLeaders(List<RecordLeader> opsLeaders) {
+  final parsed = opsLeaders
+      .map((leader) => (leader: leader, ops: double.tryParse(leader.value)))
+      .where((entry) => entry.ops != null)
+      .toList();
+  if (parsed.isEmpty) {
+    return const [];
+  }
+
+  final leagueAverageOps =
+      parsed.fold<double>(0, (sum, entry) => sum + entry.ops!) / parsed.length;
+  if (leagueAverageOps <= 0) {
+    return const [];
+  }
+
+  final calculated = parsed.map((entry) {
+    final opsPlus = ((entry.ops! / leagueAverageOps) * 100).round();
+    return RecordLeader(
+      rank: 0,
+      playerId: entry.leader.playerId,
+      playerType: entry.leader.playerType,
+      name: entry.leader.name,
+      teamId: entry.leader.teamId,
+      value: '$opsPlus',
+    );
+  }).toList()..sort((a, b) => int.parse(b.value).compareTo(int.parse(a.value)));
+
+  return [
+    for (var index = 0; index < calculated.length; index++)
+      RecordLeader(
+        rank: index + 1,
+        playerId: calculated[index].playerId,
+        playerType: calculated[index].playerType,
+        name: calculated[index].name,
+        teamId: calculated[index].teamId,
+        value: calculated[index].value,
+      ),
+  ];
 }

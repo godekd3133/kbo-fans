@@ -209,8 +209,22 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
 
   final scoreboard = await ref.read(scoreboardProvider(date).future);
   final yearMonth = date.substring(0, 7);
+  final currentMonthDate = DateTime(
+    int.parse(date.substring(0, 4)),
+    int.parse(date.substring(5, 7)),
+  );
+  final previousMonthDate = DateTime(
+    currentMonthDate.year,
+    currentMonthDate.month - 1,
+  );
+  final previousYearMonth =
+      '${previousMonthDate.year.toString().padLeft(4, '0')}-${previousMonthDate.month.toString().padLeft(2, '0')}';
   final season = int.parse(date.substring(0, 4));
-  final schedule = await ref.read(scheduleProvider(yearMonth).future);
+  final schedules = await Future.wait([
+    ref.read(scheduleProvider(previousYearMonth).future),
+    ref.read(scheduleProvider(yearMonth).future),
+  ]);
+  final schedule = [...schedules[0], ...schedules[1]];
   final standings = await ref.read(standingsProvider(season).future);
   final overview = await ref.read(recordsOverviewProvider(season).future);
 
@@ -337,13 +351,14 @@ final recordsOverviewProvider = FutureProvider.family<RecordsOverview, int>((
   return ref.watch(playerRepositoryProvider).getRecordsOverview(season: season);
 });
 
-final leaderboardProvider =
-    FutureProvider.family<List<RecordLeader>, String>((ref, key) {
-      final parts = key.split('|');
-      final season = int.parse(parts[0]);
-      final metric =
-          LeaderboardMetricX.fromKey(parts[1]) ?? LeaderboardMetric.avg;
-      return ref
-          .watch(playerRepositoryProvider)
-          .getLeaderboard(season: season, metric: metric);
-    });
+final leaderboardProvider = FutureProvider.family<List<RecordLeader>, String>((
+  ref,
+  key,
+) {
+  final parts = key.split('|');
+  final season = int.parse(parts[0]);
+  final metric = LeaderboardMetricX.fromKey(parts[1]) ?? LeaderboardMetric.avg;
+  return ref
+      .watch(playerRepositoryProvider)
+      .getLeaderboard(season: season, metric: metric);
+});

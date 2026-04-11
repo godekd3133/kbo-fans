@@ -39,15 +39,16 @@ class MyTeamGameCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerLeft,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: (awayTeam?.primaryColor ?? AppColors.live).withValues(
-                    alpha: 0.16,
-                  ),
+                  color: AppColors.background.withValues(alpha: 0.88),
                   borderRadius: BorderRadius.circular(999),
                   border: Border.all(
                     color: (awayTeam?.primaryColor ?? AppColors.live)
-                        .withValues(alpha: 0.4),
+                        .withValues(alpha: 0.55),
                   ),
                 ),
                 child: Text(
@@ -55,8 +56,8 @@ class MyTeamGameCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                    color: awayTeam?.primaryColor ?? AppColors.live,
+                    letterSpacing: 0.35,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),

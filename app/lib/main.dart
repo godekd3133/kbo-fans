@@ -14,6 +14,7 @@ import 'core/router/app_router.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
 import 'data/models/game.dart';
+import 'data/models/records_overview.dart';
 import 'data/repositories/kbo_direct_repository.dart';
 import 'services/game_event_alert_service.dart';
 import 'services/push_notification_service.dart';
@@ -234,6 +235,13 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     }
 
     await Future<void>.delayed(const Duration(seconds: 4));
+    final teamIds = KboTeams.teams.map((team) => team.id).toList(growable: false);
+    final metrics = [
+      LeaderboardMetric.avg,
+      LeaderboardMetric.hr,
+      LeaderboardMetric.ops,
+      LeaderboardMetric.era,
+    ];
 
     for (var season = currentSeason - 1; season >= 2001; season--) {
       try {
@@ -241,6 +249,29 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         await ref.read(standingsProvider(season).future);
         await Future<void>.delayed(const Duration(milliseconds: 250));
         await ref.read(recordsOverviewProvider(season).future);
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+
+        for (final metric in metrics) {
+          try {
+            await ref.read(leaderboardProvider('$season|${metric.key}').future);
+          } catch (error) {
+            DevConsole.instance.warn(
+              'HISTORY leaderboard warm ${metric.key} $season skipped: $error',
+            );
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 180));
+        }
+
+        for (final teamId in teamIds) {
+          try {
+            await ref.read(teamRecordsProvider('$teamId|$season').future);
+          } catch (error) {
+            DevConsole.instance.warn(
+              'HISTORY teamRecords warm $teamId $season skipped: $error',
+            );
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 220));
+        }
       } catch (error) {
         DevConsole.instance.warn('HISTORY warm season $season skipped: $error');
       }

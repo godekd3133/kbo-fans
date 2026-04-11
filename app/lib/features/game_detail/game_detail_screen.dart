@@ -45,8 +45,14 @@ String _displayStadiumName(String stadium) {
 class GameDetailScreen extends ConsumerWidget {
   final String gameId;
   final Game? game;
+  final String? initialTab;
 
-  const GameDetailScreen({super.key, required this.gameId, this.game});
+  const GameDetailScreen({
+    super.key,
+    required this.gameId,
+    this.game,
+    this.initialTab,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -55,7 +61,11 @@ class GameDetailScreen extends ConsumerWidget {
     return gameAsync.when(
       loading: () {
         if (game != null) {
-          return _GameDetailBody(game: game!, gameId: gameId);
+          return _GameDetailBody(
+            game: game!,
+            gameId: gameId,
+            initialTabIndex: _tabIndexFromName(initialTab),
+          );
         }
         return const Scaffold(
           body: SafeArea(
@@ -80,7 +90,11 @@ class GameDetailScreen extends ConsumerWidget {
           );
         }
 
-        return _GameDetailBody(game: resolvedGame, gameId: gameId);
+        return _GameDetailBody(
+          game: resolvedGame,
+          gameId: gameId,
+          initialTabIndex: _tabIndexFromName(initialTab),
+        );
       },
     );
   }
@@ -89,8 +103,13 @@ class GameDetailScreen extends ConsumerWidget {
 class _GameDetailBody extends ConsumerStatefulWidget {
   final String gameId;
   final Game game;
+  final int initialTabIndex;
 
-  const _GameDetailBody({required this.gameId, required this.game});
+  const _GameDetailBody({
+    required this.gameId,
+    required this.game,
+    this.initialTabIndex = 0,
+  });
 
   @override
   ConsumerState<_GameDetailBody> createState() => _GameDetailBodyState();
@@ -99,18 +118,27 @@ class _GameDetailBody extends ConsumerStatefulWidget {
 class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     with WidgetsBindingObserver {
   Timer? _refreshTimer;
+  bool _didInitialRefresh = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _startRefreshTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _didInitialRefresh) {
+        return;
+      }
+      _didInitialRefresh = true;
+      unawaited(_refreshGameDetail());
+    });
   }
 
   @override
   void didUpdateWidget(covariant _GameDetailBody oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.gameId != widget.gameId) {
+    if (oldWidget.gameId != widget.gameId ||
+        oldWidget.game.status != widget.game.status) {
       _refreshTimer?.cancel();
       _startRefreshTimer();
     }
@@ -193,6 +221,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
 
     return DefaultTabController(
       length: 4,
+      initialIndex: widget.initialTabIndex.clamp(0, 3),
       child: Scaffold(
         body: SafeArea(
           child: NestedScrollView(
@@ -379,12 +408,20 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       ],
     );
   }
+}
 
-  String _formatNumber(int n) {
-    if (n >= 1000) {
-      return '${(n / 1000).toStringAsFixed(0)},${(n % 1000).toString().padLeft(3, '0')}';
-    }
-    return '$n';
+int _tabIndexFromName(String? tab) {
+  switch ((tab ?? '').toLowerCase()) {
+    case 'relay':
+    case 'middle':
+      return 1;
+    case 'box':
+    case 'boxscore':
+      return 2;
+    case 'lineup':
+      return 3;
+    default:
+      return 0;
   }
 }
 

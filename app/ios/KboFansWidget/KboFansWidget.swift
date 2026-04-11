@@ -10,8 +10,11 @@ struct KboFansWidgetEntry: TimelineEntry {
   let subtitle: String
   let status: String
   let score: String
+  let awayTeamId: String
+  let homeTeamId: String
   let batter: String
   let pitcher: String
+  let pitchCount: Int
   let balls: Int
   let strikes: Int
   let outs: Int
@@ -26,8 +29,11 @@ struct KboFansWidgetProvider: TimelineProvider {
       subtitle: "잠실",
       status: "4회초",
       score: "6 : 2",
+      awayTeamId: "LG",
+      homeTeamId: "KT",
       batter: "박해민",
       pitcher: "켈리",
+      pitchCount: 37,
       balls: 2,
       strikes: 1,
       outs: 1,
@@ -53,8 +59,11 @@ struct KboFansWidgetProvider: TimelineProvider {
       subtitle: data?.string(forKey: "widget_subtitle") ?? "KBO Fans",
       status: data?.string(forKey: "widget_status") ?? "",
       score: data?.string(forKey: "widget_score") ?? "",
+      awayTeamId: data?.string(forKey: "widget_away_team_id") ?? "",
+      homeTeamId: data?.string(forKey: "widget_home_team_id") ?? "",
       batter: data?.string(forKey: "widget_batter") ?? "",
       pitcher: data?.string(forKey: "widget_pitcher") ?? "",
+      pitchCount: Int(data?.string(forKey: "widget_pitch_count") ?? "0") ?? 0,
       balls: Int(data?.string(forKey: "widget_balls") ?? "0") ?? 0,
       strikes: Int(data?.string(forKey: "widget_strikes") ?? "0") ?? 0,
       outs: Int(data?.string(forKey: "widget_outs") ?? "0") ?? 0,
@@ -76,10 +85,12 @@ struct KboFansWidgetEntryView: View {
         .foregroundStyle(.gray)
       Spacer(minLength: 6)
       HStack(alignment: .center) {
+        TeamLogoView(teamId: entry.awayTeamId, fallback: "A", size: 22)
         Text(entry.score)
           .font(.title2)
           .bold()
           .foregroundStyle(.white)
+        TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 22)
         Spacer(minLength: 10)
         _countBadges(balls: entry.balls, strikes: entry.strikes, outs: entry.outs)
       }
@@ -93,7 +104,7 @@ struct KboFansWidgetEntryView: View {
           .lineLimit(1)
       }
       if !entry.pitcher.isEmpty {
-        Text("투수 \(entry.pitcher)")
+        Text(pitcherLine(name: entry.pitcher, pitchCount: entry.pitchCount))
           .font(.caption)
           .foregroundStyle(.secondary)
           .lineLimit(1)
@@ -133,12 +144,25 @@ struct KboFansLiveActivityView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      HStack(alignment: .center, spacing: 12) {
-        scoreColumn(team: context.state.awayTeam, score: context.state.awayScore)
-        Spacer(minLength: 8)
-        inningBadge
-        Spacer(minLength: 8)
-        scoreColumn(team: context.state.homeTeam, score: context.state.homeScore, trailing: true)
+      HStack {
+        Spacer(minLength: 0)
+        HStack(alignment: .center, spacing: 14) {
+          scoreColumn(
+            teamId: context.state.awayTeamId,
+            team: context.state.awayTeam,
+            score: context.state.awayScore
+          )
+            .frame(width: 64, alignment: .trailing)
+          inningBadge
+          scoreColumn(
+            teamId: context.state.homeTeamId,
+            team: context.state.homeTeam,
+            score: context.state.homeScore,
+            trailing: true
+          )
+            .frame(width: 64, alignment: .leading)
+        }
+        Spacer(minLength: 0)
       }
 
       HStack {
@@ -158,7 +182,12 @@ struct KboFansLiveActivityView: View {
               .foregroundStyle(.secondary)
           }
           if !context.state.pitcher.isEmpty {
-            Text("투수 \(context.state.pitcher)")
+            Text(
+              pitcherLine(
+                name: context.state.pitcher,
+                pitchCount: context.state.pitchCount
+              )
+            )
               .font(.caption)
               .foregroundStyle(.secondary)
           }
@@ -177,12 +206,28 @@ struct KboFansLiveActivityView: View {
     .activitySystemActionForegroundColor(.white)
   }
 
-  private func scoreColumn(team: String, score: Int, trailing: Bool = false) -> some View {
+  private func scoreColumn(
+    teamId: String,
+    team: String,
+    score: Int,
+    trailing: Bool = false
+  ) -> some View {
     VStack(alignment: trailing ? .trailing : .leading, spacing: 4) {
-      Text(team)
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .lineLimit(1)
+      HStack(spacing: 6) {
+        if trailing {
+          Text(team)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+          TeamLogoView(teamId: teamId, fallback: team, size: 20)
+        } else {
+          TeamLogoView(teamId: teamId, fallback: team, size: 20)
+          Text(team)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+      }
       Text("\(score)")
         .font(.system(size: 30, weight: .bold, design: .rounded))
         .foregroundStyle(.white)
@@ -202,6 +247,14 @@ struct KboFansLiveActivityView: View {
   }
 }
 
+private func pitcherLine(name: String, pitchCount: Int) -> String {
+  guard !name.isEmpty else { return "" }
+  if pitchCount > 0 {
+    return "투수 \(name) · \(pitchCount)구"
+  }
+  return "투수 \(name)"
+}
+
 @available(iOS 16.1, *)
 struct KboFansLiveActivityWidget: Widget {
   var body: some WidgetConfiguration {
@@ -211,9 +264,12 @@ struct KboFansLiveActivityWidget: Widget {
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
           VStack(alignment: .leading, spacing: 2) {
-            Text(context.state.awayTeam)
-              .font(.caption2)
-              .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+              TeamLogoView(teamId: context.state.awayTeamId, fallback: context.state.awayTeam, size: 16)
+              Text(context.state.awayTeam)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
             Text("\(context.state.awayScore)")
               .font(.title3.weight(.bold))
               .foregroundStyle(.white)
@@ -232,9 +288,12 @@ struct KboFansLiveActivityWidget: Widget {
         }
         DynamicIslandExpandedRegion(.trailing) {
           VStack(alignment: .trailing, spacing: 2) {
-            Text(context.state.homeTeam)
-              .font(.caption2)
-              .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+              Text(context.state.homeTeam)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+              TeamLogoView(teamId: context.state.homeTeamId, fallback: context.state.homeTeam, size: 16)
+            }
             Text("\(context.state.homeScore)")
               .font(.title3.weight(.bold))
               .foregroundStyle(.white)
@@ -284,6 +343,61 @@ struct KboFansLiveActivityWidget: Widget {
       .keylineTint(Color(red: 1.0, green: 0.27, blue: 0.27))
     }
   }
+}
+
+private struct TeamLogoView: View {
+  let teamId: String
+  let fallback: String
+  let size: CGFloat
+
+  var body: some View {
+    if let assetName = teamLogoAssetName(teamId: teamId) {
+      Image(assetName)
+        .resizable()
+        .scaledToFit()
+        .frame(width: size, height: size)
+    } else if let url = teamLogoURL(teamId: teamId) {
+      AsyncImage(url: url) { phase in
+        switch phase {
+        case .success(let image):
+          image
+            .resizable()
+            .scaledToFit()
+        default:
+          fallbackView
+        }
+      }
+      .frame(width: size, height: size)
+    } else {
+      fallbackView
+    }
+  }
+
+  private var fallbackView: some View {
+    ZStack {
+      RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
+        .fill(Color.white.opacity(0.12))
+      Text(String(fallback.prefix(1)))
+        .font(.system(size: size * 0.45, weight: .bold, design: .rounded))
+        .foregroundStyle(.white)
+    }
+    .frame(width: size, height: size)
+  }
+}
+
+private func teamLogoAssetName(teamId: String) -> String? {
+  let trimmed = teamId.trimmingCharacters(in: .whitespacesAndNewlines)
+  guard !trimmed.isEmpty else { return nil }
+  return "TeamLogo_\(trimmed)"
+}
+
+private func teamLogoURL(teamId: String) -> URL? {
+  let trimmed = teamId.trimmingCharacters(in: .whitespacesAndNewlines)
+  guard !trimmed.isEmpty else { return nil }
+  let year = Calendar.current.component(.year, from: Date())
+  return URL(
+    string: "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/\(year)/initial_\(trimmed)_s.png"
+  )
 }
 
 @ViewBuilder

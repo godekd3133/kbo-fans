@@ -42,11 +42,20 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/boot',
     redirect: (context, state) {
       final location = state.uri.path;
+      final isOnboardingEdit =
+          location == '/onboarding' &&
+          state.uri.queryParameters['mode'] == 'edit';
       if (onboardingDone == null) {
         return location == '/boot' ? null : '/boot';
       }
+      if (!onboardingDone) {
+        return location == '/onboarding' ? null : '/onboarding';
+      }
       if (location == '/boot') {
-        return onboardingDone ? '/home' : '/onboarding';
+        return '/home';
+      }
+      if (location == '/onboarding' && !isOnboardingEdit) {
+        return '/home';
       }
       return null;
     },
@@ -57,7 +66,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        builder: (context, state) => OnboardingScreen(
+          isEditMode: state.uri.queryParameters['mode'] == 'edit',
+        ),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -132,6 +143,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => GameDetailScreen(
           gameId: state.pathParameters['gameId']!,
           game: state.extra as Game?,
+          initialTab: state.uri.queryParameters['tab'],
         ),
       ),
       GoRoute(

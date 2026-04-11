@@ -72,7 +72,7 @@ class PushService:
         return {"sent": True, "messages": sent}
 
     def _build_topics(self, payload: PushRegisterRequest) -> list[str]:
-        team_key = payload.myTeam or "ALL"
+        has_my_team = payload.myTeam is not None and payload.myTeam != ""
         topics: list[str] = []
 
         topic_flags = {
@@ -91,8 +91,10 @@ class PushService:
 
             if payload.notifications.allGames:
                 topics.append(f"{topic_name}_ALL")
-            else:
-                topics.append(f"{topic_name}_{team_key}")
+                continue
+
+            if has_my_team:
+                topics.append(f"{topic_name}_{payload.myTeam}")
 
         if payload.notifications.allGames:
             topics.append("all_games_enabled")

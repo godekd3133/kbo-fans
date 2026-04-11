@@ -64,8 +64,7 @@ class LeaderboardScreen extends ConsumerWidget {
                       }
                       return ListView.separated(
                         itemCount: leaders.length,
-                        separatorBuilder: (_, _) =>
-                            const SizedBox(height: 10),
+                        separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final leader = leaders[index];
                           return _leaderRow(
@@ -148,7 +147,8 @@ class LeaderboardScreen extends ConsumerWidget {
                       imageUrl: team.logoUrl,
                       width: 20,
                       height: 20,
-                      errorWidget: (_, _, _) => _teamLogoFallback(team.shortName),
+                      errorWidget: (_, _, _) =>
+                          _teamLogoFallback(team.shortName),
                     ),
                     const SizedBox(width: 8),
                   ],
@@ -180,10 +180,7 @@ class LeaderboardScreen extends ConsumerWidget {
             const SizedBox(width: 12),
             Text(
               leader.value,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
             ),
           ],
         ),
@@ -208,9 +205,11 @@ class LeaderboardScreen extends ConsumerWidget {
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const Text(
-            '현재 KBO 공식 소스 기준으로는 WAR, wRC+ 리더보드가 같은 방식으로 공개되지 않아 아직 연결하지 못했습니다.',
-            style: TextStyle(
+          Text(
+            metric == LeaderboardMetric.war
+                ? '현재 KBO 공식 소스 기준으로는 WAR 리더보드를 같은 방식으로 공개하지 않아 아직 연결하지 못했습니다.'
+                : '현재 이 지표는 사용할 수 없습니다.',
+            style: const TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
               height: 1.45,

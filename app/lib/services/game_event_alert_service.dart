@@ -25,6 +25,7 @@ class GameEventAlertService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _notificationsAllowed = false;
 
   Future<void> initialize() async {
     if (_initialized || kIsWeb) {
@@ -40,16 +41,17 @@ class GameEventAlertService {
     );
 
     await _plugin.initialize(settings);
-    await _plugin
+    final androidAllowed = await _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >()
         ?.requestNotificationsPermission();
-    await _plugin
+    final iosAllowed = await _plugin
         .resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin
         >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
+    _notificationsAllowed = androidAllowed ?? iosAllowed ?? true;
     _initialized = true;
   }
 
@@ -63,18 +65,23 @@ class GameEventAlertService {
     }
 
     await initialize();
+    if (!_notificationsAllowed) {
+      return;
+    }
     final settings = await PushNotificationService.instance.loadSettings();
+    final prefs = await SharedPreferences.getInstance();
+    final snapshots = _readSnapshots(prefs);
     final trackedGames = _trackedGames(
       games: games,
       myTeamId: myTeamId,
       trackAllGames: settings.allGames,
     );
+    final trackedGameIds = trackedGames.map((game) => game.gameId).toSet();
+    snapshots.removeWhere((gameId, _) => !trackedGameIds.contains(gameId));
     if (trackedGames.isEmpty) {
+      await _writeSnapshots(prefs, snapshots);
       return;
     }
-
-    final prefs = await SharedPreferences.getInstance();
-    final snapshots = _readSnapshots(prefs);
 
     for (final game in trackedGames) {
       final previous = snapshots[game.gameId];
@@ -115,12 +122,7 @@ class GameEventAlertService {
       snapshots[game.gameId] = current;
     }
 
-    await prefs.setString(
-      _snapshotKey,
-      jsonEncode({
-        for (final entry in snapshots.entries) entry.key: entry.value.toJson(),
-      }),
-    );
+    await _writeSnapshots(prefs, snapshots);
   }
 
   List<Game> _trackedGames({
@@ -246,7 +248,8 @@ class GameEventAlertService {
             : '선발 라인업 변경';
         await _showNow(
           title: title,
-          body: '${game.away.shortName} vs ${game.home.shortName} 라인업이 업데이트됐습니다.',
+          body:
+              '${game.away.shortName} vs ${game.home.shortName} 라인업이 업데이트됐습니다.',
           tag: '${game.gameId}:lineup:${signature.hashCode}',
         );
       }
@@ -255,7 +258,8 @@ class GameEventAlertService {
     } catch (error) {
       final lastChecked = previous?.lastLineupCheckedAtMs ?? 0;
       final shouldLog =
-          checkedAtMs - lastChecked >= const Duration(minutes: 1).inMilliseconds;
+          checkedAtMs - lastChecked >=
+          const Duration(minutes: 1).inMilliseconds;
       if (shouldLog) {
         DevConsole.instance.warn('Lineup alert processing failed: $error');
       }
@@ -338,7 +342,8 @@ class GameEventAlertService {
     final homeDelta = current.homeScore - previous.homeScore;
     if (settings.scoring && (awayDelta > 0 || homeDelta > 0)) {
       if (isMyTeamGame && myTeam != null && opponent != null) {
-        final myScoreDelta = current.scoreForTeam(myTeam.teamId) -
+        final myScoreDelta =
+            current.scoreForTeam(myTeam.teamId) -
             previous.scoreForTeam(myTeam.teamId);
         if (myScoreDelta > 0) {
           await _showNow(
@@ -356,8 +361,7 @@ class GameEventAlertService {
           title: '${scorer.shortName} $delta점 득점',
           body:
               '현재 ${game.away.shortName} ${current.awayScore} : ${current.homeScore} ${game.home.shortName}',
-          tag:
-              '${game.gameId}:score:${current.awayScore}:${current.homeScore}',
+          tag: '${game.gameId}:score:${current.awayScore}:${current.homeScore}',
         );
       }
     }
@@ -369,14 +373,18 @@ class GameEventAlertService {
         if (isMyTeamGame && myTeam != null && opponent != null) {
           final myLeading = currentLeader == myTeam.teamId;
           await _showNow(
-            title: myLeading ? '${myTeam.shortName} 역전' : '${myTeam.shortName} 역전 허용',
+            title: myLeading
+                ? '${myTeam.shortName} 역전'
+                : '${myTeam.shortName} 역전 허용',
             body:
                 '${opponent.shortName}전 스코어 ${current.scoreForTeam(myTeam.teamId)}:${current.scoreForTeam(opponent.teamId)}',
             tag:
                 '${game.gameId}:reversal:${current.awayScore}:${current.homeScore}',
           );
         } else {
-          final leader = currentLeader == game.away.teamId ? game.away : game.home;
+          final leader = currentLeader == game.away.teamId
+              ? game.away
+              : game.home;
           await _showNow(
             title: '${leader.shortName} 역전',
             body:
@@ -397,8 +405,8 @@ class GameEventAlertService {
         final result = myScore > opponentScore
             ? '승리'
             : myScore < opponentScore
-                ? '패배'
-                : '무승부';
+            ? '패배'
+            : '무승부';
         await _showNow(
           title: '${myTeam.shortName} 경기 종료',
           body: '$result · $myScore : $opponentScore ${opponent.shortName}',
@@ -485,6 +493,22 @@ class GameEventAlertService {
     } catch (_) {
       return {};
     }
+  }
+
+  Future<void> _writeSnapshots(
+    SharedPreferences prefs,
+    Map<String, _GameAlertSnapshot> snapshots,
+  ) async {
+    if (snapshots.isEmpty) {
+      await prefs.remove(_snapshotKey);
+      return;
+    }
+    await prefs.setString(
+      _snapshotKey,
+      jsonEncode({
+        for (final entry in snapshots.entries) entry.key: entry.value.toJson(),
+      }),
+    );
   }
 }
 

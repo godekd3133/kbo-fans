@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
@@ -95,9 +97,15 @@ class PushNotificationService {
       '${_prefsPrefix}debug_last_init_status';
   static const _debugLastInitReasonKey =
       '${_prefsPrefix}debug_last_init_reason';
+  static const _channelId = 'remote_push_foreground';
+  static const _channelName = '원격 푸시 알림';
+  static const _channelDescription = '앱 실행 중 수신한 원격 푸시 알림';
 
   bool _initialized = false;
   String? _lastToken;
+  bool _notificationsAllowed = false;
+  final FlutterLocalNotificationsPlugin _localPlugin =
+      FlutterLocalNotificationsPlugin();
 
   Future<void> initialize({String? myTeam}) async {
     if (_initialized || kIsWeb) {
@@ -107,17 +115,31 @@ class PushNotificationService {
     try {
       await Firebase.initializeApp();
       final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission(alert: true, badge: true, sound: true);
+      final notificationSettings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       await messaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
         sound: true,
       );
+      await _localPlugin.initialize(
+        const InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          iOS: DarwinInitializationSettings(),
+          macOS: DarwinInitializationSettings(),
+        ),
+      );
+      _notificationsAllowed = await _resolveNotificationsAllowed(
+        authorizationStatus: notificationSettings.authorizationStatus,
+      );
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       messaging.onTokenRefresh.listen((token) {
         _lastToken = token;
-        unawaited(syncRegistration(myTeam: myTeam, forceToken: token));
+        unawaited(syncRegistration(forceToken: token));
       });
 
       _initialized = true;
@@ -174,6 +196,7 @@ class PushNotificationService {
 
     try {
       final settings = await loadSettings();
+      final resolvedMyTeam = myTeam ?? await _loadStoredMyTeam();
       final token =
           forceToken ??
           _lastToken ??
@@ -184,7 +207,7 @@ class PushNotificationService {
       }
 
       _lastToken = token;
-      final desiredTopics = _buildTopics(settings, myTeam);
+      final desiredTopics = _buildTopics(settings, resolvedMyTeam);
       final prefs = await SharedPreferences.getInstance();
       final currentTopics =
           (prefs.getStringList(_subscribedTopicsKey) ?? const <String>[])
@@ -208,7 +231,7 @@ class PushNotificationService {
         data: {
           'deviceToken': token,
           'platform': _platform,
-          'myTeam': myTeam,
+          'myTeam': resolvedMyTeam,
           'notifications': settings.toJson(),
         },
       );
@@ -232,38 +255,17 @@ class PushNotificationService {
       'reason': prefs.getString(_debugLastInitReasonKey),
       'topics': prefs.getStringList(_subscribedTopicsKey) ?? const <String>[],
       'settings': (await loadSettings()).toJson(),
+      'notificationsAllowed': _notificationsAllowed,
     };
   }
 
   Set<String> _buildTopics(PushNotificationSettings settings, String? myTeam) {
-    final teamKey = (myTeam == null || myTeam.isEmpty) ? 'ALL' : myTeam;
-    final topics = <String>{};
-      final flags = <String, bool>{
-      'game_start': settings.gameStart,
-      'scoring': settings.scoring,
-      'homerun': settings.homerun,
-      'reversal': settings.reversal,
-      'game_end': settings.gameEnd,
-      'lineup_opened': settings.lineupOpened,
-      'inning_change': settings.inningChange,
-    };
+    return buildPushTopics(settings: settings, myTeam: myTeam);
+  }
 
-    flags.forEach((topicName, enabled) {
-      if (!enabled) {
-        return;
-      }
-      if (settings.allGames) {
-        topics.add('${topicName}_ALL');
-      } else {
-        topics.add('${topicName}_$teamKey');
-      }
-    });
-
-    if (settings.allGames) {
-      topics.add('all_games_enabled');
-    }
-
-    return topics;
+  Future<String?> _loadStoredMyTeam() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('myTeam');
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
@@ -271,6 +273,28 @@ class PushNotificationService {
     final body = message.notification?.body ?? '';
     DevConsole.instance.info(
       'Push foreground: $title ${body.isEmpty ? '' : '· $body'}',
+    );
+    if (!_notificationsAllowed ||
+        message.notification == null ||
+        defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    unawaited(
+      _localPlugin.show(
+        (message.messageId ?? '${title}_$body').hashCode & 0x7fffffff,
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            _channelId,
+            _channelName,
+            channelDescription: _channelDescription,
+            importance: Importance.max,
+            priority: Priority.high,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+      ),
     );
   }
 
@@ -286,4 +310,65 @@ class PushNotificationService {
       await prefs.setString(_debugLastInitReasonKey, reason);
     }
   }
+
+  Future<bool> _resolveNotificationsAllowed({
+    required AuthorizationStatus authorizationStatus,
+  }) async {
+    final authorized =
+        authorizationStatus == AuthorizationStatus.authorized ||
+        authorizationStatus == AuthorizationStatus.provisional;
+    if (!authorized) {
+      return false;
+    }
+
+    final androidAllowed = await _localPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.areNotificationsEnabled();
+    final iosAllowed = await _localPlugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.checkPermissions();
+
+    return androidAllowed ?? iosAllowed?.isEnabled ?? authorized;
+  }
+}
+
+@visibleForTesting
+Set<String> buildPushTopics({
+  required PushNotificationSettings settings,
+  required String? myTeam,
+}) {
+  final hasMyTeam = myTeam != null && myTeam.isNotEmpty;
+  final topics = <String>{};
+  final flags = <String, bool>{
+    'game_start': settings.gameStart,
+    'scoring': settings.scoring,
+    'homerun': settings.homerun,
+    'reversal': settings.reversal,
+    'game_end': settings.gameEnd,
+    'lineup_opened': settings.lineupOpened,
+    'inning_change': settings.inningChange,
+  };
+
+  flags.forEach((topicName, enabled) {
+    if (!enabled) {
+      return;
+    }
+    if (settings.allGames) {
+      topics.add('${topicName}_ALL');
+      return;
+    }
+    if (hasMyTeam) {
+      topics.add('${topicName}_$myTeam');
+    }
+  });
+
+  if (settings.allGames) {
+    topics.add('all_games_enabled');
+  }
+
+  return topics;
 }

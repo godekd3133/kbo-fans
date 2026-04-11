@@ -3,13 +3,16 @@ import Foundation
 
 struct KboFansScoreAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
+    var awayTeamId: String
     var awayTeam: String
+    var homeTeamId: String
     var homeTeam: String
     var awayScore: Int
     var homeScore: Int
     var inning: String
     var batter: String
     var pitcher: String
+    var pitchCount: Int
     var balls: Int
     var strikes: Int
     var outs: Int

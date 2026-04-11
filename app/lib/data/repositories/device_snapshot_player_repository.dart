@@ -115,6 +115,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
         (cached.avgLeaders.isNotEmpty ||
             cached.hrLeaders.isNotEmpty ||
             cached.opsLeaders.isNotEmpty ||
+            cached.opsPlusLeaders.isNotEmpty ||
             cached.eraLeaders.isNotEmpty)) {
       return cached;
     }
@@ -201,19 +202,17 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
   };
 
   List<RecordLeader> _decodeLeadersPayload(Map<String, dynamic> json) =>
-      (json['leaders'] as List<dynamic>? ?? const [])
-          .map((item) {
-            final map = item as Map<String, dynamic>;
-            return RecordLeader(
-              rank: map['rank'] as int? ?? 0,
-              playerId: map['playerId'] as String? ?? '',
-              playerType: map['playerType'] as String? ?? '',
-              name: map['name'] as String? ?? '',
-              teamId: map['teamId'] as String? ?? '',
-              value: map['value'] as String? ?? '',
-            );
-          })
-          .toList();
+      (json['leaders'] as List<dynamic>? ?? const []).map((item) {
+        final map = item as Map<String, dynamic>;
+        return RecordLeader(
+          rank: map['rank'] as int? ?? 0,
+          playerId: map['playerId'] as String? ?? '',
+          playerType: map['playerType'] as String? ?? '',
+          name: map['name'] as String? ?? '',
+          teamId: map['teamId'] as String? ?? '',
+          value: map['value'] as String? ?? '',
+        );
+      }).toList();
 
   Object _encodePlayer(PlayerProfile player) => {
     'id': player.id,
@@ -336,6 +335,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     'avgLeaders': overview.avgLeaders.map(_encodeLeader).toList(),
     'hrLeaders': overview.hrLeaders.map(_encodeLeader).toList(),
     'opsLeaders': overview.opsLeaders.map(_encodeLeader).toList(),
+    'opsPlusLeaders': overview.opsPlusLeaders.map(_encodeLeader).toList(),
     'eraLeaders': overview.eraLeaders.map(_encodeLeader).toList(),
     'todayHitter': _encodeFeatured(overview.todayHitter),
     'todayPitcher': _encodeFeatured(overview.todayPitcher),
@@ -349,6 +349,9 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
         avgLeaders: _decodeLeaders(json['avgLeaders'] as List<dynamic>?),
         hrLeaders: _decodeLeaders(json['hrLeaders'] as List<dynamic>?),
         opsLeaders: _decodeLeaders(json['opsLeaders'] as List<dynamic>?),
+        opsPlusLeaders: _decodeLeaders(
+          json['opsPlusLeaders'] as List<dynamic>?,
+        ),
         eraLeaders: _decodeLeaders(json['eraLeaders'] as List<dynamic>?),
         todayHitter: _decodeFeatured(
           json['todayHitter'] as Map<String, dynamic>? ?? const {},

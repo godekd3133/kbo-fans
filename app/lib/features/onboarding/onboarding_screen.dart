@@ -11,7 +11,9 @@ import '../../data/providers.dart';
 import '../../core/theme/app_theme.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
-  const OnboardingScreen({super.key});
+  final bool isEditMode;
+
+  const OnboardingScreen({super.key, this.isEditMode = false});
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -21,18 +23,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _selectedTeamId;
 
   Future<void> _saveAndProceed() async {
+    final resolvedTeamId = _selectedTeamId ?? ref.read(myTeamProvider);
     // 마이팀을 전역 Provider에 저장
-    await ref.read(myTeamProvider.notifier).setTeam(_selectedTeamId);
+    await ref.read(myTeamProvider.notifier).setTeam(resolvedTeamId);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('onboardingDone', true);
     ref.read(onboardingDoneProvider.notifier).setValue(true);
-    if (mounted) context.go('/home');
+    if (!mounted) {
+      return;
+    }
+    context.go(widget.isEditMode ? '/settings' : '/home');
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedTeam = _selectedTeamId != null
-        ? KboTeams.byId(_selectedTeamId!)
+    final currentTeamId = ref.watch(myTeamProvider);
+    final effectiveSelectedTeamId = _selectedTeamId ?? currentTeamId;
+    final selectedTeam = effectiveSelectedTeamId != null
+        ? KboTeams.byId(effectiveSelectedTeamId)
         : null;
     final viewportWidth = MediaQuery.of(context).size.width;
     final contentMaxWidth = viewportWidth >= 900 ? 560.0 : 460.0;
@@ -47,6 +55,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           child: Column(
             children: [
               const SizedBox(height: 32),
+              if (widget.isEditMode)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: IconButton(
+                    onPressed: () => context.go('/settings'),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                ),
               Text(
                 'KBO Fans',
                 style: Theme.of(context).textTheme.headlineLarge,
@@ -87,11 +103,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   itemCount: KboTeams.teams.length,
                   itemBuilder: (context, index) {
                     final team = KboTeams.teams[index];
-                    final isSelected = _selectedTeamId == team.id;
+                    final isSelected = effectiveSelectedTeamId == team.id;
                     return GestureDetector(
-                      onTap: () => setState(
-                        () => _selectedTeamId = isSelected ? null : team.id,
-                      ),
+                      onTap: () => setState(() => _selectedTeamId = team.id),
                       child: Container(
                         decoration: BoxDecoration(
                           color: AppColors.card,
@@ -190,7 +204,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _selectedTeamId != null ? _saveAndProceed : null,
+                  onPressed: effectiveSelectedTeamId != null
+                      ? _saveAndProceed
+                      : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
                         selectedTeam?.primaryColor ?? AppColors.divider,
@@ -202,16 +218,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     ),
                   ),
                   child: const Text(
-                    '시작하기',
+                    '선택 완료',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
               const SizedBox(height: 14),
               GestureDetector(
-                onTap: _saveAndProceed,
+                onTap: widget.isEditMode
+                    ? () => context.go('/settings')
+                    : _saveAndProceed,
                 child: Text(
-                  '나중에 설정에서 선택하기',
+                  widget.isEditMode ? '취소' : '나중에 설정에서 선택하기',
                   style: TextStyle(fontSize: 14, color: AppColors.textDisabled),
                 ),
               ),

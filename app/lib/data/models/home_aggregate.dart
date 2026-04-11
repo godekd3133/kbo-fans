@@ -23,11 +23,13 @@ class HomeQuickItem {
 }
 
 class HomeRecentGameSummary {
+  final String gameId;
   final String result;
   final String opponentName;
   final String score;
 
   const HomeRecentGameSummary({
+    required this.gameId,
     required this.result,
     required this.opponentName,
     required this.score,
@@ -113,7 +115,9 @@ HomeMyTeamBrief? _buildLocalMyTeamBrief({
   required List<TeamStanding> standings,
   required String today,
 }) {
-  final todayGame = games.where((game) => game.away.teamId == myTeam || game.home.teamId == myTeam).firstOrNull;
+  final todayGame = games
+      .where((game) => game.away.teamId == myTeam || game.home.teamId == myTeam)
+      .firstOrNull;
   final standing = standings.where((item) => item.teamId == myTeam).firstOrNull;
 
   final flatGames = [
@@ -121,12 +125,17 @@ HomeMyTeamBrief? _buildLocalMyTeamBrief({
       for (final game in day.games) (day.date, game),
   ]..sort((a, b) => a.$1.compareTo(b.$1));
 
-  final recentGames = flatGames
-      .where((entry) => entry.$1.compareTo(today) <= 0)
-      .where((entry) => entry.$2.awayId == myTeam || entry.$2.homeId == myTeam)
-      .where((entry) => entry.$2.awayScore != null && entry.$2.homeScore != null)
-      .toList()
-    ..sort((a, b) => b.$1.compareTo(a.$1));
+  final recentGames =
+      flatGames
+          .where((entry) => entry.$1.compareTo(today) <= 0)
+          .where(
+            (entry) => entry.$2.awayId == myTeam || entry.$2.homeId == myTeam,
+          )
+          .where(
+            (entry) => entry.$2.awayScore != null && entry.$2.homeScore != null,
+          )
+          .toList()
+        ..sort((a, b) => b.$1.compareTo(a.$1));
 
   final recentSummaries = <HomeRecentGameSummary>[];
   var wins = 0;
@@ -150,6 +159,7 @@ HomeMyTeamBrief? _buildLocalMyTeamBrief({
     }
     recentSummaries.add(
       HomeRecentGameSummary(
+        gameId: game.gameId,
         result: result,
         opponentName: isAway ? game.homeName : game.awayName,
         score: '$myScore:$opponentScore',
@@ -187,14 +197,18 @@ List<HomeQuickItem> _buildLocalQuickItems({
   final items = <HomeQuickItem>[];
   final todayGame = myTeamBrief == null
       ? null
-      : games.where((game) => game.gameId == myTeamBrief.todayGameId).firstOrNull;
+      : games
+            .where((game) => game.gameId == myTeamBrief.todayGameId)
+            .firstOrNull;
 
   if (todayGame != null) {
     items.add(
       HomeQuickItem(
         eyebrow: '마이팀 경기',
-        title: '${todayGame.away.shortName} ${todayGame.away.score} : ${todayGame.home.score} ${todayGame.home.shortName}',
-        subtitle: '${todayGame.inning.isEmpty ? todayGame.startTime : todayGame.inning} · ${todayGame.stadium}',
+        title:
+            '${todayGame.away.shortName} ${todayGame.away.score} : ${todayGame.home.score} ${todayGame.home.shortName}',
+        subtitle:
+            '${todayGame.inning.isEmpty ? todayGame.startTime : todayGame.inning} · ${todayGame.stadium}',
         route: '/game/${todayGame.gameId}',
         teamId: myTeamBrief?.teamId,
         fallbackLabel: myTeamBrief?.teamLabel,
@@ -220,7 +234,8 @@ List<HomeQuickItem> _buildLocalQuickItems({
       HomeQuickItem(
         eyebrow: '마이팀 순위',
         title: '${standing.rank}위 · ${standing.teamName}',
-        subtitle: '${standing.wins}승 ${standing.losses}패 ${standing.draws}무 · ${standing.gb}G차',
+        subtitle:
+            '${standing.wins}승 ${standing.losses}패 ${standing.draws}무 · ${standing.gb}G차',
         route: '/standings',
         teamId: standing.teamId,
         fallbackLabel: standing.teamName,
@@ -242,14 +257,21 @@ List<HomeQuickItem> _buildLocalQuickItems({
     );
   }
 
-  final featured = overview.todayHitter.name != null ? overview.todayHitter : overview.todayPitcher;
+  final featured = overview.todayHitter.name != null
+      ? overview.todayHitter
+      : overview.todayPitcher;
   if (featured.name != null) {
     items.add(
       HomeQuickItem(
         eyebrow: featured.label,
         title: featured.name!,
-        subtitle: [featured.headline, featured.summary].whereType<String>().where((v) => v.isNotEmpty).join(' · '),
-        route: featured.playerId != null ? '/records/player/${featured.playerId}?season=$season' : '/records',
+        subtitle: [
+          featured.headline,
+          featured.summary,
+        ].whereType<String>().where((v) => v.isNotEmpty).join(' · '),
+        route: featured.playerId != null
+            ? '/records/player/${featured.playerId}?season=$season'
+            : '/records',
         teamId: featured.teamId,
         imageUrl: featured.imageUrl,
         fallbackLabel: featured.name,

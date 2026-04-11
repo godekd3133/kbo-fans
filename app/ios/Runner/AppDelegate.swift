@@ -102,7 +102,9 @@ import workmanager_apple
 
     guard
       let gameId = arguments["gameId"] as? String,
+      let awayTeamId = arguments["awayTeamId"] as? String,
       let awayTeam = arguments["awayTeam"] as? String,
+      let homeTeamId = arguments["homeTeamId"] as? String,
       let homeTeam = arguments["homeTeam"] as? String,
       let inning = arguments["inning"] as? String,
       let stadium = arguments["stadium"] as? String,
@@ -120,15 +122,18 @@ import workmanager_apple
       return
     }
 
-    let attributes = KboFansScoreAttributes(gameId: gameId)
+      let attributes = KboFansScoreAttributes(gameId: gameId)
       let state = KboFansScoreAttributes.ContentState(
+        awayTeamId: awayTeamId,
         awayTeam: awayTeam,
+        homeTeamId: homeTeamId,
         homeTeam: homeTeam,
         awayScore: awayScore,
         homeScore: homeScore,
         inning: inning,
         batter: arguments["batter"] as? String ?? "",
         pitcher: arguments["pitcher"] as? String ?? "",
+        pitchCount: arguments["pitchCount"] as? Int ?? 0,
         balls: arguments["balls"] as? Int ?? 0,
         strikes: arguments["strikes"] as? Int ?? 0,
         outs: arguments["outs"] as? Int ?? 0,

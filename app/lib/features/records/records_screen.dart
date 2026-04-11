@@ -148,6 +148,12 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     const SizedBox(height: 10),
                     _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
                     const SizedBox(height: 10),
+                    _leaderboardCard(
+                      LeaderboardMetric.opsPlus.title,
+                      overview.opsPlusLeaders,
+                      metric: LeaderboardMetric.opsPlus,
+                    ),
+                    const SizedBox(height: 10),
                     _leaderboardCard('리그 ERA 리더보드', overview.eraLeaders),
                     const SizedBox(height: 10),
                     _leaderboardCard(
@@ -156,11 +162,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       metric: LeaderboardMetric.war,
                     ),
                     const SizedBox(height: 10),
-                    _leaderboardCard(
-                      LeaderboardMetric.wrcPlus.title,
-                      const [],
-                      metric: LeaderboardMetric.wrcPlus,
-                    ),
                     const SizedBox(height: 14),
                   ],
                 ),
@@ -252,12 +253,25 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         ),
                       ),
                       if (isMyTeam)
-                        Text(
-                          '마이팀',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: team.primaryColor,
-                            fontWeight: FontWeight.w700,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.background.withValues(alpha: 0.88),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: team.primaryColor.withValues(alpha: 0.55),
+                            ),
+                          ),
+                          child: const Text(
+                            '마이팀',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                     ],
@@ -268,8 +282,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     style: TextStyle(
                       fontSize: 12,
                       color: isMyTeam
-                          ? team.primaryColor
+                          ? AppColors.textPrimary
                           : AppColors.textSecondary,
+                      fontWeight: isMyTeam ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
                 ],
@@ -1308,8 +1323,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       onTap: resolvedMetric == null
           ? null
           : () => context.push(
-                '/records/leaderboard/${resolvedMetric.key}?season=$_selectedSeason',
-              ),
+              '/records/leaderboard/${resolvedMetric.key}?season=$_selectedSeason',
+            ),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(

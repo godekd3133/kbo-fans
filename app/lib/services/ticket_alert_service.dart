@@ -13,10 +13,7 @@ class TicketAlertResult {
   final bool scheduled;
   final String message;
 
-  const TicketAlertResult({
-    required this.scheduled,
-    required this.message,
-  });
+  const TicketAlertResult({required this.scheduled, required this.message});
 }
 
 class TicketAlertService {
@@ -33,8 +30,10 @@ class TicketAlertService {
     Duration(minutes: 10),
   ];
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  bool _notificationsAllowed = false;
 
   Future<void> initialize() async {
     if (_initialized || kIsWeb) {
@@ -47,16 +46,25 @@ class TicketAlertService {
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const darwin = DarwinInitializationSettings();
-    const settings = InitializationSettings(android: android, iOS: darwin, macOS: darwin);
+    const settings = InitializationSettings(
+      android: android,
+      iOS: darwin,
+      macOS: darwin,
+    );
 
     await _plugin.initialize(settings);
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+    final androidAllowed = await _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
-    await _plugin
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+    final iosAllowed = await _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
+    _notificationsAllowed = androidAllowed ?? iosAllowed ?? true;
     _initialized = true;
   }
 
@@ -78,6 +86,12 @@ class TicketAlertService {
     }
 
     await initialize();
+    if (!_notificationsAllowed) {
+      return const TicketAlertResult(
+        scheduled: false,
+        message: '알림 권한이 꺼져 있어 예매 알림을 예약할 수 없습니다.',
+      );
+    }
 
     final prefs = await SharedPreferences.getInstance();
     final ids = {...(prefs.getStringList(_prefsKey) ?? const <String>[])};
@@ -150,12 +164,16 @@ class TicketAlertService {
 
     return TicketAlertResult(
       scheduled: true,
-      message: '${ticket.vendorName} 예매 알림을 ${scheduledLabels.join(', ')} 기준으로 예약했습니다.',
+      message:
+          '${ticket.vendorName} 예매 알림을 ${scheduledLabels.join(', ')} 기준으로 예약했습니다.',
     );
   }
 
   String exportScheduledAlertsDebug() {
-    return jsonEncode({'initialized': _initialized});
+    return jsonEncode({
+      'initialized': _initialized,
+      'notificationsAllowed': _notificationsAllowed,
+    });
   }
 
   Future<void> _cancelScheduledReminders(String gameId) async {
@@ -165,7 +183,13 @@ class TicketAlertService {
   }
 
   int _notificationId(String gameId, int index) {
-    return '$gameId#$index'.hashCode & 0x7fffffff;
+    var hash = 0x811C9DC5;
+    final text = '$gameId#$index';
+    for (final codeUnit in text.codeUnits) {
+      hash ^= codeUnit;
+      hash = (hash * 0x01000193) & 0x7fffffff;
+    }
+    return hash;
   }
 
   String _formatDateTime(DateTime value) {

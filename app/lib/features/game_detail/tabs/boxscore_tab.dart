@@ -1242,9 +1242,9 @@ class _HighlightCard extends StatelessWidget {
         children: [
           Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
-              color: accent,
+              color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1294,7 +1294,7 @@ class _HighlightCard extends StatelessWidget {
             '오늘 경기 기준',
             style: TextStyle(
               fontSize: 11,
-              color: accent.withValues(alpha: 0.9),
+              color: AppColors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),

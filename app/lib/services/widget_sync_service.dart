@@ -88,8 +88,11 @@ class WidgetSyncService {
         HomeWidget.saveWidgetData<String>('widget_subtitle', 'KBO Fans'),
         HomeWidget.saveWidgetData<String>('widget_status', ''),
         HomeWidget.saveWidgetData<String>('widget_score', ''),
+        HomeWidget.saveWidgetData<String>('widget_away_team_id', ''),
+        HomeWidget.saveWidgetData<String>('widget_home_team_id', ''),
         HomeWidget.saveWidgetData<String>('widget_batter', ''),
         HomeWidget.saveWidgetData<String>('widget_pitcher', ''),
+        HomeWidget.saveWidgetData<String>('widget_pitch_count', '0'),
         HomeWidget.saveWidgetData<String>(
           'widget_updated_at',
           _updatedAtText(),
@@ -124,12 +127,24 @@ class WidgetSyncService {
         '${selected.away.score} : ${selected.home.score}',
       ),
       HomeWidget.saveWidgetData<String>(
+        'widget_away_team_id',
+        selected.away.teamId,
+      ),
+      HomeWidget.saveWidgetData<String>(
+        'widget_home_team_id',
+        selected.home.teamId,
+      ),
+      HomeWidget.saveWidgetData<String>(
         'widget_batter',
         _batterText(currentAtBat),
       ),
       HomeWidget.saveWidgetData<String>(
         'widget_pitcher',
         _pitcherText(currentAtBat),
+      ),
+      HomeWidget.saveWidgetData<String>(
+        'widget_pitch_count',
+        '${currentAtBat?.pitchCount ?? 0}',
       ),
       HomeWidget.saveWidgetData<String>('widget_updated_at', _updatedAtText()),
       HomeWidget.saveWidgetData<String>('widget_game_id', selected.gameId),

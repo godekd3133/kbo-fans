@@ -128,6 +128,9 @@ class ApiPlayerRepository implements PlayerRepository {
       avgLeaders: _parseLeaders(leaders['avg'] as List<dynamic>? ?? const []),
       hrLeaders: _parseLeaders(leaders['hr'] as List<dynamic>? ?? const []),
       opsLeaders: _parseLeaders(leaders['ops'] as List<dynamic>? ?? const []),
+      opsPlusLeaders: _parseLeaders(
+        leaders['opsPlus'] as List<dynamic>? ?? const [],
+      ),
       eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
       todayHitter: _parseFeatured(
         featured['todayHitter'] as Map<String, dynamic>? ??

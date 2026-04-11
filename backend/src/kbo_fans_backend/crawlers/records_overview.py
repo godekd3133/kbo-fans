@@ -20,6 +20,7 @@ class RecordsOverviewCrawler(BaseCrawler):
         "avg": (_HITTER_AVG_URL, "AVG", "hitter"),
         "hr": (_HITTER_HR_URL, "HR", "hitter"),
         "ops": (_HITTER_OPS_URL, "OPS", "hitter"),
+        "opsPlus": (_HITTER_OPS_URL, "OPS", "hitter"),
         "era": (_PITCHER_ERA_URL, "ERA", "pitcher"),
     }
 
@@ -34,6 +35,9 @@ class RecordsOverviewCrawler(BaseCrawler):
             ops_future = executor.submit(
                 self._fetch_leaders, self._HITTER_OPS_URL, season, "OPS", "hitter"
             )
+            ops_plus_future = executor.submit(
+                self._fetch_leaderboard, self._HITTER_OPS_URL, season, "OPS", "hitter"
+            )
             era_future = executor.submit(
                 self._fetch_leaders, self._PITCHER_ERA_URL, season, "ERA", "pitcher"
             )
@@ -41,6 +45,7 @@ class RecordsOverviewCrawler(BaseCrawler):
             avg_leaders = avg_future.result()
             hr_leaders = hr_future.result()
             ops_leaders = ops_future.result()
+            ops_plus_leaders = self._build_ops_plus_leaders(ops_plus_future.result())[:5]
             era_leaders = era_future.result()
 
         hitter_groups = {
@@ -58,6 +63,7 @@ class RecordsOverviewCrawler(BaseCrawler):
                 "avg": avg_leaders,
                 "hr": hr_leaders,
                 "ops": ops_leaders,
+                "opsPlus": ops_plus_leaders,
                 "era": era_leaders,
             },
             "featured": {
@@ -148,6 +154,10 @@ class RecordsOverviewCrawler(BaseCrawler):
         if metric_info is None:
             return []
         path, metric_key, player_type = metric_info
+        if metric == "opsPlus":
+            return self._build_ops_plus_leaders(
+                self._fetch_leaderboard(path, season, metric_key, player_type)
+            )
         return self._fetch_leaderboard(path, season, metric_key, player_type)
 
     def _fetch_leaderboard(
@@ -278,9 +288,47 @@ class RecordsOverviewCrawler(BaseCrawler):
             return f"홈런 {value}"
         if metric == "OPS":
             return f"OPS {value}"
+        if metric == "OPSPLUS":
+            return f"OPS+ {value}"
         if metric == "ERA":
             return f"ERA {value}"
         return value
+
+    @staticmethod
+    def _build_ops_plus_leaders(leaders: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        parsed = []
+        for leader in leaders:
+            try:
+                ops = float(str(leader.get("value", "")).strip())
+            except ValueError:
+                continue
+            parsed.append((leader, ops))
+
+        if not parsed:
+            return []
+
+        league_average_ops = sum(ops for _, ops in parsed) / len(parsed)
+        if league_average_ops <= 0:
+            return []
+
+        calculated = []
+        for leader, ops in parsed:
+            calculated.append(
+                {
+                    **leader,
+                    "metricKey": "OPSPLUS",
+                    "value": str(round((ops / league_average_ops) * 100)),
+                }
+            )
+
+        calculated.sort(key=lambda leader: int(leader["value"]), reverse=True)
+        return [
+            {
+                **leader,
+                "rank": index + 1,
+            }
+            for index, leader in enumerate(calculated)
+        ]
 
     @staticmethod
     def _extract_hidden(html: str, name: str) -> str:

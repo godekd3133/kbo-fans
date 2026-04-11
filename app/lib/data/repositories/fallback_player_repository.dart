@@ -89,6 +89,7 @@ class FallbackPlayerRepository implements PlayerRepository {
           value.avgLeaders.isNotEmpty ||
           value.hrLeaders.isNotEmpty ||
           value.opsLeaders.isNotEmpty ||
+          value.opsPlusLeaders.isNotEmpty ||
           value.eraLeaders.isNotEmpty,
     );
     if (overview != null) {
@@ -111,7 +112,9 @@ class FallbackPlayerRepository implements PlayerRepository {
     if (leaders != null) {
       return leaders;
     }
-    _log.warn('PLAYER records/leaderboard/${metric.key} fallback to direct KBO');
+    _log.warn(
+      'PLAYER records/leaderboard/${metric.key} fallback to direct KBO',
+    );
     return secondary.getLeaderboard(season: season, metric: metric);
   }
 

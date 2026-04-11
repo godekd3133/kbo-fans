@@ -30,6 +30,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _scrollViewKey = GlobalKey();
   final Map<String, GlobalKey> _inningKeys = {};
+  String? _selectedInningLabel;
 
   @override
   void dispose() {
@@ -124,6 +125,15 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     final sortedItems = List<RelayItem>.from(items)
       ..sort((a, b) => b.seqNo.compareTo(a.seqNo));
     final moments = _buildMoments(sortedItems);
+    final filteredMoments = _selectedInningLabel == null
+        ? moments
+        : moments
+              .where(
+                (moment) =>
+                    moment.inningLabel == _selectedInningLabel ||
+                    moment.inningLabel.startsWith('$_selectedInningLabel '),
+              )
+              .toList();
 
     return CustomScrollView(
       key: _scrollViewKey,
@@ -159,19 +169,35 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
             child: Column(
               children: [
-                for (int index = 0; index < moments.length; index++) ...[
+                for (
+                  int index = 0;
+                  index < filteredMoments.length;
+                  index++
+                ) ...[
                   KeyedSubtree(
                     key: _inningKeys.putIfAbsent(
-                      '${moments[index].inningLabel}-$index',
+                      '${filteredMoments[index].inningLabel}-$index',
                       () => GlobalKey(),
                     ),
                     child: _RelayMomentCard(
-                      moment: moments[index],
+                      moment: filteredMoments[index],
                       imageMap: imageMap,
                     ),
                   ),
-                  if (index != moments.length - 1) const SizedBox(height: 12),
+                  if (index != filteredMoments.length - 1)
+                    const SizedBox(height: 12),
                 ],
+                if (filteredMoments.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: Text(
+                      '선택한 회차의 문자중계가 아직 없습니다',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -244,7 +270,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   }
 
   Widget _buildInningChips(List<RelayItem> items) {
-    final chips = <String>[];
+    final chips = <String>['전체'];
     for (final item in items) {
       if (item.inning >= 900) continue;
       final label = item.event == 'INNING_CHANGE'
@@ -266,14 +292,19 @@ class _RelayTabState extends ConsumerState<RelayTab> {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final label = chips[index];
-          final isActive = index == chips.length - 1;
+          final isActive = label == '전체'
+              ? _selectedInningLabel == null
+              : _selectedInningLabel == label;
           return GestureDetector(
-            onTap: () => _scrollToInning(label),
+            onTap: () => _selectInning(label),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: isActive ? AppColors.textPrimary : AppColors.cardSub,
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isActive ? AppColors.textPrimary : AppColors.divider,
+                ),
               ),
               child: Text(
                 label,
@@ -292,41 +323,18 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     );
   }
 
-  void _scrollToInning(String label) {
+  void _selectInning(String label) {
+    setState(() {
+      _selectedInningLabel = label == '전체' ? null : label;
+    });
+
     if (!_scrollController.hasClients) {
       return;
     }
 
-    GlobalKey? targetKey;
-    for (final entry in _inningKeys.entries) {
-      if (entry.key.startsWith(label)) {
-        targetKey = entry.value;
-        break;
-      }
-    }
-    final targetContext = targetKey?.currentContext;
-    final scrollContext = _scrollViewKey.currentContext;
-    if (targetContext == null || scrollContext == null) {
-      return;
-    }
-
-    final targetRenderBox = targetContext.findRenderObject() as RenderBox?;
-    final scrollRenderBox = scrollContext.findRenderObject() as RenderBox?;
-    if (targetRenderBox == null || scrollRenderBox == null) {
-      return;
-    }
-
-    final targetOffset = targetRenderBox
-        .localToGlobal(Offset.zero, ancestor: scrollRenderBox)
-        .dy;
-    final desiredOffset = (_scrollController.offset + targetOffset - 12).clamp(
-      0.0,
-      _scrollController.position.maxScrollExtent,
-    );
-
     _scrollController.animateTo(
-      desiredOffset,
-      duration: const Duration(milliseconds: 280),
+      0,
+      duration: const Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
     );
   }
@@ -744,7 +752,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                       shortLabel: 'B',
                       filled: atBat.balls,
                       total: 4,
-                      activeColor: AppColors.ballYellow,
+                      activeColor: AppColors.positive,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -754,7 +762,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                       shortLabel: 'S',
                       filled: atBat.strikes,
                       total: 3,
-                      activeColor: AppColors.accent,
+                      activeColor: AppColors.ballYellow,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -764,7 +772,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                       shortLabel: 'O',
                       filled: atBat.outs,
                       total: 3,
-                      activeColor: AppColors.textPrimary,
+                      activeColor: AppColors.live,
                     ),
                   ),
                 ],
@@ -774,9 +782,9 @@ class _CurrentAtBatHero extends StatelessWidget {
                 spacing: 16,
                 runSpacing: 8,
                 children: [
-                  _CountMeter('B', atBat.balls, 4, AppColors.ballYellow),
-                  _CountMeter('S', atBat.strikes, 3, AppColors.accent),
-                  _CountMeter('O', atBat.outs, 3, AppColors.textPrimary),
+                  _CountMeter('B', atBat.balls, 4, AppColors.positive),
+                  _CountMeter('S', atBat.strikes, 3, AppColors.ballYellow),
+                  _CountMeter('O', atBat.outs, 3, AppColors.live),
                 ],
               ),
               if (latestSubstitution != null || latestPlay != null) ...[
@@ -1205,14 +1213,18 @@ class _CompactBsoSummary extends StatelessWidget {
           _MiniCountBadge(
             label: 'B',
             value: balls,
+            color: AppColors.positive,
+          ),
+          _MiniCountBadge(
+            label: 'S',
+            value: strikes,
             color: AppColors.ballYellow,
           ),
-          _MiniCountBadge(label: 'S', value: strikes, color: AppColors.accent),
           if (showOuts)
             _MiniCountBadge(
               label: 'O',
               value: outs,
-              color: AppColors.textPrimary,
+              color: AppColors.live,
             ),
         ],
       ),
@@ -1568,9 +1580,9 @@ class _RelayMomentCard extends StatelessWidget {
   Color _pitchActionColor(_PitchAction action) {
     switch (action) {
       case _PitchAction.ball:
-        return AppColors.ballYellow;
+        return AppColors.positive;
       case _PitchAction.strike:
-        return AppColors.accent;
+        return AppColors.ballYellow;
       case _PitchAction.foul:
         return AppColors.textPrimary;
       case _PitchAction.inPlay:
