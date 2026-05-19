@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/config/app_config.dart';
@@ -121,15 +123,24 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   bool _didLogFirstFrame = false;
   bool _didScheduleBootstrap = false;
   static const int _startupTaskBatchSize = 6;
+  StreamSubscription<Uri?>? _homeWidgetClickSubscription;
+  Uri? _pendingHomeWidgetUri;
+  bool _didInitializeHomeWidgetRouting = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(_lifecycleObserver);
+    if (!kIsWeb && !_isWidgetTestBinding()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_initializeHomeWidgetRouting());
+      });
+    }
   }
 
   @override
   void dispose() {
+    unawaited(_homeWidgetClickSubscription?.cancel());
     WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     super.dispose();
   }
@@ -423,6 +434,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   @override
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
+    final onboardingDone = ref.watch(onboardingDoneProvider);
     final myTeamId = ref.watch(myTeamProvider);
     final today = _todayKey();
     final startupGames = ref.watch(startupScoreboardProvider);
@@ -471,6 +483,9 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         });
       });
     }
+    if (onboardingDone == true) {
+      _routePendingHomeWidgetLaunch(router);
+    }
 
     return MaterialApp.router(
       title: 'KBO Fans',
@@ -507,6 +522,74 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     } catch (error) {
       DevConsole.instance.warn('Resume sync failed: $error');
     }
+  }
+
+  Future<void> _initializeHomeWidgetRouting() async {
+    if (_didInitializeHomeWidgetRouting) {
+      return;
+    }
+    _didInitializeHomeWidgetRouting = true;
+
+    try {
+      await WidgetSyncService.instance.initialize();
+      final initialUri = await HomeWidget.initiallyLaunchedFromHomeWidget();
+      _queueHomeWidgetUri(initialUri);
+      _homeWidgetClickSubscription = HomeWidget.widgetClicked.listen(
+        _queueHomeWidgetUri,
+        onError: (Object error) {
+          DevConsole.instance.warn('Home widget click stream failed: $error');
+        },
+      );
+    } catch (error) {
+      DevConsole.instance.warn('Home widget routing init failed: $error');
+    }
+  }
+
+  void _queueHomeWidgetUri(Uri? uri) {
+    final route = _routeForHomeWidgetUri(uri);
+    if (route == null) {
+      return;
+    }
+    _pendingHomeWidgetUri = uri;
+    DevConsole.instance.info('Home widget launch queued: $route');
+    if (mounted && ref.read(onboardingDoneProvider) == true) {
+      final router = ref.read(routerProvider);
+      _routePendingHomeWidgetLaunch(router);
+    }
+  }
+
+  void _routePendingHomeWidgetLaunch(GoRouter router) {
+    final uri = _pendingHomeWidgetUri;
+    final route = _routeForHomeWidgetUri(uri);
+    if (route == null) {
+      return;
+    }
+    _pendingHomeWidgetUri = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      router.go(route);
+      DevConsole.instance.info('Home widget launch routed: $route');
+    });
+  }
+
+  String? _routeForHomeWidgetUri(Uri? uri) {
+    if (uri == null || !uri.queryParameters.containsKey('homeWidget')) {
+      return null;
+    }
+
+    final gameId = uri.queryParameters['gameId'];
+    if (gameId == null || gameId.isEmpty) {
+      return '/home';
+    }
+
+    final tab = uri.queryParameters['tab'];
+    final encodedGameId = Uri.encodeComponent(gameId);
+    if (tab == null || tab.isEmpty) {
+      return '/game/$encodedGameId';
+    }
+    return '/game/$encodedGameId?tab=${Uri.encodeQueryComponent(tab)}';
   }
 
   late final WidgetsBindingObserver _lifecycleObserver = _AppLifecycleObserver(
