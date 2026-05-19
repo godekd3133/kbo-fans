@@ -77,8 +77,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', redirect: (context, state) => '/boot'),
       GoRoute(
         path: '/boot',
-        pageBuilder: (context, state) =>
-            _fadeTransitionPage(state, child: const BootSplashScreen()),
+        pageBuilder: (context, state) => _fadeTransitionPage(
+          state,
+          child: BootSplashScreen(
+            redirectTo: _safeRedirectPath(
+              state.uri.queryParameters['redirect'],
+            ),
+          ),
+        ),
       ),
       GoRoute(
         path: '/onboarding',

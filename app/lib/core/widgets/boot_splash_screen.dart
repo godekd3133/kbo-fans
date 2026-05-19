@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../bootstrap/startup_prep_state.dart';
 import '../theme/app_theme.dart';
 
 class BootSplashScreen extends ConsumerWidget {
-  const BootSplashScreen({super.key});
+  final String redirectTo;
+
+  const BootSplashScreen({super.key, this.redirectTo = '/home'});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final prep = ref.watch(startupPrepProvider);
+    if (!prep.blocking) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.go(redirectTo);
+        }
+      });
+    }
     final visualProgress = prep.blocking
         ? (prep.progress <= 0 ? 0.08 : prep.progress.clamp(0.08, 1.0))
         : null;
