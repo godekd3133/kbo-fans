@@ -4,7 +4,7 @@ import '../models/relay.dart';
 import '../models/boxscore.dart';
 import '../models/schedule.dart';
 
-/// 게임 데이터 추상 인터페이스 — Mock과 API 구현체가 이 계약을 따른다
+/// 게임 데이터 추상 인터페이스 — API와 명시적 direct-debug 구현체가 이 계약을 따른다.
 abstract class GameRepository {
   Future<List<Game>> getScoreboard(String date);
   Future<Game?> getGame(String gameId);
