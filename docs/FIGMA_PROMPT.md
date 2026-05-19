@@ -130,7 +130,8 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
                     [7. 설정] ◀── Bottom Tab "설정"
                          ├── 마이팀 변경 → [팀 선택 모달]
-                         ├── 알림 프리셋 + 이벤트별 토글
+                         ├── 알림 플레이북 / Moment Subscription
+                         ├── 앱 밖 표면 Push · Live · Widget
                          └── 앱 정보
 ```
 
@@ -509,30 +510,44 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
   - 좌측: LG 로고(32px) + "LG 트윈스" 16px #FFFFFF (간격 12px)
   - 우측: ">" 화살표 16px #666666
 
-**섹션 2 — 알림 프리셋** (상단 마진 24px):
+**섹션 2 — 알림 플레이북 / Moment Subscription** (상단 마진 24px):
 
-- 라벨: "알림 프리셋" 14px #B0B0B0, 하단 마진 8px
-- segmented card: #1A1A1A, 라운드 8px, 패딩 8px
-- 3개 옵션: "가볍게 보기" / "내 팀 집중" / "풀타임 팔로우"
-- 선택 옵션은 팀 Primary 컬러 배경, 텍스트 #FFFFFF
-- 선택 아래 1줄 설명: 예) "득점, 홈런, 역전, 경기 종료를 받습니다" 12px #B0B0B0
+- 기준 산출물: `docs/UI_UX_NOTIFICATION_OUTSIDE_APP_TRENDS_2026-05-19.md`
+- 라벨: "알림 플레이북" 14px #B0B0B0, 하단 마진 8px
+- 요약 카드: #1A1A1A, 라운드 8px, 패딩 14px
+  - 타이틀: "내 팀 핵심 장면" 16px Pretendard SemiBold #FFFFFF
+  - 설명: "장면마다 바로 알림, 요약, Live 표면, 끄기를 고릅니다" 12px #B0B0B0
+  - 구형 "알림 강도" 다이얼 또는 단순 ON/OFF 목록으로 표현하지 말 것
+- Moment row 카드:
+  - 각 행 높이 64px, 좌우 패딩 16px, 행 사이 구분선 #252525
+  - 좌측: Moment 이름 15px #FFFFFF + 예시 문구 11px #666666
+  - 우측: 현재 delivery pill + chevron. 탭 시 bottom sheet 로 delivery 선택
+  - delivery 옵션: "바로" / "요약" / "Live만" / "끄기"
+  - delivery pill 색상: 바로 #FF4444, 요약 팀 Primary, Live만 #2979FF, 끄기 #666666
+  - 필수 Moment:
+    - 경기 시작 — 요약, "플레이볼 직후는 요약으로 두는 것을 권장합니다"
+    - 득점 — 바로, "마이팀이 점수를 올릴 때 즉시 알립니다"
+    - 홈런 — 바로, "홈런 상황은 별도 즉시 알림으로 분리합니다"
+    - 역전 — 바로, "리드가 바뀌는 순간만 강하게 알립니다"
+    - 경기 종료 — 요약, "최종 결과는 바로 또는 요약으로 받을 수 있습니다"
+    - 라인업 — 요약, "선발 라인업 공개 또는 변경을 묶어서 봅니다"
+    - 이닝 교대 — Live만, "알림 대신 Live 표면에서 상태만 갱신합니다"
 
-**섹션 3 — 알림 설정** (상단 마진 20px):
+**섹션 3 — 앱 밖 표면** (상단 마진 20px):
 
-- 라벨: "알림 설정" 14px #B0B0B0, 하단 마진 8px
-- 카드: #1A1A1A, 라운드 8px, 패딩 4px 0
-  - 각 행: 높이 58px, 좌우 패딩 16px
-  - 좌측: 텍스트 15px #FFFFFF + 발송 예시 11px #666666
-  - 우측: 토글 스위치 (ON = 팀 Primary 컬러 #C60C30, OFF = #333333)
-  - 행 사이: 구분선 #252525 (0.5px)
-  - 항목:
-    - 경기 시작 — [ON], "경기 시작 시 알려드려요"
-    - 득점 — [ON], "내 팀 득점 시 바로 알려드려요"
-    - 홈런 — [ON], "홈런 발생 시 알려드려요"
-    - 역전 — [ON], "승부가 뒤집히면 알려드려요"
-    - 경기 종료 — [ON], "최종 결과를 알려드려요"
-    - (구분선 #333333 1px)
-    - 전체 경기 알림 — [OFF] (토글 #333333, 텍스트 아래 "마이팀 외 경기도 알림을 받습니다" 12px #666666)
+- 라벨: "앱 밖 표면" 14px #B0B0B0, 하단 마진 8px
+- 4개 surface chip/card 를 한 카드 안에 세로 배치:
+  - Push — "즉시 알아야 하는 장면"
+  - 요약 — "덜 급한 장면 묶음"
+  - Live — "따라가는 경기만 잠금화면에"
+  - Widget — "실시간 중계가 아닌 상태판"
+- "경기 따라가기" CTA 는 설정 화면의 전역 토글이 아니라 경기 상세 화면의 session action 으로 설계
+- Permission preview sheet:
+  - OS permission sheet 전에 앱 자체 sheet 를 먼저 표시
+  - 타이틀: "알림을 허용할까요?"
+  - 본문: "이 경기를 따라가는 동안 스코어는 Live 표면에 유지하고 득점, 홈런, 역전만 바로 보냅니다."
+  - 버튼: "허용하고 따라가기" / "나중에"
+  - 첫 실행 onboarding 에서 push permission 을 요청하지 말 것
 
 **섹션 4 — 앱 정보** (상단 마진 24px):
 
@@ -547,57 +562,53 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 ---
 
-### Page 11: 위젯 (iOS + Android)
+### Page 11: 앱 밖 경험 (Push + Live + Widget)
 
-잠금화면/홈화면 위젯 디자인. 별도 페이지에 모든 위젯 변형을 나열.
+`docs/design/kbo-fans-mobile-ui-alerts-outside-v4-2026-05-19/index.html`의 v4 방향을 기준으로, Push / Notification Summary / Live Activity / Android Live Update / Widget 을 한 페이지에 나열한다.
 
-#### iOS 위젯
-
-**accessoryInline** (한 줄 텍스트):
+#### iOS Live Activity
 
 ```text
-⚾ KT 6 : 2 LG · 4회초
+LG 2 : 1 KT · 7회말
+1사 1,3루 · B2 S1 O1
+방금: 문보경 안타
 ```
 
-- 시스템 폰트, 자동 크기
+- Lock Screen rectangular frame 와 Dynamic Island compact/expanded frame 를 함께 제작
+- 사용자가 경기 상세에서 "경기 따라가기"를 누른 경기만 표시
+- 스코어, 이닝, 주자, B/S/O, 마지막 변화, 마지막 업데이트 시각, "그만 보기" action 포함
+- 경기 종료 후 최종 결과를 짧게 보여주고 종료
 
-**accessoryCircular** (원형, 76×76px):
+#### Android Live Update
 
-- 원형 배경 #1A1A1A
-- 중앙 상단: "6:2" SF Pro Bold 16px #FFFFFF
-- 중앙 하단: "4회" SF Pro 10px #B0B0B0
+- Status chip + ongoing notification 변형을 함께 제작
+- 상단 chip: "따라가는 중" + 현재 스코어
+- 본문: 이닝/주자/B-S-O/최근 변화
+- 명시적 "그만 보기" action
+- 앱이 자동으로 모든 마이팀 경기를 Live Update 로 시작하는 화면을 만들지 말 것
 
-**accessoryRectangular** (직사각형, 160×76px):
+#### Widget Strategy
 
-- 배경: AccessoryWidgetBackground (시스템 반투명)
-- 1행: "KT" 12px bold + "6 : 2" 16px bold + "LG" 12px bold — #FFFFFF
-- 2행: "4회초 ● LIVE" 10px #FF4444
+위젯은 실시간 중계가 아니라 Status Board 로 디자인한다.
 
-**systemSmall** (홈화면 소형, 170×170px):
+**Small** (소형):
 
-- 배경: #1A1A1A, 라운드 22px (시스템)
-- 상단: "★ MY TEAM" 10px 팀 컬러
-- 중앙: KT 로고(20px) "6" 24px bold ":" "2" 24px bold LG 로고(20px)
-- 하단: "4회초 ● LIVE" 10px #FF4444
-- 맨 하단: 미니 이닝 스코어 (8px)
+- 하나의 마이팀 상태만 표시
+- 상태 1: 다음 경기 — "LG 오늘 18:30 · vs KT · 잠실"
+- 상태 2: 경기 중 — "LG 2 : 1 KT · 7회말 · 2분 전"
+- 상태 3: 경기 없음 — "오늘 경기 없음 · 다음 5.20"
+- 마지막 업데이트 시각 또는 stale 상태 필수
 
-#### Android 위젯
+**Medium** (중형):
 
-**Small** (잠금화면, 280×52px):
+- 현재 마이팀 경기 + 다음 경기 또는 오늘 마이팀 + 리그 핵심 경기
+- 미니 이닝 스코어 테이블을 기본으로 넣지 말 것
+- Pitch-by-pitch, 문자중계, 타석별 변화는 위젯에 넣지 말 것
 
-- 배경: #1A1A1A 라운드 16px
-- 수평: ⚾ + "KT" + "6 : 2" bold + "LG" + "● 4회초" #FF4444
+#### Push Stack
 
-**Medium** (홈화면 4×2, 350×150px):
-
-- 배경: #1A1A1A 라운드 20px, 패딩 12px
-- 상단: "★ MY TEAM" 10px 팀 컬러
-- 중앙: KT 로고 + "KT 위즈 6 : 2 LG 트윈스" + "4회초 ● LIVE"
-- 하단: 이닝 스코어 테이블 (1~9 + R H E, 8px)
-
-#### 위젯 상태별 변형 (각 위젯 타입별로)
-
-- **경기 중**: 위 내용 그대로
-- **경기 전**: "14:00 예정" + "KT vs LG · 잠실"
-- **경기 종료**: "경기종료" + 최종 스코어 (LIVE 인디케이터 없음)
-- **경기 없음**: "오늘 경기 없음" + "다음: 3.29(일)"
+- Direct push: 득점/실점, 동점/역전, 최종 결과처럼 즉시성 높은 Moment
+- Summary: 라인업, 투수 교체, 기록성/예매성 정보
+- Live-only: 득점권, 내 선수 타석처럼 follow session 에서만 의미 있는 Moment
+- Off: 사용자가 명시적으로 끈 Moment
+- 경기 상세 화면을 보고 있는 중에는 같은 경기의 direct push 를 중복 표시하지 않는 상태를 별도 frame 으로 표현

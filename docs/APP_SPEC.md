@@ -628,9 +628,9 @@ GET /api/standings?season=2026
 
 ---
 
-### 2.6 설정
+### 2.6 설정 / 알림 플레이북
 
-**목적**: 개인화 옵션 관리
+**목적**: 마이팀, 알림 Moment, 앱 밖 표면을 사용자가 예측 가능하게 제어
 
 ```
 ┌─────────────────────────────────────┐
@@ -642,17 +642,19 @@ GET /api/standings?season=2026
 │  │  [LG 로고] LG 트윈스     >  │    │
 │  └─────────────────────────────┘    │
 │                                     │
-│  알림 설정                           │
+│  알림 플레이북                       │
 │  ┌─────────────────────────────┐    │
-│  │  경기 시작          [ON ]   │    │
-│  │  득점              [ON ]   │    │
-│  │  홈런              [ON ]   │    │
-│  │  역전              [ON ]   │    │
-│  │  경기 종료          [ON ]   │    │
-│  │  라인업            [ON ]   │    │
-│  │  이닝 교대          [OFF]  │    │
-│  │  전체 경기 알림      [OFF]   │    │
+│  │  내 팀 핵심 장면            │    │
+│  │  경기 시작       요약       │    │
+│  │  득점            바로       │    │
+│  │  홈런            바로       │    │
+│  │  역전            바로       │    │
+│  │  경기 종료       요약       │    │
+│  │  이닝 교대       Live만     │    │
 │  └─────────────────────────────┘    │
+│                                     │
+│  앱 밖 표면                          │
+│  Push · Summary · Live · Widget      │
 │                                     │
 │  앱 정보                             │
 │  ┌─────────────────────────────┐    │
@@ -671,105 +673,137 @@ GET /api/standings?season=2026
 | 요소 | 설명 |
 |------|------|
 | 마이팀 | 현재 선택 팀 표시. 탭 → 팀 선택 화면 |
-| 알림 설정 | 프리셋 + 이벤트별 토글 스위치. 경기 시작, 득점, 홈런, 역전, 경기 종료, 라인업, 이닝 교대, 전체 경기 선택 |
+| 알림 플레이북 | 알림 강도 다이얼 대신 사용자가 받을 야구 장면과 전달 표면을 고르는 설정 |
+| Moment 행 | 경기 시작, 득점, 홈런, 역전, 경기 종료, 라인업, 이닝 교대 |
+| 전달 방식 | `바로 알림` / `요약` / `Live 표면만` / `끄기` 중 하나를 선택 |
+| 경기 따라가기 | 현재 경기 상세에서 사용자가 직접 시작하는 Live Activity / Android Live Update 세션 |
+| 앱 밖 표면 요약 | Push, Notification Summary, Live Activity/Live Update, Widget 의 역할과 상태를 구분 표시 |
 | 앱 정보 | 버전, 법적 문서 링크 |
 
-**알림 프리셋**:
-| 프리셋 | 대상 | 기본 ON |
-|--------|------|---------|
-| 가볍게 보기 | 라이트팬 | 경기 시작, 종료, 득점 |
-| 내 팀 집중 | 일반 팬 | 마이팀 득점, 홈런, 역전, 종료, 예매 |
-| 풀타임 팔로우 | 코어팬 | 라인업, 이닝 종료, 투수 교체, 주요 기록 |
+**기본 플레이북**:
+| Moment | 기본 전달 방식 | 범위 | UX 원칙 |
+|--------|----------------|------|---------|
+| 경기 시작 | 요약 | 마이팀 | 경기 시작은 중요하지만 첫 실행 권한 요청이나 과도한 즉시 알림으로 쓰지 않음 |
+| 득점 | 바로 알림 | 마이팀 | 점수 변화는 가장 강한 moment 로 취급 |
+| 홈런 | 바로 알림 | 마이팀 | relay 기반으로 확인되는 큰 장면은 득점과 별도 신호로 분리 |
+| 역전 | 바로 알림 | 마이팀 | 승부 흐름이 바뀐 경우에만 발송 |
+| 경기 종료 | 요약 | 마이팀 | 결과는 묶어서 확인하되 사용자가 원하면 바로 알림으로 격상 가능 |
+| 라인업 | 요약 | 마이팀 | 즉시성이 낮으므로 summary 또는 앱 내 카드로 처리 |
+| 이닝 교대 | Live 표면만 | 따라가기 중인 경기 | push 폭주를 막고 Live Activity / Live Update 상태 갱신에 집중 |
 
-**알림 그룹**:
-| 그룹 | 포함 항목 | UX 원칙 |
-|------|----------|---------|
-| 마이팀 기본 | 경기 시작, 득점, 종료 | 기본 ON, 과한 알림 방지 |
-| 경기 이벤트 | 홈런, 역전, 삼진, 투수 교체, 라인업 | 사용자가 직접 확장 |
-| 예매/일정 | 예매 오픈, 경기 시작 N분 전 | 발송 시점 설명 필수 |
-| 기록 달성 | 시즌 기록, 개인 기록, 팀 기록 | Phase 1.5 이후 |
+**Moment Preference 모델**:
+```json
+{
+  "moment": "scoreChange",
+  "delivery": "immediate",
+  "scope": "myTeam",
+  "surface": ["push"]
+}
+```
+
+| 필드 | 값 |
+|------|-----|
+| `moment` | `gameStart`, `scoring`, `homerun`, `reversal`, `gameEnd`, `lineupOpened`, `inningChange` |
+| `delivery` | `immediate`, `summary`, `liveOnly`, `off` |
+| `scope` | `myTeam`, `selectedGame`, `allGames` |
+| `surface` | `push`, `summary`, `liveActivity`, `liveUpdate`, `widget` |
 
 **인터랙션**:
 - 마이팀 탭 → 온보딩과 동일한 팀 선택 화면 (모달)
-- 알림 토글 → 즉시 SharedPreferences 저장 + FCM 토픽 구독/해지
-- "전체 경기 알림" ON → 마이팀 외 경기도 알림
-- local 모바일에서는 홈 polling + relay/lineup 비교 기준으로 로컬 알림을 생성한다
-- 각 토글은 발송 시점과 예시 문구를 1줄로 함께 표시한다
+- 첫 실행에서는 OS push permission 을 요청하지 않는다
+- 사용자가 "경기 따라가기", "바로 알림", "권한 확인"처럼 명시적 action 을 선택했을 때 OS permission 을 요청한다
+- Moment 설정 변경 → 로컬 저장 + backend preference sync + FCM topic 재계산
+- `바로 알림`은 push/topic 및 로컬 이벤트 알림 대상이 되고, `요약`은 summary preference 로 저장하며, `Live 표면만`은 따라가기 세션의 Live Activity / Android Live Update 로만 보낸다
+- 경기 상세를 보고 있는 동안 같은 경기의 중복 push 는 억제하고, Live 표면 또는 화면 내 상태 갱신으로 대체한다
+- "경기 따라가기"는 알림 설정이 아니라 현재 경기 session 시작 action 이며, 경기 종료 또는 사용자의 "그만 보기"로 종료한다
+- local 모바일에서는 같은 Moment 규칙으로 로컬 알림을 생성하되, records/mock fallback 으로 불완전한 알림을 만들지 않는다
 
 ---
 
-### 2.7 잠금화면 / 홈화면 위젯 (Phase 1.5)
+### 2.7 앱 밖 경험 / 위젯 / Live Activity (Phase 1.5)
 
-**목적**: 앱을 열지 않고도 잠금화면/홈화면에서 마이팀 실시간 스코어 확인
+**목적**: 앱 밖 표면을 역할별로 분리해, 과한 push 없이 마이팀 상태를 빠르게 확인하게 한다.
 
-#### iOS 위젯 (WidgetKit)
+| 표면 | 역할 | 시작 조건 | 표시 범위 |
+|------|------|-----------|-----------|
+| Push Notification | 즉시 알아야 하는 Moment | 사용자가 허용한 Moment | 경기 시작, 득점/실점, 동점/역전, 최종 결과 |
+| Notification Summary | 덜 긴급한 묶음 | 사용자가 summary 전달을 선택 | 라인업, 투수 교체, 기록/예매성 정보 |
+| iOS Live Activity / Android Live Update | 사용자가 따라가는 현재 경기 | 경기 상세에서 "경기 따라가기" 선택 | 스코어, 이닝, 주자, B/S/O, 최근 변화 |
+| Widget | 주기적으로 보는 마이팀 상태판 | 위젯 설치 / 앱 데이터 sync | 다음 경기, 현재 경기, 경기 없음, stale 상태 |
+
+#### iOS Live Activity / Android Live Update
 
 ```
-[accessoryRectangular] 잠금화면 직사각형
+[iOS Lock Screen / Dynamic Island]
 ┌─────────────────────┐
-│ KT  6 : 2  LG       │
-│ 4회초 ● LIVE         │
+│ LG 2 : 1 KT  7회말   │
+│ 1사 1,3루 · B2 S1 O1 │
+│ 방금: 문보경 안타     │
 └─────────────────────┘
 
-[accessoryCircular] 잠금화면 원형
-┌─────┐
-│ 6:2 │
-│ 4회 │
-└─────┘
-
-[accessoryInline] 잠금화면 인라인
-⚾ KT 6 : 2 LG · 4회초
-
-[systemSmall] 홈화면 소형 (2×2)
+[Android Live Update]
 ┌────────────────┐
-│ ★ MY TEAM      │
-│ KT  6    LG  2 │
-│   4회초 LIVE    │
-│ 1 2 3 4 5 R   │
-│ 6 0 0 0 - 6   │
-│ 0 0 2 - - 2   │
+│ 따라가는 중      │
+│ LG 2 : 1 KT     │
+│ 7회말 1사 1,3루 │
+│ [그만 보기]      │
 └────────────────┘
 ```
 
-#### Android 위젯 (Glance API / AppWidgetProvider)
+**Live 표면 원칙**:
+- 사용자가 직접 "경기 따라가기"를 누른 경기만 시작한다.
+- 앱이 임의로 모든 마이팀 경기를 Live Activity / Live Update 로 시작하지 않는다.
+- 표시 데이터는 스코어, 이닝, 공격/수비, 주자, B/S/O, 마지막 변화, 마지막 갱신 시각, "그만 보기" action 까지로 제한한다.
+- 경기 종료 후 최종 결과를 짧게 보여주고 종료한다.
+- 예정 경기, 뉴스, 광고, 일반 알림은 Live 표면에 넣지 않는다.
+
+#### WidgetKit / Android Widget
 
 ```
-[Small] 잠금화면 / 홈화면
+[Small] 내 팀 상태판
 ┌─────────────────────┐
-│ ⚾ KT  6 : 2  LG    │
-│   4회초 ● LIVE       │
+│ LG 오늘 18:30       │
+│ vs KT · 잠실         │
 └─────────────────────┘
 
-[Medium] 홈화면 (4×2)
+[Small] 경기 중
+┌─────────────────────┐
+│ LG 2 : 1 KT         │
+│ 7회말 · 2분 전       │
+└─────────────────────┘
+
+[Medium] 현재 + 다음 / 핵심 경기
 ┌─────────────────────────┐
-│ ★ MY TEAM               │
-│ KT 위즈  6 : 2  LG 트윈스│
-│      4회초 ● LIVE        │
-│ 1  2  3  4  5  R  H  E  │
-│ 6  0  0  0  -  6  9  0  │
-│ 0  0  2  -  -  2  3  0  │
+│ MY TEAM                 │
+│ LG 2 : 1 KT · 7회말      │
+│ 다음: 5.20 18:30 vs 두산 │
+│ 업데이트 2분 전          │
 └─────────────────────────┘
 ```
 
 **기술 구현**:
 | 항목 | iOS | Android |
 |------|-----|---------|
-| 프레임워크 | WidgetKit (Swift) | Glance API (Kotlin) / AppWidgetProvider |
+| Live 표면 | ActivityKit / Live Activity | Android Live Updates / ongoing notification |
+| Widget 프레임워크 | WidgetKit (Swift) | Glance API (Kotlin) / AppWidgetProvider |
 | Flutter 연동 | `home_widget` 패키지 | `home_widget` 패키지 |
 | 데이터 공유 | App Groups (UserDefaults) | SharedPreferences |
 | 업데이트 주기 | Timeline (15분 최소) + 앱에서 강제 갱신 | WorkManager + 앱에서 강제 갱신 |
 | 잠금화면 지원 | iOS 16+ (accessoryInline/Circular/Rectangular) | Android 14+ (Lock Screen Widgets) |
 
 **위젯 표시 데이터**:
-- 마이팀 경기: 양팀명, 스코어, 현재 이닝, 경기 상태
+- 마이팀 경기: 양팀명, 스코어, 현재 이닝, 경기 상태, 마지막 업데이트 시각
 - 경기 전: "14:00 예정" + 선발 투수
-- 경기 중: 스코어 + 이닝 + LIVE 상태. 투구별 업데이트는 앱 상세 진입으로 연결
+- 경기 중: 스코어 + 이닝 + 최근 업데이트. 투구별/타석별 변화는 앱 상세 또는 Live 표면으로 연결
 - 경기 종료: "경기종료" + 최종 스코어
 - 경기 없음: "오늘 경기 없음 · 다음: 3.29(일)"
+- 데이터가 오래된 경우: "업데이트 지연" 또는 "마지막 갱신 18:42" 를 명시
 
 **위젯 원칙**:
-- 위젯은 `앱을 열지 않고 마이팀 경기 상태 확인`까지만 약속한다.
-- 투구별 실시간 중계는 앱 상세 화면의 역할로 남긴다.
+- 위젯은 `실시간 중계`가 아니라 `상태판`이다.
+- 소형 위젯은 하나의 다음/현재 마이팀 상태만 보여준다.
+- 중형 위젯은 현재 경기 + 다음 경기 또는 마이팀 경기 + 리그 핵심 경기까지로 제한한다.
+- 투구별, 타석별, 문자중계성 정보는 위젯에 넣지 않는다.
 - 데이터 신선도 한계가 있는 플랫폼에서는 마지막 업데이트 시각을 함께 표시한다.
 
 ---
@@ -1176,26 +1210,56 @@ GET /api/team/{teamId}/records?season={YYYY}
 
 ---
 
-### 5.7 푸시 알림 등록
+### 5.7 Push / Moment Subscription 등록
 
 ```
 POST /api/push/register
 ```
 
-**요청 Body**:
+**요청 Body (v4 목표 계약)**:
 ```json
 {
   "deviceToken": "fcm-device-token-xxx",
   "platform": "ios",
   "myTeam": "LG",
-  "notifications": {
-    "gameStart": true,
-    "scoring": true,
-    "homerun": true,
-    "reversal": true,
-    "gameEnd": true,
-    "allGames": false
-  }
+  "momentPreferences": [
+    {
+      "moment": "gameStart",
+      "delivery": "summary",
+      "scope": "myTeam"
+    },
+    {
+      "moment": "scoring",
+      "delivery": "immediate",
+      "scope": "myTeam"
+    },
+    {
+      "moment": "homerun",
+      "delivery": "immediate",
+      "scope": "myTeam"
+    },
+    {
+      "moment": "reversal",
+      "delivery": "immediate",
+      "scope": "myTeam"
+    },
+    {
+      "moment": "gameEnd",
+      "delivery": "summary",
+      "scope": "myTeam"
+    },
+    {
+      "moment": "lineupOpened",
+      "delivery": "summary",
+      "scope": "myTeam"
+    },
+    {
+      "moment": "inningChange",
+      "delivery": "liveOnly",
+      "scope": "selectedGame"
+    }
+  ],
+  "followedGameIds": ["20260328KTLG0"]
 }
 ```
 
@@ -1205,10 +1269,17 @@ POST /api/push/register
   "success": true,
   "data": {
     "registered": true,
-    "subscribedTopics": ["game_start_LG", "scoring_LG", "homerun_LG", "reversal_LG", "game_end_LG"]
+    "subscribedTopics": ["moment_scoring_LG", "moment_homerun_LG", "moment_reversal_LG"],
+    "summaryTopics": ["moment_gameStart_LG", "moment_gameEnd_LG", "moment_lineupOpened_LG"],
+    "liveSurfaceGameIds": ["20260328KTLG0"]
   }
 }
 ```
+
+**마이그레이션 메모**:
+- 기존 boolean 기반 `notifications` body 는 앱 업데이트 전환 기간 동안만 호환 입력으로 유지할 수 있다.
+- 신규 UI/UX 기준은 `momentPreferences` 를 source of truth 로 삼는다.
+- `followedGameIds` 는 알림 설정이 아니라 사용자가 직접 시작한 "경기 따라가기" Live surface session 을 표현한다.
 
 ### 5.8 경기 단건 조회
 
@@ -1257,13 +1328,14 @@ GET /api/game/{gameId}
 | Method | Path | 설명 | 캐시 |
 |--------|------|------|------|
 | GET | `/api/scoreboard` | 오늘의 스코어보드 | 오늘 live 30초 / 지난 날짜 snapshot 우선 |
+| GET | `/api/scoreboard/compact` | Widget / Live 표면용 최대 1경기 compact 스코어보드 | today 30초 / snapshot compact |
 | GET | `/api/game/{gameId}` | 경기 단건 상세 / 예매 정보 | today 30초 / final snapshot 영속 저장 |
 | GET | `/api/game/{gameId}/relay` | 문자중계 | 없음 (실시간) / 종료 후 summary snapshot 저장 |
 | GET | `/api/game/{gameId}/boxscore` | 박스스코어 | live 1분 / 종료 후 snapshot 우선 |
 | GET | `/api/game/{gameId}/lineup` | 라인업 | 예정/당일 5분 / 종료 후 snapshot 우선 |
 | GET | `/api/schedule` | 경기 일정 | 월 단위 1시간 / 지난 날짜 snapshot 우선 |
 | GET | `/api/standings` | 팀 순위 | latest 5분 / 과거 기준 standings snapshot |
-| POST | `/api/push/register` | 푸시 등록 | 없음 |
+| POST | `/api/push/register` | Push 등록 / Moment Subscription 저장 | 없음 |
 
 ---
 

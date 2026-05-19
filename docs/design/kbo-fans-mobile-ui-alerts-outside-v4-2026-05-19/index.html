@@ -1,0 +1,1309 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KBO Fans Alerts & Outside App UX V4</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07090c;
+      --surface: #10141a;
+      --surface-2: #171d24;
+      --surface-3: #222832;
+      --line: #323a45;
+      --text: #f7f9fc;
+      --muted: #a6b0bd;
+      --dim: #6e7784;
+      --blue: #2979ff;
+      --live: #ff4444;
+      --green: #18c67a;
+      --amber: #ffd05a;
+      --kia: #d71920;
+      --lg: #c30452;
+      --phone: 390px;
+      --radius: 8px;
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 1500px;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(41,121,255,.18), transparent 25%),
+        radial-gradient(circle at 90% 8%, rgba(255,68,68,.12), transparent 23%),
+        linear-gradient(180deg, #08111a 0%, var(--bg) 42%, #100808 100%);
+      color: var(--text);
+      letter-spacing: 0;
+    }
+
+    .page {
+      width: 1460px;
+      margin: 0 auto;
+      padding: 54px 44px 76px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 520px;
+      gap: 46px;
+      align-items: end;
+      padding-bottom: 34px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+
+    .eyebrow {
+      color: var(--amber);
+      font-size: 12px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+
+    h1 {
+      margin: 12px 0 16px;
+      font-size: 56px;
+      line-height: 1.02;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 760px;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.62;
+    }
+
+    .diagnosis {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .diagnosis div {
+      min-height: 116px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius);
+      padding: 15px;
+      background: rgba(255,255,255,.045);
+      display: grid;
+      align-content: space-between;
+    }
+
+    .diagnosis b {
+      font-size: 14px;
+    }
+
+    .diagnosis span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .principles {
+      margin: 30px 0 38px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+
+    .principles div {
+      min-height: 96px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+      padding: 14px;
+      display: grid;
+      align-content: space-between;
+    }
+
+    .principles b {
+      font-size: 13px;
+    }
+
+    .principles small {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, var(--phone));
+      gap: 54px 62px;
+      align-items: start;
+    }
+
+    .screen {
+      display: grid;
+      gap: 14px;
+    }
+
+    .screen-head {
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .screen-head h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .screen-head span {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 10px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .phone {
+      width: var(--phone);
+      min-height: 844px;
+      padding: 12px;
+      border-radius: 34px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: linear-gradient(180deg, #252b34, #090b0e);
+      box-shadow: 0 26px 68px rgba(0,0,0,.48);
+    }
+
+    .inside {
+      position: relative;
+      min-height: 820px;
+      overflow: hidden;
+      border-radius: 26px;
+      border: 1px solid #050607;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        var(--surface);
+      background-size: 32px 32px;
+    }
+
+    .status {
+      height: 42px;
+      padding: 12px 22px 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 950;
+    }
+
+    .sys {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .sig {
+      width: 15px;
+      height: 10px;
+      border: 2px solid #fff;
+      border-top: 0;
+      border-left-color: transparent;
+      border-right-color: transparent;
+      border-radius: 0 0 12px 12px;
+    }
+
+    .bat {
+      width: 22px;
+      height: 11px;
+      border: 1.5px solid #fff;
+      border-radius: 3px;
+      position: relative;
+    }
+
+    .bat::before {
+      content: "";
+      display: block;
+      width: 14px;
+      height: 7px;
+      margin: 1px;
+      border-radius: 2px;
+      background: #fff;
+    }
+
+    .bat::after {
+      content: "";
+      position: absolute;
+      right: -4px;
+      top: 3px;
+      width: 2px;
+      height: 4px;
+      background: #fff;
+    }
+
+    .app { padding: 0 18px 96px; }
+
+    .top {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: grid;
+      gap: 4px;
+    }
+
+    .brand small {
+      color: var(--dim);
+      font-size: 10px;
+      font-weight: 950;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .brand b {
+      font-size: 22px;
+      line-height: 1.08;
+    }
+
+    .round {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.045);
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+
+    .round.bell::before {
+      content: "";
+      position: absolute;
+      top: 13px;
+      width: 10px;
+      height: 11px;
+      border: 2px solid #fff;
+      border-bottom: 0;
+      border-radius: 10px 10px 3px 3px;
+    }
+
+    .round.bell::after {
+      content: "";
+      position: absolute;
+      top: 25px;
+      width: 14px;
+      height: 2px;
+      background: #fff;
+      border-radius: 2px;
+    }
+
+    .round.close::before,
+    .round.close::after {
+      content: "";
+      width: 16px;
+      height: 2px;
+      background: #fff;
+      border-radius: 2px;
+      position: absolute;
+    }
+
+    .round.close::before { transform: rotate(45deg); }
+    .round.close::after { transform: rotate(-45deg); }
+
+    .round.back::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(45deg);
+    }
+
+    .chip,
+    .pill {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.13);
+      color: var(--muted);
+      background: rgba(255,255,255,.045);
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .chip.active {
+      color: #fff;
+      border-color: rgba(41,121,255,.46);
+      background: rgba(41,121,255,.18);
+    }
+
+    .pill.live {
+      color: #ffc0c2;
+      border-color: rgba(255,68,68,.36);
+      background: rgba(255,68,68,.14);
+    }
+
+    .pill.green {
+      color: #9bf0c6;
+      border-color: rgba(24,198,122,.34);
+      background: rgba(24,198,122,.13);
+    }
+
+    .card {
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.09);
+    }
+
+    .card.solid {
+      background: var(--surface-2);
+    }
+
+    .card-head {
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .card-head b {
+      font-size: 14px;
+    }
+
+    .card-head small {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .moment-row {
+      min-height: 72px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+
+    .moment-row:last-child { border-bottom: 0; }
+
+    .moment-copy {
+      display: grid;
+      gap: 5px;
+    }
+
+    .moment-copy b {
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .moment-copy span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .mode {
+      min-width: 74px;
+      min-height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.065);
+      border: 1px solid rgba(255,255,255,.1);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .mode.now { background: rgba(41,121,255,.2); border-color: rgba(41,121,255,.45); }
+    .mode.live { background: rgba(255,68,68,.16); border-color: rgba(255,68,68,.4); color: #ffd0d1; }
+    .mode.summary { background: rgba(255,208,90,.14); border-color: rgba(255,208,90,.35); color: #ffe6a6; }
+    .mode.off { color: var(--muted); background: rgba(255,255,255,.035); }
+
+    .value-preview {
+      min-height: 86px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(41,121,255,.34);
+      background: linear-gradient(135deg, rgba(41,121,255,.18), rgba(255,255,255,.04));
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .preview-line {
+      display: grid;
+      grid-template-columns: 38px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .app-dot {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: var(--kia);
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .preview-line b {
+      font-size: 13px;
+    }
+
+    .preview-line span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .btn {
+      min-height: 44px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.11);
+      background: rgba(255,255,255,.065);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .btn.primary {
+      background: var(--blue);
+      border-color: var(--blue);
+      box-shadow: 0 10px 24px rgba(41,121,255,.24);
+    }
+
+    .score-card {
+      margin-top: 12px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(135deg, rgba(215,25,32,.28), rgba(255,255,255,.04));
+      overflow: hidden;
+    }
+
+    .score-top {
+      min-height: 34px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 12px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .score-main {
+      min-height: 112px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+    }
+
+    .team {
+      display: grid;
+      justify-items: center;
+      gap: 7px;
+    }
+
+    .mark {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 950;
+    }
+
+    .mark.kia { color: var(--kia); }
+    .mark.lg { color: var(--lg); }
+
+    .team b { font-size: 13px; }
+    .team small { color: var(--muted); font-size: 10px; font-weight: 900; }
+
+    .score {
+      min-width: 112px;
+      text-align: center;
+      font-size: 50px;
+      line-height: 1;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .base-bso {
+      min-height: 62px;
+      display: grid;
+      grid-template-columns: 68px 1fr 74px;
+      gap: 10px;
+      align-items: center;
+      padding: 0 12px 12px;
+    }
+
+    .diamond {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto;
+      position: relative;
+      transform: rotate(45deg);
+    }
+
+    .diamond i {
+      width: 13px;
+      height: 13px;
+      position: absolute;
+      border-radius: 2px;
+      border: 1px solid rgba(255,255,255,.34);
+      background: rgba(255,255,255,.13);
+    }
+
+    .diamond .on {
+      background: var(--amber);
+      border-color: var(--amber);
+    }
+
+    .diamond i:nth-child(1) { top: 0; left: 13px; }
+    .diamond i:nth-child(2) { top: 13px; right: 0; }
+    .diamond i:nth-child(3) { bottom: 0; left: 13px; }
+
+    .bso {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+
+    .bso div {
+      min-height: 42px;
+      border-radius: var(--radius);
+      background: rgba(0,0,0,.2);
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 4px;
+    }
+
+    .bso small {
+      color: var(--dim);
+      font-size: 9px;
+      font-weight: 950;
+    }
+
+    .dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .dots i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.18);
+    }
+
+    .dots .ball { background: var(--amber); }
+    .dots .strike { background: var(--green); }
+    .dots .out { background: var(--live); }
+
+    .bottom-sheet {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 16px 18px 22px;
+      background: rgba(18,22,28,.98);
+      border-top: 1px solid rgba(255,255,255,.14);
+      border-radius: 22px 22px 0 0;
+      box-shadow: 0 -22px 44px rgba(0,0,0,.5);
+    }
+
+    .sheet-handle {
+      width: 44px;
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.26);
+      margin: 0 auto 14px;
+    }
+
+    .sheet-title {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .sheet-title b {
+      font-size: 18px;
+    }
+
+    .sheet-title span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .surface-map {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .surface-map div {
+      min-height: 70px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.045);
+      padding: 9px;
+      display: grid;
+      align-content: space-between;
+    }
+
+    .surface-map b { font-size: 11px; }
+    .surface-map span { color: var(--muted); font-size: 10px; line-height: 1.3; }
+
+    .lock {
+      margin-top: 12px;
+      min-height: 312px;
+      padding: 18px;
+      border-radius: 26px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(215,25,32,.24), transparent 55%), #090b0f;
+      display: grid;
+      align-content: space-between;
+    }
+
+    .clock {
+      display: grid;
+      gap: 4px;
+      text-align: center;
+    }
+
+    .clock b {
+      font-size: 50px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .clock span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .dynamic {
+      height: 42px;
+      width: 172px;
+      margin: 0 auto;
+      border-radius: 999px;
+      background: #000;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      padding: 0 13px;
+      font-size: 12px;
+      font-weight: 950;
+      box-shadow: 0 6px 18px rgba(0,0,0,.35);
+    }
+
+    .dynamic span:last-child { text-align: right; }
+
+    .activity {
+      min-height: 104px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.13);
+      background: #171c23;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .activity-top,
+    .activity-score,
+    .activity-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .activity-top {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .activity-score {
+      font-size: 18px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .activity-actions span {
+      min-height: 28px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .android-shell {
+      margin-top: 12px;
+      min-height: 300px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, #10151b, #090b0e);
+      padding: 14px;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+    }
+
+    .android-status {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 950;
+    }
+
+    .status-chip {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border-radius: 999px;
+      padding: 0 10px;
+      background: rgba(255,68,68,.14);
+      border: 1px solid rgba(255,68,68,.3);
+      color: #ffc2c4;
+    }
+
+    .android-card {
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: #1a2028;
+      padding: 13px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .progress {
+      height: 8px;
+      display: grid;
+      grid-template-columns: 48% 18% 34%;
+      gap: 3px;
+    }
+
+    .progress span {
+      border-radius: 99px;
+      background: rgba(255,255,255,.14);
+    }
+
+    .progress span:nth-child(1) { background: var(--green); }
+    .progress span:nth-child(2) { background: var(--amber); }
+
+    .notification-stack {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .notification {
+      min-height: 74px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: #e8ecf2;
+      color: #111820;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .notification.dark {
+      background: #1a2028;
+      color: #fff;
+    }
+
+    .notification-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: var(--kia);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .notification-copy {
+      display: grid;
+      gap: 4px;
+    }
+
+    .notification-copy b { font-size: 13px; }
+    .notification-copy span { color: #4d5968; font-size: 11px; line-height: 1.35; }
+    .notification.dark .notification-copy span { color: var(--muted); }
+
+    .widget-area {
+      margin-top: 12px;
+      padding: 16px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.1);
+      background:
+        radial-gradient(circle at 70% 0%, rgba(41,121,255,.18), transparent 44%),
+        #151a21;
+      display: grid;
+      gap: 12px;
+    }
+
+    .widgets {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 10px;
+    }
+
+    .widget-small,
+    .widget-medium {
+      border-radius: 20px;
+      background: #0f1319;
+      border: 1px solid rgba(255,255,255,.11);
+      padding: 12px;
+    }
+
+    .widget-small {
+      width: 108px;
+      height: 108px;
+      display: grid;
+      align-content: space-between;
+    }
+
+    .widget-small b,
+    .widget-medium b { font-size: 13px; }
+
+    .widget-small strong {
+      font-size: 28px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .widget-small span,
+    .widget-medium span {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.3;
+      font-weight: 900;
+    }
+
+    .widget-medium {
+      height: 108px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .widget-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .widget-row strong {
+      font-size: 26px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .taxonomy {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .tax-row {
+      min-height: 54px;
+      display: grid;
+      grid-template-columns: 76px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      padding-bottom: 8px;
+    }
+
+    .tax-row:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .tax-row b { font-size: 12px; }
+    .tax-row span { color: var(--muted); font-size: 11px; line-height: 1.35; }
+
+    .nav {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 84px;
+      padding: 7px 10px 10px;
+      border-top: 1px solid rgba(255,255,255,.1);
+      background: rgba(7,9,12,.96);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    .nav div {
+      min-height: 56px;
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 5px;
+      color: var(--dim);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .nav i {
+      width: 24px;
+      height: 24px;
+      display: block;
+      border-radius: 7px;
+      border: 2px solid currentColor;
+    }
+
+    .nav .active { color: #fff; }
+    .nav .active i {
+      border-color: var(--blue);
+      background: rgba(41,121,255,.2);
+      box-shadow: 0 0 0 5px rgba(41,121,255,.12);
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+      padding: 0 4px;
+    }
+
+    @media print {
+      body { background: #07090c; }
+      .page { padding: 28px; }
+      .phone { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">KBO Fans v4 · Moment Subscription & Surface Strategy</div>
+        <h1>알림은 강도가 아니라<br>장면 구독이다</h1>
+        <p>v4는 알림 강도 다이얼을 버리고, 사용자가 받을 야구 장면과 전달 표면을 분리한다. Push는 순간 이벤트, Live Activity와 Android Live Update는 사용자가 명시적으로 따라가는 현재 경기, Widget은 개인화 상태판으로 역할을 나눈다.</p>
+      </div>
+      <div class="diagnosis">
+        <div><b>v3 문제</b><span>알림 강도는 추상적이다. 사용자는 “득점권을 받을지”, “최종 결과만 받을지”를 고른다.</span></div>
+        <div><b>v4 방향</b><span>Moment별로 바로 알림, 요약, Live 표면, 끄기를 선택한다.</span></div>
+        <div><b>v3 문제</b><span>앱 밖 경험이 iOS, Android, Widget, Push의 차이를 충분히 분리하지 못했다.</span></div>
+        <div><b>v4 방향</b><span>각 OS 표면의 실제 역할과 제한에 맞춰 따로 설계한다.</span></div>
+      </div>
+    </section>
+
+    <section class="principles">
+      <div><b>Moment First</b><small>알림 단위는 기능이 아니라 야구 장면이다.</small></div>
+      <div><b>Permission In Context</b><small>벨을 누른 뒤, 예시를 보고 권한을 요청한다.</small></div>
+      <div><b>Follow Is Explicit</b><small>Live 표면은 사용자가 경기 따라가기를 눌렀을 때만 시작한다.</small></div>
+      <div><b>Widget Is Not Live</b><small>위젯은 상태판이고, pitch-by-pitch는 앱/Live 표면이다.</small></div>
+      <div><b>Quiet When Watching</b><small>사용자가 상세를 보고 있으면 같은 장면 푸시는 줄인다.</small></div>
+    </section>
+
+    <section class="board">
+      <article class="screen">
+        <div class="screen-head"><h2>알림 플레이북</h2><span>Moment Subscription</span></div>
+        <div class="phone">
+          <div class="inside">
+            <div class="status"><span>9:41</span><span class="sys"><i class="sig"></i><i class="bat"></i></span></div>
+            <div class="app">
+              <div class="top">
+                <div class="brand"><small>Notifications</small><b>알림 플레이북</b></div>
+                <div class="round bell" aria-label="알림"></div>
+              </div>
+              <div class="card solid">
+                <div class="card-head"><b>내 팀 핵심 장면</b><small>기본값</small></div>
+                <div class="value-preview">
+                  <div class="preview-line">
+                    <span class="app-dot">KBO</span>
+                    <div><b>KIA 7회말 1사 1,3루</b><span>김도영 타석, 역전 기회</span></div>
+                  </div>
+                </div>
+                <div class="button-row"><div class="btn primary">이 설정 사용</div><div class="btn">직접 조정</div></div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><b>Moment별 전달 방식</b><small>강도 대신 방식</small></div>
+                <div class="moment-row"><div class="moment-copy"><b>경기 시작</b><span>내 팀 경기 시작 10분 전과 시작 시점</span></div><span class="mode summary">요약</span></div>
+                <div class="moment-row"><div class="moment-copy"><b>득점권</b><span>7회 이후 또는 동점/역전 가능 상황</span></div><span class="mode now">바로</span></div>
+                <div class="moment-row"><div class="moment-copy"><b>득점 / 역전</b><span>스코어가 바뀌는 핵심 장면</span></div><span class="mode now">바로</span></div>
+                <div class="moment-row"><div class="moment-copy"><b>투수 교체</b><span>내 팀 공격 중 상대 투수 교체</span></div><span class="mode live">Live만</span></div>
+                <div class="moment-row"><div class="moment-copy"><b>내 선수 타석</b><span>선택 선수 타석 시작</span></div><span class="mode off">끔</span></div>
+                <div class="moment-row"><div class="moment-copy"><b>최종 결과</b><span>경기 종료 후 기록 요약</span></div><span class="mode summary">요약</span></div>
+              </div>
+            </div>
+            <nav class="nav"><div><i></i>홈</div><div><i></i>일정</div><div><i></i>순위</div><div><i></i>기록실</div><div class="active"><i></i>설정</div></nav>
+          </div>
+        </div>
+        <p class="note">알림 설정은 “강도”보다 Moment와 전달 방식이 더 직관적이다.</p>
+      </article>
+
+      <article class="screen">
+        <div class="screen-head"><h2>경기 따라가기</h2><span>Permission In Context</span></div>
+        <div class="phone">
+          <div class="inside">
+            <div class="status"><span>9:41</span><span class="sys"><i class="sig"></i><i class="bat"></i></span></div>
+            <div class="app">
+              <div class="top">
+                <div class="brand"><small>Game Detail</small><b>KIA vs LG</b></div>
+                <span class="pill live">LIVE</span>
+              </div>
+
+              <div class="score-card">
+                <div class="score-top"><span>7회말 · 1사</span><span>업데이트 18초 전</span></div>
+                <div class="score-main">
+                  <div class="team"><span class="mark kia">KIA</span><b>KIA</b><small>원정</small></div>
+                  <div class="score">5:3</div>
+                  <div class="team"><span class="mark lg">LG</span><b>LG</b><small>홈</small></div>
+                </div>
+                <div class="base-bso">
+                  <div class="diamond"><i class="on"></i><i></i><i class="on"></i></div>
+                  <div class="bso">
+                    <div><small>B</small><span class="dots"><i class="ball"></i><i class="ball"></i><i></i></span></div>
+                    <div><small>S</small><span class="dots"><i class="strike"></i><i></i></span></div>
+                    <div><small>O</small><span class="dots"><i class="out"></i><i></i></span></div>
+                  </div>
+                  <span class="pill live">득점권</span>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><b>이 경기를 따라가면</b><small>권한 요청 전</small></div>
+                <div class="surface-map">
+                  <div><b>Live 표면</b><span>스코어, 이닝, 주자</span></div>
+                  <div><b>Push</b><span>득점과 역전만</span></div>
+                  <div><b>Widget</b><span>상태판 갱신</span></div>
+                </div>
+                <div class="button-row"><div class="btn primary">경기 따라가기</div><div class="btn">중계만 보기</div></div>
+              </div>
+            </div>
+
+            <div class="bottom-sheet">
+              <div class="sheet-handle"></div>
+              <div class="sheet-title"><b>알림을 허용할까요?</b><span>이 경기를 따라가는 동안 득점권, 득점, 최종 결과만 보냅니다. 설정에서 언제든 바꿀 수 있습니다.</span></div>
+              <div class="value-preview">
+                <div class="preview-line"><span class="app-dot">KBO</span><div><b>KIA 7회말 1사 1,3루</b><span>김도영 타석, 역전 기회</span></div></div>
+              </div>
+              <div class="button-row"><div class="btn primary">허용하고 시작</div><div class="btn">나중에</div></div>
+            </div>
+          </div>
+        </div>
+        <p class="note">권한은 앱 첫 실행이 아니라 사용자가 경기 따라가기를 눌렀을 때 요청한다.</p>
+      </article>
+
+      <article class="screen">
+        <div class="screen-head"><h2>iOS Live Activity</h2><span>User-Initiated Follow</span></div>
+        <div class="phone">
+          <div class="inside">
+            <div class="status"><span>9:41</span><span class="sys"><i class="sig"></i><i class="bat"></i></span></div>
+            <div class="app">
+              <div class="top">
+                <div class="brand"><small>iOS Surface</small><b>Lock Screen</b></div>
+                <span class="pill green">따라가는 중</span>
+              </div>
+              <div class="lock">
+                <div class="dynamic"><span>KIA 5</span><span>LG 3</span></div>
+                <div class="clock"><b>21:41</b><span>5월 19일 화요일</span></div>
+                <div class="activity">
+                  <div class="activity-top"><span>KBO Fans · LIVE</span><span>18초 전</span></div>
+                  <div class="activity-score"><span>KIA 5</span><span>7말 1사 1,3루</span><span>LG 3</span></div>
+                  <div class="activity-actions"><span>그만 보기</span><span>중계 열기</span></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><b>표시 기준</b><small>짧고 명확하게</small></div>
+                <div class="taxonomy">
+                  <div class="tax-row"><b>시작</b><span>사용자가 경기 따라가기 선택</span><span class="mode live">Live</span></div>
+                  <div class="tax-row"><b>중간</b><span>스코어, 이닝, 주자, BSO만 갱신</span><span class="mode now">갱신</span></div>
+                  <div class="tax-row"><b>종료</b><span>최종 결과로 축소 후 자동 종료</span><span class="mode summary">종료</span></div>
+                </div>
+              </div>
+            </div>
+            <nav class="nav"><div class="active"><i></i>홈</div><div><i></i>일정</div><div><i></i>순위</div><div><i></i>기록실</div><div><i></i>설정</div></nav>
+          </div>
+        </div>
+        <p class="note">iOS Live Activity는 앱 밖의 작은 현재 경기판이다. 광고, 예정 경기, 일반 뉴스에는 쓰지 않는다.</p>
+      </article>
+
+      <article class="screen">
+        <div class="screen-head"><h2>Android Live Update</h2><span>Status Chip + Unpin</span></div>
+        <div class="phone">
+          <div class="inside">
+            <div class="status"><span>9:41</span><span class="sys"><i class="sig"></i><i class="bat"></i></span></div>
+            <div class="app">
+              <div class="top">
+                <div class="brand"><small>Android Surface</small><b>Live Update</b></div>
+                <span class="pill green">Pinned</span>
+              </div>
+
+              <div class="android-shell">
+                <div class="android-status"><span>알림</span><span class="status-chip">KIA 5:3 · 7말</span></div>
+                <div class="android-card">
+                  <div class="activity-top"><span>KBO Fans · Live Update</span><span>업데이트 18초 전</span></div>
+                  <div class="activity-score"><span>KIA 5</span><span>7말 1사 1,3루</span><span>LG 3</span></div>
+                  <div class="progress"><span></span><span></span><span></span></div>
+                  <div class="activity-actions"><span>그만 보기</span><span>중계 열기</span></div>
+                </div>
+                <div class="notification dark">
+                  <span class="notification-icon">KBO</span>
+                  <div class="notification-copy"><b>Live Update는 사용자가 시작한 경기만</b><span>스포츠 경기 모니터링은 명시적 follow와 unpin 액션이 필요</span></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><b>Android 적용 메모</b><small>ProgressStyle</small></div>
+                <div class="taxonomy">
+                  <div class="tax-row"><b>적합</b><span>사용자가 따라가는 진행 중 경기</span><span class="mode live">사용</span></div>
+                  <div class="tax-row"><b>부적합</b><span>예정 경기, 뉴스, 빠른 앱 실행</span><span class="mode off">금지</span></div>
+                </div>
+              </div>
+            </div>
+            <nav class="nav"><div class="active"><i></i>홈</div><div><i></i>일정</div><div><i></i>순위</div><div><i></i>기록실</div><div><i></i>설정</div></nav>
+          </div>
+        </div>
+        <p class="note">Android는 Live Update를 “진행 중이고 사용자가 시작한 모니터링”으로 제한해야 한다.</p>
+      </article>
+
+      <article class="screen">
+        <div class="screen-head"><h2>Widget Strategy</h2><span>Status Board</span></div>
+        <div class="phone">
+          <div class="inside">
+            <div class="status"><span>9:41</span><span class="sys"><i class="sig"></i><i class="bat"></i></span></div>
+            <div class="app">
+              <div class="top">
+                <div class="brand"><small>Home Screen</small><b>내 팀 위젯</b></div>
+                <span class="pill">stale 표시</span>
+              </div>
+              <div class="widget-area">
+                <div class="card-head"><b>실시간 중계가 아닌 상태판</b><small>Widget</small></div>
+                <div class="widgets">
+                  <div class="widget-small"><b>KIA</b><strong>5:3</strong><span>7회말<br>2분 전</span></div>
+                  <div class="widget-medium">
+                    <div class="widget-row"><b>KIA vs LG</b><span>LIVE</span></div>
+                    <div class="widget-row"><strong>5 : 3</strong><span>7회말<br>1사 1,3루</span></div>
+                    <div class="widget-row"><span>탭하면 경기 상세</span><span>2분 전</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><b>위젯 상태</b><small>3가지 모드</small></div>
+                <div class="taxonomy">
+                  <div class="tax-row"><b>경기 전</b><span>시작 시간, 선발, 라인업 상태</span><span class="mode summary">예정</span></div>
+                  <div class="tax-row"><b>경기 중</b><span>스코어, 이닝, stale 표시</span><span class="mode live">상태</span></div>
+                  <div class="tax-row"><b>경기 후</b><span>최종 스코어, 오늘의 선수</span><span class="mode summary">결과</span></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><b>하지 말 것</b><small>위젯 한계</small></div>
+                <div class="moment-copy"><b>Pitch-by-pitch를 위젯에 넣지 않는다</b><span>빠른 변화는 Live 표면 또는 앱 상세에서 처리한다.</span></div>
+              </div>
+            </div>
+            <nav class="nav"><div class="active"><i></i>홈</div><div><i></i>일정</div><div><i></i>순위</div><div><i></i>기록실</div><div><i></i>설정</div></nav>
+          </div>
+        </div>
+        <p class="note">위젯은 “언제 봐도 유용한 내 팀 상태판”이어야 한다. 실시간 중계 역할을 강요하지 않는다.</p>
+      </article>
+
+      <article class="screen">
+        <div class="screen-head"><h2>Push / Summary</h2><span>Noise Control</span></div>
+        <div class="phone">
+          <div class="inside">
+            <div class="status"><span>9:41</span><span class="sys"><i class="sig"></i><i class="bat"></i></span></div>
+            <div class="app">
+              <div class="top">
+                <div class="brand"><small>Notification Center</small><b>푸시와 요약</b></div>
+                <div class="round close" aria-label="닫기"></div>
+              </div>
+              <div class="notification-stack">
+                <div class="notification">
+                  <span class="notification-icon">KBO</span>
+                  <div class="notification-copy"><b>KIA 7회말 역전</b><span>최형우 2루타, KIA 5 : 3 LG</span></div>
+                </div>
+                <div class="notification">
+                  <span class="notification-icon">KBO</span>
+                  <div class="notification-copy"><b>경기 후 요약 도착</b><span>오늘의 장면 3개와 주요 기록</span></div>
+                </div>
+                <div class="notification dark">
+                  <span class="notification-icon">KBO</span>
+                  <div class="notification-copy"><b>상세 화면을 보고 있을 때</b><span>같은 장면의 중복 푸시는 보내지 않음</span></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-head"><b>전달 표면 결정표</b><small>Moment Router</small></div>
+                <div class="taxonomy">
+                  <div class="tax-row"><b>바로 알림</b><span>득점, 역전, 경기 종료</span><span class="mode now">Push</span></div>
+                  <div class="tax-row"><b>요약</b><span>라인업, 경기 후 기록</span><span class="mode summary">Summary</span></div>
+                  <div class="tax-row"><b>Live만</b><span>투수 교체, BSO, 주자 변화</span><span class="mode live">Live</span></div>
+                  <div class="tax-row"><b>억제</b><span>사용자가 경기 상세를 보고 있음</span><span class="mode off">Mute</span></div>
+                </div>
+              </div>
+
+              <div class="button-row"><div class="btn primary">플레이북 편집</div><div class="btn">알림 기록</div></div>
+            </div>
+            <nav class="nav"><div><i></i>홈</div><div><i></i>일정</div><div><i></i>순위</div><div><i></i>기록실</div><div class="active"><i></i>설정</div></nav>
+          </div>
+        </div>
+        <p class="note">푸시는 이벤트, 요약은 묶음, Live 표면은 현재 상태다. 같은 장면을 여러 표면에 중복 발송하지 않는다.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

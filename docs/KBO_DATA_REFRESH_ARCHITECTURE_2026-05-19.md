@@ -602,3 +602,93 @@ To move this from design to code, use measurable checks:
 - Stable records/standings/schedule data can render while KBO upstream is down.
 - Dev Console can show `source` and stale state.
 - Backend tests cover crawler failure fallback for every stable endpoint.
+
+## 2026-05-19 P0 Implementation Status
+
+Applied in app code:
+
+- `preferDirectScrape` now defaults to `false` on native local builds. Direct KBO scraping is opt-in only with `--dart-define=PREFER_DIRECT_SCRAPE=true`.
+- Default `gameRepositoryProvider` no longer wraps API with direct KBO fallback. Normal app mode now uses API-backed data only.
+- Default `playerRepositoryProvider` no longer falls back to direct player crawling. It falls back to generated/local asset player data after API/snapshot failure.
+- Widget background sync now uses `ApiGameRepository(ApiClient())` by default and only uses `KboDirectRepository` in explicit direct debug mode.
+- Startup prefetch was reduced to first-screen API payloads: today scoreboard, current month schedule, standings, records overview, and my-team home/records when configured.
+- Startup no longer warms all-player image maps, all team records, all historical seasons, every game detail, every boxscore, every lineup, every relay, player details, or bulk image files.
+- Home and Schedule no longer trigger game-detail preloads on normal list entry or row tap.
+- Game Detail no longer preloads every tab on entry. Initial entry refreshes only the game summary, and timed/pull refresh only invalidates the visible tab's provider.
+- `GameDetailPreloadService` was removed so the old broad detail warmer cannot be reintroduced accidentally through an existing service call.
+- Score tab no longer reads `relayDataProvider`.
+- Relay and Lineup tabs no longer read `allPlayerImageMapProvider`.
+- `api_home_repository.dart` now parses `HomeRecentGameSummary.gameId`, fixing the analyzer error exposed during this pass.
+
+Still intentionally left for P1:
+
+- `LineupTab` still reads relay data for bullpen/order enrichment.
+- `BoxscoreTab` still reads relay/lineup/team-player data for richer post-game cards.
+- Backend still needs route-level request budget tests, singleflight/rate-limit coordination, and compact widget/detail endpoints.
+
+Verification:
+
+- `fvm dart format` on touched Dart files passed.
+- `fvm flutter analyze` passed with no issues.
+- `fvm flutter test test/widget_test.dart test/data/models/records_overview_test.dart test/services/push_notification_service_test.dart` passed.
+
+## 2026-05-19 P1 Backend Implementation Status
+
+Applied in backend code:
+
+- Added process-local `SingleFlight` utility to coalesce concurrent identical work by key.
+- `ScoreboardService.get_scoreboard(date)` now wraps uncached date loads with `singleflight`, so concurrent same-date requests share one schedule/main/enrich pass.
+- `ScoreboardService.get_game(gameId)` no longer calls `get_scoreboard(date)` and no longer enriches every game on that date for one detail request.
+- `ScoreboardService.get_game(gameId)` now:
+  - checks game snapshot first
+  - checks short TTL game cache
+  - loads the date schedule
+  - selects only the requested game
+  - loads main game metadata once
+  - enriches only that requested game
+- `/api/game/{gameId}` no longer calls `ScheduleService.get_schedule_game()` when `ScoreboardService.get_game()` already returned a game payload.
+- Added `/scoreboard/compact`, a widget/Live-surface endpoint that selects at most one relevant game and enriches only that game instead of building the full daily scoreboard payload.
+- Relay service tests now use an isolated temporary snapshot store where the test expects synthetic summary fallback, avoiding accidental coupling to local real relay snapshots.
+
+Applied in app code:
+
+- Widget background refresh now calls `/scoreboard/compact` through `ApiGameRepository.getCompactScoreboard()` in normal API mode.
+- Widget background refresh still allows `KboDirectRepository` only when explicit direct debug mode is enabled.
+- Widget sync no longer fetches relay/current-at-bat data, so a widget update does not become a separate relay crawl.
+- Live Activity sync no longer creates `KboDirectRepository` internally for current-at-bat fallback; it uses the already supplied game payload and leaves batter/pitcher/count empty until a backend-owned compact live payload exists.
+- Push topic tests were updated to match the v4 delivery model: only `immediate` Moments subscribe to direct push topics.
+
+Request impact:
+
+- Repeated simultaneous Home/scoreboard opens for the same date should hit upstream at most once per process while the first request is in flight.
+- Game Detail Score tab's `/game/{gameId}` path no longer fans out to all same-day game detail enrich calls.
+- Schedule fallback lookup for `/game/{gameId}` only runs when the scoreboard/game summary path cannot find the game.
+- Widget background refresh requests at most one compact scoreboard game and no longer performs a relay/current-at-bat request.
+- Live Activity updates no longer perform direct KBO current-at-bat fallback from the client.
+
+Verification:
+
+- `backend/.venv/bin/python -m compileall backend/src` passed.
+- `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_games.py backend/tests/test_snapshot_services.py` passed.
+- `backend/.venv/bin/pytest -q` passed: 42 tests.
+- `fvm dart format` on touched app files passed.
+- `fvm flutter analyze` passed with no issues.
+- `fvm flutter test test/widget_test.dart test/data/models/records_overview_test.dart test/services/push_notification_service_test.dart` passed.
+
+Live measurement on 2026-05-19:
+
+| Path | Result | Elapsed | Upstream calls |
+| --- | --- | --- | --- |
+| `get_home_scoreboard(2026-05-19)` cold | 5 games | 349ms | schedule 1, main list 1, game detail 5, view1 detail 5 |
+| `get_home_scoreboard(2026-05-19)` cached | 5 games | ~0ms | no additional upstream calls |
+| `get_compact_scoreboard(2026-05-19, LG)` cold | 1 game | 313ms | schedule 1, main list 1, game detail 1, view1 detail 1 |
+| `get_compact_scoreboard(2026-05-19, LG)` cached | 1 game | ~0ms | no additional upstream calls |
+
+Measured impact: compact refresh reduces widget/Live-surface detail enrichment from 5 games to 1 game for this date. Wall-clock latency is similar on this run because full scoreboard enrich runs in parallel, but upstream request volume and failure surface are lower.
+
+Still left after this P1 slice:
+
+- Add route-level request-budget middleware/counters for dev diagnostics.
+- Split Lineup/Boxscore enrichment endpoints so those tabs do not need relay/team-player side reads for first paint.
+- Add cross-process dedupe/rate limiting if deployed with multiple workers.
+- Add a backend-owned compact live state payload if Live Activity must show batter/pitcher/B-S-O without client direct crawling.

@@ -1,0 +1,1511 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KBO Fans Mobile UI Concept 2026-05-19</title>
+    <style>
+      :root {
+        --bg: #0f0f0f;
+        --panel: #1a1a1a;
+        --panel-2: #252525;
+        --line: #333333;
+        --text: #ffffff;
+        --sub: #b0b0b0;
+        --muted: #666666;
+        --live: #ff4444;
+        --good: #00c853;
+        --action: #2979ff;
+        --ball: #ffd600;
+        --lg: #c60c30;
+        --kia: #ea0029;
+        --nc: #315288;
+        --hanwha: #ff6600;
+        --samsung: #074ca1;
+        --kt: #eb1c24;
+        --phone-w: 390px;
+        --phone-h: 844px;
+        color-scheme: dark;
+        font-family:
+          Pretendard,
+          -apple-system,
+          BlinkMacSystemFont,
+          "SF Pro Display",
+          "Segoe UI",
+          sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background:
+          radial-gradient(circle at 20% 0%, rgba(198, 12, 48, 0.16), transparent 28%),
+          radial-gradient(circle at 85% 12%, rgba(41, 121, 255, 0.13), transparent 26%),
+          #090909;
+        color: var(--text);
+      }
+
+      .board {
+        width: min(1720px, 100%);
+        margin: 0 auto;
+        padding: 36px 28px 56px;
+      }
+
+      .board-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 30px;
+      }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--live);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1.12;
+        letter-spacing: 0;
+      }
+
+      .board-summary {
+        max-width: 740px;
+        margin: 12px 0 0;
+        color: var(--sub);
+        font-size: 15px;
+        line-height: 1.62;
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+        gap: 8px;
+        padding: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        background: rgba(26, 26, 26, 0.72);
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sub);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      .screen-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(390px, 1fr));
+        gap: 26px;
+        align-items: start;
+      }
+
+      .screen-block {
+        display: grid;
+        gap: 12px;
+        justify-items: center;
+      }
+
+      .screen-title {
+        width: var(--phone-w);
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 12px;
+      }
+
+      .screen-title h2 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.2;
+      }
+
+      .screen-title span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .phone {
+        width: var(--phone-w);
+        min-height: var(--phone-h);
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 28px;
+        background: var(--bg);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.48);
+      }
+
+      .phone::before {
+        content: "";
+        position: absolute;
+        top: 11px;
+        left: 50%;
+        width: 118px;
+        height: 27px;
+        transform: translateX(-50%);
+        border-radius: 999px;
+        background: #060606;
+        z-index: 4;
+      }
+
+      .status {
+        height: 44px;
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        padding: 0 24px 8px;
+        color: #f4f4f4;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .app {
+        min-height: calc(var(--phone-h) - 44px);
+        padding: 0 16px 92px;
+      }
+
+      .app-header {
+        display: flex;
+        height: 58px;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      .brand-mark {
+        width: 26px;
+        height: 26px;
+        border: 2px solid rgba(255, 255, 255, 0.86);
+        border-radius: 50%;
+        position: relative;
+      }
+
+      .brand-mark::before,
+      .brand-mark::after {
+        content: "";
+        position: absolute;
+        top: 5px;
+        width: 6px;
+        height: 14px;
+        border: 1.4px solid var(--live);
+        border-left: 0;
+        border-bottom: 0;
+        border-radius: 50%;
+      }
+
+      .brand-mark::before {
+        left: 4px;
+        transform: rotate(-20deg);
+      }
+
+      .brand-mark::after {
+        right: 4px;
+        transform: rotate(160deg);
+      }
+
+      .date-live {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sub);
+        font-size: 13px;
+        font-weight: 650;
+      }
+
+      .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--live);
+        box-shadow: 0 0 0 4px rgba(255, 68, 68, 0.12);
+      }
+
+      .section {
+        margin-top: 16px;
+      }
+
+      .section-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 9px;
+      }
+
+      .section-title {
+        color: #eeeeee;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .section-action {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .hero-card,
+      .card,
+      .insight {
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .hero-card {
+        position: relative;
+        min-height: 178px;
+        padding: 15px 15px 14px 18px;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .hero-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 4px;
+        background: var(--lg);
+      }
+
+      .hero-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: rgba(198, 12, 48, 0.16);
+        color: #ffb4c3;
+        font-size: 10px;
+        font-weight: 850;
+        letter-spacing: 0.04em;
+      }
+
+      .tag.neutral {
+        background: var(--panel-2);
+        color: var(--sub);
+      }
+
+      .tag.action {
+        background: rgba(41, 121, 255, 0.14);
+        color: #8eb8ff;
+      }
+
+      .score-row {
+        display: grid;
+        grid-template-columns: 68px 1fr 58px 1fr 68px;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .team {
+        display: grid;
+        justify-items: center;
+        gap: 5px;
+        color: var(--sub);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .logo {
+        width: 42px;
+        height: 42px;
+        object-fit: contain;
+        border-radius: 50%;
+        background: #ffffff;
+      }
+
+      .logo.small {
+        width: 28px;
+        height: 28px;
+      }
+
+      .logo.tiny {
+        width: 20px;
+        height: 20px;
+      }
+
+      .score {
+        color: var(--text);
+        font-size: 34px;
+        font-weight: 900;
+        text-align: center;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .inning {
+        display: grid;
+        justify-items: center;
+        gap: 5px;
+        color: var(--live);
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .pulse {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--live);
+        box-shadow: 0 0 0 5px rgba(255, 68, 68, 0.12);
+      }
+
+      .mini-table {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--line);
+        display: grid;
+        gap: 4px;
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .mini-table .row {
+        display: grid;
+        grid-template-columns: 32px repeat(9, 1fr) 20px 20px 20px;
+        align-items: center;
+        color: var(--sub);
+        text-align: center;
+      }
+
+      .mini-table .head {
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .mini-table .name {
+        text-align: left;
+        font-weight: 850;
+      }
+
+      .mini-table .total {
+        color: var(--text);
+        font-weight: 900;
+      }
+
+      .last-play {
+        margin-top: 10px;
+        color: var(--sub);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .games {
+        display: grid;
+        gap: 8px;
+      }
+
+      .game-card {
+        min-height: 66px;
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .match-team {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        min-width: 0;
+      }
+
+      .match-team.right {
+        justify-content: flex-end;
+      }
+
+      .match-name {
+        color: #e7e7e7;
+        font-size: 13px;
+        font-weight: 750;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .match-score {
+        color: var(--text);
+        font-size: 20px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .game-state {
+        display: grid;
+        justify-items: center;
+        gap: 4px;
+        min-width: 54px;
+        color: var(--live);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .brief-empty {
+        display: grid;
+        gap: 12px;
+      }
+
+      .brief-title {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      .brief-copy {
+        margin: 0;
+        color: var(--sub);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .button-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .button {
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 14px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        background: var(--lg);
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .button.outline {
+        background: transparent;
+        border-color: var(--line);
+        color: var(--sub);
+      }
+
+      .button.blue {
+        background: var(--action);
+      }
+
+      .insight-row {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .insight {
+        min-height: 66px;
+        padding: 10px 12px;
+        border-radius: 8px;
+      }
+
+      .insight b {
+        display: block;
+        font-size: 17px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .insight span {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .detail-head {
+        margin: 0 -16px;
+        padding: 0 16px 12px;
+        border-bottom: 1px solid var(--line);
+        background: linear-gradient(180deg, #121212, #0f0f0f);
+      }
+
+      .nav {
+        height: 44px;
+        display: grid;
+        grid-template-columns: 44px 1fr 44px;
+        align-items: center;
+        color: var(--sub);
+        font-size: 13px;
+      }
+
+      .back {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+
+      .venue {
+        text-align: center;
+      }
+
+      .detail-score {
+        display: grid;
+        grid-template-columns: 84px 1fr 84px;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 4px 12px;
+      }
+
+      .big-score {
+        display: grid;
+        justify-items: center;
+        gap: 5px;
+      }
+
+      .big-score b {
+        font-size: 36px;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0;
+        height: 42px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .tab {
+        display: grid;
+        place-items: center;
+        position: relative;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .tab.active {
+        color: var(--text);
+      }
+
+      .tab.active::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        width: 34px;
+        height: 2px;
+        border-radius: 999px;
+        background: var(--text);
+      }
+
+      .atbat-card {
+        margin-top: 14px;
+        padding: 14px;
+        border-radius: 10px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .people-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .person {
+        display: grid;
+        grid-template-columns: 38px 1fr;
+        align-items: center;
+        gap: 9px;
+      }
+
+      .avatar {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #2b2b2b, #141414);
+        border: 1px solid var(--line);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .person b {
+        display: block;
+        font-size: 13px;
+      }
+
+      .person span {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .count-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .count {
+        padding: 8px;
+        border-radius: 8px;
+        background: #141414;
+      }
+
+      .count-label {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 900;
+      }
+
+      .balls {
+        display: flex;
+        gap: 5px;
+        margin-top: 7px;
+      }
+
+      .ball {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+      }
+
+      .ball.yellow {
+        background: var(--ball);
+        border-color: var(--ball);
+      }
+
+      .ball.red {
+        background: var(--live);
+        border-color: var(--live);
+      }
+
+      .ball.white {
+        background: #ffffff;
+        border-color: #ffffff;
+      }
+
+      .timeline {
+        display: grid;
+        gap: 9px;
+        margin-top: 14px;
+      }
+
+      .inning-label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .inning-label::before,
+      .inning-label::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: var(--line);
+      }
+
+      .play {
+        display: grid;
+        grid-template-columns: 42px 1fr;
+        gap: 10px;
+        padding: 11px;
+        border-radius: 10px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .play strong {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 13px;
+      }
+
+      .play p {
+        margin: 0;
+        color: var(--sub);
+        font-size: 11px;
+        line-height: 1.42;
+      }
+
+      .records-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 58px;
+      }
+
+      .season-chip {
+        height: 28px;
+        padding: 0 10px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--panel-2);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .team-status {
+        padding: 15px;
+        border-radius: 10px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .team-status-top {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .metric-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 13px;
+      }
+
+      .metric {
+        padding: 10px;
+        border-radius: 8px;
+        background: #141414;
+      }
+
+      .metric b {
+        display: block;
+        font-size: 20px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .metric span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .chips {
+        display: flex;
+        gap: 7px;
+        overflow: hidden;
+        margin: 12px 0;
+      }
+
+      .chip {
+        height: 30px;
+        padding: 0 12px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: var(--panel-2);
+        color: var(--sub);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .chip.active {
+        background: var(--lg);
+        color: var(--text);
+      }
+
+      .leader-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .leader {
+        min-height: 72px;
+        display: grid;
+        grid-template-columns: 46px 1fr auto;
+        align-items: center;
+        gap: 11px;
+        padding: 11px;
+        border-radius: 8px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .leader-name {
+        font-size: 14px;
+        font-weight: 850;
+      }
+
+      .leader-team {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .leader-value {
+        text-align: right;
+      }
+
+      .leader-value b {
+        display: block;
+        font-size: 20px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .leader-value span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .settings-card {
+        padding: 14px;
+        border-radius: 10px;
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .preset {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        padding: 6px;
+        border-radius: 10px;
+        background: #121212;
+      }
+
+      .preset div {
+        min-height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        color: var(--sub);
+        font-size: 11px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .preset .active {
+        background: var(--lg);
+        color: var(--text);
+      }
+
+      .toggle-row {
+        min-height: 58px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .toggle-row:first-child {
+        border-top: 0;
+      }
+
+      .toggle-row b {
+        display: block;
+        font-size: 14px;
+      }
+
+      .toggle-row span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .switch {
+        width: 43px;
+        height: 24px;
+        border-radius: 999px;
+        position: relative;
+        background: var(--line);
+      }
+
+      .switch.on {
+        background: var(--lg);
+      }
+
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #ffffff;
+      }
+
+      .switch.on::after {
+        left: 22px;
+      }
+
+      .widget-canvas {
+        display: grid;
+        gap: 18px;
+        padding: 18px 0 0;
+      }
+
+      .widget-group {
+        display: grid;
+        gap: 9px;
+      }
+
+      .widget-label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .widget {
+        background: var(--panel);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+      }
+
+      .widget.inline {
+        height: 30px;
+        display: flex;
+        align-items: center;
+        padding: 0 12px;
+        border-radius: 999px;
+        color: var(--text);
+        font-size: 13px;
+      }
+
+      .widget.small {
+        width: 170px;
+        height: 170px;
+        padding: 14px;
+        border-radius: 22px;
+      }
+
+      .widget.medium {
+        width: 342px;
+        height: 146px;
+        padding: 14px;
+        border-radius: 20px;
+      }
+
+      .widget-score {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 20px;
+      }
+
+      .widget-score b {
+        font-size: 25px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .widget-state {
+        margin-top: 12px;
+        color: var(--live);
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .bottom-nav {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 82px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        align-items: start;
+        padding-top: 9px;
+        border-top: 1px solid var(--line);
+        background: rgba(15, 15, 15, 0.96);
+      }
+
+      .nav-item {
+        display: grid;
+        justify-items: center;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 800;
+      }
+
+      .nav-glyph {
+        width: 22px;
+        height: 22px;
+        position: relative;
+      }
+
+      .nav-glyph::before,
+      .nav-glyph::after {
+        content: "";
+        position: absolute;
+        inset: 4px;
+        border: 2px solid currentColor;
+        border-radius: 6px;
+      }
+
+      .nav-item.active {
+        color: var(--text);
+      }
+
+      .nav-item.active .nav-glyph::before {
+        border-color: var(--lg);
+        box-shadow: 0 0 0 3px rgba(198, 12, 48, 0.12);
+      }
+
+      .safe {
+        height: 24px;
+      }
+
+      @media (max-width: 860px) {
+        .board {
+          padding: 24px 14px 42px;
+        }
+
+        .board-header {
+          grid-template-columns: 1fr;
+        }
+
+        .legend {
+          grid-template-columns: 1fr;
+        }
+
+        .screen-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .screen-block,
+        .screen-title,
+        .phone {
+          width: min(var(--phone-w), calc(100vw - 28px));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <header class="board-header">
+        <div>
+          <p class="eyebrow">KBO Fans Mobile UI Concept</p>
+          <h1>마이팀 브리프 중심 모바일 디자인 보드</h1>
+          <p class="board-summary">
+            `docs/PLANNING.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`의 2026-05-19 기준을
+            시각화한 HTML 디자인 시안이다. 홈은 마이팀 브리프를 첫 화면 신호로 두고, 경기 상세와
+            기록실은 코어팬이 바로 깊게 들어갈 수 있도록 정보 밀도를 유지한다.
+          </p>
+        </div>
+        <div class="legend" aria-label="design token legend">
+          <div class="legend-item"><i class="swatch" style="background: var(--live)"></i>LIVE / 득점성 이벤트</div>
+          <div class="legend-item"><i class="swatch" style="background: var(--lg)"></i>마이팀 강조</div>
+          <div class="legend-item"><i class="swatch" style="background: var(--action)"></i>주요 CTA</div>
+          <div class="legend-item"><i class="swatch" style="background: var(--panel)"></i>카드 표면</div>
+        </div>
+      </header>
+
+      <section class="screen-grid">
+        <article class="screen-block">
+          <div class="screen-title">
+            <h2>Home · Live</h2>
+            <span>마이팀 경기 중</span>
+          </div>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>100%</span></div>
+            <div class="app">
+              <div class="app-header">
+                <div class="brand"><span class="brand-mark"></span><span>KBO Fans</span></div>
+                <div class="date-live"><span>5.19 화</span><i class="live-dot"></i></div>
+              </div>
+
+              <section>
+                <div class="hero-card">
+                  <div class="hero-top">
+                    <span class="tag">MY TEAM</span>
+                    <span class="tag neutral">잠실</span>
+                  </div>
+                  <div class="score-row">
+                    <div class="team">
+                      <img class="logo" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_KT_s.png" alt="KT" />
+                      <span>KT</span>
+                    </div>
+                    <div class="score">6</div>
+                    <div class="inning"><span>4회초</span><i class="pulse"></i></div>
+                    <div class="score">2</div>
+                    <div class="team">
+                      <img class="logo" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LG_s.png" alt="LG" />
+                      <span>LG</span>
+                    </div>
+                  </div>
+                  <div class="mini-table">
+                    <div class="row head"><span class="name">TEAM</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>R</span><span>H</span><span>E</span></div>
+                    <div class="row"><span class="name">KT</span><span>6</span><span>0</span><span>0</span><span>0</span><span>-</span><span>-</span><span>-</span><span>-</span><span>-</span><span class="total">6</span><span>9</span><span>0</span></div>
+                    <div class="row"><span class="name">LG</span><span>0</span><span>0</span><span>2</span><span>-</span><span>-</span><span>-</span><span>-</span><span>-</span><span>-</span><span class="total">2</span><span>3</span><span>0</span></div>
+                  </div>
+                  <div class="last-play">직전: 김현수 2타점 적시타 · 1사 1,3루</div>
+                </div>
+              </section>
+
+              <section class="section">
+                <div class="section-row">
+                  <div class="section-title">오늘 경기</div>
+                  <div class="section-action">전체 5</div>
+                </div>
+                <div class="games">
+                  <div class="game-card">
+                    <div class="match-team"><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HT_s.png" alt="KIA" /><span class="match-name">KIA</span><b class="match-score">3</b></div>
+                    <div class="game-state"><span>5회초</span><i class="pulse"></i></div>
+                    <div class="match-team right"><b class="match-score">0</b><span class="match-name">SSG</span><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_SK_s.png" alt="SSG" /></div>
+                  </div>
+                  <div class="game-card">
+                    <div class="match-team"><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LT_s.png" alt="롯데" /><span class="match-name">롯데</span><b class="match-score">3</b></div>
+                    <div class="game-state"><span>5회초</span><i class="pulse"></i></div>
+                    <div class="match-team right"><b class="match-score">0</b><span class="match-name">삼성</span><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_SS_s.png" alt="삼성" /></div>
+                  </div>
+                  <div class="game-card">
+                    <div class="match-team"><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_OB_s.png" alt="두산" /><span class="match-name">두산</span><b class="match-score">0</b></div>
+                    <div class="game-state"><span>4회말</span><i class="pulse"></i></div>
+                    <div class="match-team right"><b class="match-score">3</b><span class="match-name">NC</span><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_NC_s.png" alt="NC" /></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <nav class="bottom-nav">
+              <div class="nav-item active"><i class="nav-glyph"></i><span>홈</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>일정</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>순위</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>기록실</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>설정</span></div>
+            </nav>
+          </div>
+        </article>
+
+        <article class="screen-block">
+          <div class="screen-title">
+            <h2>Home · Pregame</h2>
+            <span>경기 전 / 알림 CTA</span>
+          </div>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>100%</span></div>
+            <div class="app">
+              <div class="app-header">
+                <div class="brand"><span class="brand-mark"></span><span>KBO Fans</span></div>
+                <div class="date-live"><span>5.19 화</span></div>
+              </div>
+              <section>
+                <div class="hero-card">
+                  <div class="hero-top">
+                    <span class="tag">MY TEAM</span>
+                    <span class="tag action">라인업 대기</span>
+                  </div>
+                  <div class="brief-empty">
+                    <h3 class="brief-title">LG vs KT · 18:30</h3>
+                    <p class="brief-copy">잠실 · 선발 예정: 켈리 vs 사우어<br />라인업 공개 전까지 경기 시작 알림을 준비합니다.</p>
+                    <div class="button-row">
+                      <div class="button">알림 켜기</div>
+                      <div class="button outline">예매 보기</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section class="section">
+                <div class="section-row">
+                  <div class="section-title">오늘의 야구</div>
+                  <div class="section-action">예정 5</div>
+                </div>
+                <div class="insight-row">
+                  <div class="insight"><b>3위</b><span>LG 현재 순위</span></div>
+                  <div class="insight"><b>2승 1패</b><span>최근 3경기</span></div>
+                </div>
+              </section>
+              <section class="section">
+                <div class="games">
+                  <div class="game-card">
+                    <div class="match-team"><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HT_s.png" alt="KIA" /><span class="match-name">KIA</span></div>
+                    <div class="game-state" style="color: var(--sub)">14:00</div>
+                    <div class="match-team right"><span class="match-name">SSG</span><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_SK_s.png" alt="SSG" /></div>
+                  </div>
+                  <div class="game-card">
+                    <div class="match-team"><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_NC_s.png" alt="NC" /><span class="match-name">NC</span></div>
+                    <div class="game-state" style="color: var(--sub)">18:30</div>
+                    <div class="match-team right"><span class="match-name">한화</span><img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HH_s.png" alt="한화" /></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <nav class="bottom-nav">
+              <div class="nav-item active"><i class="nav-glyph"></i><span>홈</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>일정</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>순위</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>기록실</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>설정</span></div>
+            </nav>
+          </div>
+        </article>
+
+        <article class="screen-block">
+          <div class="screen-title">
+            <h2>Game Detail · Relay</h2>
+            <span>현재 타석 + 이벤트 타임라인</span>
+          </div>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>100%</span></div>
+            <div class="app">
+              <div class="detail-head">
+                <div class="nav"><span class="back">‹</span><span class="venue">잠실 · 23,750명</span><span></span></div>
+                <div class="detail-score">
+                  <div class="team"><img class="logo" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_KT_s.png" alt="KT" /><span>KT 위즈</span></div>
+                  <div class="big-score"><b>6 : 2</b><span class="tag">4회초 LIVE</span></div>
+                  <div class="team"><img class="logo" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LG_s.png" alt="LG" /><span>LG 트윈스</span></div>
+                </div>
+                <div class="tabs">
+                  <div class="tab">스코어</div>
+                  <div class="tab active">문자중계</div>
+                  <div class="tab">박스스코어</div>
+                  <div class="tab">라인업</div>
+                </div>
+              </div>
+              <div class="atbat-card">
+                <div class="people-row">
+                  <div class="person"><div class="avatar">33</div><div><b>이정훈</b><span>타자 · 좌타</span></div></div>
+                  <div class="person"><div class="avatar">31</div><div><b>이정용</b><span>투수 · 19구</span></div></div>
+                </div>
+                <div class="count-grid">
+                  <div class="count"><div class="count-label">B</div><div class="balls"><i class="ball yellow"></i><i class="ball yellow"></i><i class="ball yellow"></i><i class="ball"></i></div></div>
+                  <div class="count"><div class="count-label">S</div><div class="balls"><i class="ball red"></i><i class="ball red"></i><i class="ball"></i></div></div>
+                  <div class="count"><div class="count-label">O</div><div class="balls"><i class="ball white"></i><i class="ball white"></i><i class="ball"></i></div></div>
+                </div>
+                <div class="last-play">직전: 투수 교체 · 주자1,3루</div>
+              </div>
+              <div class="timeline">
+                <div class="inning-label">4회초</div>
+                <div class="play">
+                  <div class="avatar" style="border-color: var(--good)">6</div>
+                  <div><strong>이강민 · 2타점 적시타</strong><p>좌중간 2루타. KT 6 : 2 LG<br />투구: S · B · B · S · 파울 · 타격</p></div>
+                </div>
+                <div class="play">
+                  <div class="avatar">5</div>
+                  <div><strong>김민수 · 볼넷 출루</strong><p>1사 1,2루. 다음 타자 이강민</p></div>
+                </div>
+                <div class="inning-label">3회말</div>
+                <div class="play">
+                  <div class="avatar" style="border-color: var(--live)">3</div>
+                  <div><strong>오지환 · 솔로 홈런</strong><p>시즌 1호. 좌측 담장 너머</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="screen-block">
+          <div class="screen-title">
+            <h2>Records</h2>
+            <span>마이팀 현황 + 리그 리더</span>
+          </div>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>100%</span></div>
+            <div class="app">
+              <div class="records-head">
+                <h2 style="margin: 0; font-size: 22px">기록실</h2>
+                <div class="season-chip">2026</div>
+              </div>
+              <section class="team-status">
+                <div class="team-status-top">
+                  <img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LG_s.png" alt="LG" />
+                  <div>
+                    <div style="font-size: 15px; font-weight: 850">LG 트윈스 선수 현황</div>
+                    <div style="color: var(--muted); font-size: 11px; margin-top: 3px">최근 24시간 기준</div>
+                  </div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric"><b>28</b><span>엔트리</span></div>
+                  <div class="metric"><b>2</b><span>부상</span></div>
+                  <div class="metric"><b>4</b><span>말소</span></div>
+                </div>
+              </section>
+              <section class="section">
+                <div class="section-row">
+                  <div class="section-title">리그 리더</div>
+                  <div class="section-action">전체</div>
+                </div>
+                <div class="chips">
+                  <div class="chip active">타율</div>
+                  <div class="chip">홈런</div>
+                  <div class="chip">OPS</div>
+                  <div class="chip">ERA</div>
+                </div>
+                <div class="leader-list">
+                  <div class="leader">
+                    <div class="avatar">LG</div>
+                    <div><div class="leader-name">홍창기</div><div class="leader-team"><img class="logo tiny" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LG_s.png" alt="LG" />LG 트윈스</div></div>
+                    <div class="leader-value"><b>.376</b><span>AVG</span></div>
+                  </div>
+                  <div class="leader">
+                    <div class="avatar">NC</div>
+                    <div><div class="leader-name">박민우</div><div class="leader-team"><img class="logo tiny" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_NC_s.png" alt="NC" />NC 다이노스</div></div>
+                    <div class="leader-value"><b>.351</b><span>AVG</span></div>
+                  </div>
+                  <div class="leader">
+                    <div class="avatar">HH</div>
+                    <div><div class="leader-name">노시환</div><div class="leader-team"><img class="logo tiny" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HH_s.png" alt="한화" />한화 이글스</div></div>
+                    <div class="leader-value"><b>.338</b><span>AVG</span></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+            <nav class="bottom-nav">
+              <div class="nav-item"><i class="nav-glyph"></i><span>홈</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>일정</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>순위</span></div>
+              <div class="nav-item active"><i class="nav-glyph"></i><span>기록실</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>설정</span></div>
+            </nav>
+          </div>
+        </article>
+
+        <article class="screen-block">
+          <div class="screen-title">
+            <h2>Settings · Alerts</h2>
+            <span>프리셋 + 발송 예시</span>
+          </div>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>100%</span></div>
+            <div class="app">
+              <div class="records-head">
+                <h2 style="margin: 0; font-size: 22px">설정</h2>
+              </div>
+              <section class="settings-card">
+                <div class="team-status-top">
+                  <img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LG_s.png" alt="LG" />
+                  <div>
+                    <div style="font-size: 15px; font-weight: 850">LG 트윈스</div>
+                    <div style="color: var(--muted); font-size: 11px; margin-top: 3px">마이팀</div>
+                  </div>
+                </div>
+              </section>
+              <section class="section">
+                <div class="section-row">
+                  <div class="section-title">알림 프리셋</div>
+                </div>
+                <div class="settings-card">
+                  <div class="preset">
+                    <div>가볍게 보기</div>
+                    <div class="active">내 팀 집중</div>
+                    <div>풀타임 팔로우</div>
+                  </div>
+                  <p class="brief-copy" style="margin-top: 12px">득점, 홈런, 역전, 경기 종료를 받습니다.</p>
+                </div>
+              </section>
+              <section class="section">
+                <div class="settings-card">
+                  <div class="toggle-row"><div><b>경기 시작</b><span>경기 시작 시 알려드려요</span></div><i class="switch on"></i></div>
+                  <div class="toggle-row"><div><b>득점</b><span>내 팀 득점 시 바로 알려드려요</span></div><i class="switch on"></i></div>
+                  <div class="toggle-row"><div><b>홈런</b><span>홈런 발생 시 알려드려요</span></div><i class="switch on"></i></div>
+                  <div class="toggle-row"><div><b>이닝 교대</b><span>이닝이 끝날 때 알려드려요</span></div><i class="switch"></i></div>
+                  <div class="toggle-row"><div><b>전체 경기 알림</b><span>마이팀 외 경기도 받습니다</span></div><i class="switch"></i></div>
+                </div>
+              </section>
+            </div>
+            <nav class="bottom-nav">
+              <div class="nav-item"><i class="nav-glyph"></i><span>홈</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>일정</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>순위</span></div>
+              <div class="nav-item"><i class="nav-glyph"></i><span>기록실</span></div>
+              <div class="nav-item active"><i class="nav-glyph"></i><span>설정</span></div>
+            </nav>
+          </div>
+        </article>
+
+        <article class="screen-block">
+          <div class="screen-title">
+            <h2>Widgets</h2>
+            <span>앱 밖 마이팀 상태</span>
+          </div>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>100%</span></div>
+            <div class="app">
+              <div class="records-head">
+                <h2 style="margin: 0; font-size: 22px">위젯 상태</h2>
+              </div>
+              <div class="widget-canvas">
+                <div class="widget-group">
+                  <div class="widget-label">Lock Screen Inline</div>
+                  <div class="widget inline">KT 6 : 2 LG · 4회초 LIVE</div>
+                </div>
+                <div class="widget-group">
+                  <div class="widget-label">Home Small</div>
+                  <div class="widget small">
+                    <span class="tag">MY TEAM</span>
+                    <div class="widget-score">
+                      <img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_KT_s.png" alt="KT" />
+                      <b>6 : 2</b>
+                      <img class="logo small" src="https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LG_s.png" alt="LG" />
+                    </div>
+                    <div class="widget-state">4회초 LIVE</div>
+                    <div class="mini-table">
+                      <div class="row head" style="grid-template-columns: 20px repeat(5, 1fr) 20px"><span></span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>R</span></div>
+                      <div class="row" style="grid-template-columns: 20px repeat(5, 1fr) 20px"><span class="name">KT</span><span>6</span><span>0</span><span>0</span><span>0</span><span>-</span><span class="total">6</span></div>
+                      <div class="row" style="grid-template-columns: 20px repeat(5, 1fr) 20px"><span class="name">LG</span><span>0</span><span>0</span><span>2</span><span>-</span><span>-</span><span class="total">2</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="widget-group">
+                  <div class="widget-label">Home Medium</div>
+                  <div class="widget medium">
+                    <span class="tag">MY TEAM</span>
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-top:12px">
+                      <span style="font-weight:850">KT 위즈</span>
+                      <b style="font-size:28px; font-variant-numeric:tabular-nums">6 : 2</b>
+                      <span style="font-weight:850">LG 트윈스</span>
+                    </div>
+                    <div class="widget-state">4회초 LIVE · 마지막 업데이트 9:41</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

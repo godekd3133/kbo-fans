@@ -2,6 +2,49 @@
 
 ---
 
+## 2026-05-19: Compact scoreboard / 앱 밖 refresh 루프 축소
+
+### 완료
+- [x] 백엔드 `/scoreboard/compact` endpoint 추가
+- [x] compact endpoint가 위젯/Live 표면용으로 최대 1경기만 선택하고, 해당 경기만 enrich하도록 구현
+- [x] 위젯 background refresh가 일반 API 모드에서 `/scoreboard/compact`를 우선 사용하도록 변경
+- [x] 위젯 sync에서 relay/current-at-bat 조회를 제거해 위젯 갱신이 별도 문자중계 크롤링 루프가 되지 않도록 정리
+- [x] Live Activity sync 내부의 direct KBO current-at-bat fallback 제거
+- [x] v4 delivery 모델에 맞춰 immediate Moment만 direct push topic을 만들도록 테스트 기대값 갱신
+- [x] `docs/APP_SPEC.md`, `docs/KBO_DATA_REFRESH_ARCHITECTURE_2026-05-19.md`에 compact endpoint와 남은 Live state 과제 반영
+
+### 검증
+- [x] `backend/.venv/bin/python -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_games.py backend/tests/test_snapshot_services.py`
+- [x] `backend/.venv/bin/pytest -q`
+- [x] 실제 KBO upstream을 타는 service 계측: 2026-05-19 기준 home cold는 detail/view1 각 5회, compact cold는 각 1회로 감소 확인
+- [x] `cd app && fvm dart format --set-exit-if-changed lib/data/repositories/api_game_repository.dart lib/services/widget_sync_service.dart lib/services/live_activity_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/data/models/records_overview_test.dart test/services/push_notification_service_test.dart`
+
+### 메모
+- Live Activity의 batter/pitcher/B-S-O 표시는 client direct crawl로 채우지 않고, 추후 backend-owned compact live state payload로 복구하는 쪽이 맞다.
+- `settings_screen.dart`의 `SizedBox(minHeight:)`는 현재 Flutter API에 없는 파라미터라 전체 analyze를 막고 있어 `ConstrainedBox`로 같은 의도를 유지해 수정했다.
+
+---
+
+## 2026-05-19: 알림 플레이북 / 앱 밖 경험 v4 앱 반영
+
+### 완료
+- [x] 설정 화면의 단순 알림 토글을 Moment별 `바로 / 요약 / Live만 / 끄기` 전달 방식 선택 UI로 전환
+- [x] 기본 플레이북을 `경기 시작/경기 종료/라인업=요약`, `득점/홈런/역전=바로`, `이닝 교대=Live만`으로 정리
+- [x] 앱 시작 시 OS 알림 권한을 바로 요청하지 않고, `권한 확인`, `바로 알림`, `경기 따라가기` 같은 명시적 사용자 action 이후에만 요청하도록 변경
+- [x] 로컬 경기 이벤트 알림과 FCM topic 구독이 `바로 알림` Moment만 대상으로 삼도록 조정
+- [x] 경기 상세 라이브 경기 헤더 아래에 `경기 따라가기` CTA를 추가하고, Live Activity는 사용자가 선택한 경기만 동기화하도록 변경
+- [x] `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`를 실제 구현된 Moment 목록과 기본값에 맞춰 동기화
+
+### 검증
+- [x] `cd app && fvm dart format lib/services/push_notification_service.dart lib/services/game_event_alert_service.dart lib/services/live_activity_service.dart lib/features/game_detail/game_detail_screen.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter analyze lib/services/push_notification_service.dart lib/services/game_event_alert_service.dart lib/services/live_activity_service.dart lib/features/game_detail/game_detail_screen.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart test/widget_test.dart`
+
+---
+
 ## 2026-05-19: 실시간/스냅샷 데이터 분리 및 중복 로딩 기술 검토
 
 ### 완료
@@ -860,8 +903,40 @@ kbo_fans/
 - [x] `docs/PLANNING.md`에 제품 한 줄 정의, 마이팀 데일리 사용 루프, 정보 깊이 원칙, 상태 중심 디자인 원칙 반영
 - [x] `docs/APP_SPEC.md`에 홈 마이팀 브리프 상태별 규칙, 경기 상세 탭 간 맥락 연결, 일정/순위 보강, 알림 프리셋, 위젯 원칙 반영
 - [x] `docs/FIGMA_PROMPT.md`에 5탭 구조, 기록실 페이지, 카드 체계, 상태 표현, 알림 프리셋 UI, 홈 상태 프레임 보강 반영
+- [x] 모바일 디자인 보드 HTML 제작 (`docs/design/kbo-fans-mobile-ui-2026-05-19/index.html`)
+- [x] 디자인 보드 렌더 확인용 preview 이미지 생성 (`docs/design/kbo-fans-mobile-ui-2026-05-19/preview.png`)
+- [x] UI/UX 원칙과 플랫폼 레퍼런스를 반영한 v2 방향 문서 작성 (`docs/UI_UX_REFERENCE_DEVELOPMENT_2026-05-19.md`)
+- [x] 레퍼런스 기반 v2 모바일 디자인 보드 제작 (`docs/design/kbo-fans-mobile-ui-reference-v2-2026-05-19/index.html`)
+- [x] v2 디자인 보드 렌더 확인용 preview 이미지 생성 (`docs/design/kbo-fans-mobile-ui-reference-v2-2026-05-19/preview.png`)
+- [x] 디자인 철학 / 플랫폼 UX / 스포츠앱 레퍼런스 기반 v3 방향 문서 작성 (`docs/UI_UX_DESIGN_PHILOSOPHY_REFERENCE_2026-05-19.md`)
+- [x] `Stadium Control Room for My Team` 콘셉트의 v3 모바일 디자인 보드 제작 (`docs/design/kbo-fans-mobile-ui-philosophy-v3-2026-05-19/index.html`)
+- [x] v3 디자인 보드 렌더 확인용 preview 이미지 생성 (`docs/design/kbo-fans-mobile-ui-philosophy-v3-2026-05-19/preview.png`)
+- [x] 알림 강도 / 앱 밖 경험 v3 문제를 기준으로 notification, Live Activity, Android Live Update, Widget 트렌드 재분석 문서 작성 (`docs/UI_UX_NOTIFICATION_OUTSIDE_APP_TRENDS_2026-05-19.md`)
+- [x] `Moment Subscription & Surface Strategy` 콘셉트의 v4 모바일 디자인 보드 제작 (`docs/design/kbo-fans-mobile-ui-alerts-outside-v4-2026-05-19/index.html`)
+- [x] v4 디자인 보드 렌더 확인용 preview 이미지 생성 (`docs/design/kbo-fans-mobile-ui-alerts-outside-v4-2026-05-19/preview.png`)
+- [x] 실제 마케팅/발표자료 제작을 가정한 5장 Feature Graphics 구성과 Claude Design PPT 프롬프트 작성 (`docs/FEATURE_GRAPHICS_CLAUDE_DESIGN_PROMPT_2026-05-19.md`)
+- [x] KBO Fans 5장 Feature Graphics HTML 시안 제작 (`docs/design/kbo-fans-feature-graphics-2026-05-19/index.html`)
+- [x] Feature Graphics 전체 preview 및 개별 slide PNG 5장 생성 (`docs/design/kbo-fans-feature-graphics-2026-05-19/preview.png`, `slide-01.png` ~ `slide-05.png`)
+- [x] v4 알림 / 앱 밖 경험 기준을 `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `docs/PLANNING.md`의 canonical 제품/화면/API 계약에 반영
+- [x] 구형 `알림 프리셋 + 이벤트 토글 + 실시간 위젯` 표현을 `Moment Subscription + Surface 분리 + Widget Status Board` 기준으로 재정의
+- [x] KBO 데이터 갱신 구조 P0 구현: 기본 direct scrape/fallback 제거, startup/detail preload 축소, Schedule/Home 자동 detail preload 제거, Score/Relay/Lineup 탭 과다 provider 의존 축소
+- [x] `docs/KBO_DATA_REFRESH_ARCHITECTURE_2026-05-19.md`에 P0 구현 상태와 남은 P1 범위 기록
+- [x] KBO 데이터 갱신 구조 P1 일부 구현: backend `SingleFlight` 추가, 동일 날짜 scoreboard 병렬 요청 병합, `/game/{gameId}` 단건 상세가 같은 날짜 전체 경기 enrich를 수행하지 않도록 변경
+- [x] `/api/game/{gameId}`가 scoreboard/game summary 성공 시 schedule fallback 조회를 추가로 하지 않도록 정리
 
 ### 검증 메모
 - `kbo-doc-sync` 기준으로 UX/화면 상태 변경은 `APP_SPEC`와 `WORKLOG`에 반영
-- 실제 앱 UI 구현이나 Figma MCP 작업은 수행하지 않았으므로 `CHANGELOG.md`에는 반영하지 않음
-- 이번 변경은 문서 동기화 범위이며, 코드/런타임 검증은 수행하지 않음
+- 해당 v4 디자인 보드 작업 시점에는 실제 앱 UI 구현이나 Figma MCP 작업은 수행하지 않았고, 이후 앱 코드 반영은 같은 날짜 상단 작업 이력과 `CHANGELOG.md`에 따로 기록함
+- Figma MCP 제작 도구는 현재 세션에서 호출 가능한 형태로 노출되지 않아, 우선 저장소 내 HTML 디자인 보드로 제작
+- Playwright CLI + system Chrome channel 로 HTML 디자인 보드 full-page screenshot 생성 확인
+- v2 UI/UX 보강은 Android NavigationBar/Layout 가이드, NN/g usability heuristics, WebAIM WCAG target size, Apple Widget/Live Activity 문서를 참고해 홈/상세/일정/기록실/알림/위젯 화면에 반영
+- v2 디자인 보드는 외부 이미지 의존 없이 CSS 기반 팀 배지와 UI 요소로 렌더 안정성을 확보하고, Playwright CLI + system Chrome channel 로 full-page screenshot 생성 확인
+- v3 UI/UX 보강은 GOV.UK Service Design, Calm Technology, Apple HIG/Widgets/Live Activities, Material 3, Microsoft Inclusive Design, IBM Design Language, Atomic Design, Baymard mobile app UX, ESPN/theScore 스포츠앱 패턴을 참고해 `Now / Next / Later`, `Attention Dial`, `Field View`, `Small Scoreboard Widget`, 반복 가능한 상태 컴포넌트 체계로 재정리
+- v3 디자인 보드는 외부 이미지 의존 없이 CSS 기반으로 제작했고, Playwright CLI + system Chrome channel 로 full-page screenshot 생성 확인
+- v4 UI/UX 보강은 Apple notification summary / Live Activities / Widgets, Android notification runtime permission / Live Updates, theScore Live Activities & Events, ESPN alert preferences를 참고해 `알림 강도`를 `Moment Subscription`, `앱 밖 경험`을 iOS Live Activity / Android Live Update / Widget / Push 역할 분리로 재설계
+- v4 디자인 보드는 외부 이미지 의존 없이 CSS 기반으로 제작했고, Playwright CLI + system Chrome channel 로 full-page screenshot 생성 확인
+- Feature Graphics는 Google Play Feature Graphic 공식 요구사항인 1024x500 변환 가능성을 고려하되, Claude Design / PPT 사용성을 위해 16:9 wide layout으로 제작. 전체 preview와 각 slide 단위 PNG를 Playwright CLI + system Chrome channel 로 생성 확인
+- v4 canonical 반영은 당시 문서/spec/API 계약 범위였으며, 이후 Flutter 앱 반영은 같은 날짜 상단 작업으로 이어서 기록함
+- 디자인 보드 변경 자체는 문서/디자인 산출물 범위였고, 별도 앱 런타임 캡처는 수행하지 않음
+- KBO 데이터 갱신 P0 구현 검증으로 `fvm dart format`, `fvm flutter analyze`, `fvm flutter test test/widget_test.dart test/data/models/records_overview_test.dart test/services/push_notification_service_test.dart` 실행, 모두 통과
+- KBO 데이터 갱신 P1 backend 검증으로 `backend/.venv/bin/python -m compileall backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_games.py backend/tests/test_snapshot_services.py`, `backend/.venv/bin/pytest -q` 실행, 전체 41개 테스트 통과
