@@ -168,11 +168,55 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: SafeArea(
         child: AppPageFrame(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
             children: [
-              const Text(
-                '설정',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SETTINGS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textDisabled,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '알림',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            height: 1.05,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardSub,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: const Text(
+                      '내 팀 집중',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
 
