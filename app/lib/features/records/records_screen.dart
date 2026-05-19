@@ -1242,25 +1242,58 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _featuredCards(RecordsOverview overview) {
+    final avgLeader = _seasonLeaderCard('시즌 타율 리더', overview.avgLeaders);
+    final eraLeader = _seasonLeaderCard('시즌 ERA 리더', overview.eraLeaders);
+    final hrLeader = _seasonLeaderCard('시즌 홈런 리더', overview.hrLeaders);
+    final opsLeader = _seasonLeaderCard('시즌 OPS 리더', overview.opsLeaders);
     return Column(
       children: [
         Row(
           children: [
-            Expanded(child: _featuredCard(overview.todayHitter)),
+            Expanded(child: _featuredCard(avgLeader)),
             const SizedBox(width: 10),
-            Expanded(child: _featuredCard(overview.todayPitcher)),
+            Expanded(child: _featuredCard(eraLeader)),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _featuredCard(overview.monthHitter)),
+            Expanded(child: _featuredCard(hrLeader)),
             const SizedBox(width: 10),
-            Expanded(child: _featuredCard(overview.monthPitcher)),
+            Expanded(child: _featuredCard(opsLeader)),
           ],
         ),
       ],
     );
+  }
+
+  FeaturedPlayerCard _seasonLeaderCard(
+    String label,
+    List<RecordLeader> leaders,
+  ) {
+    if (leaders.isEmpty) {
+      return FeaturedPlayerCard(label: label);
+    }
+    final leader = leaders.first;
+    return FeaturedPlayerCard(
+      label: label,
+      playerId: leader.playerId,
+      playerType: leader.playerType,
+      name: leader.name,
+      teamId: leader.teamId,
+      headline: '${_metricLabelFromFeaturedLabel(label)} ${leader.value}',
+      summary: '$_selectedSeason 시즌 KBO 공식 기록 기준',
+      imageUrl:
+          'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/$_selectedSeason/${leader.playerId}.jpg',
+    );
+  }
+
+  String _metricLabelFromFeaturedLabel(String label) {
+    if (label.contains('타율')) return '타율';
+    if (label.contains('홈런')) return '홈런';
+    if (label.contains('ERA')) return 'ERA';
+    if (label.contains('OPS')) return 'OPS';
+    return '기록';
   }
 
   Widget _featuredCard(FeaturedPlayerCard card) {

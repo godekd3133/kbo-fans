@@ -8,12 +8,14 @@ class ScoreTab extends StatelessWidget {
   final String gameId;
   final Game game;
   final Future<void> Function()? onRefresh;
+  final Widget? footer;
 
   const ScoreTab({
     super.key,
     required this.gameId,
     required this.game,
     this.onRefresh,
+    this.footer,
   });
 
   @override
@@ -24,7 +26,13 @@ class ScoreTab extends StatelessWidget {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        child: _buildInningTable(context, const <RelayItem>[]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInningTable(context, const <RelayItem>[]),
+            if (footer != null) ...[const SizedBox(height: 12), footer!],
+          ],
+        ),
       ),
     );
   }

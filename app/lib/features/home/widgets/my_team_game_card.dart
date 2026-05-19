@@ -14,9 +14,17 @@ const _kboImageHeaders = {
 
 class MyTeamGameCard extends StatelessWidget {
   final Game game;
-  final VoidCallback? onTap;
+  final VoidCallback? onOpenDetail;
+  final VoidCallback? onOpenRelay;
+  final VoidCallback? onOpenAlert;
 
-  const MyTeamGameCard({super.key, required this.game, this.onTap});
+  const MyTeamGameCard({
+    super.key,
+    required this.game,
+    this.onOpenDetail,
+    this.onOpenRelay,
+    this.onOpenAlert,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +34,11 @@ class MyTeamGameCard extends StatelessWidget {
     final secondary = _secondaryText();
     final accent =
         awayTeam?.primaryColor ?? homeTeam?.primaryColor ?? AppColors.live;
+    final primaryAction = _primaryAction();
+    final secondaryAction = _secondaryAction();
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: onOpenDetail,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -86,8 +96,8 @@ class MyTeamGameCard extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                const Text(
-                  '방금 업데이트',
+                Text(
+                  _stateMetaText(),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -170,9 +180,9 @@ class MyTeamGameCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: onTap,
-                    icon: const Icon(Icons.chevron_right_rounded, size: 18),
-                    label: const Text('중계 보기'),
+                    onPressed: primaryAction.onPressed,
+                    icon: Icon(primaryAction.icon, size: 18),
+                    label: Text(primaryAction.label),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.accent,
                       foregroundColor: AppColors.textPrimary,
@@ -183,22 +193,24 @@ class MyTeamGameCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onTap,
-                    icon: const Icon(Icons.notifications_outlined, size: 17),
-                    label: const Text('핵심 알림'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.divider),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                if (secondaryAction != null) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: secondaryAction.onPressed,
+                      icon: Icon(secondaryAction.icon, size: 17),
+                      label: Text(secondaryAction.label),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: const BorderSide(color: AppColors.divider),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ],
@@ -208,6 +220,65 @@ class MyTeamGameCard extends StatelessWidget {
   }
 
   String _scoreText(int? score) => score == null ? '-' : '$score';
+
+  _CardAction _primaryAction() {
+    final detail = onOpenDetail;
+    return switch (game.status) {
+      GameStatus.live => _CardAction(
+        label: '중계 보기',
+        icon: Icons.chevron_right_rounded,
+        onPressed: onOpenRelay ?? detail,
+      ),
+      GameStatus.final_ => _CardAction(
+        label: '경기 기록',
+        icon: Icons.insert_chart_outlined_rounded,
+        onPressed: detail,
+      ),
+      GameStatus.scheduled => _CardAction(
+        label: '경기 정보',
+        icon: Icons.info_outline_rounded,
+        onPressed: detail,
+      ),
+      GameStatus.cancelled || GameStatus.suspended => _CardAction(
+        label: '경기 정보',
+        icon: Icons.info_outline_rounded,
+        onPressed: detail,
+      ),
+    };
+  }
+
+  _CardAction? _secondaryAction() {
+    final detail = onOpenDetail;
+    return switch (game.status) {
+      GameStatus.live => _CardAction(
+        label: '따라가기',
+        icon: Icons.notifications_active_outlined,
+        onPressed: onOpenAlert ?? detail,
+      ),
+      GameStatus.final_ => _CardAction(
+        label: '하이라이트',
+        icon: Icons.play_circle_outline_rounded,
+        onPressed: detail,
+      ),
+      GameStatus.scheduled => _CardAction(
+        label: '알림 설정',
+        icon: Icons.notifications_outlined,
+        onPressed: onOpenAlert ?? detail,
+      ),
+      GameStatus.cancelled || GameStatus.suspended => null,
+    };
+  }
+
+  String _stateMetaText() {
+    return switch (game.status) {
+      GameStatus.live => '방금 업데이트',
+      GameStatus.final_ => '최종 기록',
+      GameStatus.scheduled =>
+        game.startTime.isEmpty ? '경기 예정' : '${game.startTime} 예정',
+      GameStatus.cancelled => '취소',
+      GameStatus.suspended => '중단',
+    };
+  }
 
   Widget _teamBlock(String teamId, String shortName, String caption) {
     return Column(
@@ -301,4 +372,16 @@ class MyTeamGameCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CardAction {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  const _CardAction({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+  });
 }

@@ -42,6 +42,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   ScheduleViewMode _viewMode = ScheduleViewMode.calendar;
   ScheduleTeamFilter _teamFilter = ScheduleTeamFilter.all;
   String? _stadiumTeamId;
+  final Map<String, GlobalKey> _stadiumSectionKeys = {};
   int? _scheduleLoadStartedAtMicros;
   String? _lastScheduleLoadLogKey;
 
@@ -71,6 +72,28 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   void _openGameDetail(String gameId) {
     context.push('/game/$gameId');
+  }
+
+  GlobalKey _stadiumSectionKey(String yearMonth, String stadium) {
+    return _stadiumSectionKeys.putIfAbsent(
+      '$yearMonth::$stadium',
+      () => GlobalKey(),
+    );
+  }
+
+  void _scrollToStadium(String yearMonth, String stadium) {
+    final sectionContext =
+        _stadiumSectionKeys['$yearMonth::$stadium']?.currentContext;
+    if (sectionContext == null) {
+      return;
+    }
+
+    Scrollable.ensureVisible(
+      sectionContext,
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      alignment: 0.04,
+    );
   }
 
   void _changeMonth(int delta) {
@@ -566,15 +589,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
 
         return scheduleAsync.when(
-          loading: () => _buildStadiumList(const <ScheduleDay>[]),
-          error: (_, _) => _buildStadiumList(const <ScheduleDay>[]),
+          loading: () => _buildStadiumList(yearMonth, const <ScheduleDay>[]),
+          error: (_, _) => _buildStadiumList(yearMonth, const <ScheduleDay>[]),
           data: (days) {
             final filteredDays = _filterDays(days, myTeamId);
             final stadiumFilteredDays = _filterDaysBySelectedTeam(
               filteredDays,
               _stadiumTeamId,
             );
-            return _buildStadiumList(stadiumFilteredDays);
+            return _buildStadiumList(yearMonth, stadiumFilteredDays);
           },
         );
       },
@@ -844,7 +867,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildStadiumList(List<ScheduleDay> days) {
+  Widget _buildStadiumList(String yearMonth, List<ScheduleDay> days) {
     final stadiumMap = <String, List<_StadiumScheduleItem>>{};
     for (final day in days) {
       for (final game in day.games) {
@@ -879,8 +902,25 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final stadium in stadiums) ...[
+                  _stadiumQuickLinkButton(
+                    stadium: stadium,
+                    gameCount: stadiumMap[stadium]!.length,
+                    onTap: () => _scrollToStadium(yearMonth, stadium),
+                  ),
+                  if (stadium != stadiums.last) const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           for (final stadium in stadiums) ...[
             Padding(
+              key: _stadiumSectionKey(yearMonth, stadium),
               padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
               child: Text(
                 stadium,
@@ -907,6 +947,52 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _stadiumQuickLinkButton({
+    required String stadium,
+    required int gameCount,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.place_outlined,
+              size: 14,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              stadium,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              '$gameCount',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textDisabled,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -426,8 +426,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                               ),
                             ),
                             const Spacer(),
-                            const Text(
-                              '방금 업데이트',
+                            Text(
+                              _stateMetaText(game),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textSecondary,
@@ -508,13 +508,6 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     child: _TicketInfoCard(game: game),
                   ),
                 ),
-              if (game.status == GameStatus.final_)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: _HighlightSection(game: game, gameId: gameId),
-                  ),
-                ),
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _TabBarHeaderDelegate(tabBar),
@@ -527,6 +520,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                   gameId: gameId,
                   game: game,
                   onRefresh: _refreshGameDetail,
+                  footer: game.status == GameStatus.final_
+                      ? _HighlightSection(game: game, gameId: gameId)
+                      : null,
                 ),
                 RelayTab(
                   gameId: gameId,
@@ -604,6 +600,17 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       ],
     );
   }
+
+  String _stateMetaText(Game game) {
+    return switch (game.status) {
+      GameStatus.live => '방금 업데이트',
+      GameStatus.final_ => '최종 기록',
+      GameStatus.scheduled =>
+        game.startTime.isEmpty ? '경기 예정' : '${game.startTime} 예정',
+      GameStatus.cancelled => '취소',
+      GameStatus.suspended => '중단',
+    };
+  }
 }
 
 class _FollowGameCard extends StatelessWidget {
@@ -674,7 +681,7 @@ class _FollowGameCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _FollowSurfaceTile(
-                  title: 'Live 표면',
+                  title: '따라가기 화면',
                   description: '스코어, 이닝, 주자',
                   icon: Icons.phone_iphone_rounded,
                 ),
@@ -682,7 +689,7 @@ class _FollowGameCard extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: _FollowSurfaceTile(
-                  title: 'Push',
+                  title: '바로 알림',
                   description: '득점과 역전만',
                   icon: Icons.notifications_active_outlined,
                 ),
@@ -690,7 +697,7 @@ class _FollowGameCard extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: _FollowSurfaceTile(
-                  title: 'Widget',
+                  title: '홈 위젯',
                   description: '상태판 갱신',
                   icon: Icons.widgets_outlined,
                 ),

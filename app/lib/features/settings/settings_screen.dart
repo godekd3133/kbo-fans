@@ -187,7 +187,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          '알림 플레이북',
+                          '알림',
                           style: TextStyle(
                             fontSize: 23,
                             fontWeight: FontWeight.w900,
@@ -208,7 +208,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       border: Border.all(color: AppColors.divider),
                     ),
                     child: const Text(
-                      '내 팀 집중',
+                      '현재 프리셋: 내 팀 집중',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -240,7 +240,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 20),
 
               const Text(
-                '알림 플레이북',
+                '장면별 알림',
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 6),
@@ -263,7 +263,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     _momentRow(
                       label: '경기 시작',
-                      description: '플레이볼 직후는 요약으로 두는 것을 권장합니다',
+                      description: '플레이볼 직후는 묶음 요약으로 두는 것을 권장합니다',
                       delivery: _gameStartDelivery,
                       teamColor: teamColor,
                       onTap: () => _showDeliveryPicker(
@@ -311,7 +311,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _divider(),
                     _momentRow(
                       label: '경기 종료',
-                      description: '최종 결과는 바로 또는 요약으로 받을 수 있습니다',
+                      description: '최종 결과는 바로 알림 또는 묶음 요약으로 받을 수 있습니다',
                       delivery: _gameEndDelivery,
                       teamColor: teamColor,
                       onTap: () => _showDeliveryPicker(
@@ -335,7 +335,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _divider(),
                     _momentRow(
                       label: '이닝 교대',
-                      description: '알림 대신 Live 표면에서 상태만 갱신합니다',
+                      description: '알림 대신 따라가기 화면에서 상태만 갱신합니다',
                       delivery: _inningChangeDelivery,
                       teamColor: teamColor,
                       onTap: () => _showDeliveryPicker(
@@ -379,26 +379,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     _SurfaceRow(
                       icon: Icons.notifications_outlined,
-                      label: 'Push',
+                      label: '바로 알림',
                       description: '득점, 홈런, 역전처럼 바로 대응할 장면만 보냅니다',
                     ),
                     _DividerInset(),
                     _SurfaceRow(
                       icon: Icons.schedule_outlined,
-                      label: '요약',
+                      label: '묶음 요약',
                       description: '시작, 종료, 라인업처럼 묶어도 되는 장면을 모읍니다',
                     ),
                     _DividerInset(),
                     _SurfaceRow(
                       icon: Icons.phone_iphone,
-                      label: 'Live 표면',
-                      description: '경기 상세에서 따라가기한 경기의 현재 상태만 유지합니다',
+                      label: '따라가기 화면',
+                      description:
+                          'iOS Live Activity에 표시하고 Android 진행형 알림은 후속 구현합니다',
                     ),
                     _DividerInset(),
                     _SurfaceRow(
                       icon: Icons.widgets_outlined,
-                      label: '위젯',
-                      description: '홈 화면에서는 오늘의 대표 경기를 빠르게 확인합니다',
+                      label: '홈 위젯',
+                      description: 'OS 정책에 따라 지연될 수 있어 업데이트 시각을 함께 보여줍니다',
                     ),
                   ],
                 ),
@@ -516,7 +517,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(width: 12),
               Container(
-                width: 70,
+                width: 82,
                 height: 32,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
@@ -612,9 +613,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   String _deliveryLabel(PushNotificationDelivery delivery) {
     return switch (delivery) {
-      PushNotificationDelivery.immediate => '바로',
-      PushNotificationDelivery.summary => '요약',
-      PushNotificationDelivery.liveOnly => 'Live만',
+      PushNotificationDelivery.immediate => '바로 알림',
+      PushNotificationDelivery.summary => '묶음 요약',
+      PushNotificationDelivery.liveOnly => '따라가기만',
       PushNotificationDelivery.off => '끔',
     };
   }
@@ -823,7 +824,7 @@ class _PlaybookPreviewCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onApply,
                   icon: const Icon(Icons.tune, size: 16),
-                  label: const Text('내 팀 집중'),
+                  label: const Text('프리셋 적용'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textPrimary,
                     side: const BorderSide(color: AppColors.divider),
@@ -948,15 +949,15 @@ class _DeliveryPickerSheet extends StatelessWidget {
           _option(
             context,
             delivery: PushNotificationDelivery.summary,
-            label: '요약',
+            label: '묶음 요약',
             description: '시작, 종료, 라인업처럼 묶어서 보기 좋은 장면',
             icon: Icons.schedule_outlined,
           ),
           _option(
             context,
             delivery: PushNotificationDelivery.liveOnly,
-            label: 'Live 표면만',
-            description: '경기 따라가기 중 현재 상태에만 반영',
+            label: '따라가기 화면만',
+            description: '푸시는 보내지 않고 따라가기 화면 상태만 갱신',
             icon: Icons.phone_iphone,
           ),
           _option(

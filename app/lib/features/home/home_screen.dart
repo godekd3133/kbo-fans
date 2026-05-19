@@ -346,6 +346,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       myTeamId: myTeamId,
       myGame: myGame,
     );
+    final selectedMyGame = myGame;
 
     return RefreshIndicator(
       onRefresh: () async => _invalidateTodayScoreboard(),
@@ -355,13 +356,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(child: _buildHeader(context, hasLive)),
-            if (myGame != null)
+            if (selectedMyGame != null)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: MyTeamGameCard(
-                    game: myGame,
-                    onTap: () => _openGameDetail(myGame!),
+                    game: selectedMyGame,
+                    onOpenDetail: () => _openGameDetail(selectedMyGame),
+                    onOpenRelay: () =>
+                        _openGameDetail(selectedMyGame, tab: 'relay'),
+                    onOpenAlert: () {
+                      if (selectedMyGame.status == GameStatus.scheduled) {
+                        context.go('/settings');
+                        return;
+                      }
+                      _openGameDetail(selectedMyGame);
+                    },
                   ),
                 ),
               ),
@@ -584,14 +594,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     : const SizedBox.shrink(),
               ),
             ),
+            const SliverToBoxAdapter(child: SizedBox(height: 88)),
           ],
         ),
       ),
     );
   }
 
-  void _openGameDetail(Game game) {
-    context.push('/game/${game.gameId}', extra: game);
+  void _openGameDetail(Game game, {String? tab}) {
+    final location = tab == null
+        ? '/game/${game.gameId}'
+        : '/game/${game.gameId}?tab=$tab';
+    context.push(location, extra: game);
   }
 
   _MyTeamBriefData? _buildMyTeamBrief({
@@ -1292,15 +1306,26 @@ class _MyTeamBriefCard extends StatelessWidget {
         ? (nextGame.awayId == myTeamId ? nextGame.homeId : nextGame.awayId)
         : null;
     final opponent = opponentId != null ? KboTeams.byId(opponentId) : null;
+    final primaryLabel = todayGame == null
+        ? '일정 보기'
+        : switch (todayGame!.status) {
+            GameStatus.live => '중계 보기',
+            GameStatus.final_ => '경기 기록',
+            _ => '경기 상세',
+          };
     void openPrimaryDestination() {
       if (todayGame != null) {
-        context.push('/game/${todayGame!.gameId}', extra: todayGame);
+        final route = todayGame!.status == GameStatus.live
+            ? '/game/${todayGame!.gameId}?tab=relay'
+            : '/game/${todayGame!.gameId}';
+        context.push(route, extra: todayGame);
       } else {
         context.go('/schedule');
       }
     }
 
     return _sectionCard(
+      padding: const EdgeInsets.all(14),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -1361,7 +1386,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 9),
               Text(
                 team?.name ?? myTeamId!,
                 style: const TextStyle(
@@ -1381,7 +1406,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
@@ -1413,7 +1438,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                 ],
               ),
               if (brief != null && brief!.recentSummaries.isNotEmpty) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 const Text(
                   '최근 3경기',
                   style: TextStyle(
@@ -1423,28 +1448,30 @@ class _MyTeamBriefCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final summary in brief!.recentSummaries)
-                      _recentGameChip(context, summary),
-                  ],
+                SizedBox(
+                  height: 44,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: brief!.recentSummaries.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) =>
+                        _recentGameChip(context, brief!.recentSummaries[index]),
+                  ),
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: openPrimaryDestination,
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(46),
+                        minimumSize: const Size.fromHeight(44),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: Text(todayGame != null ? '경기 상세' : '일정 보기'),
+                      child: Text(primaryLabel),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1452,9 +1479,9 @@ class _MyTeamBriefCard extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: () => context.go('/standings'),
                       style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(46),
+                        minimumSize: const Size.fromHeight(44),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                       child: const Text('순위 보기'),
@@ -1480,7 +1507,9 @@ class _MyTeamBriefCard extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
         ),
       ],
     );
@@ -2318,9 +2347,12 @@ class _QuickContentListItem extends ConsumerWidget {
   }
 }
 
-Widget _sectionCard({required Widget child}) {
+Widget _sectionCard({
+  required Widget child,
+  EdgeInsetsGeometry padding = const EdgeInsets.all(16),
+}) {
   return Container(
-    padding: const EdgeInsets.all(16),
+    padding: padding,
     decoration: BoxDecoration(
       color: AppColors.card,
       borderRadius: BorderRadius.circular(8),
