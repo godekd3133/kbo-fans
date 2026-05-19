@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
-		2A1B3C4D5E6F708192A3B4C5 /* Runner.entitlements in Resources */ = {isa = PBXBuildFile; fileRef = 2A1B3C4D5E6F708192A3B4C4 /* Runner.entitlements */; };
 		2A1B3C4D5E6F708192A3B4C7 /* KboFansWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A1B3C4D5E6F708192A3B4C6 /* KboFansWidget.swift */; };
 		2A1B3C4D5E6F708192A3B4C9 /* KboFansWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2A1B3C4D5E6F708192A3B4C8 /* KboFansWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2A1B3C4D5E6F708192A3B4CB /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A1B3C4D5E6F708192A3B4CA /* WidgetKit.framework */; };
@@ -223,7 +222,6 @@
 				0BEA6396CA47E524B4A29009 /* Pods-RunnerTests.release.xcconfig */,
 				9C89067AD0E90C0B7B5D43D9 /* Pods-RunnerTests.profile.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -378,21 +376,6 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
 		};
-		8A7D3F2B4C5E6A708192B3C4 /* Re-sign Native Assets */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Frameworks/objective_c.framework",
-			);
-			name = "Re-sign Native Assets";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "FRAMEWORK_PATH=\"$TARGET_BUILD_DIR/$WRAPPER_NAME/Frameworks/objective_c.framework\"\nBINARY_PATH=\"$FRAMEWORK_PATH/objective_c\"\nif [ ! -f \"$BINARY_PATH\" ]; then\n  exit 0\nfi\n\nif [ \"$PLATFORM_NAME\" = \"iphoneos\" ]; then\n  EXPECTED_PLATFORM=\"IOS\"\nelse\n  EXPECTED_PLATFORM=\"IOSSIMULATOR\"\nfi\n\nCURRENT_PLATFORM=$(/usr/bin/vtool -show-build \"$BINARY_PATH\" 2>/dev/null | awk '/platform / { print $2; exit }')\nif [ \"$CURRENT_PLATFORM\" != \"$EXPECTED_PLATFORM\" ]; then\n  CANDIDATE=$(find \"$FLUTTER_APPLICATION_PATH/.dart_tool/hooks_runner/shared/objective_c/build\" -path '*/objective_c.dylib' -print 2>/dev/null | while read -r dylib; do\n    PLATFORM=$(/usr/bin/vtool -show-build \"$dylib\" 2>/dev/null | awk '/platform / { print $2; exit }')\n    if [ \"$PLATFORM\" = \"$EXPECTED_PLATFORM\" ]; then\n      echo \"$dylib\"\n      break\n    fi\n  done)\n\n  if [ -n \"$CANDIDATE\" ]; then\n    /bin/cp \"$CANDIDATE\" \"$BINARY_PATH\"\n  else\n    echo \"warning: Failed to locate objective_c native asset for $EXPECTED_PLATFORM\"\n  fi\nfi\n\nif [ -n \"$EXPANDED_CODE_SIGN_IDENTITY\" ]; then\n  /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --preserve-metadata=identifier,requirements \"$FRAMEWORK_PATH\"\nfi\n";
-		};
 		475ED22BBEA68EDA73DB14F6 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -431,6 +414,21 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		8A7D3F2B4C5E6A708192B3C4 /* Re-sign Native Assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Frameworks/objective_c.framework",
+			);
+			name = "Re-sign Native Assets";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "FRAMEWORK_PATH=\"$TARGET_BUILD_DIR/$WRAPPER_NAME/Frameworks/objective_c.framework\"\nBINARY_PATH=\"$FRAMEWORK_PATH/objective_c\"\nif [ ! -f \"$BINARY_PATH\" ]; then\n  exit 0\nfi\n\nif [ \"$PLATFORM_NAME\" = \"iphoneos\" ]; then\n  EXPECTED_PLATFORM=\"IOS\"\nelse\n  EXPECTED_PLATFORM=\"IOSSIMULATOR\"\nfi\n\nCURRENT_PLATFORM=$(/usr/bin/vtool -show-build \"$BINARY_PATH\" 2>/dev/null | awk '/platform / { print $2; exit }')\nif [ \"$CURRENT_PLATFORM\" != \"$EXPECTED_PLATFORM\" ]; then\n  CANDIDATE=$(find \"$FLUTTER_APPLICATION_PATH/.dart_tool/hooks_runner/shared/objective_c/build\" -path '*/objective_c.dylib' -print 2>/dev/null | while read -r dylib; do\n    PLATFORM=$(/usr/bin/vtool -show-build \"$dylib\" 2>/dev/null | awk '/platform / { print $2; exit }')\n    if [ \"$PLATFORM\" = \"$EXPECTED_PLATFORM\" ]; then\n      echo \"$dylib\"\n      break\n    fi\n  done)\n\n  if [ -n \"$CANDIDATE\" ]; then\n    /bin/cp \"$CANDIDATE\" \"$BINARY_PATH\"\n  else\n    echo \"warning: Failed to locate objective_c native asset for $EXPECTED_PLATFORM\"\n  fi\nfi\n\nif [ -n \"$EXPANDED_CODE_SIGN_IDENTITY\" ]; then\n  /usr/bin/codesign --force --sign \"$EXPANDED_CODE_SIGN_IDENTITY\" --preserve-metadata=identifier,requirements \"$FRAMEWORK_PATH\"\nfi\n";
 		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -552,75 +550,6 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		2A1B3C4D5E6F708192A3B4DB /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				CODE_SIGN_ENTITLEMENTS = KboFansWidgetExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A23ZPKGMW9;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = KboFansWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kbofans.kboFans.KboFansWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		2A1B3C4D5E6F708192A3B4DC /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				CODE_SIGN_ENTITLEMENTS = KboFansWidgetExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A23ZPKGMW9;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = KboFansWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kbofans.kboFans.KboFansWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Release;
-		};
-		2A1B3C4D5E6F708192A3B4DD /* Profile */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				APPLICATION_EXTENSION_API_ONLY = YES;
-				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
-				CODE_SIGN_ENTITLEMENTS = KboFansWidgetExtension.entitlements;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = A23ZPKGMW9;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = KboFansWidget/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.kbofans.kboFans.KboFansWidget;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Profile;
-		};
 		249021D3217E4FDB00AE95B9 /* Profile */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -650,7 +579,7 @@
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -694,6 +623,72 @@
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Profile;
+		};
+		2A1B3C4D5E6F708192A3B4DB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = KboFansWidgetExtension.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A23ZPKGMW9;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KboFansWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kbofans.kboFans.KboFansWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		2A1B3C4D5E6F708192A3B4DC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = KboFansWidgetExtension.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A23ZPKGMW9;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KboFansWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kbofans.kboFans.KboFansWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		2A1B3C4D5E6F708192A3B4DD /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = KboFansWidgetExtension.entitlements;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = A23ZPKGMW9;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = KboFansWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kbofans.kboFans.KboFansWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Profile;
 		};
@@ -776,7 +771,7 @@
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -833,7 +828,7 @@
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
