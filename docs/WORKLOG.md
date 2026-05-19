@@ -15,8 +15,8 @@
 
 ### 검증
 - [x] `curl -I --max-time 5 https://dev-api.kbofans.com/api/health` 실패로 dev API DNS 미해석 확인
-- [ ] `cd app && fvm flutter analyze`
-- [ ] `cd app && fvm flutter test`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test`
 - [ ] local iOS simulator/device no-override 실행 로그에서 `dev-api.kbofans.com` 반복 호출 없음 확인
 
 ---
