@@ -6,8 +6,9 @@ import 'package:workmanager/workmanager.dart';
 
 import '../core/config/app_config.dart';
 import '../core/widgets/dev_console.dart';
+import '../data/api/api_client.dart';
 import '../data/models/game.dart';
-import '../data/models/relay.dart';
+import '../data/repositories/api_game_repository.dart';
 import '../data/repositories/game_repository.dart';
 import '../data/repositories/kbo_direct_repository.dart';
 import 'live_activity_service.dart';
@@ -25,15 +26,15 @@ void widgetCallbackDispatcher() {
     try {
       AppConfig.initialize();
       await WidgetSyncService.instance.initialize();
-      final repository = WidgetSyncService.instance
-          .createRepositoryForBackground();
       final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final games = await repository.getScoreboard(date);
       final myTeamId = await HomeWidget.getWidgetData<String>('widget_my_team');
+      final games = await WidgetSyncService.instance.fetchBackgroundScoreboard(
+        date: date,
+        myTeamId: myTeamId,
+      );
       await WidgetSyncService.instance.syncScoreboard(
         games: games,
         myTeamId: myTeamId,
-        repository: repository,
       );
       return true;
     } catch (_) {
@@ -56,7 +57,22 @@ class WidgetSyncService {
   }
 
   GameRepository createRepositoryForBackground() {
-    return KboDirectRepository();
+    if (AppConfig.instance.preferDirectScrape) {
+      return KboDirectRepository();
+    }
+    return ApiGameRepository(ApiClient());
+  }
+
+  Future<List<Game>> fetchBackgroundScoreboard({
+    required String date,
+    required String? myTeamId,
+  }) {
+    if (AppConfig.instance.preferDirectScrape) {
+      return KboDirectRepository().getScoreboard(date);
+    }
+    return ApiGameRepository(
+      ApiClient(),
+    ).getCompactScoreboard(date, myTeamId: myTeamId);
   }
 
   Future<void> syncScoreboard({
@@ -104,14 +120,6 @@ class WidgetSyncService {
       return;
     }
 
-    final relayRepository = repository ?? createRepositoryForBackground();
-    CurrentAtBat? currentAtBat;
-    try {
-      currentAtBat = await relayRepository.getCurrentAtBat(selected.gameId);
-    } catch (_) {
-      currentAtBat = null;
-    }
-
     await Future.wait([
       HomeWidget.saveWidgetData<String>(
         'widget_title',
@@ -134,18 +142,9 @@ class WidgetSyncService {
         'widget_home_team_id',
         selected.home.teamId,
       ),
-      HomeWidget.saveWidgetData<String>(
-        'widget_batter',
-        _batterText(currentAtBat),
-      ),
-      HomeWidget.saveWidgetData<String>(
-        'widget_pitcher',
-        _pitcherText(currentAtBat),
-      ),
-      HomeWidget.saveWidgetData<String>(
-        'widget_pitch_count',
-        '${currentAtBat?.pitchCount ?? 0}',
-      ),
+      HomeWidget.saveWidgetData<String>('widget_batter', ''),
+      HomeWidget.saveWidgetData<String>('widget_pitcher', ''),
+      HomeWidget.saveWidgetData<String>('widget_pitch_count', '0'),
       HomeWidget.saveWidgetData<String>('widget_updated_at', _updatedAtText()),
       HomeWidget.saveWidgetData<String>('widget_game_id', selected.gameId),
     ]);
@@ -223,20 +222,6 @@ class WidgetSyncService {
     final minute = now.minute.toString().padLeft(2, '0');
     final second = now.second.toString().padLeft(2, '0');
     return '$hour:$minute:$second';
-  }
-
-  String _batterText(CurrentAtBat? currentAtBat) {
-    if (currentAtBat == null || currentAtBat.batterName.isEmpty) {
-      return '';
-    }
-    return '타자 ${currentAtBat.batterName}';
-  }
-
-  String _pitcherText(CurrentAtBat? currentAtBat) {
-    if (currentAtBat == null || currentAtBat.pitcherName.isEmpty) {
-      return '';
-    }
-    return '투수 ${currentAtBat.pitcherName}';
   }
 
   String _buildSignature({

@@ -32,6 +32,25 @@ class ApiGameRepository implements GameRepository {
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
   }
 
+  Future<List<Game>> getCompactScoreboard(
+    String date, {
+    String? myTeamId,
+  }) async {
+    final params = <String, dynamic>{'date': date};
+    if (myTeamId != null && myTeamId.isNotEmpty) {
+      params['myTeam'] = myTeamId;
+    }
+    final data = await _client.getCached(
+      '/scoreboard/compact',
+      queryParameters: params,
+      cacheKey: 'scoreboard_compact:$date:${myTeamId ?? ''}',
+      preferCache: false,
+      maxAge: _liveishCacheAge,
+    );
+    final games = data['games'] as List<dynamic>? ?? [];
+    return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
+  }
+
   @override
   Future<Game?> getGame(String gameId) async {
     final data = await _client.getCached(

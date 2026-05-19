@@ -33,7 +33,11 @@ class GameEventAlertService {
     }
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const darwin = DarwinInitializationSettings();
+    const darwin = DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+    );
     const settings = InitializationSettings(
       android: android,
       iOS: darwin,
@@ -45,14 +49,35 @@ class GameEventAlertService {
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >()
+        ?.areNotificationsEnabled();
+    final iosAllowed = await _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.checkPermissions();
+    _notificationsAllowed = androidAllowed ?? iosAllowed?.isEnabled ?? false;
+    _initialized = true;
+  }
+
+  Future<bool> requestPermissions() async {
+    if (kIsWeb) {
+      return false;
+    }
+
+    await initialize();
+    final androidAllowed = await _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
     final iosAllowed = await _plugin
         .resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin
         >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
-    _notificationsAllowed = androidAllowed ?? iosAllowed ?? true;
-    _initialized = true;
+    _notificationsAllowed =
+        androidAllowed ?? iosAllowed ?? _notificationsAllowed;
+    return _notificationsAllowed;
   }
 
   Future<void> processGames({
@@ -155,7 +180,13 @@ class GameEventAlertService {
     required PushNotificationSettings settings,
     required String? myTeamId,
   }) async {
-    if (!(settings.homerun || settings.inningChange)) {
+    final notifyHomerun = settings.sendsImmediately(
+      PushNotificationMoment.homerun,
+    );
+    final notifyInningChange = settings.sendsImmediately(
+      PushNotificationMoment.inningChange,
+    );
+    if (!(notifyHomerun || notifyInningChange)) {
       return previous?.lastRelaySeq;
     }
     if (game.status != GameStatus.live) {
@@ -180,7 +211,7 @@ class GameEventAlertService {
           continue;
         }
 
-        if (settings.homerun && _isHomerunEvent(item)) {
+        if (notifyHomerun && _isHomerunEvent(item)) {
           await _showNow(
             title: '${game.away.shortName} vs ${game.home.shortName} 홈런',
             body: item.text,
@@ -188,7 +219,7 @@ class GameEventAlertService {
           );
         }
 
-        if (settings.inningChange && item.event == 'INNING_CHANGE') {
+        if (notifyInningChange && item.event == 'INNING_CHANGE') {
           await _showNow(
             title: '${game.away.shortName} vs ${game.home.shortName} 이닝 교대',
             body: item.text,
@@ -210,7 +241,7 @@ class GameEventAlertService {
     required _GameAlertSnapshot? previous,
     required PushNotificationSettings settings,
   }) async {
-    if (!settings.lineupOpened) {
+    if (!settings.sendsImmediately(PushNotificationMoment.lineupOpened)) {
       return _LineupCheckResult(
         signature: previous?.lineupSignature,
         checkedAtMs: previous?.lastLineupCheckedAtMs,
@@ -324,7 +355,7 @@ class GameEventAlertService {
         ? (game.away.teamId == myTeamId ? game.home : game.away)
         : null;
 
-    if (settings.gameStart &&
+    if (settings.sendsImmediately(PushNotificationMoment.gameStart) &&
         previous.status == GameStatus.scheduled &&
         current.status == GameStatus.live) {
       await _showNow(
@@ -340,7 +371,8 @@ class GameEventAlertService {
 
     final awayDelta = current.awayScore - previous.awayScore;
     final homeDelta = current.homeScore - previous.homeScore;
-    if (settings.scoring && (awayDelta > 0 || homeDelta > 0)) {
+    if (settings.sendsImmediately(PushNotificationMoment.scoring) &&
+        (awayDelta > 0 || homeDelta > 0)) {
       if (isMyTeamGame && myTeam != null && opponent != null) {
         final myScoreDelta =
             current.scoreForTeam(myTeam.teamId) -
@@ -366,7 +398,7 @@ class GameEventAlertService {
       }
     }
 
-    if (settings.reversal) {
+    if (settings.sendsImmediately(PushNotificationMoment.reversal)) {
       final previousLeader = previous.leadingTeamId;
       final currentLeader = current.leadingTeamId;
       if (previousLeader != currentLeader && currentLeader != null) {
@@ -396,7 +428,7 @@ class GameEventAlertService {
       }
     }
 
-    if (settings.gameEnd &&
+    if (settings.sendsImmediately(PushNotificationMoment.gameEnd) &&
         previous.status != GameStatus.final_ &&
         current.status == GameStatus.final_) {
       if (isMyTeamGame && myTeam != null && opponent != null) {

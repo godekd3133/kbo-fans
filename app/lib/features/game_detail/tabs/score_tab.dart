@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/relay.dart';
-import '../../../data/providers.dart';
 
-class ScoreTab extends ConsumerWidget {
+class ScoreTab extends StatelessWidget {
   final String gameId;
   final Game game;
   final Future<void> Function()? onRefresh;
@@ -19,20 +17,14 @@ class ScoreTab extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final relayDataAsync = ref.watch(relayDataProvider(gameId));
-
+  Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: onRefresh ?? () async {},
       color: AppColors.live,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
-        child: relayDataAsync.when(
-          loading: () => _buildInningTable(context, const []),
-          error: (_, _) => _buildInningTable(context, const []),
-          data: (relayData) => _buildInningTable(context, relayData.relayItems),
-        ),
+        child: _buildInningTable(context, const <RelayItem>[]),
       ),
     );
   }

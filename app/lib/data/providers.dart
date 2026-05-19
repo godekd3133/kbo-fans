@@ -6,7 +6,6 @@ import '../core/config/app_config.dart';
 import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
 import 'repositories/api_game_repository.dart';
-import 'repositories/fallback_game_repository.dart';
 import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
@@ -43,16 +42,10 @@ final gameRepositoryProvider = Provider<GameRepository>((ref) {
   }
 
   if (AppConfig.instance.preferDirectScrape) {
-    return FallbackGameRepository(
-      primary: directRepository,
-      fallback: apiRepository,
-    );
+    return directRepository;
   }
 
-  return FallbackGameRepository(
-    primary: apiRepository,
-    fallback: directRepository,
-  );
+  return apiRepository;
 });
 
 // ── 마이팀 전역 상태 ──
@@ -255,10 +248,7 @@ final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
   }
   return DeviceSnapshotPlayerRepository(
     primary: apiRepository,
-    fallback: FallbackPlayerRepository(
-      primary: directRepository,
-      secondary: LocalAssetPlayerRepository(),
-    ),
+    fallback: LocalAssetPlayerRepository(),
   );
 });
 

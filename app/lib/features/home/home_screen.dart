@@ -23,7 +23,6 @@ import '../../data/models/schedule.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
 import '../../services/game_event_alert_service.dart';
-import '../../services/game_detail_preload_service.dart';
 import '../../services/widget_sync_service.dart';
 import 'widgets/game_card.dart';
 import 'widgets/my_team_game_card.dart';
@@ -49,7 +48,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String? _lastSecondarySectionsLogKey;
   List<Game>? _cachedTodayGames;
   String? _cachedTodayKey;
-  String? _lastGameDetailPreloadKey;
 
   @override
   void initState() {
@@ -330,7 +328,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     String? myTeamId,
     String today,
   ) {
-    _scheduleGameDetailPreload(games, myTeamId);
     Game? myGame;
     if (myTeamId != null) {
       for (final game in games) {
@@ -593,33 +590,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  void _scheduleGameDetailPreload(List<Game> games, String? myTeamId) {
-    final key =
-        '${myTeamId ?? ''}|${games.map((game) => game.gameId).join(',')}';
-    if (_lastGameDetailPreloadKey == key) {
-      return;
-    }
-    _lastGameDetailPreloadKey = key;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      GameDetailPreloadService.instance.preloadScoreboardGames(
-        ref,
-        context,
-        games,
-        myTeamId: myTeamId,
-      );
-    });
-  }
-
   void _openGameDetail(Game game) {
-    GameDetailPreloadService.instance.preloadGame(
-      ref,
-      context,
-      gameId: game.gameId,
-      game: game,
-    );
     context.push('/game/${game.gameId}', extra: game);
   }
 

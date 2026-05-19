@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'core/constants/team_data.dart';
 import 'core/config/app_config.dart';
 import 'core/bootstrap/startup_prep_state.dart';
 import 'core/theme/app_theme.dart';
@@ -14,7 +12,6 @@ import 'core/router/app_router.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
 import 'data/models/game.dart';
-import 'data/models/records_overview.dart';
 import 'data/repositories/kbo_direct_repository.dart';
 import 'services/game_event_alert_service.dart';
 import 'services/push_notification_service.dart';
@@ -23,7 +20,7 @@ import 'services/widget_sync_service.dart';
 import 'package:workmanager/workmanager.dart';
 
 final Stopwatch _dartStartupStopwatch = Stopwatch()..start();
-const int _startupPreloadVersion = 1;
+const int _startupPreloadVersion = 2;
 
 void main() async {
   runZonedGuarded(
@@ -212,75 +209,17 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       return;
     }
 
-    unawaited(_primeLocalRelaySession());
+    if (AppConfig.instance.preferDirectScrape) {
+      unawaited(_primeLocalRelaySession());
+    }
     _warm(ref.read(scoreboardProvider(today).future));
     _warm(ref.read(scheduleProvider(yearMonth).future));
     _warm(ref.read(standingsProvider(season).future));
     _warm(ref.read(recordsOverviewProvider(season).future));
-    _warm(ref.read(allPlayerImageMapProvider(season).future));
-    unawaited(_warmHistoricalSeasons(currentSeason: season));
     if (myTeamId != null && myTeamId.isNotEmpty) {
       _warm(ref.read(teamRecordsProvider('$myTeamId|$season').future));
       _warm(ref.read(homeAggregateProvider('$today|$myTeamId').future));
     }
-  }
-
-  Future<void> _warmHistoricalSeasons({required int currentSeason}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final today = _todayKey();
-    final warmedKey =
-        'historical_prefetch_done:${AppConfig.instance.environment.name}:$today';
-    if (prefs.getBool(warmedKey) ?? false) {
-      return;
-    }
-
-    await Future<void>.delayed(const Duration(seconds: 4));
-    final teamIds = KboTeams.teams.map((team) => team.id).toList(growable: false);
-    final metrics = [
-      LeaderboardMetric.avg,
-      LeaderboardMetric.hr,
-      LeaderboardMetric.ops,
-      LeaderboardMetric.era,
-    ];
-
-    for (var season = currentSeason - 1; season >= 2001; season--) {
-      try {
-        DevConsole.instance.info('HISTORY warm season $season');
-        await ref.read(standingsProvider(season).future);
-        await Future<void>.delayed(const Duration(milliseconds: 250));
-        await ref.read(recordsOverviewProvider(season).future);
-        await Future<void>.delayed(const Duration(milliseconds: 250));
-
-        for (final metric in metrics) {
-          try {
-            await ref.read(leaderboardProvider('$season|${metric.key}').future);
-          } catch (error) {
-            DevConsole.instance.warn(
-              'HISTORY leaderboard warm ${metric.key} $season skipped: $error',
-            );
-          }
-          await Future<void>.delayed(const Duration(milliseconds: 180));
-        }
-
-        for (final teamId in teamIds) {
-          try {
-            await ref.read(teamRecordsProvider('$teamId|$season').future);
-          } catch (error) {
-            DevConsole.instance.warn(
-              'HISTORY teamRecords warm $teamId $season skipped: $error',
-            );
-          }
-          await Future<void>.delayed(const Duration(milliseconds: 220));
-        }
-      } catch (error) {
-        DevConsole.instance.warn('HISTORY warm season $season skipped: $error');
-      }
-
-      await Future<void>.delayed(const Duration(milliseconds: 450));
-    }
-
-    await prefs.setBool(warmedKey, true);
-    DevConsole.instance.info('HISTORY warm complete through ${currentSeason - 1}');
   }
 
   Future<void> _runBlockingStartupPrefetch({
@@ -290,12 +229,9 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     required int season,
     required String? myTeamId,
   }) async {
-    final teamIds = KboTeams.teams.map((team) => team.id).toList();
-    final playerKeys = <String>{};
-    final imageUrls = <String>{for (final team in KboTeams.teams) team.logoUrl};
-
     final staticTasks = <({String label, Future<void> Function() request})>[
-      (label: 'KBO 세션', request: _primeLocalRelaySession),
+      if (AppConfig.instance.preferDirectScrape)
+        (label: 'KBO 세션', request: _primeLocalRelaySession),
       (
         label: '오늘 경기',
         request: () async {
@@ -320,51 +256,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
           await ref.read(recordsOverviewProvider(season).future);
         },
       ),
-      (
-        label: '선수 이미지 맵',
-        request: () async {
-          final imageMap = await ref.read(
-            allPlayerImageMapProvider(season).future,
-          );
-          imageUrls.addAll(imageMap.values.where((url) => url.isNotEmpty));
-        },
-      ),
-      for (final teamId in teamIds) ...[
-        (
-          label: '$teamId 선수 목록',
-          request: () async {
-            final players = await ref.read(
-              teamPlayersProvider('$teamId|$season').future,
-            );
-            for (final player in players) {
-              if (player.id.isNotEmpty) {
-                playerKeys.add('${player.id}|$season');
-              }
-              final imageUrl = player.imageUrl;
-              if (imageUrl != null && imageUrl.isNotEmpty) {
-                imageUrls.add(imageUrl);
-              }
-            }
-          },
-        ),
-        (
-          label: '$teamId 기록실',
-          request: () async {
-            final bundle = await ref.read(
-              teamRecordsProvider('$teamId|$season').future,
-            );
-            for (final player in bundle.players) {
-              if (player.id.isNotEmpty) {
-                playerKeys.add('${player.id}|$season');
-              }
-              final imageUrl = player.imageUrl;
-              if (imageUrl != null && imageUrl.isNotEmpty) {
-                imageUrls.add(imageUrl);
-              }
-            }
-          },
-        ),
-      ],
       if (myTeamId != null && myTeamId.isNotEmpty) ...[
         (
           label: '마이팀 기록실',
@@ -387,76 +278,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     final games = await ref.read(scoreboardProvider(today).future);
     ref.read(startupScoreboardProvider.notifier).setGames(games);
     await _saveStartupScoreboardCache(today, games);
-    final gameTasks = <({String label, Future<void> Function() request})>[
-      for (final game in games) ...[
-        (
-          label: '${game.away.shortName} vs ${game.home.shortName} 기본 정보',
-          request: () async {
-            await ref.read(gameProvider(game.gameId).future);
-          },
-        ),
-        (
-          label: '${game.away.shortName} vs ${game.home.shortName} 박스스코어',
-          request: () async {
-            await ref.read(gameBoxscoreProvider(game.gameId).future);
-          },
-        ),
-        (
-          label: '${game.away.shortName} vs ${game.home.shortName} 라인업',
-          request: () async {
-            await ref.read(gameLineupProvider(game.gameId).future);
-          },
-        ),
-        (
-          label: '${game.away.shortName} vs ${game.home.shortName} 문자중계',
-          request: () async {
-            await ref.read(relayDataProvider(game.gameId).future);
-          },
-        ),
-        if (game.status == GameStatus.final_)
-          (
-            label: '${game.away.shortName} vs ${game.home.shortName} 하이라이트',
-            request: () async {
-              await ref.read(highlightInfoProvider(game.gameId).future);
-            },
-          ),
-      ],
-    ];
-
-    final playerDetailTasks =
-        <({String label, Future<void> Function() request})>[
-          for (final playerKey in playerKeys)
-            (
-              label: '선수 상세 $playerKey',
-              request: () async {
-                final player = await ref.read(
-                  playerDetailProvider(playerKey).future,
-                );
-                final imageUrl = player.imageUrl;
-                if (imageUrl != null && imageUrl.isNotEmpty) {
-                  imageUrls.add(imageUrl);
-                }
-              },
-            ),
-        ];
-
-    startupPrep.configure(
-      totalSteps:
-          3 +
-          staticTasks.length +
-          gameTasks.length +
-          playerDetailTasks.length +
-          1,
-      blocking: true,
-    );
-    await _runStartupTasksBatched(startupPrep, gameTasks);
-    await _runStartupTasksBatched(startupPrep, playerDetailTasks);
-    await _runStartupTask<void>(startupPrep, (
-      label: '이미지 파일 캐시',
-      request: () async {
-        await _warmStartupImages(imageUrls);
-      },
-    ));
   }
 
   Future<T?> _runStartupTask<T>(
@@ -521,7 +342,9 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   }
 
   Future<void> _primeLocalRelaySession() async {
-    if (!AppConfig.instance.isLocal || kIsWeb) {
+    if (!AppConfig.instance.preferDirectScrape ||
+        !AppConfig.instance.isLocal ||
+        kIsWeb) {
       return;
     }
     final direct = KboDirectRepository();
@@ -535,25 +358,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         onError: (Object error, StackTrace stackTrace) {},
       ),
     );
-  }
-
-  Future<void> _warmStartupImages(Set<String> imageUrls) async {
-    if (imageUrls.isEmpty) {
-      return;
-    }
-
-    final cacheManager = DefaultCacheManager();
-    final urls = imageUrls.where((url) => url.isNotEmpty).toList();
-    for (var i = 0; i < urls.length; i += _startupTaskBatchSize) {
-      final batch = urls.skip(i).take(_startupTaskBatchSize);
-      await Future.wait(
-        batch.map((url) async {
-          try {
-            await cacheManager.downloadFile(url);
-          } catch (_) {}
-        }),
-      );
-    }
   }
 
   Future<void> _saveStartupScoreboardCache(

@@ -62,9 +62,7 @@ class LineupTab extends ConsumerWidget {
     final homePlayersAsync = homeTeamId.isEmpty
         ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
         : ref.watch(teamPlayersProvider('$homeTeamId|$season'));
-    final allImageMap =
-        ref.watch(allPlayerImageMapProvider(season)).asData?.value ??
-        const <String, String>{};
+    const allImageMap = <String, String>{};
     final standingsAsync = ref.watch(standingsProvider(season));
     final gameDate = _gameDateFromGameId(gameId) ?? DateTime.now();
     final yearMonth =

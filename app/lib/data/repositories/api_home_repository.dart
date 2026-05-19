@@ -72,6 +72,7 @@ class ApiHomeRepository {
 
   HomeRecentGameSummary _parseRecentSummary(Map<String, dynamic> json) {
     return HomeRecentGameSummary(
+      gameId: json['gameId'] as String? ?? '',
       result: json['result'] as String? ?? '',
       opponentName: json['opponentName'] as String? ?? '',
       score: json['score'] as String? ?? '',

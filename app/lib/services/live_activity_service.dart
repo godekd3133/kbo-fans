@@ -1,18 +1,42 @@
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/utils/game_status_label.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/models/game.dart';
-import '../data/models/relay.dart';
-import '../data/repositories/kbo_direct_repository.dart';
 
 class LiveActivityService {
   LiveActivityService._();
 
   static final LiveActivityService instance = LiveActivityService._();
   static const MethodChannel _channel = MethodChannel('kbo_fans/live_activity');
+  static const _followedGameIdKey = 'live_activity.followed_game_id';
+
+  Future<void> followGame(String gameId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_followedGameIdKey, gameId);
+  }
+
+  Future<void> stopFollowing() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_followedGameIdKey);
+    await endCurrentScore();
+  }
+
+  Future<String?> followedGameId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final gameId = prefs.getString(_followedGameIdKey);
+    if (gameId == null || gameId.isEmpty) {
+      return null;
+    }
+    return gameId;
+  }
+
+  Future<bool> isFollowing(String gameId) async {
+    return await followedGameId() == gameId;
+  }
 
   Future<void> syncCurrentScore({
     required List<Game> games,
@@ -22,22 +46,49 @@ class LiveActivityService {
       return;
     }
 
-    final targetGame = _selectTargetGame(games, myTeamId);
-    if (targetGame == null) {
-      DevConsole.instance.info('Live Activity target missing; ending current');
+    final followedId = await followedGameId();
+    if (followedId == null) {
       await endCurrentScore();
       return;
     }
 
-    try {
-      final repository = KboDirectRepository();
-      CurrentAtBat? currentAtBat;
-      try {
-        currentAtBat = await repository.getCurrentAtBat(targetGame.gameId);
-      } catch (_) {
-        currentAtBat = null;
-      }
+    final targetGame = _findGame(games, followedId);
+    if (targetGame == null) {
+      DevConsole.instance.info('Live Activity followed game missing; ending');
+      await stopFollowing();
+      return;
+    }
 
+    await syncFollowedGame(targetGame);
+  }
+
+  Future<void> syncFollowedGame(Game game) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) {
+      return;
+    }
+
+    final followedId = await followedGameId();
+    if (followedId != game.gameId) {
+      return;
+    }
+
+    if (game.status == GameStatus.final_ ||
+        game.status == GameStatus.cancelled ||
+        game.status == GameStatus.suspended) {
+      await stopFollowing();
+      return;
+    }
+
+    if (game.status != GameStatus.live) {
+      await endCurrentScore();
+      return;
+    }
+
+    await _syncGame(game);
+  }
+
+  Future<void> _syncGame(Game targetGame) async {
+    try {
       await _channel.invokeMethod('syncCurrentScore', {
         'gameId': targetGame.gameId,
         'awayTeamId': targetGame.away.teamId,
@@ -53,12 +104,12 @@ class LiveActivityService {
                 inning: targetGame.inning,
                 startTime: targetGame.startTime,
               ),
-        'batter': currentAtBat?.batterName ?? '',
-        'pitcher': currentAtBat?.pitcherName ?? '',
-        'pitchCount': currentAtBat?.pitchCount ?? 0,
-        'balls': currentAtBat?.balls ?? 0,
-        'strikes': currentAtBat?.strikes ?? 0,
-        'outs': currentAtBat?.outs ?? 0,
+        'batter': '',
+        'pitcher': '',
+        'pitchCount': 0,
+        'balls': 0,
+        'strikes': 0,
+        'outs': 0,
         'stadium': targetGame.stadium,
         'updatedAt': _updatedAtText(),
       });
@@ -91,30 +142,12 @@ class LiveActivityService {
     }
   }
 
-  Game? _selectTargetGame(List<Game> games, String? myTeamId) {
-    if (myTeamId != null) {
-      for (final game in games) {
-        final isMyTeam =
-            game.away.teamId == myTeamId || game.home.teamId == myTeamId;
-        if (isMyTeam && game.status == GameStatus.live) {
-          return game;
-        }
-      }
-      for (final game in games) {
-        final isMyTeam =
-            game.away.teamId == myTeamId || game.home.teamId == myTeamId;
-        if (isMyTeam && game.status == GameStatus.scheduled) {
-          return game;
-        }
-      }
-    }
-
+  Game? _findGame(List<Game> games, String gameId) {
     for (final game in games) {
-      if (game.status == GameStatus.live) {
+      if (game.gameId == gameId) {
         return game;
       }
     }
-
     return null;
   }
 

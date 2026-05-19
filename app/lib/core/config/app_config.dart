@@ -31,7 +31,7 @@ class AppConfig {
     );
     final preferDirectScrape = preferDirectScrapeFlag.isNotEmpty
         ? preferDirectScrapeFlag == 'true'
-        : (env == AppEnvironment.local && !kIsWeb);
+        : false;
 
     _instance = AppConfig._(
       environment: env,

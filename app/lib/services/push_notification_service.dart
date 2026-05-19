@@ -11,6 +11,41 @@ import '../core/config/app_config.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
 
+enum PushNotificationMoment {
+  gameStart,
+  scoring,
+  homerun,
+  reversal,
+  gameEnd,
+  lineupOpened,
+  inningChange,
+}
+
+enum PushNotificationDelivery { immediate, summary, liveOnly, off }
+
+extension PushNotificationDeliveryX on PushNotificationDelivery {
+  String get storageValue => switch (this) {
+    PushNotificationDelivery.immediate => 'immediate',
+    PushNotificationDelivery.summary => 'summary',
+    PushNotificationDelivery.liveOnly => 'live_only',
+    PushNotificationDelivery.off => 'off',
+  };
+}
+
+PushNotificationDelivery _deliveryFromStorage(
+  String? value, {
+  required bool legacyEnabled,
+  PushNotificationDelivery enabledFallback = PushNotificationDelivery.immediate,
+}) {
+  return switch (value) {
+    'immediate' => PushNotificationDelivery.immediate,
+    'summary' => PushNotificationDelivery.summary,
+    'live_only' => PushNotificationDelivery.liveOnly,
+    'off' => PushNotificationDelivery.off,
+    _ => legacyEnabled ? enabledFallback : PushNotificationDelivery.off,
+  };
+}
+
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   DevConsole.instance.info(
@@ -27,6 +62,13 @@ class PushNotificationSettings {
   final bool lineupOpened;
   final bool inningChange;
   final bool allGames;
+  final PushNotificationDelivery gameStartDelivery;
+  final PushNotificationDelivery scoringDelivery;
+  final PushNotificationDelivery homerunDelivery;
+  final PushNotificationDelivery reversalDelivery;
+  final PushNotificationDelivery gameEndDelivery;
+  final PushNotificationDelivery lineupOpenedDelivery;
+  final PushNotificationDelivery inningChangeDelivery;
 
   const PushNotificationSettings({
     required this.gameStart,
@@ -37,7 +79,48 @@ class PushNotificationSettings {
     required this.lineupOpened,
     required this.inningChange,
     required this.allGames,
-  });
+    PushNotificationDelivery? gameStartDelivery,
+    PushNotificationDelivery? scoringDelivery,
+    PushNotificationDelivery? homerunDelivery,
+    PushNotificationDelivery? reversalDelivery,
+    PushNotificationDelivery? gameEndDelivery,
+    PushNotificationDelivery? lineupOpenedDelivery,
+    PushNotificationDelivery? inningChangeDelivery,
+  }) : gameStartDelivery =
+           gameStartDelivery ??
+           (gameStart
+               ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off),
+       scoringDelivery =
+           scoringDelivery ??
+           (scoring
+               ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off),
+       homerunDelivery =
+           homerunDelivery ??
+           (homerun
+               ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off),
+       reversalDelivery =
+           reversalDelivery ??
+           (reversal
+               ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off),
+       gameEndDelivery =
+           gameEndDelivery ??
+           (gameEnd
+               ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off),
+       lineupOpenedDelivery =
+           lineupOpenedDelivery ??
+           (lineupOpened
+               ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off),
+       inningChangeDelivery =
+           inningChangeDelivery ??
+           (inningChange
+               ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off);
 
   const PushNotificationSettings.defaults()
     : gameStart = true,
@@ -46,8 +129,15 @@ class PushNotificationSettings {
       reversal = true,
       gameEnd = true,
       lineupOpened = true,
-      inningChange = false,
-      allGames = false;
+      inningChange = true,
+      allGames = false,
+      gameStartDelivery = PushNotificationDelivery.summary,
+      scoringDelivery = PushNotificationDelivery.immediate,
+      homerunDelivery = PushNotificationDelivery.immediate,
+      reversalDelivery = PushNotificationDelivery.immediate,
+      gameEndDelivery = PushNotificationDelivery.summary,
+      lineupOpenedDelivery = PushNotificationDelivery.summary,
+      inningChangeDelivery = PushNotificationDelivery.liveOnly;
 
   PushNotificationSettings copyWith({
     bool? gameStart,
@@ -58,6 +148,13 @@ class PushNotificationSettings {
     bool? lineupOpened,
     bool? inningChange,
     bool? allGames,
+    PushNotificationDelivery? gameStartDelivery,
+    PushNotificationDelivery? scoringDelivery,
+    PushNotificationDelivery? homerunDelivery,
+    PushNotificationDelivery? reversalDelivery,
+    PushNotificationDelivery? gameEndDelivery,
+    PushNotificationDelivery? lineupOpenedDelivery,
+    PushNotificationDelivery? inningChangeDelivery,
   }) {
     return PushNotificationSettings(
       gameStart: gameStart ?? this.gameStart,
@@ -68,7 +165,30 @@ class PushNotificationSettings {
       lineupOpened: lineupOpened ?? this.lineupOpened,
       inningChange: inningChange ?? this.inningChange,
       allGames: allGames ?? this.allGames,
+      gameStartDelivery: gameStartDelivery ?? this.gameStartDelivery,
+      scoringDelivery: scoringDelivery ?? this.scoringDelivery,
+      homerunDelivery: homerunDelivery ?? this.homerunDelivery,
+      reversalDelivery: reversalDelivery ?? this.reversalDelivery,
+      gameEndDelivery: gameEndDelivery ?? this.gameEndDelivery,
+      lineupOpenedDelivery: lineupOpenedDelivery ?? this.lineupOpenedDelivery,
+      inningChangeDelivery: inningChangeDelivery ?? this.inningChangeDelivery,
     );
+  }
+
+  PushNotificationDelivery deliveryFor(PushNotificationMoment moment) {
+    return switch (moment) {
+      PushNotificationMoment.gameStart => gameStartDelivery,
+      PushNotificationMoment.scoring => scoringDelivery,
+      PushNotificationMoment.homerun => homerunDelivery,
+      PushNotificationMoment.reversal => reversalDelivery,
+      PushNotificationMoment.gameEnd => gameEndDelivery,
+      PushNotificationMoment.lineupOpened => lineupOpenedDelivery,
+      PushNotificationMoment.inningChange => inningChangeDelivery,
+    };
+  }
+
+  bool sendsImmediately(PushNotificationMoment moment) {
+    return deliveryFor(moment) == PushNotificationDelivery.immediate;
   }
 
   Map<String, dynamic> toJson() {
@@ -81,6 +201,15 @@ class PushNotificationSettings {
       'lineupOpened': lineupOpened,
       'inningChange': inningChange,
       'allGames': allGames,
+      'deliveryModes': {
+        'gameStart': gameStartDelivery.storageValue,
+        'scoring': scoringDelivery.storageValue,
+        'homerun': homerunDelivery.storageValue,
+        'reversal': reversalDelivery.storageValue,
+        'gameEnd': gameEndDelivery.storageValue,
+        'lineupOpened': lineupOpenedDelivery.storageValue,
+        'inningChange': inningChangeDelivery.storageValue,
+      },
     };
   }
 }
@@ -100,6 +229,7 @@ class PushNotificationService {
   static const _channelId = 'remote_push_foreground';
   static const _channelName = '원격 푸시 알림';
   static const _channelDescription = '앱 실행 중 수신한 원격 푸시 알림';
+  static const _deliverySuffix = '.delivery';
 
   bool _initialized = false;
   String? _lastToken;
@@ -115,11 +245,7 @@ class PushNotificationService {
     try {
       await Firebase.initializeApp();
       final messaging = FirebaseMessaging.instance;
-      final notificationSettings = await messaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      final notificationSettings = await messaging.getNotificationSettings();
       await messaging.setForegroundNotificationPresentationOptions(
         alert: true,
         badge: true,
@@ -128,8 +254,16 @@ class PushNotificationService {
       await _localPlugin.initialize(
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-          iOS: DarwinInitializationSettings(),
-          macOS: DarwinInitializationSettings(),
+          iOS: DarwinInitializationSettings(
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false,
+          ),
+          macOS: DarwinInitializationSettings(
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false,
+          ),
         ),
       );
       _notificationsAllowed = await _resolveNotificationsAllowed(
@@ -161,15 +295,61 @@ class PushNotificationService {
 
   Future<PushNotificationSettings> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final gameStartKey = '${_prefsPrefix}game_start';
+    final scoringKey = '${_prefsPrefix}scoring';
+    final homerunKey = '${_prefsPrefix}homerun';
+    final reversalKey = '${_prefsPrefix}reversal';
+    final gameEndKey = '${_prefsPrefix}game_end';
+    final lineupOpenedKey = '${_prefsPrefix}lineup_opened';
+    final inningChangeKey = '${_prefsPrefix}inning_change';
+    final gameStart = prefs.getBool(gameStartKey) ?? true;
+    final scoring = prefs.getBool(scoringKey) ?? true;
+    final homerun = prefs.getBool(homerunKey) ?? true;
+    final reversal = prefs.getBool(reversalKey) ?? true;
+    final gameEnd = prefs.getBool(gameEndKey) ?? true;
+    final lineupOpened = prefs.getBool(lineupOpenedKey) ?? true;
+    final inningChange = prefs.getBool(inningChangeKey) ?? true;
     return PushNotificationSettings(
-      gameStart: prefs.getBool('${_prefsPrefix}game_start') ?? true,
-      scoring: prefs.getBool('${_prefsPrefix}scoring') ?? true,
-      homerun: prefs.getBool('${_prefsPrefix}homerun') ?? true,
-      reversal: prefs.getBool('${_prefsPrefix}reversal') ?? true,
-      gameEnd: prefs.getBool('${_prefsPrefix}game_end') ?? true,
-      lineupOpened: prefs.getBool('${_prefsPrefix}lineup_opened') ?? true,
-      inningChange: prefs.getBool('${_prefsPrefix}inning_change') ?? false,
+      gameStart: gameStart,
+      scoring: scoring,
+      homerun: homerun,
+      reversal: reversal,
+      gameEnd: gameEnd,
+      lineupOpened: lineupOpened,
+      inningChange: inningChange,
       allGames: prefs.getBool('${_prefsPrefix}all_games') ?? false,
+      gameStartDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}game_start$_deliverySuffix'),
+        legacyEnabled: gameStart,
+        enabledFallback: PushNotificationDelivery.summary,
+      ),
+      scoringDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}scoring$_deliverySuffix'),
+        legacyEnabled: scoring,
+      ),
+      homerunDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}homerun$_deliverySuffix'),
+        legacyEnabled: homerun,
+      ),
+      reversalDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}reversal$_deliverySuffix'),
+        legacyEnabled: reversal,
+      ),
+      gameEndDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}game_end$_deliverySuffix'),
+        legacyEnabled: gameEnd,
+        enabledFallback: PushNotificationDelivery.summary,
+      ),
+      lineupOpenedDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}lineup_opened$_deliverySuffix'),
+        legacyEnabled: lineupOpened,
+        enabledFallback: PushNotificationDelivery.summary,
+      ),
+      inningChangeDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}inning_change$_deliverySuffix'),
+        legacyEnabled: inningChange,
+        enabledFallback: PushNotificationDelivery.liveOnly,
+      ),
     );
   }
 
@@ -186,7 +366,56 @@ class PushNotificationService {
     await prefs.setBool('${_prefsPrefix}lineup_opened', settings.lineupOpened);
     await prefs.setBool('${_prefsPrefix}inning_change', settings.inningChange);
     await prefs.setBool('${_prefsPrefix}all_games', settings.allGames);
+    await prefs.setString(
+      '${_prefsPrefix}game_start$_deliverySuffix',
+      settings.gameStartDelivery.storageValue,
+    );
+    await prefs.setString(
+      '${_prefsPrefix}scoring$_deliverySuffix',
+      settings.scoringDelivery.storageValue,
+    );
+    await prefs.setString(
+      '${_prefsPrefix}homerun$_deliverySuffix',
+      settings.homerunDelivery.storageValue,
+    );
+    await prefs.setString(
+      '${_prefsPrefix}reversal$_deliverySuffix',
+      settings.reversalDelivery.storageValue,
+    );
+    await prefs.setString(
+      '${_prefsPrefix}game_end$_deliverySuffix',
+      settings.gameEndDelivery.storageValue,
+    );
+    await prefs.setString(
+      '${_prefsPrefix}lineup_opened$_deliverySuffix',
+      settings.lineupOpenedDelivery.storageValue,
+    );
+    await prefs.setString(
+      '${_prefsPrefix}inning_change$_deliverySuffix',
+      settings.inningChangeDelivery.storageValue,
+    );
     await syncRegistration(myTeam: myTeam);
+  }
+
+  Future<bool> requestPermissionAndSync({String? myTeam}) async {
+    if (kIsWeb) {
+      return false;
+    }
+    if (!_initialized) {
+      await initialize(myTeam: myTeam);
+    }
+    try {
+      final notificationSettings = await FirebaseMessaging.instance
+          .requestPermission(alert: true, badge: true, sound: true);
+      _notificationsAllowed = await _resolveNotificationsAllowed(
+        authorizationStatus: notificationSettings.authorizationStatus,
+      );
+      await syncRegistration(myTeam: myTeam);
+      return _notificationsAllowed;
+    } catch (error) {
+      DevConsole.instance.warn('Push permission request failed: $error');
+      return false;
+    }
   }
 
   Future<void> syncRegistration({String? myTeam, String? forceToken}) async {
@@ -344,13 +573,17 @@ Set<String> buildPushTopics({
   final hasMyTeam = myTeam != null && myTeam.isNotEmpty;
   final topics = <String>{};
   final flags = <String, bool>{
-    'game_start': settings.gameStart,
-    'scoring': settings.scoring,
-    'homerun': settings.homerun,
-    'reversal': settings.reversal,
-    'game_end': settings.gameEnd,
-    'lineup_opened': settings.lineupOpened,
-    'inning_change': settings.inningChange,
+    'game_start': settings.sendsImmediately(PushNotificationMoment.gameStart),
+    'scoring': settings.sendsImmediately(PushNotificationMoment.scoring),
+    'homerun': settings.sendsImmediately(PushNotificationMoment.homerun),
+    'reversal': settings.sendsImmediately(PushNotificationMoment.reversal),
+    'game_end': settings.sendsImmediately(PushNotificationMoment.gameEnd),
+    'lineup_opened': settings.sendsImmediately(
+      PushNotificationMoment.lineupOpened,
+    ),
+    'inning_change': settings.sendsImmediately(
+      PushNotificationMoment.inningChange,
+    ),
   };
 
   flags.forEach((topicName, enabled) {

@@ -15,8 +15,11 @@ void main() {
 
     final topics = buildPushTopics(settings: settings, myTeam: 'LG');
 
-    expect(topics, contains('game_start_LG'));
     expect(topics, contains('scoring_LG'));
+    expect(topics, contains('homerun_LG'));
+    expect(topics, contains('reversal_LG'));
+    expect(topics, isNot(contains('game_start_LG')));
+    expect(topics, isNot(contains('game_end_LG')));
     expect(topics, isNot(contains('game_start_ALL')));
     expect(topics, isNot(contains('all_games_enabled')));
   });
@@ -28,8 +31,27 @@ void main() {
 
     final topics = buildPushTopics(settings: settings, myTeam: 'LG');
 
-    expect(topics, contains('game_start_ALL'));
+    expect(topics, contains('scoring_ALL'));
+    expect(topics, contains('homerun_ALL'));
+    expect(topics, contains('reversal_ALL'));
     expect(topics, contains('all_games_enabled'));
-    expect(topics, isNot(contains('game_start_LG')));
+    expect(topics, isNot(contains('game_start_ALL')));
+    expect(topics, isNot(contains('scoring_LG')));
+  });
+
+  test('summary 또는 liveOnly delivery는 즉시 push 토픽을 만들지 않는다', () {
+    final settings = const PushNotificationSettings.defaults().copyWith(
+      scoringDelivery: PushNotificationDelivery.summary,
+      homerunDelivery: PushNotificationDelivery.liveOnly,
+      reversalDelivery: PushNotificationDelivery.off,
+      gameEndDelivery: PushNotificationDelivery.immediate,
+    );
+
+    final topics = buildPushTopics(settings: settings, myTeam: 'LG');
+
+    expect(topics, contains('game_end_LG'));
+    expect(topics, isNot(contains('scoring_LG')));
+    expect(topics, isNot(contains('homerun_LG')));
+    expect(topics, isNot(contains('reversal_LG')));
   });
 }

@@ -68,11 +68,6 @@ class _RelayTabState extends ConsumerState<RelayTab> {
       ])
         if (player.name.isNotEmpty) player.name: player,
     };
-    final allImageMap =
-        ref.watch(allPlayerImageMapProvider(season)).asData?.value ??
-        const <String, String>{};
-    final mergedImageMap = {...allImageMap, ...imageMap};
-
     return RefreshIndicator(
       onRefresh: widget.onRefresh ?? () async {},
       color: AppColors.live,
@@ -89,7 +84,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             latestGame,
             relayData.relayItems,
             relayData.currentAtBat,
-            mergedImageMap,
+            imageMap,
             playersByName,
           );
         },
