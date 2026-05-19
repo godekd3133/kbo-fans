@@ -393,7 +393,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       icon: Icons.phone_iphone,
                       label: '따라가기 화면',
                       description:
-                          'iOS Live Activity에 표시하고 Android 진행형 알림은 후속 구현합니다',
+                          'iOS Live Activity에 표시합니다. Android 진행형 알림은 준비 중입니다',
                     ),
                     _DividerInset(),
                     _SurfaceRow(
@@ -957,7 +957,7 @@ class _DeliveryPickerSheet extends StatelessWidget {
             context,
             delivery: PushNotificationDelivery.liveOnly,
             label: '따라가기 화면만',
-            description: '푸시는 보내지 않고 따라가기 화면 상태만 갱신',
+            description: '푸시는 보내지 않고 지원되는 Live 표면만 갱신',
             icon: Icons.phone_iphone,
           ),
           _option(

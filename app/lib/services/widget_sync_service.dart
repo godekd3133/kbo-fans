@@ -266,9 +266,9 @@ class WidgetSyncService {
     required String? myTeamId,
   }) {
     final hasLive = games.any((game) => game.status == GameStatus.live);
-    final liveRefreshBucket = hasLive
-        ? DateTime.now().millisecondsSinceEpoch ~/ 10000
-        : 0;
+    final refreshBucket =
+        DateTime.now().millisecondsSinceEpoch ~/
+        (hasLive ? 10000 : 15 * 60 * 1000);
     final payload = games
         .map(
           (game) => [
@@ -280,6 +280,6 @@ class WidgetSyncService {
           ].join(':'),
         )
         .join(',');
-    return '${myTeamId ?? '-'}|$payload|$liveRefreshBucket';
+    return '${myTeamId ?? '-'}|$payload|$refreshBucket';
   }
 }
