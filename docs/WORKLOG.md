@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-05-19: v4 UX 보완안 실제 UI 반영
+
+### 완료
+- [x] 설정 화면 용어를 `바로 알림 / 묶음 요약 / 따라가기만 / 끄기`로 정리하고 중복 제목을 `알림` / `장면별 알림` 구조로 조정
+- [x] 홈 대표 경기 카드의 CTA를 예정/라이브/종료 상태별로 분리하고, `중계 보기`와 알림/따라가기 액션이 같은 callback을 쓰지 않도록 수정
+- [x] 종료 경기 상세에서 하이라이트가 탭 진입을 가리지 않도록 스코어 탭 footer로 이동
+- [x] 마이팀 브리프의 최근 3경기 chip을 가로 스크롤로 바꾸고 CTA/metric 밀도와 하단 safe area를 보강
+- [x] 홈/경기상세의 stale성 문구를 `방금 업데이트` 고정에서 상태별 `최종 기록`, `예정` 등으로 분기
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 변경된 UX 흐름과 용어 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/settings/settings_screen.dart lib/features/home/widgets/my_team_game_card.dart lib/features/home/home_screen.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/score_tab.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+- [x] `node artifacts/kbo-v4-ux-eval/capture-v4-screens.js`
+- [x] 화면 산출물 갱신: `artifacts/kbo-v4-ux-eval/03-home-state.png`, `01-settings-playbook.png`, `04-settings-surfaces.png`, `05-settings-delivery-picker.png`, `02-game-detail-relay.png`
+
+### 메모
+- native Live Activity / Android 홈 위젯 실기기 캡처는 아직 별도 QA로 남는다.
+- 현재 web smoke 기준 홈 CTA 잘림, 설정 용어 혼란, 경기 상세 하이라이트 우선 노출 문제는 해소됐다.
+
+---
+
 ## 2026-05-19: 일정 구장별 보기 퀵링크 추가
 
 ### 완료
