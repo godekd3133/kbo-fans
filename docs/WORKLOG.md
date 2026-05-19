@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-05-20: 패치노트 버전별 표시
+
+### 완료
+- [x] `assets/bootstrap/patch_notes.md`를 버전 섹션 기준으로 정리
+- [x] 패치노트 화면을 버전별 카드로 표시하고 현재 설치 버전과 일치하는 항목에 `현재 설치됨` 배지 표시
+- [x] web/package metadata 조회 실패 시 패치노트 첫 버전을 현재 번들 버전 fallback으로 사용
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 버전별 패치노트 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/settings/patch_notes_screen.dart`
+- [x] `cd app && fvm flutter analyze lib/features/settings/patch_notes_screen.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart test/core/router/app_router_test.dart`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+
+---
+
 ## 2026-05-20: local native dev-api DNS 실패 원인 분석 및 라우팅 보정
 
 ### 완료
@@ -17,6 +34,7 @@
 - [x] `curl -I --max-time 5 https://dev-api.kbofans.com/api/health` 실패로 dev API DNS 미해석 확인
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test`
+- [x] `cd app && fvm flutter build ios --debug --no-codesign --dart-define=APP_ENV=local`
 - [ ] local iOS simulator/device no-override 실행 로그에서 `dev-api.kbofans.com` 반복 호출 없음 확인
 
 ---
@@ -49,7 +67,9 @@
 - [x] 팀 기록 상세 상단 요약은 `/api/team/{teamId}/records` 응답의 팀 타격/투수 지표만 사용하도록 정리
 - [x] 경기 상세 기본 점수 탭의 `/highlights` 즉시 호출을 제거하고, 하이라이트는 명시 요청 시에만 로드하도록 지연
 - [x] Android/iOS 앱 루트에서 모든 화면에 따라붙던 `scoreboardProvider(today)` watch를 제거해, 기록실/일정 직접 진입 시 위젯 동기화용 스코어보드 요청이 자동 발생하지 않도록 정리
+- [x] Android/iOS non-blocking startup prefetch에서 `scoreboard`/`homeAggregate` 워밍을 제거해, 앱 시작만으로 화면 외 데이터를 미리 당기지 않도록 정리
 - [x] 앱 루트 widget test가 홈 네트워크를 열지 않도록 onboarding 미완료 상태로 검증 범위를 좁힘
+- [x] `AppMotionSwitcher`의 analyzer fatal info를 정리해 전체 analyze가 깨지지 않도록 보정
 
 ### 검증
 - [x] `cd app && fvm flutter analyze`
@@ -1243,3 +1263,18 @@ kbo_fans/
 - 로컬 API 실측으로 home, scoreboard, schedule, standings, records overview, leaderboard(avg/hr/ops/era), KT team records/players/stats, KT-삼성 game detail/relay/boxscore/lineup 응답 확인
 - 새 웹 번들을 `http://127.0.0.1:7357`에 다시 열고 home/schedule/standings/records/team records/game score 화면을 캡처해 표시값을 확인 (`artifacts/kbo-cross-screen-check-after-cache-fix/`)
 - 온보딩 로고 보정 후 `fvm flutter analyze lib/core/constants/team_data.dart lib/features/onboarding/onboarding_screen.dart`, `fvm flutter build web --release --dart-define=APP_ENV=local` 통과, 웹 캡처 확인 (`artifacts/kbo-onboarding-logo-check/onboarding-logo-fixed.png`)
+
+---
+
+## 2026-05-20
+
+### 작업 내용
+- [x] `AppMotionSwitcher` / `AppMotionListItem` 공통 모션 위젯 추가
+- [x] 홈 스코어보드 로딩/캐시/데이터/에러 전환에 공통 fade + 미세 slide 적용
+- [x] 일정, 순위, 기록실, 선수 상세의 Async 상태 전환에 공통 모션 적용
+- [x] 홈 경기 카드, 일정 경기 카드, 구장별 일정, 순위 행, 기록실 선수 카드, 리더보드 행에 짧은 등장 모션 적용
+- [x] 모션 원칙을 `docs/APP_SPEC.md`와 `CHANGELOG.md`에 반영
+
+### 검증 메모
+- 모션은 새 패키지 없이 Flutter 기본 위젯만 사용했고, `MediaQuery.disableAnimations`가 켜진 경우 생략되도록 처리함
+- 1차 검증으로 `fvm dart format`, `fvm flutter analyze` 실행, 통과
