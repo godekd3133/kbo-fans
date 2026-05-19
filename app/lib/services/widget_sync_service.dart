@@ -19,6 +19,7 @@ const _androidWidgetName = 'KboFansScoreWidgetProvider';
 const _androidQualifiedWidgetName =
     'com.kbofans.kbo_fans.KboFansScoreWidgetProvider';
 const _iosWidgetName = 'KboFansWidget';
+const _homeWidgetLaunchUri = 'kboFans://home?homeWidget';
 
 @pragma('vm:entry-point')
 void widgetCallbackDispatcher() {
@@ -97,6 +98,9 @@ class WidgetSyncService {
       'Widget sync begin: game=${selected?.gameId ?? '-'} myTeam=${myTeamId ?? '-'}',
     );
     await HomeWidget.saveWidgetData<String>('widget_my_team', myTeamId);
+    final updatedAt = DateTime.now();
+    final updatedAtText = _updatedAtText(updatedAt);
+    final updatedAtEpoch = updatedAt.millisecondsSinceEpoch.toString();
 
     if (selected == null) {
       await Future.wait([
@@ -109,9 +113,16 @@ class WidgetSyncService {
         HomeWidget.saveWidgetData<String>('widget_batter', ''),
         HomeWidget.saveWidgetData<String>('widget_pitcher', ''),
         HomeWidget.saveWidgetData<String>('widget_pitch_count', '0'),
+        HomeWidget.saveWidgetData<String>('widget_updated_at', updatedAtText),
         HomeWidget.saveWidgetData<String>(
-          'widget_updated_at',
-          _updatedAtText(),
+          'widget_updated_at_epoch',
+          updatedAtEpoch,
+        ),
+        HomeWidget.saveWidgetData<String>('widget_status_kind', 'none'),
+        HomeWidget.saveWidgetData<String>('widget_game_id', ''),
+        HomeWidget.saveWidgetData<String>(
+          'widget_launch_uri',
+          _homeWidgetLaunchUri,
         ),
       ]);
       await _updateWidget();
@@ -145,8 +156,20 @@ class WidgetSyncService {
       HomeWidget.saveWidgetData<String>('widget_batter', ''),
       HomeWidget.saveWidgetData<String>('widget_pitcher', ''),
       HomeWidget.saveWidgetData<String>('widget_pitch_count', '0'),
-      HomeWidget.saveWidgetData<String>('widget_updated_at', _updatedAtText()),
+      HomeWidget.saveWidgetData<String>('widget_updated_at', updatedAtText),
+      HomeWidget.saveWidgetData<String>(
+        'widget_updated_at_epoch',
+        updatedAtEpoch,
+      ),
+      HomeWidget.saveWidgetData<String>(
+        'widget_status_kind',
+        selected.status.name,
+      ),
       HomeWidget.saveWidgetData<String>('widget_game_id', selected.gameId),
+      HomeWidget.saveWidgetData<String>(
+        'widget_launch_uri',
+        _launchUriForGame(selected),
+      ),
     ]);
 
     await _updateWidget();
@@ -216,12 +239,26 @@ class WidgetSyncService {
     return null;
   }
 
-  String _updatedAtText() {
-    final now = DateTime.now();
+  String _updatedAtText(DateTime now) {
     final hour = now.hour.toString().padLeft(2, '0');
     final minute = now.minute.toString().padLeft(2, '0');
     final second = now.second.toString().padLeft(2, '0');
     return '$hour:$minute:$second';
+  }
+
+  String _launchUriForGame(Game game) {
+    final tab = switch (game.status) {
+      GameStatus.live => 'relay',
+      GameStatus.final_ => 'score',
+      GameStatus.cancelled => 'score',
+      GameStatus.suspended => 'score',
+      GameStatus.scheduled => 'score',
+    };
+    return Uri(
+      scheme: 'kboFans',
+      host: 'game',
+      queryParameters: {'gameId': game.gameId, 'tab': tab, 'homeWidget': ''},
+    ).toString();
   }
 
   String _buildSignature({
