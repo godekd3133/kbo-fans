@@ -7,6 +7,7 @@ import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
 import 'repositories/api_game_repository.dart';
 import 'repositories/api_home_repository.dart';
+import 'repositories/fallback_game_repository.dart';
 import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
@@ -36,14 +37,21 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 /// GameRepository — 환경에 따라 자동 전환
 final gameRepositoryProvider = Provider<GameRepository>((ref) {
   final apiRepository = ApiGameRepository(ref.read(apiClientProvider));
-  final directRepository = KboDirectRepository();
 
   if (kIsWeb) {
     return apiRepository;
   }
 
-  if (AppConfig.instance.preferDirectScrape) {
-    return directRepository;
+  if (AppConfig.instance.preferDirectScrape ||
+      AppConfig.instance.shouldPreferLocalNativeData) {
+    return KboDirectRepository();
+  }
+
+  if (AppConfig.instance.isLocal) {
+    return FallbackGameRepository(
+      primary: apiRepository,
+      fallback: KboDirectRepository(),
+    );
   }
 
   return apiRepository;
@@ -205,18 +213,20 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
   final date = parts[0];
   final myTeam = parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
 
-  if (kIsWeb) {
-    return ref
-        .read(homeRepositoryProvider)
-        .getHomeAggregate(date: date, myTeam: myTeam);
-  }
+  final shouldUseApiHome =
+      kIsWeb ||
+      !AppConfig.instance.isLocal ||
+      AppConfig.instance.hasApiBaseUrlOverride;
 
-  if (!AppConfig.instance.preferDirectScrape) {
+  if (shouldUseApiHome) {
     try {
       return await ref
           .read(homeRepositoryProvider)
           .getHomeAggregate(date: date, myTeam: myTeam);
     } catch (_) {
+      if (kIsWeb || !AppConfig.instance.isLocal) {
+        rethrow;
+      }
       // Local native direct-debug sessions can still render from the component
       // providers if the backend is unavailable.
     }
@@ -258,6 +268,9 @@ final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
   final directRepository = KboDirectPlayerRepository();
   if (kIsWeb) {
     return apiRepository;
+  }
+  if (AppConfig.instance.shouldPreferLocalNativeData) {
+    return LocalAssetPlayerRepository();
   }
   if (AppConfig.instance.preferDirectScrape) {
     return DeviceSnapshotPlayerRepository(

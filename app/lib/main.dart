@@ -126,6 +126,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   StreamSubscription<Uri?>? _homeWidgetClickSubscription;
   Uri? _pendingHomeWidgetUri;
   bool _didInitializeHomeWidgetRouting = false;
+  DateTime? _lastResumeSyncAt;
 
   @override
   void initState() {
@@ -215,7 +216,8 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       return;
     }
 
-    if (AppConfig.instance.preferDirectScrape) {
+    if (AppConfig.instance.preferDirectScrape ||
+        AppConfig.instance.shouldPreferLocalNativeData) {
       unawaited(_primeLocalRelaySession());
     }
     _warm(ref.read(scoreboardProvider(today).future));
@@ -230,7 +232,8 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     required String? myTeamId,
   }) async {
     final staticTasks = <({String label, Future<void> Function() request})>[
-      if (AppConfig.instance.preferDirectScrape)
+      if (AppConfig.instance.preferDirectScrape ||
+          AppConfig.instance.shouldPreferLocalNativeData)
         (label: 'KBO 세션', request: _primeLocalRelaySession),
       (
         label: '오늘 경기',
@@ -318,9 +321,12 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   }
 
   Future<void> _primeLocalRelaySession() async {
-    if (!AppConfig.instance.preferDirectScrape ||
-        !AppConfig.instance.isLocal ||
-        kIsWeb) {
+    final shouldPrimeDirect =
+        (AppConfig.instance.preferDirectScrape ||
+            AppConfig.instance.shouldPreferLocalNativeData) &&
+        AppConfig.instance.isLocal &&
+        !kIsWeb;
+    if (!shouldPrimeDirect) {
       return;
     }
     final direct = KboDirectRepository();
@@ -478,6 +484,15 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   }
 
   Future<void> _syncLiveSurfacesOnResume() async {
+    final now = DateTime.now();
+    final lastResumeSyncAt = _lastResumeSyncAt;
+    if (lastResumeSyncAt != null &&
+        now.difference(lastResumeSyncAt) < const Duration(seconds: 15)) {
+      DevConsole.instance.info('Resume sync skipped: recently synced');
+      return;
+    }
+    _lastResumeSyncAt = now;
+
     try {
       final today = _todayKey();
       ref.invalidate(scoreboardProvider(today));
