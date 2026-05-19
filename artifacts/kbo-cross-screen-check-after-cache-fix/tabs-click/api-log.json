@@ -1,0 +1,26 @@
+[
+  {
+    "url": "http://localhost:8000/api/scoreboard/home?date=2026-05-20",
+    "status": 200
+  },
+  {
+    "url": "http://localhost:8000/api/schedule?month=2026-04",
+    "status": 200
+  },
+  {
+    "url": "http://localhost:8000/api/metrics/client",
+    "status": 200
+  },
+  {
+    "url": "http://localhost:8000/api/standings?season=2026",
+    "status": 200
+  },
+  {
+    "url": "http://localhost:8000/api/schedule?month=2026-05",
+    "status": 200
+  },
+  {
+    "url": "http://localhost:8000/api/records/overview?season=2026",
+    "status": 200
+  }
+]

@@ -1,0 +1,67 @@
+[
+  {
+    "url": "http://localhost:8000/api/schedule?month=2026-05",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/home"
+  },
+  {
+    "url": "http://localhost:8000/api/standings?season=2026",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/home"
+  },
+  {
+    "url": "http://localhost:8000/api/records/overview?season=2026",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/home"
+  },
+  {
+    "url": "http://localhost:8000/api/scoreboard/home?date=2026-05-19",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/home"
+  },
+  {
+    "url": "http://localhost:8000/api/schedule?month=2026-04",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/home"
+  },
+  {
+    "url": "http://localhost:8000/api/metrics/client",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/home"
+  },
+  {
+    "url": "http://localhost:8000/api/metrics/client",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/schedule"
+  },
+  {
+    "url": "http://localhost:8000/api/team/KT/records?season=2026",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/records/team/KT"
+  },
+  {
+    "url": "http://localhost:8000/api/metrics/client",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/records/team/KT"
+  },
+  {
+    "url": "http://localhost:8000/api/records/leaderboard?season=2026&metric=avg",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/records/leaderboard/avg"
+  },
+  {
+    "url": "http://localhost:8000/api/game/20260519KTSS0",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/game/20260519KTSS0"
+  },
+  {
+    "url": "http://localhost:8000/api/game/20260519KTSS0",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/game/20260519KTSS0"
+  },
+  {
+    "url": "http://localhost:8000/api/game/20260519KTSS0/highlights",
+    "status": 200,
+    "route": "http://127.0.0.1:7357/#/game/20260519KTSS0"
+  }
+]
