@@ -15,6 +15,7 @@ Usage:
   ./scripts/codex-run.sh ios
   ./scripts/codex-run.sh ios-debug
   ./scripts/codex-run.sh ios-profile
+  ./scripts/codex-run.sh ios-local-release
   ./scripts/codex-run.sh ios-release
   ./scripts/codex-run.sh android
   ./scripts/codex-run.sh web
@@ -27,7 +28,8 @@ Commands:
   ios      Run the Flutter app on a connected iOS device in profile mode (fallback: Simulator)
   ios-debug    Run the Flutter app on a connected iOS device in debug mode
   ios-profile  Run the Flutter app on a connected iPhone in profile mode
-  ios-release  Run the Flutter app on a connected iPhone in release mode
+  ios-local-release  Run a release-mode local build on a connected iPhone
+  ios-release  Run the Flutter app on a connected iPhone in production release mode
   android  Run the Flutter app on Android device/emulator
   web      Run the Flutter app in Chrome
   web-static  Build web release and serve it locally on port 7357
@@ -303,7 +305,30 @@ running_android_serial() {
     return
   fi
 
-  "$adb_bin" devices | awk '/^emulator-[0-9]+\tdevice$/ {print $1; exit}'
+  "$adb_bin" devices | awk '
+    /^[^[:space:]]+\tdevice$/ && $1 !~ /^emulator-/ && physical == "" {physical = $1}
+    /^[^[:space:]]+\tdevice$/ && $1 ~ /^emulator-/ && emulator == "" {emulator = $1}
+    END {
+      if (physical != "") print physical
+      else if (emulator != "") print emulator
+    }
+  '
+}
+
+android_serial_is_emulator() {
+  local serial="$1"
+  local adb_bin="$2"
+
+  if [[ "$serial" == emulator-* ]]; then
+    return 0
+  fi
+
+  if [[ -n "$adb_bin" ]]; then
+    [[ "$("$adb_bin" -s "$serial" shell getprop ro.kernel.qemu 2>/dev/null | tr -d '\r')" == "1" ]]
+    return
+  fi
+
+  return 1
 }
 
 pick_android_avd() {
@@ -451,6 +476,68 @@ finally:
 PY
 }
 
+backend_health_url() {
+  local api_url="$1"
+  curl -fsS --max-time 2 "$api_url/health" >/dev/null 2>&1
+}
+
+local_backend_api_url_for_host() {
+  local host="$1"
+  local port
+
+  for port in 8000 8001; do
+    local api_url="http://$host:$port/api"
+    if backend_health_url "$api_url"; then
+      echo "$api_url"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+local_backend_api_url_for_localhost() {
+  if [[ -n "${API_BASE_URL:-}" ]]; then
+    echo "$API_BASE_URL"
+    return 0
+  fi
+
+  local_backend_api_url_for_host "localhost" ||
+    local_backend_api_url_for_host "127.0.0.1"
+}
+
+local_backend_api_url_for_lan() {
+  if [[ -n "${API_BASE_URL:-}" ]]; then
+    echo "$API_BASE_URL"
+    return 0
+  fi
+
+  local lan_ip
+  lan_ip="$(local_ipv4)"
+  if [[ -z "$lan_ip" ]]; then
+    return 1
+  fi
+
+  local_backend_api_url_for_host "$lan_ip"
+}
+
+local_backend_api_url_for_android_emulator() {
+  if [[ -n "${API_BASE_URL:-}" ]]; then
+    echo "$API_BASE_URL"
+    return 0
+  fi
+
+  local port
+  for port in 8000 8001; do
+    if backend_health_url "http://127.0.0.1:$port/api"; then
+      echo "http://10.0.2.2:$port/api"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 run_flutter() {
   local flutter
   flutter="$(flutter_cmd)"
@@ -481,14 +568,11 @@ run_ios() {
   local device_id
   local device_name
   local destination_issue
-  local backend_running
-  local lan_ip
   local api_define=""
   local release_api_url=""
+  local local_api_url=""
   device_id="$(pick_ios_device)"
   device_name="$(pick_ios_device_name)"
-  backend_running="$(backend_is_running)"
-  lan_ip="$(local_ipv4)"
 
   if [[ "$app_env" == "release" ]]; then
     release_api_url="$(release_api_base_url)"
@@ -520,9 +604,23 @@ EOF
 
     echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
     echo "Using ${flutter_mode} mode for iOS device."
-    if [[ "$app_env" != "release" && "$backend_running" == "1" && -n "$lan_ip" ]]; then
-      api_define=" --dart-define=API_BASE_URL=http://$lan_ip:8000/api"
-      echo "Using local backend for iOS device: http://$lan_ip:8000/api"
+    if [[ "$app_env" != "release" ]]; then
+      local_api_url="$(local_backend_api_url_for_lan || true)"
+      if [[ -n "$local_api_url" ]]; then
+        api_define=" --dart-define=API_BASE_URL=$local_api_url"
+        echo "Using local backend for iOS device: $local_api_url"
+      else
+        cat >&2 <<'EOF'
+No LAN-reachable local backend was found for the connected iOS device.
+
+Start the backend first:
+  ./scripts/codex-run.sh backend
+
+Or provide an explicit API URL:
+  API_BASE_URL=http://<mac-lan-ip>:8000/api ./scripts/codex-run.sh ios
+EOF
+        exit 1
+      fi
     elif [[ "$app_env" == "release" ]]; then
       echo "Using release API for iOS device: $release_api_url"
     fi
@@ -549,9 +647,23 @@ EOF
   fi
 
   echo "Running on iOS Simulator"
-  if [[ "$app_env" != "release" && "$backend_running" == "1" ]]; then
-    api_define=" --dart-define=API_BASE_URL=http://localhost:8000/api"
-    echo "Using local backend for iOS simulator: http://localhost:8000/api"
+  if [[ "$app_env" != "release" ]]; then
+    local_api_url="$(local_backend_api_url_for_localhost || true)"
+    if [[ -n "$local_api_url" ]]; then
+      api_define=" --dart-define=API_BASE_URL=$local_api_url"
+      echo "Using local backend for iOS simulator: $local_api_url"
+    else
+      cat >&2 <<'EOF'
+No local backend was found for the iOS Simulator.
+
+Start the backend first:
+  ./scripts/codex-run.sh backend
+
+Or provide an explicit API URL:
+  API_BASE_URL=http://localhost:8000/api ./scripts/codex-run.sh ios
+EOF
+      exit 1
+    fi
   elif [[ "$app_env" == "release" ]]; then
     echo "Using release API for iOS simulator: $release_api_url"
   fi
@@ -562,8 +674,8 @@ run_android() {
   local java_home
   local serial
   local adb_bin
-  local backend_running
   local api_define=""
+  local local_api_url=""
 
   java_home="$(android_java_home)"
   if [[ -z "$java_home" ]]; then
@@ -582,7 +694,6 @@ EOF
   serial="$(ensure_android_runtime)"
   adb_bin="$(android_adb_bin)"
   echo "Running on Android device/emulator: $serial"
-  backend_running="$(backend_is_running)"
 
   if [[ -n "$adb_bin" ]]; then
     echo "Uninstalling existing Android app: $ANDROID_APPLICATION_ID"
@@ -599,9 +710,40 @@ EOF
       echo "Flutter or FVM is not installed or not on PATH." >&2
       exit 1
     fi
-    if [[ "$backend_running" == "1" ]]; then
-      api_define=" --dart-define=API_BASE_URL=http://10.0.2.2:8000/api"
-      echo "Using local backend for Android: http://10.0.2.2:8000/api"
+    if android_serial_is_emulator "$serial" "$adb_bin"; then
+      local_api_url="$(local_backend_api_url_for_android_emulator || true)"
+      if [[ -n "$local_api_url" ]]; then
+        api_define=" --dart-define=API_BASE_URL=$local_api_url"
+        echo "Using local backend for Android emulator: $local_api_url"
+      else
+        cat >&2 <<'EOF'
+No local backend was found for the Android emulator.
+
+Start the backend first:
+  ./scripts/codex-run.sh backend
+
+Or provide an explicit API URL:
+  API_BASE_URL=http://10.0.2.2:8000/api ./scripts/codex-run.sh android
+EOF
+        exit 1
+      fi
+    else
+      local_api_url="$(local_backend_api_url_for_lan || true)"
+      if [[ -n "$local_api_url" ]]; then
+        api_define=" --dart-define=API_BASE_URL=$local_api_url"
+        echo "Using local backend for Android device: $local_api_url"
+      else
+        cat >&2 <<'EOF'
+No LAN-reachable local backend was found for the connected Android device.
+
+Start the backend first:
+  ./scripts/codex-run.sh backend
+
+Or provide an explicit API URL:
+  API_BASE_URL=http://<mac-lan-ip>:8000/api ./scripts/codex-run.sh android
+EOF
+        exit 1
+      fi
     fi
     echo "Cleaning Flutter build outputs"
     eval "$flutter clean"
@@ -707,6 +849,9 @@ main() {
       ;;
     ios-profile)
       run_ios profile
+      ;;
+    ios-local-release)
+      run_ios release local
       ;;
     ios-release)
       run_ios release release
