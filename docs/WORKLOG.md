@@ -1282,8 +1282,12 @@ kbo_fans/
 - [x] 일정, 순위, 기록실, 선수 상세의 Async 상태 전환에 공통 모션 적용
 - [x] 홈 경기 카드, 일정 경기 카드, 구장별 일정, 순위 행, 기록실 선수 카드, 리더보드 행에 짧은 등장 모션 적용
 - [x] 모션 원칙을 `docs/APP_SPEC.md`와 `CHANGELOG.md`에 반영
+- [x] `LocalAssetPlayerRepository`의 `MockPlayerRepository` fallback 제거: 번들 스냅샷이 비어 있으면 빈 상태/명시적 오류를 반환해 기록실에 가짜 선수 데이터가 재유입되지 않도록 보정
+- [x] local native `API_BASE_URL` 명시 경로에서 `/home` 실패 시 direct/provider 조립 fallback으로 재진입하지 않도록 차단
+- [x] 일반 local API 라우팅에서 `FallbackGameRepository` direct fallback 제거
 
 ### 검증 메모
 - 모션은 새 패키지 없이 Flutter 기본 위젯만 사용했고, `MediaQuery.disableAnimations`가 켜진 경우 생략되도록 처리함
 - 검증으로 `fvm dart format`, `fvm flutter analyze`, 기존 Flutter 테스트 3종, `fvm flutter build web --release --dart-define=APP_ENV=local` 실행, 모두 통과
 - `http://localhost:7357` Puppeteer smoke로 온보딩 완료 후 home, schedule, standings, records, leaderboard, player detail, game detail hash 라우팅 렌더를 확인함
+- 추가 데이터 경로 검증으로 `fvm flutter test test/data/local_asset_player_repository_test.dart`를 실행해 누락 asset이 mock player로 떨어지지 않는지 확인함

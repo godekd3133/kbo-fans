@@ -118,7 +118,7 @@ This review is based on the current code paths below:
 
 | Area | Evidence |
 | --- | --- |
-| Repository routing | `app/lib/data/providers.dart:37-56` builds `ApiGameRepository` and `KboDirectRepository`; non-web API failure still falls back to direct KBO. |
+| Repository routing | `app/lib/data/providers.dart:37-49` uses API by default, and only enters `KboDirectRepository` for explicit direct debug or local native no-API debugging. |
 | Home aggregate fan-out | `app/lib/data/providers.dart:202-239` reads scoreboard, two months of schedule, standings, and records overview. |
 | All-player image map | `app/lib/data/providers.dart:265-300` loops through all 10 teams and calls `getTeamPlayers` for each team. |
 | Home fallback fan-out | `app/lib/features/home/home_screen.dart:372-430` can watch aggregate, two schedules, and standings in one section. |
@@ -129,7 +129,7 @@ This review is based on the current code paths below:
 | Score tab relay dependency | `app/lib/features/game_detail/tabs/score_tab.dart:22-35` watches `relayDataProvider`. |
 | Relay tab broad player data | `app/lib/features/game_detail/tabs/relay_tab.dart:44-74` watches game, relay, two team player lists, and all-player image map. |
 | Lineup tab broad data | `app/lib/features/game_detail/tabs/lineup_tab.dart:52-84` watches lineup, boxscore-derived batters/pitchers, relay, two team player lists, all-player image map, standings, two schedules, and two team stats. |
-| Widget background direct path | `app/lib/services/widget_sync_service.dart:25-37` background task creates a repository and fetches scoreboard; `app/lib/services/widget_sync_service.dart:58-60` currently returns `KboDirectRepository`. |
+| Widget background refresh | `app/lib/services/widget_sync_service.dart:25-37` background task uses the compact API path in normal mode; direct KBO is explicit debug-only. |
 | Alert relay path | `app/lib/services/game_event_alert_service.dart:86-101` loops tracked games, and `app/lib/services/game_event_alert_service.dart:151-169` fetches relay per live tracked game. |
 | Direct KBO queue/dedupe | `app/lib/data/repositories/kbo_direct_repository.dart:38-45` has request maps/queue; `app/lib/data/repositories/kbo_direct_repository.dart:96-115` serializes network calls. |
 | Direct scoreboard fan-out | `app/lib/data/repositories/kbo_direct_repository.dart:277-315` gets schedule, main game map, and per-game scoreboard/detail calls. |
@@ -143,11 +143,11 @@ This review is based on the current code paths below:
 
 ### P0 Finding 1 - Direct KBO is still a normal app fallback
 
-Current:
+Previous risk:
 
-- `gameRepositoryProvider` uses `FallbackGameRepository(primary: apiRepository, fallback: directRepository)` when `preferDirectScrape` is false.
-- `AppConfig` currently defaults `preferDirectScrape` to true for local non-web native builds.
-- `WidgetSyncService.createRepositoryForBackground()` always returns `KboDirectRepository`.
+- `gameRepositoryProvider` used to wrap API with `FallbackGameRepository(primary: apiRepository, fallback: directRepository)`.
+- local native API override could still fall back to component-provider assembly after `/home` failed.
+- widget background refresh used to be able to create direct KBO fetches outside the visible app path.
 
 Why this is a problem:
 
@@ -530,6 +530,8 @@ Snapshot providers:
 
 - Make `preferDirectScrape` default false for native local; enable only with `--dart-define=PREFER_DIRECT_SCRAPE=true`.
 - Remove app-side direct KBO fallback from default `FallbackGameRepository`; use API cache/bootstrap fallback instead.
+- Do not re-enter local component-provider assembly when local native was explicitly configured with `API_BASE_URL`; explicit API mode should fail visibly instead of crawling directly.
+- Remove mock player fallback from bundled local player snapshots; missing assets return empty state or explicit missing-detail error, never synthetic player records.
 - Move direct relay credentials out of source and into local secure config if direct debug mode remains.
 - Change widget background refresh to use API/cache-backed repository or a compact backend endpoint.
 - Change game detail refresh to invalidate providers by visible tab.
