@@ -10,6 +10,7 @@ env/
 ios/build/
 app/android/build/
 android/app/build/
+app/android/.kotlin/
 *.apk
 *.ipa
 dist/
