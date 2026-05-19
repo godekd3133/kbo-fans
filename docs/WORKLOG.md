@@ -16,6 +16,7 @@
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart test/core/router/app_router_test.dart`
 - [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+- [x] 390x844 Puppeteer preview에서 버전별 카드와 `현재 설치됨` 배지 렌더링 확인
 
 ---
 
@@ -70,6 +71,8 @@
 - [x] Android/iOS non-blocking startup prefetch에서 `scoreboard`/`homeAggregate` 워밍을 제거해, 앱 시작만으로 화면 외 데이터를 미리 당기지 않도록 정리
 - [x] 앱 루트 widget test가 홈 네트워크를 열지 않도록 onboarding 미완료 상태로 검증 범위를 좁힘
 - [x] `AppMotionSwitcher`의 analyzer fatal info를 정리해 전체 analyze가 깨지지 않도록 보정
+- [x] 홈 보조 섹션의 local fallback assembly 제거: `/api/home` 실패 시 UI가 직접 `schedule`/`standings`/`recordsOverview`를 추가 호출하지 않도록 정리
+- [x] 홈 fallback 제거로 미사용이 된 로컬 조립 helper를 삭제해 fallback 재유입 지점을 줄임
 
 ### 검증
 - [x] `cd app && fvm flutter analyze`
@@ -77,6 +80,7 @@
 - [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
 - [x] 브라우저 실측: `/records/team/KT` 첫 진입 API가 `/api/team/KT/records?season=2026` 하나만 남음
 - [x] 브라우저 실측: `/game/20260519KTSS0` 첫 진입 API가 `/api/game/20260519KTSS0` 하나만 남고 `/highlights` 즉시 호출 없음
+- [x] 브라우저 실측: `/home` 첫 진입 API가 `/api/scoreboard/home` + `/api/home`만 호출하고 schedule/standings/records fallback 호출 없음
 
 ---
 
