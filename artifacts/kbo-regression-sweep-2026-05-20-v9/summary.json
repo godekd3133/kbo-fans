@@ -1,0 +1,51 @@
+[
+  {
+    "name": "home",
+    "requested": "http://127.0.0.1:7357/#/home",
+    "current": "http://127.0.0.1:7357/#/home",
+    "pngSize": 136693,
+    "issues": []
+  },
+  {
+    "name": "schedule",
+    "requested": "http://127.0.0.1:7357/#/schedule",
+    "current": "http://127.0.0.1:7357/#/schedule",
+    "pngSize": 112534,
+    "issues": []
+  },
+  {
+    "name": "standings",
+    "requested": "http://127.0.0.1:7357/#/standings",
+    "current": "http://127.0.0.1:7357/#/standings",
+    "pngSize": 135359,
+    "issues": []
+  },
+  {
+    "name": "records",
+    "requested": "http://127.0.0.1:7357/#/records",
+    "current": "http://127.0.0.1:7357/#/records",
+    "pngSize": 192924,
+    "issues": []
+  },
+  {
+    "name": "team_records_kt",
+    "requested": "http://127.0.0.1:7357/#/records/team/KT",
+    "current": "http://127.0.0.1:7357/#/records/team/KT",
+    "pngSize": 117210,
+    "issues": []
+  },
+  {
+    "name": "leaderboard_avg",
+    "requested": "http://127.0.0.1:7357/#/records/leaderboard/avg",
+    "current": "http://127.0.0.1:7357/#/records/leaderboard/avg",
+    "pngSize": 221341,
+    "issues": []
+  },
+  {
+    "name": "game_score",
+    "requested": "http://127.0.0.1:7357/#/game/20260519KTSS0",
+    "current": "http://127.0.0.1:7357/#/game/20260519KTSS0",
+    "pngSize": 397190,
+    "issues": []
+  }
+]
