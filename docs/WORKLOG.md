@@ -36,6 +36,8 @@
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test`
 - [x] `cd app && fvm flutter build ios --debug --no-codesign --dart-define=APP_ENV=local`
+- [x] `cd app && fvm flutter run -d 00008130-0008198E3E78001C --debug --dart-define=APP_ENV=local --no-pub` 로 실기기 launch / VM Service 연결 확인
+- [x] local native provider routing 회귀 테스트 추가 (`app/test/data/providers_routing_test.dart`)
 - [ ] local iOS simulator/device no-override 실행 로그에서 `dev-api.kbofans.com` 반복 호출 없음 확인
 
 ---
