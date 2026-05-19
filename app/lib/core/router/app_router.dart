@@ -45,17 +45,28 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isOnboardingEdit =
           location == '/onboarding' &&
           state.uri.queryParameters['mode'] == 'edit';
+      final redirectTarget = _redirectTarget(state);
       if (onboardingDone == null) {
-        return location == '/boot' ? null : '/boot';
+        return location == '/boot'
+            ? null
+            : Uri(
+                path: '/boot',
+                queryParameters: {'redirect': redirectTarget},
+              ).toString();
       }
       if (!onboardingDone) {
-        return location == '/onboarding' ? null : '/onboarding';
+        return location == '/onboarding'
+            ? null
+            : Uri(
+                path: '/onboarding',
+                queryParameters: {'redirect': redirectTarget},
+              ).toString();
       }
       if (location == '/boot') {
-        return '/home';
+        return _safeRedirectPath(state.uri.queryParameters['redirect']);
       }
       if (location == '/onboarding' && !isOnboardingEdit) {
-        return '/home';
+        return _safeRedirectPath(state.uri.queryParameters['redirect']);
       }
       return null;
     },
@@ -71,6 +82,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           state,
           child: OnboardingScreen(
             isEditMode: state.uri.queryParameters['mode'] == 'edit',
+            redirectTo: _safeRedirectPath(
+              state.uri.queryParameters['redirect'],
+            ),
           ),
         ),
       ),
@@ -163,6 +177,31 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+String _redirectTarget(GoRouterState state) {
+  final target = state.uri.toString();
+  return _safeRedirectPath(target);
+}
+
+String _safeRedirectPath(String? target) {
+  if (target == null ||
+      target.isEmpty ||
+      !target.startsWith('/') ||
+      target.startsWith('//')) {
+    return '/home';
+  }
+  final uri = Uri.tryParse(target);
+  if (uri == null) {
+    return '/home';
+  }
+  if (uri.hasScheme || uri.host.isNotEmpty) {
+    return '/home';
+  }
+  if (uri.path == '/boot' || uri.path == '/onboarding') {
+    return '/home';
+  }
+  return uri.toString();
+}
 
 CustomTransitionPage<void> _fadeTransitionPage(
   GoRouterState state, {

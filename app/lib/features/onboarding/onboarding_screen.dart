@@ -12,8 +12,13 @@ import '../../core/theme/app_theme.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   final bool isEditMode;
+  final String redirectTo;
 
-  const OnboardingScreen({super.key, this.isEditMode = false});
+  const OnboardingScreen({
+    super.key,
+    this.isEditMode = false,
+    this.redirectTo = '/home',
+  });
 
   @override
   ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -32,7 +37,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (!mounted) {
       return;
     }
-    context.go(widget.isEditMode ? '/settings' : '/home');
+    context.go(widget.isEditMode ? '/settings' : widget.redirectTo);
   }
 
   @override
