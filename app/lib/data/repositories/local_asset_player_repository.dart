@@ -7,7 +7,6 @@ import '../models/player.dart';
 import '../models/records_overview.dart';
 import '../models/team_records_bundle.dart';
 import '../models/team_stats.dart';
-import 'mock_player_repository.dart';
 import 'player_repository.dart';
 
 class LocalAssetPlayerRepository implements PlayerRepository {
@@ -18,7 +17,6 @@ class LocalAssetPlayerRepository implements PlayerRepository {
   static List<String>? _assetPathsCache;
 
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
-  final MockPlayerRepository _fallback = MockPlayerRepository();
 
   Future<Map<String, String>> buildPlayerImageMap({required int season}) async {
     final result = <String, String>{};
@@ -45,7 +43,7 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     );
     final players = payload?['players'] as List<dynamic>?;
     if (players == null || players.isEmpty) {
-      return _fallback.getTeamPlayers(teamId, season: season);
+      return const <PlayerProfile>[];
     }
     return players
         .map((item) => _parsePlayer(item as Map<String, dynamic>))
@@ -66,7 +64,9 @@ class LocalAssetPlayerRepository implements PlayerRepository {
         return match;
       }
     }
-    return _fallback.getPlayerDetail(playerId, season: season);
+    throw StateError(
+      'Player detail unavailable in local asset snapshot: $playerId',
+    );
   }
 
   @override
@@ -75,7 +75,12 @@ class LocalAssetPlayerRepository implements PlayerRepository {
       await _resolveSeasonAssetPath(_teamStatsDir, teamId, season),
     );
     if (payload == null) {
-      return _fallback.getTeamStats(teamId, season: season);
+      return TeamStats(
+        teamId: teamId,
+        season: season,
+        hitting: const {},
+        pitching: const {},
+      );
     }
     return TeamStats(
       teamId: payload['teamId'] as String? ?? teamId,
@@ -108,7 +113,18 @@ class LocalAssetPlayerRepository implements PlayerRepository {
   Future<RecordsOverview> getRecordsOverview({required int season}) async {
     final snapshot = await _bootstrapRepository.loadRecordsOverview(season);
     if (snapshot == null) {
-      return _fallback.getRecordsOverview(season: season);
+      return RecordsOverview(
+        season: season,
+        avgLeaders: const [],
+        hrLeaders: const [],
+        opsLeaders: const [],
+        opsPlusLeaders: const [],
+        eraLeaders: const [],
+        todayHitter: const FeaturedPlayerCard(label: '오늘의 타자'),
+        todayPitcher: const FeaturedPlayerCard(label: '오늘의 투수'),
+        monthHitter: const FeaturedPlayerCard(label: '이달의 타자'),
+        monthPitcher: const FeaturedPlayerCard(label: '이달의 투수'),
+      );
     }
     final leaders = snapshot['leaders'] as Map<String, dynamic>? ?? const {};
     final featured = snapshot['featured'] as Map<String, dynamic>? ?? const {};
