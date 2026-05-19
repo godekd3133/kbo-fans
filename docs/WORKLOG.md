@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-20: local native dev-api DNS 실패 원인 분석 및 라우팅 보정
+
+### 완료
+- [x] `Failed host lookup: 'dev-api.kbofans.com'` 재현 로그와 local DNS/curl 실패를 기준으로 직접 원인 확인
+- [x] local native no-override 실행이 dev API를 먼저 호출하던 `AppConfig` / repository routing 불일치 정리
+- [x] 홈/일정/순위는 local native no-override에서 direct KBO 경로를 우선 사용하고, 기록실은 bundled asset fallback을 우선 사용하도록 보정
+- [x] 위젯/백그라운드 scoreboard fetch도 같은 local native routing 정책을 쓰도록 정리
+- [x] resume scoreboard sync를 throttle하고, 홈 화면 자체 resume invalidation 중복을 제거
+- [x] 홈 loading shell의 다중 spinner를 skeleton placeholder 중심으로 정리
+- [x] 원인/수정/검증 기준 문서화 (`docs/LOCAL_NATIVE_API_FAILURE_ANALYSIS_2026-05-20.md`)
+
+### 검증
+- [x] `curl -I --max-time 5 https://dev-api.kbofans.com/api/health` 실패로 dev API DNS 미해석 확인
+- [ ] `cd app && fvm flutter analyze`
+- [ ] `cd app && fvm flutter test`
+- [ ] local iOS simulator/device no-override 실행 로그에서 `dev-api.kbofans.com` 반복 호출 없음 확인
+
+---
+
 ## 2026-05-20: 설정 앱 정보 및 지원 동작 복구
 
 ### 완료
@@ -51,6 +70,7 @@
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart test/core/router/app_router_test.dart`
 - [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+- [x] 390x844 Puppeteer preview에서 `/patch-notes` 화면 렌더링 및 patch notes asset 로드 확인
 
 ---
 
@@ -66,8 +86,12 @@
 - [x] `cd app && fvm dart format lib/services/live_activity_service.dart lib/features/game_detail/game_detail_screen.dart`
 - [x] `cd app && fvm flutter analyze lib/services/live_activity_service.dart lib/features/game_detail/game_detail_screen.dart`
 - [x] `cd app && fvm flutter analyze`
-- [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter test test/services/live_activity_service_test.dart`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart`
 - [x] `cd app && fvm flutter build apk --debug --dart-define=APP_ENV=local`
+
+### 메모
+- `cd app && fvm flutter test test/widget_test.dart`는 현재 워크트리의 startup/direct KBO pending timer로 실패한다. 이번 Android ongoing notification 테스트는 별도 서비스 테스트로 통과했다.
 
 ---
 

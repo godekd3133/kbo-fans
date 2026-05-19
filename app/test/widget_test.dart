@@ -8,7 +8,7 @@ import 'package:kbo_fans/main.dart';
 void main() {
   testWidgets('앱 루트가 렌더링된다', (WidgetTester tester) async {
     AppConfig.initialize();
-    SharedPreferences.setMockInitialValues({'onboardingDone': true});
+    SharedPreferences.setMockInitialValues({'onboardingDone': false});
 
     await tester.pumpWidget(const ProviderScope(child: KboFansApp()));
     await tester.pump(const Duration(milliseconds: 500));
