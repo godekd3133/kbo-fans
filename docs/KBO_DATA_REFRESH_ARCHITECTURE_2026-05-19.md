@@ -652,6 +652,7 @@ Applied in backend code:
 
 Applied in app code:
 
+- Startup no longer blocks first screen entry on remote API prefetch. Remote prefetch now runs after onboarding/my-team bootstrap, so a hanging API call cannot keep the app on the startup progress screen.
 - Widget background refresh now calls `/scoreboard/compact` through `ApiGameRepository.getCompactScoreboard()` in normal API mode.
 - Widget background refresh still allows `KboDirectRepository` only when explicit direct debug mode is enabled.
 - Widget sync no longer fetches relay/current-at-bat data, so a widget update does not become a separate relay crawl.
@@ -665,6 +666,7 @@ Request impact:
 - Schedule fallback lookup for `/game/{gameId}` only runs when the scoreboard/game summary path cannot find the game.
 - Widget background refresh requests at most one compact scoreboard game and no longer performs a relay/current-at-bat request.
 - Live Activity updates no longer perform direct KBO current-at-bat fallback from the client.
+- First screen entry is no longer gated by remote prefetch completion.
 
 Verification:
 
@@ -685,6 +687,14 @@ Live measurement on 2026-05-19:
 | `get_compact_scoreboard(2026-05-19, LG)` cached | 1 game | ~0ms | no additional upstream calls |
 
 Measured impact: compact refresh reduces widget/Live-surface detail enrichment from 5 games to 1 game for this date. Wall-clock latency is similar on this run because full scoreboard enrich runs in parallel, but upstream request volume and failure surface are lower.
+
+Live loading smoke on 2026-05-19:
+
+- Actual live games were present: NC-두산, LG-KIA, SSG-키움, 롯데-한화, KT-삼성.
+- `get_game(20260519LGHT0)` completed in about 390ms during the run.
+- The web app previously could remain on blocking startup progress if first-run remote prefetch did not finish. After disabling blocking remote prefetch, local web release rendered the live home card instead of staying on the startup loader.
+- Screenshot artifact: `artifacts/kbo-live-loading-check/home-lg-nonblocking-fixed-score.png`.
+- A separate live-score data bug was found and fixed: KBO detail payload can provide inning scores while total `score` is null. Backend now derives missing totals from inning scores.
 
 Still left after this P1 slice:
 
