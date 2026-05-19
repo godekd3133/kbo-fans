@@ -9,14 +9,12 @@ class AppConfig {
   final AppEnvironment environment;
   final String apiBaseUrl;
   final bool hasApiBaseUrlOverride;
-  final bool useMockData;
   final bool preferDirectScrape;
 
   AppConfig._({
     required this.environment,
     required this.apiBaseUrl,
     required this.hasApiBaseUrlOverride,
-    required this.useMockData,
     required this.preferDirectScrape,
   });
 
@@ -43,7 +41,6 @@ class AppConfig {
       environment: env,
       apiBaseUrl: _baseUrlFor(env, override: apiBaseUrlOverride),
       hasApiBaseUrlOverride: apiBaseUrlOverride.isNotEmpty,
-      useMockData: false, // 모든 환경에서 실제 데이터 사용 (웹은 providers에서 CORS fallback)
       preferDirectScrape: preferDirectScrape,
     );
   }
@@ -58,7 +55,8 @@ class AppConfig {
         // LOCAL:
         // - 웹은 localhost
         // - Android 에뮬레이터는 10.0.2.2
-        // - iOS native 디버그는 API override가 없으면 providers에서 direct/cache 우선
+        // - iOS Simulator는 localhost
+        // - iOS/Android 실기기는 실행 스크립트에서 Mac LAN IP를 API_BASE_URL로 주입
         if (kIsWeb) {
           return 'http://localhost:8000/api';
         }
@@ -66,7 +64,7 @@ class AppConfig {
           return 'http://10.0.2.2:8000/api';
         }
         if (defaultTargetPlatform == TargetPlatform.iOS) {
-          return 'https://dev-api.kbofans.com/api';
+          return 'http://localhost:8000/api';
         }
         return 'http://localhost:8000/api';
       case AppEnvironment.dev:

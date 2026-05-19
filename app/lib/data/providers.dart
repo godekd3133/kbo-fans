@@ -249,13 +249,12 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
 
 final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
   final apiRepository = ApiPlayerRepository(ref.read(apiClientProvider));
-  final directRepository = KboDirectPlayerRepository();
   if (kIsWeb) {
     return apiRepository;
   }
   if (AppConfig.instance.preferDirectScrape) {
     return DeviceSnapshotPlayerRepository(
-      primary: directRepository,
+      primary: KboDirectPlayerRepository(),
       fallback: FallbackPlayerRepository(
         primary: LocalAssetPlayerRepository(),
         secondary: apiRepository,
