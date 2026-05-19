@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/player.dart';
 import '../../data/models/records_overview.dart';
@@ -99,27 +100,48 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
     return Scaffold(
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refreshOverview,
-          color: AppColors.live,
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+        child: AppPageFrame(
+          child: RefreshIndicator(
+            onRefresh: _refreshOverview,
+            color: AppColors.live,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
             children: [
-              const Text(
-                '기록실',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
               Row(
                 children: [
                   const Expanded(
-                    child: Text(
-                      '팀을 선택하면 해당 팀의 선수 기록실로 이동합니다.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'RECORDS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textDisabled,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          '기록실',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            height: 1.05,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '팀을 먼저 고르면 선수 기록과 리그 리더가 한 화면에 보입니다.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton(
@@ -178,15 +200,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   filled: true,
                   fillColor: AppColors.card,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: AppColors.divider),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(
                       color: AppColors.textSecondary,
                     ),
@@ -210,6 +232,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   ),
                 ),
             ],
+            ),
           ),
         ),
       ),
@@ -223,7 +246,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isMyTeam ? team.primaryColor : AppColors.divider,
           ),
@@ -307,8 +330,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
+        child: AppPageFrame(
+          child: Column(
+            children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Row(
@@ -380,14 +404,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: AppColors.card,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: TabBar(
                   controller: _tabController,
                   indicatorSize: TabBarIndicatorSize.tab,
                   indicator: BoxDecoration(
                     color: AppColors.textPrimary,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   dividerColor: Colors.transparent,
                   labelPadding: EdgeInsets.zero,
@@ -498,7 +522,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -684,7 +709,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -729,7 +754,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.divider),
           ),
           child: Row(
@@ -832,7 +857,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final photoUrl = player.imageUrl;
     if (photoUrl != null && photoUrl.isNotEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: CachedNetworkImage(
           imageUrl: photoUrl,
           width: 52,
@@ -852,7 +877,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       height: 52,
       decoration: BoxDecoration(
         color: team?.primaryColor.withValues(alpha: 0.14) ?? AppColors.cardSub,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.center,
       child: Icon(
@@ -1070,7 +1095,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider),
       ),
       child: Row(
@@ -1116,7 +1141,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         children: [
@@ -1146,7 +1171,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: AppColors.cardSub,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
@@ -1240,7 +1265,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1255,7 +1280,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             children: [
               if (card.imageUrl != null && card.imageUrl!.isNotEmpty)
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                   child: CachedNetworkImage(
                     imageUrl: card.imageUrl!,
                     width: 56,
@@ -1319,7 +1344,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final supported = resolvedMetric?.supportedByOfficialSource ?? true;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(8),
       onTap: resolvedMetric == null
           ? null
           : () => context.push(
@@ -1329,7 +1354,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.divider),
         ),
         child: Column(

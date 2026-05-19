@@ -212,7 +212,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: Column(
@@ -328,7 +328,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: const Column(
@@ -369,7 +369,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: Column(
@@ -402,7 +402,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.divider),
                 ),
                 child: Column(
@@ -554,7 +554,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       useSafeArea: true,
       backgroundColor: AppColors.card,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       builder: (context) =>
           _DeliveryPickerSheet(title: title, current: current),
@@ -650,7 +650,7 @@ class _MyTeamCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.divider),
           boxShadow: const [
             BoxShadow(
@@ -732,7 +732,7 @@ class _PlaybookPreviewCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -937,13 +937,13 @@ class _DeliveryPickerSheet extends StatelessWidget {
     final selected = current == delivery;
     return InkWell(
       onTap: () => Navigator.of(context).pop(delivery),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: selected ? AppColors.cardSub : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: selected ? AppColors.textSecondary : AppColors.divider,
           ),

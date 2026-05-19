@@ -77,7 +77,7 @@ class ScoreTab extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Table(
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -238,7 +238,7 @@ class ScoreTab extends StatelessWidget {
                             color: item.isScoring
                                 ? const Color(0xFF1C1111)
                                 : AppColors.cardSub,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(
                               color: item.isScoring
                                   ? AppColors.live
