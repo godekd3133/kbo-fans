@@ -41,8 +41,7 @@ final gameRepositoryProvider = Provider<GameRepository>((ref) {
     return apiRepository;
   }
 
-  if (AppConfig.instance.preferDirectScrape ||
-      AppConfig.instance.shouldPreferLocalNativeData) {
+  if (AppConfig.instance.preferDirectScrape) {
     return KboDirectRepository();
   }
 
@@ -205,10 +204,7 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
   final date = parts[0];
   final myTeam = parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
 
-  final shouldUseApiHome =
-      kIsWeb ||
-      !AppConfig.instance.isLocal ||
-      AppConfig.instance.hasApiBaseUrlOverride;
+  final shouldUseApiHome = !AppConfig.instance.preferDirectScrape;
 
   if (shouldUseApiHome) {
     try {
@@ -216,13 +212,7 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
           .read(homeRepositoryProvider)
           .getHomeAggregate(date: date, myTeam: myTeam);
     } catch (_) {
-      if (kIsWeb ||
-          !AppConfig.instance.isLocal ||
-          AppConfig.instance.hasApiBaseUrlOverride) {
-        rethrow;
-      }
-      // Local native direct-debug sessions can still render from the component
-      // providers if the backend is unavailable.
+      rethrow;
     }
   }
 
@@ -262,9 +252,6 @@ final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
   final directRepository = KboDirectPlayerRepository();
   if (kIsWeb) {
     return apiRepository;
-  }
-  if (AppConfig.instance.shouldPreferLocalNativeData) {
-    return LocalAssetPlayerRepository();
   }
   if (AppConfig.instance.preferDirectScrape) {
     return DeviceSnapshotPlayerRepository(

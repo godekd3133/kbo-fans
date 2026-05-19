@@ -903,7 +903,7 @@ class _StarterHeroCard extends StatelessWidget {
     return Column(
       children: [
         Container(
-          height: 288,
+          height: 220,
           decoration: BoxDecoration(
             color: AppColors.cardSub,
             borderRadius: BorderRadius.circular(20),
@@ -912,14 +912,22 @@ class _StarterHeroCard extends StatelessWidget {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: data.imageUrl != null && data.imageUrl!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: data.imageUrl!,
-                    httpHeaders: _kboImageHeaders,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    placeholder: (_, _) => _starterFallback(accent, data.name),
-                    errorWidget: (_, _, _) =>
-                        _starterFallback(accent, data.name),
+                ? Container(
+                    color: AppColors.cardSub,
+                    alignment: Alignment.bottomCenter,
+                    padding: const EdgeInsets.only(top: 12),
+                    child: CachedNetworkImage(
+                      imageUrl: data.imageUrl!,
+                      httpHeaders: _kboImageHeaders,
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                      height: double.infinity,
+                      alignment: Alignment.bottomCenter,
+                      placeholder: (_, _) =>
+                          _starterFallback(accent, data.name),
+                      errorWidget: (_, _, _) =>
+                          _starterFallback(accent, data.name),
+                    ),
                   )
                 : _starterFallback(accent, data.name),
           ),

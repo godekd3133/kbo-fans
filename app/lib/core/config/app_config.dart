@@ -83,5 +83,5 @@ class AppConfig {
   bool get isRelease => environment == AppEnvironment.release;
   bool get isProduction => environment == AppEnvironment.release;
   bool get shouldPreferLocalNativeData =>
-      isLocal && !kIsWeb && !hasApiBaseUrlOverride;
+      isLocal && !kIsWeb && !hasApiBaseUrlOverride && preferDirectScrape;
 }
