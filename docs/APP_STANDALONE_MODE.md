@@ -2,7 +2,7 @@
 
 > 최종 수정: 2026-05-20
 
-> 현재 정책: 이 문서는 standalone 검증 기록을 보존하되, 일반 local/native 운영 기준은 더 이상 “모바일 direct KBO 자동 단독 모드”가 아니다. iOS/Android local 실행도 기본은 backend API 경로이며, direct KBO는 `PREFER_DIRECT_SCRAPE=true` 를 명시한 디버그 빌드에서만 사용한다.
+> 현재 정책: 이 문서는 과거 standalone 검증 기록을 보존하되, 일반 local/native 운영 기준은 더 이상 “모바일 direct KBO 자동 단독 모드”가 아니다. iOS/Android local 실행도 기본은 backend API 경로이며, direct KBO는 `PREFER_DIRECT_SCRAPE=true` 를 명시한 디버그 빌드에서만 사용한다.
 
 ## 목적
 
@@ -13,15 +13,15 @@
 - 모바일(iOS/Android)과 웹 모두 일반 실행의 기본 데이터 경로는 backend API다.
 - 로컬 iOS/Android 실행은 `scripts/codex-run.sh` 가 로컬 backend health를 확인하고 `API_BASE_URL` 을 주입한다.
 - 로컬 backend가 없으면 direct fallback으로 조용히 내려가지 않고 실행을 중단한다.
-- iPhone standalone release-mode 검증은 `./scripts/codex-run-ios-local-release.sh` 로 분리한다.
-- standalone 검증 경로는 `APP_ENV=local` 과 `PREFER_DIRECT_SCRAPE=true` 를 함께 주입하므로 Mac local backend, `dev-api.kbofans.com`, production API에 의존하지 않는다.
+- iPhone local release-mode 검증은 `./scripts/codex-run-ios-local-release.sh` 로 분리한다.
+- local release-mode 검증 경로도 local backend API를 요구하며, backend health 실패 시 direct fallback으로 내려가지 않는다.
 
 ## 완료된 전환 범위
 
 ### 경기 데이터
 
 - 일반 빌드에서는 `ApiGameRepository`를 사용한다.
-- standalone/direct debug 빌드에서만 `ApiGameRepository` 대신 `KboDirectRepository`를 사용한다.
+- 명시적 direct debug 빌드에서만 `ApiGameRepository` 대신 `KboDirectRepository`를 사용한다.
 - direct source:
   - scoreboard
   - schedule
@@ -34,7 +34,7 @@
 ### 홈 aggregate
 
 - 일반 빌드에서는 `/api/home` 을 사용한다.
-- standalone/direct debug 빌드에서만 `/api/home` 의존을 제거하고 앱 내부에서 조합한다.
+- 명시적 direct debug 빌드에서만 `/api/home` 의존을 제거하고 앱 내부에서 조합한다.
 - 입력 데이터:
   - scoreboard
   - schedule
@@ -44,7 +44,7 @@
 ### 기록실 / 팀 기록 / 리더보드
 
 - 일반 빌드에서는 records/player 경로가 API를 먼저 사용하고, 안정 데이터만 generated asset snapshot fallback을 허용한다.
-- standalone/direct debug 빌드에서는 records/player 경로가 direct KBO를 먼저 시도하고, 실패 시 local asset snapshot repository로 내려간다.
+- 명시적 direct debug 빌드에서는 records/player 경로가 direct KBO를 먼저 시도하고, 실패 시 local asset snapshot repository로 내려간다.
 - asset source:
   - `app/assets/bootstrap/team_players/*.json`
   - `app/assets/bootstrap/team_stats/*.json`
@@ -74,7 +74,7 @@
 ### 문자중계
 
 - full play-by-play는 KBO 로그인 세션이 필요할 수 있다.
-- standalone/direct debug 빌드에서 로그인 relay가 실패하면 앱 direct summary relay fallback으로 내려간다.
+- 명시적 direct debug 빌드에서 로그인 relay가 실패하면 앱 direct summary relay fallback으로 내려간다.
 - 즉 “완전 빈 화면”은 피하지만, 항상 pitch-by-pitch가 보장되지는 않는다.
 
 ### 푸시

@@ -2,21 +2,21 @@
 
 ---
 
-## 2026-05-20: iPhone 단독 local release-mode 실행 경로 보정
+## 2026-05-20: iPhone local release-mode 실행 경로 보정
 
 ### 완료
-- [x] 웹은 Mac local backend를 보지만, 아이폰 단독 빌드는 Mac 없이 동작해야 한다는 기준으로 실행 경로 재분리
-- [x] `./scripts/codex-run.sh ios-local-release` 를 `APP_ENV=local + PREFER_DIRECT_SCRAPE=true` standalone 데이터 모드로 고정
+- [x] iPhone local release 실행 경로도 API-first 기준으로 재분리
+- [x] `./scripts/codex-run.sh ios-local-release` 를 `APP_ENV=local` release-mode로 고정하고 local backend health 실패 시 중단하도록 정리
 - [x] `scripts/codex-run-ios-local-release.sh` 래퍼 추가
-- [x] standalone 빌드에서 provider routing이 `KboDirectRepository`로 전환되는지 회귀 테스트 보강
-- [x] `README.md`, `docs/APP_STANDALONE_MODE.md`, `CHANGELOG.md`에 아이폰 단독 release-mode 검증 기준 반영
+- [x] local native provider routing이 기본 API 경로를 유지하고, direct는 `PREFER_DIRECT_SCRAPE=true` 명시 빌드에서만 켜지는지 회귀 테스트 보강
+- [x] `README.md`, `docs/APP_STANDALONE_MODE.md`, `CHANGELOG.md`에 iPhone local release-mode 검증 기준 반영
 
 ### 검증
 - [x] `bash -n scripts/codex-run.sh`
 - [x] `plutil -lint app/ios/Runner/Info.plist`
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test test/data/providers_routing_test.dart test/data/local_asset_player_repository_test.dart`
-- [x] `./scripts/codex-run.sh ios-local-release` 로그에서 `Using standalone iOS data mode: direct KBO + bundled snapshots` 확인
+- [x] `./scripts/codex-run.sh ios-local-release` 가 local backend URL을 확인한 뒤 실행하도록 보정
 - [x] `xcrun devicectl device process launch --device 7A054DC8-7915-5B43-BA79-3060BE1A3209 --terminate-existing com.kbofans.kboFans` 로 설치 앱 launch 확인
 
 ---
