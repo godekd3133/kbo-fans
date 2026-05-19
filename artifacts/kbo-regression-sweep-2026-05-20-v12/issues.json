@@ -1,0 +1,10 @@
+[
+  {
+    "screen": "home_ht",
+    "issue": "runtime exceptions: Uncaught (in promise) | Uncaught (in promise)"
+  },
+  {
+    "screen": "home_ht",
+    "issue": "console errors: Failed to load resource: net::ERR_CERT_VERIFIER_CHANGED | Failed to load resource: net::ERR_CONNECTION_CLOSED"
+  }
+]
