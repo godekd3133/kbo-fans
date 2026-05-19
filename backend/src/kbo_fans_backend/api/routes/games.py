@@ -24,7 +24,9 @@ youtube_highlight_service = YoutubeHighlightService()
 @router.get("", response_model=ApiEnvelope[dict])
 def get_game(game_id: str) -> ApiEnvelope[dict]:
     game = scoreboard_service.get_game(game_id)
-    scheduled_game = schedule_service.get_schedule_game(game_id)
+    scheduled_game = None
+    if game is None:
+        scheduled_game = schedule_service.get_schedule_game(game_id)
 
     if game is None and scheduled_game is None:
         raise HTTPException(

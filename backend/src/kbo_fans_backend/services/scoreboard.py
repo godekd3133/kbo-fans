@@ -12,6 +12,7 @@ from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.crawlers.scoreboard import ScoreboardCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,13 @@ class ScoreboardService:
         self._scoreboard_cache: TtlCache[str, dict[str, Any]] = TtlCache(
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
+        self._game_cache: TtlCache[str, dict[str, Any]] = TtlCache(
+            self._SCOREBOARD_CACHE_TTL_SECONDS
+        )
+        self._compact_scoreboard_cache: TtlCache[str, dict[str, Any]] = TtlCache(
+            self._SCOREBOARD_CACHE_TTL_SECONDS
+        )
+        self._singleflight: SingleFlight[str] = SingleFlight()
 
     def get_scoreboard(self, date: str) -> dict[str, Any]:
         started_at = time.perf_counter()
@@ -48,6 +56,22 @@ class ScoreboardService:
         cached = self._scoreboard_cache.get(date)
         if cached is not None:
             logger.info("scoreboard cache hit %s", date)
+            return cached
+
+        return self._singleflight.call(
+            f"scoreboard:{date}",
+            lambda: self._get_scoreboard_uncached(date, snapshot, started_at),
+        )
+
+    def _get_scoreboard_uncached(
+        self,
+        date: str,
+        snapshot: Optional[dict[str, Any]],
+        started_at: float,
+    ) -> dict[str, Any]:
+        cached = self._scoreboard_cache.get(date)
+        if cached is not None:
+            logger.info("scoreboard cache hit after wait %s", date)
             return cached
 
         try:
@@ -125,6 +149,94 @@ class ScoreboardService:
             "games": [self._strip_home_payload(game) for game in payload["games"]],
         }
 
+    def get_compact_scoreboard(
+        self,
+        date: str,
+        my_team: Optional[str] = None,
+    ) -> dict[str, Any]:
+        date = self._normalize_date(date)
+        my_team = (my_team or "").strip() or None
+        cache_key = f"{date}:{my_team or '-'}"
+
+        cached = self._compact_scoreboard_cache.get(cache_key)
+        if cached is not None:
+            logger.info("compact scoreboard cache hit %s", cache_key)
+            return cached
+
+        return self._singleflight.call(
+            f"compact_scoreboard:{cache_key}",
+            lambda: self._get_compact_scoreboard_uncached(date, my_team, cache_key),
+        )
+
+    def _get_compact_scoreboard_uncached(
+        self,
+        date: str,
+        my_team: Optional[str],
+        cache_key: str,
+    ) -> dict[str, Any]:
+        cached = self._compact_scoreboard_cache.get(cache_key)
+        if cached is not None:
+            logger.info("compact scoreboard cache hit after wait %s", cache_key)
+            return cached
+
+        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        if self._is_historical_date(date) and snapshot is not None:
+            payload = self._compact_from_snapshot(date, snapshot, my_team)
+            self._compact_scoreboard_cache.set(cache_key, payload)
+            return payload
+
+        try:
+            games = self.schedule_crawler.get_games_by_date(date)
+        except Exception:
+            stale = self._compact_scoreboard_cache.get_stale(cache_key)
+            if stale is not None:
+                logger.warning("compact scoreboard stale fallback %s", cache_key)
+                return stale
+            if snapshot is not None:
+                return self._compact_from_snapshot(date, snapshot, my_team)
+            raise
+
+        try:
+            game_list = {
+                game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
+            }
+        except Exception:
+            game_list = {}
+            logger.warning("compact scoreboard main list failed %s", date)
+
+        selected = self._select_compact_game(games, game_list, my_team)
+        compact_games = []
+        if selected is not None:
+            game_id = selected.get("gameId")
+            enriched = self._enrich_game(selected, game_list.get(game_id, {}))
+            compact_games = [self._strip_home_payload(enriched)]
+            if self._should_persist_snapshot(date, [enriched]) and game_id:
+                self.snapshot_store.save("games", str(game_id), enriched)
+
+        payload = {
+            "date": date,
+            "games": compact_games,
+            "source": "compact",
+            "scope": "widget",
+        }
+        self._compact_scoreboard_cache.set(cache_key, payload)
+        return payload
+
+    def _compact_from_snapshot(
+        self,
+        date: str,
+        snapshot: dict[str, Any],
+        my_team: Optional[str],
+    ) -> dict[str, Any]:
+        games = snapshot.get("games", [])
+        selected = self._select_compact_game(games, {}, my_team)
+        return {
+            "date": date,
+            "games": [] if selected is None else [self._strip_home_payload(selected)],
+            "source": "snapshot",
+            "scope": "widget",
+        }
+
     @staticmethod
     def _normalize_date(value: str) -> str:
         if re.fullmatch(r"\d{8}", value):
@@ -139,16 +251,46 @@ class ScoreboardService:
         if snapshot is not None:
             return snapshot
 
+        cached = self._game_cache.get(game_id)
+        if cached is not None:
+            return cached
+
+        return self._singleflight.call(
+            f"game:{game_id}",
+            lambda: self._get_game_uncached(game_id),
+        )
+
+    def _get_game_uncached(self, game_id: str) -> Optional[dict[str, Any]]:
+        cached = self._game_cache.get(game_id)
+        if cached is not None:
+            return cached
+
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
         try:
-            games = self.get_scoreboard(date)["games"]
+            games = self.schedule_crawler.get_games_by_date(date)
         except Exception:
             return None
 
-        for game in games:
-            if game.get("gameId") == game_id:
-                return game
-        return None
+        schedule_game = next(
+            (game for game in games if game.get("gameId") == game_id),
+            None,
+        )
+        if schedule_game is None:
+            return None
+
+        try:
+            game_list = {
+                game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
+            }
+        except Exception:
+            game_list = {}
+            logger.warning("game summary main list failed %s %s", date, game_id)
+
+        game = self._enrich_game(schedule_game, game_list.get(game_id, {}))
+        self._game_cache.set(game_id, game)
+        if self._should_persist_snapshot(date, [game]):
+            self.snapshot_store.save("games", game_id, game)
+        return game
 
     def _enrich_game(
         self, game: dict[str, Any], main_game: dict[str, Any]
@@ -183,6 +325,53 @@ class ScoreboardService:
                 "youtubeVideos": [],
             },
         }
+
+    def _select_compact_game(
+        self,
+        games: list[dict[str, Any]],
+        game_list: dict[str, dict[str, Any]],
+        my_team: Optional[str],
+    ) -> Optional[dict[str, Any]]:
+        if not games:
+            return None
+
+        if my_team:
+            live_my_team = self._find_compact_game(
+                games,
+                game_list,
+                my_team=my_team,
+                only_live=True,
+            )
+            if live_my_team is not None:
+                return live_my_team
+
+            my_team_game = self._find_compact_game(
+                games,
+                game_list,
+                my_team=my_team,
+            )
+            if my_team_game is not None:
+                return my_team_game
+
+        return self._find_compact_game(games, game_list, only_live=True)
+
+    def _find_compact_game(
+        self,
+        games: list[dict[str, Any]],
+        game_list: dict[str, dict[str, Any]],
+        my_team: Optional[str] = None,
+        only_live: bool = False,
+    ) -> Optional[dict[str, Any]]:
+        for game in games:
+            if my_team and game.get("awayId") != my_team and game.get("homeId") != my_team:
+                continue
+            game_id = game.get("gameId")
+            main_game = game_list.get(game_id, {})
+            status = self._map_status(main_game.get("GAME_STATE_SC")) if main_game else game.get("status")
+            if only_live and status != "LIVE":
+                continue
+            return game
+        return None
 
     @staticmethod
     def _scheduled_fallback_detail(game: dict[str, Any]) -> dict[str, Any]:

@@ -33,6 +33,11 @@ def test_get_game_returns_game_payload(monkeypatch) -> None:
         },
     }
     monkeypatch.setattr(games.scoreboard_service, "get_game", lambda game_id: expected_game)
+    monkeypatch.setattr(
+        games.schedule_service,
+        "get_schedule_game",
+        lambda game_id: (_ for _ in ()).throw(AssertionError("schedule should not be called")),
+    )
     client = TestClient(app)
 
     response = client.get("/api/game/20260330KTLG0")

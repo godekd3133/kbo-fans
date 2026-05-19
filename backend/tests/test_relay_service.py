@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from kbo_fans_backend.services.relay import RelayService
+from kbo_fans_backend.storage import JsonSnapshotStore
 
 
 class _StubScoreboardService:
@@ -22,7 +25,7 @@ class _StubRelayCrawler:
         return self._payload
 
 
-def test_relay_service_builds_summary_items_for_final_game() -> None:
+def test_relay_service_builds_summary_items_for_final_game(tmp_path: Path) -> None:
     service = RelayService(
         relay_crawler=_FailingRelayCrawler(),
         scoreboard_service=_StubScoreboardService(
@@ -40,7 +43,8 @@ def test_relay_service_builds_summary_items_for_final_game() -> None:
                     "scores": [0, 0, 0, 0, 1, 0, 1, 0, 0],
                 },
             }
-        )
+        ),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
     )
 
     relay = service.get_relay("20260329LTSS0")

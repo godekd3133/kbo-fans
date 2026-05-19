@@ -22,3 +22,14 @@ def get_scoreboard(date: Optional[str] = Query(default=None)) -> ApiEnvelope[dic
 def get_home_scoreboard(date: Optional[str] = Query(default=None)) -> ApiEnvelope[dict]:
     target_date = date or date_type.today().isoformat()
     return ApiEnvelope.success_response(service.get_home_scoreboard(target_date))
+
+
+@router.get("/scoreboard/compact", response_model=ApiEnvelope[dict])
+def get_compact_scoreboard(
+    date: Optional[str] = Query(default=None),
+    myTeam: Optional[str] = Query(default=None),
+) -> ApiEnvelope[dict]:
+    target_date = date or date_type.today().isoformat()
+    return ApiEnvelope.success_response(
+        service.get_compact_scoreboard(target_date, my_team=myTeam)
+    )
