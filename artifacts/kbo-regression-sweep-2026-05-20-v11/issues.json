@@ -1,0 +1,34 @@
+[
+  {
+    "screen": "schedule_ht",
+    "issue": "unexpected hash #/home"
+  },
+  {
+    "screen": "standings_ht",
+    "issue": "unexpected hash #/home"
+  },
+  {
+    "screen": "records_ht",
+    "issue": "unexpected hash #/home"
+  },
+  {
+    "screen": "team_records_ht",
+    "issue": "unexpected hash #/home"
+  },
+  {
+    "screen": "leaderboard_avg_ht",
+    "issue": "unexpected hash #/home"
+  },
+  {
+    "screen": "game_score_lght",
+    "issue": "unexpected hash #/home"
+  },
+  {
+    "screen": "game_relay_lght",
+    "issue": "unexpected hash #/home"
+  },
+  {
+    "screen": "game_box_lght",
+    "issue": "unexpected hash #/home"
+  }
+]

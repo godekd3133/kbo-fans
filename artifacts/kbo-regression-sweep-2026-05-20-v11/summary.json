@@ -1,0 +1,173 @@
+{
+  "generatedAt": "2026-05-19T16:04:36.311Z",
+  "routes": [
+    {
+      "name": "home_ht",
+      "requested": "http://127.0.0.1:7357/#/home",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/home_ht.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": []
+    },
+    {
+      "name": "schedule_ht",
+      "requested": "http://127.0.0.1:7357/#/schedule",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/schedule_ht.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": [
+        "unexpected hash #/home"
+      ]
+    },
+    {
+      "name": "standings_ht",
+      "requested": "http://127.0.0.1:7357/#/standings",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/standings_ht.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": [
+        "unexpected hash #/home"
+      ]
+    },
+    {
+      "name": "records_ht",
+      "requested": "http://127.0.0.1:7357/#/records",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/records_ht.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": [
+        "unexpected hash #/home"
+      ]
+    },
+    {
+      "name": "team_records_ht",
+      "requested": "http://127.0.0.1:7357/#/records/team/HT",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/team_records_ht.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": [
+        "unexpected hash #/home"
+      ]
+    },
+    {
+      "name": "leaderboard_avg_ht",
+      "requested": "http://127.0.0.1:7357/#/records/leaderboard/avg",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/leaderboard_avg_ht.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": [
+        "unexpected hash #/home"
+      ]
+    },
+    {
+      "name": "game_score_lght",
+      "requested": "http://127.0.0.1:7357/#/game/20260519LGHT0?tab=score",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/game_score_lght.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": [
+        "unexpected hash #/home"
+      ]
+    },
+    {
+      "name": "game_relay_lght",
+      "requested": "http://127.0.0.1:7357/#/game/20260519LGHT0?tab=relay",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/game_relay_lght.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": [
+        "unexpected hash #/home"
+      ]
+    },
+    {
+      "name": "game_box_lght",
+      "requested": "http://127.0.0.1:7357/#/game/20260519LGHT0?tab=box",
+      "current": "http://127.0.0.1:7357/#/home",
+      "pathname": "/",
+      "hash": "#/home",
+      "storage": {
+        "onboardingDone": "true",
+        "myTeam": "\"HT\""
+      },
+      "png": "/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/artifacts/kbo-regression-sweep-2026-05-20-v11/game_box_lght.png",
+      "pngSize": 248727,
+      "logWarnings": [],
+      "issues": [
+        "unexpected hash #/home"
+      ]
+    }
+  ],
+  "directChecks": [
+    {
+      "path": "/game/20260519LGHT0?tab=relay",
+      "status": 404,
+      "statusText": "File not found"
+    },
+    {
+      "path": "/schedule",
+      "status": 404,
+      "statusText": "File not found"
+    },
+    {
+      "path": "/records/team/HT",
+      "status": 404,
+      "statusText": "File not found"
+    }
+  ]
+}
