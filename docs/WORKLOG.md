@@ -13,6 +13,8 @@
 - [x] 웹 부트스트랩 선로딩과 루트 native widget sync watch를 분리해, 기록실/일정/상세 화면 진입 시 불필요한 스코어보드/홈 API 호출이 따라붙지 않도록 보정
 - [x] 게임 상세 진입 직후 post-frame refresh가 같은 `/api/game/{gameId}`를 즉시 중복 호출하던 경로 제거
 - [x] 경기 상세 라인업 탭에서 relay, standings, schedule 2개월, team stats 2팀을 즉시 자동 로드하던 구조를 제거해 라인업 필수 데이터 중심으로 호출 축소
+- [x] local 환경에서는 web/native 모두 `/api/metrics/client` 진단 POST를 보내지 않도록 막아 QA 네트워크 노이즈와 불필요한 로컬 호출 제거
+- [x] 일정 화면 최초 로딩에서 `RefreshIndicator`와 중앙 spinner가 중첩되던 구조를 제거하고 회귀 테스트 추가
 
 ### 검증
 - [x] `cd app && fvm flutter analyze`
@@ -21,6 +23,8 @@
 - [x] `cd app && fvm flutter test`
 - [x] `backend/.venv/bin/pytest -q`
 - [x] `http://127.0.0.1:7359/index.html#/records`, `#/schedule`, `#/home`, `#/game/20260519KTSS0`, `#/game/20260519KTSS0?tab=relay`, `?tab=boxscore`, `?tab=lineup`, `#/records/team/KT`, `#/records/leaderboard/avg` 브라우저 network request 재검증
+- [x] local web 홈 재측정에서 `/api/metrics/client` POST가 사라지고 `/api/scoreboard/home`, `/api/home`만 남은 것 확인
+- [x] 일정 화면 초기 로딩이 `CircularProgressIndicator` 1개만 렌더하고 `RefreshIndicator`를 중복 생성하지 않는 widget test 추가
 - [x] 수정 전 재현 산출물: `artifacts/kbo-regression-sweep-2026-05-20-v11/summary.json`
 - [x] 수정 후 통과 산출물: `artifacts/kbo-regression-sweep-2026-05-20-v12/summary.json`, `artifacts/kbo-regression-sweep-2026-05-20-v13/summary.json`
 
