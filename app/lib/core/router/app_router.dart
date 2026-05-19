@@ -14,6 +14,7 @@ import '../../features/schedule/schedule_screen.dart';
 import '../../features/standings/standings_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/api_diagnostics_screen.dart';
+import '../../features/settings/patch_notes_screen.dart';
 import '../widgets/main_scaffold.dart';
 import '../widgets/boot_splash_screen.dart';
 
@@ -194,6 +195,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) =>
             _drillInTransitionPage(state, child: const ApiDiagnosticsScreen()),
+      ),
+      GoRoute(
+        path: '/patch-notes',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            _drillInTransitionPage(state, child: const PatchNotesScreen()),
       ),
     ],
   );

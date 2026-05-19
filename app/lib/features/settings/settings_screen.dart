@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
@@ -20,6 +23,8 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  static const _supportEmail = 'support@kbofans.com';
+
   PushNotificationDelivery _gameStartDelivery =
       PushNotificationDelivery.summary;
   PushNotificationDelivery _scoringDelivery =
@@ -36,11 +41,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _notifAllGames = false;
   bool _pushLoaded = false;
   bool _permissionBusy = false;
+  String _appVersion = '확인 중';
 
   @override
   void initState() {
     super.initState();
+    unawaited(_loadAppVersion());
     unawaited(_loadPushSettings());
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _appVersion = _formatPackageVersion(packageInfo);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _appVersion = '확인 불가';
+      });
+    }
   }
 
   Future<void> _loadPushSettings() async {
@@ -364,49 +390,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: 20),
 
               const Text(
-                '앱 밖 표면',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.divider),
-                ),
-                child: const Column(
-                  children: [
-                    _SurfaceRow(
-                      icon: Icons.notifications_outlined,
-                      label: '바로 알림',
-                      description: '득점, 홈런, 역전처럼 바로 대응할 장면만 보냅니다',
-                    ),
-                    _DividerInset(),
-                    _SurfaceRow(
-                      icon: Icons.schedule_outlined,
-                      label: '묶음 요약',
-                      description: '시작, 종료, 라인업처럼 묶어도 되는 장면을 모읍니다',
-                    ),
-                    _DividerInset(),
-                    _SurfaceRow(
-                      icon: Icons.phone_iphone,
-                      label: '따라가기 화면',
-                      description:
-                          'iOS Live Activity에 표시합니다. Android 진행형 알림은 준비 중입니다',
-                    ),
-                    _DividerInset(),
-                    _SurfaceRow(
-                      icon: Icons.widgets_outlined,
-                      label: '홈 위젯',
-                      description: 'OS 정책에 따라 지연될 수 있어 업데이트 시각을 함께 보여줍니다',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              const Text(
                 '리그 전체 알림',
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
@@ -458,13 +441,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onTap: () => context.push('/diagnostics'),
                     ),
                     _divider(),
-                    _infoRow('버전', trailing: '1.0.0'),
+                    _infoRow('버전', trailing: _appVersion),
                     _divider(),
-                    _infoRow('이용약관', hasArrow: true),
+                    _infoRow(
+                      '패치노트',
+                      hasArrow: true,
+                      onTap: () => context.push('/patch-notes'),
+                    ),
                     _divider(),
-                    _infoRow('개인정보처리방침', hasArrow: true),
+                    _infoRow(
+                      '이용약관',
+                      hasArrow: true,
+                      onTap: () => _showLegalDocument(
+                        title: '서비스 이용약관',
+                        sections: _termsSections,
+                      ),
+                    ),
                     _divider(),
-                    _infoRow('오픈소스 라이선스', hasArrow: true),
+                    _infoRow(
+                      '개인정보처리방침',
+                      hasArrow: true,
+                      onTap: () => _showLegalDocument(
+                        title: '개인정보처리방침',
+                        sections: _privacySections,
+                      ),
+                    ),
+                    _divider(),
+                    _infoRow(
+                      '오픈소스 라이선스',
+                      hasArrow: true,
+                      onTap: _showOpenSourceLicenses,
+                    ),
+                    _divider(),
+                    _infoRow('문의하기', hasArrow: true, onTap: _openSupportEmail),
                   ],
                 ),
               ),
@@ -629,47 +638,121 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     };
   }
 
+  void _showLegalDocument({
+    required String title,
+    required List<_LegalSection> sections,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (context) => _LegalDocumentSheet(
+        title: title,
+        updatedAt: '2026.05.20',
+        sections: sections,
+      ),
+    );
+  }
+
+  void _showOpenSourceLicenses() {
+    showLicensePage(
+      context: context,
+      applicationName: 'KBO Fans',
+      applicationVersion: _appVersion == '확인 중' ? null : _appVersion,
+      applicationLegalese: '© 2026 KBO Fans',
+    );
+  }
+
+  Future<void> _openSupportEmail() async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: _supportEmail,
+      queryParameters: {
+        'subject': 'KBO Fans 문의',
+        'body': '문의 내용을 입력해 주세요.\n\n---\n앱 버전: $_appVersion',
+      },
+    );
+    final launched = await _tryLaunch(uri);
+    if (launched || !mounted) {
+      return;
+    }
+    await Clipboard.setData(const ClipboardData(text: _supportEmail));
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('메일 앱을 열 수 없어 지원 이메일 주소를 복사했습니다')),
+    );
+  }
+
+  Future<bool> _tryLaunch(Uri uri) async {
+    try {
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  String _formatPackageVersion(PackageInfo packageInfo) {
+    if (packageInfo.version.isEmpty) {
+      return '확인 불가';
+    }
+    final buildNumber = packageInfo.buildNumber.trim();
+    if (buildNumber.isEmpty) {
+      return packageInfo.version;
+    }
+    return '${packageInfo.version}+$buildNumber';
+  }
+
   Widget _infoRow(
     String label, {
     String? trailing,
     bool hasArrow = false,
     VoidCallback? onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      child: SizedBox(
-        height: 48,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+    final row = SizedBox(
+      height: 48,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              if (trailing != null)
-                Text(
-                  trailing,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textDisabled,
-                  ),
-                ),
-              if (hasArrow)
-                const Icon(
-                  Icons.chevron_right,
+            ),
+            if (trailing != null)
+              Text(
+                trailing,
+                style: const TextStyle(
+                  fontSize: 14,
                   color: AppColors.textDisabled,
-                  size: 20,
                 ),
-            ],
-          ),
+              ),
+            if (hasArrow)
+              const Icon(
+                Icons.chevron_right,
+                color: AppColors.textDisabled,
+                size: 20,
+              ),
+          ],
         ),
       ),
+    );
+    if (onTap == null) {
+      return row;
+    }
+    return Semantics(
+      button: true,
+      child: InkWell(onTap: onTap, child: row),
     );
   }
 
@@ -680,6 +763,149 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     endIndent: 16,
   );
 }
+
+class _LegalDocumentSheet extends StatelessWidget {
+  final String title;
+  final String updatedAt;
+  final List<_LegalSection> sections;
+
+  const _LegalDocumentSheet({
+    required this.title,
+    required this.updatedAt,
+    required this.sections,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.86,
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        '시행일 $updatedAt',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textDisabled,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: '닫기',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: AppColors.divider, height: 1),
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              itemBuilder: (context, index) {
+                final section = sections[index];
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      section.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      section.body,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                );
+              },
+              separatorBuilder: (_, _) => const SizedBox(height: 18),
+              itemCount: sections.length,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegalSection {
+  final String title;
+  final String body;
+
+  const _LegalSection({required this.title, required this.body});
+}
+
+const _termsSections = [
+  _LegalSection(
+    title: '서비스 성격',
+    body:
+        'KBO Fans는 KBO 경기 정보를 더 빠르게 확인하기 위한 팬용 앱입니다. KBO 공식 앱이 아니며, 구단이나 리그의 공식 발표를 대체하지 않습니다.',
+  ),
+  _LegalSection(
+    title: '데이터와 알림',
+    body:
+        '스코어, 일정, 순위, 문자중계, 알림은 공식 원천과 내부 캐시 상태에 따라 지연되거나 일시적으로 다르게 보일 수 있습니다. 중요한 결정에는 공식 채널을 함께 확인해 주세요.',
+  ),
+  _LegalSection(
+    title: '사용자 책임',
+    body:
+        '앱을 비정상적으로 자동화하거나 서비스 안정성을 해치는 방식으로 사용할 수 없습니다. 앱이 제공하는 링크와 외부 콘텐츠 이용에는 각 제공자의 정책이 적용됩니다.',
+  ),
+  _LegalSection(
+    title: '변경',
+    body:
+        '서비스 기능, 알림 정책, 문서 내용은 앱 개선 과정에서 바뀔 수 있습니다. 중요한 변경은 앱 또는 배포 문서를 통해 안내합니다.',
+  ),
+];
+
+const _privacySections = [
+  _LegalSection(
+    title: '수집하는 정보',
+    body:
+        '마이팀, 알림 설정, 경기 따라가기 상태처럼 앱 사용에 필요한 설정을 저장합니다. 푸시 알림을 쓰는 경우 기기 토큰과 구독 토픽이 알림 발송을 위해 사용될 수 있습니다.',
+  ),
+  _LegalSection(
+    title: '사용 목적',
+    body:
+        '저장된 정보는 홈 화면 개인화, 경기 알림, Live Activity 또는 위젯 상태 갱신, 오류 진단과 서비스 안정성 개선에만 사용합니다.',
+  ),
+  _LegalSection(
+    title: '보관과 삭제',
+    body:
+        '기기 안에 저장된 설정은 앱 삭제 시 함께 제거됩니다. 서버에 저장된 푸시 토큰은 알림 비활성화, 앱 삭제, 토큰 만료 이후 더 이상 정상 발송에 사용되지 않습니다.',
+  ),
+  _LegalSection(
+    title: '문의',
+    body: '개인정보와 지원 문의는 support@kbofans.com 으로 보낼 수 있습니다.',
+  ),
+];
 
 class _MyTeamCard extends StatelessWidget {
   final KboTeam? team;
@@ -853,68 +1079,6 @@ class _PlaybookPreviewCard extends StatelessWidget {
   }
 }
 
-class _SurfaceRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String description;
-
-  const _SurfaceRow({
-    required this.icon,
-    required this.label,
-    required this.description,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.textSecondary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textDisabled,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DividerInset extends StatelessWidget {
-  const _DividerInset();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Divider(
-      color: AppColors.cardSub,
-      height: 1,
-      indent: 16,
-      endIndent: 16,
-    );
-  }
-}
-
 class _DeliveryPickerSheet extends StatelessWidget {
   final String title;
   final PushNotificationDelivery current;
@@ -935,7 +1099,7 @@ class _DeliveryPickerSheet extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            '이 장면을 앱 밖에서 어떻게 다룰지 선택합니다.',
+            '이 장면을 어떻게 받을지 선택합니다.',
             style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 14),
@@ -957,7 +1121,7 @@ class _DeliveryPickerSheet extends StatelessWidget {
             context,
             delivery: PushNotificationDelivery.liveOnly,
             label: '따라가기 화면만',
-            description: '푸시는 보내지 않고 지원되는 Live 표면만 갱신',
+            description: '푸시는 보내지 않고 따라가기 화면만 갱신',
             icon: Icons.phone_iphone,
           ),
           _option(
