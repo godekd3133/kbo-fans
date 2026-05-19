@@ -23,8 +23,11 @@
 
 ## 수정 방향
 
-- `API_BASE_URL` override가 없는 local native는 dev API를 치지 않고 direct KBO / bundled asset / device snapshot 경로를 우선 사용한다.
-- local native에 `API_BASE_URL`이 명시된 경우에는 해당 backend를 먼저 쓰되 실패 시 direct KBO fallback을 허용한다.
+> 2026-05-20 추가 보정: 이 문서의 초기 수정 방향은 “local native direct 우선”이었으나, 이후 fallback 재유입을 막기 위해 정책을 변경했다. 현재 기준은 local native도 backend API 우선이며, direct KBO는 `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 디버그 빌드에서만 사용한다.
+
+- `API_BASE_URL` override가 없는 local native는 dev API 도메인을 치지 않고 실행 스크립트가 로컬 backend URL을 주입한다.
+- local native에 `API_BASE_URL`이 명시된 경우에는 해당 backend만 사용하며, 실패해도 direct KBO fallback으로 자동 전환하지 않는다.
+- direct KBO 경로는 `PREFER_DIRECT_SCRAPE=true` 명시 디버그 빌드 전용이다.
 - web/dev/release는 backend API 중심을 유지한다.
 - 위젯/백그라운드 scoreboard fetch도 같은 local native routing 정책을 따른다.
 - resume sync는 앱 루트 한 곳에서 throttle을 적용해 중복 invalidation을 줄인다.
@@ -40,7 +43,9 @@
 
 ## 검증 기준
 
-- local native no-override에서 `/scoreboard/home`, `/schedule`, `/standings`, `/records/overview`, `/home` 이 `dev-api.kbofans.com` 으로 반복 호출되지 않는다.
+- local native no-override에서 실행 스크립트가 사용 가능한 로컬 backend를 확인하고, 확인 실패 시 앱을 direct fallback으로 띄우지 않고 명확히 중단한다.
+- `/scoreboard/home`, `/schedule`, `/standings`, `/records/overview`, `/home` 이 `dev-api.kbofans.com` 으로 반복 호출되지 않는다.
+- `API_BASE_URL` 실패가 direct KBO fallback으로 숨겨지지 않는다.
 - 앱 재개 시 `Resume sync failed` 로그가 연속으로 쌓이지 않는다.
 - 홈 초기 로딩 화면에서 spinner가 여러 카드에 중복 표시되지 않는다.
 - `fvm flutter analyze` 와 `fvm flutter test` 가 통과해야 한다.

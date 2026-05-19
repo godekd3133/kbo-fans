@@ -25,6 +25,7 @@ description: Use when startup shows a long white screen, Dev Console logs are no
 3. local API base URL을 플랫폼별로 점검한다.
    - Android emulator: `10.0.2.2`
    - iOS simulator / web: `localhost`
+   - iOS/Android physical device: Mac LAN IP injected through `API_BASE_URL`
 4. Dev Console 로그를 `API OK / API FAIL` 로 분리한다.
 5. local/test 환경에서는 noisy prefetch와 metrics 전송을 줄인다.
 6. Firebase local 미설정은 실제 장애처럼 보이지 않게 `info` 수준으로 낮출지 검토한다.
@@ -33,4 +34,5 @@ description: Use when startup shows a long white screen, Dev Console logs are no
 ## Repository-specific insights
 - 흰 화면 체감은 실제 네트워크보다 `runApp 이전 대기`와 웹 기본 흰 배경 영향이 더 크다.
 - widget test에서 홈 화면을 직접 띄우면 provider 요청 로그가 섞일 수 있다.
-- local Android에서는 `localhost` 대신 `10.0.2.2` 를 기본으로 보는 편이 안전하다.
+- local Android emulator에서는 `localhost` 대신 `10.0.2.2` 를 기본으로 보는 편이 안전하다.
+- local Android 실기기는 `10.0.2.2` 가 아니라 Mac LAN IP를 `API_BASE_URL`로 주입해야 한다.

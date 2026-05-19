@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-20: iPhone 단독 local release-mode 실행 경로 보정
+
+### 완료
+- [x] 웹은 Mac local backend를 보지만, 아이폰 단독 빌드는 Mac 없이 동작해야 한다는 기준으로 실행 경로 재분리
+- [x] `./scripts/codex-run.sh ios-local-release` 를 `APP_ENV=local + PREFER_DIRECT_SCRAPE=true` standalone 데이터 모드로 고정
+- [x] `scripts/codex-run-ios-local-release.sh` 래퍼 추가
+- [x] standalone 빌드에서 provider routing이 `KboDirectRepository`로 전환되는지 회귀 테스트 보강
+- [x] `README.md`, `docs/APP_STANDALONE_MODE.md`, `CHANGELOG.md`에 아이폰 단독 release-mode 검증 기준 반영
+
+### 검증
+- [x] `bash -n scripts/codex-run.sh`
+- [x] `plutil -lint app/ios/Runner/Info.plist`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/data/providers_routing_test.dart test/data/local_asset_player_repository_test.dart`
+- [x] `./scripts/codex-run.sh ios-local-release` 로그에서 `Using standalone iOS data mode: direct KBO + bundled snapshots` 확인
+- [x] `xcrun devicectl device process launch --device 7A054DC8-7915-5B43-BA79-3060BE1A3209 --terminate-existing com.kbofans.kboFans` 로 설치 앱 launch 확인
+
+---
+
 ## 2026-05-20: release API health gate 추가
 
 ### 완료
@@ -1308,6 +1327,16 @@ kbo_fans/
 - [x] local native no-override 기본 경로도 API-backed provider로 고정하고, direct KBO는 `PREFER_DIRECT_SCRAPE=true` 명시 디버그에서만 쓰도록 정리
 - [x] 사용처가 사라진 `FallbackGameRepository` 구현 파일 삭제
 - [x] 라인업 선발 비교 카드의 선수 사진 과확대/크롭을 줄이기 위해 fixed height와 `BoxFit.contain` 렌더로 보정
+- [x] Android local 실행 스크립트가 emulator와 실기기를 구분해 emulator는 `10.0.2.2`, 실기기는 Mac LAN IP를 `API_BASE_URL`로 주입하도록 보정
+- [x] 사용처가 없는 mock repository / mock data 파일을 삭제해 가짜 데이터 재연결 가능성을 차단
+- [x] README의 local native direct scrape 기본값 설명을 API-first 정책에 맞게 갱신
+- [x] `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`의 direct fallback 허용 문구를 API-first / explicit direct-debug 정책으로 동기화
+- [x] 미사용 `AppConfig.useMockData` 필드 제거
+- [x] local iOS 기본 API URL을 더 이상 DNS 실패하던 dev API로 두지 않고 `localhost` 기준으로 정리. 실기기는 실행 스크립트의 LAN IP override를 사용
+- [x] local iOS 실기기 LAN API 접속을 위해 `NSLocalNetworkUsageDescription` / local networking ATS 설정 추가
+- [x] Android debug/profile local API 접속을 위해 해당 variant에만 cleartext traffic 허용
+- [x] 정상 player repository 경로에서 `KboDirectPlayerRepository` 객체 생성도 제거해 direct debug 분기를 더 명확히 분리
+- [x] 오래된 local native 분석/standalone 문서를 API-first 정책으로 보정해 현재 구현과 문서 충돌 제거
 
 ### 검증 메모
 - 모션은 새 패키지 없이 Flutter 기본 위젯만 사용했고, `MediaQuery.disableAnimations`가 켜진 경우 생략되도록 처리함

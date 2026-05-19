@@ -73,7 +73,7 @@ kbo_fans/
 
 ## 런타임 / 운영 메모
 - 웹과 release 빌드는 KBO 원본 직접 호출 대신 백엔드 API 경로를 기본으로 사용한다
-- 로컬 네이티브 디버깅은 필요 시 direct KBO crawler 경로를 쓸 수 있지만, 웹 검증과 출시 동작은 반드시 API 경로 기준으로 맞춘다
+- 로컬 네이티브 디버깅도 기본은 API 경로다. direct KBO crawler 경로는 `PREFER_DIRECT_SCRAPE=true` 명시 디버그 빌드에서만 쓴다
 - 홈 첫 진입은 경량 payload / 캐시 우선, 이후 background refresh 방식으로 체감 속도를 확보한다
 - 지난 경기 결과, 과거 시즌 순위, 기록실 과거 시즌 데이터는 snapshot 우선 전략을 유지한다
 - 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다
@@ -90,19 +90,15 @@ kbo_fans/
   - 연결된 iOS 실기기 우선 실행 액션, `flutter devices`/`xcodebuild` destination 불일치 점검 가이드
 
 ## 최근 구현 인사이트
-- 실기기 디버그 환경에서 `localhost` 백엔드는 신뢰하지 않는다. 모바일 디버그는 API 우선, 일부 화면만 direct KBO fallback 허용이 현재 원칙이다.
+- 실기기 디버그 환경에서 `localhost` 백엔드는 신뢰하지 않는다. 모바일 디버그는 실행 스크립트가 주입하는 Mac LAN IP 기반 API 경로가 현재 원칙이다.
 - 데이터 소스 혼선은 실제 장애처럼 보이므로 화면별로 다른 저장소를 보게 두지 않는다.
-- 현재 허용된 direct fallback 범위:
-  - 홈
-  - 일정
-  - 순위
-  - 경기 상세
-- 현재 비허용 direct fallback 범위:
-  - 기록실 선수 상세/엔트리 전체
-  - 이 영역은 API 또는 서버 stale cache 기준으로 유지한다.
+- 현재 허용된 direct KBO 범위:
+  - `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 디버그 빌드
+  - 일반 local/dev/release 앱 모드에서는 자동 direct fallback 금지
+- 기록실 선수 상세/엔트리 전체는 API 또는 생성된 snapshot 기준으로 유지한다.
 - 순위와 기록실 요약은 시즌별 스냅샷 fallback(`2001~현재`)을 앱 번들에 둔다.
 - Dev Console 은 현재 API base URL, API latency, 홈/일정/기록실 로딩 완료 로그, 기록실 진단 로그를 표시하는 운영 도구다.
-- 일정/순위 fallback 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
+- direct-debug 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
 - `.claude/skills/`에 이미 같은 작업 패턴이 있으면 먼저 그 스킬을 참고한다
 - 앱 UI 카피에는 이모지를 사용하지 않는다
 - 히스토리 데이터는 원천 재크롤링보다 backend snapshot 우선이 현재 방향이다.

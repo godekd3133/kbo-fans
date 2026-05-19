@@ -42,7 +42,7 @@
 
 ## Runtime Notes
 - Web and release builds should use backend API paths, not direct KBO ASMX/HTML calls.
-- Local native debugging may use direct KBO crawling when backend is not the focus; prefer backend API for web validation and release behavior.
+- Local native debugging should use backend API paths by default. Direct KBO crawling is opt-in only with `PREFER_DIRECT_SCRAPE=true`.
 - Home first paint should prefer lightweight/cached payloads, then refresh in the background.
 - Historical standings, records, and finished-game detail should prefer stored snapshots when available over re-crawling upstream pages.
 - Team records UX should enter through team selection first, then fetch team-specific records after selection.
@@ -58,10 +58,11 @@
 
 ## Implementation Insights
 - Keep app data sources consistent by domain. Do not let one screen use mock data while another uses live API for the same product surface.
-- For mobile debug builds on real devices, `localhost` API assumptions are unsafe. Prefer backend API first with explicit fallback only where the app can safely fetch direct KBO data.
+- For mobile debug builds on real devices, `localhost` API assumptions are unsafe. Use the run scripts so `API_BASE_URL` is injected as the Mac LAN IP.
 - Current fallback policy:
-  - Home / Schedule / Standings / Game Detail may fall back to direct KBO fetches in mobile debug when API connection fails.
-  - Records must stay API-backed unless a dedicated direct-player implementation is added. Do not silently fall back to incomplete mock data there.
+  - Direct KBO must not be used as an automatic fallback in normal app mode.
+  - Direct KBO is allowed only for explicit debug builds with `PREFER_DIRECT_SCRAPE=true`.
+  - Records must stay API-backed or generated snapshot-backed. Do not silently fall back to incomplete mock data there.
 - When touching direct KBO parsers in `app/lib/data/repositories/kbo_direct_repository.dart`, keep field parity with backend contracts. Schedule status, scores, and standings parsing have already drifted once and broke UI state.
 - Dev-only diagnostics should stay in Dev Console when possible. Avoid promoting debugging affordances to user-facing UI unless explicitly requested.
 - Snapshot fallback is only approved for relatively stable data:
