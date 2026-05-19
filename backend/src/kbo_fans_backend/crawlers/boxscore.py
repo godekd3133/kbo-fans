@@ -40,6 +40,7 @@ class BoxscoreCrawler(BaseCrawler):
 
         return {
             "gameId": game_id,
+            "officialAvailable": True,
             "away": {
                 "teamId": away_id,
                 "batters": away_hitters["batters"],
@@ -74,6 +75,7 @@ class BoxscoreCrawler(BaseCrawler):
         }
         return {
             "gameId": game_id,
+            "officialAvailable": False,
             "away": {
                 "teamId": away_id,
                 "batters": [],

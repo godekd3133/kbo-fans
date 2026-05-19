@@ -8,7 +8,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
-import '../../../data/models/relay.dart';
 import '../../../data/providers.dart';
 
 const _kboImageHeaders = {
@@ -46,8 +45,6 @@ class BoxscoreTab extends ConsumerStatefulWidget {
 class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   bool _showAway = true;
 
-  String get _batterKey => '${widget.gameId}|$_showAway';
-  String get _pitcherKey => '${widget.gameId}|$_showAway';
   String get _selectedTeamName => _showAway ? widget.awayName : widget.homeName;
   String get _selectedTeamId =>
       _showAway ? widget.awayTeamId : widget.homeTeamId;
@@ -61,52 +58,38 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       return _buildUnavailableState('취소된 경기는 박스스코어가 없습니다');
     }
 
-    final battersAsync = ref.watch(battersProvider(_batterKey));
-    final pitchersAsync = ref.watch(pitchersProvider(_pitcherKey));
-    final relayAsync = ref.watch(relayDataProvider(widget.gameId));
-    final lineupAsync = ref.watch(gameLineupProvider(widget.gameId));
-    final season = DateTime.now().year;
-    final playersAsync = _selectedTeamId.isEmpty
-        ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
-        : ref.watch(teamPlayersProvider('$_selectedTeamId|$season'));
-    final content = battersAsync.when(
+    final boxscoreAsync = ref.watch(gameBoxscoreProvider(widget.gameId));
+    final content = boxscoreAsync.when(
       loading: () => const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: CircularProgressIndicator(color: AppColors.live),
         ),
       ),
-      error: (error, _) => _buildUnavailableState('타자 데이터 로딩 실패: $error'),
-      data: (batters) => pitchersAsync.when(
-        loading: () => const SizedBox.shrink(),
-        error: (error, _) => _buildUnavailableState('투수 데이터 로딩 실패: $error'),
-        data: (pitchers) => playersAsync.when(
-          loading: () => _buildContent(
-            batters.cast<BatterRecord>(),
-            pitchers.cast<PitcherRecord>(),
-            const {},
-            relayAsync.asData?.value,
-            lineupAsync.asData?.value,
-          ),
-          error: (_, _) => _buildContent(
-            batters.cast<BatterRecord>(),
-            pitchers.cast<PitcherRecord>(),
-            const {},
-            relayAsync.asData?.value,
-            lineupAsync.asData?.value,
-          ),
-          data: (players) => _buildContent(
-            batters.cast<BatterRecord>(),
-            pitchers.cast<PitcherRecord>(),
-            {
-              for (final player in players)
-                if (player.name.isNotEmpty) player.name: player,
-            },
-            relayAsync.asData?.value,
-            lineupAsync.asData?.value,
-          ),
-        ),
-      ),
+      error: (error, _) => _buildUnavailableState('박스스코어 로딩 실패: $error'),
+      data: (boxscore) {
+        final selected = _showAway ? boxscore.away : boxscore.home;
+        if (!boxscore.officialAvailable ||
+            (selected.batters.isEmpty && selected.pitchers.isEmpty)) {
+          return _buildUnavailableState('공식 박스스코어 업데이트 전입니다');
+        }
+
+        final season = DateTime.now().year;
+        final playersAsync = _selectedTeamId.isEmpty
+            ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
+            : ref.watch(teamPlayersProvider('$_selectedTeamId|$season'));
+        return playersAsync.when(
+          loading: () =>
+              _buildContent(selected.batters, selected.pitchers, const {}),
+          error: (_, _) =>
+              _buildContent(selected.batters, selected.pitchers, const {}),
+          data: (players) =>
+              _buildContent(selected.batters, selected.pitchers, {
+                for (final player in players)
+                  if (player.name.isNotEmpty) player.name: player,
+              }),
+        );
+      },
     );
 
     return LayoutBuilder(
@@ -184,25 +167,9 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     List<BatterRecord> batters,
     List<PitcherRecord> pitchers,
     Map<String, PlayerProfile> playersByName,
-    RelayData? relayData,
-    GameLineupData? lineupData,
   ) {
     final team = KboTeams.byId(_selectedTeamId);
     final accent = team?.primaryColor ?? AppColors.accent;
-
-    final hasOfficialBatting = batters.isNotEmpty;
-    final hasOfficialPitching = pitchers.any(
-      (pitcher) =>
-          pitcher.innings.isNotEmpty ||
-          pitcher.hits > 0 ||
-          pitcher.strikeouts > 0 ||
-          pitcher.walks > 0 ||
-          pitcher.earnedRuns > 0,
-    );
-
-    if (!hasOfficialBatting && !hasOfficialPitching) {
-      return _buildLiveSummaryFallback(accent, relayData, lineupData);
-    }
 
     final totalAtBats = batters.fold<int>(
       0,
@@ -314,303 +281,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         ),
       ],
     );
-  }
-
-  Widget _buildLiveSummaryFallback(
-    Color accent,
-    RelayData? relayData,
-    GameLineupData? lineupData,
-  ) {
-    final currentAtBat = relayData?.currentAtBat;
-    final events =
-        relayData?.relayItems
-            .where((item) => item.isScoring)
-            .take(4)
-            .toList() ??
-        const <RelayItem>[];
-    final selectedTeam = _showAway ? widget.game.away : widget.game.home;
-    final opponentTeam = _showAway ? widget.game.home : widget.game.away;
-    final inningCount =
-        selectedTeam.innings.length > opponentTeam.innings.length
-        ? selectedTeam.innings.length
-        : opponentTeam.innings.length;
-    final selectedLineup = _showAway
-        ? lineupData?.away.lineup ?? const <LineupEntry>[]
-        : lineupData?.home.lineup ?? const <LineupEntry>[];
-    final starterName = _showAway
-        ? lineupData?.away.starterName
-        : lineupData?.home.starterName;
-    final baseStateLabel = _baseStateLabel(currentAtBat);
-    final bullpenNames = _relayBullpenNames(
-      relayData,
-      isAwayTeam: _showAway,
-      starterName: starterName,
-      currentPitcherName: currentAtBat?.pitcherName,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SummaryHeader(
-          teamId: _selectedTeamId,
-          teamName: _selectedTeamName,
-          accent: accent,
-          title: '라이브 기록 요약',
-          statTiles: [
-            _StatTile(label: '득점', value: '${selectedTeam.score}'),
-            _StatTile(label: '안타', value: '${selectedTeam.hits}'),
-            _StatTile(label: '실책', value: '${selectedTeam.errors}'),
-            _StatTile(label: '사사구', value: '${selectedTeam.walks}'),
-            _StatTile(
-              label: '이닝',
-              value: currentAtBat?.inningText.isNotEmpty == true
-                  ? currentAtBat!.inningText
-                  : widget.game.inning,
-            ),
-            _StatTile(
-              label: '주자',
-              value: baseStateLabel.isNotEmpty ? baseStateLabel : '-',
-            ),
-            _StatTile(
-              label: 'B/S/O',
-              value: currentAtBat == null
-                  ? '-'
-                  : '${currentAtBat.balls}/${currentAtBat.strikes}/${currentAtBat.outs}',
-            ),
-          ],
-        ),
-        if (inningCount > 0) ...[
-          const SizedBox(height: 16),
-          _LiveLineScoreCard(
-            teamName: _selectedTeamName,
-            team: selectedTeam,
-            opponent: opponentTeam,
-          ),
-        ],
-        const SizedBox(height: 16),
-        if (currentAtBat != null)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '현재 타석',
-                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '타자 ${currentAtBat.batterName}',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '투수 ${currentAtBat.pitcherName} · ${currentAtBat.pitchCount}구',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                if (currentAtBat.batterRecent.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    currentAtBat.batterRecent,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textDisabled,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        if (starterName != null || bullpenNames.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          const Text(
-            '투수 운용',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (starterName != null) ...[
-                  Text(
-                    '선발 $starterName',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                if (bullpenNames.isNotEmpty)
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final name in bullpenNames)
-                        _InfoPill(label: name, accent: accent),
-                    ],
-                  )
-                else
-                  const Text(
-                    '불펜 교체 이력 확인 중',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-        if (selectedLineup.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          const Text(
-            '라인업 기준 타순',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final entry in selectedLineup.take(9))
-                _InfoPill(
-                  label: '${entry.order}번 ${entry.name}',
-                  accent: AppColors.textDisabled,
-                  subtle: true,
-                ),
-            ],
-          ),
-        ],
-        if (events.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          const Text(
-            '주요 득점 이벤트',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 10),
-          ...events.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.divider),
-                ),
-                child: Text(
-                  item.text,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ] else ...[
-          const SizedBox(height: 18),
-          _buildUnavailableState('공식 박스스코어 데이터가 아직 공개되지 않았습니다'),
-        ],
-      ],
-    );
-  }
-
-  String _baseStateLabel(CurrentAtBat? currentAtBat) {
-    if (currentAtBat == null) {
-      return '';
-    }
-    if (currentAtBat.baseState.isNotEmpty) {
-      return currentAtBat.baseState;
-    }
-    final occupied = [
-      currentAtBat.firstRunnerName.isNotEmpty,
-      currentAtBat.secondRunnerName.isNotEmpty,
-      currentAtBat.thirdRunnerName.isNotEmpty,
-    ];
-    if (!occupied[0] && !occupied[1] && !occupied[2]) {
-      return '';
-    }
-    if (occupied[0] && !occupied[1] && !occupied[2]) {
-      return '주자1루';
-    }
-    if (!occupied[0] && occupied[1] && !occupied[2]) {
-      return '주자2루';
-    }
-    if (!occupied[0] && !occupied[1] && occupied[2]) {
-      return '주자3루';
-    }
-    if (occupied[0] && occupied[1] && !occupied[2]) {
-      return '주자1,2루';
-    }
-    if (occupied[0] && !occupied[1] && occupied[2]) {
-      return '주자1,3루';
-    }
-    if (!occupied[0] && occupied[1] && occupied[2]) {
-      return '주자2,3루';
-    }
-    return '만루';
-  }
-
-  List<String> _relayBullpenNames(
-    RelayData? relayData, {
-    required bool isAwayTeam,
-    required String? starterName,
-    required String? currentPitcherName,
-  }) {
-    if (relayData == null) {
-      return const <String>[];
-    }
-
-    final targetHalf = isAwayTeam ? 'bottom' : 'top';
-    final names = <String>[];
-    for (final item in relayData.relayItems) {
-      if (item.half != targetHalf) {
-        continue;
-      }
-      final match = RegExp(
-        r'투수\s+(.+?)\s*:\s*투수\s+(.+?)\s+\(으\)로\s+교체',
-      ).firstMatch(item.text);
-      final nextPitcher = match?.group(2)?.trim();
-      if (nextPitcher == null || nextPitcher.isEmpty) {
-        continue;
-      }
-      if (nextPitcher == starterName || names.contains(nextPitcher)) {
-        continue;
-      }
-      names.add(nextPitcher);
-    }
-
-    final currentPitcher = currentPitcherName?.trim();
-    if (currentPitcher != null &&
-        currentPitcher.isNotEmpty &&
-        currentPitcher != starterName &&
-        !names.contains(currentPitcher)) {
-      names.add(currentPitcher);
-    }
-    return names;
   }
 
   Widget _buildBatterCard(
@@ -885,132 +555,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         .replaceAll('(', '')
         .replaceAll(')', '')
         .toLowerCase();
-  }
-}
-
-class _LiveLineScoreCard extends StatelessWidget {
-  final String teamName;
-  final TeamScore team;
-  final TeamScore opponent;
-
-  const _LiveLineScoreCard({
-    required this.teamName,
-    required this.team,
-    required this.opponent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final inningCount = team.innings.length > opponent.innings.length
-        ? team.innings.length
-        : opponent.innings.length;
-
-    String scoreOf(List<int?> innings, int index) {
-      if (index >= innings.length) return '-';
-      return innings[index]?.toString() ?? '-';
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$teamName 이닝별 점수',
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const SizedBox(width: 44),
-                    for (var i = 0; i < inningCount; i++)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: SizedBox(
-                          width: 18,
-                          child: Text(
-                            '${i + 1}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textDisabled,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                _LineScoreTextRow(
-                  label: team.shortName,
-                  scores: [
-                    for (var i = 0; i < inningCount; i++)
-                      scoreOf(team.innings, i),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                _LineScoreTextRow(
-                  label: opponent.shortName,
-                  scores: [
-                    for (var i = 0; i < inningCount; i++)
-                      scoreOf(opponent.innings, i),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LineScoreTextRow extends StatelessWidget {
-  final String label;
-  final List<String> scores;
-
-  const _LineScoreTextRow({required this.label, required this.scores});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 44,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-        ),
-        for (final score in scores)
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: SizedBox(
-              width: 18,
-              child: Text(
-                score,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
   }
 }
 

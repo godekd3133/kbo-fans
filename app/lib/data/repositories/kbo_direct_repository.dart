@@ -1171,6 +1171,11 @@ class KboDirectRepository implements GameRepository {
 
     return GameBoxscoreData(
       gameId: gameId,
+      officialAvailable:
+          awayBatters.isNotEmpty ||
+          homeBatters.isNotEmpty ||
+          enrichedPitchers.$1.isNotEmpty ||
+          enrichedPitchers.$2.isNotEmpty,
       away: TeamBoxscoreData(
         teamId: gameId.substring(8, 10),
         batters: awayBatters,

@@ -120,6 +120,7 @@ class ApiGameRepository implements GameRepository {
     );
     return GameBoxscoreData(
       gameId: gameId,
+      officialAvailable: data['officialAvailable'] as bool? ?? true,
       away: _parseTeamBoxscore(
         data['away'] as Map<String, dynamic>? ?? const {},
       ),

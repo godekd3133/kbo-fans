@@ -32,11 +32,13 @@ class TeamBoxscoreData {
 
 class GameBoxscoreData {
   final String gameId;
+  final bool officialAvailable;
   final TeamBoxscoreData away;
   final TeamBoxscoreData home;
 
   const GameBoxscoreData({
     required this.gameId,
+    this.officialAvailable = true,
     required this.away,
     required this.home,
   });

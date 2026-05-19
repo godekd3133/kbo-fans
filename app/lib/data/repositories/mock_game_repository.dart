@@ -29,7 +29,9 @@ class MockGameRepository implements GameRepository {
   Future<HighlightInfo?> getHighlightInfo(String gameId) async {
     await Future.delayed(const Duration(milliseconds: 150));
     try {
-      return mockGames.firstWhere((game) => game.gameId == gameId).highlightInfo;
+      return mockGames
+          .firstWhere((game) => game.gameId == gameId)
+          .highlightInfo;
     } catch (_) {
       return null;
     }
@@ -61,6 +63,7 @@ class MockGameRepository implements GameRepository {
     await Future.delayed(const Duration(milliseconds: 200));
     return GameBoxscoreData(
       gameId: gameId,
+      officialAvailable: true,
       away: const TeamBoxscoreData(
         teamId: 'KT',
         batters: mockAwayBatters,
