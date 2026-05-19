@@ -44,6 +44,7 @@ app/test/features/schedule/widgets/failures/
 
 # MCP (토큰 포함)
 .mcp.json
+.playwright-mcp/
 
 # Codacy
 .github/instructions/codacy.instructions.md
