@@ -4,6 +4,19 @@
 대상 평가 문서: `docs/UX_REVIEW_V4_MOMENT_SURFACE_2026-05-19.md`  
 기준 화면 산출물: `artifacts/kbo-v4-ux-eval/`
 
+## 반영 상태
+
+2026-05-19 현재 P1/P2 주요 앱 화면 수정은 실제 Flutter UI에 반영됐다.
+
+- [x] 알림 전달 용어 copy 정리
+- [x] 홈 대표 경기 CTA 상태별 분기
+- [x] `MyTeamGameCard` callback 분리
+- [x] 경기 상세 하이라이트를 score tab footer로 이동
+- [x] 마이팀 브리프 compact / safe area 보강
+- [x] 홈/경기상세 상태별 stale copy 보강
+- [x] 390x844 web smoke 캡처 갱신
+- [ ] iOS Live Activity / Android 홈 위젯 실기기 캡처 QA
+
 ## 목적
 
 V4 방향성은 유지한다. 수정의 목적은 디자인을 다시 갈아엎는 것이 아니라, 실제 사용 흐름에서 드러난 불일치를 제거하는 것이다.
