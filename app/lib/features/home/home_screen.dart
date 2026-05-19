@@ -19,7 +19,6 @@ import '../../core/widgets/dev_console.dart';
 import '../../core/bootstrap/startup_prep_state.dart';
 import '../../data/models/game.dart';
 import '../../data/models/home_aggregate.dart';
-import '../../data/models/records_overview.dart';
 import '../../data/models/schedule.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
@@ -39,12 +38,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
   Timer? _refreshTimer;
   final ScrollController _scrollController = ScrollController();
-  final GlobalKey _overviewSectionKey = GlobalKey();
   String? _lastSyncSignature;
   int? _homeLoadStartedAtMicros;
   String? _lastHomeLoadLogKey;
   bool _secondarySectionsEnabled = false;
-  bool _overviewSectionEnabled = false;
   int? _secondarySectionsStartedAtMicros;
   String? _lastSecondarySectionsLogKey;
   List<Game>? _cachedTodayGames;
@@ -54,7 +51,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _scrollController.addListener(_maybeEnableOverviewSection);
     _homeLoadStartedAtMicros = DateTime.now().microsecondsSinceEpoch;
     unawaited(_loadCachedScoreboard());
     unawaited(_applyStartupPreloadFlags());
@@ -63,7 +59,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _scrollController.removeListener(_maybeEnableOverviewSection);
     _scrollController.dispose();
     _refreshTimer?.cancel();
     super.dispose();
@@ -336,16 +331,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _logSecondarySectionsLoaded({
     required String today,
     required _MyTeamBriefData? brief,
-    required RecordsOverview? overview,
   }) {
     if (!_secondarySectionsEnabled) {
       return;
     }
-    if (brief == null && overview == null) {
+    if (brief == null) {
       return;
     }
 
-    final logKey = '$today|${brief?.teamId ?? '-'}|${overview?.season ?? 0}';
+    final logKey = '$today|${brief.teamId}';
     if (_lastSecondarySectionsLogKey == logKey) {
       return;
     }
@@ -363,8 +357,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           'event': 'secondary_loaded',
           'elapsedMs': elapsedMs.round(),
           'date': today,
-          'hasBrief': brief != null,
-          'hasOverview': overview != null,
+          'hasBrief': true,
+          'hasOverview': false,
         }),
       );
     }
@@ -463,11 +457,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     );
                   }
 
-                  _logSecondarySectionsLoaded(
-                    today: today,
-                    brief: myTeamBrief,
-                    overview: null,
-                  );
+                  _logSecondarySectionsLoaded(today: today, brief: myTeamBrief);
 
                   return Column(
                     children: [
@@ -581,43 +571,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 },
               ),
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                key: _overviewSectionKey,
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                child: _secondarySectionsEnabled && _overviewSectionEnabled
-                    ? Consumer(
-                        builder: (context, ref, _) {
-                          final aggregateKey = '$today|${myTeamId ?? ''}';
-                          final aggregateAsync = ref.watch(
-                            homeAggregateProvider(aggregateKey),
-                          );
-                          if (aggregateAsync.hasValue ||
-                              aggregateAsync.hasError) {
-                            return const SizedBox.shrink();
-                          }
-                          final season = DateTime.now().year;
-                          final overviewAsync = ref.watch(
-                            recordsOverviewProvider(season),
-                          );
-                          final items = _buildOverviewQuickItems(
-                            overview: overviewAsync.asData?.value,
-                            season: season,
-                          );
-                          _logSecondarySectionsLoaded(
-                            today: today,
-                            brief: null,
-                            overview: overviewAsync.asData?.value,
-                          );
-                          if (items.isEmpty) {
-                            return const SizedBox.shrink();
-                          }
-                          return _QuickContentSection(items: items);
-                        },
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ),
             const SliverToBoxAdapter(child: SizedBox(height: 88)),
           ],
         ),
@@ -702,72 +655,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       spotlight: spotlight,
       summaries: summaries,
     );
-  }
-
-  List<_QuickContentItemData> _buildOverviewQuickItems({
-    required RecordsOverview? overview,
-    required int season,
-  }) {
-    if (overview == null) {
-      return const [];
-    }
-
-    final items = <_QuickContentItemData>[];
-
-    if (overview.hrLeaders.isNotEmpty) {
-      final leader = overview.hrLeaders.first;
-      items.add(
-        _QuickContentItemData(
-          eyebrow: '홈런왕',
-          title: '${leader.name} ${leader.value}개',
-          subtitle:
-              '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 시즌 홈런 1위',
-          route: '/records',
-          teamId: leader.teamId,
-          fallbackLabel: leader.name,
-        ),
-      );
-    }
-
-    final featuredPlayer = overview.todayHitter.name != null
-        ? overview.todayHitter
-        : overview.todayPitcher.name != null
-        ? overview.todayPitcher
-        : null;
-
-    if (featuredPlayer?.name != null) {
-      final player = featuredPlayer!;
-      final route = player.playerId != null
-          ? '/records/player/${player.playerId}?season=$season'
-          : '/records';
-      items.add(
-        _QuickContentItemData(
-          eyebrow: player.label,
-          title: player.name!,
-          subtitle: [
-            player.headline,
-            player.summary,
-          ].whereType<String>().where((value) => value.isNotEmpty).join(' · '),
-          route: route,
-          teamId: player.teamId,
-          imageUrl: player.imageUrl,
-          fallbackLabel: player.name,
-        ),
-      );
-    } else if (overview.avgLeaders.isNotEmpty) {
-      final leader = overview.avgLeaders.first;
-      items.add(
-        _QuickContentItemData(
-          eyebrow: '타율 리더',
-          title: '${leader.name} ${leader.value}',
-          subtitle:
-              '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 컨디션 체크',
-          route: '/records',
-        ),
-      );
-    }
-
-    return items.take(2).toList();
   }
 
   _MyTeamBriefData? _myTeamBriefFromAggregate(
@@ -960,33 +847,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       setState(() {
         _secondarySectionsEnabled = true;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _maybeEnableOverviewSection();
-      });
     });
-  }
-
-  void _maybeEnableOverviewSection() {
-    if (!mounted || !_secondarySectionsEnabled || _overviewSectionEnabled) {
-      return;
-    }
-
-    final currentContext = _overviewSectionKey.currentContext;
-    if (currentContext == null) {
-      return;
-    }
-    final renderObject = currentContext.findRenderObject();
-    if (renderObject is! RenderBox || !renderObject.hasSize) {
-      return;
-    }
-
-    final topOffset = renderObject.localToGlobal(Offset.zero).dy;
-    final screenHeight = MediaQuery.of(context).size.height;
-    if (topOffset <= screenHeight + 120) {
-      setState(() {
-        _overviewSectionEnabled = true;
-      });
-    }
   }
 
   Future<void> _applyStartupPreloadFlags() async {
@@ -1000,7 +861,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
     setState(() {
       _secondarySectionsEnabled = true;
-      _overviewSectionEnabled = true;
     });
   }
 

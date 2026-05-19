@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-05-20: 홈 보조 로딩 fan-out 제거 및 데이터 경로 문서 재정렬
+
+### 완료
+- [x] 홈 화면에서 `/home` aggregate 로딩 중 별도로 `recordsOverviewProvider`를 호출하던 보조 섹션 제거
+- [x] 홈 첫 화면 데이터 흐름을 `scoreboardProvider` + 지연 `homeAggregateProvider`로 고정하고, aggregate 실패 시 schedule/standings/records 로컬 조립 fallback이 재진입하지 않도록 문서 기준 재정렬
+- [x] 상세/스코어/중계/박스스코어/라인업 탭의 현재 provider fan-out 문서를 실제 구현 기준으로 갱신
+- [x] local native 기본 API-first, `PREFER_DIRECT_SCRAPE=true` 명시 임시 direct-primary 검증 모드 기준을 엔지니어링 노트에 반영
+
+### 검증
+- [x] `rg`로 Home에서 `recordsOverviewProvider(season)`, overview lazy section, `GameDetailPreloadService` 재참조가 없는지 확인
+- [x] 데이터 리프레시 문서의 stale direct-debug / 이전 시즌 snapshot 차용 / 과거 preload 표현 제거 확인
+- [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+- [x] 웹 재빌드 후 Home 네트워크 호출이 `/api/scoreboard/home` + `/api/home` 2개로 제한되는지 Playwright network log로 확인
+- [x] 웹 재빌드 후 Records는 `/api/records/overview`, Schedule은 `/api/schedule` 단일 호출로 진입하는지 확인
+
+---
+
 ## 2026-05-20: 버저닝 / 릴리즈 노트 루틴 정리
 
 ### 완료

@@ -119,17 +119,17 @@ This review is based on the current code paths below:
 | Area | Evidence |
 | --- | --- |
 | Repository routing | `app/lib/data/providers.dart:37-49` uses API by default, and only enters `KboDirectRepository` for explicit temporary direct-primary validation builds. |
-| Home aggregate fan-out | `app/lib/data/providers.dart:202-239` reads scoreboard, two months of schedule, standings, and records overview. |
-| All-player image map | `app/lib/data/providers.dart:265-300` loops through all 10 teams and calls `getTeamPlayers` for each team. |
-| Home fallback fan-out | `app/lib/features/home/home_screen.dart:372-430` can watch aggregate, two schedules, and standings in one section. |
-| Home preload | `app/lib/features/home/home_screen.dart:596-613` preloads scoreboard games through `GameDetailPreloadService`. |
-| Home live polling | `app/lib/features/home/home_screen.dart:1040-1058` refreshes live home scoreboard every 10s. |
-| Schedule preload | `app/lib/features/schedule/schedule_screen.dart:74-91` preloads up to 3 game details from schedule. |
-| Detail broad refresh | `app/lib/features/game_detail/game_detail_screen.dart:196-214` invalidates game, relay, boxscore, and lineup together. |
-| Score tab relay dependency | `app/lib/features/game_detail/tabs/score_tab.dart:22-35` watches `relayDataProvider`. |
-| Relay tab broad player data | `app/lib/features/game_detail/tabs/relay_tab.dart:44-74` watches game, relay, two team player lists, and all-player image map. |
-| Lineup tab broad data | `app/lib/features/game_detail/tabs/lineup_tab.dart:52-84` watches lineup, boxscore-derived batters/pitchers, relay, two team player lists, all-player image map, standings, two schedules, and two team stats. |
-| Widget background refresh | `app/lib/services/widget_sync_service.dart:25-37` background task uses the compact API path in normal mode; direct KBO is explicit debug-only. |
+| Home aggregate fan-out | `app/lib/data/providers.dart:199-248` uses `/api/home` in normal mode; the local assembly branch is limited to explicit direct-primary validation builds. |
+| All-player image map | `app/lib/data/providers.dart:270-305` can still loop through all 10 teams if explicitly watched, but normal detail tabs now use selected teams instead. |
+| Home fallback fan-out | `app/lib/features/home/home_screen.dart:430-463` skips local fallback assembly when aggregate fails. |
+| Home preload | Removed. Home now renders from startup/scoreboard data without `GameDetailPreloadService`. |
+| Home live refresh | `app/lib/features/home/home_screen.dart:933` invalidates the visible scoreboard provider. |
+| Schedule preload | Removed. `app/lib/features/schedule/schedule_screen.dart:74-76` opens detail on tap without top-3 detail preload. |
+| Detail visible-tab refresh | `app/lib/features/game_detail/game_detail_screen.dart:220-250` refreshes game summary and only the visible tab provider. |
+| Score tab relay dependency | Removed. `app/lib/features/game_detail/tabs/score_tab.dart:22-35` renders from `Game` inning scores without watching relay. |
+| Relay tab player data | `app/lib/features/game_detail/tabs/relay_tab.dart:44-70` watches game, relay, and the two selected team player lists. |
+| Lineup tab data | `app/lib/features/game_detail/tabs/lineup_tab.dart:52-64` watches lineup, boxscore-derived batters/pitchers, and the two selected team player lists. |
+| Widget background refresh | `app/lib/services/widget_sync_service.dart:60-77` uses compact API in normal mode; direct KBO is explicit temporary direct-primary only. |
 | Alert relay path | `app/lib/services/game_event_alert_service.dart:86-101` loops tracked games, and `app/lib/services/game_event_alert_service.dart:151-169` fetches relay per live tracked game. |
 | Direct KBO queue/dedupe | `app/lib/data/repositories/kbo_direct_repository.dart:38-45` has request maps/queue; `app/lib/data/repositories/kbo_direct_repository.dart:96-115` serializes network calls. |
 | Direct scoreboard fan-out | `app/lib/data/repositories/kbo_direct_repository.dart:277-315` gets schedule, main game map, and per-game scoreboard/detail calls. |
@@ -157,7 +157,7 @@ Why this is a problem:
 
 Decision:
 
-- Direct KBO must become explicit debug-only.
+- Direct KBO must become explicit temporary direct-primary only.
 - Native local default should be API-first, not direct KBO.
 - Widget background should use the same app/API cache path or a compact backend widget endpoint.
 
@@ -166,21 +166,21 @@ Decision:
 Current:
 
 - First content starts with `scoreboardProvider(today)`, which is good.
-- The secondary wave can call aggregate, schedule, previous schedule, standings, records overview, and detail preload.
+- The secondary wave now calls the aggregate endpoint in normal mode. The broader schedule/standings/records local assembly branch is limited to explicit direct-primary validation builds.
 - If a live game exists, home refresh interval is 10s.
 
 Why this is a problem:
 
 - A 10s home scoreboard refresh can repeatedly trigger alert processing and widget sync.
-- Secondary content may already be covered by `/home`, but fallback starts separate provider calls.
-- Detail preload can turn a home visit into relay/boxscore/lineup/team player work.
+- Secondary content should stay covered by `/home`; records/schedule fallback fan-out must not run from Home.
+- Detail preload used to turn a home visit into relay/boxscore/lineup/team player work.
 
 Decision:
 
 - Home first paint remains scoreboard-only.
 - `/home` aggregate is the only allowed secondary network call.
 - Fallback should use already-loaded cache only; it should not launch a fresh schedule/standings/overview fan-out.
-- Detail preload should be opt-in or limited to one selected live my-team game.
+- Detail data should load on explicit game entry only.
 
 ### P0 Finding 3 - Detail refresh invalidates unrelated tabs
 
@@ -209,12 +209,12 @@ Decision:
 
 Current:
 
-- `ScoreTab` watches `relayDataProvider` only to support inning-scene context.
+- `ScoreTab` renders from the passed `Game` inning score data and does not watch `relayDataProvider`.
 
-Why this is a problem:
+Residual risk:
 
 - Score view should be the cheapest detail tab.
-- Relay is one of the most fragile live sources.
+- Relay must stay opt-in through Relay tab or a future explicit inning-event action.
 
 Decision:
 
@@ -222,25 +222,23 @@ Decision:
 - Add `inningSummary` later if scoring-event jump is needed.
 - Relay loads only when Relay tab is visible or user taps an inning action that requires relay.
 
-### P0 Finding 5 - Lineup tab is doing too much
+### P0 Finding 5 - Lineup tab residual fetch scope
 
 Current:
 
-- Lineup tab watches 13 data surfaces: lineup, away/home batters, away/home pitchers, relay, away/home players, all-player image map, standings, current schedule, previous schedule, away/home team stats.
+- Lineup tab now watches lineup, away/home batters, away/home pitchers, and selected away/home team players.
 
-Why this is a problem:
+Residual risk:
 
-- A lineup view becomes a dashboard aggregator.
-- It can trigger records/schedule/relay/boxscore paths just by opening one tab.
-- It couples stable snapshot data and live data in one widget build.
+- It still derives batters/pitchers from boxscore data for lineup comparison.
+- It still reads two selected team player lists for images/profile context.
+- It no longer watches relay, all-player image map, standings, schedules, or team stats by default.
 
 Decision:
 
-- Split UI into:
-  - `lineupProvider`: lineup only.
-  - `matchupSummaryProvider`: cached/snapshot summary built by backend.
-- Remove `allPlayerImageMapProvider` from this tab.
-- Do not fetch schedule/standings/team stats directly from Lineup tab.
+- Keep lineup as the only required payload.
+- Treat boxscore-derived matchup and player images as optional decoration.
+- Do not fetch relay, all-player image map, schedule, standings, or team stats directly from Lineup tab.
 
 ### P1 Finding 6 - `allPlayerImageMapProvider` is too expensive for live tabs
 
@@ -336,32 +334,32 @@ Current flow:
 
 - `HomeScreen` watches `scoreboardProvider(today)`.
 - Secondary content watches `homeAggregateProvider(today|myTeam)`.
-- If aggregate errors, fallback watches `scheduleProvider(currentMonth)`, `scheduleProvider(previousMonth)`, and `standingsProvider(season)`.
-- Overview section may separately watch `recordsOverviewProvider(season)`.
-- Home also schedules detail preload for up to 3 games.
+- If aggregate errors, Home shows empty secondary sections and logs the failure; it does not start local fallback assembly.
+- Home does not separately watch `recordsOverviewProvider(season)`.
+- Home does not schedule game-detail preload.
 
-Risk:
+Residual risk:
 
-- Home can load scoreboard, aggregate, schedule, standings, records overview, game detail, relay, boxscore, lineup, and team players close together.
-- This is too much for first screen.
+- Regression risk is reintroducing schedule/standings/records local assembly or detail preloads after aggregate failure.
+- First screen should stay scoreboard-first, aggregate-second.
 
 Target:
 
 - First paint: `scoreboard/home` only.
 - Secondary: `/home` aggregate only, after first paint.
 - Fallback: local cached aggregate or local calculation from already-loaded data; do not start broad fallback fetches automatically.
-- Detail preload: only my-team live game or tapped game; no top-3 broad preload by default.
+- Detail data should load on tapped game/detail tab entry, not as broad home preload.
 
 ### Schedule
 
 Current flow:
 
 - `ScheduleScreen` watches `scheduleProvider(yearMonth)`.
-- It preloads up to 3 selected games through `GameDetailPreloadService`.
+- It opens detail on tap without preloading top-3 selected games.
 
-Risk:
+Residual risk:
 
-- Opening a month can immediately trigger game detail, relay, boxscore, lineup, and team player preloads.
+- Opening a month should only fetch the month schedule. Detail, relay, boxscore, lineup, and team player data are deferred until detail/tab entry.
 - Schedule screen mostly needs month/date/game-card fields, not game-detail tabs.
 
 Target:
@@ -375,15 +373,14 @@ Target:
 Current flow:
 
 - Detail screen watches `gameProvider(gameId)`.
-- Initial post-frame preload warms relay, boxscore, lineup, and player images.
-- Refresh timer invalidates `gameProvider`, `relayDataProvider`, `gameBoxscoreProvider`, and `gameLineupProvider`.
+- Initial post-frame refresh warms the game summary only.
+- Refresh timer invalidates `gameProvider` plus the currently visible tab provider only.
 - Live interval: 30s. Scheduled interval: 5m.
 
-Risk:
+Residual risk:
 
-- During live games, boxscore and lineup are refreshed every 30s even if the visible tab is Score or Relay.
-- Lineup rarely needs 30s refresh.
-- Boxscore does not need to refresh when user is not on Boxscore tab.
+- The selected visible tab can still refresh at detail interval.
+- Lineup and boxscore tab intervals can be split further if needed after API stabilization.
 
 Target:
 
@@ -397,11 +394,11 @@ Target:
 
 Current flow:
 
-- Watches `relayDataProvider` just to make inning table cells jump to relay scenes.
+- Uses `Game` inning scores only. It does not watch relay.
 
-Risk:
+Residual risk:
 
-- Score tab can trigger relay crawling even when user only wants score/table.
+- Future inning jump behavior must not silently reintroduce full relay crawling on first paint.
 
 Target:
 
@@ -413,12 +410,12 @@ Target:
 
 Current flow:
 
-- Watches `gameProvider`, `relayDataProvider`, away/home `teamPlayersProvider`, and `allPlayerImageMapProvider`.
+- Watches `gameProvider`, `relayDataProvider`, and away/home `teamPlayersProvider`.
 
-Risk:
+Residual risk:
 
-- Relay screen may load all teams' player image map, not just current game participants.
 - Team player loads are stable data and should not be coupled to live relay polling.
+- Relay screen no longer loads the all-team player image map by default.
 
 Target:
 
@@ -431,12 +428,12 @@ Target:
 Current flow:
 
 - Uses `battersProvider` and `pitchersProvider`, both derived from the same `gameBoxscoreProvider`.
-- Also watches `relayDataProvider`, `gameLineupProvider`, and selected `teamPlayersProvider`.
+- Watches selected `teamPlayersProvider` only for player/profile enrichment.
 
-Risk:
+Residual risk:
 
-- Boxscore tab can trigger relay and lineup loads even if only batter/pitcher table is needed.
 - Derived batters/pitchers are okay because they share the boxscore provider, but refresh paths should invalidate the source provider only once.
+- Player enrichment should remain optional if team-player data is slow or unavailable.
 
 Target:
 
@@ -448,12 +445,12 @@ Target:
 
 Current flow:
 
-- Watches lineup, both teams' batters/pitchers, relay, both teams' players, all-player image map, standings, current and previous schedule, and both teams' stats.
+- Watches lineup, both teams' batters/pitchers, and the two selected teams' players.
 
-Risk:
+Residual risk:
 
-- This is the heaviest screen-level over-fetch.
-- A lineup tab should not cause schedule, standings, team stats, boxscore, relay, and all-player image crawling by default.
+- A lineup tab should not reintroduce schedule, standings, team stats, relay, or all-player image crawling by default.
+- Boxscore-derived batters/pitchers should remain scoped to the visible lineup tab.
 
 Target:
 
@@ -537,7 +534,7 @@ Snapshot providers:
 - Change widget background refresh to use API/cache-backed repository or a compact backend endpoint.
 - Change game detail refresh to invalidate providers by visible tab.
 - Remove full detail preload from schedule screen.
-- Limit home detail preload to one my-team live game.
+- Remove home detail preload from normal entry.
 - Remove `allPlayerImageMapProvider` from Relay/Lineup live paths.
 - Make Score tab independent from `relayDataProvider`.
 
@@ -589,12 +586,12 @@ To move this from design to code, use measurable checks:
 
 | User action | Current risk | Target request count |
 | --- | --- | --- |
-| Open Home | scoreboard + aggregate + fallback providers + detail preload | 1 critical API call, 1 deferred aggregate |
-| Open Schedule | schedule + up to 3 detail preloads | 1 schedule API call |
-| Tap Game Detail Score tab | game + preload + relay + boxscore + lineup | 1 game summary call |
-| Switch to Relay tab | relay + two team players + all-player map | 1 relay call, optional two-team cached player lookup only |
-| Switch to Boxscore tab | boxscore + relay + lineup + team players | 1 boxscore call, optional selected-team cached players |
-| Switch to Lineup tab | lineup + boxscore + relay + standings + two schedules + team stats + players + all-player map | 1 lineup call + 1 cached matchup summary |
+| Open Home | scoreboard + aggregate only in normal mode | 1 critical API call, 1 deferred aggregate |
+| Open Schedule | monthly schedule only | 1 schedule API call |
+| Tap Game Detail Score tab | game summary only | 1 game summary call |
+| Switch to Relay tab | relay + selected two-team players | 1 relay call, optional two-team cached player lookup only |
+| Switch to Boxscore tab | boxscore + selected team players | 1 boxscore call, optional selected-team cached players |
+| Switch to Lineup tab | lineup + boxscore-derived matchup + selected two-team players | 1 lineup call, optional scoped matchup/player enrichment |
 | Widget background refresh | direct KBO scoreboard + current at-bat | 1 compact API/cache call |
 
 ## Done Criteria
