@@ -107,131 +107,134 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'RECORDS',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textDisabled,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          '기록실',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            height: 1.05,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          '팀을 먼저 고르면 선수 기록과 리그 리더가 한 화면에 보입니다.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: '기록실 새로고침',
-                    onPressed: () {
-                      unawaited(_refreshOverview());
-                      setState(() {});
-                    },
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              _seasonSelector(),
-              const SizedBox(height: 14),
-              overviewAsync.when(
-                loading: () => const SizedBox.shrink(),
-                error: (error, stackTrace) => const SizedBox.shrink(),
-                data: (overview) => Column(
+              children: [
+                Row(
                   children: [
-                    _featuredCards(overview),
-                    const SizedBox(height: 14),
-                    _leaderboardCard('리그 타율 리더보드', overview.avgLeaders),
-                    const SizedBox(height: 10),
-                    _leaderboardCard('리그 홈런 리더보드', overview.hrLeaders),
-                    const SizedBox(height: 10),
-                    _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
-                    const SizedBox(height: 10),
-                    _leaderboardCard(
-                      LeaderboardMetric.opsPlus.title,
-                      overview.opsPlusLeaders,
-                      metric: LeaderboardMetric.opsPlus,
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'RECORDS',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textDisabled,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            '기록실',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              height: 1.05,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '팀을 먼저 고르면 선수 기록과 리그 리더가 한 화면에 보입니다.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 10),
-                    _leaderboardCard('리그 ERA 리더보드', overview.eraLeaders),
-                    const SizedBox(height: 10),
-                    _leaderboardCard(
-                      LeaderboardMetric.war.title,
-                      const [],
-                      metric: LeaderboardMetric.war,
+                    IconButton(
+                      tooltip: '기록실 새로고침',
+                      onPressed: () {
+                        unawaited(_refreshOverview());
+                        setState(() {});
+                      },
+                      icon: const Icon(Icons.refresh_rounded),
                     ),
-                    const SizedBox(height: 10),
-                    const SizedBox(height: 14),
                   ],
                 ),
-              ),
-              TextField(
-                onChanged: (value) => setState(() => _searchQuery = value),
-                decoration: InputDecoration(
-                  hintText: '팀 검색',
-                  hintStyle: const TextStyle(color: AppColors.textDisabled),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.textDisabled,
+                const SizedBox(height: 18),
+                _seasonSelector(),
+                const SizedBox(height: 14),
+                overviewAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (error, stackTrace) => const SizedBox.shrink(),
+                  data: (overview) => Column(
+                    children: [
+                      _featuredCards(overview),
+                      const SizedBox(height: 14),
+                      _leaderboardCard('리그 타율 리더보드', overview.avgLeaders),
+                      const SizedBox(height: 10),
+                      _leaderboardCard('리그 홈런 리더보드', overview.hrLeaders),
+                      const SizedBox(height: 10),
+                      _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
+                      const SizedBox(height: 10),
+                      _leaderboardCard(
+                        LeaderboardMetric.opsPlus.title,
+                        overview.opsPlusLeaders,
+                        metric: LeaderboardMetric.opsPlus,
+                      ),
+                      const SizedBox(height: 10),
+                      _leaderboardCard('리그 ERA 리더보드', overview.eraLeaders),
+                      const SizedBox(height: 10),
+                      _leaderboardCard(
+                        LeaderboardMetric.war.title,
+                        const [],
+                        metric: LeaderboardMetric.war,
+                      ),
+                      const SizedBox(height: 10),
+                      const SizedBox(height: 14),
+                    ],
                   ),
-                  filled: true,
-                  fillColor: AppColors.card,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.divider),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.divider),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(
-                      color: AppColors.textSecondary,
+                ),
+                TextField(
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                  decoration: InputDecoration(
+                    hintText: '팀 검색',
+                    hintStyle: const TextStyle(color: AppColors.textDisabled),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: AppColors.textDisabled,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.card,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.divider),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.divider),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              for (final team in visibleTeams)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _teamChooserCard(team, isMyTeam: myTeamId == team.id),
-                ),
-              if (visibleTeams.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 48),
-                  child: Center(
-                    child: Text(
-                      '검색 결과가 없습니다',
-                      style: TextStyle(color: AppColors.textDisabled),
+                const SizedBox(height: 14),
+                for (final team in visibleTeams)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _teamChooserCard(
+                      team,
+                      isMyTeam: myTeamId == team.id,
                     ),
                   ),
-                ),
-            ],
+                if (visibleTeams.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 48),
+                    child: Center(
+                      child: Text(
+                        '검색 결과가 없습니다',
+                        style: TextStyle(color: AppColors.textDisabled),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
@@ -333,195 +336,196 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         child: AppPageFrame(
           child: Column(
             children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () => context.go('/records'),
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '기록실',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => context.go('/records'),
+                      icon: const Icon(Icons.arrow_back),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '기록실',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '${team?.name ?? teamId} $_selectedSeason 시즌 기록실',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '팀 기록 새로고침',
+                      onPressed: () => unawaited(_refreshTeamRecords(teamId)),
+                      icon: const Icon(Icons.refresh_rounded),
+                    ),
+                    if (team != null)
+                      CachedNetworkImage(
+                        imageUrl: team.logoUrl,
+                        width: 40,
+                        height: 40,
+                        errorWidget: (_, _, _) =>
+                            _logoFallback(team.shortName, 40),
+                      ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _seasonSelector(),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: teamRecordsAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, stackTrace) => const SizedBox.shrink(),
+                  data: (teamRecords) => _teamStatsCard(
+                    teamRecords.teamStats,
+                    standingsAsync.asData?.value,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  height: 52,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicator: BoxDecoration(
+                      color: AppColors.textPrimary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    dividerColor: Colors.transparent,
+                    labelPadding: EdgeInsets.zero,
+                    labelColor: AppColors.background,
+                    unselectedLabelColor: AppColors.textSecondary,
+                    labelStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overlayColor: WidgetStateProperty.all(Colors.transparent),
+                    splashFactory: NoSplash.splashFactory,
+                    tabs: const [
+                      Tab(height: 44, child: Center(child: Text('야수'))),
+                      Tab(height: 44, child: Center(child: Text('투수'))),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _filterButton(
+                        label: '전체',
+                        selected: _filter == PlayerListFilter.all,
+                        onTap: () =>
+                            setState(() => _filter = PlayerListFilter.all),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _filterButton(
+                        label: '엔트리',
+                        selected: _filter == PlayerListFilter.entryOnly,
+                        onTap: () => setState(
+                          () => _filter = PlayerListFilter.entryOnly,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '${team?.name ?? teamId} $_selectedSeason 시즌 기록실',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _filterButton(
+                        label: '엔트리 제외',
+                        selected: _filter == PlayerListFilter.reserveOnly,
+                        onTap: () => setState(
+                          () => _filter = PlayerListFilter.reserveOnly,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: _sortOptionsForCurrentTab().map((option) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _sortChip(
+                        label: _sortLabel(option),
+                        selected: _sort == option,
+                        onTap: () => setState(() => _sort = option),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () => _refreshTeamRecords(teamId),
+                  color: AppColors.live,
+                  child: teamRecordsAsync.when(
+                    loading: () => ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(
+                          height: 420,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.live,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                  IconButton(
-                    tooltip: '팀 기록 새로고침',
-                    onPressed: () => unawaited(_refreshTeamRecords(teamId)),
-                    icon: const Icon(Icons.refresh_rounded),
-                  ),
-                  if (team != null)
-                    CachedNetworkImage(
-                      imageUrl: team.logoUrl,
-                      width: 40,
-                      height: 40,
-                      errorWidget: (_, _, _) =>
-                          _logoFallback(team.shortName, 40),
-                    ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _seasonSelector(),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: teamRecordsAsync.when(
-                loading: () => const SizedBox.shrink(),
-                error: (_, stackTrace) => const SizedBox.shrink(),
-                data: (teamRecords) => _teamStatsCard(
-                  teamRecords.teamStats,
-                  standingsAsync.asData?.value,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                height: 52,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: AppColors.textPrimary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  dividerColor: Colors.transparent,
-                  labelPadding: EdgeInsets.zero,
-                  labelColor: AppColors.background,
-                  unselectedLabelColor: AppColors.textSecondary,
-                  labelStyle: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overlayColor: WidgetStateProperty.all(Colors.transparent),
-                  splashFactory: NoSplash.splashFactory,
-                  tabs: const [
-                    Tab(height: 44, child: Center(child: Text('야수'))),
-                    Tab(height: 44, child: Center(child: Text('투수'))),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _filterButton(
-                      label: '전체',
-                      selected: _filter == PlayerListFilter.all,
-                      onTap: () =>
-                          setState(() => _filter = PlayerListFilter.all),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _filterButton(
-                      label: '엔트리',
-                      selected: _filter == PlayerListFilter.entryOnly,
-                      onTap: () =>
-                          setState(() => _filter = PlayerListFilter.entryOnly),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _filterButton(
-                      label: '엔트리 제외',
-                      selected: _filter == PlayerListFilter.reserveOnly,
-                      onTap: () => setState(
-                        () => _filter = PlayerListFilter.reserveOnly,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: _sortOptionsForCurrentTab().map((option) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _sortChip(
-                      label: _sortLabel(option),
-                      selected: _sort == option,
-                      onTap: () => setState(() => _sort = option),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => _refreshTeamRecords(teamId),
-                color: AppColors.live,
-                child: teamRecordsAsync.when(
-                  loading: () => ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(
-                        height: 420,
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.live,
+                    error: (error, _) => ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(
+                          height: 420,
+                          child: Center(
+                            child: Text(
+                              '선수 기록을 불러올 수 없습니다',
+                              style: TextStyle(color: AppColors.textDisabled),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    data: (teamRecords) => _buildList(teamRecords.players),
                   ),
-                  error: (error, _) => ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(
-                        height: 420,
-                        child: Center(
-                          child: Text(
-                            '선수 기록을 불러올 수 없습니다',
-                            style: TextStyle(color: AppColors.textDisabled),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  data: (teamRecords) => _buildList(teamRecords.players),
                 ),
               ),
-            ),
             ],
           ),
         ),

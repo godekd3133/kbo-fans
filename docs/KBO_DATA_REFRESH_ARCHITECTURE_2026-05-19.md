@@ -695,6 +695,11 @@ Live loading smoke on 2026-05-19:
 - The web app previously could remain on blocking startup progress if first-run remote prefetch did not finish. After disabling blocking remote prefetch, local web release rendered the live home card instead of staying on the startup loader.
 - Screenshot artifact: `artifacts/kbo-live-loading-check/home-lg-nonblocking-fixed-score.png`.
 - A separate live-score data bug was found and fixed: KBO detail payload can provide inning scores while total `score` is null. Backend now derives missing totals from inning scores.
+- Follow-up detail validation found two additional same-day detail risks:
+  - `get_game(gameId)` read `games/{gameId}` snapshots before checking whether the game date was historical. Pregame or early 0:0 snapshots could therefore override in-progress game detail.
+  - During live-to-final transition, KBO `GetScoreBoardScroll` can return an empty inning table while `Main` and `LiveTextView1` still contain the final score and inning table.
+- Both were fixed: same-day/future game detail bypasses game snapshots, final/live detail falls back to `LiveTextView1` when scroll detail is incomplete, and main score fields fill missing totals.
+- Actual KT-삼성 `20260519KTSS0` web detail smoke after the fix rendered `FINAL`, `KT 2 : 10 삼성`, inning rows, and `H/E/B` totals. Screenshot artifact: `artifacts/kbo-live-loading-check/detail-ktss-final-transition-fixed.png`.
 
 Still left after this P1 slice:
 

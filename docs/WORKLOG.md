@@ -12,6 +12,9 @@
 - [x] 위젯 sync에서 relay/current-at-bat 조회를 제거해 위젯 갱신이 별도 문자중계 크롤링 루프가 되지 않도록 정리
 - [x] Live Activity sync 내부의 direct KBO current-at-bat fallback 제거
 - [x] KBO live scoreboard detail payload의 총점이 비어 있을 때 이닝별 점수 합산으로 `score`를 보정
+- [x] 단건 경기 상세가 오늘/미래 경기의 오래된 `games/{gameId}` snapshot을 먼저 반환하지 않도록 수정
+- [x] 경기 종료 전환 직후 KBO scroll scoreboard가 비어도 `LiveTextView1` 이닝표와 main score로 상세 스코어를 보정
+- [x] 앱 상세 캐시 키를 `game_detail_v2:{gameId}`로 올려 기존 0:0 상세 캐시를 재사용하지 않도록 조정
 - [x] v4 delivery 모델에 맞춰 immediate Moment만 direct push topic을 만들도록 테스트 기대값 갱신
 - [x] `docs/APP_SPEC.md`, `docs/KBO_DATA_REFRESH_ARCHITECTURE_2026-05-19.md`에 compact endpoint와 남은 Live state 과제 반영
 
@@ -21,6 +24,7 @@
 - [x] `backend/.venv/bin/pytest -q`
 - [x] 실제 KBO upstream을 타는 service 계측: 2026-05-19 기준 home cold는 detail/view1 각 5회, compact cold는 각 1회로 감소 확인
 - [x] 실제 KBO live 경기 기준 service 계측: LG-KIA `20260519LGHT0` 응답이 390ms 수준으로 종료되고, 점수 `LG 0 : 12 KIA` 계산 확인
+- [x] 실제 KBO 종료 전환 경기 기준 service/API/web 상세 계측: KT-삼성 `20260519KTSS0`이 `FINAL`, `KT 2 : 10 삼성`, 이닝표/H/E/B 포함으로 렌더됨 (`artifacts/kbo-live-loading-check/detail-ktss-final-transition-fixed.png`)
 - [x] 로컬 web release + FastAPI + system Chrome headless 390x844 smoke: 첫 실행 seed 상태에서 blocking loader가 사라지고 홈 live 카드가 렌더됨 (`artifacts/kbo-live-loading-check/home-lg-nonblocking-fixed-score.png`)
 - [x] `cd app && fvm dart format --set-exit-if-changed lib/data/repositories/api_game_repository.dart lib/services/widget_sync_service.dart lib/services/live_activity_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
 - [x] `cd app && fvm flutter analyze`

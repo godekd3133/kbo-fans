@@ -44,6 +44,9 @@
 - 위젯 / Live Activity 갱신이 별도 KBO direct crawling 루프를 만들지 않도록 compact scoreboard API를 사용하고, current-at-bat 직접 조회를 제거
 - 최초 실행 원격 데이터 prefetch가 끝나지 않아 시작 화면에 머무를 수 있던 구조를 제거하고, 홈 화면 진입 뒤 백그라운드로 갱신하도록 조정
 - KBO 라이브 상세 응답에서 총점 필드가 비어 있고 이닝별 점수만 있는 경우에도 합산 점수로 라이브 스코어를 표시하도록 보정
+- 경기 상세가 오늘/미래 경기의 오래된 snapshot을 먼저 사용하지 않도록 조정해 경기 중 0:0 상세가 남는 문제를 수정
+- 경기 종료 전환 직후 KBO scroll scoreboard가 비어도 보조 이닝표와 main score로 상세 스코어/이닝표를 표시하도록 보강
+- 웹 경기 상세 캐시 키를 갱신해 기존 0:0 상세 캐시를 재사용하지 않도록 조정
 - 기본 앱 데이터 경로에서 direct KBO crawling fallback과 과도한 startup/detail preload를 제거해, 홈/일정/경기 상세 진입 시 불필요한 웹 원본 호출이 발생하지 않도록 조정
 - 백엔드가 같은 날짜 scoreboard 동시 요청을 한 번의 원천 조회로 합치고, 경기 단건 상세 조회가 같은 날짜 전체 경기 상세를 함께 불러오지 않도록 조정
 - KBO 원천 웹 응답이 느리거나 깨질 때 일정/기록실이 더 버티도록 월간 일정 snapshot 저장 조건을 완화하고 records leaderboard snapshot 및 앱 bundled overview fallback을 추가
