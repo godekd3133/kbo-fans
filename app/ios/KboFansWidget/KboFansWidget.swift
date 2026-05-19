@@ -92,7 +92,9 @@ struct KboFansWidgetEntryView: View {
           .foregroundStyle(.white)
         TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 22)
         Spacer(minLength: 10)
-        _countBadges(balls: entry.balls, strikes: entry.strikes, outs: entry.outs)
+        if hasAtBatContext {
+          _countBadges(balls: entry.balls, strikes: entry.strikes, outs: entry.outs)
+        }
       }
       Text(entry.status)
         .font(.subheadline)
@@ -122,6 +124,15 @@ struct KboFansWidgetEntryView: View {
     } else {
       content.background(Color(red: 0.06, green: 0.06, blue: 0.06))
     }
+  }
+
+  private var hasAtBatContext: Bool {
+    !entry.batter.isEmpty ||
+      !entry.pitcher.isEmpty ||
+      entry.pitchCount > 0 ||
+      entry.balls > 0 ||
+      entry.strikes > 0 ||
+      entry.outs > 0
   }
 }
 
@@ -193,17 +204,28 @@ struct KboFansLiveActivityView: View {
           }
         }
         Spacer(minLength: 8)
-        _countBadges(
-          balls: context.state.balls,
-          strikes: context.state.strikes,
-          outs: context.state.outs
-        )
+        if hasAtBatContext {
+          _countBadges(
+            balls: context.state.balls,
+            strikes: context.state.strikes,
+            outs: context.state.outs
+          )
+        }
       }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 14)
     .activityBackgroundTint(Color.black.opacity(0.94))
     .activitySystemActionForegroundColor(.white)
+  }
+
+  private var hasAtBatContext: Bool {
+    !context.state.batter.isEmpty ||
+      !context.state.pitcher.isEmpty ||
+      context.state.pitchCount > 0 ||
+      context.state.balls > 0 ||
+      context.state.strikes > 0 ||
+      context.state.outs > 0
   }
 
   private func scoreColumn(
@@ -306,11 +328,13 @@ struct KboFansLiveActivityWidget: Widget {
                 .font(.caption)
                 .foregroundStyle(.secondary)
               Spacer()
-              _countBadges(
-                balls: context.state.balls,
-                strikes: context.state.strikes,
-                outs: context.state.outs
-              )
+              if hasAtBatContext(context.state) {
+                _countBadges(
+                  balls: context.state.balls,
+                  strikes: context.state.strikes,
+                  outs: context.state.outs
+                )
+              }
             }
             if !context.state.batter.isEmpty {
               Text("타석 \(context.state.batter)")
@@ -342,6 +366,15 @@ struct KboFansLiveActivityWidget: Widget {
       }
       .keylineTint(Color(red: 1.0, green: 0.27, blue: 0.27))
     }
+  }
+
+  private func hasAtBatContext(_ state: KboFansScoreAttributes.ContentState) -> Bool {
+    !state.batter.isEmpty ||
+      !state.pitcher.isEmpty ||
+      state.pitchCount > 0 ||
+      state.balls > 0 ||
+      state.strikes > 0 ||
+      state.outs > 0
   }
 }
 
