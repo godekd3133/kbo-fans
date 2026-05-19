@@ -12,7 +12,7 @@ extension LeaderboardMetricX on LeaderboardMetric {
 
   String get title => switch (this) {
     LeaderboardMetric.avg => '리그 타율 리더보드',
-    LeaderboardMetric.hr => '리그 홈런 리더보드',
+    LeaderboardMetric.hr => '리그 홈런왕 순위',
     LeaderboardMetric.ops => '리그 OPS 리더보드',
     LeaderboardMetric.era => '리그 ERA 리더보드',
     LeaderboardMetric.war => '리그 WAR 리더보드',

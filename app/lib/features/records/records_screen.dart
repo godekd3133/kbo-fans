@@ -11,7 +11,6 @@ import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/player.dart';
 import '../../data/models/records_overview.dart';
-import '../../data/models/schedule.dart';
 import '../../data/models/team_records_bundle.dart';
 import '../../data/models/team_stats.dart';
 import '../../data/providers.dart';
@@ -76,11 +75,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Future<void> _refreshTeamRecords(String teamId) async {
     ref.invalidate(teamRecordsProvider('$teamId|$_selectedSeason'));
-    ref.invalidate(standingsProvider(_selectedSeason));
-    await Future.wait([
-      ref.read(teamRecordsProvider('$teamId|$_selectedSeason').future),
-      ref.read(standingsProvider(_selectedSeason).future),
-    ]);
+    await ref.read(teamRecordsProvider('$teamId|$_selectedSeason').future);
   }
 
   Widget _buildTeamChooser() {
@@ -166,7 +161,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       const SizedBox(height: 14),
                       _leaderboardCard('리그 타율 리더보드', overview.avgLeaders),
                       const SizedBox(height: 10),
-                      _leaderboardCard('리그 홈런 리더보드', overview.hrLeaders),
+                      _leaderboardCard('리그 홈런왕 순위', overview.hrLeaders),
                       const SizedBox(height: 10),
                       _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
                       const SizedBox(height: 10),
@@ -328,7 +323,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final teamRecordsAsync = ref.watch(
       teamRecordsProvider('$teamId|$_selectedSeason'),
     );
-    final standingsAsync = ref.watch(standingsProvider(_selectedSeason));
     _logTeamRecordsLoad(teamId, teamRecordsAsync);
 
     return Scaffold(
@@ -393,10 +387,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 child: teamRecordsAsync.when(
                   loading: () => const SizedBox.shrink(),
                   error: (_, stackTrace) => const SizedBox.shrink(),
-                  data: (teamRecords) => _teamStatsCard(
-                    teamRecords.teamStats,
-                    standingsAsync.asData?.value,
-                  ),
+                  data: (teamRecords) => _teamStatsCard(teamRecords.teamStats),
                 ),
               ),
               const SizedBox(height: 10),
@@ -1134,13 +1125,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     );
   }
 
-  Widget _teamStatsCard(TeamStats teamStats, List<TeamStanding>? standings) {
-    final teamStanding = standings
-        ?.where((standing) => standing.teamId == teamStats.teamId)
-        .firstOrNull;
+  Widget _teamStatsCard(TeamStats teamStats) {
     final battingAvg = teamStats.hitting['AVG'] ?? '-';
     final teamEra = teamStats.pitching['ERA'] ?? '-';
-    final winPct = teamStanding?.pct ?? (teamStats.pitching['WPCT'] ?? '-');
+    final winPct = teamStats.pitching['WPCT'] ?? '-';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1168,46 +1156,23 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
             ],
           ),
-          if (teamStanding != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.cardSub,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _summaryMetric('팀 순위', '${teamStanding.rank}위'),
-                  ),
-                  Container(width: 1, height: 36, color: AppColors.divider),
-                  Expanded(child: _summaryMetric('팀 승률', teamStanding.pct)),
-                  Container(width: 1, height: 36, color: AppColors.divider),
-                  Expanded(child: _summaryMetric('게임차', teamStanding.gb)),
-                ],
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(child: _summaryMetric('팀 ERA', teamEra)),
-                Container(width: 1, height: 36, color: AppColors.divider),
-                Expanded(
-                  child: _summaryMetric(
-                    'WHIP',
-                    teamStats.pitching['WHIP'] ?? '-',
-                  ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(child: _summaryMetric('팀 ERA', teamEra)),
+              Container(width: 1, height: 36, color: AppColors.divider),
+              Expanded(
+                child: _summaryMetric(
+                  'WHIP',
+                  teamStats.pitching['WHIP'] ?? '-',
                 ),
-                Container(width: 1, height: 36, color: AppColors.divider),
-                Expanded(
-                  child: _summaryMetric('홈런', teamStats.hitting['HR'] ?? '-'),
-                ),
-              ],
-            ),
-          ],
+              ),
+              Container(width: 1, height: 36, color: AppColors.divider),
+              Expanded(
+                child: _summaryMetric('홈런', teamStats.hitting['HR'] ?? '-'),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -1244,7 +1209,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _featuredCards(RecordsOverview overview) {
     final avgLeader = _seasonLeaderCard('시즌 타율 리더', overview.avgLeaders);
     final eraLeader = _seasonLeaderCard('시즌 ERA 리더', overview.eraLeaders);
-    final hrLeader = _seasonLeaderCard('시즌 홈런 리더', overview.hrLeaders);
+    final hrLeader = _seasonLeaderCard('시즌 홈런왕', overview.hrLeaders);
     final opsLeader = _seasonLeaderCard('시즌 OPS 리더', overview.opsLeaders);
     return Column(
       children: [

@@ -99,7 +99,7 @@ class RecordsOverviewService:
                 season=season,
             ),
             "monthHitter": self._featured_from_leader(
-                label="시즌 홈런 리더",
+                label="시즌 홈런왕",
                 leader=self._first_leader(leaders, "hr"),
                 season=season,
             ),

@@ -299,9 +299,9 @@ class HomeService:
             leader = hr_leaders[0]
             items.append(
                 {
-                    "eyebrow": "홈런 리더",
+                    "eyebrow": "홈런왕",
                     "title": f"{leader.get('name')} {leader.get('value')}개",
-                    "subtitle": f"{self._TEAM_LABELS.get(leader.get('teamId', ''), leader.get('teamId', ''))} · 시즌 홈런 선두",
+                    "subtitle": f"{self._TEAM_LABELS.get(leader.get('teamId', ''), leader.get('teamId', ''))} · 시즌 홈런 1위",
                     "route": "/records",
                     "teamId": leader.get("teamId"),
                     "fallbackLabel": leader.get("name"),

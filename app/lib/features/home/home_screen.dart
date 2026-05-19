@@ -72,7 +72,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_loadCachedScoreboard());
-      _invalidateTodayScoreboard();
     }
   }
 
@@ -154,7 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            child: _loadingCard(height: 128),
+            child: _loadingCard(height: 128, showSpinner: true),
           ),
         ),
         SliverToBoxAdapter(
@@ -190,7 +189,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _loadingCard({required double height}) {
+  Widget _loadingCard({required double height, bool showSpinner = false}) {
     return Container(
       height: height,
       decoration: BoxDecoration(
@@ -198,14 +197,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.divider),
       ),
-      child: const Center(
-        child: SizedBox(
-          width: 22,
-          height: 22,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.2,
-            color: AppColors.live,
-          ),
+      child: showSpinner
+          ? const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  color: AppColors.live,
+                ),
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _loadingLine(widthFactor: 0.34),
+                  const SizedBox(height: 12),
+                  _loadingLine(widthFactor: 0.64),
+                  const SizedBox(height: 8),
+                  _loadingLine(widthFactor: 0.48),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _loadingLine({required double widthFactor}) {
+    return FractionallySizedBox(
+      widthFactor: widthFactor,
+      child: Container(
+        height: 12,
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.divider.withValues(alpha: 0.35)),
         ),
       ),
     );
@@ -837,10 +865,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       final leader = overview.hrLeaders.first;
       items.add(
         _QuickContentItemData(
-          eyebrow: '홈런 리더',
+          eyebrow: '홈런왕',
           title: '${leader.name} ${leader.value}개',
           subtitle:
-              '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 시즌 홈런 선두',
+              '${KboTeams.byId(leader.teamId)?.name ?? leader.teamId} · 시즌 홈런 1위',
           route: '/records',
           teamId: leader.teamId,
           fallbackLabel: leader.name,

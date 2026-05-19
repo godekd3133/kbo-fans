@@ -247,9 +247,9 @@ List<HomeQuickItem> _buildLocalQuickItems({
     final leader = overview.hrLeaders.first;
     items.add(
       HomeQuickItem(
-        eyebrow: '홈런 리더',
+        eyebrow: '홈런왕',
         title: '${leader.name} ${leader.value}개',
-        subtitle: '${leader.teamId} · 시즌 홈런 선두',
+        subtitle: '${leader.teamId} · 시즌 홈런 1위',
         route: '/records',
         teamId: leader.teamId,
         fallbackLabel: leader.name,

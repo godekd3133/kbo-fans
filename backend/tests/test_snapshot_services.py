@@ -102,7 +102,7 @@ def test_records_overview_falls_back_to_snapshot(tmp_path) -> None:
         "featured": {
             "todayHitter": {"label": "시즌 타율 리더"},
             "todayPitcher": {"label": "시즌 ERA 리더"},
-            "monthHitter": {"label": "시즌 홈런 리더"},
+            "monthHitter": {"label": "시즌 홈런왕"},
             "monthPitcher": {"label": "시즌 OPS 리더"},
         },
     }
