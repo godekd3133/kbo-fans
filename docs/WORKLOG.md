@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-05-20: release API health gate 추가
+
+### 완료
+- [x] `scripts/release-api-health-check.sh` 추가
+- [x] release API host DNS lookup, HTTPS TLS 인증서, `/api/health`, `/api/scoreboard/home`, `/api/home`, `/api/schedule`, `/api/standings`, `/api/records/overview` 검증을 하나의 gate로 묶음
+- [x] GitHub Actions `App Build Artifacts`에서 `APP_ENV=release` matrix 빌드 전에 health gate를 실행하고, 통과한 API base URL을 `--dart-define=API_BASE_URL=...` 로 주입하도록 보강
+- [x] workflow 입력 `release_api_base_url` 추가. 운영 API가 `https://api.kbofans.com/api`가 아니면 입력/variable/secret `RELEASE_API_BASE_URL`로 실제 API를 지정하도록 정리
+- [x] 로컬 `./scripts/codex-run.sh ios-release`도 `APP_ENV=release`와 release API health gate를 사용하도록 변경
+- [x] `README.md`, `docs/DISTRIBUTION_GUIDE.md`, `.claude/skills/kbo-release-flow/SKILL.md`, `CHANGELOG.md`에 release gate 기준 반영
+
+### 검증
+- [x] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=5 scripts/release-api-health-check.sh` 기본 production API DNS 실패 확인
+- [x] `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-05-19 RELEASE_API_HEALTH_MONTH=2026-05 RELEASE_API_HEALTH_SEASON=2026 scripts/release-api-health-check.sh http://127.0.0.1:8000/api` 로 local backend 성공 확인
+- [x] `cd app && fvm flutter analyze lib/core/config/app_config.dart lib/data/providers.dart lib/features/game_detail/tabs/lineup_tab.dart lib/services/widget_sync_service.dart test/data/providers_routing_test.dart`
+- [x] `cd app && fvm flutter test test/data/providers_routing_test.dart test/data/local_asset_player_repository_test.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test`
+
+---
+
 ## 2026-05-20: 패치노트 버전별 표시
 
 ### 완료
@@ -1285,6 +1305,9 @@ kbo_fans/
 - [x] `LocalAssetPlayerRepository`의 `MockPlayerRepository` fallback 제거: 번들 스냅샷이 비어 있으면 빈 상태/명시적 오류를 반환해 기록실에 가짜 선수 데이터가 재유입되지 않도록 보정
 - [x] local native `API_BASE_URL` 명시 경로에서 `/home` 실패 시 direct/provider 조립 fallback으로 재진입하지 않도록 차단
 - [x] 일반 local API 라우팅에서 `FallbackGameRepository` direct fallback 제거
+- [x] local native no-override 기본 경로도 API-backed provider로 고정하고, direct KBO는 `PREFER_DIRECT_SCRAPE=true` 명시 디버그에서만 쓰도록 정리
+- [x] 사용처가 사라진 `FallbackGameRepository` 구현 파일 삭제
+- [x] 라인업 선발 비교 카드의 선수 사진 과확대/크롭을 줄이기 위해 fixed height와 `BoxFit.contain` 렌더로 보정
 
 ### 검증 메모
 - 모션은 새 패키지 없이 Flutter 기본 위젯만 사용했고, `MediaQuery.disableAnimations`가 켜진 경우 생략되도록 처리함

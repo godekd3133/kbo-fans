@@ -118,7 +118,7 @@ This review is based on the current code paths below:
 
 | Area | Evidence |
 | --- | --- |
-| Repository routing | `app/lib/data/providers.dart:37-49` uses API by default, and only enters `KboDirectRepository` for explicit direct debug or local native no-API debugging. |
+| Repository routing | `app/lib/data/providers.dart:37-49` uses API by default, and only enters `KboDirectRepository` for explicit direct debug. |
 | Home aggregate fan-out | `app/lib/data/providers.dart:202-239` reads scoreboard, two months of schedule, standings, and records overview. |
 | All-player image map | `app/lib/data/providers.dart:265-300` loops through all 10 teams and calls `getTeamPlayers` for each team. |
 | Home fallback fan-out | `app/lib/features/home/home_screen.dart:372-430` can watch aggregate, two schedules, and standings in one section. |
@@ -146,7 +146,7 @@ This review is based on the current code paths below:
 Previous risk:
 
 - `gameRepositoryProvider` used to wrap API with `FallbackGameRepository(primary: apiRepository, fallback: directRepository)`.
-- local native API override could still fall back to component-provider assembly after `/home` failed.
+- local native no-override/API override could still fall back to component-provider assembly after `/home` failed.
 - widget background refresh used to be able to create direct KBO fetches outside the visible app path.
 
 Why this is a problem:
@@ -158,7 +158,7 @@ Why this is a problem:
 Decision:
 
 - Direct KBO must become explicit debug-only.
-- Native local default should be API-first with app cache/bootstrap fallback, not direct KBO.
+- Native local default should be API-first, not direct KBO.
 - Widget background should use the same app/API cache path or a compact backend widget endpoint.
 
 ### P0 Finding 2 - Home first paint is protected, but second wave is too wide
@@ -530,7 +530,8 @@ Snapshot providers:
 
 - Make `preferDirectScrape` default false for native local; enable only with `--dart-define=PREFER_DIRECT_SCRAPE=true`.
 - Remove app-side direct KBO fallback from default `FallbackGameRepository`; use API cache/bootstrap fallback instead.
-- Do not re-enter local component-provider assembly when local native was explicitly configured with `API_BASE_URL`; explicit API mode should fail visibly instead of crawling directly.
+- Delete the unused `FallbackGameRepository` implementation so direct KBO fallback cannot be reintroduced by import.
+- Do not re-enter local component-provider assembly after `/home` failure in normal mode; API mode should fail visibly instead of crawling directly.
 - Remove mock player fallback from bundled local player snapshots; missing assets return empty state or explicit missing-detail error, never synthetic player records.
 - Move direct relay credentials out of source and into local secure config if direct debug mode remains.
 - Change widget background refresh to use API/cache-backed repository or a compact backend endpoint.

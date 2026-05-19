@@ -8,13 +8,13 @@
 ## Local / Dev Data Behavior
 
 - `local` 앱 실행은 백엔드가 항상 떠 있다고 가정하지 않는다.
-- 앱 로컬 모드에서는 KBO direct 경로가 필요할 수 있으므로, fallback 여부를 명시적으로 결정해야 한다.
+- 앱 로컬 모드라도 기본 데이터 경로는 API 이며, KBO direct 경로는 `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 디버그 세션에서만 사용한다.
 - noisy fallback 로그가 과하면 `local` / 테스트 바인딩에서 prefetch, metric, push init을 완화하는 방향이 안전하다.
 - local, dev, release API base URL은 코드에 고정 default 를 두되 `API_BASE_URL` override 를 우선한다.
 - iPhone local debug에서 `localhost` API는 실기기에서 직접 닿지 않는다.
   - backend를 켜고 실기기에서 API를 쓰려면 Mac LAN IP를 `API_BASE_URL`로 주입해야 한다.
   - `scripts/codex-run.sh ios` 는 backend가 8000 포트로 떠 있으면 자동으로 LAN IP를 주입하도록 유지한다.
-- backend가 없는 local iPhone 경로에서는 direct KBO source가 최후 fallback이다.
+- backend가 없는 local iPhone 경로에서도 direct KBO source로 자동 fallback 하지 않는다. 필요하면 명시적 direct debug build로 분리한다.
   - scoreboard live status는 `Main.asmx/GetKboGameList` 를 우선 참고한다.
   - 일정 파서는 `GetScheduleList`의 빈 action cell에서도 `gameId`를 날짜+팀 코드로 복원해야 한다.
   - relay는 `LiveTextView2.aspx` markup(`#numCont*`, `p.present`, `.playerBox`) 기준으로 파싱한다.

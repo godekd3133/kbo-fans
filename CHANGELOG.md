@@ -38,6 +38,7 @@
 - 일정 구장별 보기에 구장 퀵링크 버튼을 추가해 원하는 구장 섹션으로 바로 이동할 수 있도록 개선
 - web deep-link 라우터 회귀 테스트 추가
 - Android release signing 예시 파일 추가 (`app/android/key.properties.example`)
+- release 빌드 전 production API DNS/TLS/핵심 endpoint를 검증하는 health gate 스크립트와 GitHub Actions 차단 단계를 추가
 
 ### Changed
 

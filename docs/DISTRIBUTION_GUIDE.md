@@ -30,6 +30,7 @@
   - `platform`: `android`, `ios`, `web`, `all`
   - `app_environment`: `local`, `dev`, `release`, `all`
   - `build_signed_ios_ipa`: iOS 서명용 시크릿 준비 시 `true`
+  - `release_api_base_url`: release 빌드에 주입하고 health-check 할 API base URL
 
 아티팩트:
 
@@ -42,6 +43,9 @@
 - Android 는 서명 시크릿이 없으면 debug signing fallback 이 적용된 release 빌드가 생성된다.
 - iOS 는 기본값으로 unsigned simulator 빌드만 생성된다.
 - 실제 TestFlight 업로드용 IPA 는 iOS 인증서/프로비저닝 시크릿이 준비된 경우에만 CI에서 뽑는다.
+- `APP_ENV=release` 빌드는 `scripts/release-api-health-check.sh` 로 DNS, TLS, `/api/health`, `/api/scoreboard/home`, `/api/home`, `/api/schedule`, `/api/standings`, `/api/records/overview` 를 먼저 확인한다.
+- release API health gate가 실패하면 빌드 산출물 생성을 중단한다.
+- 운영 API가 기본값 `https://api.kbofans.com/api` 와 다르면 workflow 입력 `release_api_base_url` 또는 `RELEASE_API_BASE_URL` variable/secret으로 실제 API를 지정한다.
 
 남은 수작업 TODO:
 

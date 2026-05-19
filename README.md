@@ -144,8 +144,8 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 `--profile --dart-define=APP_ENV=local` 로 실행합니다. 이렇게 설치된 빌드는 케이블을 뽑은 뒤 앱을 다시 켜도 standalone 재실행이 가능합니다.
 - `./scripts/codex-run-ios-debug.sh` 는 연결된 iPhone 실기기에서 `--debug` 로 실행합니다. 디버거 연결 상태에서 개발할 때만 쓰는 경로입니다.
 - `./scripts/codex-run-ios-profile.sh` 는 위 동작을 명시적으로 호출하는 iPhone standalone 테스트용 래퍼입니다.
-- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local` 로 실행합니다. 최종 standalone 동작 확인용 경로입니다.
-- 모바일 local 모드에서는 기본으로 direct scrape 우선입니다. 필요하면 `--dart-define=PREFER_DIRECT_SCRAPE=true|false` 로 강제할 수 있습니다.
+- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=release` 로 실행합니다. 실행 전 release API health gate가 `DNS / TLS / 핵심 API`를 확인하며, 실패하면 설치/실행을 중단합니다.
+- 모바일 local native 모드에서 `API_BASE_URL`이 없으면 direct/cache/asset 경로를 우선 사용합니다. 필요하면 `--dart-define=PREFER_DIRECT_SCRAPE=true|false` 로 강제할 수 있습니다.
 - `./scripts/codex-run-android.sh` 는 Android Studio JBR(Java 17), Android SDK, AVD 부팅, `APP_ENV=local` 기준까지 포함한 Codex용 안드로이드 실행 경로입니다.
 - 안드로이드 실행 환경 메모는 `docs/CODEX_ANDROID_ENV.md` 를 참고합니다.
 
@@ -159,6 +159,22 @@ GitHub Actions 에서 앱 빌드본을 바로 뽑을 수 있도록 수동 실행
   - `platform`: `android`, `ios`, `web`, `all`
   - `app_environment`: `local`, `dev`, `release`, `all`
   - `build_signed_ios_ipa`: iOS 서명 시크릿이 준비된 경우에만 `true`
+  - `release_api_base_url`: `APP_ENV=release` 빌드에 주입하고 health-check 할 API base URL. 기본값은 `https://api.kbofans.com/api`
+
+Release health gate:
+
+- `APP_ENV=release` 빌드는 빌드 전에 `scripts/release-api-health-check.sh` 를 실행합니다.
+- 확인 항목:
+  - API host DNS lookup
+  - HTTPS TLS certificate validation
+  - `GET /api/health`
+  - `GET /api/scoreboard/home`
+  - `GET /api/home`
+  - `GET /api/schedule`
+  - `GET /api/standings`
+  - `GET /api/records/overview`
+- 하나라도 실패하면 Android / iOS / Web release artifact 빌드를 중단합니다.
+- production 도메인이 `api.kbofans.com` 이 아니면 workflow 입력 `release_api_base_url`, repo variable `RELEASE_API_BASE_URL`, secret `RELEASE_API_BASE_URL`, 또는 로컬 환경변수 `RELEASE_API_BASE_URL` 중 하나로 실제 API base URL을 명시해야 합니다.
 
 생성 아티팩트:
 
