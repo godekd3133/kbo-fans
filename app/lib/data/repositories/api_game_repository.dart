@@ -55,7 +55,7 @@ class ApiGameRepository implements GameRepository {
   Future<Game?> getGame(String gameId) async {
     final data = await _client.getCached(
       '/game/$gameId',
-      cacheKey: 'game:$gameId',
+      cacheKey: 'game_detail_v2:$gameId',
       preferCache: false,
       maxAge: _liveishCacheAge,
     );

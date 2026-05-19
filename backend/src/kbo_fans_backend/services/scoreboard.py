@@ -248,7 +248,7 @@ class ScoreboardService:
             return None
 
         snapshot = self.snapshot_store.load_payload("games", game_id)
-        if snapshot is not None:
+        if snapshot is not None and self._should_use_game_snapshot(game_id):
             return snapshot
 
         cached = self._game_cache.get(game_id)
@@ -307,8 +307,9 @@ class ScoreboardService:
                 detail = self.scoreboard_crawler.get_game_scoreboard(game_id)
             except Exception:
                 detail = self._scheduled_fallback_detail(game)
-        if resolved_status == "LIVE":
-            detail = self._merge_live_scoreboard_fallback(detail, game_id)
+        if resolved_status in {"LIVE", "FINAL"}:
+            detail = self._merge_scoreboard_detail_fallback(detail, game_id)
+            detail = self._merge_main_game_scores(detail, main_game)
         detail = self._backfill_team_identity(game, detail)
         return {
             **game,
@@ -432,7 +433,7 @@ class ScoreboardService:
             "home": home,
         }
 
-    def _merge_live_scoreboard_fallback(
+    def _merge_scoreboard_detail_fallback(
         self,
         detail: dict[str, Any],
         game_id: str,
@@ -440,7 +441,11 @@ class ScoreboardService:
         away = dict(detail.get("away", {}))
         home = dict(detail.get("home", {}))
         needs_view1 = any(
-            team.get("hits") is None or team.get("errors") is None or team.get("balls") is None
+            team.get("score") is None
+            or self._scores_are_empty(team.get("scores"))
+            or team.get("hits") is None
+            or team.get("errors") is None
+            or team.get("balls") is None
             for team in (away, home)
         )
         if not needs_view1:
@@ -477,6 +482,12 @@ class ScoreboardService:
         }
 
     @staticmethod
+    def _scores_are_empty(scores: Any) -> bool:
+        if not isinstance(scores, list):
+            return True
+        return not any(score is not None for score in scores)
+
+    @staticmethod
     def _score_from_innings(current_score: Any, scores: Any) -> Any:
         if current_score is not None:
             return current_score
@@ -486,6 +497,39 @@ class ScoreboardService:
         if not numeric_scores:
             return current_score
         return sum(numeric_scores)
+
+    def _merge_main_game_scores(
+        self,
+        detail: dict[str, Any],
+        main_game: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not main_game:
+            return detail
+
+        away = dict(detail.get("away", {}))
+        home = dict(detail.get("home", {}))
+        away["score"] = self._score_from_main_or_existing(
+            main_game.get("T_SCORE_CN"), away.get("score")
+        )
+        home["score"] = self._score_from_main_or_existing(
+            main_game.get("B_SCORE_CN"), home.get("score")
+        )
+        return {
+            **detail,
+            "away": away,
+            "home": home,
+        }
+
+    @staticmethod
+    def _score_from_main_or_existing(value: Any, existing: Any) -> Any:
+        if existing is not None:
+            return existing
+        if value in (None, "", "-"):
+            return existing
+        try:
+            return int(str(value).replace(",", ""))
+        except (TypeError, ValueError):
+            return existing
 
     def _merge_main_game(self, main_game: dict[str, Any]) -> dict[str, Any]:
         if not main_game:
@@ -542,6 +586,12 @@ class ScoreboardService:
             return date_type.fromisoformat(date) < date_type.today()
         except ValueError:
             return False
+
+    def _should_use_game_snapshot(self, game_id: str) -> bool:
+        if len(game_id) < 8:
+            return False
+        date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+        return self._is_historical_date(date)
 
     def _should_persist_snapshot(self, date: str, games: list[dict[str, Any]]) -> bool:
         if self._is_historical_date(date):

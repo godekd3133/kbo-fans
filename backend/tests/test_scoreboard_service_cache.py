@@ -180,6 +180,99 @@ def test_get_game_enriches_only_requested_game(tmp_path: Path) -> None:
     assert scoreboard.game_ids == ["20260331OBSS0"]
 
 
+def test_get_game_ignores_snapshot_for_non_historical_game(tmp_path: Path) -> None:
+    game_id = "29990331OBSS0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "games",
+        game_id,
+        {
+            "gameId": game_id,
+            "status": "LIVE",
+            "inning": "8회초",
+            "away": {"score": 0, "scores": [None] * 9},
+            "home": {"score": 0, "scores": [None] * 9},
+        },
+    )
+
+    class FutureScheduleCrawler:
+        def __init__(self):
+            self.calls = 0
+
+        def get_games_by_date(self, date: str):
+            self.calls += 1
+            return [
+                {
+                    "date": date,
+                    "time": "18:30",
+                    "gameId": game_id,
+                    "awayId": "OB",
+                    "awayName": "두산",
+                    "homeId": "SS",
+                    "homeName": "삼성",
+                    "stadium": "대구",
+                    "status": "SCHEDULED",
+                }
+            ]
+
+    class FutureMainCrawler:
+        def get_kbo_game_list(self, date: str):
+            return [{"G_ID": game_id, "G_TM": "18:30", "GAME_STATE_SC": "3"}]
+
+    class FutureScoreboardCrawler(_StubScoreboardCrawler):
+        def get_game_scoreboard(self, game_id: str):
+            payload = super().get_game_scoreboard(game_id)
+            payload["away"]["score"] = 2
+            payload["away"]["scores"] = [1, 1, 0, None, None, None, None, None, None]
+            payload["home"]["score"] = 10
+            payload["home"]["scores"] = [3, 7, 0, None, None, None, None, None, None]
+            return payload
+
+    schedule = FutureScheduleCrawler()
+    service = ScoreboardService(
+        main_crawler=FutureMainCrawler(),
+        schedule_crawler=schedule,
+        scoreboard_crawler=FutureScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    game = service.get_game(game_id)
+
+    assert game is not None
+    assert schedule.calls == 1
+    assert game["away"]["score"] == 2
+    assert game["home"]["score"] == 10
+
+
+def test_get_game_uses_snapshot_for_historical_game(tmp_path: Path) -> None:
+    game_id = "20200101OBSS0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "games",
+        game_id,
+        {
+            "gameId": game_id,
+            "status": "FINAL",
+            "away": {"score": 7},
+            "home": {"score": 4},
+        },
+    )
+    schedule = _StubScheduleCrawler()
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    game = service.get_game(game_id)
+
+    assert game is not None
+    assert schedule.calls == 0
+    assert game["away"]["score"] == 7
+    assert game["home"]["score"] == 4
+
+
 def test_get_compact_scoreboard_enriches_only_selected_game(tmp_path: Path) -> None:
     schedule = _MultiGameScheduleCrawler()
     main = _MultiGameMainCrawler()

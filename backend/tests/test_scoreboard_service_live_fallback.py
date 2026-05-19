@@ -96,9 +96,51 @@ def test_live_scoreboard_uses_view1_fallback_for_totals_and_main_inning(
 
     assert game["status"] == "LIVE"
     assert game["inning"] == "8회말"
+    assert game["away"]["score"] == 5
+    assert game["home"]["score"] == 2
+    assert game["away"]["scores"] == [0, 0, 1, 3, 1, 0, 0, 0, None]
+    assert game["home"]["scores"] == [0, 0, 1, 0, 0, 0, 1, 0, None]
     assert game["away"]["hits"] == 10
     assert game["away"]["errors"] == 0
     assert game["away"]["balls"] == 6
     assert game["home"]["hits"] == 4
     assert game["home"]["errors"] == 0
     assert game["home"]["balls"] == 1
+
+
+class _FinalMainCrawler:
+    def get_kbo_game_list(self, date: str):
+        return [
+            {
+                "G_ID": "20260331OBSS0",
+                "G_TM": "18:30",
+                "GAME_STATE_SC": "3",
+                "GAME_INN_NO": 9,
+                "GAME_TB_SC_NM": "초",
+                "T_SCORE_CN": "5",
+                "B_SCORE_CN": "2",
+            }
+        ]
+
+
+def test_final_scoreboard_uses_view1_when_scroll_table_is_empty(
+    tmp_path: Path,
+) -> None:
+    service = ScoreboardService(
+        main_crawler=_FinalMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    game = service.get_game("20260331OBSS0")
+
+    assert game is not None
+    assert game["status"] == "FINAL"
+    assert game["inning"] == "경기종료"
+    assert game["away"]["score"] == 5
+    assert game["home"]["score"] == 2
+    assert game["away"]["scores"] == [0, 0, 1, 3, 1, 0, 0, 0, None]
+    assert game["home"]["scores"] == [0, 0, 1, 0, 0, 0, 1, 0, None]
+    assert game["away"]["hits"] == 10
+    assert game["home"]["hits"] == 4
