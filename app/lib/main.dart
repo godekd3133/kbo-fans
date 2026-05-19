@@ -14,7 +14,6 @@ import 'core/router/app_router.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
 import 'data/models/game.dart';
-import 'data/repositories/kbo_direct_repository.dart';
 import 'services/game_event_alert_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/ticket_alert_service.dart';
@@ -215,11 +214,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       );
       return;
     }
-
-    if (AppConfig.instance.preferDirectScrape ||
-        AppConfig.instance.shouldPreferLocalNativeData) {
-      unawaited(_primeLocalRelaySession());
-    }
   }
 
   Future<void> _runBlockingStartupPrefetch({
@@ -228,9 +222,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     required String? myTeamId,
   }) async {
     final staticTasks = <({String label, Future<void> Function() request})>[
-      if (AppConfig.instance.preferDirectScrape ||
-          AppConfig.instance.shouldPreferLocalNativeData)
-        (label: 'KBO 세션', request: _primeLocalRelaySession),
       (
         label: '오늘 경기',
         request: () async {
@@ -314,19 +305,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         ? ' 외 ${activeLabels.length - 3}건'
         : '';
     startupPrep.configure(message: '병렬 로딩 중 · ${labels.join(' · ')}$suffix');
-  }
-
-  Future<void> _primeLocalRelaySession() async {
-    final shouldPrimeDirect =
-        (AppConfig.instance.preferDirectScrape ||
-            AppConfig.instance.shouldPreferLocalNativeData) &&
-        AppConfig.instance.isLocal &&
-        !kIsWeb;
-    if (!shouldPrimeDirect) {
-      return;
-    }
-    final direct = KboDirectRepository();
-    await direct.primeRelaySession();
   }
 
   Future<void> _saveStartupScoreboardCache(
