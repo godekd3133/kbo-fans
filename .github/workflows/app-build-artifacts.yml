@@ -28,6 +28,11 @@ on:
         required: true
         default: false
         type: boolean
+      release_api_base_url:
+        description: API base URL to health-check and embed for APP_ENV=release builds
+        required: false
+        default: https://api.kbofans.com/api
+        type: string
 
 permissions:
   contents: read
@@ -83,6 +88,26 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Resolve release API health gate
+        env:
+          RELEASE_API_BASE_URL_INPUT: ${{ inputs.release_api_base_url }}
+          RELEASE_API_BASE_URL_VAR: ${{ vars.RELEASE_API_BASE_URL }}
+          RELEASE_API_BASE_URL_SECRET: ${{ secrets.RELEASE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "API_DART_DEFINE=" >> "$GITHUB_ENV"
+          echo "RELEASE_API_BASE_URL_EFFECTIVE=" >> "$GITHUB_ENV"
+
+          if [[ "${{ matrix.app_environment }}" != "release" ]]; then
+            exit 0
+          fi
+
+          release_api_base_url="${RELEASE_API_BASE_URL_INPUT:-${RELEASE_API_BASE_URL_VAR:-${RELEASE_API_BASE_URL_SECRET:-https://api.kbofans.com/api}}}"
+          ../scripts/release-api-health-check.sh "$release_api_base_url"
+          echo "API_DART_DEFINE=--dart-define=API_BASE_URL=$release_api_base_url" >> "$GITHUB_ENV"
+          echo "RELEASE_API_BASE_URL_EFFECTIVE=$release_api_base_url" >> "$GITHUB_ENV"
+
       - name: Configure Android signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -116,16 +141,17 @@ jobs:
           fi
 
       - name: Build Android APK
-        run: flutter build apk --release --dart-define=APP_ENV=${{ matrix.app_environment }}
+        run: flutter build apk --release --dart-define=APP_ENV=${{ matrix.app_environment }} $API_DART_DEFINE
 
       - name: Build Android App Bundle
-        run: flutter build appbundle --release --dart-define=APP_ENV=${{ matrix.app_environment }}
+        run: flutter build appbundle --release --dart-define=APP_ENV=${{ matrix.app_environment }} $API_DART_DEFINE
 
       - name: Write Android build metadata
         run: |
           cat > build/android-build-metadata-${{ matrix.app_environment }}.txt <<EOF
           platform=android
           app_environment=${{ matrix.app_environment }}
+          api_base_url=${RELEASE_API_BASE_URL_EFFECTIVE}
           apk=build/app/outputs/flutter-apk/app-release.apk
           aab=build/app/outputs/bundle/release/app-release.aab
           signing=${ANDROID_SIGNING_STATUS}
@@ -177,8 +203,28 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Resolve release API health gate
+        env:
+          RELEASE_API_BASE_URL_INPUT: ${{ inputs.release_api_base_url }}
+          RELEASE_API_BASE_URL_VAR: ${{ vars.RELEASE_API_BASE_URL }}
+          RELEASE_API_BASE_URL_SECRET: ${{ secrets.RELEASE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "API_DART_DEFINE=" >> "$GITHUB_ENV"
+          echo "RELEASE_API_BASE_URL_EFFECTIVE=" >> "$GITHUB_ENV"
+
+          if [[ "${{ matrix.app_environment }}" != "release" ]]; then
+            exit 0
+          fi
+
+          release_api_base_url="${RELEASE_API_BASE_URL_INPUT:-${RELEASE_API_BASE_URL_VAR:-${RELEASE_API_BASE_URL_SECRET:-https://api.kbofans.com/api}}}"
+          ../scripts/release-api-health-check.sh "$release_api_base_url"
+          echo "API_DART_DEFINE=--dart-define=API_BASE_URL=$release_api_base_url" >> "$GITHUB_ENV"
+          echo "RELEASE_API_BASE_URL_EFFECTIVE=$release_api_base_url" >> "$GITHUB_ENV"
+
       - name: Build Web
-        run: flutter build web --release --dart-define=APP_ENV=${{ matrix.app_environment }}
+        run: flutter build web --release --dart-define=APP_ENV=${{ matrix.app_environment }} $API_DART_DEFINE
 
       - name: Package Web artifact
         run: |
@@ -190,6 +236,7 @@ jobs:
           cat > build/web-build-metadata-${{ matrix.app_environment }}.txt <<EOF
           platform=web
           app_environment=${{ matrix.app_environment }}
+          api_base_url=${RELEASE_API_BASE_URL_EFFECTIVE}
           archive=build/kbo-fans-web-${{ matrix.app_environment }}.zip
           EOF
 
@@ -230,8 +277,28 @@ jobs:
         working-directory: app/ios
         run: pod install
 
+      - name: Resolve release API health gate
+        env:
+          RELEASE_API_BASE_URL_INPUT: ${{ inputs.release_api_base_url }}
+          RELEASE_API_BASE_URL_VAR: ${{ vars.RELEASE_API_BASE_URL }}
+          RELEASE_API_BASE_URL_SECRET: ${{ secrets.RELEASE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "API_DART_DEFINE=" >> "$GITHUB_ENV"
+          echo "RELEASE_API_BASE_URL_EFFECTIVE=" >> "$GITHUB_ENV"
+
+          if [[ "${{ matrix.app_environment }}" != "release" ]]; then
+            exit 0
+          fi
+
+          release_api_base_url="${RELEASE_API_BASE_URL_INPUT:-${RELEASE_API_BASE_URL_VAR:-${RELEASE_API_BASE_URL_SECRET:-https://api.kbofans.com/api}}}"
+          ../scripts/release-api-health-check.sh "$release_api_base_url"
+          echo "API_DART_DEFINE=--dart-define=API_BASE_URL=$release_api_base_url" >> "$GITHUB_ENV"
+          echo "RELEASE_API_BASE_URL_EFFECTIVE=$release_api_base_url" >> "$GITHUB_ENV"
+
       - name: Build iOS simulator app
-        run: flutter build ios --simulator --release --no-codesign --dart-define=APP_ENV=${{ matrix.app_environment }}
+        run: flutter build ios --simulator --release --no-codesign --dart-define=APP_ENV=${{ matrix.app_environment }} $API_DART_DEFINE
 
       - name: Package iOS simulator app
         run: |
@@ -244,6 +311,7 @@ jobs:
           platform=ios
           artifact_type=simulator-app
           app_environment=${{ matrix.app_environment }}
+          api_base_url=${RELEASE_API_BASE_URL_EFFECTIVE}
           archive=build/ios-simulator-${{ matrix.app_environment }}.zip
           signing=no-codesign
           EOF
@@ -389,11 +457,32 @@ jobs:
           </plist>
           EOF
 
+      - name: Resolve release API health gate
+        env:
+          RELEASE_API_BASE_URL_INPUT: ${{ inputs.release_api_base_url }}
+          RELEASE_API_BASE_URL_VAR: ${{ vars.RELEASE_API_BASE_URL }}
+          RELEASE_API_BASE_URL_SECRET: ${{ secrets.RELEASE_API_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "API_DART_DEFINE=" >> "$GITHUB_ENV"
+          echo "RELEASE_API_BASE_URL_EFFECTIVE=" >> "$GITHUB_ENV"
+
+          if [[ "${{ matrix.app_environment }}" != "release" ]]; then
+            exit 0
+          fi
+
+          release_api_base_url="${RELEASE_API_BASE_URL_INPUT:-${RELEASE_API_BASE_URL_VAR:-${RELEASE_API_BASE_URL_SECRET:-https://api.kbofans.com/api}}}"
+          ../scripts/release-api-health-check.sh "$release_api_base_url"
+          echo "API_DART_DEFINE=--dart-define=API_BASE_URL=$release_api_base_url" >> "$GITHUB_ENV"
+          echo "RELEASE_API_BASE_URL_EFFECTIVE=$release_api_base_url" >> "$GITHUB_ENV"
+
       - name: Build signed iOS IPA
         run: |
           flutter build ipa \
             --release \
             --dart-define=APP_ENV=${{ matrix.app_environment }} \
+            $API_DART_DEFINE \
             --export-options-plist=ios/ExportOptions.plist
 
       - name: Write iOS IPA metadata
@@ -402,6 +491,7 @@ jobs:
           platform=ios
           artifact_type=signed-ipa
           app_environment=${{ matrix.app_environment }}
+          api_base_url=${RELEASE_API_BASE_URL_EFFECTIVE}
           archive=build/ios/ipa/*.ipa
           export_method=${IOS_EXPORT_METHOD:-app-store}
           team_id=${IOS_TEAM_ID}

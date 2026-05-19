@@ -20,6 +20,7 @@ Usage:
   ./scripts/codex-run.sh web
   ./scripts/codex-run.sh web-static
   ./scripts/codex-run.sh backend
+  ./scripts/codex-run.sh release-api-health
   ./scripts/codex-run.sh doctor
 
 Commands:
@@ -31,6 +32,7 @@ Commands:
   web      Run the Flutter app in Chrome
   web-static  Build web release and serve it locally on port 7357
   backend  Run the FastAPI backend with a local virtualenv
+  release-api-health  Check the production API DNS/TLS and release-critical endpoints
   doctor   Check local Flutter/FVM and Python prerequisites
 EOF
 }
@@ -465,18 +467,34 @@ run_flutter() {
   )
 }
 
+release_api_base_url() {
+  echo "${RELEASE_API_BASE_URL:-${API_BASE_URL:-https://api.kbofans.com/api}}"
+}
+
+run_release_api_health() {
+  "$ROOT_DIR/scripts/release-api-health-check.sh" "$(release_api_base_url)"
+}
+
 run_ios() {
   local flutter_mode="${1:-profile}"
+  local app_env="${2:-local}"
   local device_id
   local device_name
   local destination_issue
   local backend_running
   local lan_ip
   local api_define=""
+  local release_api_url=""
   device_id="$(pick_ios_device)"
   device_name="$(pick_ios_device_name)"
   backend_running="$(backend_is_running)"
   lan_ip="$(local_ipv4)"
+
+  if [[ "$app_env" == "release" ]]; then
+    release_api_url="$(release_api_base_url)"
+    run_release_api_health
+    api_define=" --dart-define=API_BASE_URL=$release_api_url"
+  fi
 
   if [[ -n "$device_id" && "$device_id" != "ios" && "$device_id" != "iphone" ]]; then
     destination_issue="$(ios_destination_issue "$device_id")"
@@ -502,11 +520,13 @@ EOF
 
     echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
     echo "Using ${flutter_mode} mode for iOS device."
-    if [[ "$backend_running" == "1" && -n "$lan_ip" ]]; then
+    if [[ "$app_env" != "release" && "$backend_running" == "1" && -n "$lan_ip" ]]; then
       api_define=" --dart-define=API_BASE_URL=http://$lan_ip:8000/api"
       echo "Using local backend for iOS device: http://$lan_ip:8000/api"
+    elif [[ "$app_env" == "release" ]]; then
+      echo "Using release API for iOS device: $release_api_url"
     fi
-    run_flutter run --"$flutter_mode" -d "$device_id" --dart-define=APP_ENV=local$api_define
+    run_flutter run --"$flutter_mode" -d "$device_id" --dart-define=APP_ENV="$app_env"$api_define
     return
   fi
 
@@ -529,11 +549,13 @@ EOF
   fi
 
   echo "Running on iOS Simulator"
-  if [[ "$backend_running" == "1" ]]; then
+  if [[ "$app_env" != "release" && "$backend_running" == "1" ]]; then
     api_define=" --dart-define=API_BASE_URL=http://localhost:8000/api"
     echo "Using local backend for iOS simulator: http://localhost:8000/api"
+  elif [[ "$app_env" == "release" ]]; then
+    echo "Using release API for iOS simulator: $release_api_url"
   fi
-  run_flutter run -d ios --dart-define=APP_ENV=local$api_define
+  run_flutter run -d ios --dart-define=APP_ENV="$app_env"$api_define
 }
 
 run_android() {
@@ -687,7 +709,7 @@ main() {
       run_ios profile
       ;;
     ios-release)
-      run_ios release
+      run_ios release release
       ;;
     android)
       run_android
@@ -700,6 +722,9 @@ main() {
       ;;
     backend)
       run_backend
+      ;;
+    release-api-health)
+      run_release_api_health
       ;;
     doctor)
       run_doctor

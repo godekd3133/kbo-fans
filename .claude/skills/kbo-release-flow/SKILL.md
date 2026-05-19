@@ -15,6 +15,8 @@ description: Use when preparing commits, pushes, preview tags, release notes, or
 - Use Korean commit messages.
 - Update `README.md`, `CHANGELOG.md`, and `docs/WORKLOG.md` when user-visible behavior or run/release flow changes.
 - Update `docs/APP_SPEC.md` when UX flow or API contract changes.
+- `APP_ENV=release` builds must pass `scripts/release-api-health-check.sh` before artifact creation or device install.
+- If production API is not `https://api.kbofans.com/api`, set `RELEASE_API_BASE_URL` or pass the GitHub Actions `release_api_base_url` input.
 - If default `origin` SSH push fails, use `git@github-personal:godekd3133/kbo-fans.git`.
 - Keep preview tags sequential and explicit, e.g. `0.0.2-preview`.
 
@@ -24,6 +26,8 @@ description: Use when preparing commits, pushes, preview tags, release notes, or
 - App checks when relevant:
   - `cd app && fvm flutter analyze`
   - `cd app && fvm flutter test`
+- Release API checks when relevant:
+  - `scripts/release-api-health-check.sh`
 - Backend checks when relevant:
   - `python3 -m compileall backend/src`
   - `backend/.venv/bin/pytest -q`
