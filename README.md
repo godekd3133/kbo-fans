@@ -69,8 +69,19 @@ kbo_fans/
 - Latest decisions and work history: `docs/WORKLOG.md`
 - External-facing project summary and setup guide: `README.md`
 - User-visible release history: `CHANGELOG.md`
+- Versioning and release policy: `docs/VERSIONING.md`
 
 문서 간 충돌 시 최신 결정은 `CLAUDE.md`, `docs/WORKLOG.md`, 실제 코드 기준으로 판단합니다.
+
+## Versioning
+
+- App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
+- Preview release tag format: `MAJOR.MINOR.PATCH-preview.N`
+- Stable release tag format: `MAJOR.MINOR.PATCH`
+- Current organized preview train: `0.1.0-preview.N`
+- Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
+
+자세한 정책은 `docs/VERSIONING.md` 를 기준으로 합니다.
 
 ## Run The App
 
@@ -146,10 +157,10 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 `--profile --dart-define=APP_ENV=local` 로 실행합니다. local backend가 LAN에서 접근 가능해야 하며, 스크립트가 `API_BASE_URL`을 주입합니다.
 - `./scripts/codex-run-ios-debug.sh` 는 연결된 iPhone 실기기에서 `--debug` 로 실행합니다. 디버거 연결 상태에서 개발할 때만 쓰는 경로입니다.
 - `./scripts/codex-run-ios-profile.sh` 는 위 동작을 명시적으로 호출하는 iPhone local profile 테스트용 래퍼입니다.
-- `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local` 로 설치합니다. 이 경로도 local backend health를 먼저 확인하고, 실패하면 direct fallback으로 내려가지 않고 중단합니다.
+- `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` 로 설치합니다. 아직 API 구현이 비어 있는 영역을 검증하기 위한 임시 direct-primary 경로이며, API 실패 후 fallback으로 전환되는 구조가 아닙니다.
 - `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=release` 로 실행합니다. 실행 전 release API health gate가 `DNS / TLS / 핵심 API`를 확인하며, 실패하면 설치/실행을 중단합니다.
 - 모바일 local native 모드도 기본은 API 경로입니다. backend가 켜져 있으면 iOS 실기기는 Mac LAN IP, iOS Simulator는 `localhost`, Android Emulator는 `10.0.2.2`, Android 실기기는 Mac LAN IP를 `API_BASE_URL`로 주입합니다.
-- KBO direct scrape는 일반 fallback이 아니며, 필요할 때만 `--dart-define=PREFER_DIRECT_SCRAPE=true` 로 명시한 디버그 빌드에서 사용합니다.
+- KBO direct scrape는 일반 fallback이 아니며, 필요할 때만 `--dart-define=PREFER_DIRECT_SCRAPE=true` 로 명시한 임시 direct-primary 빌드에서 사용합니다.
 - `./scripts/codex-run-android.sh` 는 Android Studio JBR(Java 17), Android SDK, AVD 부팅, `APP_ENV=local` 기준까지 포함한 Codex용 안드로이드 실행 경로입니다.
 - 안드로이드 실행 환경 메모는 `docs/CODEX_ANDROID_ENV.md` 를 참고합니다.
 
@@ -179,6 +190,7 @@ Release health gate:
   - `GET /api/records/overview`
 - 하나라도 실패하면 Android / iOS / Web release artifact 빌드를 중단합니다.
 - production 도메인이 `api.kbofans.com` 이 아니면 workflow 입력 `release_api_base_url`, repo variable `RELEASE_API_BASE_URL`, secret `RELEASE_API_BASE_URL`, 또는 로컬 환경변수 `RELEASE_API_BASE_URL` 중 하나로 실제 API base URL을 명시해야 합니다.
+- release API backend 자체 준비 항목은 `docs/RELEASE_API_BACKEND_TODO.md` 에 TODO로 분리했습니다.
 
 생성 아티팩트:
 
@@ -195,7 +207,7 @@ Release health gate:
 
 - Android 는 서명 시크릿이 없으면 현재 Gradle 설정대로 debug signing fallback 으로 release 빌드를 만듭니다.
 - iOS 는 기본으로 simulator용 unsigned 앱만 만들고, 실제 IPA 는 인증서/프로비저닝 시크릿이 있어야 합니다.
-- `local` 환경 빌드는 CI에서 컴파일은 가능하지만, 런타임 API 기준은 실행 환경별 local API 설정(`localhost`, `10.0.2.2`, 또는 LAN IP)을 따릅니다. `ios-local-release` / `codex-run-ios-local-release.sh` 도 같은 API-first 기준을 따릅니다.
+- `local` 환경 빌드는 CI에서 컴파일은 가능하지만, 런타임 API 기준은 실행 환경별 local API 설정(`localhost`, `10.0.2.2`, 또는 LAN IP)을 따릅니다. 단, `ios-local-release` / `codex-run-ios-local-release.sh` 는 API 미구현 영역 검증을 위해 임시 direct-primary 모드를 명시합니다.
 
 권장 시크릿:
 

@@ -11,6 +11,7 @@
 - Use `.claude/SKILL_REFERENCE.md` for reusable task patterns extracted from prior work.
 - Use `README.md` for external-facing project summary, quick start, and local preview/run guidance.
 - Use `CHANGELOG.md` for user-visible change history.
+- Use `docs/VERSIONING.md` for app version, Git tag, GitHub release, and patch-note policy.
 - Use `docs/DISTRIBUTION_GUIDE.md`, `docs/ANDROID_SIGNING_GUIDE.md`, and `docs/IOS_TESTFLIGHT_CHECKLIST.md` for friend/tester distribution work.
 - Use `docs/APP_SPEC.md` for screen behavior, provider structure, API contracts, and status codes.
 - Use `docs/ENGINEERING_NOTES.md` for implementation-level insights, local/dev behavior, widget/live activity constraints, and release workflow notes.
@@ -42,7 +43,7 @@
 
 ## Runtime Notes
 - Web and release builds should use backend API paths, not direct KBO ASMX/HTML calls.
-- Local native debugging should use backend API paths by default. Direct KBO crawling is opt-in only with `PREFER_DIRECT_SCRAPE=true`.
+- Local native runs should use backend API paths by default. Direct KBO crawling is opt-in only with `PREFER_DIRECT_SCRAPE=true` for temporary direct-primary validation builds.
 - Home first paint should prefer lightweight/cached payloads, then refresh in the background.
 - Historical standings, records, and finished-game detail should prefer stored snapshots when available over re-crawling upstream pages.
 - Team records UX should enter through team selection first, then fetch team-specific records after selection.
@@ -55,13 +56,14 @@
 - `kbo-history-snapshot`: use when classifying live vs historical data, adding snapshot-first backend paths, or making app historical screens cached-first.
 - `kbo-doc-sync`: use when architecture/API/UX changes also require synced updates across AGENTS, CLAUDE, spec docs, worklog, changelog, and skills.
 - `kbo-release-flow`: use when preparing commits, pushes, preview tags, or friend/TestFlight-facing release steps for this repository.
+- `kbo-version-release`: use when changing app versions, creating/reworking GitHub releases, or updating in-app patch notes.
 
 ## Implementation Insights
 - Keep app data sources consistent by domain. Do not let one screen use mock data while another uses live API for the same product surface.
 - For mobile debug builds on real devices, `localhost` API assumptions are unsafe. Use the run scripts so `API_BASE_URL` is injected as the Mac LAN IP.
 - Current fallback policy:
   - Direct KBO must not be used as an automatic fallback in normal app mode.
-  - Direct KBO is allowed only for explicit debug builds with `PREFER_DIRECT_SCRAPE=true`.
+  - Direct KBO is allowed only for explicit temporary direct-primary builds with `PREFER_DIRECT_SCRAPE=true`, including API-not-yet-implemented validation paths such as `ios-local-release`.
   - Records must stay API-backed or generated snapshot-backed. Do not silently fall back to incomplete mock data there.
 - When touching direct KBO parsers in `app/lib/data/repositories/kbo_direct_repository.dart`, keep field parity with backend contracts. Schedule status, scores, and standings parsing have already drifted once and broke UI state.
 - Dev-only diagnostics should stay in Dev Console when possible. Avoid promoting debugging affordances to user-facing UI unless explicitly requested.
@@ -146,6 +148,7 @@
 
 ## Repeatable Workflows
 - Reuse `.claude/skills/ios-live-activity-widget/SKILL.md` when touching iOS WidgetKit / Live Activity / Dynamic Island logic.
+- Reuse `.claude/skills/kbo-version-release/SKILL.md` when changing versions, tags, release notes, or in-app patch notes.
 - Reuse `.claude/skills/mobile-preview-release/SKILL.md` when preparing preview tags, GitHub prereleases, TestFlight readiness, or Android signing docs.
 
 ## Known Document Notes

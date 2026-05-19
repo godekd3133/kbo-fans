@@ -2,13 +2,50 @@
 
 ---
 
-## 2026-05-20: iPhone local release-mode 실행 경로 보정
+## 2026-05-20: 버저닝 / 릴리즈 노트 루틴 정리
 
 ### 완료
-- [x] iPhone local release 실행 경로도 API-first 기준으로 재분리
-- [x] `./scripts/codex-run.sh ios-local-release` 를 `APP_ENV=local` release-mode로 고정하고 local backend health 실패 시 중단하도록 정리
+- [x] 기존 `0.0.x` 릴리즈를 legacy preview 라인으로 닫고, 현재 앱 버전 `0.1.0+1` 기준 active train을 `0.1.0-preview.N`으로 정의
+- [x] 버전 정책 기준 문서 `docs/VERSIONING.md` 추가
+- [x] 버전 변경 시 `CHANGELOG.md`, 앱 내 패치노트(`app/assets/bootstrap/patch_notes.md`), GitHub 릴리즈 노트, `docs/WORKLOG.md`를 함께 갱신하도록 `.claude/skills/kbo-version-release` 추가
+- [x] `kbo-release-flow`, `AGENTS.md`, `CLAUDE.md`, `.claude/SKILL_REFERENCE.md`, `README.md`에 새 루틴 반영
+- [x] 앱 내 패치노트의 다음 업데이트 섹션을 `0.1.0+1 - Preview 1`로 고정
+
+### 검증
+- [x] `docs/VERSIONING.md` 기준으로 기존 `0.0.x` 릴리즈는 태그 보존 + GitHub Release 노트 재작성 대상으로 정리
+- [x] 신규 릴리즈 후보는 `0.1.0-preview.1`로 결정
+
+---
+
+## 2026-05-20: 기록실 과거 시즌 snapshot 보강
+
+### 완료
+- [x] 기록실 팀 상세가 2026 외 시즌에서 현재 로스터/direct 결과를 섞을 수 있던 원인 확인
+- [x] 앱 번들 `team_players` snapshot을 2022~2026 전 구단으로 확장
+- [x] 앱 번들 `team_stats`는 hitting/pitching이 모두 있는 complete snapshot만 포함하도록 필터링
+- [x] direct KBO 선수 검색은 현재 등록 선수 기준이므로 과거 시즌 팀 로스터 요청에서는 snapshot fallback으로 내려가도록 차단
+- [x] `DeviceSnapshotPlayerRepository` cache key version을 올려 기존 기기 cache에 저장됐을 수 있는 잘못된 과거 시즌 팀 기록을 무효화
+- [x] local asset이 없는 시즌은 다른 시즌 snapshot을 빌려 보여주지 않고 빈 상태로 처리하도록 변경
+- [x] `scripts/generate_bootstrap_snapshots.py`가 backend team snapshot을 앱 bootstrap asset으로 동기화하도록 보강
+- [x] release API backend 준비 항목은 구현하지 않고 `docs/RELEASE_API_BACKEND_TODO.md` TODO로 분리
+
+### 검증
+- [x] 앱 번들 team_players가 2022~2026 각 10개 구단 snapshot을 포함하는지 확인
+- [x] 앱 번들 team_stats가 partial historical snapshot을 제외하고 complete snapshot만 포함하는지 확인
+- [x] `python3 -m py_compile scripts/generate_bootstrap_snapshots.py`
+- [x] `cd app && fvm flutter test test/data/local_asset_player_repository_test.dart`
+- [x] `cd app && fvm flutter test --dart-define=PREFER_DIRECT_SCRAPE=true test/data/providers_routing_test.dart`
+- [x] `cd app && fvm flutter analyze lib/data/repositories/kbo_direct_player_repository.dart lib/data/repositories/device_snapshot_player_repository.dart lib/data/repositories/local_asset_player_repository.dart test/data/local_asset_player_repository_test.dart pubspec.yaml`
+
+---
+
+## 2026-05-20: iPhone 임시 direct-primary local release-mode 실행 경로 보정
+
+### 완료
+- [x] API 미구현 영역 검증을 위해 iPhone local release 실행 경로를 임시 direct-primary 모드로 재분리
+- [x] `./scripts/codex-run.sh ios-local-release` 를 `APP_ENV=local + PREFER_DIRECT_SCRAPE=true` release-mode로 고정
 - [x] `scripts/codex-run-ios-local-release.sh` 래퍼 추가
-- [x] local native provider routing이 기본 API 경로를 유지하고, direct는 `PREFER_DIRECT_SCRAPE=true` 명시 빌드에서만 켜지는지 회귀 테스트 보강
+- [x] 일반 local native provider routing은 기본 API 경로를 유지하고, direct는 `PREFER_DIRECT_SCRAPE=true` 명시 빌드에서만 켜지는지 회귀 테스트 보강
 - [x] `README.md`, `docs/APP_STANDALONE_MODE.md`, `CHANGELOG.md`에 iPhone local release-mode 검증 기준 반영
 
 ### 검증
@@ -16,8 +53,12 @@
 - [x] `plutil -lint app/ios/Runner/Info.plist`
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test test/data/providers_routing_test.dart test/data/local_asset_player_repository_test.dart`
-- [x] `./scripts/codex-run.sh ios-local-release` 가 local backend URL을 확인한 뒤 실행하도록 보정
+- [x] `./scripts/codex-run.sh ios-local-release` 로그가 `temporary direct-primary` 모드를 명시하도록 보정
 - [x] `xcrun devicectl device process launch --device 7A054DC8-7915-5B43-BA79-3060BE1A3209 --terminate-existing com.kbofans.kboFans` 로 설치 앱 launch 확인
+- [x] historical team stats snapshot 중 hitting/pitching 한쪽만 있는 partial payload가 팀 기록 UI에 노출되지 않도록 local asset loader와 snapshot generator 방어 로직 추가
+- [x] `fvm flutter test test/data/local_asset_player_repository_test.dart -r expanded`
+- [x] `cd app && fvm flutter test`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
 
 ---
 
@@ -1324,13 +1365,13 @@ kbo_fans/
 - [x] `LocalAssetPlayerRepository`의 `MockPlayerRepository` fallback 제거: 번들 스냅샷이 비어 있으면 빈 상태/명시적 오류를 반환해 기록실에 가짜 선수 데이터가 재유입되지 않도록 보정
 - [x] local native `API_BASE_URL` 명시 경로에서 `/home` 실패 시 direct/provider 조립 fallback으로 재진입하지 않도록 차단
 - [x] 일반 local API 라우팅에서 `FallbackGameRepository` direct fallback 제거
-- [x] local native no-override 기본 경로도 API-backed provider로 고정하고, direct KBO는 `PREFER_DIRECT_SCRAPE=true` 명시 디버그에서만 쓰도록 정리
+- [x] local native no-override 기본 경로도 API-backed provider로 고정하고, direct KBO는 `PREFER_DIRECT_SCRAPE=true` 명시 임시 direct-primary에서만 쓰도록 정리
 - [x] 사용처가 사라진 `FallbackGameRepository` 구현 파일 삭제
 - [x] 라인업 선발 비교 카드의 선수 사진 과확대/크롭을 줄이기 위해 fixed height와 `BoxFit.contain` 렌더로 보정
 - [x] Android local 실행 스크립트가 emulator와 실기기를 구분해 emulator는 `10.0.2.2`, 실기기는 Mac LAN IP를 `API_BASE_URL`로 주입하도록 보정
 - [x] 사용처가 없는 mock repository / mock data 파일을 삭제해 가짜 데이터 재연결 가능성을 차단
 - [x] README의 local native direct scrape 기본값 설명을 API-first 정책에 맞게 갱신
-- [x] `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`의 direct fallback 허용 문구를 API-first / explicit direct-debug 정책으로 동기화
+- [x] `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`의 direct fallback 허용 문구를 API-first / explicit temporary direct-primary 정책으로 동기화
 - [x] 미사용 `AppConfig.useMockData` 필드 제거
 - [x] local iOS 기본 API URL을 더 이상 DNS 실패하던 dev API로 두지 않고 `localhost` 기준으로 정리. 실기기는 실행 스크립트의 LAN IP override를 사용
 - [x] local iOS 실기기 LAN API 접속을 위해 `NSLocalNetworkUsageDescription` / local networking ATS 설정 추가

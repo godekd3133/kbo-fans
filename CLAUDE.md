@@ -42,6 +42,7 @@ kbo_fans/
 - 재사용 가능한 작업 패턴/스킬: `.claude/SKILL_REFERENCE.md`
 - 저장소 소개/실행 가이드: `README.md`
 - 외부 공개용 변경 이력: `CHANGELOG.md`
+- 버전/태그/릴리즈/패치노트 정책: `docs/VERSIONING.md`
 - 배포 / 테스터 공유 가이드: `docs/DISTRIBUTION_GUIDE.md`, `docs/ANDROID_SIGNING_GUIDE.md`, `docs/IOS_TESTFLIGHT_CHECKLIST.md`
 - 제품 목표/UX 원칙/로드맵: `docs/PLANNING.md`
 - 화면 상세, 상태, API 계약: `docs/APP_SPEC.md`
@@ -61,6 +62,7 @@ kbo_fans/
 - 작업 이력은 `docs/WORKLOG.md`에 누적한다
 - 실행 방법, 프로젝트 구조, 현재 구현 범위가 바뀌면 `README.md`를 함께 갱신한다
 - 사용자 관점의 기능/마일스톤 변경이 생기면 `CHANGELOG.md`를 함께 갱신한다
+- 버전이나 릴리즈가 바뀌면 `CHANGELOG.md`, 앱 내 패치노트(`app/assets/bootstrap/patch_notes.md`), GitHub 릴리즈 노트를 같은 단위로 갱신한다
 - Codex 앱 실행 액션으로 쓰는 공용 명령은 가능하면 `scripts/` 아래 스크립트로 유지한다
 - Codex 앱 실행 액션을 플랫폼별로 분리할 때는 `ios`, `android`, `web` 각각 독립 스크립트 진입점을 둔다
 - Codex 앱 액션은 저장소 스크립트를 만든다고 UI에 자동 등록되지 않으므로, 사용자 수동 등록이 필요하다는 전제를 유지한다
@@ -73,7 +75,7 @@ kbo_fans/
 
 ## 런타임 / 운영 메모
 - 웹과 release 빌드는 KBO 원본 직접 호출 대신 백엔드 API 경로를 기본으로 사용한다
-- 로컬 네이티브 디버깅도 기본은 API 경로다. direct KBO crawler 경로는 `PREFER_DIRECT_SCRAPE=true` 명시 디버그 빌드에서만 쓴다
+- 로컬 네이티브 실행도 기본은 API 경로다. direct KBO crawler 경로는 `PREFER_DIRECT_SCRAPE=true` 명시 임시 direct-primary 빌드에서만 쓴다
 - 홈 첫 진입은 경량 payload / 캐시 우선, 이후 background refresh 방식으로 체감 속도를 확보한다
 - 지난 경기 결과, 과거 시즌 순위, 기록실 과거 시즌 데이터는 snapshot 우선 전략을 유지한다
 - 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다
@@ -84,6 +86,8 @@ kbo_fans/
   - 데이터 로딩 경로, API/direct 선택, cache/snapshot, 성능 검증용 가이드
 - `.claude/skills/kbo-release-flow/SKILL.md`
   - 커밋/푸시/프리뷰 태그/TestFlight 전환 시 체크해야 할 저장소 전용 릴리즈 가이드
+- `.claude/skills/kbo-version-release/SKILL.md`
+  - 앱 버전 변경, GitHub 릴리즈/태그 정리, 앱 내 패치노트 갱신 루틴
 - `.claude/skills/app-startup-runtime-triage/SKILL.md`
   - 앱 시작 흰 화면, local API base URL, Dev Console 로그 노이즈, Firebase local 경고 트리아지용 가이드
 - `.claude/skills/ios-device-run-action/SKILL.md`
@@ -93,12 +97,12 @@ kbo_fans/
 - 실기기 디버그 환경에서 `localhost` 백엔드는 신뢰하지 않는다. 모바일 디버그는 실행 스크립트가 주입하는 Mac LAN IP 기반 API 경로가 현재 원칙이다.
 - 데이터 소스 혼선은 실제 장애처럼 보이므로 화면별로 다른 저장소를 보게 두지 않는다.
 - 현재 허용된 direct KBO 범위:
-  - `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 디버그 빌드
+  - `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 임시 direct-primary 빌드
   - 일반 local/dev/release 앱 모드에서는 자동 direct fallback 금지
 - 기록실 선수 상세/엔트리 전체는 API 또는 생성된 snapshot 기준으로 유지한다.
 - 순위와 기록실 요약은 시즌별 스냅샷 fallback(`2001~현재`)을 앱 번들에 둔다.
 - Dev Console 은 현재 API base URL, API latency, 홈/일정/기록실 로딩 완료 로그, 기록실 진단 로그를 표시하는 운영 도구다.
-- direct-debug 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
+- direct-primary 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
 - `.claude/skills/`에 이미 같은 작업 패턴이 있으면 먼저 그 스킬을 참고한다
 - 앱 UI 카피에는 이모지를 사용하지 않는다
 - 히스토리 데이터는 원천 재크롤링보다 backend snapshot 우선이 현재 방향이다.
@@ -158,6 +162,7 @@ kbo_fans/
 
 ## 반복 작업 스킬
 - 전체 스킬 인덱스: `.claude/SKILL_REFERENCE.md`
+- 버전 변경 / GitHub 릴리즈 / 앱 내 패치노트 갱신 시: `.claude/skills/kbo-version-release/SKILL.md`
 - 히스토리 데이터 / snapshot-first 캐시 구조 작업 시: `.claude/skills/kbo-history-snapshot/SKILL.md`
 - 아키텍처/API/UX 변경 후 문서 동기화 시: `.claude/skills/kbo-doc-sync/SKILL.md`
 - iOS 위젯 / Live Activity / Dynamic Island 수정 시: `.claude/skills/ios-live-activity-widget/SKILL.md`

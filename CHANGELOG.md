@@ -10,6 +10,10 @@
 
 ## [Unreleased]
 
+- 다음 릴리즈 후보에서 기록합니다.
+
+## [0.1.0-preview.1] - 2026-05-20
+
 ### Added
 
 - 설정 화면에서 버전별 패치노트를 볼 수 있는 `패치노트` 진입점 추가
@@ -39,14 +43,18 @@
 - web deep-link 라우터 회귀 테스트 추가
 - Android release signing 예시 파일 추가 (`app/android/key.properties.example`)
 - release 빌드 전 production API DNS/TLS/핵심 endpoint를 검증하는 health gate 스크립트와 GitHub Actions 차단 단계를 추가
-- iPhone local release-mode 검증이 가능하도록 `ios-local-release` / `codex-run-ios-local-release.sh` 경로 추가
+- API 미구현 영역을 iPhone release-mode에서 검증할 수 있도록 임시 direct-primary `ios-local-release` / `codex-run-ios-local-release.sh` 경로 추가
+- release API backend 준비 항목을 `docs/RELEASE_API_BACKEND_TODO.md`로 분리
 
 ### Changed
 
 - 설정 화면의 `앱 밖 표면` 설명 블록을 제거하고, 장면별 알림 picker 안에서만 전달 방식을 고르도록 정리
 - 홈, 일정, 순위, 기록실, 선수 상세의 로딩/데이터 전환과 주요 리스트 행 등장에 공통 모션을 적용해 화면 내부 변화도 부드럽게 보이도록 개선
 - local native 실행에서 `API_BASE_URL`이 없을 때 dev API DNS 실패로 홈/일정/순위/기록실이 깨지지 않도록 실행 스크립트가 local backend URL을 주입하고, 실패 시 중단하도록 보정
-- `ios-local-release`도 local backend API-first 경로를 따르도록 변경
+- `ios-local-release`는 API 실패 fallback이 아니라 `PREFER_DIRECT_SCRAPE=true` 를 명시한 임시 direct-primary 경로로 분리
+- 기록실 팀 선수 bootstrap asset을 2022~2026 전 구단으로 확장하고, 과거 시즌 팀 로스터는 현재 등록 선수 direct 검색 대신 snapshot을 사용하도록 보정
+- 기록실 팀 스탯은 타격/투구가 모두 있는 complete snapshot만 앱에 포함하고, partial payload가 UI에 노출되지 않도록 보정
+- 기록실 local asset fallback이 없는 시즌에서 다른 시즌 데이터를 빌려 보여주지 않도록 변경
 - 홈 초기 로딩 화면에서 여러 카드가 각각 spinner를 보여 중복 로딩처럼 보이던 UI를 skeleton 중심으로 정리
 - 설정 화면의 `버전` 항목이 하드코딩 값 대신 실제 앱 메타데이터 버전을 표시하도록 개선
 - 설정의 앱 정보 및 지원 영역에서 이용약관, 개인정보처리방침, 오픈소스 라이선스, 문의하기가 실제로 열리도록 정리
