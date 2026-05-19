@@ -937,71 +937,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final now = DateTime.now();
     final dateStr =
         '${(now.year % 100).toString().padLeft(2, '0')}.${now.month}.${now.day}';
+    final myTeamId = ref.watch(myTeamProvider);
+    final myTeam = myTeamId == null ? null : KboTeams.byId(myTeamId);
+    final title = myTeam == null ? '오늘 경기' : '${myTeam.shortName} 오늘 경기';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'KBO Fans',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 1),
-              const Text(
-                '오늘 경기와 마이팀을 먼저 확인하세요',
-                style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'MY TEAM',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textDisabled,
+                    letterSpacing: 0.8,
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.divider),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontSize: 23,
+                    height: 1.05,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                child: Row(
+                const SizedBox(height: 8),
+                Row(
                   children: [
                     Text(
                       '오늘 $dateStr',
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 12,
                         color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     if (hasLive) ...[
                       const SizedBox(width: 8),
                       Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: AppColors.live,
-                          shape: BoxShape.circle,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        'LIVE',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.live,
+                        decoration: BoxDecoration(
+                          color: AppColors.live.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: AppColors.live.withValues(alpha: 0.45),
+                          ),
+                        ),
+                        child: const Text(
+                          'LIVE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.live,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
                     ],
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: const Icon(
+              Icons.notifications_none_rounded,
+              size: 20,
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -2303,15 +2323,8 @@ Widget _sectionCard({required Widget child}) {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: AppColors.card,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(8),
       border: Border.all(color: AppColors.divider),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x1A000000),
-          blurRadius: 16,
-          offset: Offset(0, 6),
-        ),
-      ],
     ),
     child: child,
   );

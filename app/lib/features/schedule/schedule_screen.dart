@@ -162,22 +162,48 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   Widget _buildMonthHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary),
-            onPressed: () => _changeMonth(-1),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  DateFormat(
+                    'MMM yyyy',
+                    'en_US',
+                  ).format(_currentMonth).toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textDisabled,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '일정',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    height: 1.05,
+                  ),
+                ),
+              ],
+            ),
           ),
-          Text(
-            '${_currentMonth.year}년 ${_currentMonth.month}월',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          _HeaderIconButton(
+            icon: Icons.chevron_left_rounded,
+            onTap: () => _changeMonth(-1),
           ),
-          IconButton(
-            icon: const Icon(Icons.chevron_right, color: AppColors.textPrimary),
-            onPressed: () => _changeMonth(1),
+          const SizedBox(width: 8),
+          _HeaderIconButton(
+            icon: Icons.chevron_right_rounded,
+            onTap: () => _changeMonth(1),
           ),
+          const SizedBox(width: 8),
+          _HeaderIconButton(icon: Icons.tune_rounded, onTap: () {}),
         ],
       ),
     );
@@ -274,32 +300,40 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final hasMyTeam = ref.watch(myTeamProvider) != null;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _segmentedButton(
-                  label: '달력으로 보기',
-                  selected: _viewMode == ScheduleViewMode.calendar,
-                  onTap: () =>
-                      setState(() => _viewMode = ScheduleViewMode.calendar),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _segmentedButton(
+                    label: '내 팀 먼저 보기',
+                    selected: _viewMode == ScheduleViewMode.calendar,
+                    onTap: () =>
+                        setState(() => _viewMode = ScheduleViewMode.calendar),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _segmentedButton(
-                  label: '구장별 보기',
-                  selected: _viewMode == ScheduleViewMode.stadium,
-                  onTap: () =>
-                      setState(() => _viewMode = ScheduleViewMode.stadium),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _segmentedButton(
+                    label: '구장별',
+                    selected: _viewMode == ScheduleViewMode.stadium,
+                    onTap: () =>
+                        setState(() => _viewMode = ScheduleViewMode.stadium),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -332,10 +366,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             ),
           ),
           if (_viewMode == ScheduleViewMode.calendar) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             _legendRow(),
           ] else ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -412,16 +446,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         height: 42,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.textPrimary : AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: selected ? null : Border.all(color: AppColors.divider),
+          color: selected ? AppColors.cardSub : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: selected ? AppColors.background : AppColors.textSecondary,
+            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
           ),
         ),
       ),
@@ -458,7 +491,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   Widget _buildCalendarPager() {
     return SizedBox(
-      height: 330,
+      height: 308,
       child: PageView.builder(
         controller: _calendarPageController,
         onPageChanged: (page) {
@@ -564,121 +597,142 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          Row(
-            children: weekdays.map((d) {
-              final color = d == '토'
-                  ? AppColors.accent
-                  : d == '일'
-                  ? AppColors.live
-                  : AppColors.textDisabled;
-              return Expanded(
-                child: Center(
-                  child: Text(d, style: TextStyle(fontSize: 12, color: color)),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 6),
-          ...List.generate(totalCells ~/ 7, (week) {
-            return Row(
-              children: List.generate(7, (weekday) {
-                final cellIndex = week * 7 + weekday;
-                final date = firstVisibleDay.add(Duration(days: cellIndex));
-                final isInCurrentMonth =
-                    date.year == month.year && date.month == month.month;
-                final day = date.day;
-                final isSelected =
-                    isInCurrentMonth &&
-                    month.year == _currentMonth.year &&
-                    month.month == _currentMonth.month &&
-                    day == _selectedDay;
-                final isToday =
-                    date.year == today.year &&
-                    date.month == today.month &&
-                    date.day == today.day;
-                final hasGame = isInCurrentMonth && gameDays.contains(day);
-                final isMyTeam = isInCurrentMonth && myTeamDays.contains(day);
-                final isPast = date.isBefore(
-                  DateTime(today.year, today.month, today.day),
-                );
-
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          children: [
+            Row(
+              children: weekdays.map((d) {
+                final color = d == '토'
+                    ? AppColors.accent
+                    : d == '일'
+                    ? AppColors.live
+                    : AppColors.textDisabled;
                 return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() {
-                      _currentMonth = DateTime(date.year, date.month);
-                      _selectedDay = date.day;
-                      final targetPage =
-                          _calendarInitialPage +
-                          _monthDeltaFromToday(_currentMonth);
-                      if (_calendarPageController.hasClients &&
-                          _calendarPageController.page?.round() != targetPage) {
-                        _calendarPageController.jumpToPage(targetPage);
-                      }
-                    }),
-                    child: SizedBox(
-                      height: 44,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            width: 32,
-                            height: 32,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isSelected
-                                  ? AppColors.textPrimary
-                                  : isToday
-                                  ? AppColors.cardSub
-                                  : null,
-                            ),
-                            child: Text(
-                              '$day',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: isSelected
-                                    ? AppColors.background
-                                    : !isInCurrentMonth
-                                    ? AppColors.textDisabled.withValues(
-                                        alpha: 0.55,
-                                      )
-                                    : isPast
-                                    ? AppColors.textDisabled
-                                    : AppColors.textPrimary,
-                                fontWeight: isSelected || isToday
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                          if (hasGame)
-                            Container(
-                              width: 4,
-                              height: 4,
-                              margin: const EdgeInsets.only(top: 2),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isMyTeam
-                                    ? (KboTeams.byId(
-                                            ref.watch(myTeamProvider) ?? '',
-                                          )?.primaryColor ??
-                                          AppColors.live)
-                                    : AppColors.textDisabled,
-                              ),
-                            ),
-                        ],
-                      ),
+                  child: Center(
+                    child: Text(
+                      d,
+                      style: TextStyle(fontSize: 12, color: color),
                     ),
                   ),
                 );
-              }),
-            );
-          }),
-          const SizedBox(height: 6),
-        ],
+              }).toList(),
+            ),
+            const SizedBox(height: 6),
+            ...List.generate(totalCells ~/ 7, (week) {
+              return Row(
+                children: List.generate(7, (weekday) {
+                  final cellIndex = week * 7 + weekday;
+                  final date = firstVisibleDay.add(Duration(days: cellIndex));
+                  final isInCurrentMonth =
+                      date.year == month.year && date.month == month.month;
+                  final day = date.day;
+                  final isSelected =
+                      isInCurrentMonth &&
+                      month.year == _currentMonth.year &&
+                      month.month == _currentMonth.month &&
+                      day == _selectedDay;
+                  final isToday =
+                      date.year == today.year &&
+                      date.month == today.month &&
+                      date.day == today.day;
+                  final hasGame = isInCurrentMonth && gameDays.contains(day);
+                  final isMyTeam = isInCurrentMonth && myTeamDays.contains(day);
+                  final isPast = date.isBefore(
+                    DateTime(today.year, today.month, today.day),
+                  );
+
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        _currentMonth = DateTime(date.year, date.month);
+                        _selectedDay = date.day;
+                        final targetPage =
+                            _calendarInitialPage +
+                            _monthDeltaFromToday(_currentMonth);
+                        if (_calendarPageController.hasClients &&
+                            _calendarPageController.page?.round() !=
+                                targetPage) {
+                          _calendarPageController.jumpToPage(targetPage);
+                        }
+                      }),
+                      child: SizedBox(
+                        height: 40,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 34,
+                              height: 30,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(7),
+                                color: isSelected
+                                    ? AppColors.live.withValues(alpha: 0.58)
+                                    : isToday
+                                    ? AppColors.cardSub
+                                    : null,
+                                border: hasGame
+                                    ? Border.all(
+                                        color: isMyTeam
+                                            ? AppColors.live.withValues(
+                                                alpha: 0.75,
+                                              )
+                                            : AppColors.divider,
+                                      )
+                                    : null,
+                              ),
+                              child: Text(
+                                '$day',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isSelected
+                                      ? AppColors.textPrimary
+                                      : !isInCurrentMonth
+                                      ? AppColors.textDisabled.withValues(
+                                          alpha: 0.55,
+                                        )
+                                      : isPast
+                                      ? AppColors.textDisabled
+                                      : AppColors.textPrimary,
+                                  fontWeight: isSelected || isToday
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ),
+                            if (hasGame)
+                              Container(
+                                width: 4,
+                                height: 4,
+                                margin: const EdgeInsets.only(top: 2),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isMyTeam
+                                      ? (KboTeams.byId(
+                                              ref.watch(myTeamProvider) ?? '',
+                                            )?.primaryColor ??
+                                            AppColors.live)
+                                      : AppColors.textDisabled,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              );
+            }),
+            const SizedBox(height: 6),
+          ],
+        ),
       ),
     );
   }
@@ -910,5 +964,29 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     }
     _lastScheduleLoadLogKey = logKey;
     _scheduleLoadStartedAtMicros = null;
+  }
+}
+
+class _HeaderIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _HeaderIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Icon(icon, color: AppColors.textPrimary, size: 18),
+      ),
+    );
   }
 }

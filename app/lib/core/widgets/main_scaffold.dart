@@ -8,9 +8,9 @@ class MainScaffold extends StatelessWidget {
   const MainScaffold({super.key, required this.child});
 
   static const _tabs = [
+    (icon: Icons.home_rounded, label: '홈', path: '/home'),
     (icon: Icons.calendar_month, label: '일정', path: '/schedule'),
     (icon: Icons.leaderboard, label: '순위', path: '/standings'),
-    (icon: Icons.sports_baseball, label: '홈', path: '/home'),
     (icon: Icons.groups_2, label: '기록실', path: '/records'),
     (icon: Icons.settings, label: '설정', path: '/settings'),
   ];
@@ -31,7 +31,7 @@ class MainScaffold extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           decoration: const BoxDecoration(
-            color: AppColors.background,
+            color: AppColors.surface,
             border: Border(top: BorderSide(color: AppColors.divider)),
           ),
           child: Row(
@@ -42,7 +42,6 @@ class MainScaffold extends StatelessWidget {
                     icon: _tabs[i].icon,
                     label: _tabs[i].label,
                     selected: current == i,
-                    emphasized: i == 2,
                     onTap: () => context.go(_tabs[i].path),
                   ),
                 ),
@@ -58,20 +57,18 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
-  final bool emphasized;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
     required this.label,
     required this.selected,
-    required this.emphasized,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = selected ? AppColors.textPrimary : AppColors.textDisabled;
+    final iconColor = selected ? AppColors.accent : AppColors.textDisabled;
     final labelColor = selected
         ? AppColors.textPrimary
         : AppColors.textDisabled;
@@ -82,52 +79,28 @@ class _NavItem extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (emphasized)
-            Transform.translate(
-              offset: Offset(0, selected ? -7 : -3),
+          SizedBox(
+            height: 34,
+            child: Center(
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOutCubic,
-                width: selected ? 68 : 60,
-                height: selected ? 48 : 42,
+                duration: const Duration(milliseconds: 160),
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppColors.cardSub
-                      : AppColors.card.withValues(alpha: 0.72),
-                  borderRadius: BorderRadius.circular(999),
+                      ? AppColors.accent.withValues(alpha: 0.16)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
                   border: Border.all(
-                    color: selected ? AppColors.textPrimary : AppColors.divider,
-                    width: selected ? 1.2 : 1,
+                    color: selected ? AppColors.accent : AppColors.divider,
+                    width: selected ? 2 : 1.4,
                   ),
-                  boxShadow: selected
-                      ? [
-                          BoxShadow(
-                            color: AppColors.background.withValues(alpha: 0.7),
-                            blurRadius: 4,
-                            spreadRadius: 0,
-                            offset: const Offset(0, 2),
-                          ),
-                          BoxShadow(
-                            color: AppColors.textPrimary.withValues(
-                              alpha: 0.10,
-                            ),
-                            blurRadius: 18,
-                            spreadRadius: 0,
-                            offset: const Offset(0, 6),
-                          ),
-                        ]
-                      : null,
                 ),
-                alignment: Alignment.center,
-                child: Icon(icon, size: selected ? 28 : 24, color: iconColor),
+                child: Icon(icon, size: 14, color: iconColor),
               ),
-            )
-          else
-            SizedBox(
-              height: 42,
-              child: Center(child: Icon(icon, size: 22, color: iconColor)),
             ),
-          const SizedBox(height: 6),
+          ),
+          const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(

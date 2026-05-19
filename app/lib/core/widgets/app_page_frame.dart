@@ -8,7 +8,7 @@ class AppPageFrame extends StatelessWidget {
   const AppPageFrame({
     super.key,
     required this.child,
-    this.maxWidth = 560,
+    this.maxWidth = 430,
     this.padding = EdgeInsets.zero,
   });
 
@@ -18,10 +18,7 @@ class AppPageFrame extends StatelessWidget {
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: Padding(
-          padding: padding,
-          child: child,
-        ),
+        child: Padding(padding: padding, child: child),
       ),
     );
   }
