@@ -1,5 +1,5 @@
 {
-  "savedAt": "2026-05-19T14:48:01.077795+00:00",
+  "savedAt": "2026-05-19T15:14:09.954415+00:00",
   "payload": {
     "month": "2026-05",
     "days": [
@@ -1155,10 +1155,10 @@
             "time": "18:30",
             "awayId": "NC",
             "awayName": "NC",
-            "awayScore": null,
+            "awayScore": 0,
             "homeId": "OB",
             "homeName": "두산",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "잠실",
             "status": "SCHEDULED",
             "ticketInfo": {
@@ -1175,10 +1175,10 @@
             "time": "18:30",
             "awayId": "LG",
             "awayName": "LG",
-            "awayScore": null,
+            "awayScore": 0,
             "homeId": "HT",
             "homeName": "KIA",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "광주",
             "status": "SCHEDULED",
             "ticketInfo": {
@@ -1195,10 +1195,10 @@
             "time": "18:30",
             "awayId": "SK",
             "awayName": "SSG",
-            "awayScore": null,
+            "awayScore": 0,
             "homeId": "WO",
             "homeName": "키움",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "고척",
             "status": "SCHEDULED",
             "ticketInfo": {
@@ -1215,10 +1215,10 @@
             "time": "18:30",
             "awayId": "LT",
             "awayName": "롯데",
-            "awayScore": null,
+            "awayScore": 0,
             "homeId": "HH",
             "homeName": "한화",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "대전",
             "status": "SCHEDULED",
             "ticketInfo": {
@@ -1235,10 +1235,10 @@
             "time": "18:30",
             "awayId": "KT",
             "awayName": "KT",
-            "awayScore": null,
+            "awayScore": 0,
             "homeId": "SS",
             "homeName": "삼성",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "포항",
             "status": "SCHEDULED",
             "ticketInfo": {
