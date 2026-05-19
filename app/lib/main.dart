@@ -411,9 +411,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     final onboardingDone = ref.watch(onboardingDoneProvider);
     if (!kIsWeb) {
       final myTeamId = ref.watch(myTeamProvider);
-      final today = _todayKey();
       final startupGames = ref.watch(startupScoreboardProvider);
-      final scoreboardAsync = ref.watch(scoreboardProvider(today));
 
       if (startupGames != null && startupGames.isNotEmpty) {
         unawaited(
@@ -424,16 +422,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
           ),
         );
       }
-
-      scoreboardAsync.whenData((games) {
-        unawaited(
-          WidgetSyncService.instance.syncScoreboard(
-            games: games,
-            myTeamId: myTeamId,
-            repository: ref.read(gameRepositoryProvider),
-          ),
-        );
-      });
     }
 
     if (!_didScheduleBootstrap) {

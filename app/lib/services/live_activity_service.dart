@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -57,10 +57,23 @@ class LiveActivityService {
   }
 
   static void handleAndroidNotificationResponse(NotificationResponse response) {
+    unawaited(_handleAndroidNotificationResponse(response));
+  }
+
+  @visibleForTesting
+  static Future<void> handleAndroidNotificationResponseForTesting(
+    NotificationResponse response,
+  ) {
+    return _handleAndroidNotificationResponse(response);
+  }
+
+  static Future<void> _handleAndroidNotificationResponse(
+    NotificationResponse response,
+  ) async {
     if (response.actionId != _androidStopActionId) {
       return;
     }
-    unawaited(instance.stopFollowing());
+    await instance.stopFollowing();
   }
 
   Future<bool> requestPermissions() async {
