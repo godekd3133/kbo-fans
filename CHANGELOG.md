@@ -34,10 +34,12 @@
 - 일정 화면에 경기별 예매처 / 예매 오픈 시간 표시 추가
 - 경기 상세 화면에 예매처 바로가기와 예매 오픈 알림 설정 추가
 - 경기 상세 화면에 KBO 공식 / 유튜브 하이라이트 카드와 웹 연결 추가
+- 일정 구장별 보기에 구장 퀵링크 버튼을 추가해 원하는 구장 섹션으로 바로 이동할 수 있도록 개선
 - Android release signing 예시 파일 추가 (`app/android/key.properties.example`)
 
 ### Changed
 
+- 기록실 overview snapshot이 오래된 shape여도 OPS+ 리더보드를 현재 API 계약에 맞춰 보정해 빈 카드가 나오지 않도록 개선
 - 설정의 `알림 플레이북`과 경기 상세 `경기 따라가기`를 v4 Moment Subscription / Surface Strategy 시안에 맞춰 정리하고, Push / Live 표면 / Widget 역할을 더 명확하게 표시
 - 홈, 경기 상세, 일정, 기록실, 설정 화면의 실제 Flutter UI를 v4 compact dark sports 톤으로 정리하고, 390px 모바일 폭 기준 카드/탭/헤더 밀도를 조정
 - 설정 화면의 알림 설정을 `알림 플레이북`으로 바꿔 경기 시작, 득점, 홈런, 역전, 경기 종료, 라인업, 이닝 교대별로 `바로 / 요약 / Live만 / 끄기`를 선택할 수 있도록 개선

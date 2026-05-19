@@ -2,6 +2,67 @@
 
 ---
 
+## 2026-05-19: 일정 구장별 보기 퀵링크 추가
+
+### 완료
+- [x] 구장별 일정 상단에 구장명과 경기 수를 보여주는 가로 퀵링크 버튼 row 추가
+- [x] 퀵링크 탭 시 해당 구장 섹션 헤더로 부드럽게 스크롤되도록 `Scrollable.ensureVisible` 연결
+- [x] 월별 `PageView`, 팀 필터, 구장별 팀 필터 구조는 유지하면서 월+구장 단위 section key를 사용해 월 스와이프와 충돌하지 않도록 조정
+- [x] `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 사용자 체감 동작 반영
+
+### 검증
+- [x] `cd app && fvm flutter analyze lib/features/schedule/schedule_screen.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter build web --release`
+
+### 메모
+- 기존 구장별 보기에는 구장 섹션이 아래로 길게 나열되어 원하는 구장으로 이동하려면 수동 스크롤이 필요했다.
+- 퀵링크는 현재 필터 결과에 남은 구장만 표시하므로 마이팀/팀별 필터와 같은 목록 기준을 공유한다.
+
+---
+
+## 2026-05-19: v4 Moment Surface UX 화면 평가
+
+### 완료
+- [x] v4 Moment Subscription / Surface Strategy 기준으로 실제 Flutter web 390x844 화면을 재캡처
+- [x] 홈, 설정 알림 플레이북, 앱 밖 표면 설명, 전달 방식 picker, 경기 상세 화면을 화면 근거와 함께 평가
+- [x] Apple HIG, Android Live Updates/Notification Permission, WCAG Target Size, NN/g notification/status feedback 기준으로 UX 원칙 정리
+- [x] `docs/UX_REVIEW_V4_MOMENT_SURFACE_2026-05-19.md`에 P1/P2/P3 개선 우선순위 문서화
+- [x] `docs/UX_FIX_PROPOSAL_V4_MOMENT_SURFACE_2026-05-19.md`에 문제별 원인, 수정안, 구현 범위, QA/DoD를 추가 문서화
+
+### 검증
+- [x] `GET http://127.0.0.1:8000/api/health`
+- [x] `node artifacts/kbo-v4-ux-eval/capture-v4-screens.js`
+- [x] 화면 산출물: `artifacts/kbo-v4-ux-eval/03-home-state.png`, `01-settings-playbook.png`, `04-settings-surfaces.png`, `05-settings-delivery-picker.png`, `02-game-detail-relay.png`
+- [x] 코드 위치 확인: `home_screen.dart`, `my_team_game_card.dart`, `settings_screen.dart`, `game_detail_screen.dart`, native widget/live activity files
+
+### 메모
+- 현재 UX 평가는 82/100으로 판단했다. 방향은 맞지만 홈 CTA 노출, `중계 보기` 진입 결과, Live/Widget/stale 용어 명확성은 후속 수정이 필요하다.
+- 수정 순서는 copy 정리, 홈 CTA 상태 분기, 카드 callback 분리, 상세 relay 우선 노출, 브리프 compact 조정, native surface QA 순서가 가장 리스크가 낮다.
+
+---
+
+## 2026-05-19: 기록실 runtime 검증 및 OPS+ snapshot 정규화
+
+### 완료
+- [x] 기록실 overview, 리더보드, 팀 기록 합본, 선수 상세 API를 실제 local FastAPI 경로로 재검증
+- [x] 10개 구단 `/api/team/{teamId}/records?season=2026` 합본 응답이 모두 `200`으로 종료되고 선수 목록/타격/투수 스탯을 포함하는지 확인
+- [x] 구형 `records_overview` snapshot에 `opsPlus`가 없어도 backend 응답 단계에서 현재 계약에 맞춰 OPS+ 리더보드를 계산하도록 보정
+- [x] 하단 탭 실제 클릭으로 기록실 첫 화면과 리더보드 상세 진입을 390x844 web smoke로 확인
+
+### 검증
+- [x] `backend/.venv/bin/python -m compileall backend/src backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py backend/tests/test_teams.py`
+- [x] 실제 API 계측: `records/overview` 리더보드 `avg/hr/ops/opsPlus/era` 각 5건 포함
+- [x] 실제 API 계측: `leaderboard avg/hr/ops/opsPlus/era`는 24~30건, unsupported `war`는 빈 목록으로 종료
+- [x] 실제 API 계측: `KT/SS/LG/HT/SK/WO/LT/HH/NC/OB` 팀 기록 합본이 모두 선수 60명 이상과 팀 타격/투수 스탯을 반환
+- [x] 웹 smoke 산출물: `artifacts/kbo-records-check/records-tab-overview-v2.png`, `artifacts/kbo-records-check/records-team-after-click-v2.png`
+
+### 메모
+- 기록실 직접 URL(`/records`, `/records/team/*`, `/records/leaderboard/*`)은 web boot 단계에서 `/home`으로 되돌거나 `Page Not Found`가 나는 deep-link 문제가 별도로 관찰됐다. 하단 탭/앱 내 네비게이션은 동작하지만, web preview/release 딥링크 안정화는 후속 과제로 분리한다.
+
+---
+
 ## 2026-05-19: v4 Moment Subscription 실제 앱 반영
 
 ### 완료
