@@ -7,7 +7,6 @@ import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
 import 'repositories/api_game_repository.dart';
 import 'repositories/api_home_repository.dart';
-import 'repositories/fallback_game_repository.dart';
 import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
@@ -45,13 +44,6 @@ final gameRepositoryProvider = Provider<GameRepository>((ref) {
   if (AppConfig.instance.preferDirectScrape ||
       AppConfig.instance.shouldPreferLocalNativeData) {
     return KboDirectRepository();
-  }
-
-  if (AppConfig.instance.isLocal) {
-    return FallbackGameRepository(
-      primary: apiRepository,
-      fallback: KboDirectRepository(),
-    );
   }
 
   return apiRepository;
@@ -224,7 +216,9 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
           .read(homeRepositoryProvider)
           .getHomeAggregate(date: date, myTeam: myTeam);
     } catch (_) {
-      if (kIsWeb || !AppConfig.instance.isLocal) {
+      if (kIsWeb ||
+          !AppConfig.instance.isLocal ||
+          AppConfig.instance.hasApiBaseUrlOverride) {
         rethrow;
       }
       // Local native direct-debug sessions can still render from the component
