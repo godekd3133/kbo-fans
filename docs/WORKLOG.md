@@ -75,6 +75,8 @@
 - [x] `AppMotionSwitcher`의 analyzer fatal info를 정리해 전체 analyze가 깨지지 않도록 보정
 - [x] 홈 보조 섹션의 local fallback assembly 제거: `/api/home` 실패 시 UI가 직접 `schedule`/`standings`/`recordsOverview`를 추가 호출하지 않도록 정리
 - [x] 홈 fallback 제거로 미사용이 된 로컬 조립 helper를 삭제해 fallback 재유입 지점을 줄임
+- [x] Android/iOS local startup에서 KBO 릴레이 로그인 세션을 선행 prime 하던 hidden crawl 제거
+- [x] 릴레이 세션은 릴레이 탭 진입 시 `KboDirectRepository`의 실제 relay fetch 경로에서만 준비하도록 유지
 
 ### 검증
 - [x] `cd app && fvm flutter analyze`
