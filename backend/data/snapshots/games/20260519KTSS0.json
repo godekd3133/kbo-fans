@@ -1,0 +1,85 @@
+{
+  "savedAt": "2026-05-19T12:44:43.928150+00:00",
+  "payload": {
+    "date": "2026-05-19",
+    "time": "18:30",
+    "gameId": "20260519KTSS0",
+    "awayId": "KT",
+    "awayName": "KT",
+    "awayScore": null,
+    "homeId": "SS",
+    "homeName": "삼성",
+    "homeScore": null,
+    "stadium": "포항",
+    "status": "FINAL",
+    "inning": "경기종료",
+    "crowd": 12120,
+    "startTime": "18:30",
+    "away": {
+      "teamId": "KT",
+      "teamName": "KT 위즈",
+      "shortName": "KT",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_KT_s.png",
+      "score": 2,
+      "scores": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        1,
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "hits": 11,
+      "errors": 1,
+      "balls": 2
+    },
+    "home": {
+      "teamId": "SS",
+      "teamName": "삼성 라이온즈",
+      "shortName": "삼성",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_SS_s.png",
+      "score": 10,
+      "scores": [
+        0,
+        0,
+        2,
+        1,
+        1,
+        0,
+        6,
+        0,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "hits": 20,
+      "errors": 0,
+      "balls": 1
+    },
+    "current": {
+      "balls": 1,
+      "strikes": 0,
+      "outs": 3,
+      "batterName": "미야지",
+      "pitcherName": "이정훈"
+    },
+    "ticketInfo": null,
+    "highlightInfo": {
+      "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260519&gameId=20260519KTSS0&section=HIGHLIGHT",
+      "youtubeVideos": []
+    }
+  }
+}

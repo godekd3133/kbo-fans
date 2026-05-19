@@ -1,0 +1,79 @@
+{
+  "savedAt": "2026-05-19T12:39:49.348579+00:00",
+  "payload": {
+    "date": "2026-05-16",
+    "time": "14:00",
+    "gameId": "20260516HHKT0",
+    "awayId": "HH",
+    "awayName": "한화",
+    "awayScore": 10,
+    "homeId": "KT",
+    "homeName": "KT",
+    "homeScore": 5,
+    "stadium": "수원",
+    "status": "FINAL",
+    "inning": "경기종료",
+    "crowd": 18700,
+    "startTime": "14:00",
+    "away": {
+      "teamId": "HH",
+      "teamName": "한화 이글스",
+      "shortName": "한화",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HH_s.png",
+      "score": 10,
+      "scores": [
+        3,
+        0,
+        1,
+        0,
+        3,
+        3,
+        0,
+        0,
+        0,
+        null,
+        null,
+        null
+      ],
+      "hits": 10,
+      "errors": 2,
+      "balls": 6
+    },
+    "home": {
+      "teamId": "KT",
+      "teamName": "KT 위즈",
+      "shortName": "KT",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_KT_s.png",
+      "score": 5,
+      "scores": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        2,
+        0,
+        null,
+        null,
+        null
+      ],
+      "hits": 8,
+      "errors": 0,
+      "balls": 4
+    },
+    "current": {
+      "balls": 0,
+      "strikes": 0,
+      "outs": 3,
+      "batterName": "오윤석",
+      "pitcherName": "이상규"
+    },
+    "ticketInfo": null,
+    "highlightInfo": {
+      "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260516&gameId=20260516HHKT0&section=HIGHLIGHT",
+      "youtubeVideos": []
+    }
+  }
+}
