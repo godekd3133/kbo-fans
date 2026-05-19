@@ -1042,6 +1042,12 @@ kbo_fans/
 - [x] `docs/KBO_DATA_REFRESH_ARCHITECTURE_2026-05-19.md`에 P0 구현 상태와 남은 P1 범위 기록
 - [x] KBO 데이터 갱신 구조 P1 일부 구현: backend `SingleFlight` 추가, 동일 날짜 scoreboard 병렬 요청 병합, `/game/{gameId}` 단건 상세가 같은 날짜 전체 경기 enrich를 수행하지 않도록 변경
 - [x] `/api/game/{gameId}`가 scoreboard/game summary 성공 시 schedule fallback 조회를 추가로 하지 않도록 정리
+- [x] V4 native surface QA 문서 작성 (`docs/UX_NATIVE_SURFACE_QA_V4_2026-05-19.md`)
+- [x] iOS Widget / Live Activity / Dynamic Island에서 현재 타석 데이터가 없을 때 B/S/O `0` badge가 보이지 않도록 보정
+- [x] `docs/APP_SPEC.md`에 unknown B/S/O를 실제 0카운트처럼 표시하지 않는 원칙 추가
+- [x] `ApiClient.getCached`의 fresh cache 선반환 조건을 `preferCache=true` 경로로 제한해, 현재 날짜/현재 시즌 화면의 fresh-first 정책이 실제로 적용되도록 수정
+- [x] 현재 시즌 선수 목록, 선수 상세, 팀 스탯과 경기 상세 박스스코어/라인업도 정상 상황에서는 최신 API 응답을 먼저 받도록 정리
+- [x] 온보딩 구단 선택 로고가 `26x17` 초소형 이미지에서 확대 렌더링되던 문제를 `64x41` 공식 엠블럼 경로와 고품질 필터링으로 보정
 
 ### 검증 메모
 - 라우팅 모션 변경은 기존 `NoTransitionPage` 기반 하단 탭을 `CustomTransitionPage` 공통 helper로 바꾼 범위이며, OS 접근성의 애니메이션 줄이기 설정이 켜진 경우 전환 애니메이션을 생략하도록 처리함
@@ -1062,3 +1068,9 @@ kbo_fans/
 - 디자인 보드 변경 자체는 문서/디자인 산출물 범위였고, 별도 앱 런타임 캡처는 수행하지 않음
 - KBO 데이터 갱신 P0 구현 검증으로 `fvm dart format`, `fvm flutter analyze`, `fvm flutter test test/widget_test.dart test/data/models/records_overview_test.dart test/services/push_notification_service_test.dart` 실행, 모두 통과
 - KBO 데이터 갱신 P1 backend 검증으로 `backend/.venv/bin/python -m compileall backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_games.py backend/tests/test_snapshot_services.py`, `backend/.venv/bin/pytest -q` 실행, 전체 41개 테스트 통과
+- native surface 검증으로 `fvm flutter build ios --debug --no-codesign --dart-define=APP_ENV=local`, `fvm flutter build apk --debug --dart-define=APP_ENV=local`, `plutil -lint`, `xmllint --noout`, `fvm flutter analyze`, `fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart` 실행, 모두 통과
+- iOS Simulator와 Android 기기/에뮬레이터가 없어 실제 앱 밖 표면 screenshot QA는 `docs/UX_NATIVE_SURFACE_QA_V4_2026-05-19.md`에 미완료 조건으로 분리 기록
+- 캐시 정책 보정 후 `fvm dart format`, targeted `fvm flutter analyze`, backend records/schedule/scoreboard/team 테스트 20개, `fvm flutter build web --release --dart-define=APP_ENV=local` 통과
+- 로컬 API 실측으로 home, scoreboard, schedule, standings, records overview, leaderboard(avg/hr/ops/era), KT team records/players/stats, KT-삼성 game detail/relay/boxscore/lineup 응답 확인
+- 새 웹 번들을 `http://127.0.0.1:7357`에 다시 열고 home/schedule/standings/records/team records/game score 화면을 캡처해 표시값을 확인 (`artifacts/kbo-cross-screen-check-after-cache-fix/`)
+- 온보딩 로고 보정 후 `fvm flutter analyze lib/core/constants/team_data.dart lib/features/onboarding/onboarding_screen.dart`, `fvm flutter build web --release --dart-define=APP_ENV=local` 통과, 웹 캡처 확인 (`artifacts/kbo-onboarding-logo-check/onboarding-logo-fixed.png`)
