@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-05-20: 설정 앱 정보 및 지원 동작 복구
+
+### 완료
+- [x] `앱 정보 및 지원`의 죽은 행을 실제 동작으로 연결
+- [x] 앱 버전을 `package_info_plus` 기반의 실제 `version+buildNumber` 표시로 정리
+- [x] 이용약관/개인정보처리방침은 앱 내 문서 시트로 열고, 오픈소스 라이선스는 Flutter 라이선스 페이지로 연결
+- [x] 문의하기는 `support@kbofans.com` 메일 작성으로 연결하고, 메일 앱을 열 수 없으면 주소를 클립보드에 복사하도록 fallback 처리
+- [x] `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 앱 정보 및 지원 동작 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format app/lib/features/settings/settings_screen.dart app/test/features/settings/settings_screen_test.dart`
+- [x] `cd app && fvm flutter analyze lib/features/settings/settings_screen.dart test/features/settings/settings_screen_test.dart`
+- [x] `cd app && fvm flutter test test/features/settings/settings_screen_test.dart`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/features/settings/settings_screen_test.dart`
+
+### 메모
+- 원인은 화살표 UI만 있고 `onTap`이 없는 행과 하드코딩된 버전 표시였다.
+- 현재 약관/개인정보 문구는 MVP용 앱 내 문서 기준이다. 정식 배포 전 스토어 심사용 문안 확정이 필요하다.
+
+---
+
 ## 2026-05-20: 기록실/경기 상세 불필요 호출 추가 제거
 
 ### 완료
@@ -38,7 +59,7 @@
 ### 완료
 - [x] `경기 따라가기` follow session을 Android에서도 진행형 ongoing notification으로 표시하도록 `LiveActivityService` 확장
 - [x] 따라가기 시작 시 Android 알림 권한을 명시 action 흐름에서 요청하고, 같은 알림 ID로 스코어/이닝/업데이트 시각을 갱신
-- [x] `그만 보기`, 경기 종료/취소/중단, follow 대상 누락 시 Android 진행형 알림도 함께 해제
+- [x] 앱 안 `그만 보기`, Android 알림의 `그만 보기` action, 경기 종료/취소/중단, follow 대상 누락 시 Android 진행형 알림도 함께 해제
 - [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에서 Android 진행형 알림을 준비중 표기 대신 구현 표면으로 반영
 
 ### 검증
