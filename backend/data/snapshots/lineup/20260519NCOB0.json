@@ -1,0 +1,136 @@
+{
+  "savedAt": "2026-05-19T13:00:03.977690+00:00",
+  "payload": {
+    "gameId": "20260519NCOB0",
+    "away": {
+      "teamId": "NC",
+      "lineup": [
+        {
+          "order": 1,
+          "position": "2B",
+          "positionKo": "2루수",
+          "name": "박민우"
+        },
+        {
+          "order": 2,
+          "position": "LF",
+          "positionKo": "좌익수",
+          "name": "한석현"
+        },
+        {
+          "order": 3,
+          "position": "SS",
+          "positionKo": "유격수",
+          "name": "김주원"
+        },
+        {
+          "order": 4,
+          "position": "DH",
+          "positionKo": "지명타자",
+          "name": "이우성"
+        },
+        {
+          "order": 5,
+          "position": "1B",
+          "positionKo": "1루수",
+          "name": "오영수"
+        },
+        {
+          "order": 6,
+          "position": "3B",
+          "positionKo": "3루수",
+          "name": "도태훈"
+        },
+        {
+          "order": 7,
+          "position": "RF",
+          "positionKo": "우익수",
+          "name": "박시원"
+        },
+        {
+          "order": 8,
+          "position": "C",
+          "positionKo": "포수",
+          "name": "안중열"
+        },
+        {
+          "order": 9,
+          "position": "CF",
+          "positionKo": "중견수",
+          "name": "최정원"
+        }
+      ],
+      "starter": {
+        "id": "56966",
+        "name": "테일러",
+        "hand": null,
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56966.jpg"
+      }
+    },
+    "home": {
+      "teamId": "OB",
+      "lineup": [
+        {
+          "order": 1,
+          "position": "CF",
+          "positionKo": "중견수",
+          "name": "정수빈"
+        },
+        {
+          "order": 2,
+          "position": "SS",
+          "positionKo": "유격수",
+          "name": "박찬호"
+        },
+        {
+          "order": 3,
+          "position": "DH",
+          "positionKo": "지명타자",
+          "name": "손아섭"
+        },
+        {
+          "order": 4,
+          "position": "RF",
+          "positionKo": "우익수",
+          "name": "카메론"
+        },
+        {
+          "order": 5,
+          "position": "C",
+          "positionKo": "포수",
+          "name": "양의지"
+        },
+        {
+          "order": 6,
+          "position": "LF",
+          "positionKo": "좌익수",
+          "name": "김민석"
+        },
+        {
+          "order": 7,
+          "position": "1B",
+          "positionKo": "1루수",
+          "name": "강승호"
+        },
+        {
+          "order": 8,
+          "position": "2B",
+          "positionKo": "2루수",
+          "name": "오명진"
+        },
+        {
+          "order": 9,
+          "position": "3B",
+          "positionKo": "3루수",
+          "name": "박지훈"
+        }
+      ],
+      "starter": {
+        "id": "55268",
+        "name": "최민석",
+        "hand": null,
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55268.jpg"
+      }
+    }
+  }
+}

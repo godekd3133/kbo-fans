@@ -1,0 +1,79 @@
+{
+  "savedAt": "2026-05-19T13:02:54.177385+00:00",
+  "payload": {
+    "date": "2026-05-19",
+    "time": "18:30",
+    "gameId": "20260519SKWO0",
+    "awayId": "SK",
+    "awayName": "SSG",
+    "awayScore": 6,
+    "homeId": "WO",
+    "homeName": "키움",
+    "homeScore": 7,
+    "stadium": "고척",
+    "status": "FINAL",
+    "inning": "경기종료",
+    "crowd": 7674,
+    "startTime": "18:30",
+    "away": {
+      "teamId": "SK",
+      "teamName": "SSG 랜더스",
+      "shortName": "SSG",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_SK_s.png",
+      "score": 6,
+      "scores": [
+        2,
+        1,
+        0,
+        0,
+        0,
+        2,
+        1,
+        0,
+        0,
+        null,
+        null,
+        null
+      ],
+      "hits": 10,
+      "errors": 1,
+      "balls": 6
+    },
+    "home": {
+      "teamId": "WO",
+      "teamName": "키움 히어로즈",
+      "shortName": "키움",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_WO_s.png",
+      "score": 7,
+      "scores": [
+        2,
+        2,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        1,
+        null,
+        null,
+        null
+      ],
+      "hits": 12,
+      "errors": 0,
+      "balls": 4
+    },
+    "current": {
+      "balls": 0,
+      "strikes": 0,
+      "outs": 1,
+      "batterName": "김건희",
+      "pitcherName": "조병현"
+    },
+    "ticketInfo": null,
+    "highlightInfo": {
+      "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260519&gameId=20260519SKWO0&section=HIGHLIGHT",
+      "youtubeVideos": []
+    }
+  }
+}

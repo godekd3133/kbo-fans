@@ -1,5 +1,5 @@
 {
-  "savedAt": "2026-05-19T12:44:54.914363+00:00",
+  "savedAt": "2026-05-19T13:03:00.070400+00:00",
   "payload": {
     "month": "2026-05",
     "days": [
@@ -1102,15 +1102,8 @@
             "homeName": "KIA",
             "homeScore": 14,
             "stadium": "광주",
-            "status": "LIVE",
-            "ticketInfo": {
-              "vendorKey": "ticketlink",
-              "vendorName": "티켓링크",
-              "vendorUrl": "https://www.ticketlink.co.kr",
-              "openAt": "2026-05-12T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "status": "FINAL",
+            "ticketInfo": null
           },
           {
             "gameId": "20260519SKWO0",
@@ -1135,15 +1128,8 @@
             "homeName": "한화",
             "homeScore": 4,
             "stadium": "대전",
-            "status": "LIVE",
-            "ticketInfo": {
-              "vendorKey": "ticketlink",
-              "vendorName": "티켓링크",
-              "vendorUrl": "https://www.ticketlink.co.kr",
-              "openAt": "2026-05-12T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "status": "FINAL",
+            "ticketInfo": null
           },
           {
             "gameId": "20260519KTSS0",

@@ -1,0 +1,388 @@
+{
+  "savedAt": "2026-05-19T13:02:54.175492+00:00",
+  "payload": {
+    "date": "2026-05-19",
+    "games": [
+      {
+        "date": "2026-05-19",
+        "time": "18:30",
+        "gameId": "20260519NCOB0",
+        "awayId": "NC",
+        "awayName": "NC",
+        "awayScore": 3,
+        "homeId": "OB",
+        "homeName": "두산",
+        "homeScore": 9,
+        "stadium": "잠실",
+        "status": "FINAL",
+        "inning": "경기종료",
+        "crowd": 19189,
+        "startTime": "18:30",
+        "away": {
+          "teamId": "NC",
+          "teamName": "NC 다이노스",
+          "shortName": "NC",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_NC_s.png",
+          "score": 3,
+          "scores": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            null,
+            null,
+            null
+          ],
+          "hits": 6,
+          "errors": 1,
+          "balls": 1
+        },
+        "home": {
+          "teamId": "OB",
+          "teamName": "두산 베어스",
+          "shortName": "두산",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_OB_s.png",
+          "score": 9,
+          "scores": [
+            0,
+            1,
+            1,
+            1,
+            1,
+            5,
+            0,
+            0,
+            null,
+            null,
+            null,
+            null
+          ],
+          "hits": 13,
+          "errors": 0,
+          "balls": 7
+        },
+        "current": {
+          "balls": 3,
+          "strikes": 1,
+          "outs": 3,
+          "batterName": "박정수",
+          "pitcherName": "도태훈"
+        },
+        "ticketInfo": null,
+        "highlightInfo": {
+          "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260519&gameId=20260519NCOB0&section=HIGHLIGHT",
+          "youtubeVideos": []
+        }
+      },
+      {
+        "date": "2026-05-19",
+        "time": "18:30",
+        "gameId": "20260519LGHT0",
+        "awayId": "LG",
+        "awayName": "LG",
+        "awayScore": 0,
+        "homeId": "HT",
+        "homeName": "KIA",
+        "homeScore": 14,
+        "stadium": "광주",
+        "status": "FINAL",
+        "inning": "경기종료",
+        "crowd": 14801,
+        "startTime": "18:30",
+        "away": {
+          "teamId": "LG",
+          "teamName": "LG 트윈스",
+          "shortName": "LG",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LG_s.png",
+          "score": 0,
+          "scores": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            null,
+            null,
+            null
+          ],
+          "hits": 7,
+          "errors": 1,
+          "balls": 3
+        },
+        "home": {
+          "teamId": "HT",
+          "teamName": "KIA 타이거즈",
+          "shortName": "KIA",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HT_s.png",
+          "score": 14,
+          "scores": [
+            1,
+            0,
+            0,
+            3,
+            0,
+            4,
+            4,
+            2,
+            null,
+            null,
+            null,
+            null
+          ],
+          "hits": 18,
+          "errors": 0,
+          "balls": 9
+        },
+        "current": {
+          "balls": 2,
+          "strikes": 3,
+          "outs": 3,
+          "batterName": "이형범",
+          "pitcherName": "이영빈"
+        },
+        "ticketInfo": null,
+        "highlightInfo": {
+          "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260519&gameId=20260519LGHT0&section=HIGHLIGHT",
+          "youtubeVideos": []
+        }
+      },
+      {
+        "date": "2026-05-19",
+        "time": "18:30",
+        "gameId": "20260519SKWO0",
+        "awayId": "SK",
+        "awayName": "SSG",
+        "awayScore": 6,
+        "homeId": "WO",
+        "homeName": "키움",
+        "homeScore": 7,
+        "stadium": "고척",
+        "status": "FINAL",
+        "inning": "경기종료",
+        "crowd": 7674,
+        "startTime": "18:30",
+        "away": {
+          "teamId": "SK",
+          "teamName": "SSG 랜더스",
+          "shortName": "SSG",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_SK_s.png",
+          "score": 6,
+          "scores": [
+            2,
+            1,
+            0,
+            0,
+            0,
+            2,
+            1,
+            0,
+            0,
+            null,
+            null,
+            null
+          ],
+          "hits": 10,
+          "errors": 1,
+          "balls": 6
+        },
+        "home": {
+          "teamId": "WO",
+          "teamName": "키움 히어로즈",
+          "shortName": "키움",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_WO_s.png",
+          "score": 7,
+          "scores": [
+            2,
+            2,
+            0,
+            0,
+            0,
+            0,
+            2,
+            0,
+            1,
+            null,
+            null,
+            null
+          ],
+          "hits": 12,
+          "errors": 0,
+          "balls": 4
+        },
+        "current": {
+          "balls": 0,
+          "strikes": 0,
+          "outs": 1,
+          "batterName": "김건희",
+          "pitcherName": "조병현"
+        },
+        "ticketInfo": null,
+        "highlightInfo": {
+          "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260519&gameId=20260519SKWO0&section=HIGHLIGHT",
+          "youtubeVideos": []
+        }
+      },
+      {
+        "date": "2026-05-19",
+        "time": "18:30",
+        "gameId": "20260519LTHH0",
+        "awayId": "LT",
+        "awayName": "롯데",
+        "awayScore": 6,
+        "homeId": "HH",
+        "homeName": "한화",
+        "homeScore": 4,
+        "stadium": "대전",
+        "status": "FINAL",
+        "inning": "경기종료",
+        "crowd": 17000,
+        "startTime": "18:30",
+        "away": {
+          "teamId": "LT",
+          "teamName": "롯데 자이언츠",
+          "shortName": "롯데",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LT_s.png",
+          "score": 6,
+          "scores": [
+            0,
+            2,
+            0,
+            0,
+            0,
+            0,
+            1,
+            3,
+            0,
+            null,
+            null,
+            null
+          ],
+          "hits": 12,
+          "errors": 0,
+          "balls": 3
+        },
+        "home": {
+          "teamId": "HH",
+          "teamName": "한화 이글스",
+          "shortName": "한화",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HH_s.png",
+          "score": 4,
+          "scores": [
+            1,
+            0,
+            1,
+            2,
+            0,
+            0,
+            0,
+            0,
+            0,
+            null,
+            null,
+            null
+          ],
+          "hits": 8,
+          "errors": 1,
+          "balls": 6
+        },
+        "current": {
+          "balls": 3,
+          "strikes": 1,
+          "outs": 3,
+          "batterName": "문현빈",
+          "pitcherName": "최준용"
+        },
+        "ticketInfo": null,
+        "highlightInfo": {
+          "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260519&gameId=20260519LTHH0&section=HIGHLIGHT",
+          "youtubeVideos": []
+        }
+      },
+      {
+        "date": "2026-05-19",
+        "time": "18:30",
+        "gameId": "20260519KTSS0",
+        "awayId": "KT",
+        "awayName": "KT",
+        "awayScore": 2,
+        "homeId": "SS",
+        "homeName": "삼성",
+        "homeScore": 10,
+        "stadium": "포항",
+        "status": "FINAL",
+        "inning": "경기종료",
+        "crowd": 12120,
+        "startTime": "18:30",
+        "away": {
+          "teamId": "KT",
+          "teamName": "KT 위즈",
+          "shortName": "KT",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_KT_s.png",
+          "score": 2,
+          "scores": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            null,
+            null,
+            null
+          ],
+          "hits": 11,
+          "errors": 1,
+          "balls": 2
+        },
+        "home": {
+          "teamId": "SS",
+          "teamName": "삼성 라이온즈",
+          "shortName": "삼성",
+          "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_SS_s.png",
+          "score": 10,
+          "scores": [
+            0,
+            0,
+            2,
+            1,
+            1,
+            0,
+            6,
+            0,
+            null,
+            null,
+            null,
+            null
+          ],
+          "hits": 20,
+          "errors": 0,
+          "balls": 1
+        },
+        "current": {
+          "balls": 1,
+          "strikes": 0,
+          "outs": 3,
+          "batterName": "미야지",
+          "pitcherName": "이정훈"
+        },
+        "ticketInfo": null,
+        "highlightInfo": {
+          "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260519&gameId=20260519KTSS0&section=HIGHLIGHT",
+          "youtubeVideos": []
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,5528 @@
+{
+  "savedAt": "2026-05-19T13:00:07.158138+00:00",
+  "payload": {
+    "gameId": "20260519LTHH0",
+    "currentAtBat": {
+      "batter": {
+        "name": "문현빈",
+        "number": 51,
+        "hand": "좌타",
+        "recent": "희생번트|땅볼|2루타|4구|"
+      },
+      "pitcher": {
+        "name": "최준용",
+        "number": 56,
+        "hand": "우투",
+        "pitchCount": 13
+      },
+      "ballCount": {
+        "balls": 3,
+        "strikes": 1,
+        "outs": 3
+      },
+      "inningText": "9회 말",
+      "baseState": "주자없음"
+    },
+    "relayItems": [
+      {
+        "seqNo": 1,
+        "inning": 1,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "1회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 2,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 황성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 3,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 4,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 5,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 6,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 7,
+        "inning": 1,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "황성빈 : 2루수 땅볼 아웃 (2루수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 8,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 고승민",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 9,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 10,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 11,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 12,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 13,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 14,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 15,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 7구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 16,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 8구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 17,
+        "inning": 1,
+        "half": "top",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "고승민 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 18,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 레이예스",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 19,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 20,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 21,
+        "inning": 1,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 22,
+        "inning": 1,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "레이예스 : 중견수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 23,
+        "inning": 1,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "1회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 24,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 이진영",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 25,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 26,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 27,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1회말 1번타순 2구 체크스윙 → 노 스윙 : 한화 이진영",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 28,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 29,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 30,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 31,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 32,
+        "inning": 1,
+        "half": "bottom",
+        "event": "WALK",
+        "isScoring": false,
+        "text": "이진영 : 볼넷",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 33,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 페라자",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 34,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 35,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 36,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 37,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 38,
+        "inning": 1,
+        "half": "bottom",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "페라자 : 중견수 앞 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 39,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 이진영 : 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 40,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 문현빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 41,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 번트파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 42,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 43,
+        "inning": 1,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "문현빈 : 3루수 희생번트 아웃 (3루수->2루수 1루 터치아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 44,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 페라자 : 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 45,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2루주자 이진영 : 3루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 46,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 강백호",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 47,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 48,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 49,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 50,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 51,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 52,
+        "inning": 1,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "강백호 : 2루수 땅볼 아웃 (2루수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 53,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2루주자 페라자 : 3루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 54,
+        "inning": 1,
+        "half": "bottom",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "3루주자 이진영 : 홈인",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 55,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 노시환",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 56,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 57,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 58,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 59,
+        "inning": 1,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 60,
+        "inning": 1,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "노시환 : 좌익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 61,
+        "inning": 2,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "2회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 62,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 나승엽",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 63,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 64,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 65,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 66,
+        "inning": 2,
+        "half": "top",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "나승엽 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 67,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 한동희",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 68,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 69,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2회초 5번타순 1구 체크스윙 → 노 스윙 : 롯데 한동희",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 70,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 71,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 72,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 73,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 74,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 75,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 7구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 76,
+        "inning": 2,
+        "half": "top",
+        "event": "WALK",
+        "isScoring": false,
+        "text": "한동희 : 볼넷",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 77,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 전준우",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 78,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 79,
+        "inning": 2,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "전준우 : 우익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 80,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7번타자 전민재",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 81,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 82,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 83,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 84,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 85,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 86,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 87,
+        "inning": 2,
+        "half": "top",
+        "event": "HOMERUN",
+        "isScoring": true,
+        "text": "전민재 : 좌익수 뒤 홈런 (홈런거리:110M)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 88,
+        "inning": 2,
+        "half": "top",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "1루주자 한동희 : 홈인",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 89,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "8번타자 장두성",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 90,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 91,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 92,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 93,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 94,
+        "inning": 2,
+        "half": "top",
+        "event": "WALK",
+        "isScoring": false,
+        "text": "장두성 : 볼넷",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 95,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "9번타자 손성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 96,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "코칭스태프 마운드 방문",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 97,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 98,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 99,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 100,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 101,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 102,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 103,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 104,
+        "inning": 2,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "손성빈 : 중견수 왼쪽 앞 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 105,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 장두성 : 3루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 106,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 황성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 107,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 108,
+        "inning": 2,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 109,
+        "inning": 2,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "황성빈 : 2루수 땅볼 아웃 (2루수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 110,
+        "inning": 2,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "2회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 111,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 허인서",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 112,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 113,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 114,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 115,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 116,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 117,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 118,
+        "inning": 2,
+        "half": "bottom",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "허인서 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 119,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7번타자 김태연",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 120,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 121,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 122,
+        "inning": 2,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "김태연 : 좌익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 123,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "8번타자 이도윤",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 124,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 125,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 126,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 127,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 128,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 129,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 130,
+        "inning": 2,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 7구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 131,
+        "inning": 2,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "이도윤 : 1루수 땅볼 아웃 (1루수 1루 터치아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 132,
+        "inning": 3,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "3회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 133,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 고승민",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 134,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 135,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 136,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 137,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 138,
+        "inning": 3,
+        "half": "top",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "고승민 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 139,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 레이예스",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 140,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 141,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 142,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 143,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 144,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 145,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 146,
+        "inning": 3,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "레이예스 : 2루수 땅볼 아웃 (2루수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 147,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 나승엽",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 148,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 149,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 150,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 151,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 152,
+        "inning": 3,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 153,
+        "inning": 3,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "나승엽 : 좌익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 154,
+        "inning": 3,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "3회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 155,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "9번타자 심우준",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 156,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 157,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 158,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 159,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 160,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 161,
+        "inning": 3,
+        "half": "bottom",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "심우준 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 162,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 이진영",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 163,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 164,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 165,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 166,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 167,
+        "inning": 3,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "이진영 : 유격수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 168,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 페라자",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 169,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 170,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 171,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 172,
+        "inning": 3,
+        "half": "bottom",
+        "event": "HOMERUN",
+        "isScoring": true,
+        "text": "페라자 : 우익수 뒤 홈런 (홈런거리:130M)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 173,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 문현빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 174,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 175,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 176,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 177,
+        "inning": 3,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 178,
+        "inning": 3,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "문현빈 : 유격수 땅볼 아웃 (유격수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 179,
+        "inning": 4,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "4회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 180,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 한동희",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 181,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 182,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 183,
+        "inning": 4,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "한동희 : 유격수 땅볼 아웃 (유격수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 184,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 전준우",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 185,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 186,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 187,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 188,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 189,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 190,
+        "inning": 4,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "전준우 : 유격수 왼쪽 내야안타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 191,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7번타자 전민재",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 192,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 193,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 194,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "전민재 : 유격수 앞 땅볼로 출루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 195,
+        "inning": 4,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "1루주자 전준우 : 포스아웃 (유격수->2루수 2루 터치아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 196,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "8번타자 장두성",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 197,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 198,
+        "inning": 4,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "장두성 : 우익수 오른쪽 2루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 199,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 전민재 : 3루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 200,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "9번타자 손성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 201,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 202,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 203,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 204,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 205,
+        "inning": 4,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 206,
+        "inning": 4,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "손성빈 : 우익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 207,
+        "inning": 4,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "4회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 208,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 강백호",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 209,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 210,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 211,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 212,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 213,
+        "inning": 4,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "강백호 : 중견수 라인드라이브 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 214,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 노시환",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 215,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 216,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 217,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4회말 5번타순 2구 체크스윙 → 노 스윙 : 한화 노시환",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 218,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 219,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 220,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 221,
+        "inning": 4,
+        "half": "bottom",
+        "event": "WALK",
+        "isScoring": false,
+        "text": "노시환 : 볼넷",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 222,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 허인서",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 223,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 224,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 225,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 226,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 227,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 228,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 229,
+        "inning": 4,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "허인서 : 유격수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 230,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7번타자 김태연",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 231,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 232,
+        "inning": 4,
+        "half": "bottom",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "김태연 : 좌익수 왼쪽 2루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 233,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 노시환 : 3루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 234,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "8번타자 이도윤",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 235,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 236,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 237,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 238,
+        "inning": 4,
+        "half": "bottom",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "이도윤 : 1루수 왼쪽 내야안타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 239,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2루주자 김태연 : 3루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 240,
+        "inning": 4,
+        "half": "bottom",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "3루주자 노시환 : 홈인",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 241,
+        "inning": 4,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "4회말 8번타순 3구 후 19:39 ~ 19:41 (2분간) 한화요청 비디오 판독: 이도윤 1루 타구 관련 아웃→세이프",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 242,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "9번타자 심우준",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 243,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 244,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "심우준 : 몸에 맞는 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 245,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 이도윤 : 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 246,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 이진영",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 247,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "코칭스태프 마운드 방문",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 248,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 249,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 250,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 251,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 252,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 253,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 254,
+        "inning": 4,
+        "half": "bottom",
+        "event": "WALK",
+        "isScoring": false,
+        "text": "이진영 : 볼넷",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 255,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 심우준 : 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 256,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2루주자 이도윤 : 3루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 257,
+        "inning": 4,
+        "half": "bottom",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "3루주자 김태연 : 홈인",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 258,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 페라자",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 259,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 260,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 261,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 262,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 263,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 264,
+        "inning": 4,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 265,
+        "inning": 4,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "페라자 : 유격수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 266,
+        "inning": 5,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "5회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 267,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 황성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 268,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 269,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 270,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 271,
+        "inning": 5,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "황성빈 : 2루수 땅볼 아웃 (2루수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 272,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 고승민",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 273,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 274,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 275,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 276,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 277,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 278,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 279,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 7구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 280,
+        "inning": 5,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "고승민 : 좌익수 왼쪽 2루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 281,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 레이예스",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 282,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 283,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 284,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 285,
+        "inning": 5,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "레이예스 : 2루수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 286,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 나승엽",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 287,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 288,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 289,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 290,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 291,
+        "inning": 5,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 292,
+        "inning": 5,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "나승엽 : 좌익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 293,
+        "inning": 5,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "5회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 294,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 문현빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 295,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 296,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 297,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 298,
+        "inning": 5,
+        "half": "bottom",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "문현빈 : 우익수 오른쪽 2루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 299,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 강백호",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 300,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 301,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 302,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 303,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 304,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 305,
+        "inning": 5,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "강백호 : 중견수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 306,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 노시환",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 307,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 308,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 309,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 310,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 311,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 312,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 313,
+        "inning": 5,
+        "half": "bottom",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "노시환 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 314,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 허인서",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 315,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 316,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 317,
+        "inning": 5,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 318,
+        "inning": 5,
+        "half": "bottom",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "허인서 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 319,
+        "inning": 6,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "6회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 320,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 한동희",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 321,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 322,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 323,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6회초 5번타순 2구 체크스윙 → 스윙 : 롯데 한동희",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 324,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6회초 5번타순 2구 후 20:16 ~ 20:17 (1분간) 롯데요청 비디오 판독: 한동희 체크스윙 관련 스윙→스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 325,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 326,
+        "inning": 6,
+        "half": "top",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "한동희 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 327,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 전준우",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 328,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 329,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 330,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 331,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 332,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 333,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 334,
+        "inning": 6,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "전준우 : 좌익수 왼쪽 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 335,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7번타자 전민재",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 336,
+        "inning": 6,
+        "half": "top",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "투수 에르난데스 : 투수 이상규 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 337,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 338,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 339,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 340,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 341,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 342,
+        "inning": 6,
+        "half": "top",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "전민재 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 343,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "8번타자 장두성",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 344,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 345,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 346,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 347,
+        "inning": 6,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 348,
+        "inning": 6,
+        "half": "top",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "장두성 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 349,
+        "inning": 6,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "6회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 350,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7번타자 김태연",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 351,
+        "inning": 6,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "투수 비슬리 : 투수 현도훈 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 352,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 353,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 354,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 355,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 356,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 357,
+        "inning": 6,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "김태연 : 1루수 땅볼 아웃 (1루수->투수 1루 터치아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 358,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "8번타자 이도윤",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 359,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 360,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 361,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 362,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 363,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 364,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 365,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 7구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 366,
+        "inning": 6,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "이도윤 : 2루수 땅볼 아웃 (2루수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 367,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "9번타자 심우준",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 368,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 369,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 370,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 371,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 372,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 373,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 374,
+        "inning": 6,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 7구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 375,
+        "inning": 6,
+        "half": "bottom",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "심우준 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 376,
+        "inning": 7,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "7회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 377,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "9번타자 손성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 378,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 379,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 380,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 381,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 382,
+        "inning": 7,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "손성빈 : 좌익수 앞 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 383,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 황성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 384,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 385,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 386,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 387,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 388,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 389,
+        "inning": 7,
+        "half": "top",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "황성빈 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 390,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 고승민",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 391,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 392,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 393,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 394,
+        "inning": 7,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "고승민 : 우익수 오른쪽 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 395,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 손성빈 : 3루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 396,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 레이예스",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 397,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "포수 마운드 방문",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 398,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 399,
+        "inning": 7,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "레이예스 : 투수 땅볼 아웃 (투수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 400,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 고승민 : 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 401,
+        "inning": 7,
+        "half": "top",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "3루주자 손성빈 : 홈인",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 402,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 나승엽",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 403,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 404,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 405,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 406,
+        "inning": 7,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 407,
+        "inning": 7,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "나승엽 : 유격수 땅볼 아웃 (유격수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 408,
+        "inning": 7,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "7회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 409,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 이진영",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 410,
+        "inning": 7,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "투수 현도훈 : 투수 박정민 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 411,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 412,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 413,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 414,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 415,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 416,
+        "inning": 7,
+        "half": "bottom",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "이진영 : 좌익수 앞 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 417,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 페라자",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 418,
+        "inning": 7,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "1루주자 이진영 : 대주자 이원석 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 419,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 420,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 421,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 422,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 423,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 424,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 425,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 426,
+        "inning": 7,
+        "half": "bottom",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "페라자 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 427,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 문현빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 428,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 429,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 430,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 431,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 432,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 433,
+        "inning": 7,
+        "half": "bottom",
+        "event": "WALK",
+        "isScoring": false,
+        "text": "문현빈 : 볼넷",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 434,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 이원석 : 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 435,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 강백호",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 436,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "포수 마운드 방문",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 437,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 438,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 439,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 440,
+        "inning": 7,
+        "half": "bottom",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "강백호 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 441,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7회말 4번타순 3구 후 20:55 ~ 20:56 (1분간) 한화요청 비디오 판독: 강백호 파울/스윙 관련 스윙→스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 442,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 노시환",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 443,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 444,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 445,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 446,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 447,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 448,
+        "inning": 7,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 449,
+        "inning": 7,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "노시환 : 포수 파울플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 450,
+        "inning": 8,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "8회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 451,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 한동희",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 452,
+        "inning": 8,
+        "half": "top",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "투수 이상규 : 투수 윤산흠 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 453,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "대주자 이원석 : 중견수(으)로 수비위치 변경",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 454,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 455,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 456,
+        "inning": 8,
+        "half": "top",
+        "event": "HOMERUN",
+        "isScoring": true,
+        "text": "한동희 : 중견수 뒤 홈런 (홈런거리:130M)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 457,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 전준우",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 458,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "코칭스태프 마운드 방문",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 459,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 460,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 461,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 462,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 463,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 464,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 465,
+        "inning": 8,
+        "half": "top",
+        "event": "WALK",
+        "isScoring": false,
+        "text": "전준우 : 볼넷",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 466,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7번타자 전민재",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 467,
+        "inning": 8,
+        "half": "top",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "투수 윤산흠 : 투수 이민우 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 468,
+        "inning": 8,
+        "half": "top",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "1루주자 전준우 : 대주자 한태양 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 469,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 번트파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 470,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 471,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 472,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 473,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 474,
+        "inning": 8,
+        "half": "top",
+        "event": "STRIKEOUT",
+        "isScoring": false,
+        "text": "전민재 : 삼진 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 475,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "8번타자 장두성",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 476,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 477,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 478,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 한태양 : 도루로 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 479,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 480,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 481,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 482,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 483,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2루주자 한태양 : 투수 실책으로 3루까지 진루 (투수 견제 송구 실책->유격수)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 484,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 7구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 485,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 8구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 486,
+        "inning": 8,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "장두성 : 우중간 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 487,
+        "inning": 8,
+        "half": "top",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "3루주자 한태양 : 홈인",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 488,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "9번타자 손성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 489,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 490,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 491,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 492,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 493,
+        "inning": 8,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "손성빈 : 중견수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 494,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 황성빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 495,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 496,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 장두성 : 도루로 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 497,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 498,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 499,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 500,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 501,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 502,
+        "inning": 8,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "황성빈 : 중견수 오른쪽 앞 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 503,
+        "inning": 8,
+        "half": "top",
+        "event": "RUNS",
+        "isScoring": true,
+        "text": "2루주자 장두성 : 홈인",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 504,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 고승민",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 505,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 506,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "투수 투수판 이탈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 507,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 508,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 황성빈 : 도루로 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 509,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 510,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 511,
+        "inning": 8,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 512,
+        "inning": 8,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "고승민 : 좌익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 513,
+        "inning": 8,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "8회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 514,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 허인서",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 515,
+        "inning": 8,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "투수 박정민 : 투수 김원중 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 516,
+        "inning": 8,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "대주자 한태양 : 2루수 이호준 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 517,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "중견수 황성빈 : 좌익수(으)로 수비위치 변경",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 518,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "우익수 장두성 : 중견수(으)로 수비위치 변경",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 519,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2루수 고승민 : 우익수(으)로 수비위치 변경",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 520,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 521,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 522,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 523,
+        "inning": 8,
+        "half": "bottom",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "허인서 : 좌중간 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 524,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "7번타자 김태연",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 525,
+        "inning": 8,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "1루주자 허인서 : 대주자 오재원 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 526,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 527,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 528,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 529,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 530,
+        "inning": 8,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "3루수 한동희 : 3루수 박승욱 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 531,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 532,
+        "inning": 8,
+        "half": "bottom",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "김태연 : 좌익수 앞 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 533,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 오재원 : 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 534,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "8번타자 이도윤",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 535,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 536,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 537,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 538,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "이도윤 : 포수 앞 땅볼로 출루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 539,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 김태연 : 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 540,
+        "inning": 8,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "2루주자 오재원 : 포스아웃 (포수->3루수 3루 터치아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 541,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "9번타자 심우준",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 542,
+        "inning": 8,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "9번타자 심우준 : 대타 최인호 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 543,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 544,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 545,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 546,
+        "inning": 8,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 547,
+        "inning": 8,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "최인호 : 2루수 병살타 아웃 (2루수->유격수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 548,
+        "inning": 8,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "1루주자 이도윤 : 포스아웃 (2루수->유격수 2루 터치아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 549,
+        "inning": 9,
+        "half": "top",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "9회초 롯데 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 550,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 레이예스",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 551,
+        "inning": 9,
+        "half": "top",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "투수 이민우 : 투수 박준영 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 552,
+        "inning": 9,
+        "half": "top",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "대타 최인호 : 포수 최재훈 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 553,
+        "inning": 9,
+        "half": "top",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "중견수 이원석 : 2루수 황영묵 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 554,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2루수 이도윤 : 유격수(으)로 수비위치 변경",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 555,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "대주자 오재원 : 중견수(으)로 수비위치 변경",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 556,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 557,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 558,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 559,
+        "inning": 9,
+        "half": "top",
+        "event": "HIT",
+        "isScoring": false,
+        "text": "레이예스 : 중견수 앞 1루타",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 560,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "4번타자 나승엽",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 561,
+        "inning": 9,
+        "half": "top",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "1루주자 레이예스 : 대주자 손호영 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 562,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 헛스윙",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 563,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 564,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 565,
+        "inning": 9,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "나승엽 : 좌익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 566,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "5번타자 박승욱",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 567,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 568,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 569,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 570,
+        "inning": 9,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "박승욱 : 우익수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 571,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "6번타자 이호준",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 572,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 573,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 574,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 575,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 576,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 577,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1루주자 손호영 : 도루로 2루까지 진루",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 578,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 579,
+        "inning": 9,
+        "half": "top",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 7구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 580,
+        "inning": 9,
+        "half": "top",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "이호준 : 1루수 라인드라이브 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 581,
+        "inning": 9,
+        "half": "bottom",
+        "event": "INNING_CHANGE",
+        "isScoring": false,
+        "text": "9회말 한화 공격 ---------------------------------------",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 582,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "1번타자 황영묵",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 583,
+        "inning": 9,
+        "half": "bottom",
+        "event": "SUBSTITUTION",
+        "isScoring": false,
+        "text": "우익수 고승민 : 투수 최준용 (으)로 교체",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 584,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "대주자 손호영 : 우익수(으)로 수비위치 변경",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 585,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 586,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 587,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 588,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 589,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 파울",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 590,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 6구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 591,
+        "inning": 9,
+        "half": "bottom",
+        "event": "WALK",
+        "isScoring": false,
+        "text": "황영묵 : 볼넷",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 592,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "2번타자 페라자",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 593,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "포수 마운드 방문",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 594,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 595,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 596,
+        "inning": 9,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "페라자 : 유격수 병살타 아웃 (유격수->2루수->1루수 송구아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 597,
+        "inning": 9,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "1루주자 황영묵 : 포스아웃 (유격수->2루수 2루 터치아웃)",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 598,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "3번타자 문현빈",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 599,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 1구 스트라이크",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 600,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 2구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 601,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 3구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 602,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 4구 볼",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 603,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "- 5구 타격",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 604,
+        "inning": 9,
+        "half": "bottom",
+        "event": "OUT",
+        "isScoring": false,
+        "text": "문현빈 : 중견수 플라이 아웃",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 605,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "=====================================",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 606,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "승리투수: 박정민",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 607,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "세이브투수: 최준용",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 608,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "승리팀 홀드투수: 김원중",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 609,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "패전투수: 윤산흠",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 610,
+        "inning": 9,
+        "half": "bottom",
+        "event": "PLAY",
+        "isScoring": false,
+        "text": "패전팀 홀드투수: 이상규",
+        "pitchSequence": null
+      },
+      {
+        "seqNo": 611,
+        "inning": 9,
+        "half": "bottom",
+        "event": "GAME_END",
+        "isScoring": false,
+        "text": "경기종료",
+        "pitchSequence": null
+      }
+    ]
+  }
+}

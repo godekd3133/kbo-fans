@@ -1,0 +1,348 @@
+{
+  "savedAt": "2026-05-19T13:00:05.844877+00:00",
+  "payload": {
+    "gameId": "20260519SKWO0",
+    "officialAvailable": true,
+    "away": {
+      "teamId": "SK",
+      "batters": [
+        {
+          "order": 1,
+          "position": "유",
+          "name": "안상현",
+          "atBats": 2,
+          "hits": 0,
+          "rbi": 0,
+          "runs": 1
+        },
+        {
+          "order": 1,
+          "position": "타유",
+          "name": "박성한",
+          "atBats": 2,
+          "hits": 1,
+          "rbi": 0,
+          "runs": 0
+        },
+        {
+          "order": 2,
+          "position": "二",
+          "name": "정준재",
+          "atBats": 3,
+          "hits": 1,
+          "rbi": 0,
+          "runs": 1
+        },
+        {
+          "order": 3,
+          "position": "三",
+          "name": "최정",
+          "atBats": 4,
+          "hits": 1,
+          "rbi": 0,
+          "runs": 0
+        },
+        {
+          "order": 3,
+          "position": "주三",
+          "name": "홍대인",
+          "atBats": 0,
+          "hits": 0,
+          "rbi": 0,
+          "runs": 0
+        },
+        {
+          "order": 4,
+          "position": "좌",
+          "name": "에레디아",
+          "atBats": 4,
+          "hits": 1,
+          "rbi": 2,
+          "runs": 1
+        },
+        {
+          "order": 5,
+          "position": "지",
+          "name": "김재환",
+          "atBats": 3,
+          "hits": 1,
+          "rbi": 1,
+          "runs": 1
+        },
+        {
+          "order": 6,
+          "position": "중",
+          "name": "최지훈",
+          "atBats": 5,
+          "hits": 2,
+          "rbi": 0,
+          "runs": 2
+        },
+        {
+          "order": 7,
+          "position": "우",
+          "name": "채현우",
+          "atBats": 4,
+          "hits": 1,
+          "rbi": 1,
+          "runs": 0
+        },
+        {
+          "order": 8,
+          "position": "포",
+          "name": "조형우",
+          "atBats": 2,
+          "hits": 1,
+          "rbi": 2,
+          "runs": 0
+        },
+        {
+          "order": 8,
+          "position": "포",
+          "name": "이지영",
+          "atBats": 1,
+          "hits": 0,
+          "rbi": 0,
+          "runs": 0
+        },
+        {
+          "order": 9,
+          "position": "一",
+          "name": "이정범",
+          "atBats": 4,
+          "hits": 1,
+          "rbi": 0,
+          "runs": 0
+        }
+      ],
+      "pitchers": [
+        {
+          "name": "타케다",
+          "innings": "5",
+          "hits": 8,
+          "strikeouts": 3,
+          "walks": 3,
+          "earnedRuns": 3,
+          "decision": null
+        },
+        {
+          "name": "문승원",
+          "innings": "1",
+          "hits": 0,
+          "strikeouts": 0,
+          "walks": 0,
+          "earnedRuns": 0,
+          "decision": "홀드"
+        },
+        {
+          "name": "이로운",
+          "innings": "1",
+          "hits": 3,
+          "strikeouts": 0,
+          "walks": 1,
+          "earnedRuns": 2,
+          "decision": null
+        },
+        {
+          "name": "노경은",
+          "innings": "1",
+          "hits": 0,
+          "strikeouts": 0,
+          "walks": 0,
+          "earnedRuns": 0,
+          "decision": null
+        },
+        {
+          "name": "조병현",
+          "innings": "1/3",
+          "hits": 1,
+          "strikeouts": 0,
+          "walks": 0,
+          "earnedRuns": 1,
+          "decision": "패"
+        }
+      ],
+      "totals": {
+        "batting": {
+          "atBats": 34,
+          "runs": 6,
+          "hits": 10,
+          "rbi": 6
+        },
+        "pitching": {
+          "innings": "8.0",
+          "hits": 12,
+          "strikeouts": 3,
+          "walks": 4,
+          "earnedRuns": 6
+        }
+      }
+    },
+    "home": {
+      "teamId": "WO",
+      "batters": [
+        {
+          "order": 1,
+          "position": "二",
+          "name": "서건창",
+          "atBats": 4,
+          "hits": 1,
+          "rbi": 0,
+          "runs": 1
+        },
+        {
+          "order": 2,
+          "position": "지",
+          "name": "안치홍",
+          "atBats": 4,
+          "hits": 1,
+          "rbi": 1,
+          "runs": 1
+        },
+        {
+          "order": 3,
+          "position": "우",
+          "name": "임병욱",
+          "atBats": 5,
+          "hits": 3,
+          "rbi": 0,
+          "runs": 1
+        },
+        {
+          "order": 4,
+          "position": "一",
+          "name": "최주환",
+          "atBats": 5,
+          "hits": 2,
+          "rbi": 1,
+          "runs": 1
+        },
+        {
+          "order": 5,
+          "position": "좌",
+          "name": "임지열",
+          "atBats": 3,
+          "hits": 0,
+          "rbi": 0,
+          "runs": 0
+        },
+        {
+          "order": 5,
+          "position": "타좌",
+          "name": "이형종",
+          "atBats": 1,
+          "hits": 0,
+          "rbi": 0,
+          "runs": 1
+        },
+        {
+          "order": 6,
+          "position": "三",
+          "name": "김웅빈",
+          "atBats": 5,
+          "hits": 2,
+          "rbi": 2,
+          "runs": 1
+        },
+        {
+          "order": 7,
+          "position": "포",
+          "name": "김건희",
+          "atBats": 3,
+          "hits": 2,
+          "rbi": 1,
+          "runs": 0
+        },
+        {
+          "order": 8,
+          "position": "유",
+          "name": "권혁빈",
+          "atBats": 2,
+          "hits": 0,
+          "rbi": 0,
+          "runs": 0
+        },
+        {
+          "order": 8,
+          "position": "타",
+          "name": "양현종",
+          "atBats": 1,
+          "hits": 0,
+          "rbi": 0,
+          "runs": 0
+        },
+        {
+          "order": 8,
+          "position": "유",
+          "name": "오선진",
+          "atBats": 0,
+          "hits": 0,
+          "rbi": 0,
+          "runs": 0
+        },
+        {
+          "order": 9,
+          "position": "중",
+          "name": "박주홍",
+          "atBats": 4,
+          "hits": 1,
+          "rbi": 0,
+          "runs": 1
+        }
+      ],
+      "pitchers": [
+        {
+          "name": "박정훈",
+          "innings": "6",
+          "hits": 6,
+          "strikeouts": 2,
+          "walks": 4,
+          "earnedRuns": 5,
+          "decision": null
+        },
+        {
+          "name": "김성진",
+          "innings": "1",
+          "hits": 3,
+          "strikeouts": 1,
+          "walks": 0,
+          "earnedRuns": 1,
+          "decision": null
+        },
+        {
+          "name": "원종현",
+          "innings": "1",
+          "hits": 0,
+          "strikeouts": 2,
+          "walks": 0,
+          "earnedRuns": 0,
+          "decision": null
+        },
+        {
+          "name": "유토",
+          "innings": "1",
+          "hits": 1,
+          "strikeouts": 2,
+          "walks": 2,
+          "earnedRuns": 0,
+          "decision": "승"
+        }
+      ],
+      "totals": {
+        "batting": {
+          "atBats": 37,
+          "runs": 7,
+          "hits": 12,
+          "rbi": 5
+        },
+        "pitching": {
+          "innings": "9.0",
+          "hits": 10,
+          "strikeouts": 7,
+          "walks": 6,
+          "earnedRuns": 6
+        }
+      }
+    }
+  }
+}

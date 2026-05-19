@@ -1,0 +1,136 @@
+{
+  "savedAt": "2026-05-19T13:00:06.077608+00:00",
+  "payload": {
+    "gameId": "20260519SKWO0",
+    "away": {
+      "teamId": "SK",
+      "lineup": [
+        {
+          "order": 1,
+          "position": "SS",
+          "positionKo": "유격수",
+          "name": "안상현"
+        },
+        {
+          "order": 2,
+          "position": "2B",
+          "positionKo": "2루수",
+          "name": "정준재"
+        },
+        {
+          "order": 3,
+          "position": "3B",
+          "positionKo": "3루수",
+          "name": "최정"
+        },
+        {
+          "order": 4,
+          "position": "LF",
+          "positionKo": "좌익수",
+          "name": "에레디아"
+        },
+        {
+          "order": 5,
+          "position": "DH",
+          "positionKo": "지명타자",
+          "name": "김재환"
+        },
+        {
+          "order": 6,
+          "position": "CF",
+          "positionKo": "중견수",
+          "name": "최지훈"
+        },
+        {
+          "order": 7,
+          "position": "RF",
+          "positionKo": "우익수",
+          "name": "채현우"
+        },
+        {
+          "order": 8,
+          "position": "C",
+          "positionKo": "포수",
+          "name": "조형우"
+        },
+        {
+          "order": 9,
+          "position": "1B",
+          "positionKo": "1루수",
+          "name": "이정범"
+        }
+      ],
+      "starter": {
+        "id": "56823",
+        "name": "타케다",
+        "hand": null,
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56823.jpg"
+      }
+    },
+    "home": {
+      "teamId": "WO",
+      "lineup": [
+        {
+          "order": 1,
+          "position": "2B",
+          "positionKo": "2루수",
+          "name": "서건창"
+        },
+        {
+          "order": 2,
+          "position": "DH",
+          "positionKo": "지명타자",
+          "name": "안치홍"
+        },
+        {
+          "order": 3,
+          "position": "RF",
+          "positionKo": "우익수",
+          "name": "임병욱"
+        },
+        {
+          "order": 4,
+          "position": "1B",
+          "positionKo": "1루수",
+          "name": "최주환"
+        },
+        {
+          "order": 5,
+          "position": "LF",
+          "positionKo": "좌익수",
+          "name": "임지열"
+        },
+        {
+          "order": 6,
+          "position": "3B",
+          "positionKo": "3루수",
+          "name": "김웅빈"
+        },
+        {
+          "order": 7,
+          "position": "C",
+          "positionKo": "포수",
+          "name": "김건희"
+        },
+        {
+          "order": 8,
+          "position": "SS",
+          "positionKo": "유격수",
+          "name": "권혁빈"
+        },
+        {
+          "order": 9,
+          "position": "CF",
+          "positionKo": "중견수",
+          "name": "박주홍"
+        }
+      ],
+      "starter": {
+        "id": "55394",
+        "name": "박정훈",
+        "hand": null,
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55394.jpg"
+      }
+    }
+  }
+}

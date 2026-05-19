@@ -1,0 +1,79 @@
+{
+  "savedAt": "2026-05-19T13:02:54.176990+00:00",
+  "payload": {
+    "date": "2026-05-19",
+    "time": "18:30",
+    "gameId": "20260519LGHT0",
+    "awayId": "LG",
+    "awayName": "LG",
+    "awayScore": 0,
+    "homeId": "HT",
+    "homeName": "KIA",
+    "homeScore": 14,
+    "stadium": "광주",
+    "status": "FINAL",
+    "inning": "경기종료",
+    "crowd": 14801,
+    "startTime": "18:30",
+    "away": {
+      "teamId": "LG",
+      "teamName": "LG 트윈스",
+      "shortName": "LG",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_LG_s.png",
+      "score": 0,
+      "scores": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        null,
+        null,
+        null
+      ],
+      "hits": 7,
+      "errors": 1,
+      "balls": 3
+    },
+    "home": {
+      "teamId": "HT",
+      "teamName": "KIA 타이거즈",
+      "shortName": "KIA",
+      "logoUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_HT_s.png",
+      "score": 14,
+      "scores": [
+        1,
+        0,
+        0,
+        3,
+        0,
+        4,
+        4,
+        2,
+        null,
+        null,
+        null,
+        null
+      ],
+      "hits": 18,
+      "errors": 0,
+      "balls": 9
+    },
+    "current": {
+      "balls": 2,
+      "strikes": 3,
+      "outs": 3,
+      "batterName": "이형범",
+      "pitcherName": "이영빈"
+    },
+    "ticketInfo": null,
+    "highlightInfo": {
+      "officialUrl": "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260519&gameId=20260519LGHT0&section=HIGHLIGHT",
+      "youtubeVideos": []
+    }
+  }
+}
