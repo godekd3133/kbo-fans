@@ -1,5 +1,5 @@
 {
-  "savedAt": "2026-05-19T16:59:13.481106+00:00",
+  "savedAt": "2026-05-19T17:25:31.979787+00:00",
   "payload": {
     "season": 2026,
     "leaders": {
@@ -261,7 +261,7 @@
         "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55268.jpg"
       },
       "monthHitter": {
-        "label": "시즌 홈런 리더",
+        "label": "시즌 홈런왕",
         "playerId": "52605",
         "playerType": "hitter",
         "name": "김도영",
