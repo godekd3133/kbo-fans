@@ -2,6 +2,35 @@
 
 ---
 
+## 2026-05-20: web deep-link 목적지 보존 검증 및 라우터 보정
+
+### 완료
+- [x] 390x844 web capture로 `/#/schedule`, `/#/standings`, `/#/records`, `/#/records/team/HT`, `/#/records/leaderboard/avg`, `/#/game/20260519LGHT0?tab=*` 직접 진입을 재검증
+- [x] onboarding 상태가 `null -> true`로 바뀌는 순간 `GoRouter`가 재생성되며 deep-link 목적지가 `/#/home`으로 유실되는 문제 확인
+- [x] `GoRouter` 인스턴스는 유지하고 onboarding 상태 변경은 `refreshListenable`으로 전달하도록 수정
+- [x] 라우터 인스턴스 재생성 방지 회귀 테스트 추가
+- [x] 홈 보조 섹션을 앱 내부 일정/순위/기록실 조합 대신 backend `/api/home` 단일 호출 우선으로 전환
+- [x] 웹 부트스트랩 선로딩과 루트 native widget sync watch를 분리해, 기록실/일정/상세 화면 진입 시 불필요한 스코어보드/홈 API 호출이 따라붙지 않도록 보정
+- [x] 게임 상세 진입 직후 post-frame refresh가 같은 `/api/game/{gameId}`를 즉시 중복 호출하던 경로 제거
+- [x] 경기 상세 라인업 탭에서 relay, standings, schedule 2개월, team stats 2팀을 즉시 자동 로드하던 구조를 제거해 라인업 필수 데이터 중심으로 호출 축소
+
+### 검증
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart test/core/router/app_router_test.dart`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+- [x] `cd app && fvm flutter test`
+- [x] `backend/.venv/bin/pytest -q`
+- [x] `http://127.0.0.1:7359/index.html#/records`, `#/schedule`, `#/home`, `#/game/20260519KTSS0`, `#/game/20260519KTSS0?tab=relay`, `?tab=boxscore`, `?tab=lineup`, `#/records/team/KT`, `#/records/leaderboard/avg` 브라우저 network request 재검증
+- [x] 수정 전 재현 산출물: `artifacts/kbo-regression-sweep-2026-05-20-v11/summary.json`
+- [x] 수정 후 통과 산출물: `artifacts/kbo-regression-sweep-2026-05-20-v12/summary.json`, `artifacts/kbo-regression-sweep-2026-05-20-v13/summary.json`
+
+### 메모
+- hash route 직접 진입은 수정 후 목적지를 유지한다.
+- path route 직접 진입(`/schedule`, `/game/...`)은 현재 `python -m http.server` 정적 preview에서 `404`가 정상 관찰된다. 배포 서버에서 path URL을 쓰려면 SPA fallback 설정이 별도로 필요하다.
+- `APP_ENV=local` web preview에는 DevConsole floating button이 표시되어 일부 우하단 컨텐츠를 가릴 수 있다. release 환경에서는 숨겨지는 local QA 표면이다.
+
+---
+
 ## 2026-05-19: v4 UX 보완안 실제 UI 반영
 
 ### 완료
