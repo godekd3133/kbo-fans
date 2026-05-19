@@ -187,9 +187,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          '알림',
+                          '알림 플레이북',
                           style: TextStyle(
-                            fontSize: 24,
+                            fontSize: 23,
                             fontWeight: FontWeight.w900,
                             height: 1.05,
                           ),

@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-05-19: v4 Moment Subscription 실제 앱 반영
+
+### 완료
+- [x] `docs/design/kbo-fans-mobile-ui-alerts-outside-v4-2026-05-19/preview.png` 기준의 Moment Subscription / Surface Strategy를 실제 Flutter 화면에 맞춤
+- [x] 앱 전역 색상/카드/입력/버튼 테마를 v4 보드의 `#07090C`, `#10141A`, `#171D24`, `#323A45`, `#2979FF`, `#FF4444` 체계로 정리
+- [x] 설정 화면을 `알림 플레이북` 중심으로 정리하고 Moment별 `바로 / 요약 / Live만 / 끄기` 전달 방식을 v4 카드 톤으로 표시
+- [x] 경기 상세 라이브 화면의 `경기 따라가기`를 Live 표면 / Push / Widget 역할 분리형 CTA로 보강
+- [x] 홈, 일정, 기록실, 온보딩의 모바일 폭, 카드 반경, 헤더 구조, 하단 탭 밀도를 v4 보드의 compact dark sports tone에 맞춰 유지
+- [x] 하단 탭을 `홈 / 일정 / 순위 / 기록실 / 설정` 순서와 작은 outline icon 상태로 정리
+
+### 검증
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart test/widget_test.dart`
+- [x] local FastAPI + web static preview 390x844 캡처 확인: 홈, 일정, 기록실, 설정, 경기 상세
+
+### 메모
+- 이전 빌드/브라우저 캐시에서는 문서 시안만 있고 Flutter UI가 일부만 반영된 상태로 보일 수 있어, web service worker/cache를 지우고 새 번들로 확인해야 한다.
+- v4 기준은 알림 강도 다이얼이 아니라 야구 장면 Moment와 전달 표면 분리다. Push는 즉시 이벤트, Live 표면은 따라가는 경기 상태, Widget은 개인화 상태판 역할로 제한한다.
+
+---
+
 ## 2026-05-19: Compact scoreboard / 앱 밖 refresh 루프 축소
 
 ### 완료
