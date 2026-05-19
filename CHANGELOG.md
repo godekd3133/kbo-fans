@@ -39,14 +39,14 @@
 - web deep-link 라우터 회귀 테스트 추가
 - Android release signing 예시 파일 추가 (`app/android/key.properties.example`)
 - release 빌드 전 production API DNS/TLS/핵심 endpoint를 검증하는 health gate 스크립트와 GitHub Actions 차단 단계를 추가
-- 운영 API 도메인이 없는 상태에서도 iPhone 단독 release-mode 검증이 가능하도록 `ios-local-release` / `codex-run-ios-local-release.sh` 경로 추가
+- iPhone local release-mode 검증이 가능하도록 `ios-local-release` / `codex-run-ios-local-release.sh` 경로 추가
 
 ### Changed
 
 - 설정 화면의 `앱 밖 표면` 설명 블록을 제거하고, 장면별 알림 picker 안에서만 전달 방식을 고르도록 정리
 - 홈, 일정, 순위, 기록실, 선수 상세의 로딩/데이터 전환과 주요 리스트 행 등장에 공통 모션을 적용해 화면 내부 변화도 부드럽게 보이도록 개선
-- local native 실행에서 `API_BASE_URL`이 없을 때 dev API DNS 실패로 홈/일정/순위/기록실이 깨지지 않도록 direct/cache/asset 우선 경로로 보정
-- `ios-local-release`는 Mac local backend 주입 대신 `PREFER_DIRECT_SCRAPE=true` standalone 데이터 모드로 설치되도록 변경
+- local native 실행에서 `API_BASE_URL`이 없을 때 dev API DNS 실패로 홈/일정/순위/기록실이 깨지지 않도록 실행 스크립트가 local backend URL을 주입하고, 실패 시 중단하도록 보정
+- `ios-local-release`도 local backend API-first 경로를 따르도록 변경
 - 홈 초기 로딩 화면에서 여러 카드가 각각 spinner를 보여 중복 로딩처럼 보이던 UI를 skeleton 중심으로 정리
 - 설정 화면의 `버전` 항목이 하드코딩 값 대신 실제 앱 메타데이터 버전을 표시하도록 개선
 - 설정의 앱 정보 및 지원 영역에서 이용약관, 개인정보처리방침, 오픈소스 라이선스, 문의하기가 실제로 열리도록 정리
