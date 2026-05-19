@@ -17,7 +17,7 @@ Native 표면의 기본 연결 계약은 살아 있다. iOS는 ActivityKit 채�
 - iOS Widget / Live Activity / Dynamic Island에서 현재 타석 데이터가 없는데도 B/S/O가 `0`처럼 보일 수 있던 표시를 숨김 처리했다.
 - Widget tap 시 현재 표시 중인 경기 상세로 진입하도록 launch URI를 저장하고, iOS/Android widget click을 Flutter router로 연결했다.
 - Widget 갱신 시각이 live 경기 2분, 그 외 상태 15분을 넘으면 `업데이트 지연`으로 표시하도록 보강했다.
-- Android는 현재 진행형 Live Update가 아니라 홈 위젯/Push 중심임을 앱 copy와 spec에 더 명확히 반영했다.
+- Android `경기 따라가기`는 진행형 ongoing notification으로 표시하고, 시스템 Live Updates 전용 UI와는 구분해 설명한다.
 - `docs/APP_SPEC.md`에 "모르는 B/S/O를 0으로 대체 표시하지 않는다"는 원칙을 추가했다.
 
 ## 환경 확인
@@ -81,7 +81,7 @@ Native 표면의 기본 연결 계약은 살아 있다. iOS는 ActivityKit 채�
 
 문제 / 리스크:
 
-- 현재 코드 기준 Android에는 V4에서 말한 `Android Live Update / ongoing notification` 표면이 구현되어 있지 않다. 실제 구현은 홈 위젯 + push permission + local/remote notification에 가깝다.
+- 현재 코드 기준 Android `경기 따라가기`는 ongoing notification으로 구현되어 있다. 다만 시스템 Live Updates 전용 UI가 아니라 일반 진행형 알림 표면이며, 실제 기기 시각 QA는 아직 필요하다.
 - Android 기기/에뮬레이터가 없어 홈 화면에 위젯을 배치한 실제 density, 글자 잘림, keyguard 표시를 확인하지 못했다.
 
 ## UX 원칙 기준 점검
@@ -91,7 +91,7 @@ Native 표면의 기본 연결 계약은 살아 있다. iOS는 ActivityKit 채�
 | Glance first | Widget/Live Activity 모두 스코어와 이닝 중심 | 합격 |
 | State honesty | 업데이트 시각 표시, unknown B/S/O 숨김 보정 | 개선됨 |
 | No surprise alerts | 사용자가 선택한 followed game 중심 | 합격 |
-| Platform truth | iOS는 구현됨, Android Live Update는 미구현 | 보완 필요 |
+| Platform truth | iOS는 Live Activity, Android는 ongoing notification으로 구현됨 | 개선됨 |
 | One-handed recovery | 앱 밖 표면 tap 후 game detail로 진입 | 개선됨 |
 | Stale clarity | 업데이트 시각 + threshold 기반 지연 표시 | 개선됨 |
 
@@ -104,9 +104,8 @@ P1. Native surface fixture 추가
 
 P1. Android surface 명칭 정리
 
-- 현재 구현 상태에서는 `Android Live Update`를 완료 기능처럼 표현하지 않는다.
-- 앱 copy와 문서에서 Android는 `홈 위젯 / Push`, iOS는 `Live Activity / Widget`으로 구분한다.
-- Android ongoing notification을 만들면 그때 `따라가기 화면`으로 승격한다.
+- Android는 현재 `Android Live Update` 전용 UI가 아니라 `ongoing notification`으로 구현된 따라가기 표면으로 표현한다.
+- 앱 copy와 문서에서 iOS `Live Activity`, Android `진행형 알림`, 공통 `홈 위젯 / Push` 역할을 구분한다.
 
 P2. Current at-bat data source 연결
 

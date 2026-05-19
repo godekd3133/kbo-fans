@@ -2,6 +2,92 @@
 
 ---
 
+## 2026-05-20: 기록실/경기 상세 불필요 호출 추가 제거
+
+### 완료
+- [x] 팀 기록 상세가 보조 순위 표시를 위해 `/api/standings`를 같이 부르던 구조 제거
+- [x] 팀 기록 상세 상단 요약은 `/api/team/{teamId}/records` 응답의 팀 타격/투수 지표만 사용하도록 정리
+- [x] 경기 상세 기본 점수 탭의 `/highlights` 즉시 호출을 제거하고, 하이라이트는 명시 요청 시에만 로드하도록 지연
+
+### 검증
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+- [x] 브라우저 실측: `/records/team/KT` 첫 진입 API가 `/api/team/KT/records?season=2026` 하나만 남음
+- [x] 브라우저 실측: `/game/20260519KTSS0` 첫 진입 API가 `/api/game/20260519KTSS0` 하나만 남고 `/highlights` 즉시 호출 없음
+
+---
+
+## 2026-05-20: 설정 패치노트 화면 추가
+
+### 완료
+- [x] 설정 화면의 `앱 정보 및 지원`에 `패치노트` 진입점 추가
+- [x] `/patch-notes` 상세 화면을 추가하고 번들 asset `assets/bootstrap/patch_notes.md`를 읽어 표시하도록 연결
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 패치노트 진입점 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/router/app_router.dart lib/features/settings/settings_screen.dart lib/features/settings/patch_notes_screen.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart test/core/router/app_router_test.dart`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+
+---
+
+## 2026-05-20: Android 경기 따라가기 진행형 알림 구현
+
+### 완료
+- [x] `경기 따라가기` follow session을 Android에서도 진행형 ongoing notification으로 표시하도록 `LiveActivityService` 확장
+- [x] 따라가기 시작 시 Android 알림 권한을 명시 action 흐름에서 요청하고, 같은 알림 ID로 스코어/이닝/업데이트 시각을 갱신
+- [x] `그만 보기`, 경기 종료/취소/중단, follow 대상 누락 시 Android 진행형 알림도 함께 해제
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에서 Android 진행형 알림을 준비중 표기 대신 구현 표면으로 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/services/live_activity_service.dart lib/features/game_detail/game_detail_screen.dart`
+- [x] `cd app && fvm flutter analyze lib/services/live_activity_service.dart lib/features/game_detail/game_detail_screen.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter build apk --debug --dart-define=APP_ENV=local`
+
+---
+
+## 2026-05-20: 설정 앱 밖 표면 설명 제거
+
+### 완료
+- [x] 설정 화면의 `앱 밖 표면` 설명 블록을 제거해 장면별 알림 설정과 중복되는 메타 설명을 없앰
+- [x] 전달 방식 picker 문구를 `이 장면을 어떻게 받을지` 기준의 사용자 언어로 정리
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 설정 화면 카피 원칙과 변경 사항 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/settings/settings_screen.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart`
+
+---
+
+## 2026-05-20: 설정 앱 버전 표시 실제 메타데이터 연결
+
+### 완료
+- [x] 설정 화면의 `버전` 값을 하드코딩 문자열이 아니라 플랫폼 앱 메타데이터에서 읽도록 변경
+- [x] 버전 로딩 실패 시 잘못된 숫자 대신 `확인 불가`를 표시하도록 처리
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 설정 앱 정보 표시 기준 반영
+
+### 검증
+- [x] `cd app && fvm flutter pub add package_info_plus`
+- [x] `cd app && fvm dart format lib/features/settings/settings_screen.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+
+---
+
+## 2026-05-20: 홈런왕 카피 반영
+
+### 완료
+- [x] 홈/기록실/records overview의 홈런 관련 리더 표현을 `홈런왕` 중심 카피로 정리
+- [x] backend snapshot fallback, 테스트 기대값, APP_SPEC, 디자인 산출물의 동일 표현 동기화
+
+---
+
 ## 2026-05-20: web deep-link 목적지 보존 검증 및 라우터 보정
 
 ### 완료
