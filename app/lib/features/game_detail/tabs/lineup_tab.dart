@@ -54,7 +54,6 @@ class LineupTab extends ConsumerWidget {
     final homeBattersAsync = ref.watch(battersProvider('$gameId|false'));
     final awayPitchersAsync = ref.watch(pitchersProvider('$gameId|true'));
     final homePitchersAsync = ref.watch(pitchersProvider('$gameId|false'));
-    final relayAsync = ref.watch(relayDataProvider(gameId));
     final season = DateTime.now().year;
     final awayPlayersAsync = awayTeamId.isEmpty
         ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
@@ -63,23 +62,6 @@ class LineupTab extends ConsumerWidget {
         ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
         : ref.watch(teamPlayersProvider('$homeTeamId|$season'));
     const allImageMap = <String, String>{};
-    final standingsAsync = ref.watch(standingsProvider(season));
-    final gameDate = _gameDateFromGameId(gameId) ?? DateTime.now();
-    final yearMonth =
-        '${gameDate.year.toString().padLeft(4, '0')}-${gameDate.month.toString().padLeft(2, '0')}';
-    final previousMonthDate = DateTime(gameDate.year, gameDate.month - 1);
-    final previousYearMonth =
-        '${previousMonthDate.year.toString().padLeft(4, '0')}-${previousMonthDate.month.toString().padLeft(2, '0')}';
-    final currentScheduleAsync = ref.watch(scheduleProvider(yearMonth));
-    final previousScheduleAsync = ref.watch(
-      scheduleProvider(previousYearMonth),
-    );
-    final awayTeamStatsAsync = awayTeamId.isEmpty
-        ? const AsyncValue<TeamStats>.loading()
-        : ref.watch(teamStatsProvider('$awayTeamId|$season'));
-    final homeTeamStatsAsync = homeTeamId.isEmpty
-        ? const AsyncValue<TeamStats>.loading()
-        : ref.watch(teamStatsProvider('$homeTeamId|$season'));
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -121,14 +103,13 @@ class LineupTab extends ConsumerWidget {
                     final homeBatters =
                         homeBattersAsync.asData?.value.cast<BatterRecord>() ??
                         const <BatterRecord>[];
-                    final relayData = relayAsync.asData?.value;
                     final awayImageMap = _buildPlayerImageMap(
                       allImageMap: allImageMap,
                       teamPlayers:
                           awayPlayersAsync.asData?.value ??
                           const <PlayerProfile>[],
                       season: season,
-                      relayData: relayData,
+                      relayData: null,
                     );
                     final homeImageMap = _buildPlayerImageMap(
                       allImageMap: allImageMap,
@@ -136,20 +117,17 @@ class LineupTab extends ConsumerWidget {
                           homePlayersAsync.asData?.value ??
                           const <PlayerProfile>[],
                       season: season,
-                      relayData: relayData,
+                      relayData: null,
                     );
                     final compareData = _buildMatchupCompareData(
                       awayTeamId: awayTeamId,
                       awayName: awayName,
                       homeTeamId: homeTeamId,
                       homeName: homeName,
-                      standings: standingsAsync.asData?.value ?? const [],
-                      scheduleDays: [
-                        ...(previousScheduleAsync.asData?.value ?? const []),
-                        ...(currentScheduleAsync.asData?.value ?? const []),
-                      ],
-                      awayTeamStats: awayTeamStatsAsync.asData?.value,
-                      homeTeamStats: homeTeamStatsAsync.asData?.value,
+                      standings: const [],
+                      scheduleDays: const [],
+                      awayTeamStats: null,
+                      homeTeamStats: null,
                       awayStarter: _starterPitcher(
                         awayPitchers,
                         gameLineup.away.starterName,
@@ -208,7 +186,7 @@ class LineupTab extends ConsumerWidget {
                             lineup: gameLineup.away.lineup,
                             batterFallback: awayBatters,
                             pitchers: awayPitchers,
-                            relayData: relayData,
+                            relayData: null,
                             imageMap: awayImageMap,
                             showBullpen: true,
                             isLive: gameStatus == GameStatus.live,
@@ -225,7 +203,7 @@ class LineupTab extends ConsumerWidget {
                             lineup: gameLineup.home.lineup,
                             batterFallback: homeBatters,
                             pitchers: homePitchers,
-                            relayData: relayData,
+                            relayData: null,
                             imageMap: homeImageMap,
                             showBullpen: true,
                             isLive: gameStatus == GameStatus.live,
@@ -256,19 +234,6 @@ class LineupTab extends ConsumerWidget {
       ),
     );
   }
-}
-
-DateTime? _gameDateFromGameId(String gameId) {
-  if (gameId.length < 8) {
-    return null;
-  }
-  final year = int.tryParse(gameId.substring(0, 4));
-  final month = int.tryParse(gameId.substring(4, 6));
-  final day = int.tryParse(gameId.substring(6, 8));
-  if (year == null || month == null || day == null) {
-    return null;
-  }
-  return DateTime(year, month, day);
 }
 
 _MatchupCompareData _buildMatchupCompareData({
@@ -361,15 +326,17 @@ _MatchupCompareData _buildMatchupCompareData({
     away: _TeamCompareData(
       teamId: awayTeamId,
       teamName: awayName,
-      standingText: awayStanding == null ? '-' : '${awayStanding.rank}위',
+      standingText: awayStanding == null ? '' : '${awayStanding.rank}위',
       recordText: awayStanding == null
-          ? '-'
+          ? ''
           : '${awayStanding.wins}승 ${awayStanding.draws}무 ${awayStanding.losses}패',
       recentResults: recentResults(awayTeamId),
       winPct: awayStanding?.pct ?? safeStat(awayTeamStats?.pitching, 'WPCT'),
       avg: safeStat(awayTeamStats?.hitting, 'AVG'),
       era: safeStat(awayTeamStats?.pitching, 'ERA'),
-      headToHead: headToHeadSummary(awayTeamId, homeTeamId),
+      headToHead: scheduleDays.isEmpty
+          ? ''
+          : headToHeadSummary(awayTeamId, homeTeamId),
       starter: _StarterCompareData(
         name: awayStarterName ?? awayStarter?.name ?? '선발 미발표',
         imageUrl: awayStarterImageUrl,
@@ -384,15 +351,17 @@ _MatchupCompareData _buildMatchupCompareData({
     home: _TeamCompareData(
       teamId: homeTeamId,
       teamName: homeName,
-      standingText: homeStanding == null ? '-' : '${homeStanding.rank}위',
+      standingText: homeStanding == null ? '' : '${homeStanding.rank}위',
       recordText: homeStanding == null
-          ? '-'
+          ? ''
           : '${homeStanding.wins}승 ${homeStanding.draws}무 ${homeStanding.losses}패',
       recentResults: recentResults(homeTeamId),
       winPct: homeStanding?.pct ?? safeStat(homeTeamStats?.pitching, 'WPCT'),
       avg: safeStat(homeTeamStats?.hitting, 'AVG'),
       era: safeStat(homeTeamStats?.pitching, 'ERA'),
-      headToHead: headToHeadSummary(homeTeamId, awayTeamId),
+      headToHead: scheduleDays.isEmpty
+          ? ''
+          : headToHeadSummary(homeTeamId, awayTeamId),
       starter: _StarterCompareData(
         name: homeStarterName ?? homeStarter?.name ?? '선발 미발표',
         imageUrl: homeStarterImageUrl,
@@ -488,22 +457,26 @@ class _MatchupHeader extends StatelessWidget {
             team.teamName,
             style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900),
           ),
-          const SizedBox(height: 4),
-          Text(
-            team.standingText,
-            style: const TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
+          if (team.standingText.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              team.standingText,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            team.recordText,
-            style: const TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
+          ],
+          if (team.recordText.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              team.recordText,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
+          ],
         ],
       );
     }
@@ -543,6 +516,21 @@ class _RecentTrendSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasRecent =
+        away.recentResults.isNotEmpty || home.recentResults.isNotEmpty;
+    final hasMetrics =
+        away.winPct != '-' ||
+        home.winPct != '-' ||
+        away.avg != '-' ||
+        home.avg != '-' ||
+        away.era != '-' ||
+        home.era != '-';
+    final hasHeadToHead =
+        away.headToHead.isNotEmpty || home.headToHead.isNotEmpty;
+    if (!hasRecent && !hasMetrics && !hasHeadToHead) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       children: [
         const Divider(color: AppColors.divider, height: 1),

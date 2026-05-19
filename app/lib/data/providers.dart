@@ -6,6 +6,7 @@ import '../core/config/app_config.dart';
 import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
 import 'repositories/api_game_repository.dart';
+import 'repositories/api_home_repository.dart';
 import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
@@ -192,6 +193,10 @@ final standingsProvider = FutureProvider.family<List<TeamStanding>, int>((
   return ref.watch(gameRepositoryProvider).getStandings(season);
 });
 
+final homeRepositoryProvider = Provider<ApiHomeRepository>((ref) {
+  return ApiHomeRepository(ref.watch(apiClientProvider));
+});
+
 final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
   ref,
   key,
@@ -199,6 +204,23 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
   final parts = key.split('|');
   final date = parts[0];
   final myTeam = parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
+
+  if (kIsWeb) {
+    return ref
+        .read(homeRepositoryProvider)
+        .getHomeAggregate(date: date, myTeam: myTeam);
+  }
+
+  if (!AppConfig.instance.preferDirectScrape) {
+    try {
+      return await ref
+          .read(homeRepositoryProvider)
+          .getHomeAggregate(date: date, myTeam: myTeam);
+    } catch (_) {
+      // Local native direct-debug sessions can still render from the component
+      // providers if the backend is unavailable.
+    }
+  }
 
   final scoreboard = await ref.read(scoreboardProvider(date).future);
   final yearMonth = date.substring(0, 7);

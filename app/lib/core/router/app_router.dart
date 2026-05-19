@@ -34,12 +34,23 @@ final onboardingDoneProvider = NotifierProvider<OnboardingDoneNotifier, bool?>(
   OnboardingDoneNotifier.new,
 );
 
-final routerProvider = Provider<GoRouter>((ref) {
-  final onboardingDone = ref.watch(onboardingDoneProvider);
+final _onboardingDoneRefreshProvider = Provider<ValueNotifier<bool?>>((ref) {
+  final notifier = ValueNotifier<bool?>(ref.read(onboardingDoneProvider));
+  ref.listen<bool?>(onboardingDoneProvider, (_, next) {
+    notifier.value = next;
+  });
+  ref.onDispose(notifier.dispose);
+  return notifier;
+});
 
-  return GoRouter(
+final routerProvider = Provider<GoRouter>((ref) {
+  final onboardingDoneRefresh = ref.watch(_onboardingDoneRefreshProvider);
+
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
+    refreshListenable: onboardingDoneRefresh,
     redirect: (context, state) {
+      final onboardingDone = onboardingDoneRefresh.value;
       final location = state.uri.path;
       final hashLocation = _hashLocation(state.uri);
       if (hashLocation != null) {
@@ -186,6 +197,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+  ref.onDispose(router.dispose);
+  return router;
 });
 
 String _redirectTarget(GoRouterState state) {

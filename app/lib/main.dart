@@ -202,9 +202,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     final now = DateTime.now();
     final today =
         '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final yearMonth =
-        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}';
-    final season = now.year;
     final myTeamId = ref.read(myTeamProvider);
     final startupPrep = ref.read(startupPrepProvider.notifier);
 
@@ -213,8 +210,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       await _runBlockingStartupPrefetch(
         startupPrep: startupPrep,
         today: today,
-        yearMonth: yearMonth,
-        season: season,
         myTeamId: myTeamId,
       );
       return;
@@ -224,11 +219,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       unawaited(_primeLocalRelaySession());
     }
     _warm(ref.read(scoreboardProvider(today).future));
-    _warm(ref.read(scheduleProvider(yearMonth).future));
-    _warm(ref.read(standingsProvider(season).future));
-    _warm(ref.read(recordsOverviewProvider(season).future));
     if (myTeamId != null && myTeamId.isNotEmpty) {
-      _warm(ref.read(teamRecordsProvider('$myTeamId|$season').future));
       _warm(ref.read(homeAggregateProvider('$today|$myTeamId').future));
     }
   }
@@ -236,8 +227,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   Future<void> _runBlockingStartupPrefetch({
     required StartupPrepNotifier startupPrep,
     required String today,
-    required String yearMonth,
-    required int season,
     required String? myTeamId,
   }) async {
     final staticTasks = <({String label, Future<void> Function() request})>[
@@ -249,31 +238,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
           await ref.read(scoreboardProvider(today).future);
         },
       ),
-      (
-        label: '이번 달 일정',
-        request: () async {
-          await ref.read(scheduleProvider(yearMonth).future);
-        },
-      ),
-      (
-        label: '순위표',
-        request: () async {
-          await ref.read(standingsProvider(season).future);
-        },
-      ),
-      (
-        label: '리그 기록 요약',
-        request: () async {
-          await ref.read(recordsOverviewProvider(season).future);
-        },
-      ),
       if (myTeamId != null && myTeamId.isNotEmpty) ...[
-        (
-          label: '마이팀 기록실',
-          request: () async {
-            await ref.read(teamRecordsProvider('$myTeamId|$season').future);
-          },
-        ),
         (
           label: '홈 요약 카드',
           request: () async {
@@ -410,6 +375,9 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     if (_isWidgetTestBinding()) {
       return true;
     }
+    if (kIsWeb) {
+      return true;
+    }
     return false;
   }
 
@@ -435,30 +403,32 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final onboardingDone = ref.watch(onboardingDoneProvider);
-    final myTeamId = ref.watch(myTeamProvider);
-    final today = _todayKey();
-    final startupGames = ref.watch(startupScoreboardProvider);
-    final scoreboardAsync = ref.watch(scoreboardProvider(today));
+    if (!kIsWeb) {
+      final myTeamId = ref.watch(myTeamProvider);
+      final today = _todayKey();
+      final startupGames = ref.watch(startupScoreboardProvider);
+      final scoreboardAsync = ref.watch(scoreboardProvider(today));
 
-    if (startupGames != null && startupGames.isNotEmpty) {
-      unawaited(
-        WidgetSyncService.instance.syncScoreboard(
-          games: startupGames,
-          myTeamId: myTeamId,
-          repository: ref.read(gameRepositoryProvider),
-        ),
-      );
+      if (startupGames != null && startupGames.isNotEmpty) {
+        unawaited(
+          WidgetSyncService.instance.syncScoreboard(
+            games: startupGames,
+            myTeamId: myTeamId,
+            repository: ref.read(gameRepositoryProvider),
+          ),
+        );
+      }
+
+      scoreboardAsync.whenData((games) {
+        unawaited(
+          WidgetSyncService.instance.syncScoreboard(
+            games: games,
+            myTeamId: myTeamId,
+            repository: ref.read(gameRepositoryProvider),
+          ),
+        );
+      });
     }
-
-    scoreboardAsync.whenData((games) {
-      unawaited(
-        WidgetSyncService.instance.syncScoreboard(
-          games: games,
-          myTeamId: myTeamId,
-          repository: ref.read(gameRepositoryProvider),
-        ),
-      );
-    });
 
     if (!_didScheduleBootstrap) {
       _didScheduleBootstrap = true;

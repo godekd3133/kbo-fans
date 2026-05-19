@@ -123,7 +123,6 @@ class _GameDetailBody extends ConsumerStatefulWidget {
 class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   Timer? _refreshTimer;
-  bool _didInitialRefresh = false;
   bool _refreshInFlight = false;
   bool _followStateLoaded = false;
   bool _isFollowingGame = false;
@@ -140,13 +139,6 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     );
     unawaited(_loadFollowState());
     _startRefreshTimer();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _didInitialRefresh) {
-        return;
-      }
-      _didInitialRefresh = true;
-      unawaited(_refreshGameDetailProviders(refreshVisibleTab: false));
-    });
   }
 
   @override
