@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show AssetManifest, rootBundle;
 
 import '../bootstrap/bootstrap_repository.dart';
 import '../models/player.dart';
@@ -207,9 +207,15 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     if (_assetPathsCache != null) {
       return _assetPathsCache!;
     }
-    final raw = await rootBundle.loadString('AssetManifest.json');
-    final decoded = jsonDecode(raw) as Map<String, dynamic>;
-    _assetPathsCache = decoded.keys.toList(growable: false);
+    try {
+      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      _assetPathsCache = manifest.listAssets();
+      return _assetPathsCache!;
+    } catch (_) {
+      final raw = await rootBundle.loadString('AssetManifest.json');
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      _assetPathsCache = decoded.keys.toList(growable: false);
+    }
     return _assetPathsCache!;
   }
 

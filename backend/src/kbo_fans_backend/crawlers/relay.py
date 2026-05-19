@@ -205,7 +205,10 @@ class RelayCrawler(BaseCrawler):
         count_texts = [strong.get_text(" ", strip=True) for strong in present.select("strong")]
         inning_text = count_texts[0] if len(count_texts) > 0 else ""
         count_text = count_texts[1] if len(count_texts) > 1 else ""
-        base_state = self._parse_base_state(present.select_one("img"))
+        runner_names = self._parse_runner_names(soup)
+        base_state = self._parse_base_state(
+            present.select_one("img")
+        ) or self._base_state_from_runner_names(runner_names)
 
         pitcher = self._player_text(players.select_one("li.pitcher"))
         batter = self._player_text(players.select_one("li.supervision"))
@@ -358,3 +361,65 @@ class RelayCrawler(BaseCrawler):
             "6": "주자2,3루",
             "7": "만루",
         }.get(match.group(1), "")
+
+    @staticmethod
+    def _parse_runner_names(soup: BeautifulSoup) -> tuple[str, str, str]:
+        def text_from_selectors(selectors: list[str]) -> str:
+            for selector in selectors:
+                node = soup.select_one(selector)
+                if node is None:
+                    continue
+                text = RelayCrawler._normalize_text(node.get_text(" ", strip=True))
+                if text:
+                    return text
+            return ""
+
+        first = text_from_selectors(
+            [
+                "#txtBase1",
+                "#base1Player",
+                ".base1 .name",
+                ".runner-first .name",
+                ".baseRunner.first",
+            ]
+        )
+        second = text_from_selectors(
+            [
+                "#txtBase2",
+                "#base2Player",
+                ".base2 .name",
+                ".runner-second .name",
+                ".baseRunner.second",
+            ]
+        )
+        third = text_from_selectors(
+            [
+                "#txtBase3",
+                "#base3Player",
+                ".base3 .name",
+                ".runner-third .name",
+                ".baseRunner.third",
+            ]
+        )
+        return first, second, third
+
+    @staticmethod
+    def _base_state_from_runner_names(runners: tuple[str, str, str]) -> str:
+        first = bool(runners[0])
+        second = bool(runners[1])
+        third = bool(runners[2])
+        if not first and not second and not third:
+            return ""
+        if first and not second and not third:
+            return "주자1루"
+        if not first and second and not third:
+            return "주자2루"
+        if not first and not second and third:
+            return "주자3루"
+        if first and second and not third:
+            return "주자1,2루"
+        if first and not second and third:
+            return "주자1,3루"
+        if not first and second and third:
+            return "주자2,3루"
+        return "만루"

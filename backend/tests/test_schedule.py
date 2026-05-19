@@ -1,5 +1,43 @@
+from datetime import date as date_type
+
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
+from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.services.ticketing import TicketingService
+from kbo_fans_backend.storage import JsonSnapshotStore
+
+
+class _StubScheduleCrawler:
+    def get_month_schedule(self, month: str):
+        today = date_type.today().isoformat()
+        return [
+            {
+                "date": today,
+                "gameId": f"{today.replace('-', '')}LGOB0",
+                "time": "18:30",
+                "awayId": "LG",
+                "awayName": "LG",
+                "awayScore": None,
+                "homeId": "OB",
+                "homeName": "두산",
+                "homeScore": None,
+                "stadium": "잠실",
+                "status": "SCHEDULED",
+            }
+        ]
+
+
+class _StubMainCrawler:
+    def get_kbo_game_list(self, date: str):
+        return [
+            {
+                "G_ID": f"{date.replace('-', '')}LGOB0",
+                "G_TM": "18:30",
+                "GAME_STATE_SC": "2",
+                "T_SCORE_CN": "4",
+                "B_SCORE_CN": "2",
+                "S_NM": "잠실",
+            }
+        ]
 
 
 def test_derive_status_marks_start_pit_as_scheduled() -> None:
@@ -37,3 +75,33 @@ def test_ticket_info_is_omitted_for_terminal_schedule_status() -> None:
     )
 
     assert ticket_info is None
+
+
+def test_current_day_schedule_status_is_enriched_from_main_game(tmp_path) -> None:
+    today = date_type.today().isoformat()
+    service = ScheduleService(
+        schedule_crawler=_StubScheduleCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_month_schedule(today[:7])
+    game = payload["days"][0]["games"][0]
+
+    assert game["status"] == "LIVE"
+    assert game["awayScore"] == 4
+    assert game["homeScore"] == 2
+
+
+def test_schedule_saves_non_terminal_month_snapshot(tmp_path) -> None:
+    today = date_type.today().isoformat()
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    service = ScheduleService(
+        schedule_crawler=_StubScheduleCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=store,
+    )
+
+    payload = service.get_month_schedule(today[:7])
+
+    assert store.load_payload("schedule", today[:7]) == payload

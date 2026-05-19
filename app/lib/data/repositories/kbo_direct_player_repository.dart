@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
-import '../../core/widgets/dev_console.dart';
 import '../models/player.dart';
 import '../models/records_overview.dart';
 import '../models/team_records_bundle.dart';
@@ -95,54 +94,23 @@ class KboDirectPlayerRepository implements PlayerRepository {
     );
     final players = grouped.expand((items) => items).toList();
 
-    final enriched = await Future.wait(
-      players.map((player) async {
-        var merged = player;
-        try {
-          final profile = await _fetchPlayerProfileSummary(
-            playerId: player.id,
-            playerType: player.playerType,
-            season: season,
-          );
-          merged = _mergeSummary(player, profile);
-        } catch (error) {
-          DevConsole.instance.warn(
-            'DIRECT player profile skipped ${player.id}: $error',
-          );
-        }
-
-        final rosterKey = (merged.name, merged.number);
-        final isEntry = entryKeys.contains(rosterKey);
-        Map<String, String> seasonStats = const {};
-        if (isEntry) {
-          try {
-            seasonStats = await _fetchPlayerTotalStats(
-              playerId: merged.id,
-              playerType: merged.playerType,
-              season: season,
-            );
-          } catch (error) {
-            DevConsole.instance.warn(
-              'DIRECT player total skipped ${merged.id}: $error',
-            );
-          }
-        }
-        return _buildPlayerSummary(
-          player: merged,
+    return [
+      for (final player in players)
+        _buildPlayerSummary(
+          player: player,
           season: season,
-          seasonStats: seasonStats,
-          rosterGroup: isEntry
+          seasonStats: const {},
+          rosterGroup: entryKeys.contains((player.name, player.number))
               ? PlayerRosterGroup.entry
               : PlayerRosterGroup.reserve,
-          status: isEntry
+          status: entryKeys.contains((player.name, player.number))
               ? PlayerAvailabilityStatus.available
               : PlayerAvailabilityStatus.inactive,
-          statusNote: isEntry ? null : '엔트리 제외',
-        );
-      }),
-    );
-
-    return enriched;
+          statusNote: entryKeys.contains((player.name, player.number))
+              ? null
+              : '엔트리 제외',
+        ),
+    ];
   }
 
   @override
@@ -417,24 +385,6 @@ class KboDirectPlayerRepository implements PlayerRepository {
       );
     }
     return players;
-  }
-
-  Future<PlayerProfile> _fetchPlayerProfileSummary({
-    required String playerId,
-    required PlayerType playerType,
-    required int season,
-  }) async {
-    final html = await _getText(_detailUrl(playerId, playerType));
-    return _parseProfile(html, playerId, playerType, season);
-  }
-
-  Future<Map<String, String>> _fetchPlayerTotalStats({
-    required String playerId,
-    required PlayerType playerType,
-    required int season,
-  }) async {
-    final html = await _getText(_totalUrl(playerId, playerType));
-    return _parseSeasonStats(html, season);
   }
 
   Future<PlayerType> _guessPlayerType(String playerId) async {
@@ -921,42 +871,6 @@ class KboDirectPlayerRepository implements PlayerRepository {
             ? '타율 ${leader.value}'
             : '홈런 ${leader.value}';
     }
-  }
-
-  PlayerProfile _mergeSummary(PlayerProfile base, PlayerProfile profile) {
-    return PlayerProfile(
-      id: base.id,
-      teamId: base.teamId,
-      playerType: base.playerType,
-      imageUrl: profile.imageUrl ?? base.imageUrl,
-      name: profile.name.isNotEmpty ? profile.name : base.name,
-      number: profile.number != 0 ? profile.number : base.number,
-      position: profile.position.isNotEmpty ? profile.position : base.position,
-      roleLabel: profile.roleLabel.isNotEmpty
-          ? profile.roleLabel
-          : base.roleLabel,
-      handedness: profile.handedness.isNotEmpty
-          ? profile.handedness
-          : base.handedness,
-      heightWeight: profile.heightWeight.isNotEmpty
-          ? profile.heightWeight
-          : base.heightWeight,
-      birthDate: profile.birthDate.isNotEmpty
-          ? profile.birthDate
-          : base.birthDate,
-      career: profile.career.isNotEmpty ? profile.career : base.career,
-      status: base.status,
-      rosterGroup: base.rosterGroup,
-      headlineStat: base.headlineStat,
-      secondaryStat: base.secondaryStat,
-      seasonStats: base.seasonStats,
-      highlights: base.highlights,
-      recentGames: base.recentGames,
-      avg: base.avg,
-      ops: base.ops,
-      era: base.era,
-      whip: base.whip,
-    );
   }
 
   PlayerProfile _buildPlayerSummary({

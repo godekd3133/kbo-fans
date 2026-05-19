@@ -160,14 +160,49 @@ class ApiPlayerRepository implements PlayerRepository {
       return const [];
     }
 
-    final data = await _client.getCached(
-      '/records/leaderboard',
-      queryParameters: {'season': season, 'metric': metric.key},
-      cacheKey: 'leaderboard:${metric.key}:$season',
-      preferCache: true,
-      maxAge: _stableCacheAge,
-    );
+    Map<String, dynamic> data;
+    try {
+      data = await _client.getCached(
+        '/records/leaderboard',
+        queryParameters: {'season': season, 'metric': metric.key},
+        cacheKey: 'leaderboard:${metric.key}:$season',
+        preferCache: true,
+        maxAge: _stableCacheAge,
+      );
+    } catch (_) {
+      final snapshot = await _bootstrapRepository.loadRecordsOverview(season);
+      final leaders = _leadersFromOverviewSnapshot(snapshot, metric);
+      if (leaders == null) rethrow;
+      data = {'season': season, 'metric': metric.key, 'leaders': leaders};
+    }
     return _parseLeaders(data['leaders'] as List<dynamic>? ?? const []);
+  }
+
+  List<dynamic>? _leadersFromOverviewSnapshot(
+    Map<String, dynamic>? snapshot,
+    LeaderboardMetric metric,
+  ) {
+    final leaders = snapshot?['leaders'] as Map<String, dynamic>? ?? const {};
+    if (metric == LeaderboardMetric.opsPlus) {
+      final direct = leaders[metric.key] as List<dynamic>?;
+      if (direct != null && direct.isNotEmpty) return direct;
+      final ops = leaders[LeaderboardMetric.ops.key] as List<dynamic>?;
+      if (ops == null || ops.isEmpty) return null;
+      return computeOpsPlusLeaders(_parseLeaders(ops))
+          .map(
+            (leader) => {
+              'rank': leader.rank,
+              'playerId': leader.playerId,
+              'playerType': leader.playerType,
+              'name': leader.name,
+              'teamId': leader.teamId,
+              'value': leader.value,
+            },
+          )
+          .toList();
+    }
+    final direct = leaders[metric.key] as List<dynamic>?;
+    return direct != null && direct.isNotEmpty ? direct : null;
   }
 
   PlayerProfile _parsePlayer(Map<String, dynamic> json) {

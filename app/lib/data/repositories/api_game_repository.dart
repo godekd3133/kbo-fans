@@ -353,10 +353,13 @@ class ApiGameRepository implements GameRepository {
         .map((item) => _parseLineup(item as Map<String, dynamic>))
         .toList();
     final starter = json['starter'] as Map<String, dynamic>? ?? const {};
+    final starterId = (starter['id'] ?? starter['playerId'])?.toString().trim();
     return TeamLineupData(
       teamId: json['teamId'] as String? ?? '',
       lineup: lineup,
+      starterId: starterId == null || starterId.isEmpty ? null : starterId,
       starterName: starter['name'] as String?,
+      starterImageUrl: starter['imageUrl'] as String?,
     );
   }
 

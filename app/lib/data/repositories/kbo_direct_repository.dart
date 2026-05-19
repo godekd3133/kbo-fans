@@ -25,20 +25,27 @@ final _log = DevConsole.instance;
 class KboDirectRepository implements GameRepository {
   static const _kboBase = 'https://www.koreabaseball.com';
   static const _youtubeBase = 'https://www.youtube.com';
+  static const _kboPersonImageBase =
+      'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
   // 웹 CORS 우회용 프록시
   static const _corsProxy = 'https://corsproxy.io/?';
   static const _relayUserId = 'godekd3133';
   static const _relayPassword = 'alsrb2002!';
+  static const _relayGameLookupTimeout = Duration(seconds: 3);
+  static const _relayWarmupTimeout = Duration(seconds: 2);
+  static const _relayFetchTimeout = Duration(seconds: 12);
+  static const _relaySummaryTimeout = Duration(seconds: 6);
   static Future<void> _networkQueue = Future<void>.value();
+  static bool _relayLoggedIn = false;
+  static final Map<String, String> _sessionCookies = {};
 
   late final Dio _dio;
-  bool _relayLoggedIn = false;
   final Map<String, Future<List<Game>>> _scoreboardRequests = {};
   final Map<String, Future<List<ScheduleDay>>> _scheduleRequests = {};
   final Map<String, Future<Map<String, Map<String, dynamic>>>>
   _mainGameMapRequests = {};
   final Map<String, Future<GameLineupData>> _lineupRequests = {};
-  final Map<String, String> _sessionCookies = {};
+  final Map<String, Future<RelayData>> _relayRequests = {};
 
   KboDirectRepository() {
     _dio = Dio(
@@ -140,8 +147,9 @@ class KboDirectRepository implements GameRepository {
     Map<String, String>? headers,
     bool allowNotModified = false,
     bool allowRedirect = false,
+    bool queued = true,
   }) async {
-    return _enqueueNetwork(() async {
+    Future<String> request() async {
       final url = _resolveUrl(path);
       final response = await _dio.post<String>(
         url,
@@ -168,7 +176,9 @@ class KboDirectRepository implements GameRepository {
         return response.data ?? '';
       }
       return response.data ?? '';
-    });
+    }
+
+    return queued ? _enqueueNetwork(request) : request();
   }
 
   Future<String> _getPlain(
@@ -176,8 +186,9 @@ class KboDirectRepository implements GameRepository {
     Map<String, dynamic>? queryParameters,
     Map<String, String>? headers,
     bool allowNotModified = false,
+    bool queued = true,
   }) async {
-    return _enqueueNetwork(() async {
+    Future<String> request() async {
       final url = _resolveUrl(path);
       final response = await _dio.get<String>(
         url,
@@ -197,7 +208,9 @@ class KboDirectRepository implements GameRepository {
         return '';
       }
       return response.data ?? '';
-    });
+    }
+
+    return queued ? _enqueueNetwork(request) : request();
   }
 
   Map<String, String>? _mergeHeaders(Map<String, String>? headers) {
@@ -708,7 +721,7 @@ class KboDirectRepository implements GameRepository {
                 .toList()
               ..sort((a, b) => a.date.compareTo(b.date));
 
-        return _enrichFinalScheduleScores(days);
+        return _enrichScheduleWithMainGames(days);
       } finally {
         _scheduleRequests.remove(yearMonth);
       }
@@ -817,16 +830,19 @@ class KboDirectRepository implements GameRepository {
     return name;
   }
 
-  Future<List<ScheduleDay>> _enrichFinalScheduleScores(
+  Future<List<ScheduleDay>> _enrichScheduleWithMainGames(
     List<ScheduleDay> days,
   ) async {
+    final today = _todayDateString();
     final targets = days
         .where(
-          (day) => day.games.any(
-            (game) =>
-                game.status == 'FINAL' &&
-                (game.awayScore == null || game.homeScore == null),
-          ),
+          (day) =>
+              day.date == today ||
+              day.games.any(
+                (game) =>
+                    game.status == 'FINAL' &&
+                    (game.awayScore == null || game.homeScore == null),
+              ),
         )
         .toList();
 
@@ -846,31 +862,77 @@ class KboDirectRepository implements GameRepository {
     return days.map((day) {
       final mainGames = gameMaps[day.date] ?? const {};
       final games = day.games.map((game) {
-        if (game.status != 'FINAL' ||
-            (game.awayScore != null && game.homeScore != null)) {
+        final main = _findMainGameForSchedule(game, mainGames);
+        if (main == null) {
           return game;
         }
 
-        final main = mainGames[game.gameId] as Map<String, dynamic>?;
+        final mainStatus = _mapMainGameScheduleStatus(
+          main['GAME_STATE_SC']?.toString() ?? '',
+        );
+        final status = mainStatus == 'UNKNOWN' ? game.status : mainStatus;
         return ScheduleGame(
           gameId: game.gameId,
-          time: game.time,
+          time: _firstNonEmptyString([main['G_TM'] as String?, game.time]),
           awayId: game.awayId,
           awayName: game.awayName,
-          awayScore: _parseInt(main?['T_SCORE_CN']) ?? game.awayScore,
+          awayScore: _parseInt(main['T_SCORE_CN']) ?? game.awayScore,
           homeId: game.homeId,
           homeName: game.homeName,
-          homeScore: _parseInt(main?['B_SCORE_CN']) ?? game.homeScore,
+          homeScore: _parseInt(main['B_SCORE_CN']) ?? game.homeScore,
           stadium: _firstNonEmptyString([
-            main?['S_NM'] as String?,
+            main['S_NM'] as String?,
             game.stadium,
           ]),
-          status: game.status,
+          status: status,
           ticketInfo: game.ticketInfo,
         );
       }).toList();
       return ScheduleDay(date: day.date, label: day.label, games: games);
     }).toList();
+  }
+
+  String _todayDateString() {
+    final now = DateTime.now();
+    return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Map<String, dynamic>? _findMainGameForSchedule(
+    ScheduleGame game,
+    Map<String, dynamic> mainGames,
+  ) {
+    final byId = mainGames[game.gameId];
+    if (byId is Map<String, dynamic>) {
+      return byId;
+    }
+    for (final value in mainGames.values) {
+      if (value is! Map<String, dynamic>) {
+        continue;
+      }
+      final mainGameId = value['G_ID']?.toString() ?? '';
+      final ids = _deriveTeamIdsFromGameId(mainGameId);
+      if (ids.$1 == game.awayId && ids.$2 == game.homeId) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  String _mapMainGameScheduleStatus(String status) {
+    switch (status) {
+      case '1':
+        return 'SCHEDULED';
+      case '2':
+        return 'LIVE';
+      case '3':
+        return 'FINAL';
+      case '4':
+        return 'CANCELLED';
+      case '5':
+        return 'SUSPENDED';
+      default:
+        return 'UNKNOWN';
+    }
   }
 
   String _firstNonEmptyString(List<String?> values) {
@@ -887,25 +949,52 @@ class KboDirectRepository implements GameRepository {
 
   @override
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {
-    final game = await getGame(gameId);
+    final requestKey = afterSeqNo == null ? gameId : '$gameId|$afterSeqNo';
+    return _relayRequests.putIfAbsent(requestKey, () async {
+      try {
+        return await _loadRelayData(gameId, afterSeqNo: afterSeqNo);
+      } finally {
+        _relayRequests.remove(requestKey);
+      }
+    });
+  }
+
+  Future<RelayData> _loadRelayData(String gameId, {int? afterSeqNo}) async {
+    _log.info('KBO relay load begin $gameId');
+    Map<String, dynamic>? mainGame;
+    try {
+      mainGame = await _getMainGameForGame(
+        gameId,
+      ).timeout(_relayGameLookupTimeout, onTimeout: () => null);
+    } catch (error) {
+      _log.warn('KBO relay main game lookup skipped for $gameId: $error');
+    }
+
+    final isFinal = _gameStatusFromMainGame(mainGame) == GameStatus.final_;
     Object? lastError;
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
         if (attempt > 0) {
           _resetRelaySession();
         }
-        final html = await _fetchRelayHtml(gameId);
+        final html = await _fetchRelayHtml(
+          gameId,
+          mainGame: mainGame,
+        ).timeout(_relayFetchTimeout);
         final relayItems = _parseRelayItems(html);
-        if ((game?.status == GameStatus.final_) && relayItems.isEmpty) {
-          return _buildSummaryRelayFallback(gameId, afterSeqNo: afterSeqNo);
+        _log.info('KBO relay loaded $gameId (${relayItems.length} items)');
+        if (isFinal && relayItems.isEmpty) {
+          return _buildSummaryRelayFallback(
+            gameId,
+            afterSeqNo: afterSeqNo,
+            mainGameSnapshot: mainGame,
+          );
         }
         final filtered = afterSeqNo == null
             ? relayItems
             : relayItems.where((item) => item.seqNo > afterSeqNo).toList();
         return RelayData(
-          currentAtBat: game?.status == GameStatus.final_
-              ? null
-              : _parseCurrentAtBat(html),
+          currentAtBat: isFinal ? null : _parseCurrentAtBat(html),
           relayItems: filtered,
         );
       } catch (error) {
@@ -928,31 +1017,87 @@ class KboDirectRepository implements GameRepository {
     } else if (lastError != null) {
       _log.warn('KBO relay fallback failed for $gameId: $lastError');
     }
-    return _buildSummaryRelayFallback(gameId, afterSeqNo: afterSeqNo);
+    return _buildSummaryRelayFallback(
+      gameId,
+      afterSeqNo: afterSeqNo,
+      mainGameSnapshot: mainGame,
+    );
   }
 
-  Future<String> _fetchRelayHtml(String gameId) async {
-    final mainGame = await _getMainGameForGame(gameId);
+  Future<String> _fetchRelayHtml(
+    String gameId, {
+    Map<String, dynamic>? mainGame,
+  }) async {
     final seriesId = _seriesIdFromMainGame(mainGame);
     final relayHeaders = _relayRequestHeaders(gameId, seriesId);
-    await _ensureRelayLoggedIn();
-    await _getPlain(
-      '/Game/LiveText.aspx',
-      queryParameters: {
-        'leagueId': 1,
-        'seriesId': seriesId,
-        'gameId': gameId,
-        'gyear': gameId.substring(0, 4),
-      },
-      headers: relayHeaders,
-      allowNotModified: true,
+    final noCacheHeaders = _relayNoCacheHeaders(
+      baseHeaders: relayHeaders,
+      cacheBuster: DateTime.now().millisecondsSinceEpoch,
     );
-    return _postPlain('/Game/LiveTextView2.aspx', {
+    await _ensureRelayLoggedIn(queued: false);
+    _log.info('KBO relay GET LiveText $gameId');
+    try {
+      await _getPlain(
+        '/Game/LiveText.aspx',
+        queryParameters: {
+          'leagueId': 1,
+          'seriesId': seriesId,
+          'gameId': gameId,
+          'gyear': gameId.substring(0, 4),
+          '_ts': noCacheHeaders.$2,
+        },
+        headers: noCacheHeaders.$1,
+        allowNotModified: true,
+        queued: false,
+      ).timeout(_relayWarmupTimeout);
+    } catch (error) {
+      _log.warn('KBO relay LiveText warmup skipped for $gameId: $error');
+    }
+    final payload = {
       'leagueId': 1,
       'seriesId': seriesId,
       'gameId': gameId,
       'gyear': gameId.substring(0, 4),
-    }, headers: relayHeaders);
+    };
+    _log.info('KBO relay POST LiveTextView2 $gameId');
+    final initialHtml = await _postPlain(
+      '/Game/LiveTextView2.aspx?_ts=${noCacheHeaders.$2}',
+      payload,
+      headers: noCacheHeaders.$1,
+      allowNotModified: true,
+      queued: false,
+    );
+    if (initialHtml.isNotEmpty) {
+      return initialHtml;
+    }
+
+    _log.info('KBO relay 304 retry for $gameId');
+    final retryHeaders = _relayNoCacheHeaders(
+      baseHeaders: relayHeaders,
+      cacheBuster: DateTime.now().microsecondsSinceEpoch,
+    );
+    return _postPlain(
+      '/Game/LiveTextView2.aspx?_ts=${retryHeaders.$2}',
+      payload,
+      headers: retryHeaders.$1,
+      queued: false,
+    );
+  }
+
+  GameStatus? _gameStatusFromMainGame(Map<String, dynamic>? mainGame) {
+    switch (mainGame?['GAME_STATE_SC']?.toString()) {
+      case '1':
+        return GameStatus.scheduled;
+      case '2':
+        return GameStatus.live;
+      case '3':
+        return GameStatus.final_;
+      case '4':
+        return GameStatus.cancelled;
+      case '5':
+        return GameStatus.suspended;
+    }
+    return null;
   }
 
   Map<String, String> _relayRequestHeaders(String gameId, int seriesId) {
@@ -962,6 +1107,22 @@ class KboDirectRepository implements GameRepository {
       'Referer':
           '$_kboBase/Game/LiveText.aspx?leagueId=1&seriesId=$seriesId&gameId=$gameId&gyear=$gameYear',
     };
+  }
+
+  (Map<String, String>, int) _relayNoCacheHeaders({
+    required Map<String, String> baseHeaders,
+    required int cacheBuster,
+  }) {
+    return (
+      {
+        ...baseHeaders,
+        'Cache-Control': 'no-cache, no-store, max-age=0',
+        'Pragma': 'no-cache',
+        'If-Modified-Since': 'Thu, 01 Jan 1970 00:00:00 GMT',
+        'Expires': '0',
+      },
+      cacheBuster,
+    );
   }
 
   @override
@@ -1079,19 +1240,27 @@ class KboDirectRepository implements GameRepository {
       final boxscore = await getBoxscoreData(gameId);
       final mainGame = await _getMainGameForGame(gameId);
       final starterNames = _starterNamesFromMainGame(mainGame);
+      final starterIds = _starterIdsFromMainGame(mainGame);
+      final season =
+          _gameDateFromId(gameId)?.substring(0, 4) ??
+          DateTime.now().year.toString();
       return GameLineupData(
         gameId: gameId,
         away: TeamLineupData(
           teamId: boxscore.away.teamId,
           lineup: _lineupFromBatters(boxscore.away.batters),
+          starterId: starterIds.$1,
           starterName:
               starterNames.$1 ?? boxscore.away.pitchers.firstOrNull?.name,
+          starterImageUrl: _playerImageUrl(season, starterIds.$1),
         ),
         home: TeamLineupData(
           teamId: boxscore.home.teamId,
           lineup: _lineupFromBatters(boxscore.home.batters),
+          starterId: starterIds.$2,
           starterName:
               starterNames.$2 ?? boxscore.home.pitchers.firstOrNull?.name,
+          starterImageUrl: _playerImageUrl(season, starterIds.$2),
         ),
       );
     } catch (_) {
@@ -1376,6 +1545,28 @@ class KboDirectRepository implements GameRepository {
     );
   }
 
+  (String?, String?) _starterIdsFromMainGame(Map<String, dynamic>? mainGame) {
+    return (
+      _cleanPlayerId(mainGame?['T_PIT_P_ID']),
+      _cleanPlayerId(mainGame?['B_PIT_P_ID']),
+    );
+  }
+
+  String? _playerImageUrl(String season, String? playerId) {
+    if (playerId == null || playerId.isEmpty) {
+      return null;
+    }
+    return '$_kboPersonImageBase/$season/$playerId.jpg';
+  }
+
+  String? _cleanPlayerId(Object? value) {
+    final text = value?.toString().trim() ?? '';
+    if (text.isEmpty || text.toLowerCase() == 'null') {
+      return null;
+    }
+    return text;
+  }
+
   Future<(bool, String?)> _currentPitcherContext(
     String gameId, {
     required String inningTextFallback,
@@ -1563,12 +1754,12 @@ class KboDirectRepository implements GameRepository {
     return int.tryParse(value.toString().replaceAll(',', ''));
   }
 
-  Future<void> _ensureRelayLoggedIn() async {
+  Future<void> _ensureRelayLoggedIn({bool queued = true}) async {
     if (_relayLoggedIn) {
       return;
     }
     _sessionCookies.clear();
-    final loginPage = await _getPlain('/Member/Login.aspx');
+    final loginPage = await _getPlain('/Member/Login.aspx', queued: queued);
     final document = html_parser.parse(loginPage);
     String field(String name) {
       return document
@@ -1600,6 +1791,7 @@ class KboDirectRepository implements GameRepository {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
       },
       allowRedirect: true,
+      queued: queued,
     );
 
     if (_sessionCookies.keys.any((key) => key.toLowerCase().contains('auth')) ||
@@ -1632,19 +1824,43 @@ class KboDirectRepository implements GameRepository {
       return null;
     }
     try {
+      final noCacheHeaders = _relayNoCacheHeaders(
+        baseHeaders: const {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'},
+        cacheBuster: DateTime.now().microsecondsSinceEpoch,
+      );
       final html = await _postPlain(
-        '/Game/LiveTextView1.aspx',
+        '/Game/LiveTextView1.aspx?_ts=${noCacheHeaders.$2}',
         {
           'leagueId': 1,
           'seriesId': seriesId,
           'gameId': gameId,
           'gyear': gameId.substring(0, 4),
         },
-        headers: const {'Cache-Control': 'no-cache', 'Pragma': 'no-cache'},
+        headers: noCacheHeaders.$1,
         allowNotModified: true,
       );
       if (html.isEmpty) {
-        return null;
+        final retryHeaders = _relayNoCacheHeaders(
+          baseHeaders: const {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+          },
+          cacheBuster: DateTime.now().millisecondsSinceEpoch,
+        );
+        final retriedHtml = await _postPlain(
+          '/Game/LiveTextView1.aspx?_ts=${retryHeaders.$2}',
+          {
+            'leagueId': 1,
+            'seriesId': seriesId,
+            'gameId': gameId,
+            'gyear': gameId.substring(0, 4),
+          },
+          headers: retryHeaders.$1,
+        );
+        if (retriedHtml.isEmpty) {
+          return null;
+        }
+        return _parseView1ScoreboardDetail(retriedHtml);
       }
       return _parseView1ScoreboardDetail(html);
     } catch (error) {
@@ -1807,10 +2023,13 @@ class KboDirectRepository implements GameRepository {
       document.querySelector('.playerBox .pitcher .player-info-wrap'),
     );
     final counts = _parseCountText(countText);
-    final baseState = _parseBaseState(
+    final runnerNames = _parseRunnerNames(document);
+    final parsedBaseState = _parseBaseState(
       present.querySelector('#imgThisGameBase'),
     );
-    final runnerNames = _parseRunnerNames(document);
+    final baseState = parsedBaseState.isNotEmpty
+        ? parsedBaseState
+        : _baseStateFromRunnerNames(runnerNames);
 
     if (inningText.isEmpty &&
         countText.isEmpty &&
@@ -1876,6 +2095,36 @@ class KboDirectRepository implements GameRepository {
     ]);
 
     return (first, second, third);
+  }
+
+  String _baseStateFromRunnerNames((String, String, String) runnerNames) {
+    final occupied = [
+      runnerNames.$1.isNotEmpty,
+      runnerNames.$2.isNotEmpty,
+      runnerNames.$3.isNotEmpty,
+    ];
+    if (!occupied[0] && !occupied[1] && !occupied[2]) {
+      return '';
+    }
+    if (occupied[0] && !occupied[1] && !occupied[2]) {
+      return '주자1루';
+    }
+    if (!occupied[0] && occupied[1] && !occupied[2]) {
+      return '주자2루';
+    }
+    if (!occupied[0] && !occupied[1] && occupied[2]) {
+      return '주자3루';
+    }
+    if (occupied[0] && occupied[1] && !occupied[2]) {
+      return '주자1,2루';
+    }
+    if (occupied[0] && !occupied[1] && occupied[2]) {
+      return '주자1,3루';
+    }
+    if (!occupied[0] && occupied[1] && occupied[2]) {
+      return '주자2,3루';
+    }
+    return '만루';
   }
 
   (String, bool) _classifyRelayEvent(String text) {
@@ -2185,7 +2434,9 @@ class KboDirectRepository implements GameRepository {
       final day = gameId.substring(6, 8).replaceFirst(RegExp(r'^0'), '');
       final response = await _dio.get<String>(
         '$_youtubeBase/results',
-        queryParameters: {'search_query': '$month월 $day일 $awayName $homeName 하이라이트'},
+        queryParameters: {
+          'search_query': '$month월 $day일 $awayName $homeName 하이라이트',
+        },
         options: Options(
           responseType: ResponseType.plain,
           headers: {
@@ -2234,9 +2485,26 @@ class KboDirectRepository implements GameRepository {
   Future<RelayData> _buildSummaryRelayFallback(
     String gameId, {
     int? afterSeqNo,
+    Map<String, dynamic>? mainGameSnapshot,
   }) async {
-    final game = await getGame(gameId);
-    final mainGame = await _getMainGameForGame(gameId);
+    Game? game;
+    Map<String, dynamic>? mainGame = mainGameSnapshot;
+    try {
+      game = await getGame(
+        gameId,
+      ).timeout(_relaySummaryTimeout, onTimeout: () => null);
+    } catch (error) {
+      _log.warn('KBO relay summary game lookup failed for $gameId: $error');
+    }
+    if (mainGame == null) {
+      try {
+        mainGame = await _getMainGameForGame(
+          gameId,
+        ).timeout(_relayGameLookupTimeout, onTimeout: () => null);
+      } catch (error) {
+        _log.warn('KBO relay summary main lookup failed for $gameId: $error');
+      }
+    }
     if (game == null) {
       return const RelayData(currentAtBat: null, relayItems: []);
     }

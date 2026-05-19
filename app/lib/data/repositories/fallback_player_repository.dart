@@ -25,7 +25,7 @@ class FallbackPlayerRepository implements PlayerRepository {
     if (players != null) {
       return players;
     }
-    _log.warn('PLAYER team/$teamId/players fallback to direct KBO');
+    _log.warn('PLAYER team/$teamId/players fallback to secondary repository');
     return secondary.getTeamPlayers(teamId, season: season);
   }
 
@@ -42,7 +42,7 @@ class FallbackPlayerRepository implements PlayerRepository {
     if (player != null) {
       return player;
     }
-    _log.warn('PLAYER player/$playerId fallback to direct KBO');
+    _log.warn('PLAYER player/$playerId fallback to secondary repository');
     return secondary.getPlayerDetail(playerId, season: season);
   }
 
@@ -56,7 +56,7 @@ class FallbackPlayerRepository implements PlayerRepository {
     if (stats != null) {
       return stats;
     }
-    _log.warn('PLAYER team/$teamId/stats fallback to direct KBO');
+    _log.warn('PLAYER team/$teamId/stats fallback to secondary repository');
     return secondary.getTeamStats(teamId, season: season);
   }
 
@@ -76,7 +76,7 @@ class FallbackPlayerRepository implements PlayerRepository {
     if (bundle != null) {
       return bundle;
     }
-    _log.warn('PLAYER team/$teamId/records fallback to direct KBO');
+    _log.warn('PLAYER team/$teamId/records fallback to secondary repository');
     return secondary.getTeamRecords(teamId, season: season);
   }
 
@@ -95,7 +95,7 @@ class FallbackPlayerRepository implements PlayerRepository {
     if (overview != null) {
       return overview;
     }
-    _log.warn('PLAYER records/overview fallback to direct KBO');
+    _log.warn('PLAYER records/overview fallback to secondary repository');
     return secondary.getRecordsOverview(season: season);
   }
 
@@ -113,7 +113,7 @@ class FallbackPlayerRepository implements PlayerRepository {
       return leaders;
     }
     _log.warn(
-      'PLAYER records/leaderboard/${metric.key} fallback to direct KBO',
+      'PLAYER records/leaderboard/${metric.key} fallback to secondary repository',
     );
     return secondary.getLeaderboard(season: season, metric: metric);
   }

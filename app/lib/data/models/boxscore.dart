@@ -81,12 +81,16 @@ class LineupEntry {
 class TeamLineupData {
   final String teamId;
   final List<LineupEntry> lineup;
+  final String? starterId;
   final String? starterName;
+  final String? starterImageUrl;
 
   const TeamLineupData({
     required this.teamId,
     required this.lineup,
+    this.starterId,
     this.starterName,
+    this.starterImageUrl,
   });
 }
 

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from datetime import date as date_type
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
+from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
@@ -15,10 +16,12 @@ class ScheduleService:
     def __init__(
         self,
         schedule_crawler: Optional[ScheduleCrawler] = None,
+        main_crawler: Optional[MainCrawler] = None,
         ticketing_service: Optional[TicketingService] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
     ) -> None:
         self.schedule_crawler = schedule_crawler or ScheduleCrawler()
+        self.main_crawler = main_crawler or MainCrawler()
         self.ticketing_service = ticketing_service or TicketingService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self._cache: TtlCache[str, dict[str, Any]] = TtlCache(self._CACHE_TTL_SECONDS)
@@ -77,6 +80,7 @@ class ScheduleService:
             "month": month,
             "days": list(days_by_date.values()),
         }
+        payload = self._enrich_current_day_with_main_games(payload)
         self._cache.set(month, payload)
         if self._should_persist_month_snapshot(payload):
             self.snapshot_store.save("schedule", month, payload)
@@ -99,10 +103,114 @@ class ScheduleService:
 
     @staticmethod
     def _should_persist_month_snapshot(payload: dict[str, Any]) -> bool:
-        terminal_statuses = {"FINAL", "CANCELLED", "SUSPENDED"}
         games = [
             game
             for day in payload.get("days", [])
             for game in day.get("games", [])
         ]
-        return bool(games) and all(game.get("status") in terminal_statuses for game in games)
+        return bool(games)
+
+    def _enrich_current_day_with_main_games(
+        self, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        today = date_type.today().isoformat()
+        if not any(day.get("date") == today for day in payload.get("days", [])):
+            return payload
+
+        try:
+            main_games = {
+                game.get("G_ID"): game
+                for game in self.main_crawler.get_kbo_game_list(today)
+            }
+        except Exception:
+            return payload
+
+        days: list[dict[str, Any]] = []
+        for day in payload.get("days", []):
+            if day.get("date") != today:
+                days.append(day)
+                continue
+
+            games = [
+                self._merge_main_game_into_schedule_game(game, main_games)
+                for game in day.get("games", [])
+            ]
+            days.append({**day, "games": games})
+        return {**payload, "days": days}
+
+    def _merge_main_game_into_schedule_game(
+        self,
+        game: dict[str, Any],
+        main_games: dict[Any, dict[str, Any]],
+    ) -> dict[str, Any]:
+        main_game = self._find_main_game(game, main_games)
+        if not main_game:
+            return game
+
+        status = self._map_main_status(main_game.get("GAME_STATE_SC"))
+        if status == "UNKNOWN":
+            status = str(game.get("status") or "UNKNOWN")
+
+        updated = {
+            **game,
+            "time": main_game.get("G_TM") or game.get("time"),
+            "awayScore": self._main_score_or_existing(
+                main_game.get("T_SCORE_CN"), game.get("awayScore")
+            ),
+            "homeScore": self._main_score_or_existing(
+                main_game.get("B_SCORE_CN"), game.get("homeScore")
+            ),
+            "stadium": main_game.get("S_NM") or game.get("stadium"),
+            "status": status,
+        }
+        updated["ticketInfo"] = self.ticketing_service.build_ticket_info(
+            home_team_id=updated.get("homeId"),
+            game_id=updated.get("gameId"),
+            start_time=updated.get("time"),
+            status=status,
+        )
+        return updated
+
+    @staticmethod
+    def _find_main_game(
+        game: dict[str, Any],
+        main_games: dict[Any, dict[str, Any]],
+    ) -> Optional[dict[str, Any]]:
+        game_id = game.get("gameId")
+        by_id = main_games.get(game_id)
+        if by_id is not None:
+            return by_id
+        for main_game in main_games.values():
+            main_game_id = str(main_game.get("G_ID") or "")
+            if len(main_game_id) < 12:
+                continue
+            if (
+                main_game_id[8:10] == game.get("awayId")
+                and main_game_id[10:12] == game.get("homeId")
+            ):
+                return main_game
+        return None
+
+    @staticmethod
+    def _map_main_status(game_state: Any) -> str:
+        return {
+            "1": "SCHEDULED",
+            "2": "LIVE",
+            "3": "FINAL",
+            "4": "CANCELLED",
+            "5": "SUSPENDED",
+        }.get(str(game_state), "UNKNOWN")
+
+    @staticmethod
+    def _parse_int(value: Any) -> Optional[int]:
+        try:
+            return int(str(value).replace(",", ""))
+        except (TypeError, ValueError):
+            return None
+
+    @classmethod
+    def _main_score_or_existing(cls, value: Any, existing: Any) -> Any:
+        if value is None:
+            return existing
+        parsed = cls._parse_int(value)
+        return existing if parsed is None else parsed

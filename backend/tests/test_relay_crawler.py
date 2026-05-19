@@ -43,6 +43,41 @@ def test_parse_current_at_bat_from_live_text_view() -> None:
     }
 
 
+def test_parse_current_at_bat_derives_base_state_from_runner_names() -> None:
+    html = """
+    <div class="playerBox awayBox">
+      <div class="player-info-wrap">
+        <strong class="who"><span class="no">No.34 김원중</span><span>(우투)</span></strong>
+      </div>
+    </div>
+    <div class="playerBox homeBox">
+      <div class="player-info-wrap">
+        <strong class="who"><span class="no">No.58 김지찬</span><span>(좌타)</span></strong>
+      </div>
+    </div>
+    <p class="present">
+      <span class="base">
+        <strong>7회 초</strong>
+        <img id="imgThisGameBase" src="//example.com/current.png" alt="주자">
+        <strong>2-1 1out</strong>
+      </span>
+    </p>
+    <div id="txtBase1">홍창기</div>
+    <div id="txtBase3">오스틴</div>
+    <div class="playerName">
+      <ul>
+        <li class="pitcher">김원중</li>
+        <li class="supervision">김지찬</li>
+      </ul>
+    </div>
+    """
+
+    current_at_bat = RelayCrawler()._parse_current_at_bat(html)
+
+    assert current_at_bat is not None
+    assert current_at_bat["baseState"] == "주자1,3루"
+
+
 def test_assert_valid_relay_response_rejects_error_page() -> None:
     html = "<html><head><title>에러 | KBO홈페이지</title></head><body></body></html>"
 

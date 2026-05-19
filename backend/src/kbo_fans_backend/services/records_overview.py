@@ -53,14 +53,22 @@ class RecordsOverviewService:
         if cached is not None:
             return cached
 
+        snapshot = self.snapshot_store.load_payload("leaderboard", cache_key)
+        if snapshot is not None:
+            self._leaderboard_cache.set(cache_key, snapshot)
+            return snapshot
+
         try:
             leaders = self.crawler.get_leaderboard(season, metric)
         except Exception:
             stale = self._leaderboard_cache.get_stale(cache_key)
             if stale is not None:
                 return stale
+            if snapshot is not None:
+                return snapshot
             raise
 
         payload = {"season": season, "metric": metric, "leaders": leaders}
         self._leaderboard_cache.set(cache_key, payload)
+        self.snapshot_store.save("leaderboard", cache_key, payload)
         return payload
