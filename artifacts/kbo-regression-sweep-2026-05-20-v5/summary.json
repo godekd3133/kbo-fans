@@ -1,0 +1,66 @@
+[
+  {
+    "route": "onboarding",
+    "requested": "http://127.0.0.1:7357/#/onboarding",
+    "current": "http://127.0.0.1:7357/onboarding#/onboarding?redirect=/home",
+    "path": "/onboarding",
+    "expectedPath": "/onboarding",
+    "issues": []
+  },
+  {
+    "route": "home",
+    "requested": "http://127.0.0.1:7357/#/home",
+    "current": "http://127.0.0.1:7357/home#/home",
+    "path": "/home",
+    "expectedPath": "/home",
+    "issues": []
+  },
+  {
+    "route": "schedule",
+    "requested": "http://127.0.0.1:7357/#/schedule",
+    "current": "http://127.0.0.1:7357/schedule#/home",
+    "path": "/schedule",
+    "expectedPath": "/schedule",
+    "issues": []
+  },
+  {
+    "route": "standings",
+    "requested": "http://127.0.0.1:7357/#/standings",
+    "current": "http://127.0.0.1:7357/standings#/home",
+    "path": "/standings",
+    "expectedPath": "/standings",
+    "issues": []
+  },
+  {
+    "route": "records",
+    "requested": "http://127.0.0.1:7357/#/records",
+    "current": "http://127.0.0.1:7357/records#/home",
+    "path": "/records",
+    "expectedPath": "/records",
+    "issues": []
+  },
+  {
+    "route": "team_records_kt",
+    "requested": "http://127.0.0.1:7357/#/records/team/KT",
+    "current": "http://127.0.0.1:7357/records/team/KT#/home",
+    "path": "/records/team/KT",
+    "expectedPath": "/records/team/KT",
+    "issues": []
+  },
+  {
+    "route": "leaderboard_avg",
+    "requested": "http://127.0.0.1:7357/#/records/leaderboard/avg",
+    "current": "http://127.0.0.1:7357/records/leaderboard/avg#/home",
+    "path": "/records/leaderboard/avg",
+    "expectedPath": "/records/leaderboard/avg",
+    "issues": []
+  },
+  {
+    "route": "game_score",
+    "requested": "http://127.0.0.1:7357/#/game/20260519KTSS0",
+    "current": "http://127.0.0.1:7357/game/20260519KTSS0#/home",
+    "path": "/game/20260519KTSS0",
+    "expectedPath": "/game/20260519KTSS0",
+    "issues": []
+  }
+]
