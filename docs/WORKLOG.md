@@ -2,6 +2,147 @@
 
 ---
 
+## 2026-05-19: 실시간/스냅샷 데이터 분리 및 중복 로딩 기술 검토
+
+### 완료
+- [x] `docs/KBO_DATA_REFRESH_ARCHITECTURE_2026-05-19.md`에 live / warm cache / persisted snapshot / bundled bootstrap 데이터 분류 기준 문서화
+- [x] 백엔드 service/crawler/cache/snapshot 책임 경계와 endpoint별 freshness matrix 정리
+- [x] 반복 크롤링 방지를 위한 singleflight, rate-limit, stale-while-revalidate, request budget 설계안 정리
+- [x] 홈, 일정, 경기 상세, Score/Relay/Boxscore/Lineup 탭, 기록실 화면의 현재 over-fetch 후보와 목표 호출 구조 검토
+- [x] 실제 파일/라인 기준 evidence map 추가
+- [x] widget background, local alert, direct KBO repository, backend route fan-out까지 추가 검토
+- [x] P0/P1/P2 구현 순서와 구현 후 request count 목표치 정리
+
+### 원인
+- 실시간 데이터와 과거/기록성 데이터를 한 정책으로 처리하면, live freshness를 잃거나 반대로 안정 데이터까지 매번 KBO 웹을 다시 긁게 된다.
+- 일부 화면은 실제로 필요한 payload보다 넓은 provider를 구독하거나 preload를 통해 detail/relay/boxscore/lineup/player data를 한꺼번에 데우고 있어 로딩 중첩과 upstream 부담이 생길 수 있다.
+- 화면 외에도 widget background refresh와 local alert processing이 별도 실시간 refresh surface가 될 수 있어, 화면 provider만 줄여서는 전체 KBO 호출량을 통제할 수 없다.
+
+### 검증
+- [x] 관련 코드 경로 확인: `app/lib/data/providers.dart`, `app/lib/features/home/home_screen.dart`, `app/lib/features/schedule/schedule_screen.dart`, `app/lib/features/game_detail/*`, `app/lib/services/game_detail_preload_service.dart`, `backend/src/kbo_fans_backend/services/*`
+- [x] 추가 코드 경로 확인: `app/lib/services/widget_sync_service.dart`, `app/lib/services/game_event_alert_service.dart`, `app/lib/data/repositories/kbo_direct_repository.dart`, `backend/src/kbo_fans_backend/api/routes/*`
+- [x] 문서 변경 범위 확인: `docs/KBO_DATA_REFRESH_ARCHITECTURE_2026-05-19.md`
+
+---
+
+## 2026-05-18: KBO 원천 웹 의존도 완화 1차 보강
+
+### 완료
+- [x] `docs/KBO_DATA_RESILIENCE_PLAN_2026-05-18.md`에 live / warm cache / persisted snapshot / bundled bootstrap 기준 정리
+- [x] 월간 일정 API가 성공한 비어 있지 않은 payload를 항상 schedule snapshot으로 남기도록 조정
+- [x] 기록실 leaderboard API가 `leaderboard/{season}:{metric}` snapshot을 저장/조회하도록 보강
+- [x] 앱 leaderboard API 실패 시 bundled records overview snapshot에서 metric별 리더보드를 복구하도록 fallback 추가
+
+### 원인
+- KBO 공식 웹/HTML/ASMX 응답은 느리거나 마크업이 바뀌기 쉬운데, 일부 경로가 요청 시점 recrawl 또는 direct KBO fallback에 의존했다.
+- 일정 snapshot 저장 조건이 모든 경기가 종료된 월로 제한되어, 현재 월 KBO 일정 원천이 깨졌을 때 재사용할 마지막 정상 월 payload가 부족할 수 있었다.
+- records overview는 snapshot-first였지만 leaderboard 단건 endpoint는 snapshot 저장/조회가 없어 같은 기록 데이터를 다시 원천 호출할 여지가 있었다.
+
+### 검증
+- [x] `cd backend && uv run --with pytest pytest tests/test_schedule.py tests/test_records_overview.py tests/test_snapshot_services.py -q`
+- [x] `cd backend && python3 -m compileall src tests/test_schedule.py tests/test_records_overview.py`
+- [x] `cd app && fvm flutter analyze lib/data/repositories/api_player_repository.dart`
+
+---
+
+## 2026-04-25: 박스스코어 주자 상태 `-` 표시 보정
+
+### 완료
+- [x] direct KBO relay parser가 베이스 이미지에서 `ground_base*.png`를 못 읽고 `alt="주자"`만 받은 경우, 1/2/3루 주자 이름으로 주자 상태를 재구성하도록 보강
+- [x] 박스스코어 라이브 요약의 `주자` 타일이 `baseState`가 비어 있어도 주자 이름 필드로 `주자1루`, `주자1,3루`, `만루` 등을 표시하도록 보정
+- [x] 문자중계 현재 타석 배지도 같은 fallback을 사용하도록 맞춰 표시 일관성 개선
+- [x] 백엔드 relay crawler도 동일하게 주자 이름 기반 baseState fallback을 추가
+
+### 원인
+- KBO live text HTML에서 주자 이미지가 `ground_base*.png` 형태로 오면 정상 표시됐지만, 일부 응답에서는 `alt="주자"`만 남아 parser가 빈 문자열로 처리했다
+- 박스스코어 탭은 빈 `baseState`를 `-`로 표시했기 때문에 실제 주자가 있어도 `-`로 보일 수 있었다
+
+### 검증
+- [x] `cd app && fvm flutter analyze lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/relay_tab.dart`
+- [x] `cd app && fvm flutter test test/widget_test.dart`
+- [x] `cd backend && uv run --with pytest pytest tests/test_relay_crawler.py -q`
+- [x] `cd backend && python3 -m compileall src tests/test_relay_crawler.py`
+
+---
+
+## 2026-04-25: 라인업 선발투수 프로필 이미지 보강
+
+### 완료
+- [x] 라인업 데이터 모델에 선발투수 id/imageUrl 후보를 추가
+- [x] 앱 direct KBO 라인업 생성 시 `Main.asmx/GetKboGameList`의 `T_PIT_P_ID` / `B_PIT_P_ID`로 선발투수 이미지 URL을 즉시 구성하도록 보강
+- [x] 백엔드 라인업 API도 main game 메타데이터에서 선발투수 id/name/imageUrl을 함께 내려주도록 보강
+- [x] 라인업 탭 이미지 매칭을 선수목록 `imageUrl`뿐 아니라 선수 id 기반 CDN URL, 현재 타석 relay 이미지, 괄호/표기 변형 제거 매칭까지 사용하도록 개선
+- [x] 상세 선로딩 서비스가 선발투수 id/imageUrl 기반 이미지를 미리 캐시하도록 보강
+
+### 원인
+- 선발 카드가 이름 기반 선수 이미지 맵에 의존해, 선수목록 로딩 지연/실패 또는 이름 표기 변형이 있으면 즉시 fallback 글자 카드로 떨어질 수 있었음
+- 실제 KBO main game payload에는 선발투수 id가 이미 있으므로, 선수목록 조회와 무관하게 `person/middle/{season}/{playerId}.jpg` URL을 만들 수 있었음
+
+### 검증
+- [x] `cd app && fvm flutter analyze lib/data/models/boxscore.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/lineup_tab.dart lib/services/game_detail_preload_service.dart`
+- [x] `cd app && fvm flutter test test/widget_test.dart`
+- [x] `cd backend && uv run --with pytest pytest tests/test_lineup.py tests/test_schedule.py -q`
+- [x] `cd backend && python3 -m compileall src tests/test_lineup.py`
+
+---
+
+## 2026-04-25: 문자중계 로딩 대기 고착 방지
+
+### 완료
+- [x] direct KBO 문자중계가 경기 전체 스코어보드 조회를 먼저 기다리지 않고 `Main.asmx` 메타데이터와 live text 요청으로 바로 진입하도록 조정
+- [x] `LiveText.aspx` / `LiveTextView2.aspx` 문자중계 요청은 startup/history warm 의 전역 KBO 요청 queue 를 우회하도록 조정
+- [x] 세션 준비용 `LiveText.aspx` GET 은 2초 안에 끝나지 않으면 건너뛰고 실제 중계 데이터인 `LiveTextView2.aspx` POST 로 진행하도록 조정
+- [x] 문자중계 요청에 dedupe, timeout, 시작/완료 로그를 추가해 로딩 고착과 원인 추적성을 개선
+- [x] 경기 상세 자동 새로고침이 진행 중일 때 같은 provider 를 반복 invalidate 하지 않도록 guard 추가
+- [x] 라이브 경기 상세 자동 갱신 주기를 30초로 조정하고 종료/취소/서스펜디드 경기는 반복 갱신을 중단
+- [x] direct 선수 목록 조회가 선수별 상세/누적기록 페이지를 대량 병렬 호출하지 않도록 정리하고, 선수 상세 화면에서만 상세 데이터를 조회하도록 조정
+
+### 원인
+- `getRelayData()`가 먼저 `getGame()`을 호출하면서 당일 전체 스코어보드와 각 경기 `GetScoreBoardScroll` 조회를 기다렸고, startup/history warm 요청이 동시에 쌓이면 문자중계가 사용자 탭 진입 뒤에도 뒤로 밀릴 수 있었음
+- 상세 화면 타이머가 10~15초마다 relay provider 를 다시 invalidate 해, 느린 요청이 끝나기 전에 로딩 상태가 반복 갱신될 수 있었음
+- 팀 선수 목록 direct fallback 이 선수마다 상세/누적기록 페이지를 동시에 요청해 KBO 원본 연결을 포화시키고, 문자중계 요청까지 timeout 가능성을 높였음
+
+### 검증
+- [x] `cd app && fvm flutter analyze lib/data/repositories/kbo_direct_repository.dart lib/data/repositories/kbo_direct_player_repository.dart lib/features/game_detail/game_detail_screen.dart`
+
+---
+
+## 2026-04-25: 경기 상세 데이터/이미지 선로딩
+
+### 완료
+- [x] 홈 스코어보드에서 마이팀/라이브/종료 경기 우선으로 최대 3경기의 상세 데이터를 백그라운드 선로딩하도록 추가
+- [x] 일정 화면에서 선택 날짜의 상위 경기와 탭 직전 경기 상세 데이터를 선로딩하도록 추가
+- [x] 경기 상세 진입 직후 문자중계/박스스코어/라인업 데이터를 미리 읽고, 라인업·문자중계·박스스코어에 등장하는 선수 프로필 이미지를 캐시에 올리도록 추가
+- [x] 선로딩은 3분 TTL과 in-flight dedupe 를 적용해 같은 경기를 반복 요청하지 않도록 제한
+- [x] 예정 경기는 팀 로고/기본 정보 중심으로 두고, 문자중계·박스스코어·라인업 선로딩은 라이브/종료 경기 위주로 제한
+
+### 원인
+- 문자중계/박스스코어 탭은 데이터 provider 가 준비되어도 선수 이미지는 실제 위젯 렌더 시점에 내려받아 첫 진입 체감이 늦을 수 있었음
+- 홈/일정에서 이미 어떤 경기를 볼 가능성이 높은지 알 수 있으므로, 상세 진입 전에 핵심 payload 와 이미지 캐시를 미리 데우는 편이 체감 지연을 줄일 수 있음
+
+### 검증
+- [x] `cd app && fvm flutter analyze lib/services/game_detail_preload_service.dart lib/features/home/home_screen.dart lib/features/schedule/schedule_screen.dart lib/features/game_detail/game_detail_screen.dart`
+
+---
+
+## 2026-04-25: 일정 탭 당일 경기 상태 보정
+
+### 완료
+- [x] 앱 direct KBO 일정 월 조회 결과에 오늘 날짜 `Main.asmx/GetKboGameList` 메타데이터를 합쳐 진행 중 경기가 `경기 전`으로 보이지 않도록 수정
+- [x] 백엔드 일정 API도 오늘 날짜 일정에 main game 상태/점수/구장 메타를 병합하도록 보강
+- [x] synthetic gameId 가 main game id 와 정확히 일치하지 않는 경우에도 원정/홈 팀 ID 기준으로 main game 을 매칭하도록 보완
+
+### 원인
+- `GetScheduleList` 기반 일정 월 데이터는 진행 중에도 action/status 값이 `SCHEDULED` 상태로 남을 수 있었고, 기존 보강 로직은 종료 경기 점수 누락만 처리했다
+- 실제 진행 상태는 `Main.asmx/GetKboGameList`의 `GAME_STATE_SC=2`에 있으므로 일정 탭도 이 메타데이터를 합쳐야 했다
+
+### 검증
+- [x] `cd app && fvm flutter analyze lib/data/repositories/kbo_direct_repository.dart lib/features/schedule/schedule_screen.dart lib/features/schedule/widgets/schedule_game_card.dart`
+- [x] `cd backend && uv run --with pytest pytest tests/test_schedule.py -q`
+- [x] `cd backend && python3 -m compileall src tests/test_schedule.py`
+
+---
+
 ## 2026-04-02: 문자중계 선수 프로필/볼카운트 시각화 강화
 
 ### 완료
@@ -692,3 +833,35 @@ kbo_fans/
 ### 후속 확인 필요
 - [ ] GitHub 저장소 Secrets 에 Android/iOS signing 값을 실제 등록한 뒤 `Actions > App Build Artifacts` 실런 검증
 - [ ] signed iOS `ipa` 생성 시 현재 프로비저닝 프로파일 specifier 명이 Runner / Widget 번들 ID와 정확히 일치하는지 확인
+
+---
+
+## 2026-05-18
+
+### 작업 내용
+- [x] 현재 기획/디자인 문서 기준으로 제품 보강 방향 감사 문서 작성
+- [x] 마이팀 데일리 루프, 홈 브리프, 라이트팬/코어팬 정보 깊이, 알림 프리셋, 위젯 방향 정리
+- [x] UI/UX 관점에서 홈, 경기 상세, 일정, 순위, 기록실, 설정/알림별 보강 체크리스트 정리
+- [x] 디자인 시스템 관점에서 상태 색상, 카드 체계, 팀 컬러 사용 원칙, 타이포그래피, 이미지 fallback 방향 정리
+
+### 산출물
+- `docs/PRODUCT_DESIGN_GROWTH_AUDIT_2026-05-18.md`
+
+### 검증 메모
+- 기준 문서: `CLAUDE.md`, `docs/PLANNING.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `docs/UX_AUDIT_2026-03-31.md`, `docs/WORKLOG.md`
+- 이번 작업은 기획/디자인 문서화 범위이며, 앱 런타임 화면 캡처나 코드 변경은 수행하지 않음
+
+---
+
+## 2026-05-19
+
+### 작업 내용
+- [x] `docs/PRODUCT_DESIGN_GROWTH_AUDIT_2026-05-18.md`의 제품/디자인 보강안을 기준 문서에 반영
+- [x] `docs/PLANNING.md`에 제품 한 줄 정의, 마이팀 데일리 사용 루프, 정보 깊이 원칙, 상태 중심 디자인 원칙 반영
+- [x] `docs/APP_SPEC.md`에 홈 마이팀 브리프 상태별 규칙, 경기 상세 탭 간 맥락 연결, 일정/순위 보강, 알림 프리셋, 위젯 원칙 반영
+- [x] `docs/FIGMA_PROMPT.md`에 5탭 구조, 기록실 페이지, 카드 체계, 상태 표현, 알림 프리셋 UI, 홈 상태 프레임 보강 반영
+
+### 검증 메모
+- `kbo-doc-sync` 기준으로 UX/화면 상태 변경은 `APP_SPEC`와 `WORKLOG`에 반영
+- 실제 앱 UI 구현이나 Figma MCP 작업은 수행하지 않았으므로 `CHANGELOG.md`에는 반영하지 않음
+- 이번 변경은 문서 동기화 범위이며, 코드/런타임 검증은 수행하지 않음
