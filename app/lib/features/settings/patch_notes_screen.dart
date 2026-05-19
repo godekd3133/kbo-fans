@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/theme/app_theme.dart';
 
@@ -13,7 +14,7 @@ class PatchNotesScreen extends StatefulWidget {
 class _PatchNotesScreenState extends State<PatchNotesScreen> {
   static const _assetPath = 'assets/bootstrap/patch_notes.md';
 
-  late final Future<List<_PatchNoteBlock>> _future;
+  late final Future<_PatchNotesData> _future;
 
   @override
   void initState() {
@@ -21,16 +22,35 @@ class _PatchNotesScreenState extends State<PatchNotesScreen> {
     _future = _loadPatchNotes();
   }
 
-  Future<List<_PatchNoteBlock>> _loadPatchNotes() async {
+  Future<_PatchNotesData> _loadPatchNotes() async {
     final raw = await rootBundle.loadString(_assetPath);
-    return _parsePatchNotes(raw);
+    final releases = _parsePatchNotes(raw);
+    final currentVersion = await _loadCurrentVersion(
+      fallbackVersion: releases.isEmpty ? '확인 불가' : releases.first.version,
+    );
+    return _PatchNotesData(currentVersion: currentVersion, releases: releases);
+  }
+
+  Future<String> _loadCurrentVersion({required String fallbackVersion}) async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (packageInfo.version.isEmpty) {
+        return fallbackVersion;
+      }
+      final buildNumber = packageInfo.buildNumber.trim();
+      return buildNumber.isEmpty
+          ? packageInfo.version
+          : '${packageInfo.version}+$buildNumber';
+    } catch (_) {
+      return fallbackVersion;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('패치노트')),
-      body: FutureBuilder<List<_PatchNoteBlock>>(
+      body: FutureBuilder<_PatchNotesData>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -42,30 +62,26 @@ class _PatchNotesScreenState extends State<PatchNotesScreen> {
             return const _PatchNotesError();
           }
 
-          final blocks = snapshot.data!;
+          final data = snapshot.data!;
+          if (data.releases.isEmpty) {
+            return const _PatchNotesError();
+          }
+
           return ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             itemBuilder: (context, index) {
-              final block = blocks[index];
-              return switch (block.kind) {
-                _PatchNoteBlockKind.title => _PatchTitle(block.text),
-                _PatchNoteBlockKind.section => _PatchSectionTitle(block.text),
-                _PatchNoteBlockKind.bullet => _PatchBullet(block.text),
-                _PatchNoteBlockKind.paragraph => _PatchParagraph(block.text),
-              };
-            },
-            separatorBuilder: (context, index) {
-              final current = blocks[index];
-              final next = blocks[index + 1];
-              if (next.kind == _PatchNoteBlockKind.section) {
-                return const SizedBox(height: 22);
+              if (index == 0) {
+                return _CurrentVersionBanner(version: data.currentVersion);
               }
-              if (current.kind == _PatchNoteBlockKind.title) {
-                return const SizedBox(height: 18);
-              }
-              return const SizedBox(height: 10);
+
+              final release = data.releases[index - 1];
+              return _ReleaseCard(
+                release: release,
+                isCurrent: _isCurrentRelease(release, data.currentVersion),
+              );
             },
-            itemCount: blocks.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            itemCount: data.releases.length + 1,
           );
         },
       ),
@@ -73,70 +89,241 @@ class _PatchNotesScreenState extends State<PatchNotesScreen> {
   }
 }
 
-List<_PatchNoteBlock> _parsePatchNotes(String raw) {
-  final blocks = <_PatchNoteBlock>[];
+List<_PatchRelease> _parsePatchNotes(String raw) {
+  final releases = <_PatchRelease>[];
+  _PatchReleaseDraft? current;
+
+  void closeCurrent() {
+    final draft = current;
+    if (draft == null) {
+      return;
+    }
+    releases.add(
+      _PatchRelease(
+        version: draft.version,
+        subtitle: draft.subtitle,
+        notes: List.unmodifiable(draft.notes),
+      ),
+    );
+  }
+
   for (final line in raw.split('\n')) {
     final text = line.trim();
-    if (text.isEmpty) {
+    if (text.isEmpty || text.startsWith('# ')) {
       continue;
     }
-    if (text.startsWith('# ')) {
-      blocks.add(_PatchNoteBlock(_PatchNoteBlockKind.title, text.substring(2)));
-    } else if (text.startsWith('## ')) {
-      blocks.add(
-        _PatchNoteBlock(_PatchNoteBlockKind.section, text.substring(3)),
-      );
-    } else if (text.startsWith('- ')) {
-      blocks.add(
-        _PatchNoteBlock(_PatchNoteBlockKind.bullet, text.substring(2)),
-      );
+    if (text.startsWith('## ')) {
+      closeCurrent();
+      current = _PatchReleaseDraft.fromHeading(text.substring(3).trim());
+      continue;
+    }
+    if (current == null) {
+      continue;
+    }
+    if (text.startsWith('- ')) {
+      current.notes.add(text.substring(2).trim());
     } else {
-      blocks.add(_PatchNoteBlock(_PatchNoteBlockKind.paragraph, text));
+      current.notes.add(text);
     }
   }
-  return blocks;
+  closeCurrent();
+
+  return releases;
 }
 
-class _PatchNoteBlock {
-  final _PatchNoteBlockKind kind;
-  final String text;
-
-  const _PatchNoteBlock(this.kind, this.text);
+bool _isCurrentRelease(_PatchRelease release, String currentVersion) {
+  if (currentVersion == '확인 불가') {
+    return false;
+  }
+  if (release.version == currentVersion) {
+    return true;
+  }
+  final currentBaseVersion = currentVersion.split('+').first;
+  final releaseBaseVersion = release.version.split('+').first;
+  return releaseBaseVersion == currentBaseVersion;
 }
 
-enum _PatchNoteBlockKind { title, section, bullet, paragraph }
+class _PatchNotesData {
+  final String currentVersion;
+  final List<_PatchRelease> releases;
 
-class _PatchTitle extends StatelessWidget {
-  final String text;
+  const _PatchNotesData({required this.currentVersion, required this.releases});
+}
 
-  const _PatchTitle(this.text);
+class _PatchRelease {
+  final String version;
+  final String? subtitle;
+  final List<String> notes;
+
+  const _PatchRelease({
+    required this.version,
+    required this.subtitle,
+    required this.notes,
+  });
+}
+
+class _PatchReleaseDraft {
+  static final _versionHeadingPattern = RegExp(
+    r'^(?:버전\s+)?v?([0-9]+\.[0-9]+\.[0-9]+(?:\+[0-9]+)?)\s*(?:[-–—]\s*(.+))?$',
+  );
+
+  final String version;
+  final String? subtitle;
+  final List<String> notes;
+
+  _PatchReleaseDraft({
+    required this.version,
+    required this.subtitle,
+    required this.notes,
+  });
+
+  factory _PatchReleaseDraft.fromHeading(String heading) {
+    final match = _versionHeadingPattern.firstMatch(heading);
+    if (match == null) {
+      return _PatchReleaseDraft(
+        version: heading,
+        subtitle: null,
+        notes: <String>[],
+      );
+    }
+    return _PatchReleaseDraft(
+      version: match.group(1)!,
+      subtitle: match.group(2)?.trim(),
+      notes: <String>[],
+    );
+  }
+}
+
+class _CurrentVersionBanner extends StatelessWidget {
+  final String version;
+
+  const _CurrentVersionBanner({required this.version});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.w900,
-        height: 1.1,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.system_update_alt,
+            size: 18,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              '현재 설치 버전',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Text(
+            version,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _PatchSectionTitle extends StatelessWidget {
-  final String text;
+class _ReleaseCard extends StatelessWidget {
+  final _PatchRelease release;
+  final bool isCurrent;
 
-  const _PatchSectionTitle(this.text);
+  const _ReleaseCard({required this.release, required this.isCurrent});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w900,
-        color: AppColors.textPrimary,
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isCurrent ? AppColors.live : AppColors.divider,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '버전 ${release.version}',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        height: 1.15,
+                      ),
+                    ),
+                    if (release.subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        release.subtitle!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textDisabled,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (isCurrent) ...[
+                const SizedBox(width: 10),
+                const _CurrentReleaseBadge(),
+              ],
+            ],
+          ),
+          const SizedBox(height: 14),
+          for (final note in release.notes) ...[
+            _PatchBullet(note),
+            if (note != release.notes.last) const SizedBox(height: 10),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CurrentReleaseBadge extends StatelessWidget {
+  const _CurrentReleaseBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.live.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.live.withValues(alpha: 0.5)),
+      ),
+      child: const Text(
+        '현재 설치됨',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          color: AppColors.live,
+        ),
       ),
     );
   }
@@ -149,51 +336,25 @@ class _PatchBullet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 6),
-            child: Icon(Icons.circle, size: 6, color: AppColors.live),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.42,
-              ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(top: 7),
+          child: Icon(Icons.circle, size: 6, color: AppColors.live),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              height: 1.42,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PatchParagraph extends StatelessWidget {
-  final String text;
-
-  const _PatchParagraph(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 14,
-        color: AppColors.textSecondary,
-        height: 1.45,
-      ),
+        ),
+      ],
     );
   }
 }
