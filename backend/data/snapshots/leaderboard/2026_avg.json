@@ -1,0 +1,279 @@
+{
+  "savedAt": "2026-05-19T15:50:23.926514+00:00",
+  "payload": {
+    "season": 2026,
+    "metric": "avg",
+    "leaders": [
+      {
+        "rank": 1,
+        "playerId": "67893",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "박성한",
+        "teamId": "SK",
+        "value": "0.379"
+      },
+      {
+        "rank": 2,
+        "playerId": "53123",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "오스틴",
+        "teamId": "LG",
+        "value": "0.356"
+      },
+      {
+        "rank": 3,
+        "playerId": "72443",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "최형우",
+        "teamId": "SS",
+        "value": "0.354"
+      },
+      {
+        "rank": 4,
+        "playerId": "63260",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "이우성",
+        "teamId": "NC",
+        "value": "0.353"
+      },
+      {
+        "rank": 5,
+        "playerId": "66606",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "최원준",
+        "teamId": "KT",
+        "value": "0.351"
+      },
+      {
+        "rank": 6,
+        "playerId": "54529",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "레이예스",
+        "teamId": "LT",
+        "value": "0.347"
+      },
+      {
+        "rank": 7,
+        "playerId": "62234",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "류지혁",
+        "teamId": "SS",
+        "value": "0.338"
+      },
+      {
+        "rank": 8,
+        "playerId": "55636",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "박재현",
+        "teamId": "HT",
+        "value": "0.333"
+      },
+      {
+        "rank": 9,
+        "playerId": "68050",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "강백호",
+        "teamId": "HH",
+        "value": "0.329"
+      },
+      {
+        "rank": 10,
+        "playerId": "54730",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "페라자",
+        "teamId": "HH",
+        "value": "0.329"
+      },
+      {
+        "rank": 11,
+        "playerId": "56251",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "카메론",
+        "teamId": "OB",
+        "value": "0.317"
+      },
+      {
+        "rank": 12,
+        "playerId": "79402",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "김상수",
+        "teamId": "KT",
+        "value": "0.316"
+      },
+      {
+        "rank": 13,
+        "playerId": "55252",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "박준순",
+        "teamId": "OB",
+        "value": "0.316"
+      },
+      {
+        "rank": 14,
+        "playerId": "62907",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "박민우",
+        "teamId": "NC",
+        "value": "0.315"
+      },
+      {
+        "rank": 15,
+        "playerId": "53764",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "문현빈",
+        "teamId": "HH",
+        "value": "0.315"
+      },
+      {
+        "rank": 16,
+        "playerId": "54812",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "정준재",
+        "teamId": "SK",
+        "value": "0.309"
+      },
+      {
+        "rank": 17,
+        "playerId": "54400",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "디아즈",
+        "teamId": "SS",
+        "value": "0.299"
+      },
+      {
+        "rank": 18,
+        "playerId": "65653",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "김호령",
+        "teamId": "HT",
+        "value": "0.294"
+      },
+      {
+        "rank": 19,
+        "playerId": "69418",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "박승규",
+        "teamId": "SS",
+        "value": "0.292"
+      },
+      {
+        "rank": 20,
+        "playerId": "78603",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "김선빈",
+        "teamId": "HT",
+        "value": "0.291"
+      },
+      {
+        "rank": 21,
+        "playerId": "76290",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "김현수",
+        "teamId": "KT",
+        "value": "0.291"
+      },
+      {
+        "rank": 22,
+        "playerId": "79608",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "안치홍",
+        "teamId": "WO",
+        "value": "0.285"
+      },
+      {
+        "rank": 23,
+        "playerId": "50054",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "천성호",
+        "teamId": "LG",
+        "value": "0.285"
+      },
+      {
+        "rank": 24,
+        "playerId": "51907",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "김주원",
+        "teamId": "NC",
+        "value": "0.284"
+      },
+      {
+        "rank": 25,
+        "playerId": "52605",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "김도영",
+        "teamId": "HT",
+        "value": "0.281"
+      },
+      {
+        "rank": 26,
+        "playerId": "53827",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "에레디아",
+        "teamId": "SK",
+        "value": "0.280"
+      },
+      {
+        "rank": 27,
+        "playerId": "65586",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "전병우",
+        "teamId": "SS",
+        "value": "0.274"
+      },
+      {
+        "rank": 28,
+        "playerId": "53554",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "김민석",
+        "teamId": "OB",
+        "value": "0.273"
+      },
+      {
+        "rank": 29,
+        "playerId": "56034",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "힐리어드",
+        "teamId": "KT",
+        "value": "0.272"
+      },
+      {
+        "rank": 30,
+        "playerId": "75847",
+        "playerType": "hitter",
+        "metricKey": "AVG",
+        "name": "최정",
+        "teamId": "SK",
+        "value": "0.266"
+      }
+    ]
+  }
+}
