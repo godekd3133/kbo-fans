@@ -461,6 +461,8 @@ class ScoreboardService:
 
         away["scores"] = away_scores or away.get("scores")
         home["scores"] = home_scores or home.get("scores")
+        away["score"] = self._score_from_innings(away.get("score"), away["scores"])
+        home["score"] = self._score_from_innings(home.get("score"), home["scores"])
         away["hits"] = away_totals.get("hits", away.get("hits"))
         away["errors"] = away_totals.get("errors", away.get("errors"))
         away["balls"] = away_totals.get("balls", away.get("balls"))
@@ -473,6 +475,17 @@ class ScoreboardService:
             "away": away,
             "home": home,
         }
+
+    @staticmethod
+    def _score_from_innings(current_score: Any, scores: Any) -> Any:
+        if current_score is not None:
+            return current_score
+        if not isinstance(scores, list):
+            return current_score
+        numeric_scores = [score for score in scores if isinstance(score, int)]
+        if not numeric_scores:
+            return current_score
+        return sum(numeric_scores)
 
     def _merge_main_game(self, main_game: dict[str, Any]) -> dict[str, Any]:
         if not main_game:
