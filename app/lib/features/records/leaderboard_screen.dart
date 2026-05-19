@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../data/models/records_overview.dart';
 import '../../data/providers.dart';
 
@@ -67,10 +68,16 @@ class LeaderboardScreen extends ConsumerWidget {
                         separatorBuilder: (_, _) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final leader = leaders[index];
-                          return _leaderRow(
-                            context,
-                            leader: leader,
-                            season: season,
+                          return AppMotionListItem(
+                            key: ValueKey(
+                              'leader-${metric.key}-${leader.playerId}',
+                            ),
+                            index: index,
+                            child: _leaderRow(
+                              context,
+                              leader: leader,
+                              season: season,
+                            ),
                           );
                         },
                       );

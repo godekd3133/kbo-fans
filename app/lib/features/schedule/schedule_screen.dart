@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/api/api_client.dart';
@@ -116,50 +117,61 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             children: [
               _buildMonthHeader(),
               Expanded(
-                child: scheduleAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.live),
-                  ),
-                  error: (e, _) => RefreshIndicator(
-                    onRefresh: _refreshSchedule,
-                    color: AppColors.live,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: 420,
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  '일정을 불러올 수 없습니다',
-                                  style: TextStyle(
-                                    color: AppColors.textDisabled,
-                                  ),
+                child: AppMotionSwitcher(
+                  child: scheduleAsync.when(
+                    loading: () => const KeyedSubtree(
+                      key: ValueKey('schedule-loading'),
+                      child: Center(
+                        child: CircularProgressIndicator(color: AppColors.live),
+                      ),
+                    ),
+                    error: (e, _) => KeyedSubtree(
+                      key: ValueKey('schedule-error-$_yearMonth'),
+                      child: RefreshIndicator(
+                        onRefresh: _refreshSchedule,
+                        color: AppColors.live,
+                        child: ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: 420,
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Text(
+                                      '일정을 불러올 수 없습니다',
+                                      style: TextStyle(
+                                        color: AppColors.textDisabled,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      describeAsyncError(e),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textDisabled,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextButton(
+                                      onPressed: _refreshSchedule,
+                                      child: const Text('다시 시도'),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  describeAsyncError(e),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textDisabled,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                TextButton(
-                                  onPressed: _refreshSchedule,
-                                  child: const Text('다시 시도'),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
+                    ),
+                    data: (days) => KeyedSubtree(
+                      key: ValueKey('schedule-data-$_yearMonth-${days.length}'),
+                      child: _buildBody(days),
                     ),
                   ),
-                  data: (days) => _buildBody(days),
                 ),
               ),
             ],
@@ -835,16 +847,21 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
-          ...schedule.games.map(
-            (g) => Padding(
+          ...schedule.games.asMap().entries.map(
+            (entry) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: ScheduleGameCard(
-                game: g,
-                onTap: () => _openGameDetail(g.gameId),
-                ticketSummary:
-                    g.ticketInfo == null || isTerminalScheduleStatus(g.status)
-                    ? null
-                    : _ticketSummary(g.ticketInfo!),
+              child: AppMotionListItem(
+                key: ValueKey('schedule-game-${entry.value.gameId}'),
+                index: entry.key,
+                child: ScheduleGameCard(
+                  game: entry.value,
+                  onTap: () => _openGameDetail(entry.value.gameId),
+                  ticketSummary:
+                      entry.value.ticketInfo == null ||
+                          isTerminalScheduleStatus(entry.value.status)
+                      ? null
+                      : _ticketSummary(entry.value.ticketInfo!),
+                ),
               ),
             ),
           ),
@@ -916,18 +933,24 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 ),
               ),
             ),
-            ...stadiumMap[stadium]!.map(
-              (item) => Padding(
+            ...stadiumMap[stadium]!.asMap().entries.map(
+              (entry) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: ScheduleGameCard(
-                  game: item.game,
-                  dateLabel: _formatDateLabel(item.date),
-                  onTap: () => _openGameDetail(item.game.gameId),
-                  ticketSummary:
-                      item.game.ticketInfo == null ||
-                          isTerminalScheduleStatus(item.game.status)
-                      ? null
-                      : _ticketSummary(item.game.ticketInfo!),
+                child: AppMotionListItem(
+                  key: ValueKey(
+                    'stadium-game-$stadium-${entry.value.game.gameId}',
+                  ),
+                  index: entry.key,
+                  child: ScheduleGameCard(
+                    game: entry.value.game,
+                    dateLabel: _formatDateLabel(entry.value.date),
+                    onTap: () => _openGameDetail(entry.value.game.gameId),
+                    ticketSummary:
+                        entry.value.game.ticketInfo == null ||
+                            isTerminalScheduleStatus(entry.value.game.status)
+                        ? null
+                        : _ticketSummary(entry.value.game.ticketInfo!),
+                  ),
                 ),
               ),
             ),

@@ -11,6 +11,7 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/game.dart';
@@ -64,44 +65,63 @@ class GameDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final gameAsync = ref.watch(gameProvider(gameId));
 
-    return gameAsync.when(
-      loading: () {
-        if (game != null) {
-          return _GameDetailBody(
-            game: game!,
-            gameId: gameId,
-            initialTabIndex: _tabIndexFromName(initialTab),
+    return AppMotionSwitcher(
+      child: gameAsync.when(
+        loading: () {
+          if (game != null) {
+            return KeyedSubtree(
+              key: ValueKey('game-detail-preview-$gameId'),
+              child: _GameDetailBody(
+                game: game!,
+                gameId: gameId,
+                initialTabIndex: _tabIndexFromName(initialTab),
+              ),
+            );
+          }
+          return const KeyedSubtree(
+            key: ValueKey('game-detail-loading'),
+            child: Scaffold(
+              body: SafeArea(
+                child: Center(
+                  child: CircularProgressIndicator(color: AppColors.live),
+                ),
+              ),
+            ),
           );
-        }
-        return const Scaffold(
-          body: SafeArea(
-            child: Center(
-              child: CircularProgressIndicator(color: AppColors.live),
+        },
+        error: (_, _) => KeyedSubtree(
+          key: ValueKey('game-detail-error-$gameId'),
+          child: Scaffold(
+            appBar: AppBar(title: const Text('경기 상세')),
+            body: Center(
+              child: Text(
+                game != null ? '최신 경기 정보를 불러올 수 없습니다' : '경기를 불러올 수 없습니다',
+              ),
             ),
           ),
-        );
-      },
-      error: (_, _) => Scaffold(
-        appBar: AppBar(title: const Text('경기 상세')),
-        body: Center(
-          child: Text(game != null ? '최신 경기 정보를 불러올 수 없습니다' : '경기를 불러올 수 없습니다'),
         ),
-      ),
-      data: (loadedGame) {
-        final resolvedGame = loadedGame ?? game;
-        if (resolvedGame == null) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('경기 상세')),
-            body: const Center(child: Text('경기를 찾을 수 없습니다')),
-          );
-        }
+        data: (loadedGame) {
+          final resolvedGame = loadedGame ?? game;
+          if (resolvedGame == null) {
+            return KeyedSubtree(
+              key: ValueKey('game-detail-missing-$gameId'),
+              child: Scaffold(
+                appBar: AppBar(title: const Text('경기 상세')),
+                body: const Center(child: Text('경기를 찾을 수 없습니다')),
+              ),
+            );
+          }
 
-        return _GameDetailBody(
-          game: resolvedGame,
-          gameId: gameId,
-          initialTabIndex: _tabIndexFromName(initialTab),
-        );
-      },
+          return KeyedSubtree(
+            key: ValueKey('game-detail-data-$gameId-${resolvedGame.status}'),
+            child: _GameDetailBody(
+              game: resolvedGame,
+              gameId: gameId,
+              initialTabIndex: _tabIndexFromName(initialTab),
+            ),
+          );
+        },
+      ),
     );
   }
 }

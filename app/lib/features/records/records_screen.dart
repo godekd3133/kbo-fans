@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/player.dart';
@@ -323,6 +324,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final teamRecordsAsync = ref.watch(
       teamRecordsProvider('$teamId|$_selectedSeason'),
     );
+    final recordsMotionKey = teamRecordsAsync.isLoading
+        ? 'records-loading-$teamId'
+        : teamRecordsAsync.hasError
+        ? 'records-error-$teamId'
+        : 'records-data-$teamId-$_selectedSeason-${_tabController.index}-$_filter-$_sort-${teamRecordsAsync.asData?.value.players.length ?? 0}';
     _logTeamRecordsLoad(teamId, teamRecordsAsync);
 
     return Scaffold(
@@ -482,38 +488,45 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
               const SizedBox(height: 12),
               Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () => _refreshTeamRecords(teamId),
-                  color: AppColors.live,
-                  child: teamRecordsAsync.when(
-                    loading: () => ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(
-                          height: 420,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.live,
+                child: AppMotionSwitcher(
+                  child: KeyedSubtree(
+                    key: ValueKey(recordsMotionKey),
+                    child: RefreshIndicator(
+                      onRefresh: () => _refreshTeamRecords(teamId),
+                      color: AppColors.live,
+                      child: teamRecordsAsync.when(
+                        loading: () => ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(
+                              height: 420,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: AppColors.live,
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
-                    error: (error, _) => ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(
-                          height: 420,
-                          child: Center(
-                            child: Text(
-                              '선수 기록을 불러올 수 없습니다',
-                              style: TextStyle(color: AppColors.textDisabled),
+                        error: (error, _) => ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(
+                              height: 420,
+                              child: Center(
+                                child: Text(
+                                  '선수 기록을 불러올 수 없습니다',
+                                  style: TextStyle(
+                                    color: AppColors.textDisabled,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ],
+                        data: (teamRecords) => _buildList(teamRecords.players),
+                      ),
                     ),
-                    data: (teamRecords) => _buildList(teamRecords.players),
                   ),
                 ),
               ),
@@ -603,13 +616,25 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           const SizedBox(height: 18),
           _sectionTitle('팀 엔트리'),
           const SizedBox(height: 10),
-          ...entryPlayers.map(_playerCard),
+          ...entryPlayers.asMap().entries.map(
+            (entry) => AppMotionListItem(
+              key: ValueKey('entry-player-${entry.value.id}'),
+              index: entry.key,
+              child: _playerCard(entry.value),
+            ),
+          ),
         ],
         if (reservePlayers.isNotEmpty) ...[
           const SizedBox(height: 18),
           _sectionTitle('엔트리 제외 / 이탈'),
           const SizedBox(height: 10),
-          ...reservePlayers.map(_playerCard),
+          ...reservePlayers.asMap().entries.map(
+            (entry) => AppMotionListItem(
+              key: ValueKey('reserve-player-${entry.value.id}'),
+              index: entry.key,
+              child: _playerCard(entry.value),
+            ),
+          ),
         ],
         if (filtered.isEmpty)
           Padding(

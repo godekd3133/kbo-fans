@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../data/models/player.dart';
 import '../../data/providers.dart';
 
@@ -31,28 +32,21 @@ class PlayerDetailScreen extends ConsumerWidget {
         child: RefreshIndicator(
           onRefresh: refreshPlayer,
           color: AppColors.live,
-          child: playerAsync.when(
-            loading: () => ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                SizedBox(
-                  height: 420,
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.live),
-                  ),
-                ),
-              ],
+          child: AppMotionSwitcher(
+            child: playerAsync.when(
+              loading: () => const KeyedSubtree(
+                key: ValueKey('player-detail-loading'),
+                child: _PlayerDetailLoading(),
+              ),
+              error: (_, stackTrace) => const KeyedSubtree(
+                key: ValueKey('player-detail-error'),
+                child: _PlayerDetailError(),
+              ),
+              data: (player) => KeyedSubtree(
+                key: ValueKey('player-detail-data-${player.id}'),
+                child: _buildBody(player),
+              ),
             ),
-            error: (_, stackTrace) => ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                SizedBox(
-                  height: 420,
-                  child: Center(child: Text('선수 정보를 불러올 수 없습니다')),
-                ),
-              ],
-            ),
-            data: (player) => _buildBody(player),
           ),
         ),
       ),
@@ -310,6 +304,39 @@ class PlayerDetailScreen extends ConsumerWidget {
           color: AppColors.textSecondary,
         ),
       ),
+    );
+  }
+}
+
+class _PlayerDetailLoading extends StatelessWidget {
+  const _PlayerDetailLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: const [
+        SizedBox(
+          height: 420,
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.live),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlayerDetailError extends StatelessWidget {
+  const _PlayerDetailError();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: const [
+        SizedBox(height: 420, child: Center(child: Text('선수 정보를 불러올 수 없습니다'))),
+      ],
     );
   }
 }

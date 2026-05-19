@@ -220,10 +220,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         AppConfig.instance.shouldPreferLocalNativeData) {
       unawaited(_primeLocalRelaySession());
     }
-    _warm(ref.read(scoreboardProvider(today).future));
-    if (myTeamId != null && myTeamId.isNotEmpty) {
-      _warm(ref.read(homeAggregateProvider('$today|$myTeamId').future));
-    }
   }
 
   Future<void> _runBlockingStartupPrefetch({
@@ -331,15 +327,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     }
     final direct = KboDirectRepository();
     await direct.primeRelaySession();
-  }
-
-  void _warm<T>(Future<T> future) {
-    unawaited(
-      future.then<void>(
-        (_) {},
-        onError: (Object error, StackTrace stackTrace) {},
-      ),
-    );
   }
 
   Future<void> _saveStartupScoreboardCache(

@@ -12,6 +12,7 @@ import '../../core/constants/team_data.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/game_status_badge.dart';
 import '../../core/widgets/dev_console.dart';
@@ -85,61 +86,83 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     return Scaffold(
       body: SafeArea(
-        child: scoreboardAsync.when(
-          loading: () {
-            final preloadGames = startupGames;
-            if (preloadGames != null && preloadGames.isNotEmpty) {
-              return _buildContent(context, preloadGames, myTeamId, today);
-            }
-            return _cachedTodayKey == today && _cachedTodayGames != null
-                ? _buildContent(context, _cachedTodayGames!, myTeamId, today)
-                : _buildLoadingShell(context);
-          },
-          error: (error, _) => Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  size: 48,
-                  color: AppColors.live,
+        child: AppMotionSwitcher(
+          child: scoreboardAsync.when(
+            loading: () {
+              final preloadGames = startupGames;
+              if (preloadGames != null && preloadGames.isNotEmpty) {
+                return KeyedSubtree(
+                  key: ValueKey('home-preload-${preloadGames.length}'),
+                  child: _buildContent(context, preloadGames, myTeamId, today),
+                );
+              }
+              return _cachedTodayKey == today && _cachedTodayGames != null
+                  ? KeyedSubtree(
+                      key: ValueKey('home-cache-${_cachedTodayGames!.length}'),
+                      child: _buildContent(
+                        context,
+                        _cachedTodayGames!,
+                        myTeamId,
+                        today,
+                      ),
+                    )
+                  : KeyedSubtree(
+                      key: const ValueKey('home-loading'),
+                      child: _buildLoadingShell(context),
+                    );
+            },
+            error: (error, _) => KeyedSubtree(
+              key: const ValueKey('home-error'),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: AppColors.live,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '데이터를 불러올 수 없습니다',
+                      style: TextStyle(color: AppColors.textDisabled),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      describeAsyncError(error),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textDisabled,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _invalidateTodayScoreboard,
+                      child: const Text('다시 시도'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  '데이터를 불러올 수 없습니다',
-                  style: TextStyle(color: AppColors.textDisabled),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  describeAsyncError(error),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textDisabled,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: _invalidateTodayScoreboard,
-                  child: const Text('다시 시도'),
-                ),
-              ],
-            ),
-          ),
-          data: (games) {
-            unawaited(_saveCachedScoreboard(today, games));
-            _scheduleRefresh(games, myTeamId);
-            _syncWidget(games, myTeamId);
-            unawaited(
-              GameEventAlertService.instance.processGames(
-                games: games,
-                myTeamId: myTeamId,
-                repository: ref.read(gameRepositoryProvider),
               ),
-            );
-            _enableSecondarySections();
-            return _buildContent(context, games, myTeamId, today);
-          },
+            ),
+            data: (games) {
+              unawaited(_saveCachedScoreboard(today, games));
+              _scheduleRefresh(games, myTeamId);
+              _syncWidget(games, myTeamId);
+              unawaited(
+                GameEventAlertService.instance.processGames(
+                  games: games,
+                  myTeamId: myTeamId,
+                  repository: ref.read(gameRepositoryProvider),
+                ),
+              );
+              _enableSecondarySections();
+              return KeyedSubtree(
+                key: ValueKey('home-data-$today-${games.length}'),
+                child: _buildContent(context, games, myTeamId, today),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -410,11 +433,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   final aggregateAsync = ref.watch(
                     homeAggregateProvider(aggregateKey),
                   );
-                  final yearMonth = DateFormat(
-                    'yyyy-MM',
-                  ).format(DateTime.now());
-                  final season = DateTime.now().year;
-
                   final aggregate = aggregateAsync.asData?.value;
                   final aggregateBrief = _myTeamBriefFromAggregate(
                     aggregate?.myTeamBrief,
@@ -438,37 +456,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     myTeamBrief = null;
                     baseQuickItems = const <_QuickContentItemData>[];
                   } else {
-                    final currentDate = DateTime.now();
-                    final currentMonthDate = DateTime(
-                      currentDate.year,
-                      currentDate.month,
-                    );
-                    final previousMonthDate = DateTime(
-                      currentMonthDate.year,
-                      currentMonthDate.month - 1,
-                    );
-                    final previousYearMonth =
-                        '${previousMonthDate.year.toString().padLeft(4, '0')}-${previousMonthDate.month.toString().padLeft(2, '0')}';
-                    final scheduleAsync = ref.watch(
-                      scheduleProvider(yearMonth),
-                    );
-                    final previousScheduleAsync = ref.watch(
-                      scheduleProvider(previousYearMonth),
-                    );
-                    final standingsAsync = ref.watch(standingsProvider(season));
-                    myTeamBrief = _buildMyTeamBrief(
-                      myTeamId: myTeamId,
-                      myGame: myGame,
-                      scheduleDays: [
-                        ...(previousScheduleAsync.asData?.value ?? const []),
-                        ...(scheduleAsync.asData?.value ?? const []),
-                      ],
-                      standings: standingsAsync.asData?.value ?? const [],
-                      today: today,
-                    );
-                    baseQuickItems = _buildQuickItems(
-                      myTeamBrief: myTeamBrief,
-                      season: season,
+                    myTeamBrief = null;
+                    baseQuickItems = const <_QuickContentItemData>[];
+                    DevConsole.instance.warn(
+                      'HOME aggregate unavailable; skipping local fallback assembly',
                     );
                   }
 
@@ -579,9 +570,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
                   final game = others[index];
-                  return GameCard(
-                    game: game,
-                    onTap: () => _openGameDetail(game),
+                  return AppMotionListItem(
+                    key: ValueKey('home-game-${game.gameId}'),
+                    index: index,
+                    child: GameCard(
+                      game: game,
+                      onTap: () => _openGameDetail(game),
+                    ),
                   );
                 },
               ),
@@ -597,7 +592,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                           final aggregateAsync = ref.watch(
                             homeAggregateProvider(aggregateKey),
                           );
-                          if (aggregateAsync.hasValue) {
+                          if (aggregateAsync.hasValue ||
+                              aggregateAsync.hasError) {
                             return const SizedBox.shrink();
                           }
                           final season = DateTime.now().year;
@@ -634,92 +630,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         ? '/game/${game.gameId}'
         : '/game/${game.gameId}?tab=$tab';
     context.push(location, extra: game);
-  }
-
-  _MyTeamBriefData? _buildMyTeamBrief({
-    required String? myTeamId,
-    required Game? myGame,
-    required List<ScheduleDay> scheduleDays,
-    required List<TeamStanding> standings,
-    required String today,
-  }) {
-    if (myTeamId == null || myTeamId.isEmpty) {
-      return null;
-    }
-
-    final standing = standings
-        .where((item) => item.teamId == myTeamId)
-        .cast<TeamStanding?>()
-        .firstOrNull;
-    final flatGames = [
-      for (final day in scheduleDays)
-        for (final game in day.games)
-          _ScheduleGameEntry(date: day.date, game: game),
-    ]..sort((a, b) => a.date.compareTo(b.date));
-
-    final recentGames =
-        flatGames
-            .where((entry) => entry.date.compareTo(today) <= 0)
-            .where((entry) => _isMyTeamGame(entry.game, myTeamId))
-            .where(
-              (entry) =>
-                  entry.game.awayScore != null && entry.game.homeScore != null,
-            )
-            .toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
-
-    final recentSlice = recentGames.take(3).toList();
-    final recentSummaries = <_RecentGameSummaryData>[];
-    var wins = 0;
-    var losses = 0;
-    var draws = 0;
-    for (final entry in recentSlice) {
-      final isAway = entry.game.awayId == myTeamId;
-      final myScore = isAway ? entry.game.awayScore! : entry.game.homeScore!;
-      final opponentScore = isAway
-          ? entry.game.homeScore!
-          : entry.game.awayScore!;
-      final opponentName = isAway ? entry.game.homeName : entry.game.awayName;
-      late final String resultLabel;
-      if (myScore > opponentScore) {
-        wins += 1;
-        resultLabel = '승';
-      } else if (myScore < opponentScore) {
-        losses += 1;
-        resultLabel = '패';
-      } else {
-        draws += 1;
-        resultLabel = '무';
-      }
-      recentSummaries.add(
-        _RecentGameSummaryData(
-          gameId: entry.game.gameId,
-          result: resultLabel,
-          opponentName: opponentName,
-          score: '$myScore:$opponentScore',
-        ),
-      );
-    }
-
-    final nextGame = flatGames
-        .where((entry) => entry.date.compareTo(today) >= 0)
-        .where((entry) => _isMyTeamGame(entry.game, myTeamId))
-        .where((entry) => entry.game.gameId != myGame?.gameId)
-        .map((entry) => entry.game)
-        .firstOrNull;
-
-    return _MyTeamBriefData(
-      teamId: myTeamId,
-      teamLabel: KboTeams.byId(myTeamId)?.name ?? myTeamId,
-      standing: standing,
-      todayGame: myGame,
-      nextGame: nextGame,
-      recentWins: wins,
-      recentLosses: losses,
-      recentDraws: draws,
-      recentGamesCount: recentSlice.length,
-      recentSummaries: recentSummaries,
-    );
   }
 
   _TodayBaseballBriefData _buildTodayBrief({
@@ -792,63 +702,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       spotlight: spotlight,
       summaries: summaries,
     );
-  }
-
-  List<_QuickContentItemData> _buildQuickItems({
-    required _MyTeamBriefData? myTeamBrief,
-    required int season,
-  }) {
-    final items = <_QuickContentItemData>[];
-
-    final myTeamGame = myTeamBrief?.todayGame;
-    if (myTeamGame == null && myTeamBrief?.nextGame != null) {
-      final nextGame = myTeamBrief!.nextGame!;
-      items.add(
-        _QuickContentItemData(
-          eyebrow: '마이팀 경기',
-          title: _scheduleMatchupTitle(nextGame),
-          subtitle: '${nextGame.time} · ${nextGame.stadium}',
-          route: '/schedule',
-          teamId: myTeamBrief.teamId,
-          fallbackLabel: myTeamBrief.teamLabel,
-        ),
-      );
-    }
-
-    final ticketGame = myTeamBrief?.nextGame;
-    final ticketInfo = ticketGame?.ticketInfo;
-    if (ticketGame != null && ticketInfo?.openAt != null) {
-      final openAt = ticketInfo!.openAt!;
-      final formatted = DateFormat('M.d HH:mm').format(openAt);
-      items.add(
-        _QuickContentItemData(
-          eyebrow: '예매 오픈 임박',
-          title: _scheduleMatchupTitle(ticketGame),
-          subtitle: '${ticketInfo.vendorName} · $formatted',
-          route: '/schedule',
-          teamId: myTeamBrief?.teamId,
-          fallbackLabel: myTeamBrief?.teamLabel,
-        ),
-      );
-    }
-
-    if (myTeamBrief?.standing != null) {
-      final standing = myTeamBrief!.standing!;
-      items.add(
-        _QuickContentItemData(
-          eyebrow: '마이팀 순위',
-          title: '${standing.rank}위 · ${standing.teamName}',
-          subtitle:
-              '${standing.wins}승 ${standing.losses}패 ${standing.draws}무'
-              '${standing.gb == '0' ? ' · 공동 선두권' : ' · ${standing.gb}G차'}',
-          route: '/standings',
-          teamId: standing.teamId,
-          fallbackLabel: standing.teamName,
-        ),
-      );
-    }
-
-    return items.take(4).toList();
   }
 
   List<_QuickContentItemData> _buildOverviewQuickItems({
@@ -962,17 +815,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       imageUrl: item.imageUrl,
       fallbackLabel: item.fallbackLabel,
     );
-  }
-
-  bool _isMyTeamGame(ScheduleGame game, String teamId) {
-    return game.awayId == teamId || game.homeId == teamId;
-  }
-
-  String _scheduleMatchupTitle(ScheduleGame game) {
-    if (game.awayScore != null && game.homeScore != null) {
-      return '${game.awayName} ${game.awayScore} : ${game.homeScore} ${game.homeName}';
-    }
-    return '${game.awayName} vs ${game.homeName}';
   }
 
   Widget _buildHeader(BuildContext context, bool hasLive) {
@@ -2470,13 +2312,6 @@ Widget _quickItemAvatarFallback(
       ),
     ),
   );
-}
-
-class _ScheduleGameEntry {
-  final String date;
-  final ScheduleGame game;
-
-  const _ScheduleGameEntry({required this.date, required this.game});
 }
 
 class _MyTeamBriefData {

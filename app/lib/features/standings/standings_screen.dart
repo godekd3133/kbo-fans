@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
@@ -65,55 +66,69 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               ),
               const SizedBox(height: 6),
               Expanded(
-                child: standingsAsync.when(
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.live),
-                  ),
-                  error: (e, _) => Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          '순위를 불러올 수 없습니다',
-                          style: TextStyle(color: AppColors.textDisabled),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          describeAsyncError(e),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textDisabled,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () =>
-                              ref.invalidate(standingsProvider(_selectedSeason)),
-                          child: const Text('다시 시도'),
-                        ),
-                      ],
+                child: AppMotionSwitcher(
+                  child: standingsAsync.when(
+                    loading: () => const KeyedSubtree(
+                      key: ValueKey('standings-loading'),
+                      child: Center(
+                        child: CircularProgressIndicator(color: AppColors.live),
+                      ),
                     ),
-                  ),
-                  data: (standings) => Column(
-                    children: [
-                      if (myTeamId != null)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                          child: _myTeamSummaryCard(standings, myTeamId),
+                    error: (e, _) => KeyedSubtree(
+                      key: ValueKey('standings-error-$_selectedSeason'),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '순위를 불러올 수 없습니다',
+                              style: TextStyle(color: AppColors.textDisabled),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              describeAsyncError(e),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textDisabled,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () => ref.invalidate(
+                                standingsProvider(_selectedSeason),
+                              ),
+                              child: const Text('다시 시도'),
+                            ),
+                          ],
                         ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: _buildHeaderRow(),
                       ),
-                      const Divider(
-                        color: AppColors.divider,
-                        height: 1,
-                        indent: 16,
-                        endIndent: 16,
+                    ),
+                    data: (standings) => KeyedSubtree(
+                      key: ValueKey(
+                        'standings-data-$_selectedSeason-${standings.length}',
                       ),
-                      Expanded(child: _buildList(ref, standings, myTeamId)),
-                    ],
+                      child: Column(
+                        children: [
+                          if (myTeamId != null)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                              child: _myTeamSummaryCard(standings, myTeamId),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _buildHeaderRow(),
+                          ),
+                          const Divider(
+                            color: AppColors.divider,
+                            height: 1,
+                            indent: 16,
+                            endIndent: 16,
+                          ),
+                          Expanded(child: _buildList(ref, standings, myTeamId)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -137,7 +152,9 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   }
 
   Widget _myTeamSummaryCard(List standings, String myTeamId) {
-    final current = standings.where((item) => item.teamId == myTeamId).firstOrNull;
+    final current = standings
+        .where((item) => item.teamId == myTeamId)
+        .firstOrNull;
     if (current == null) {
       return const SizedBox.shrink();
     }
@@ -226,142 +243,151 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
             AppColors.card,
           );
 
-          return Container(
-            height: 56,
-            margin: const EdgeInsets.symmetric(vertical: 2),
-            decoration: BoxDecoration(
-              color: isMyTeam
-                  ? rowTint
-                  : (index.isOdd ? AppColors.card : Colors.transparent),
-              borderRadius: BorderRadius.circular(14),
-              border: isMyTeam
-                  ? Border.all(color: teamColor.withValues(alpha: 0.22))
-                  : null,
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 32,
-                  child: Center(
-                    child: Text(
-                      '${s.rank}',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: isMyTeam ? FontWeight.w800 : FontWeight.w600,
-                        color: AppColors.textPrimary,
+          return AppMotionListItem(
+            key: ValueKey('standing-${s.teamId}-${s.rank}'),
+            index: index,
+            child: Container(
+              height: 56,
+              margin: const EdgeInsets.symmetric(vertical: 2),
+              decoration: BoxDecoration(
+                color: isMyTeam
+                    ? rowTint
+                    : (index.isOdd ? AppColors.card : Colors.transparent),
+                borderRadius: BorderRadius.circular(14),
+                border: isMyTeam
+                    ? Border.all(color: teamColor.withValues(alpha: 0.22))
+                    : null,
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 32,
+                    child: Center(
+                      child: Text(
+                        '${s.rank}',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: isMyTeam
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (isMyTeam)
-                  Container(
-                    margin: const EdgeInsets.only(right: 4),
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: teamColor,
-                      shape: BoxShape.circle,
+                  if (isMyTeam)
+                    Container(
+                      margin: const EdgeInsets.only(right: 4),
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: teamColor,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                CachedNetworkImage(
-                  imageUrl: team?.logoUrl ?? '',
-                  width: 24,
-                  height: 24,
-                  placeholder: (_, _) => const SizedBox(width: 24, height: 24),
-                  errorWidget: (_, _, _) => Container(
+                  CachedNetworkImage(
+                    imageUrl: team?.logoUrl ?? '',
                     width: 24,
                     height: 24,
-                    decoration: BoxDecoration(
-                      color: AppColors.cardSub,
-                      shape: BoxShape.circle,
+                    placeholder: (_, _) =>
+                        const SizedBox(width: 24, height: 24),
+                    errorWidget: (_, _, _) => Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: AppColors.cardSub,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          team?.shortName ?? '',
+                          style: const TextStyle(
+                            fontSize: 8,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      s.teamName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isMyTeam
+                            ? FontWeight.w700
+                            : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 32,
                     child: Center(
                       child: Text(
-                        team?.shortName ?? '',
+                        '${s.wins}',
                         style: const TextStyle(
-                          fontSize: 8,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 32,
+                    child: Center(
+                      child: Text(
+                        '${s.losses}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 28,
+                    child: Center(
+                      child: Text(
+                        '${s.draws}',
+                        style: const TextStyle(
+                          fontSize: 13,
                           color: AppColors.textSecondary,
                         ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    s.teamName,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isMyTeam ? FontWeight.w700 : FontWeight.w600,
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 32,
-                  child: Center(
-                    child: Text(
-                      '${s.wins}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                  SizedBox(
+                    width: 48,
+                    child: Center(
+                      child: Text(
+                        s.pct,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  width: 32,
-                  child: Center(
-                    child: Text(
-                      '${s.losses}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                  SizedBox(
+                    width: 42,
+                    child: Center(
+                      child: Text(
+                        _gbText(s.gb),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isMyTeam
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
+                          fontWeight: isMyTeam
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(
-                  width: 28,
-                  child: Center(
-                    child: Text(
-                      '${s.draws}',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 48,
-                  child: Center(
-                    child: Text(
-                      s.pct,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 42,
-                  child: Center(
-                    child: Text(
-                      _gbText(s.gb),
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isMyTeam
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                        fontWeight: isMyTeam
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },
