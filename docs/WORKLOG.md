@@ -1376,7 +1376,7 @@ kbo_fans/
 - [x] local iOS 기본 API URL을 더 이상 DNS 실패하던 dev API로 두지 않고 `localhost` 기준으로 정리. 실기기는 실행 스크립트의 LAN IP override를 사용
 - [x] local iOS 실기기 LAN API 접속을 위해 `NSLocalNetworkUsageDescription` / local networking ATS 설정 추가
 - [x] Android debug/profile local API 접속을 위해 해당 variant에만 cleartext traffic 허용
-- [x] 정상 player repository 경로에서 `KboDirectPlayerRepository` 객체 생성도 제거해 direct debug 분기를 더 명확히 분리
+- [x] 정상 player repository 경로에서 `KboDirectPlayerRepository` 객체 생성도 제거해 temporary direct-primary 분기를 더 명확히 분리
 - [x] 오래된 local native 분석/standalone 문서를 API-first 정책으로 보정해 현재 구현과 문서 충돌 제거
 
 ### 검증 메모

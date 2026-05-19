@@ -131,7 +131,7 @@
 
 ## 다음 우선순위
 
-1. 기록실/선수 상세를 mock/asset snapshot 의존에서 direct runtime source로 더 이동
-2. relay 로그인 세션을 앱 단독 흐름 안에서 더 안정화
+1. 기록실/선수 상세의 API 미구현 영역을 backend API 또는 generated snapshot 으로 승격
+2. 임시 direct-primary relay 로그인 세션을 backend 소유 API 흐름으로 이전
 3. Android/iOS widget 실기 검증 마무리
-4. 웹까지 단독 모드로 가져갈지 분리 유지할지 결정
+4. direct-primary 검증 경로를 제거할 수 있는 production API 준비 범위 결정

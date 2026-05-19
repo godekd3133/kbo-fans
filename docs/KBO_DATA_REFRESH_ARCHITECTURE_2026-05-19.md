@@ -118,7 +118,7 @@ This review is based on the current code paths below:
 
 | Area | Evidence |
 | --- | --- |
-| Repository routing | `app/lib/data/providers.dart:37-49` uses API by default, and only enters `KboDirectRepository` for explicit direct debug. |
+| Repository routing | `app/lib/data/providers.dart:37-49` uses API by default, and only enters `KboDirectRepository` for explicit temporary direct-primary validation builds. |
 | Home aggregate fan-out | `app/lib/data/providers.dart:202-239` reads scoreboard, two months of schedule, standings, and records overview. |
 | All-player image map | `app/lib/data/providers.dart:265-300` loops through all 10 teams and calls `getTeamPlayers` for each team. |
 | Home fallback fan-out | `app/lib/features/home/home_screen.dart:372-430` can watch aggregate, two schedules, and standings in one section. |
@@ -533,7 +533,7 @@ Snapshot providers:
 - Delete the unused `FallbackGameRepository` implementation so direct KBO fallback cannot be reintroduced by import.
 - Do not re-enter local component-provider assembly after `/home` failure in normal mode; API mode should fail visibly instead of crawling directly.
 - Remove mock player fallback from bundled local player snapshots; missing assets return empty state or explicit missing-detail error, never synthetic player records.
-- Move direct relay credentials out of source and into local secure config if direct debug mode remains.
+- Move direct relay credentials out of source and into local secure config if temporary direct-primary mode remains.
 - Change widget background refresh to use API/cache-backed repository or a compact backend endpoint.
 - Change game detail refresh to invalidate providers by visible tab.
 - Remove full detail preload from schedule screen.
@@ -613,7 +613,7 @@ Applied in app code:
 - `preferDirectScrape` now defaults to `false` on native local builds. Direct KBO scraping is opt-in only with `--dart-define=PREFER_DIRECT_SCRAPE=true`.
 - Default `gameRepositoryProvider` no longer wraps API with direct KBO fallback. Normal app mode now uses API-backed data only.
 - Default `playerRepositoryProvider` no longer falls back to direct player crawling. It falls back to generated/local asset player data after API/snapshot failure.
-- Widget background sync now uses `ApiGameRepository(ApiClient())` by default and only uses `KboDirectRepository` in explicit direct debug mode.
+- Widget background sync now uses `ApiGameRepository(ApiClient())` by default and only uses `KboDirectRepository` in explicit temporary direct-primary mode.
 - Startup prefetch was reduced to first-screen API payloads: today scoreboard, current month schedule, standings, records overview, and my-team home/records when configured.
 - Startup no longer warms all-player image maps, all team records, all historical seasons, every game detail, every boxscore, every lineup, every relay, player details, or bulk image files.
 - Home and Schedule no longer trigger game-detail preloads on normal list entry or row tap.
@@ -657,7 +657,7 @@ Applied in app code:
 
 - Startup no longer blocks first screen entry on remote API prefetch. Remote prefetch now runs after onboarding/my-team bootstrap, so a hanging API call cannot keep the app on the startup progress screen.
 - Widget background refresh now calls `/scoreboard/compact` through `ApiGameRepository.getCompactScoreboard()` in normal API mode.
-- Widget background refresh still allows `KboDirectRepository` only when explicit direct debug mode is enabled.
+- Widget background refresh still allows `KboDirectRepository` only when explicit temporary direct-primary mode is enabled.
 - Widget sync no longer fetches relay/current-at-bat data, so a widget update does not become a separate relay crawl.
 - Live Activity sync no longer creates `KboDirectRepository` internally for current-at-bat fallback; it uses the already supplied game payload and leaves batter/pitcher/count empty until a backend-owned compact live payload exists.
 - Push topic tests were updated to match the v4 delivery model: only `immediate` Moments subscribe to direct push topics.
