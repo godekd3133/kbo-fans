@@ -48,6 +48,8 @@
 - [x] 팀 기록 상세가 보조 순위 표시를 위해 `/api/standings`를 같이 부르던 구조 제거
 - [x] 팀 기록 상세 상단 요약은 `/api/team/{teamId}/records` 응답의 팀 타격/투수 지표만 사용하도록 정리
 - [x] 경기 상세 기본 점수 탭의 `/highlights` 즉시 호출을 제거하고, 하이라이트는 명시 요청 시에만 로드하도록 지연
+- [x] Android/iOS 앱 루트에서 모든 화면에 따라붙던 `scoreboardProvider(today)` watch를 제거해, 기록실/일정 직접 진입 시 위젯 동기화용 스코어보드 요청이 자동 발생하지 않도록 정리
+- [x] 앱 루트 widget test가 홈 네트워크를 열지 않도록 onboarding 미완료 상태로 검증 범위를 좁힘
 
 ### 검증
 - [x] `cd app && fvm flutter analyze`
