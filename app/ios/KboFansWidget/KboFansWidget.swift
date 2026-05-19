@@ -19,6 +19,9 @@ struct KboFansWidgetEntry: TimelineEntry {
   let strikes: Int
   let outs: Int
   let updatedAt: String
+  let updatedAtEpoch: Int64
+  let statusKind: String
+  let launchUri: String
 }
 
 struct KboFansWidgetProvider: TimelineProvider {
@@ -37,7 +40,10 @@ struct KboFansWidgetProvider: TimelineProvider {
       balls: 2,
       strikes: 1,
       outs: 1,
-      updatedAt: "14:32"
+      updatedAt: "14:32",
+      updatedAtEpoch: Int64(Date().timeIntervalSince1970 * 1000),
+      statusKind: "live",
+      launchUri: "kboFans://game?gameId=preview&tab=relay&homeWidget"
     )
   }
 
@@ -67,7 +73,10 @@ struct KboFansWidgetProvider: TimelineProvider {
       balls: Int(data?.string(forKey: "widget_balls") ?? "0") ?? 0,
       strikes: Int(data?.string(forKey: "widget_strikes") ?? "0") ?? 0,
       outs: Int(data?.string(forKey: "widget_outs") ?? "0") ?? 0,
-      updatedAt: data?.string(forKey: "widget_updated_at") ?? "--:--"
+      updatedAt: data?.string(forKey: "widget_updated_at") ?? "--:--",
+      updatedAtEpoch: Int64(data?.string(forKey: "widget_updated_at_epoch") ?? "0") ?? 0,
+      statusKind: data?.string(forKey: "widget_status_kind") ?? "none",
+      launchUri: data?.string(forKey: "widget_launch_uri") ?? "kboFans://home?homeWidget"
     )
   }
 }
@@ -111,11 +120,18 @@ struct KboFansWidgetEntryView: View {
           .foregroundStyle(.secondary)
           .lineLimit(1)
       }
-      Text("업데이트 \(entry.updatedAt)")
+      Text(
+        freshnessText(
+          updatedAt: entry.updatedAt,
+          updatedAtEpoch: entry.updatedAtEpoch,
+          statusKind: entry.statusKind
+        )
+      )
         .font(.caption2)
         .foregroundStyle(.gray)
     }
     .padding()
+    .widgetURL(URL(string: entry.launchUri))
 
     if #available(iOS 17.0, *) {
       content.containerBackground(for: .widget) {
@@ -217,6 +233,7 @@ struct KboFansLiveActivityView: View {
     .padding(.vertical, 14)
     .activityBackgroundTint(Color.black.opacity(0.94))
     .activitySystemActionForegroundColor(.white)
+    .widgetURL(launchURL(gameId: context.attributes.gameId, tab: "relay"))
   }
 
   private var hasAtBatContext: Bool {
@@ -365,6 +382,7 @@ struct KboFansLiveActivityWidget: Widget {
           .foregroundStyle(.white)
       }
       .keylineTint(Color(red: 1.0, green: 0.27, blue: 0.27))
+      .widgetURL(launchURL(gameId: context.attributes.gameId, tab: "relay"))
     }
   }
 
@@ -376,6 +394,34 @@ struct KboFansLiveActivityWidget: Widget {
       state.strikes > 0 ||
       state.outs > 0
   }
+}
+
+private func freshnessText(
+  updatedAt: String,
+  updatedAtEpoch: Int64,
+  statusKind: String
+) -> String {
+  guard updatedAtEpoch > 0 else {
+    return "업데이트 \(updatedAt)"
+  }
+  let ageMs = Int64(Date().timeIntervalSince1970 * 1000) - updatedAtEpoch
+  let thresholdMs: Int64 = statusKind == "live" ? 2 * 60 * 1000 : 15 * 60 * 1000
+  if ageMs > thresholdMs {
+    return "업데이트 지연 \(updatedAt)"
+  }
+  return "업데이트 \(updatedAt)"
+}
+
+private func launchURL(gameId: String, tab: String) -> URL? {
+  var components = URLComponents()
+  components.scheme = "kboFans"
+  components.host = "game"
+  components.queryItems = [
+    URLQueryItem(name: "gameId", value: gameId),
+    URLQueryItem(name: "tab", value: tab),
+    URLQueryItem(name: "homeWidget", value: ""),
+  ]
+  return components.url
 }
 
 private struct TeamLogoView: View {
