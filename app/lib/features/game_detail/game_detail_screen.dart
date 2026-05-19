@@ -14,6 +14,7 @@ import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/game.dart';
+import '../../data/models/highlight_info.dart';
 import '../../data/models/highlight_video.dart';
 import '../../data/providers.dart';
 import '../../services/game_event_alert_service.dart';
@@ -261,11 +262,12 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         await LiveActivityService.instance.stopFollowing();
       } else {
         await LiveActivityService.instance.followGame(game.gameId);
-        await LiveActivityService.instance.syncFollowedGame(game);
+        await LiveActivityService.instance.requestPermissions();
         await GameEventAlertService.instance.requestPermissions();
         await PushNotificationService.instance.requestPermissionAndSync(
           myTeam: ref.read(myTeamProvider),
         );
+        await LiveActivityService.instance.syncFollowedGame(game);
       }
 
       if (!mounted) {
@@ -1521,27 +1523,35 @@ class _HighlightCardState extends State<_HighlightCard> {
   }
 }
 
-class _HighlightSection extends ConsumerWidget {
+class _HighlightSection extends ConsumerStatefulWidget {
   final Game game;
   final String gameId;
 
   const _HighlightSection({required this.game, required this.gameId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final highlightAsync = ref.watch(highlightInfoProvider(gameId));
+  ConsumerState<_HighlightSection> createState() => _HighlightSectionState();
+}
 
+class _HighlightSectionState extends ConsumerState<_HighlightSection> {
+  bool _loadRequested = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final highlightAsync = _loadRequested
+        ? ref.watch(highlightInfoProvider(widget.gameId))
+        : const AsyncValue<HighlightInfo?>.data(null);
     final mergedGame = Game(
-      gameId: game.gameId,
-      status: game.status,
-      inning: game.inning,
-      away: game.away,
-      home: game.home,
-      stadium: game.stadium,
-      startTime: game.startTime,
-      crowd: game.crowd,
-      ticketInfo: game.ticketInfo,
-      highlightInfo: highlightAsync.asData?.value ?? game.highlightInfo,
+      gameId: widget.game.gameId,
+      status: widget.game.status,
+      inning: widget.game.inning,
+      away: widget.game.away,
+      home: widget.game.home,
+      stadium: widget.game.stadium,
+      startTime: widget.game.startTime,
+      crowd: widget.game.crowd,
+      ticketInfo: widget.game.ticketInfo,
+      highlightInfo: highlightAsync.asData?.value ?? widget.game.highlightInfo,
     );
 
     if (highlightAsync.isLoading && mergedGame.highlightInfo == null) {
@@ -1570,10 +1580,55 @@ class _HighlightSection extends ConsumerWidget {
     }
 
     if (mergedGame.highlightInfo == null) {
-      return const SizedBox.shrink();
+      return _LoadHighlightCard(
+        onPressed: () {
+          setState(() {
+            _loadRequested = true;
+          });
+        },
+      );
     }
 
-    return _HighlightCard(game: mergedGame, gameId: gameId);
+    return _HighlightCard(game: mergedGame, gameId: widget.gameId);
+  }
+}
+
+class _LoadHighlightCard extends StatelessWidget {
+  final VoidCallback onPressed;
+
+  const _LoadHighlightCard({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              '하이라이트',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+          OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textPrimary,
+              side: const BorderSide(color: AppColors.divider),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('보기'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
