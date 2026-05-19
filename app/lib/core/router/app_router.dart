@@ -209,7 +209,7 @@ String _safeRedirectPath(String? target) {
   if (uri.hasScheme || uri.host.isNotEmpty) {
     return '/home';
   }
-  if (uri.path == '/boot' || uri.path == '/onboarding') {
+  if (uri.path == '/' || uri.path == '/boot' || uri.path == '/onboarding') {
     return '/home';
   }
   return uri.toString();
