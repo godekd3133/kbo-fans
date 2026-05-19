@@ -19,11 +19,12 @@ class ApiPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/team/$teamId/players',
       queryParameters: {'season': season},
       cacheKey: 'teamPlayers:$_playerCacheVersion:$teamId:$season',
-      preferCache: true,
+      preferCache: isHistoricalSeason,
       maxAge: _stableCacheAge,
     );
     final players = data['players'] as List<dynamic>? ?? [];
@@ -37,11 +38,12 @@ class ApiPlayerRepository implements PlayerRepository {
     String playerId, {
     required int season,
   }) async {
+    final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/player/$playerId',
       queryParameters: {'season': season},
       cacheKey: 'playerDetail:$_playerCacheVersion:$playerId:$season',
-      preferCache: true,
+      preferCache: isHistoricalSeason,
       maxAge: _stableCacheAge,
     );
     return _parsePlayer(data);
@@ -49,11 +51,12 @@ class ApiPlayerRepository implements PlayerRepository {
 
   @override
   Future<TeamStats> getTeamStats(String teamId, {required int season}) async {
+    final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/team/$teamId/stats',
       queryParameters: {'season': season},
       cacheKey: 'teamStats:$_playerCacheVersion:$teamId:$season',
-      preferCache: true,
+      preferCache: isHistoricalSeason,
       maxAge: _stableCacheAge,
     );
     return _parseTeamStats(

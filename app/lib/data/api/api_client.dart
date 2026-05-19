@@ -90,7 +90,7 @@ class ApiClient {
     final cached = _readCachedPayload(prefs, storageKey);
     final isFresh = cached != null && _isCacheFresh(cached, maxAge);
 
-    if (cached != null && isFresh) {
+    if (preferCache && cached != null && isFresh) {
       return cached.data;
     }
 

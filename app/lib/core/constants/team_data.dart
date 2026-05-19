@@ -16,7 +16,7 @@ class KboTeam {
   });
 
   String get logoUrl =>
-      'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/${DateTime.now().year}/initial_${id}_s.png';
+      'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/${DateTime.now().year}/emblem_$id.png';
 }
 
 class KboTeams {

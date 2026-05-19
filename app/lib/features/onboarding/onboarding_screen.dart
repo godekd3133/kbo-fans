@@ -45,7 +45,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final viewportWidth = MediaQuery.of(context).size.width;
     final contentMaxWidth = viewportWidth >= 900 ? 560.0 : 460.0;
     final crossAxisCount = viewportWidth >= 900 ? 3 : 2;
-    final logoSize = viewportWidth >= 900 ? 72.0 : 92.0;
+    final logoSize = viewportWidth >= 900 ? 72.0 : 84.0;
 
     return Scaffold(
       body: SafeArea(
@@ -149,10 +149,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                 ),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.all(10),
+                                padding: const EdgeInsets.all(16),
                                 child: CachedNetworkImage(
                                   imageUrl: team.logoUrl,
                                   fit: BoxFit.contain,
+                                  filterQuality: FilterQuality.high,
                                   placeholder: (_, _) =>
                                       Container(color: AppColors.cardSub),
                                   errorWidget: (_, _, _) => Container(

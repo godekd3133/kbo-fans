@@ -115,7 +115,7 @@ class ApiGameRepository implements GameRepository {
     final data = await _client.getCached(
       '/game/$gameId/boxscore',
       cacheKey: 'boxscore:$gameId',
-      preferCache: true,
+      preferCache: false,
       maxAge: _liveishCacheAge,
     );
     return GameBoxscoreData(
@@ -153,7 +153,7 @@ class ApiGameRepository implements GameRepository {
     final data = await _client.getCached(
       '/game/$gameId/lineup',
       cacheKey: 'lineup:$gameId',
-      preferCache: true,
+      preferCache: false,
       maxAge: _liveishCacheAge,
     );
     return GameLineupData(
