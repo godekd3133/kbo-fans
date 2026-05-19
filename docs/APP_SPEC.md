@@ -796,7 +796,7 @@ GET /api/standings?season=2026
 **기술 구현**:
 | 항목 | iOS | Android |
 |------|-----|---------|
-| 따라가기 화면 | ActivityKit / Live Activity | Android Live Updates / ongoing notification |
+| 따라가기 화면 | ActivityKit / Live Activity | planned: Android Live Updates / ongoing notification |
 | Widget 프레임워크 | WidgetKit (Swift) | Glance API (Kotlin) / AppWidgetProvider |
 | Flutter 연동 | `home_widget` 패키지 | `home_widget` 패키지 |
 | 데이터 공유 | App Groups (UserDefaults) | SharedPreferences |

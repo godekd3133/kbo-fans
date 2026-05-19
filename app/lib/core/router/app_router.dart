@@ -42,6 +42,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/boot',
     redirect: (context, state) {
       final location = state.uri.path;
+      final hashLocation = _hashLocation(state.uri);
+      if (hashLocation != null) {
+        return hashLocation;
+      }
       final isOnboardingEdit =
           location == '/onboarding' &&
           state.uri.queryParameters['mode'] == 'edit';
@@ -181,6 +185,14 @@ final routerProvider = Provider<GoRouter>((ref) {
 String _redirectTarget(GoRouterState state) {
   final target = state.uri.toString();
   return _safeRedirectPath(target);
+}
+
+String? _hashLocation(Uri uri) {
+  if (uri.path != '/' || uri.fragment.isEmpty) {
+    return null;
+  }
+  final fragment = uri.fragment;
+  return fragment.startsWith('/') ? _safeRedirectPath(fragment) : null;
 }
 
 String _safeRedirectPath(String? target) {
