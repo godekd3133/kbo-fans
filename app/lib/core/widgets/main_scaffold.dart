@@ -72,6 +72,8 @@ class _NavItem extends StatelessWidget {
     final labelColor = selected
         ? AppColors.textPrimary
         : AppColors.textDisabled;
+    const animationDuration = Duration(milliseconds: 180);
+    const animationCurve = Curves.easeOutCubic;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -82,32 +84,40 @@ class _NavItem extends StatelessWidget {
           SizedBox(
             height: 34,
             child: Center(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: selected
-                      ? AppColors.accent.withValues(alpha: 0.16)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(
-                    color: selected ? AppColors.accent : AppColors.divider,
-                    width: selected ? 2 : 1.4,
+              child: AnimatedScale(
+                duration: animationDuration,
+                curve: animationCurve,
+                scale: selected ? 1.06 : 1,
+                child: AnimatedContainer(
+                  duration: animationDuration,
+                  curve: animationCurve,
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.accent.withValues(alpha: 0.16)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(
+                      color: selected ? AppColors.accent : AppColors.divider,
+                      width: selected ? 2 : 1.4,
+                    ),
                   ),
+                  child: Icon(icon, size: 14, color: iconColor),
                 ),
-                child: Icon(icon, size: 14, color: iconColor),
               ),
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
+          AnimatedDefaultTextStyle(
+            duration: animationDuration,
+            curve: animationCurve,
             style: TextStyle(
               fontSize: 10,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: labelColor,
             ),
+            child: Text(label),
           ),
         ],
       ),

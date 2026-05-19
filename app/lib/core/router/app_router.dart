@@ -62,12 +62,16 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/boot',
-        builder: (context, state) => const BootSplashScreen(),
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(state, child: const BootSplashScreen()),
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => OnboardingScreen(
-          isEditMode: state.uri.queryParameters['mode'] == 'edit',
+        pageBuilder: (context, state) => _fadeTransitionPage(
+          state,
+          child: OnboardingScreen(
+            isEditMode: state.uri.queryParameters['mode'] == 'edit',
+          ),
         ),
       ),
       ShellRoute(
@@ -77,33 +81,34 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/home',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: HomeScreen()),
+                _tabTransitionPage(state, child: const HomeScreen()),
           ),
           GoRoute(
             path: '/schedule',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: ScheduleScreen()),
+                _tabTransitionPage(state, child: const ScheduleScreen()),
           ),
           GoRoute(
             path: '/standings',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: StandingsScreen()),
+                _tabTransitionPage(state, child: const StandingsScreen()),
           ),
           GoRoute(
             path: '/records',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: RecordsScreen()),
+                _tabTransitionPage(state, child: const RecordsScreen()),
           ),
           GoRoute(
             path: '/records/team/:teamId',
-            pageBuilder: (context, state) => NoTransitionPage(
+            pageBuilder: (context, state) => _tabTransitionPage(
+              state,
               child: RecordsScreen(teamId: state.pathParameters['teamId']!),
             ),
           ),
           GoRoute(
             path: '/settings',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SettingsScreen()),
+                _tabTransitionPage(state, child: const SettingsScreen()),
           ),
         ],
       ),
@@ -140,17 +145,99 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/game/:gameId',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => GameDetailScreen(
-          gameId: state.pathParameters['gameId']!,
-          game: state.extra as Game?,
-          initialTab: state.uri.queryParameters['tab'],
+        pageBuilder: (context, state) => _drillInTransitionPage(
+          state,
+          child: GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: state.extra as Game?,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
         ),
       ),
       GoRoute(
         path: '/diagnostics',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ApiDiagnosticsScreen(),
+        pageBuilder: (context, state) =>
+            _drillInTransitionPage(state, child: const ApiDiagnosticsScreen()),
       ),
     ],
   );
 });
+
+CustomTransitionPage<void> _fadeTransitionPage(
+  GoRouterState state, {
+  required Widget child,
+}) {
+  return _animatedPage(
+    state,
+    child: child,
+    beginOffset: Offset.zero,
+    transitionDuration: const Duration(milliseconds: 180),
+    reverseTransitionDuration: const Duration(milliseconds: 140),
+  );
+}
+
+CustomTransitionPage<void> _tabTransitionPage(
+  GoRouterState state, {
+  required Widget child,
+}) {
+  return _animatedPage(
+    state,
+    child: child,
+    beginOffset: const Offset(0.03, 0),
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 170),
+  );
+}
+
+CustomTransitionPage<void> _drillInTransitionPage(
+  GoRouterState state, {
+  required Widget child,
+}) {
+  return _animatedPage(
+    state,
+    child: child,
+    beginOffset: const Offset(0.08, 0),
+    transitionDuration: const Duration(milliseconds: 260),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+  );
+}
+
+CustomTransitionPage<void> _animatedPage(
+  GoRouterState state, {
+  required Widget child,
+  required Offset beginOffset,
+  required Duration transitionDuration,
+  required Duration reverseTransitionDuration,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: transitionDuration,
+    reverseTransitionDuration: reverseTransitionDuration,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (MediaQuery.of(context).disableAnimations) {
+        return child;
+      }
+
+      final curvedAnimation = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      final fadeAnimation = Tween<double>(
+        begin: beginOffset == Offset.zero ? 0.92 : 0.88,
+        end: 1,
+      ).animate(curvedAnimation);
+      final slideAnimation = Tween<Offset>(
+        begin: beginOffset,
+        end: Offset.zero,
+      ).animate(curvedAnimation);
+
+      return FadeTransition(
+        opacity: fadeAnimation,
+        child: SlideTransition(position: slideAnimation, child: child),
+      );
+    },
+  );
+}
