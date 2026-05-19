@@ -1,0 +1,2352 @@
+{
+  "savedAt": "2026-05-19T12:17:23.354934+00:00",
+  "payload": {
+    "month": "2026-05",
+    "days": [
+      {
+        "date": "2026-05-01",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260501NCLG0",
+            "time": "17:00",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 1,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 5,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260501LTSK0",
+            "time": "17:00",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 10,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": 7,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260501HHSS0",
+            "time": "17:00",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 3,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 4,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260501KTHT0",
+            "time": "17:00",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": 4,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 3,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260501OBWO0",
+            "time": "17:00",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 16,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 6,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-02",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260502LTSK0",
+            "time": "14:00",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 7,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": 5,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260502NCLG0",
+            "time": "17:00",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 5,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 13,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260502HHSS0",
+            "time": "17:00",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 13,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 3,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260502KTHT0",
+            "time": "17:00",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": 0,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 6,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260502OBWO0",
+            "time": "17:00",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 2,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 4,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-03",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260503NCLG0",
+            "time": "14:00",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 10,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 3,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260503LTSK0",
+            "time": "14:00",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 5,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": 2,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260503HHSS0",
+            "time": "14:00",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 6,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 7,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260503KTHT0",
+            "time": "14:00",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": 6,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 4,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260503OBWO0",
+            "time": "14:00",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 14,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 3,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-05",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260505OBLG0",
+            "time": "14:00",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 1,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 2,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260505NCSK0",
+            "time": "14:00",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": null,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": null,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260505WOSS0",
+            "time": "14:00",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": 1,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 11,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260505LTKT0",
+            "time": "14:00",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 4,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": 5,
+            "stadium": "수원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260505HHHT0",
+            "time": "14:00",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 7,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 12,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-06",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260506OBLG0",
+            "time": "18:30",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 1,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 6,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260506NCSK0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 6,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": 7,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260506WOSS0",
+            "time": "18:30",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": 1,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 2,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260506LTKT0",
+            "time": "18:30",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 8,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": 1,
+            "stadium": "수원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260506HHHT0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 7,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 2,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-07",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260507OBLG0",
+            "time": "18:30",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 3,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 2,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260507NCSK0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 10,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": 5,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260507WOSS0",
+            "time": "18:30",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": 0,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 6,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260507LTKT0",
+            "time": "18:30",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": null,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": null,
+            "stadium": "수원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-04-30T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260507HHHT0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 11,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 8,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-08",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260508SKOB0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": 4,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": 1,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260508HTLT0",
+            "time": "18:30",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": 8,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": 2,
+            "stadium": "사직",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260508SSNC0",
+            "time": "18:30",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": 4,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": 3,
+            "stadium": "창원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260508KTWO0",
+            "time": "18:30",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": 8,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 0,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260508LGHH0",
+            "time": "18:30",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": 9,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": 8,
+            "stadium": "대전",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-09",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260509LGHH0",
+            "time": "14:00",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": 3,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": 11,
+            "stadium": "대전",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260509SKOB0",
+            "time": "17:00",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": 4,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": 9,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260509HTLT0",
+            "time": "17:00",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": 3,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": 1,
+            "stadium": "사직",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260509SSNC0",
+            "time": "17:00",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": 5,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": 4,
+            "stadium": "창원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260509KTWO0",
+            "time": "17:00",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-10",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260510SKOB0",
+            "time": "14:00",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": 1,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": 3,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260510HTLT0",
+            "time": "14:00",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": 3,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": 7,
+            "stadium": "사직",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260510SSNC0",
+            "time": "14:00",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": 11,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": 1,
+            "stadium": "창원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260510KTWO0",
+            "time": "14:00",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": 1,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 5,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260510LGHH0",
+            "time": "14:00",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": 3,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": 9,
+            "stadium": "대전",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-12",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260512SSLG0",
+            "time": "18:30",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": 9,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 1,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260512NCLT0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 8,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": 1,
+            "stadium": "사직",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260512SKKT0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": 5,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": 1,
+            "stadium": "수원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260512OBHT0",
+            "time": "18:30",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 5,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 1,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260512HHWO0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 11,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 5,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-13",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260513SSLG0",
+            "time": "18:30",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": 3,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 5,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260513NCLT0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 5,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": 10,
+            "stadium": "사직",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260513SKKT0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": 4,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": 18,
+            "stadium": "수원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260513OBHT0",
+            "time": "18:30",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 2,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 9,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260513HHWO0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 2,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 3,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-14",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260514SSLG0",
+            "time": "18:30",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": 9,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": 5,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260514NCLT0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 5,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": 4,
+            "stadium": "사직",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260514SKKT0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": 16,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": 10,
+            "stadium": "수원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260514OBHT0",
+            "time": "18:30",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": 3,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 5,
+            "stadium": "광주",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260514HHWO0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 10,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 1,
+            "stadium": "고척",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-15",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260515LTOB0",
+            "time": "18:30",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 6,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": 5,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260515LGSK0",
+            "time": "18:30",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": 8,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": 7,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260515HTSS0",
+            "time": "18:30",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": 5,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 4,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260515WONC0",
+            "time": "18:30",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": 4,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": 1,
+            "stadium": "창원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260515HHKT0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 5,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": 3,
+            "stadium": "수원",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-16",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260516HHKT0",
+            "time": "14:00",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 10,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": 5,
+            "stadium": "수원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260516LTOB0",
+            "time": "17:00",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 9,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": 10,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260516LGSK0",
+            "time": "17:00",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": 3,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": 4,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260516HTSS0",
+            "time": "17:00",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": 2,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 5,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260516WONC0",
+            "time": "17:00",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": 2,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": 9,
+            "stadium": "창원",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-17",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260517LTOB0",
+            "time": "14:00",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 4,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": 8,
+            "stadium": "잠실",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260517LGSK0",
+            "time": "14:00",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": 6,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": 4,
+            "stadium": "문학",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260517HTSS0",
+            "time": "14:00",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": 16,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 7,
+            "stadium": "대구",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260517WONC0",
+            "time": "14:00",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": 3,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": 2,
+            "stadium": "창원",
+            "status": "FINAL",
+            "ticketInfo": null
+          },
+          {
+            "gameId": "20260517HHKT0",
+            "time": "14:00",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": 7,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": 8,
+            "stadium": "수원",
+            "status": "FINAL",
+            "ticketInfo": null
+          }
+        ]
+      },
+      {
+        "date": "2026-05-19",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260519NCOB0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": 2,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": 9,
+            "stadium": "잠실",
+            "status": "LIVE",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-12T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260519LGHT0",
+            "time": "18:30",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": 0,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": 12,
+            "stadium": "광주",
+            "status": "LIVE",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-12T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260519SKWO0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": 6,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": 6,
+            "stadium": "고척",
+            "status": "LIVE",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-12T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260519LTHH0",
+            "time": "18:30",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": 5,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": 4,
+            "stadium": "대전",
+            "status": "LIVE",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-12T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260519KTSS0",
+            "time": "18:30",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": 2,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": 10,
+            "stadium": "포항",
+            "status": "LIVE",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-12T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-20",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260520NCOB0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": null,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-13T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260520LGHT0",
+            "time": "18:30",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": null,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": null,
+            "stadium": "광주",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-13T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260520SKWO0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-13T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260520LTHH0",
+            "time": "18:30",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": null,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": null,
+            "stadium": "대전",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-13T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260520KTSS0",
+            "time": "18:30",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": null,
+            "stadium": "포항",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-13T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-21",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260521NCOB0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": null,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-14T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260521LGHT0",
+            "time": "18:30",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": null,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": null,
+            "stadium": "광주",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-14T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260521SKWO0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-14T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260521LTHH0",
+            "time": "18:30",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": null,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": null,
+            "stadium": "대전",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-14T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260521KTSS0",
+            "time": "18:30",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": null,
+            "stadium": "포항",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-14T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-22",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260522WOLG0",
+            "time": "18:30",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": null,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-15T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260522SSLT0",
+            "time": "18:30",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": null,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": null,
+            "stadium": "사직",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-15T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260522NCKT0",
+            "time": "18:30",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": null,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": null,
+            "stadium": "수원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-15T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260522SKHT0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": null,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": null,
+            "stadium": "광주",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-15T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260522OBHH0",
+            "time": "18:30",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": null,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": null,
+            "stadium": "대전",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-15T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-23",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260523WOLG0",
+            "time": "14:00",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": null,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-16T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260523SSLT0",
+            "time": "17:00",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": null,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": null,
+            "stadium": "사직",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-16T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260523NCKT0",
+            "time": "17:00",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": null,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": null,
+            "stadium": "수원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-16T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260523SKHT0",
+            "time": "17:00",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": null,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": null,
+            "stadium": "광주",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-16T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260523OBHH0",
+            "time": "17:00",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": null,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": null,
+            "stadium": "대전",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-16T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-24",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260524WOLG0",
+            "time": "14:00",
+            "awayId": "WO",
+            "awayName": "키움",
+            "awayScore": null,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-17T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260524SSLT0",
+            "time": "14:00",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": null,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": null,
+            "stadium": "사직",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-17T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260524NCKT0",
+            "time": "14:00",
+            "awayId": "NC",
+            "awayName": "NC",
+            "awayScore": null,
+            "homeId": "KT",
+            "homeName": "KT",
+            "homeScore": null,
+            "stadium": "수원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-17T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260524SKHT0",
+            "time": "14:00",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": null,
+            "homeId": "HT",
+            "homeName": "KIA",
+            "homeScore": null,
+            "stadium": "광주",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-17T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260524OBHH0",
+            "time": "14:00",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": null,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": null,
+            "stadium": "대전",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-17T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-26",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260526KTOB0",
+            "time": "18:30",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-19T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260526SSSK0",
+            "time": "18:30",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": null,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": null,
+            "stadium": "문학",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-19T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260526LGLT0",
+            "time": "18:30",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": null,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": null,
+            "stadium": "사직",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-19T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260526HHNC0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": null,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": null,
+            "stadium": "창원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-19T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260526HTWO0",
+            "time": "18:30",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-19T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-27",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260527KTOB0",
+            "time": "18:30",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-20T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260527SSSK0",
+            "time": "18:30",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": null,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": null,
+            "stadium": "문학",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-20T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260527LGLT0",
+            "time": "18:30",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": null,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": null,
+            "stadium": "사직",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-20T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260527HHNC0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": null,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": null,
+            "stadium": "창원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-20T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260527HTWO0",
+            "time": "18:30",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-20T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-28",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260528KTOB0",
+            "time": "18:30",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "OB",
+            "homeName": "두산",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-21T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260528SSSK0",
+            "time": "18:30",
+            "awayId": "SS",
+            "awayName": "삼성",
+            "awayScore": null,
+            "homeId": "SK",
+            "homeName": "SSG",
+            "homeScore": null,
+            "stadium": "문학",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-21T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260528LGLT0",
+            "time": "18:30",
+            "awayId": "LG",
+            "awayName": "LG",
+            "awayScore": null,
+            "homeId": "LT",
+            "homeName": "롯데",
+            "homeScore": null,
+            "stadium": "사직",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-21T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260528HHNC0",
+            "time": "18:30",
+            "awayId": "HH",
+            "awayName": "한화",
+            "awayScore": null,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": null,
+            "stadium": "창원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-21T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260528HTWO0",
+            "time": "18:30",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-21T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-29",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260529HTLG0",
+            "time": "18:30",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": null,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-22T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260529OBSS0",
+            "time": "18:30",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": null,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": null,
+            "stadium": "대구",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-22T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260529LTNC0",
+            "time": "18:30",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": null,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": null,
+            "stadium": "창원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-22T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260529KTWO0",
+            "time": "18:30",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-22T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260529SKHH0",
+            "time": "18:30",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": null,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": null,
+            "stadium": "대전",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-22T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-30",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260530OBSS0",
+            "time": "14:00",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": null,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": null,
+            "stadium": "대구",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-23T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260530HTLG0",
+            "time": "17:00",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": null,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-23T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260530LTNC0",
+            "time": "17:00",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": null,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": null,
+            "stadium": "창원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-23T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260530KTWO0",
+            "time": "17:00",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-23T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260530SKHH0",
+            "time": "17:00",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": null,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": null,
+            "stadium": "대전",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-23T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      },
+      {
+        "date": "2026-05-31",
+        "label": null,
+        "games": [
+          {
+            "gameId": "20260531HTLG0",
+            "time": "14:00",
+            "awayId": "HT",
+            "awayName": "KIA",
+            "awayScore": null,
+            "homeId": "LG",
+            "homeName": "LG",
+            "homeScore": null,
+            "stadium": "잠실",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "interpark",
+              "vendorName": "인터파크 티켓",
+              "vendorUrl": "https://tickets.interpark.com",
+              "openAt": "2026-05-24T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260531OBSS0",
+            "time": "14:00",
+            "awayId": "OB",
+            "awayName": "두산",
+            "awayScore": null,
+            "homeId": "SS",
+            "homeName": "삼성",
+            "homeScore": null,
+            "stadium": "대구",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-24T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260531LTNC0",
+            "time": "14:00",
+            "awayId": "LT",
+            "awayName": "롯데",
+            "awayScore": null,
+            "homeId": "NC",
+            "homeName": "NC",
+            "homeScore": null,
+            "stadium": "창원",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-24T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260531KTWO0",
+            "time": "14:00",
+            "awayId": "KT",
+            "awayName": "KT",
+            "awayScore": null,
+            "homeId": "WO",
+            "homeName": "키움",
+            "homeScore": null,
+            "stadium": "고척",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-24T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          },
+          {
+            "gameId": "20260531SKHH0",
+            "time": "14:00",
+            "awayId": "SK",
+            "awayName": "SSG",
+            "awayScore": null,
+            "homeId": "HH",
+            "homeName": "한화",
+            "homeScore": null,
+            "stadium": "대전",
+            "status": "SCHEDULED",
+            "ticketInfo": {
+              "vendorKey": "ticketlink",
+              "vendorName": "티켓링크",
+              "vendorUrl": "https://www.ticketlink.co.kr",
+              "openAt": "2026-05-24T11:00:00",
+              "source": "inferred",
+              "note": "홈팀 기본 예매 정책 기준 추정값"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
