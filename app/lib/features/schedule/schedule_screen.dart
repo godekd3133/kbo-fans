@@ -117,22 +117,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               _buildMonthHeader(),
               Expanded(
                 child: scheduleAsync.when(
-                  loading: () => RefreshIndicator(
-                    onRefresh: _refreshSchedule,
-                    color: AppColors.live,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(
-                          height: 420,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.live,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(color: AppColors.live),
                   ),
                   error: (e, _) => RefreshIndicator(
                     onRefresh: _refreshSchedule,

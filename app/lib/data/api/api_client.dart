@@ -127,7 +127,7 @@ class ApiClient {
   }
 
   Future<void> postClientMetric(Map<String, dynamic> data) async {
-    if (!kIsWeb && AppConfig.instance.isLocal) {
+    if (AppConfig.instance.isLocal) {
       return;
     }
     try {
