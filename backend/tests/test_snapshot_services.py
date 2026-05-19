@@ -98,12 +98,12 @@ def test_records_overview_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     expected = {
         "season": 2026,
-        "leaders": {"avg": [], "hr": [], "ops": [], "era": []},
+        "leaders": {"avg": [], "hr": [], "ops": [], "era": [], "opsPlus": []},
         "featured": {
-            "todayHitter": {"label": "오늘의 타자"},
-            "todayPitcher": {"label": "오늘의 투수"},
-            "monthHitter": {"label": "이달의 타자"},
-            "monthPitcher": {"label": "이달의 투수"},
+            "todayHitter": {"label": "시즌 타율 리더"},
+            "todayPitcher": {"label": "시즌 ERA 리더"},
+            "monthHitter": {"label": "시즌 홈런 리더"},
+            "monthPitcher": {"label": "시즌 OPS 리더"},
         },
     }
     store.save("records_overview", "2026", expected)

@@ -112,7 +112,7 @@ class ApiPlayerRepository implements PlayerRepository {
       data = await _client.getCached(
         '/records/overview',
         queryParameters: {'season': season},
-        cacheKey: 'recordsOverview:$season',
+        cacheKey: 'recordsOverview:v2:$season',
         preferCache: true,
         maxAge: _stableCacheAge,
       );

@@ -26,23 +26,20 @@ class RecordsOverviewService:
     def get_overview(self, season: int) -> Dict[str, Any]:
         cached = self._overview_cache.get(season)
         if cached is not None:
-            return cached
+            return self._normalize_overview_payload(cached, season)
 
         snapshot = self.snapshot_store.load_payload("records_overview", str(season))
-        if snapshot is not None:
-            self._overview_cache.set(season, snapshot)
-            return snapshot
-
         try:
             payload = self.crawler.get_overview(season)
         except Exception:
             stale = self._overview_cache.get_stale(season)
             if stale is not None:
-                return stale
+                return self._normalize_overview_payload(stale, season)
             if snapshot is not None:
-                return snapshot
+                return self._normalize_overview_payload(snapshot, season)
             raise
 
+        payload = self._normalize_overview_payload(payload, season)
         self._overview_cache.set(season, payload)
         self.snapshot_store.save("records_overview", str(season), payload)
         return payload
@@ -54,10 +51,6 @@ class RecordsOverviewService:
             return cached
 
         snapshot = self.snapshot_store.load_payload("leaderboard", cache_key)
-        if snapshot is not None:
-            self._leaderboard_cache.set(cache_key, snapshot)
-            return snapshot
-
         try:
             leaders = self.crawler.get_leaderboard(season, metric)
         except Exception:
@@ -71,4 +64,79 @@ class RecordsOverviewService:
         payload = {"season": season, "metric": metric, "leaders": leaders}
         self._leaderboard_cache.set(cache_key, payload)
         self.snapshot_store.save("leaderboard", cache_key, payload)
+        return payload
+
+    def _normalize_overview_payload(
+        self, payload: Dict[str, Any], season: int
+    ) -> Dict[str, Any]:
+        normalized = dict(payload)
+        normalized["season"] = normalized.get("season", season)
+        leaders = dict(normalized.get("leaders") or {})
+        if not leaders.get("opsPlus"):
+            ops_leaders = leaders.get("ops") or []
+            leaders["opsPlus"] = RecordsOverviewCrawler._build_ops_plus_leaders(
+                ops_leaders
+            )[:5]
+        normalized["leaders"] = leaders
+        normalized["featured"] = self._build_canonical_featured(
+            leaders=leaders,
+            season=season,
+        )
+        return normalized
+
+    def _build_canonical_featured(
+        self, leaders: Dict[str, Any], season: int
+    ) -> Dict[str, Dict[str, Any]]:
+        return {
+            "todayHitter": self._featured_from_leader(
+                label="시즌 타율 리더",
+                leader=self._first_leader(leaders, "avg"),
+                season=season,
+            ),
+            "todayPitcher": self._featured_from_leader(
+                label="시즌 ERA 리더",
+                leader=self._first_leader(leaders, "era"),
+                season=season,
+            ),
+            "monthHitter": self._featured_from_leader(
+                label="시즌 홈런 리더",
+                leader=self._first_leader(leaders, "hr"),
+                season=season,
+            ),
+            "monthPitcher": self._featured_from_leader(
+                label="시즌 OPS 리더",
+                leader=self._first_leader(leaders, "ops"),
+                season=season,
+            ),
+        }
+
+    @staticmethod
+    def _first_leader(leaders: Dict[str, Any], metric: str) -> Optional[Dict[str, Any]]:
+        metric_leaders = leaders.get(metric) or []
+        if not metric_leaders:
+            return None
+        leader = metric_leaders[0]
+        return leader if isinstance(leader, dict) else None
+
+    @staticmethod
+    def _featured_from_leader(
+        label: str, leader: Optional[Dict[str, Any]], season: int
+    ) -> Dict[str, Any]:
+        if leader is None:
+            return {"label": label}
+        player_id = str(leader.get("playerId") or "")
+        payload = {
+            "label": label,
+            "playerId": player_id,
+            "playerType": leader.get("playerType"),
+            "name": leader.get("name"),
+            "teamId": leader.get("teamId"),
+            "headline": RecordsOverviewCrawler._headline_for_leader(leader),
+            "summary": f"{season} 시즌 KBO 공식 기록 기준",
+        }
+        if player_id:
+            payload["imageUrl"] = RecordsOverviewCrawler._PLAYER_IMAGE_URL.format(
+                season=season,
+                player_id=player_id,
+            )
         return payload
