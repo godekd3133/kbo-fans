@@ -39,7 +39,6 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/boot',
     redirect: (context, state) {
       final location = state.uri.path;
       final hashLocation = _hashLocation(state.uri);
@@ -75,6 +74,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(path: '/', redirect: (context, state) => '/boot'),
       GoRoute(
         path: '/boot',
         pageBuilder: (context, state) =>

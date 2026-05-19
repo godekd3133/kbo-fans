@@ -94,14 +94,6 @@
     </div>
   </div>
   <script>
-    (function normalizeHashRoute() {
-      var hash = window.location.hash || '';
-      if (hash.indexOf('#/') !== 0) return;
-      var target = hash.substring(1);
-      if (!target || target === '/boot') target = '/home';
-      window.history.replaceState(null, '', target);
-    })();
-
     function removeBootSplash() {
       var splash = document.getElementById('boot-splash');
       if (!splash || splash.classList.contains('is-hidden')) return;
