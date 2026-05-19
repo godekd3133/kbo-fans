@@ -10,6 +10,7 @@ import 'player_repository.dart';
 
 class DeviceSnapshotPlayerRepository implements PlayerRepository {
   static const _prefix = 'player_snapshot:';
+  static const _snapshotVersion = 'v2';
 
   final PlayerRepository primary;
   final PlayerRepository fallback;
@@ -64,12 +65,12 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
       cacheKey,
       () => primary.getTeamStats(teamId, season: season),
       _encodeTeamStats,
+      isValid: _isCompleteTeamStats,
     );
     if (fresh != null) return fresh;
 
     final cached = await _readSnapshot(cacheKey, _decodeTeamStats);
-    if (cached != null &&
-        (cached.hitting.isNotEmpty || cached.pitching.isNotEmpty)) {
+    if (cached != null && _isCompleteTeamStats(cached)) {
       return cached;
     }
 
@@ -86,14 +87,12 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
       cacheKey,
       () => primary.getTeamRecords(teamId, season: season),
       _encodeTeamRecordsBundle,
+      isValid: _isValidTeamRecordsBundle,
     );
     if (fresh != null) return fresh;
 
     final cached = await _readSnapshot(cacheKey, _decodeTeamRecordsBundle);
-    if (cached != null &&
-        (cached.players.isNotEmpty ||
-            cached.teamStats.hitting.isNotEmpty ||
-            cached.teamStats.pitching.isNotEmpty)) {
+    if (cached != null && _isValidTeamRecordsBundle(cached)) {
       return cached;
     }
 
@@ -145,10 +144,14 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
   Future<T?> _tryPrimary<T>(
     String cacheKey,
     Future<T> Function() action,
-    Object Function(T value) encoder,
-  ) async {
+    Object Function(T value) encoder, {
+    bool Function(T value)? isValid,
+  }) async {
     try {
       final value = await action();
+      if (isValid != null && !isValid(value)) {
+        return null;
+      }
       await _writeSnapshot(cacheKey, encoder(value));
       return value;
     } catch (_) {
@@ -158,7 +161,10 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
 
   Future<void> _writeSnapshot(String cacheKey, Object payload) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('$_prefix$cacheKey', jsonEncode(payload));
+    await prefs.setString(
+      '$_prefix$_snapshotVersion:$cacheKey',
+      jsonEncode(payload),
+    );
   }
 
   Future<T?> _readSnapshot<T>(
@@ -166,7 +172,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     T Function(Map<String, dynamic> json) decoder,
   ) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('$_prefix$cacheKey');
+    final raw = prefs.getString('$_prefix$_snapshotVersion:$cacheKey');
     if (raw == null || raw.isEmpty) {
       return null;
     }
@@ -175,6 +181,19 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  bool _isCompleteTeamStats(TeamStats value) =>
+      value.hitting.isNotEmpty && value.pitching.isNotEmpty;
+
+  bool _hasPartialTeamStats(TeamStats value) =>
+      value.hitting.isNotEmpty != value.pitching.isNotEmpty;
+
+  bool _isValidTeamRecordsBundle(TeamRecordsBundle value) {
+    if (_hasPartialTeamStats(value.teamStats)) {
+      return false;
+    }
+    return value.players.isNotEmpty || _isCompleteTeamStats(value.teamStats);
   }
 
   Object _encodePlayers(List<PlayerProfile> players) => {

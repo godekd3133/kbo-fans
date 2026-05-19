@@ -38,9 +38,15 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
-    final payload = await _loadSnapshot(
-      await _resolveSeasonAssetPath(_teamPlayersDir, teamId, season),
+    final assetPath = await _resolveSeasonAssetPath(
+      _teamPlayersDir,
+      teamId,
+      season,
     );
+    if (assetPath == null) {
+      return const <PlayerProfile>[];
+    }
+    final payload = await _loadSnapshot(assetPath);
     final players = payload?['players'] as List<dynamic>?;
     if (players == null || players.isEmpty) {
       return const <PlayerProfile>[];
@@ -71,26 +77,30 @@ class LocalAssetPlayerRepository implements PlayerRepository {
 
   @override
   Future<TeamStats> getTeamStats(String teamId, {required int season}) async {
-    final payload = await _loadSnapshot(
-      await _resolveSeasonAssetPath(_teamStatsDir, teamId, season),
+    final assetPath = await _resolveSeasonAssetPath(
+      _teamStatsDir,
+      teamId,
+      season,
     );
+    if (assetPath == null) {
+      return _emptyTeamStats(teamId: teamId, season: season);
+    }
+    final payload = await _loadSnapshot(assetPath);
     if (payload == null) {
-      return TeamStats(
-        teamId: teamId,
-        season: season,
-        hitting: const {},
-        pitching: const {},
-      );
+      return _emptyTeamStats(teamId: teamId, season: season);
+    }
+    final hitting = (payload['hitting'] as Map<String, dynamic>? ?? const {})
+        .map((key, value) => MapEntry(key, value.toString()));
+    final pitching = (payload['pitching'] as Map<String, dynamic>? ?? const {})
+        .map((key, value) => MapEntry(key, value.toString()));
+    if (hitting.isEmpty || pitching.isEmpty) {
+      return _emptyTeamStats(teamId: teamId, season: season);
     }
     return TeamStats(
       teamId: payload['teamId'] as String? ?? teamId,
       season: payload['season'] as int? ?? season,
-      hitting: (payload['hitting'] as Map<String, dynamic>? ?? const {}).map(
-        (key, value) => MapEntry(key, value.toString()),
-      ),
-      pitching: (payload['pitching'] as Map<String, dynamic>? ?? const {}).map(
-        (key, value) => MapEntry(key, value.toString()),
-      ),
+      hitting: hitting,
+      pitching: pitching,
     );
   }
 
@@ -182,7 +192,7 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     }
   }
 
-  Future<String> _resolveSeasonAssetPath(
+  Future<String?> _resolveSeasonAssetPath(
     String dir,
     String teamId,
     int season,
@@ -192,31 +202,7 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     if (paths.contains(exact)) {
       return exact;
     }
-
-    final prefix = '$dir/$teamId-';
-    final candidates =
-        paths
-            .where((path) => path.startsWith(prefix) && path.endsWith('.json'))
-            .map((path) {
-              final yearText = path.substring(prefix.length, path.length - 5);
-              final year = int.tryParse(yearText);
-              return (path: path, year: year);
-            })
-            .where((item) => item.year != null)
-            .toList()
-          ..sort((a, b) => a.year!.compareTo(b.year!));
-
-    if (candidates.isEmpty) {
-      return exact;
-    }
-
-    for (final candidate in candidates.reversed) {
-      if (candidate.year! <= season) {
-        return candidate.path;
-      }
-    }
-
-    return candidates.last.path;
+    return null;
   }
 
   Future<List<String>> _assetPaths() async {
@@ -233,6 +219,15 @@ class LocalAssetPlayerRepository implements PlayerRepository {
       _assetPathsCache = decoded.keys.toList(growable: false);
     }
     return _assetPathsCache!;
+  }
+
+  TeamStats _emptyTeamStats({required String teamId, required int season}) {
+    return TeamStats(
+      teamId: teamId,
+      season: season,
+      hitting: const {},
+      pitching: const {},
+    );
   }
 
   PlayerProfile _parsePlayer(Map<String, dynamic> json) {

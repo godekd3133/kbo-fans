@@ -88,6 +88,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    _throwIfHistoricalTeamRosterSeason(season);
     final entryKeys = await _parseRegisterAllEntries(teamId);
     final grouped = await Future.wait(
       _positionGroups.map((group) => _fetchPlayerSearchRows(teamId, group)),
@@ -173,6 +174,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    _throwIfHistoricalTeamRosterSeason(season);
     final results = await Future.wait([
       getTeamPlayers(teamId, season: season),
       getTeamStats(teamId, season: season),
@@ -976,6 +978,17 @@ class KboDirectPlayerRepository implements PlayerRepository {
       season: season,
       hitting: results[0],
       pitching: results[1],
+    );
+  }
+
+  void _throwIfHistoricalTeamRosterSeason(int season) {
+    final currentSeason = DateTime.now().year;
+    if (season >= currentSeason) {
+      return;
+    }
+
+    throw UnsupportedError(
+      'Historical team rosters require bundled or backend snapshots: $season',
     );
   }
 

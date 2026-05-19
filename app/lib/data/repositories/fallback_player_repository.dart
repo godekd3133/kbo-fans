@@ -51,7 +51,7 @@ class FallbackPlayerRepository implements PlayerRepository {
     final stats = await _tryPrimary(
       label: 'team/$teamId/stats',
       () => primary.getTeamStats(teamId, season: season),
-      isValid: (value) => value.hitting.isNotEmpty || value.pitching.isNotEmpty,
+      isValid: _isCompleteTeamStats,
     );
     if (stats != null) {
       return stats;
@@ -68,10 +68,7 @@ class FallbackPlayerRepository implements PlayerRepository {
     final bundle = await _tryPrimary(
       label: 'team/$teamId/records',
       () => primary.getTeamRecords(teamId, season: season),
-      isValid: (value) =>
-          value.players.isNotEmpty ||
-          value.teamStats.hitting.isNotEmpty ||
-          value.teamStats.pitching.isNotEmpty,
+      isValid: _isValidTeamRecordsBundle,
     );
     if (bundle != null) {
       return bundle;
@@ -133,5 +130,18 @@ class FallbackPlayerRepository implements PlayerRepository {
       _log.warn('PLAYER $label primary failed: $error');
     }
     return null;
+  }
+
+  bool _isCompleteTeamStats(TeamStats value) =>
+      value.hitting.isNotEmpty && value.pitching.isNotEmpty;
+
+  bool _hasPartialTeamStats(TeamStats value) =>
+      value.hitting.isNotEmpty != value.pitching.isNotEmpty;
+
+  bool _isValidTeamRecordsBundle(TeamRecordsBundle value) {
+    if (_hasPartialTeamStats(value.teamStats)) {
+      return false;
+    }
+    return value.players.isNotEmpty || _isCompleteTeamStats(value.teamStats);
   }
 }
