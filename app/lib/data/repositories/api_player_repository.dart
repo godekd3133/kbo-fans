@@ -68,11 +68,12 @@ class ApiPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/team/$teamId/records',
       queryParameters: {'season': season},
       cacheKey: 'teamRecords:$_playerCacheVersion:$teamId:$season',
-      preferCache: true,
+      preferCache: isHistoricalSeason,
       maxAge: _stableCacheAge,
     );
     final players = data['players'] as List<dynamic>? ?? [];
@@ -107,13 +108,14 @@ class ApiPlayerRepository implements PlayerRepository {
 
   @override
   Future<RecordsOverview> getRecordsOverview({required int season}) async {
+    final isHistoricalSeason = _isHistoricalSeason(season);
     Map<String, dynamic> data;
     try {
       data = await _client.getCached(
         '/records/overview',
         queryParameters: {'season': season},
-        cacheKey: 'recordsOverview:v2:$season',
-        preferCache: true,
+        cacheKey: 'recordsOverview:v3:$season',
+        preferCache: isHistoricalSeason,
         maxAge: _stableCacheAge,
       );
     } catch (_) {
@@ -161,12 +163,13 @@ class ApiPlayerRepository implements PlayerRepository {
     }
 
     Map<String, dynamic> data;
+    final isHistoricalSeason = _isHistoricalSeason(season);
     try {
       data = await _client.getCached(
         '/records/leaderboard',
         queryParameters: {'season': season, 'metric': metric.key},
-        cacheKey: 'leaderboard:${metric.key}:$season',
-        preferCache: true,
+        cacheKey: 'leaderboard:v2:${metric.key}:$season',
+        preferCache: isHistoricalSeason,
         maxAge: _stableCacheAge,
       );
     } catch (_) {
@@ -296,4 +299,6 @@ class ApiPlayerRepository implements PlayerRepository {
       imageUrl: map['imageUrl'] as String?,
     );
   }
+
+  bool _isHistoricalSeason(int season) => season < DateTime.now().year;
 }

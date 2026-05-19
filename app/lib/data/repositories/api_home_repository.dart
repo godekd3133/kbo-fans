@@ -13,6 +13,7 @@ class ApiHomeRepository {
     required String date,
     String? myTeam,
   }) async {
+    final isHistoricalDate = _isHistoricalDate(date);
     final data = await _client.getCached(
       '/home',
       queryParameters: {
@@ -20,7 +21,7 @@ class ApiHomeRepository {
         if (myTeam != null && myTeam.isNotEmpty) 'myTeam': myTeam,
       },
       cacheKey: 'homeAggregate:$date:${myTeam ?? ''}',
-      preferCache: true,
+      preferCache: isHistoricalDate,
       maxAge: _cacheAge,
     );
 
@@ -124,5 +125,16 @@ class ApiHomeRepository {
           : TicketSource.inferred,
       note: json['note'] as String?,
     );
+  }
+
+  bool _isHistoricalDate(String date) {
+    try {
+      final target = DateTime.parse(date);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      return target.isBefore(today);
+    } catch (_) {
+      return false;
+    }
   }
 }

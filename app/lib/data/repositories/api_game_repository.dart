@@ -174,12 +174,13 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<ScheduleDay>> getSchedule(String yearMonth) async {
+    final isHistoricalMonth = _isHistoricalMonth(yearMonth);
     final data = await _client.getCached(
       '/schedule',
       queryParameters: {'month': yearMonth},
       cacheKey: 'schedule:$yearMonth',
-      preferCache: true,
-      maxAge: _stableCacheAge,
+      preferCache: isHistoricalMonth,
+      maxAge: isHistoricalMonth ? _stableCacheAge : _liveishCacheAge,
     );
     final days = data['days'] as List<dynamic>? ?? [];
     return days.map((d) {
@@ -212,13 +213,14 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<TeamStanding>> getStandings(int season) async {
+    final isHistoricalSeason = season < DateTime.now().year;
     try {
       final data = await _client.getCached(
         '/standings',
         queryParameters: {'season': season},
         cacheKey: 'standings:$season',
-        preferCache: true,
-        maxAge: _stableCacheAge,
+        preferCache: isHistoricalSeason,
+        maxAge: isHistoricalSeason ? _stableCacheAge : _liveishCacheAge,
       );
       return _parseStandings(data);
     } catch (_) {
@@ -454,5 +456,21 @@ class ApiGameRepository implements GameRepository {
     } catch (_) {
       return false;
     }
+  }
+
+  bool _isHistoricalMonth(String yearMonth) {
+    final parts = yearMonth.split('-');
+    if (parts.length != 2) {
+      return false;
+    }
+    final year = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    if (year == null || month == null) {
+      return false;
+    }
+    final requested = DateTime(year, month);
+    final now = DateTime.now();
+    final current = DateTime(now.year, now.month);
+    return requested.isBefore(current);
   }
 }
