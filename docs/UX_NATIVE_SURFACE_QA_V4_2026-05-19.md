@@ -15,6 +15,9 @@ Native 표면의 기본 연결 계약은 살아 있다. iOS는 ActivityKit 채�
 이번 작업에서 바로 고친 문제:
 
 - iOS Widget / Live Activity / Dynamic Island에서 현재 타석 데이터가 없는데도 B/S/O가 `0`처럼 보일 수 있던 표시를 숨김 처리했다.
+- Widget tap 시 현재 표시 중인 경기 상세로 진입하도록 launch URI를 저장하고, iOS/Android widget click을 Flutter router로 연결했다.
+- Widget 갱신 시각이 live 경기 2분, 그 외 상태 15분을 넘으면 `업데이트 지연`으로 표시하도록 보강했다.
+- Android는 현재 진행형 Live Update가 아니라 홈 위젯/Push 중심임을 앱 copy와 spec에 더 명확히 반영했다.
 - `docs/APP_SPEC.md`에 "모르는 B/S/O를 0으로 대체 표시하지 않는다"는 원칙을 추가했다.
 
 ## 환경 확인
@@ -52,6 +55,7 @@ Native 표면의 기본 연결 계약은 살아 있다. iOS는 ActivityKit 채�
 - Live Activity는 예정/종료/취소/서스펜디드 경기를 따라가지 않는다. 사용자가 명시적으로 따라가는 live 경기만 표시하려는 V4 원칙과 맞다.
 - Runner와 Widget extension 모두 `group.com.kbofans.kbo_fans` App Group을 사용한다.
 - Widget과 Live Activity 모두 마지막 업데이트 시각을 표시한다.
+- Widget과 Live Activity가 launch URL을 가져, 앱 진입 시 경기 상세로 연결될 수 있다.
 - Live Activity / Dynamic Island / Widget에 팀 로고 fallback이 있다.
 
 문제 / 리스크:
@@ -73,12 +77,11 @@ Native 표면의 기본 연결 계약은 살아 있다. iOS는 ActivityKit 채�
 - Android manifest에 `POST_NOTIFICATIONS`와 `KboFansScoreWidgetProvider` receiver가 선언되어 있다.
 - widget metadata는 `home_screen|keyguard`를 지정하고, 최소 크기와 초기 layout을 가진다.
 - provider는 `SharedPreferences`의 widget data를 읽어 title, subtitle, status, score, batter, pitcher, updated_at을 반영한다.
-- widget tap은 앱을 여는 기본 pending intent가 있다.
+- widget tap은 launch URI를 통해 현재 경기 상세로 진입한다.
 
 문제 / 리스크:
 
 - 현재 코드 기준 Android에는 V4에서 말한 `Android Live Update / ongoing notification` 표면이 구현되어 있지 않다. 실제 구현은 홈 위젯 + push permission + local/remote notification에 가깝다.
-- widget tap이 특정 `gameId` 상세로 deep link 되지 않고 앱 root를 연다. 사용자가 "현재 경기 상태판"을 눌렀을 때 바로 상세/중계로 이어지는 UX가 약하다.
 - Android 기기/에뮬레이터가 없어 홈 화면에 위젯을 배치한 실제 density, 글자 잘림, keyguard 표시를 확인하지 못했다.
 
 ## UX 원칙 기준 점검
@@ -89,8 +92,8 @@ Native 표면의 기본 연결 계약은 살아 있다. iOS는 ActivityKit 채�
 | State honesty | 업데이트 시각 표시, unknown B/S/O 숨김 보정 | 개선됨 |
 | No surprise alerts | 사용자가 선택한 followed game 중심 | 합격 |
 | Platform truth | iOS는 구현됨, Android Live Update는 미구현 | 보완 필요 |
-| One-handed recovery | 앱 밖 표면 tap 후 game detail deep link 부족 | 보완 필요 |
-| Stale clarity | 업데이트 시각은 있음, stale badge/threshold는 부족 | 보완 필요 |
+| One-handed recovery | 앱 밖 표면 tap 후 game detail로 진입 | 개선됨 |
+| Stale clarity | 업데이트 시각 + threshold 기반 지연 표시 | 개선됨 |
 
 ## 수정 제안
 
@@ -105,21 +108,11 @@ P1. Android surface 명칭 정리
 - 앱 copy와 문서에서 Android는 `홈 위젯 / Push`, iOS는 `Live Activity / Widget`으로 구분한다.
 - Android ongoing notification을 만들면 그때 `따라가기 화면`으로 승격한다.
 
-P1. Widget tap deep link
-
-- `widget_game_id`가 있으면 홈 root가 아니라 `/game/:gameId` 또는 `/game/:gameId?tab=relay`로 진입한다.
-- 종료 경기는 기록/스코어 탭, live 경기는 중계 탭을 기본으로 둔다.
-
 P2. Current at-bat data source 연결
 
 - compact scoreboard만으로는 현재 타석/투구 카운트가 부족하다.
 - followed game에 한해 lightweight relay/current-at-bat endpoint를 추가하거나, backend compact endpoint가 선택 경기 1건에만 current-at-bat summary를 붙이게 한다.
 - 모든 widget refresh가 heavy crawling으로 돌아가는 구조는 피한다.
-
-P2. Stale badge threshold
-
-- 마지막 갱신 후 일정 시간이 지나면 `업데이트 지연` 또는 `마지막 갱신 HH:mm`을 더 강하게 표시한다.
-- live game은 2분 이상, scheduled/final은 15분 이상 같은 surface별 threshold가 필요하다.
 
 P2. Stop following action
 
@@ -144,4 +137,4 @@ P2. Stop following action
 - UX 문제 발견/수정: 100/100
 - 실제 앱 밖 화면 캡처: 40/100
 
-전체 native surface QA는 85/100이다. 코드/계약/빌드는 통과했지만, 실기기 surface screenshot과 Android runtime 확인이 없어 100점 완료로 선언하지 않는다.
+전체 native surface QA는 90/100이다. 코드/계약/빌드와 P1 UX 보완은 반영했지만, 실기기 surface screenshot과 Android runtime 확인이 없어 100점 완료로 선언하지 않는다.

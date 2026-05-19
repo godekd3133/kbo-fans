@@ -1045,6 +1045,9 @@ kbo_fans/
 - [x] V4 native surface QA 문서 작성 (`docs/UX_NATIVE_SURFACE_QA_V4_2026-05-19.md`)
 - [x] iOS Widget / Live Activity / Dynamic Island에서 현재 타석 데이터가 없을 때 B/S/O `0` badge가 보이지 않도록 보정
 - [x] `docs/APP_SPEC.md`에 unknown B/S/O를 실제 0카운트처럼 표시하지 않는 원칙 추가
+- [x] Widget tap launch URI를 저장하고 iOS/Android widget click을 Flutter router로 연결해, 표시 중인 경기 상세로 바로 진입하도록 보강
+- [x] Widget stale threshold를 추가해 live 경기는 2분, 그 외 상태는 15분 이상 갱신이 없으면 `업데이트 지연`으로 표시
+- [x] Android 진행형 Live Update가 아직 구현 표면이 아님을 앱 copy와 spec에 명확히 반영
 - [x] `ApiClient.getCached`의 fresh cache 선반환 조건을 `preferCache=true` 경로로 제한해, 현재 날짜/현재 시즌 화면의 fresh-first 정책이 실제로 적용되도록 수정
 - [x] 현재 시즌 선수 목록, 선수 상세, 팀 스탯과 경기 상세 박스스코어/라인업도 정상 상황에서는 최신 API 응답을 먼저 받도록 정리
 - [x] 온보딩 구단 선택 로고가 `26x17` 초소형 이미지에서 확대 렌더링되던 문제를 `64x41` 공식 엠블럼 경로와 고품질 필터링으로 보정
