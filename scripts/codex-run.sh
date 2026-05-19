@@ -565,6 +565,7 @@ run_release_api_health() {
 run_ios() {
   local flutter_mode="${1:-profile}"
   local app_env="${2:-local}"
+  local data_mode="${3:-api}"
   local device_id
   local device_name
   local destination_issue
@@ -578,6 +579,8 @@ run_ios() {
     release_api_url="$(release_api_base_url)"
     run_release_api_health
     api_define=" --dart-define=API_BASE_URL=$release_api_url"
+  elif [[ "$data_mode" == "direct" ]]; then
+    api_define=" --dart-define=PREFER_DIRECT_SCRAPE=true"
   fi
 
   if [[ -n "$device_id" && "$device_id" != "ios" && "$device_id" != "iphone" ]]; then
@@ -604,7 +607,9 @@ EOF
 
     echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
     echo "Using ${flutter_mode} mode for iOS device."
-    if [[ "$app_env" != "release" ]]; then
+    if [[ "$app_env" != "release" && "$data_mode" == "direct" ]]; then
+      echo "Using temporary direct-primary iOS data mode: direct KBO + bundled snapshots"
+    elif [[ "$app_env" != "release" ]]; then
       local_api_url="$(local_backend_api_url_for_lan || true)"
       if [[ -n "$local_api_url" ]]; then
         api_define=" --dart-define=API_BASE_URL=$local_api_url"
@@ -647,7 +652,9 @@ EOF
   fi
 
   echo "Running on iOS Simulator"
-  if [[ "$app_env" != "release" ]]; then
+  if [[ "$app_env" != "release" && "$data_mode" == "direct" ]]; then
+    echo "Using temporary direct-primary iOS simulator data mode: direct KBO + bundled snapshots"
+  elif [[ "$app_env" != "release" ]]; then
     local_api_url="$(local_backend_api_url_for_localhost || true)"
     if [[ -n "$local_api_url" ]]; then
       api_define=" --dart-define=API_BASE_URL=$local_api_url"
@@ -851,7 +858,7 @@ main() {
       run_ios profile
       ;;
     ios-local-release)
-      run_ios release local
+      run_ios release local direct
       ;;
     ios-release)
       run_ios release release
