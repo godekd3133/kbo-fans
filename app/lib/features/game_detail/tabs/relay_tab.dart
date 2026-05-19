@@ -698,6 +698,7 @@ class _CurrentAtBatHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final latestPlay = _latestPlay(items);
     final latestSubstitution = _latestSubstitution(items);
+    final baseStateLabel = _baseStateLabel;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -729,8 +730,8 @@ class _CurrentAtBatHero extends StatelessWidget {
                       color: AppColors.textPrimary,
                       subtle: true,
                     ),
-                  if (atBat.baseState.isNotEmpty)
-                    _BaseStateBadge(baseState: atBat.baseState),
+                  if (baseStateLabel.isNotEmpty)
+                    _BaseStateBadge(baseState: baseStateLabel),
                   _CompactBsoSummary(
                     balls: atBat.balls,
                     strikes: atBat.strikes,
@@ -901,8 +902,9 @@ class _CurrentAtBatHero extends StatelessWidget {
     if (ab.batterRecent.isNotEmpty) {
       return '최근 타석: ${ab.batterRecent}';
     }
-    if (ab.baseState.isNotEmpty) {
-      return ab.baseState;
+    final baseStateLabel = _baseStateLabel;
+    if (baseStateLabel.isNotEmpty) {
+      return baseStateLabel;
     }
     return '현재 타석 진행 중';
   }
@@ -949,6 +951,38 @@ class _CurrentAtBatHero extends StatelessWidget {
       entries.add(('3루', atBat.thirdRunnerName));
     }
     return entries;
+  }
+
+  String get _baseStateLabel {
+    if (atBat.baseState.isNotEmpty) {
+      return atBat.baseState;
+    }
+    final runners = _runnerEntries;
+    final first = runners.any((runner) => runner.$1 == '1루');
+    final second = runners.any((runner) => runner.$1 == '2루');
+    final third = runners.any((runner) => runner.$1 == '3루');
+    if (!first && !second && !third) {
+      return '';
+    }
+    if (first && !second && !third) {
+      return '주자1루';
+    }
+    if (!first && second && !third) {
+      return '주자2루';
+    }
+    if (!first && !second && third) {
+      return '주자3루';
+    }
+    if (first && second && !third) {
+      return '주자1,2루';
+    }
+    if (first && !second && third) {
+      return '주자1,3루';
+    }
+    if (!first && second && third) {
+      return '주자2,3루';
+    }
+    return '만루';
   }
 
   String? _resolveImageUrl(Map<String, String> imageMap, String rawName) {

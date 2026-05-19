@@ -17,6 +17,8 @@ const _kboImageHeaders = {
   'User-Agent':
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
 };
+const _kboPersonImageBase =
+    'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
 
 class LineupTab extends ConsumerWidget {
   final String gameId;
@@ -122,26 +124,22 @@ class LineupTab extends ConsumerWidget {
                         homeBattersAsync.asData?.value.cast<BatterRecord>() ??
                         const <BatterRecord>[];
                     final relayData = relayAsync.asData?.value;
-                    final awayImageMap = {
-                      ...allImageMap,
-                      for (final player
-                          in awayPlayersAsync.asData?.value ??
-                              const <PlayerProfile>[])
-                        if (player.name.isNotEmpty &&
-                            player.imageUrl != null &&
-                            player.imageUrl!.isNotEmpty)
-                          player.name: player.imageUrl!,
-                    };
-                    final homeImageMap = {
-                      ...allImageMap,
-                      for (final player
-                          in homePlayersAsync.asData?.value ??
-                              const <PlayerProfile>[])
-                        if (player.name.isNotEmpty &&
-                            player.imageUrl != null &&
-                            player.imageUrl!.isNotEmpty)
-                          player.name: player.imageUrl!,
-                    };
+                    final awayImageMap = _buildPlayerImageMap(
+                      allImageMap: allImageMap,
+                      teamPlayers:
+                          awayPlayersAsync.asData?.value ??
+                          const <PlayerProfile>[],
+                      season: season,
+                      relayData: relayData,
+                    );
+                    final homeImageMap = _buildPlayerImageMap(
+                      allImageMap: allImageMap,
+                      teamPlayers:
+                          homePlayersAsync.asData?.value ??
+                          const <PlayerProfile>[],
+                      season: season,
+                      relayData: relayData,
+                    );
                     final compareData = _buildMatchupCompareData(
                       awayTeamId: awayTeamId,
                       awayName: awayName,
@@ -164,17 +162,25 @@ class LineupTab extends ConsumerWidget {
                       ),
                       awayStarterName: gameLineup.away.starterName,
                       homeStarterName: gameLineup.home.starterName,
-                      awayStarterImageUrl: _resolveImageUrl(
+                      awayStarterImageUrl: _resolveStarterImageUrl(
                         awayImageMap,
-                        gameLineup.away.starterName ??
+                        name:
+                            gameLineup.away.starterName ??
                             awayPitchers.firstOrNull?.name ??
                             '',
+                        starterId: gameLineup.away.starterId,
+                        starterImageUrl: gameLineup.away.starterImageUrl,
+                        season: season,
                       ),
-                      homeStarterImageUrl: _resolveImageUrl(
+                      homeStarterImageUrl: _resolveStarterImageUrl(
                         homeImageMap,
-                        gameLineup.home.starterName ??
+                        name:
+                            gameLineup.home.starterName ??
                             homePitchers.firstOrNull?.name ??
                             '',
+                        starterId: gameLineup.home.starterId,
+                        starterImageUrl: gameLineup.home.starterImageUrl,
+                        season: season,
                       ),
                     );
 
@@ -197,7 +203,10 @@ class LineupTab extends ConsumerWidget {
                             teamId: awayTeamId,
                             teamName: awayName,
                             sideLabel: 'AWAY',
+                            season: season,
+                            starterId: gameLineup.away.starterId,
                             starterName: gameLineup.away.starterName,
+                            starterImageUrl: gameLineup.away.starterImageUrl,
                             lineup: gameLineup.away.lineup,
                             batterFallback: awayBatters,
                             pitchers: awayPitchers,
@@ -211,7 +220,10 @@ class LineupTab extends ConsumerWidget {
                             teamId: homeTeamId,
                             teamName: homeName,
                             sideLabel: 'HOME',
+                            season: season,
+                            starterId: gameLineup.home.starterId,
                             starterName: gameLineup.home.starterName,
+                            starterImageUrl: gameLineup.home.starterImageUrl,
                             lineup: gameLineup.home.lineup,
                             batterFallback: homeBatters,
                             pitchers: homePitchers,
@@ -1116,7 +1128,10 @@ class _LineupColumn extends StatelessWidget {
   final String teamId;
   final String teamName;
   final String sideLabel;
+  final int season;
+  final String? starterId;
   final String? starterName;
+  final String? starterImageUrl;
   final List<LineupEntry> lineup;
   final List<BatterRecord> batterFallback;
   final List<PitcherRecord> pitchers;
@@ -1130,7 +1145,10 @@ class _LineupColumn extends StatelessWidget {
     required this.teamId,
     required this.teamName,
     required this.sideLabel,
+    required this.season,
+    required this.starterId,
     required this.starterName,
+    required this.starterImageUrl,
     required this.lineup,
     required this.batterFallback,
     required this.pitchers,
@@ -1220,9 +1238,12 @@ class _LineupColumn extends StatelessWidget {
               name: starterName ?? starter?.name ?? '선발 미발표',
               detail: starterDetail,
               accent: accent,
-              imageUrl: _resolveImageUrl(
+              imageUrl: _resolveStarterImageUrl(
                 imageMap,
-                starterName ?? starter?.name ?? '',
+                name: starterName ?? starter?.name ?? '',
+                starterId: starterId,
+                starterImageUrl: starterImageUrl,
+                season: season,
               ),
             )
           else if (missingPitcherData)
@@ -1420,12 +1441,76 @@ String? _resolveImageUrl(Map<String, String> imageMap, String rawName) {
   return null;
 }
 
+String? _resolveStarterImageUrl(
+  Map<String, String> imageMap, {
+  required String name,
+  required String? starterId,
+  required String? starterImageUrl,
+  required int season,
+}) {
+  if (starterImageUrl != null && starterImageUrl.isNotEmpty) {
+    return starterImageUrl;
+  }
+  final mapped = _resolveImageUrl(imageMap, name);
+  if (mapped != null && mapped.isNotEmpty) {
+    return mapped;
+  }
+  return _playerImageUrl(season: season, playerId: starterId);
+}
+
+Map<String, String> _buildPlayerImageMap({
+  required Map<String, String> allImageMap,
+  required Iterable<PlayerProfile> teamPlayers,
+  required int season,
+  required RelayData? relayData,
+}) {
+  final imageMap = <String, String>{...allImageMap};
+  for (final player in teamPlayers) {
+    final imageUrl = _playerImageUrlFromProfile(player, season);
+    if (player.name.isNotEmpty && imageUrl != null && imageUrl.isNotEmpty) {
+      imageMap[player.name] = imageUrl;
+    }
+  }
+
+  final currentAtBat = relayData?.currentAtBat;
+  if (currentAtBat != null) {
+    if (currentAtBat.batterName.isNotEmpty &&
+        currentAtBat.batterImageUrl.isNotEmpty) {
+      imageMap[currentAtBat.batterName] = currentAtBat.batterImageUrl;
+    }
+    if (currentAtBat.pitcherName.isNotEmpty &&
+        currentAtBat.pitcherImageUrl.isNotEmpty) {
+      imageMap[currentAtBat.pitcherName] = currentAtBat.pitcherImageUrl;
+    }
+  }
+  return imageMap;
+}
+
+String? _playerImageUrlFromProfile(PlayerProfile player, int season) {
+  if (player.imageUrl != null && player.imageUrl!.isNotEmpty) {
+    return player.imageUrl;
+  }
+  return _playerImageUrl(season: season, playerId: player.id);
+}
+
+String? _playerImageUrl({required int season, required String? playerId}) {
+  final cleaned = playerId?.trim() ?? '';
+  if (cleaned.isEmpty) {
+    return null;
+  }
+  return '$_kboPersonImageBase/$season/$cleaned.jpg';
+}
+
 String _normalizeName(String value) {
   return value
+      .replaceAll(RegExp(r'\([^)]*\)'), '')
+      .replaceAll(RegExp(r'\[[^\]]*\]'), '')
+      .replaceAll(RegExp(r'선발|투수|등판|교체'), '')
       .replaceAll(RegExp(r'\s+'), '')
       .replaceAll('·', '')
       .replaceAll('ㆍ', '')
       .replaceAll('.', '')
+      .replaceAll(RegExp(r'[^0-9A-Za-z가-힣]'), '')
       .trim();
 }
 

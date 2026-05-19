@@ -340,6 +340,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final starterName = _showAway
         ? lineupData?.away.starterName
         : lineupData?.home.starterName;
+    final baseStateLabel = _baseStateLabel(currentAtBat);
     final bullpenNames = _relayBullpenNames(
       relayData,
       isAwayTeam: _showAway,
@@ -368,9 +369,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             ),
             _StatTile(
               label: '주자',
-              value: currentAtBat?.baseState.isNotEmpty == true
-                  ? currentAtBat!.baseState
-                  : '-',
+              value: baseStateLabel.isNotEmpty ? baseStateLabel : '-',
             ),
             _StatTile(
               label: 'B/S/O',
@@ -537,6 +536,42 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         ],
       ],
     );
+  }
+
+  String _baseStateLabel(CurrentAtBat? currentAtBat) {
+    if (currentAtBat == null) {
+      return '';
+    }
+    if (currentAtBat.baseState.isNotEmpty) {
+      return currentAtBat.baseState;
+    }
+    final occupied = [
+      currentAtBat.firstRunnerName.isNotEmpty,
+      currentAtBat.secondRunnerName.isNotEmpty,
+      currentAtBat.thirdRunnerName.isNotEmpty,
+    ];
+    if (!occupied[0] && !occupied[1] && !occupied[2]) {
+      return '';
+    }
+    if (occupied[0] && !occupied[1] && !occupied[2]) {
+      return '주자1루';
+    }
+    if (!occupied[0] && occupied[1] && !occupied[2]) {
+      return '주자2루';
+    }
+    if (!occupied[0] && !occupied[1] && occupied[2]) {
+      return '주자3루';
+    }
+    if (occupied[0] && occupied[1] && !occupied[2]) {
+      return '주자1,2루';
+    }
+    if (occupied[0] && !occupied[1] && occupied[2]) {
+      return '주자1,3루';
+    }
+    if (!occupied[0] && occupied[1] && occupied[2]) {
+      return '주자2,3루';
+    }
+    return '만루';
   }
 
   List<String> _relayBullpenNames(

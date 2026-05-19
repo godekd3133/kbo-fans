@@ -14,6 +14,7 @@ import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
 import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
+import '../../services/game_detail_preload_service.dart';
 import 'widgets/schedule_game_card.dart';
 
 enum ScheduleViewMode { calendar, stadium }
@@ -44,6 +45,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   String? _stadiumTeamId;
   int? _scheduleLoadStartedAtMicros;
   String? _lastScheduleLoadLogKey;
+  String? _lastGameDetailPreloadKey;
 
   @override
   void initState() {
@@ -67,6 +69,31 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   Future<void> _refreshSchedule() async {
     ref.invalidate(scheduleProvider(_yearMonth));
     await ref.read(scheduleProvider(_yearMonth).future);
+  }
+
+  void _scheduleGameDetailPreload(List<ScheduleGame> games) {
+    final key = games.map((game) => game.gameId).join(',');
+    if (_lastGameDetailPreloadKey == key) {
+      return;
+    }
+    _lastGameDetailPreloadKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      for (final game in games.take(3)) {
+        GameDetailPreloadService.instance.preloadGame(
+          ref,
+          context,
+          gameId: game.gameId,
+        );
+      }
+    });
+  }
+
+  void _openGameDetail(String gameId) {
+    GameDetailPreloadService.instance.preloadGame(ref, context, gameId: gameId);
+    context.push('/game/$gameId');
   }
 
   void _changeMonth(int delta) {
@@ -754,6 +781,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final label = schedule.label != null
         ? '$dateLabel — ${schedule.label}'
         : dateLabel;
+    _scheduleGameDetailPreload(schedule.games);
 
     return RefreshIndicator(
       onRefresh: _refreshSchedule,
@@ -774,7 +802,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               padding: const EdgeInsets.only(bottom: 10),
               child: ScheduleGameCard(
                 game: g,
-                onTap: () => context.push('/game/${g.gameId}'),
+                onTap: () => _openGameDetail(g.gameId),
                 ticketSummary:
                     g.ticketInfo == null || isTerminalScheduleStatus(g.status)
                     ? null
@@ -839,7 +867,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 child: ScheduleGameCard(
                   game: item.game,
                   dateLabel: _formatDateLabel(item.date),
-                  onTap: () => context.push('/game/${item.game.gameId}'),
+                  onTap: () => _openGameDetail(item.game.gameId),
                   ticketSummary:
                       item.game.ticketInfo == null ||
                           isTerminalScheduleStatus(item.game.status)

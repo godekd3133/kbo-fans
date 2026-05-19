@@ -11,9 +11,11 @@ import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
+import '../../core/widgets/dev_console.dart';
 import '../../data/models/game.dart';
 import '../../data/models/highlight_video.dart';
 import '../../data/providers.dart';
+import '../../services/game_detail_preload_service.dart';
 import '../../services/ticket_alert_service.dart';
 import 'tabs/boxscore_tab.dart';
 import 'tabs/lineup_tab.dart';
@@ -119,6 +121,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     with WidgetsBindingObserver {
   Timer? _refreshTimer;
   bool _didInitialRefresh = false;
+  bool _refreshInFlight = false;
 
   @override
   void initState() {
@@ -130,6 +133,12 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         return;
       }
       _didInitialRefresh = true;
+      GameDetailPreloadService.instance.preloadGame(
+        ref,
+        context,
+        gameId: widget.gameId,
+        game: widget.game,
+      );
       unawaited(_refreshGameDetail());
     });
   }
@@ -162,9 +171,10 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
-    final interval = widget.game.status == GameStatus.live
-        ? const Duration(seconds: 10)
-        : const Duration(seconds: 15);
+    final interval = _refreshIntervalFor(widget.game.status);
+    if (interval == null) {
+      return;
+    }
     _refreshTimer = Timer.periodic(interval, (_) {
       if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
         return;
@@ -173,20 +183,40 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     });
   }
 
+  Duration? _refreshIntervalFor(GameStatus status) {
+    return switch (status) {
+      GameStatus.live => const Duration(seconds: 30),
+      GameStatus.scheduled => const Duration(minutes: 5),
+      GameStatus.final_ => null,
+      GameStatus.cancelled => null,
+      GameStatus.suspended => null,
+    };
+  }
+
   Future<void> _refreshGameDetail() async {
+    if (_refreshInFlight) {
+      return;
+    }
+    _refreshInFlight = true;
     final gameId = widget.gameId;
 
-    ref.invalidate(gameProvider(gameId));
-    ref.invalidate(relayDataProvider(gameId));
-    ref.invalidate(gameBoxscoreProvider(gameId));
-    ref.invalidate(gameLineupProvider(gameId));
+    try {
+      ref.invalidate(gameProvider(gameId));
+      ref.invalidate(relayDataProvider(gameId));
+      ref.invalidate(gameBoxscoreProvider(gameId));
+      ref.invalidate(gameLineupProvider(gameId));
 
-    await Future.wait([
-      ref.read(gameProvider(gameId).future),
-      ref.read(relayDataProvider(gameId).future),
-      ref.read(gameBoxscoreProvider(gameId).future),
-      ref.read(gameLineupProvider(gameId).future),
-    ]);
+      await Future.wait([
+        ref.read(gameProvider(gameId).future),
+        ref.read(relayDataProvider(gameId).future),
+        ref.read(gameBoxscoreProvider(gameId).future),
+        ref.read(gameLineupProvider(gameId).future),
+      ]).timeout(const Duration(seconds: 25));
+    } catch (error) {
+      DevConsole.instance.warn('GAME DETAIL refresh skipped: $error');
+    } finally {
+      _refreshInFlight = false;
+    }
   }
 
   @override
