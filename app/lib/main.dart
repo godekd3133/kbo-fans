@@ -403,14 +403,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   }
 
   Future<bool> _shouldRunBlockingStartupPrep() async {
-    if (_shouldSkipInitialPrefetch()) {
-      return false;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final key =
-        'startup_preload_version:${AppConfig.instance.environment.name}';
-    final version = prefs.getInt(key) ?? 0;
-    return version < _startupPreloadVersion;
+    return false;
   }
 
   Future<void> _markBlockingStartupPrepDone() async {
