@@ -12,6 +12,17 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
+## [0.0.16] - 2026-05-20
+
+### Changed
+
+- backend 현재 시즌 일정/순위/기록실 요약/리더보드 snapshot fallback도 `savedAt` 기준 6시간 이내 저장본만 사용하도록 제한
+- 과거 시즌/월 일정, 순위, 기록실 snapshot은 기존처럼 저장본 우선 fallback을 유지하도록 current-season freshness와 분리
+
+### Fixed
+
+- 원천 조회 실패 시 오래된 현재 시즌 backend snapshot이 최신 데이터처럼 재노출될 수 있던 경로 차단
+
 ## [0.0.15] - 2026-05-20
 
 ### Changed

@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-05-20: 0.0.16 backend current-season snapshot 신선도 보강
+
+### 완료
+- [x] 현재 변경은 backend fallback 동작이 바뀌는 규모라 `0.0.16+16` 새 릴리즈로 판단
+- [x] `StandingsService`가 current-season crawler 실패 시 6시간 이내 `standings_latest` snapshot만 fallback으로 사용하도록 보정
+- [x] `ScheduleService`가 current-month crawler 실패 시 6시간 이내 schedule snapshot만 fallback으로 사용하도록 보정
+- [x] `RecordsOverviewService`가 current-season overview/leaderboard crawler 실패 시 6시간 이내 snapshot만 fallback으로 사용하도록 보정
+- [x] historical season/month stale cache와 저장 snapshot fallback은 기존처럼 유지
+- [x] `AGENTS.md`, `CLAUDE.md`, `.claude/skills/kbo-runtime-data/SKILL.md`, `docs/APP_SPEC.md`, `README.md`, `docs/VERSIONING.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`를 `0.0.16` 기준으로 갱신
+
+### 검증
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py`
+
+---
+
 ## 2026-05-20: 0.0.15 순위 bootstrap 및 웹 local API 기본값 정리
 
 ### 완료

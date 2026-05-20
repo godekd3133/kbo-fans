@@ -1,5 +1,11 @@
 # 패치노트
 
+## 0.0.16+16 - Backend Snapshot Freshness
+
+- backend 현재 시즌 일정, 순위, 기록실 요약, 리더보드는 원천 조회 실패 때도 6시간 이내 저장 snapshot만 fallback으로 사용합니다.
+- 과거 시즌/월 데이터는 기존처럼 저장된 snapshot을 우선 사용해 히스토리 화면이 빠르게 열리도록 유지했습니다.
+- 오래된 현재 시즌 backend snapshot이 최신 데이터처럼 다시 보일 수 있던 경로를 막았습니다.
+
 ## 0.0.15+15 - Standings Bootstrap Cleanup
 
 - 순위 번들도 요청한 시즌의 검증된 snapshot만 사용하도록 정리했습니다.
