@@ -252,10 +252,11 @@ uvicorn kbo_fans_backend.main:app --reload
 - 기록실 팀 데이터와 팀 스탯도 현재 시즌에서는 fresh-first/fail-visible 기준을 따르고, 과거 시즌 조회에서만 cached-first 성격을 유지합니다.
 - 순위와 기록실 요약/리더보드 번들 스냅샷은 exact-season-only 정책을 따릅니다. 일반 API-backed current 경로에서는 현재 시즌 API 실패를 번들 snapshot으로 정상 처리하지 않습니다.
 - 기록실 요약/리더보드 API cache와 기기 snapshot은 핵심 리더보드가 1위부터 시작하는 payload만 재사용하거나 저장합니다.
+- backend 기록실 요약/리더보드는 KBO 응답 row 순서가 흔들려도 API 응답 전에 rank 오름차순으로 정규화합니다.
 - 현재 시즌 팀 선수/팀 스탯/선수 상세는 원천 조회를 우선하고, 원천 실패 시 backend/app/device snapshot으로 정상 상태를 만들지 않습니다.
 - backend 현재 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot으로 정상 상태를 만들지 않습니다. 과거 날짜/시즌/월은 저장 snapshot 우선 정책을 유지합니다.
 - backend `/home` aggregate는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션으로 숨기지 않습니다. 과거 날짜만 부분 fallback을 허용합니다.
-- 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE 문자중계는 원천 실패를 과거 snapshot이나 요약 payload로 숨기지 않습니다. 실패는 API 실패/미지원 상태로 노출합니다.
+- 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE 문자중계는 원천 실패를 과거 snapshot이나 요약 payload로 숨기지 않습니다. 박스스코어의 adjacent game id fallback도 과거 경기에서만 허용하고, current/live 경기는 비어 있으면 `officialAvailable=false` 상태로 노출합니다.
 - 일반 API-backed 앱 모드에서는 현재 시즌 순위/기록실 API 실패를 앱 번들 데이터로 대체하지 않습니다. local backend 없이 원격 API가 죽어 있으면 release health gate 또는 화면 오류로 드러나게 둡니다.
 - 현재 날짜/월/시즌 API 요청은 원격 실패 시 TTL 안의 로컬 API cache도 정상 데이터처럼 재사용하지 않습니다. 과거 날짜/시즌/월 조회만 cached-first 또는 snapshot fallback을 유지합니다.
 - 앱 전역 Provider retry는 비활성화되어 API 실패가 반복 재시도 뒤에 숨지 않고 화면 오류 상태와 Dev Console에 드러나야 합니다.

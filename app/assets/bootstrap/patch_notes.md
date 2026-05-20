@@ -1,5 +1,12 @@
 # 패치노트
 
+## 0.0.28+28 - Current Boxscore & Records Guard
+
+- LIVE/당일 박스스코어가 비어 있을 때 전날 같은 팀 경기의 선수 기록을 빌려오지 않습니다.
+- 현재 경기 박스스코어가 공식 업데이트 전이면 `공식 박스스코어 업데이트 전입니다` 상태로 명확히 표시합니다.
+- 과거 경기의 adjacent canonical id 보정은 유지하되 응답 `gameId`와 실제 원천 `sourceGameId`를 분리했습니다.
+- 기록실 리더보드는 서버에서 rank 기준으로 정렬한 뒤 내려주어, fresh load에서도 1위부터 안정적으로 표시됩니다.
+
 ## 0.0.27+27 - Live Score Freshness Guard
 
 - LIVE 홈/위젯 요약 스코어보드에서 KBO main list의 실제 득점을 schedule/detail fallback의 0점보다 우선합니다.

@@ -82,8 +82,10 @@ kbo_fans/
 - 일반 API-backed current 경로에서 현재 시즌 팀 선수 / 팀 스탯 / 선수 상세 실패는 backend/app/device snapshot 으로 숨기지 않는다
 - records overview / leaderboard API cache 와 기기 snapshot 은 리더보드가 1위부터 시작할 때만 저장/재사용한다. malformed cache shape 을 무효화할 때는 cache key 또는 device snapshot version 을 올린다
 - backend 현재 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 crawler 실패 시 snapshot fallback 을 쓰지 않는다. 과거 날짜/시즌/월은 저장 snapshot 우선 전략을 유지한다
+- backend records overview / leaderboard 응답은 cache/save/return 전에 rank 오름차순으로 정규화한다
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule / standings / records overview 실패를 빈 섹션이나 placeholder 로 숨기지 않는다. 과거 날짜 홈 조회만 partial fallback 을 허용한다
 - 앱 API cache 는 현재 날짜/월/시즌 데이터의 실패 fallback 으로 쓰지 않는다. `allowCacheOnFailure` 기본값은 false 로 유지하고, historical 경로만 cached-first/snapshot 정책을 명시적으로 허용한다
+- 박스스코어 adjacent game id fallback 은 과거 경기 canonical id 보정에만 허용한다. current/live 박스스코어는 전날 같은 팀 경기 선수 기록을 빌리지 않고 official-unavailable 상태로 노출한다
 - 홈 첫 로딩은 오늘 스코어보드 별도 local cache 를 먼저 렌더링하지 않는다. 최신 API 데이터 또는 명시적 loading/error 상태만 보여준다
 - 홈 secondary aggregate provider 는 첫 scoreboard 데이터 프레임 이후에만 구독한다
 - 홈 refresh timer 는 unrelated rebuild 때 cancel/restart 하지 않고 interval 또는 scoreboard signature 변경 시에만 재스케줄한다

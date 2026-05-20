@@ -22,6 +22,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Current-season team players / team stats / player detail must be fresh-first and fail-visible in normal API-backed mode. Do not mask failures with backend/app/device snapshots.
 - Records overview and leaderboard API caches and device snapshots must only be reused when core leaderboards start at rank 1. Bump cache keys or device snapshot versions when invalidating old malformed cache shapes.
 - Backend current scoreboard, schedule, standings, records overview, and leaderboard paths must not fall back to snapshots on crawler failure. Historical dates/seasons/months may still use stored snapshots.
+- Backend records overview and leaderboard responses must be normalized by ascending rank before they are cached, saved, or returned to the app.
 - Backend `/home` aggregate must not mask current/future schedule, standings, or records overview failures with empty sections or placeholder cards. Historical home queries may keep partial fallback.
 - App API cache must not mask current date/month/season failures. Keep `allowCacheOnFailure` default false; only historical paths should explicitly opt in to cached-first/snapshot behavior.
 - Home first paint must not render a separate today-scoreboard local cache while current scoreboard API is loading. Keep current data paths latest-API-or-visible-error.
@@ -30,6 +31,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Backend `/scoreboard/home` and `/scoreboard/compact` should stay lightweight for first paint / widget surfaces. Do not call per-game scoreboard detail crawlers from those paths; reserve them for full scoreboard and game detail.
 - Backend current data routes should share the runtime service singletons from `api/runtime_services.py` so sibling endpoints reuse the same TTL caches.
 - LIVE summary scoreboard paths should prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0.
+- Boxscore adjacent game-id fallback is historical-only. Current/live boxscore must not borrow a previous game's player rows; return the empty official-unavailable state instead.
 - App UI must treat null H/E/B team totals as unavailable, not as 0 records.
 - App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.

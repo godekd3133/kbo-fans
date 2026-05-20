@@ -54,6 +54,89 @@ class _FreshRecordsCrawler:
         ]
 
 
+class _UnsortedRecordsCrawler:
+    def get_overview(self, season: int):
+        return {
+            "season": season,
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 29,
+                        "playerId": "late",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Late",
+                        "teamId": "KT",
+                        "value": ".272",
+                    },
+                    {
+                        "rank": 1,
+                        "playerId": "top",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Top",
+                        "teamId": "SSG",
+                        "value": ".379",
+                    },
+                    {
+                        "rank": 2,
+                        "playerId": "second",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Second",
+                        "teamId": "LG",
+                        "value": ".356",
+                    },
+                ],
+                "hr": [],
+                "ops": [
+                    {
+                        "rank": 2,
+                        "playerId": "ops-second",
+                        "playerType": "hitter",
+                        "metricKey": "OPS",
+                        "name": "Ops Second",
+                        "teamId": "LG",
+                        "value": "1.000",
+                    },
+                    {
+                        "rank": 1,
+                        "playerId": "ops-top",
+                        "playerType": "hitter",
+                        "metricKey": "OPS",
+                        "name": "Ops Top",
+                        "teamId": "KT",
+                        "value": "1.100",
+                    },
+                ],
+                "era": [],
+            },
+            "featured": {},
+        }
+
+    def get_leaderboard(self, season: int, metric: str):
+        return [
+            {
+                "rank": 3,
+                "playerId": "third",
+                "playerType": "hitter",
+                "metricKey": metric.upper(),
+                "name": "Third",
+                "teamId": "LG",
+                "value": ".300",
+            },
+            {
+                "rank": 1,
+                "playerId": "first",
+                "playerType": "hitter",
+                "metricKey": metric.upper(),
+                "name": "First",
+                "teamId": "KT",
+                "value": ".400",
+            },
+        ]
+
+
 def test_build_ops_plus_leaders_from_ops_values() -> None:
     leaders = [
         {
@@ -242,6 +325,33 @@ def test_overview_prefers_fresh_crawler_over_snapshot(tmp_path) -> None:
     )
 
     assert service.get_overview(2026)["leaders"]["avg"][0]["name"] == "Fresh"
+
+
+def test_overview_normalizes_leader_order_before_featured(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    service = RecordsOverviewService(
+        crawler=_UnsortedRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    payload = service.get_overview(2026)
+
+    assert [leader["rank"] for leader in payload["leaders"]["avg"]] == [1, 2, 29]
+    assert payload["featured"]["todayHitter"]["name"] == "Top"
+    assert [leader["rank"] for leader in payload["leaders"]["ops"]] == [1, 2]
+
+
+def test_leaderboard_normalizes_leader_order(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    service = RecordsOverviewService(
+        crawler=_UnsortedRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    payload = service.get_leaderboard(2026, "avg")
+
+    assert [leader["rank"] for leader in payload["leaders"]] == [1, 3]
+    assert payload["leaders"][0]["name"] == "First"
 
 
 def test_overview_snapshot_is_normalized_with_ops_plus(tmp_path) -> None:

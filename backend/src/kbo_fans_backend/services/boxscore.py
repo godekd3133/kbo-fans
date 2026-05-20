@@ -40,11 +40,20 @@ class BoxscoreService:
             raise
 
         if self._is_empty_payload(payload):
-            alternate_game_id = self._resolve_alternate_game_id(game_id)
+            alternate_game_id = (
+                self._resolve_alternate_game_id(game_id)
+                if self._is_past_game_id(game_id)
+                else None
+            )
             if alternate_game_id is not None:
                 try:
                     alternate_payload = self.crawler.get_boxscore(alternate_game_id)
                     if not self._is_empty_payload(alternate_payload):
+                        alternate_payload = {
+                            **alternate_payload,
+                            "gameId": game_id,
+                            "sourceGameId": alternate_game_id,
+                        }
                         self.snapshot_store.save("boxscore", game_id, alternate_payload)
                         return alternate_payload
                 except Exception:

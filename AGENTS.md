@@ -71,9 +71,11 @@
   - Current-season team player/team stat/player detail failures must surface as API failures in normal API-backed mode instead of being masked by backend/app/device snapshots.
   - Records overview and leaderboard API caches and device snapshots must start at rank 1 before they can be saved or reused. Bump cache keys or device snapshot versions when invalidating malformed cached shapes.
   - Backend current scoreboard, schedule, standings, records overview, and leaderboard paths must not fall back to snapshots on crawler failure. Historical dates/seasons/months may still use stored snapshots.
+  - Backend records overview and leaderboard responses must be normalized by ascending rank before they are cached, saved, or returned to the app.
   - Backend `/home` aggregate must not hide current/future schedule, standings, or records overview failures behind empty sections or placeholder cards. Historical home queries may keep partial fallback.
   - App API cache must not be used as an error fallback for current date/month/season data. Keep `allowCacheOnFailure` default false and only let historical paths opt in to cached-first/snapshot behavior.
   - Home first paint must not render a separate today-scoreboard local cache while current scoreboard API is still loading. Show latest API data or an explicit loading/error state.
+  - Boxscore adjacent game-id fallback is historical-only. Current/live boxscore must not borrow a previous game's player rows; return the empty official-unavailable state instead.
   - Home secondary aggregate providers should not be watched until after the first scoreboard data frame.
   - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.
   - Backend `/scoreboard/home` and `/scoreboard/compact` are lightweight summary paths. Do not call per-game scoreboard detail crawlers there; reserve detail crawling for full scoreboard and game detail.

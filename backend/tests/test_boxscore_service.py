@@ -1,3 +1,6 @@
+from datetime import date as date_type
+from datetime import timedelta
+
 import pytest
 
 from kbo_fans_backend.services.boxscore import BoxscoreService
@@ -61,8 +64,78 @@ def test_boxscore_service_retries_with_adjacent_canonical_game_id(tmp_path) -> N
     payload = service.get_boxscore("20260330KTLG0")
 
     assert crawler.calls == ["20260330KTLG0", "20260329KTLG0"]
+    assert payload["gameId"] == "20260330KTLG0"
+    assert payload["sourceGameId"] == "20260329KTLG0"
     assert payload["away"]["batters"] == [{"name": "A"}]
     assert payload["home"]["pitchers"] == [{"name": "Q"}]
+
+
+def test_boxscore_service_does_not_retry_adjacent_game_for_current_game(
+    tmp_path,
+) -> None:
+    today = date_type.today()
+    today_game_id = f"{today:%Y%m%d}SKWO0"
+    yesterday_game_id = f"{today - timedelta(days=1):%Y%m%d}SKWO0"
+
+    class CurrentGameCrawler:
+        def __init__(self):
+            self.calls = []
+
+        def get_boxscore(self, game_id: str):
+            self.calls.append(game_id)
+            if game_id == today_game_id:
+                return {
+                    "gameId": game_id,
+                    "officialAvailable": False,
+                    "away": {"teamId": "SK", "batters": [], "pitchers": []},
+                    "home": {"teamId": "WO", "batters": [], "pitchers": []},
+                }
+            return {
+                "gameId": game_id,
+                "officialAvailable": True,
+                "away": {
+                    "teamId": "SK",
+                    "batters": [{"name": "old"}],
+                    "pitchers": [],
+                },
+                "home": {
+                    "teamId": "WO",
+                    "batters": [],
+                    "pitchers": [{"name": "old"}],
+                },
+            }
+
+    class CurrentScheduleService:
+        def get_month_schedule(self, month: str):
+            return {
+                "month": month,
+                "days": [
+                    {
+                        "date": (today - timedelta(days=1)).isoformat(),
+                        "games": [
+                            {
+                                "gameId": yesterday_game_id,
+                                "awayId": "SK",
+                                "homeId": "WO",
+                            }
+                        ],
+                    }
+                ],
+            }
+
+    crawler = CurrentGameCrawler()
+    service = BoxscoreService(
+        crawler=crawler,
+        schedule_service=CurrentScheduleService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_boxscore(today_game_id)
+
+    assert crawler.calls == [today_game_id]
+    assert payload["gameId"] == today_game_id
+    assert payload["officialAvailable"] is False
+    assert payload["away"]["batters"] == []
 
 
 def test_boxscore_service_uses_snapshot_first_for_past_game(tmp_path) -> None:

@@ -965,7 +965,8 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록/팀 선수/팀 스탯/선수 상세는 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.
 - backend current 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot 으로 정상 상태를 만들지 않는다. 과거 날짜/시즌/월 snapshot 은 저장본 우선 정책을 유지한다.
-- 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다.
+- backend 기록실 요약과 리더보드는 KBO 응답 row 순서에 의존하지 않고 rank 오름차순으로 정규화한 뒤 앱에 전달한다.
+- 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다. 박스스코어의 adjacent game id fallback 은 과거 경기 canonical id 보정에만 허용하고, current/live 경기는 비어 있으면 `officialAvailable=false` 상태를 노출한다.
 
 ---
 

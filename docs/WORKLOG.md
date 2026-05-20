@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-05-20: 0.0.28 current boxscore adjacent fallback guard
+
+### 완료
+- [x] `GET /api/game/20260520SKWO0/boxscore`가 요청한 오늘 경기 대신 `20260519SKWO0` 박스스코어를 반환하는 현상 재현
+- [x] 원인 확인: boxscore payload가 비어 있으면 같은 팀 조합의 인접 날짜 경기 ID를 재시도하는 fallback이 current/live 경기에도 적용됨
+- [x] 오늘/미래 경기에서는 adjacent canonical game id fallback을 타지 않도록 차단
+- [x] historical adjacent fallback은 유지하되, 응답 `gameId`는 요청한 game id로 보정하고 `sourceGameId`로 원천 대체 ID를 남기도록 정리
+- [x] current game에서는 adjacent fallback을 호출하지 않는 회귀 테스트 추가
+- [x] 7357 웹에서 `#/game/20260520SKWO0?tab=boxscore` 확인: 어제 선수 기록 대신 `공식 박스스코어 업데이트 전입니다` 표시
+- [x] 기록실 fresh load에서 `records/overview`가 rank 29/30을 rank 1 앞에 내려 앱 validator가 오류 화면을 띄우는 현상 재현
+- [x] records overview/leaderboard 서버 응답을 rank 오름차순으로 normalize하고 featured 카드도 정렬 후 1위 기준으로 생성하도록 보정
+- [x] records cache 제거 후 7357 웹 `#/records` fresh load 재확인: `박성한 0.379`, `오스틴 0.356`, `최형우 0.354`, `이우성 0.353`, `최원준 0.351` 순으로 표시
+- [x] 현재 변경은 LIVE/당일 박스스코어 표시 동작 변경이라 `0.0.28+28` 새 릴리즈로 판단
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_boxscore_service.py backend/tests/test_games.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_boxscore_service.py backend/tests/test_games.py`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/boxscore.py backend/tests/test_boxscore_service.py`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/records_overview.py backend/tests/test_records_overview.py backend/src/kbo_fans_backend/services/boxscore.py backend/tests/test_boxscore_service.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/records_overview.py backend/src/kbo_fans_backend/services/boxscore.py`
+- [x] `cd app && fvm flutter analyze`
+- [x] `git diff --check`
+- [x] `backend/.venv/bin/python - <<'PY' ... /api/game/20260520SKWO0/boxscore ... PY`
+- [x] `backend/.venv/bin/python - <<'PY' ... /api/records/overview?season=2026 ... PY`
+
+---
+
 ## 2026-05-20: 0.0.27 live scoreboard score freshness guard
 
 ### 완료

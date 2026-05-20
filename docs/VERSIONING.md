@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.27+27`
-- Current release tag: `0.0.27`
+- Flutter app version: `0.0.28+28`
+- Current release tag: `0.0.28`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -15,7 +15,7 @@
 
 - App version: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Git tag: `MAJOR.MINOR.PATCH`
-- In-app patch note heading: app version with build, for example `0.0.27+27 - Live Score Freshness Guard`
+- In-app patch note heading: app version with build, for example `0.0.28+28 - Current Boxscore & Records Guard`
 
 ## Bump Rules
 
@@ -75,6 +75,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.25`: app scoreboard, relay summary, my-team card, and local KBO brief now distinguish missing H/E/B team totals from real zero values, display unavailable totals as `-` or hide that row, and current app build `0.0.25+25`.
 - `0.0.26`: home secondary aggregate provider now waits until the first scoreboard data frame, home refresh timers are signature-stable across unrelated rebuilds, backend current data routes share `api/runtime_services.py` singletons to reuse TTL caches across sibling endpoints, home skeleton spacing avoids small-card overflow, and current app build `0.0.26+26`.
 - `0.0.27`: LIVE home/widget summary scoreboard paths now prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0, with regression coverage and current app build `0.0.27+27`.
+- `0.0.28`: current/live boxscore no longer borrows same-team adjacent game rows when the official payload is empty, historical adjacent canonical-id correction keeps requested `gameId` and records `sourceGameId`, records overview/leaderboards are rank-normalized before API response, with regression coverage and current app build `0.0.28+28`.
 
 ## GitHub Release Note Template
 

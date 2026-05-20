@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from kbo_fans_backend.crawlers.records_overview import RecordsOverviewCrawler
 from kbo_fans_backend.storage import JsonSnapshotStore
@@ -52,7 +52,7 @@ class RecordsOverviewService:
         cache_key = f"{season}:{metric}"
         cached = self._leaderboard_cache.get(cache_key)
         if cached is not None:
-            return cached
+            return self._normalize_leaderboard_payload(cached, season, metric)
 
         snapshot_record = self.snapshot_store.load("leaderboard", cache_key)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
@@ -61,12 +61,16 @@ class RecordsOverviewService:
         except Exception:
             stale = self._leaderboard_cache.get_stale(cache_key)
             if self._is_historical_season(season) and stale is not None:
-                return stale
+                return self._normalize_leaderboard_payload(stale, season, metric)
             if self._can_use_snapshot_after_failure(season, snapshot):
-                return snapshot
+                return self._normalize_leaderboard_payload(snapshot, season, metric)
             raise
 
-        payload = {"season": season, "metric": metric, "leaders": leaders}
+        payload = self._normalize_leaderboard_payload(
+            {"season": season, "metric": metric, "leaders": leaders},
+            season,
+            metric,
+        )
         self._leaderboard_cache.set(cache_key, payload)
         self.snapshot_store.save("leaderboard", cache_key, payload)
         return payload
@@ -75,15 +79,53 @@ class RecordsOverviewService:
         normalized = dict(payload)
         normalized["season"] = normalized.get("season", season)
         leaders = dict(normalized.get("leaders") or {})
+        for metric in ("avg", "hr", "ops", "opsPlus", "era"):
+            leaders[metric] = self._normalize_leaders(leaders.get(metric), limit=5)
         if not leaders.get("opsPlus"):
             ops_leaders = leaders.get("ops") or []
-            leaders["opsPlus"] = RecordsOverviewCrawler._build_ops_plus_leaders(ops_leaders)[:5]
+            leaders["opsPlus"] = self._normalize_leaders(
+                RecordsOverviewCrawler._build_ops_plus_leaders(ops_leaders),
+                limit=5,
+            )
         normalized["leaders"] = leaders
         normalized["featured"] = self._build_canonical_featured(
             leaders=leaders,
             season=season,
         )
         return normalized
+
+    def _normalize_leaderboard_payload(
+        self,
+        payload: Dict[str, Any],
+        season: int,
+        metric: str,
+    ) -> Dict[str, Any]:
+        normalized = dict(payload)
+        normalized["season"] = normalized.get("season", season)
+        normalized["metric"] = normalized.get("metric", metric)
+        normalized["leaders"] = self._normalize_leaders(normalized.get("leaders"))
+        return normalized
+
+    @staticmethod
+    def _normalize_leaders(
+        leaders: Optional[List[Dict[str, Any]]],
+        limit: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        if not leaders:
+            return []
+        ranked: List[Dict[str, Any]] = []
+        for leader in leaders:
+            if not isinstance(leader, dict):
+                continue
+            try:
+                int(leader.get("rank"))
+            except (TypeError, ValueError):
+                continue
+            ranked.append(leader)
+        ranked.sort(key=lambda leader: int(leader["rank"]))
+        if limit is not None:
+            ranked = ranked[:limit]
+        return ranked
 
     def _can_use_snapshot_after_failure(
         self,
