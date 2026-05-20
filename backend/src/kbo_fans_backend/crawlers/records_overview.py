@@ -51,54 +51,18 @@ class RecordsOverviewCrawler(BaseCrawler):
             ops_plus_leaders = self._build_ops_plus_leaders(ops_plus_future.result())[:5]
             era_leaders = era_future.result()
 
-        hitter_groups = {
+        leaders = {
             "avg": avg_leaders,
             "hr": hr_leaders,
             "ops": ops_leaders,
-        }
-        pitcher_groups = {
+            "opsPlus": ops_plus_leaders,
             "era": era_leaders,
         }
 
         return {
             "season": season,
-            "leaders": {
-                "avg": avg_leaders,
-                "hr": hr_leaders,
-                "ops": ops_leaders,
-                "opsPlus": ops_plus_leaders,
-                "era": era_leaders,
-            },
-            "featured": {
-                "todayHitter": self._build_featured_player(
-                    season=season,
-                    label="오늘의 타자",
-                    leader_groups=hitter_groups,
-                    target_type="hitter",
-                    period_label="오늘",
-                ),
-                "todayPitcher": self._build_featured_player(
-                    season=season,
-                    label="오늘의 투수",
-                    leader_groups=pitcher_groups,
-                    target_type="pitcher",
-                    period_label="오늘",
-                ),
-                "monthHitter": self._build_featured_player(
-                    season=season,
-                    label="이달의 타자",
-                    leader_groups=hitter_groups,
-                    target_type="hitter",
-                    period_label="이달",
-                ),
-                "monthPitcher": self._build_featured_player(
-                    season=season,
-                    label="이달의 투수",
-                    leader_groups=pitcher_groups,
-                    target_type="pitcher",
-                    period_label="이달",
-                ),
-            },
+            "leaders": leaders,
+            "featured": self._build_canonical_featured(leaders=leaders, season=season),
         }
 
     def _fetch_leaders(
@@ -250,6 +214,59 @@ class RecordsOverviewCrawler(BaseCrawler):
             ),
             "imageUrl": kbo_player_image_url(season, leader["playerId"]),
         }
+
+    def _build_canonical_featured(
+        self, leaders: Dict[str, Any], season: int
+    ) -> Dict[str, Dict[str, Any]]:
+        return {
+            "todayHitter": self._featured_from_leader(
+                label="시즌 타율 리더",
+                leader=self._first_leader(leaders, "avg"),
+                season=season,
+            ),
+            "todayPitcher": self._featured_from_leader(
+                label="시즌 ERA 리더",
+                leader=self._first_leader(leaders, "era"),
+                season=season,
+            ),
+            "monthHitter": self._featured_from_leader(
+                label="시즌 홈런왕",
+                leader=self._first_leader(leaders, "hr"),
+                season=season,
+            ),
+            "monthPitcher": self._featured_from_leader(
+                label="시즌 OPS 리더",
+                leader=self._first_leader(leaders, "ops"),
+                season=season,
+            ),
+        }
+
+    @staticmethod
+    def _first_leader(leaders: Dict[str, Any], metric: str) -> Optional[Dict[str, Any]]:
+        metric_leaders = leaders.get(metric) or []
+        if not metric_leaders:
+            return None
+        leader = metric_leaders[0]
+        return leader if isinstance(leader, dict) else None
+
+    def _featured_from_leader(
+        self, label: str, leader: Optional[Dict[str, Any]], season: int
+    ) -> Dict[str, Any]:
+        if leader is None:
+            return {"label": label}
+        player_id = str(leader.get("playerId") or "")
+        payload = {
+            "label": label,
+            "playerId": player_id,
+            "playerType": leader.get("playerType"),
+            "name": leader.get("name"),
+            "teamId": leader.get("teamId"),
+            "headline": self._headline_for_leader(leader),
+            "summary": f"{season} 시즌 KBO 공식 기록 기준",
+        }
+        if player_id:
+            payload["imageUrl"] = kbo_player_image_url(season, player_id)
+        return payload
 
     def _feature_reason(
         self,

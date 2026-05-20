@@ -1,5 +1,5 @@
 {
-  "savedAt": "2026-05-20T05:31:34.011793+00:00",
+  "savedAt": "2026-05-20T06:14:13.623383+00:00",
   "payload": {
     "season": 2011,
     "leaders": {
@@ -266,44 +266,44 @@
     },
     "featured": {
       "todayHitter": {
-        "label": "오늘의 타자",
-        "playerId": "72443",
+        "label": "시즌 타율 리더",
+        "playerId": "71564",
         "playerType": "hitter",
-        "name": "최형우",
-        "teamId": "SS",
-        "headline": "OPS 1.044",
-        "summary": "AVG 2위 + HR 1위",
-        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
+        "name": "이대호",
+        "teamId": "LT",
+        "headline": "타율 0.357",
+        "summary": "2011 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/71564.jpg"
       },
       "todayPitcher": {
-        "label": "오늘의 투수",
+        "label": "시즌 ERA 리더",
         "playerId": "75620",
         "playerType": "pitcher",
         "name": "윤석민",
         "teamId": "HT",
         "headline": "ERA 2.45",
-        "summary": "ERA 1위",
+        "summary": "2011 시즌 KBO 공식 기록 기준",
         "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75620.jpg"
       },
       "monthHitter": {
-        "label": "이달의 타자",
+        "label": "시즌 홈런왕",
+        "playerId": "72443",
+        "playerType": "hitter",
+        "name": "최형우",
+        "teamId": "SS",
+        "headline": "홈런 30",
+        "summary": "2011 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
+      },
+      "monthPitcher": {
+        "label": "시즌 OPS 리더",
         "playerId": "72443",
         "playerType": "hitter",
         "name": "최형우",
         "teamId": "SS",
         "headline": "OPS 1.044",
-        "summary": "AVG 2위 + HR 1위",
+        "summary": "2011 시즌 KBO 공식 기록 기준",
         "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
-      },
-      "monthPitcher": {
-        "label": "이달의 투수",
-        "playerId": "75620",
-        "playerType": "pitcher",
-        "name": "윤석민",
-        "teamId": "HT",
-        "headline": "ERA 2.45",
-        "summary": "ERA 1위",
-        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75620.jpg"
       }
     }
   }

@@ -16,7 +16,7 @@ void main() {
     'current season legacy device snapshot without savedAt is ignored',
     () async {
       SharedPreferences.setMockInitialValues({
-        'player_snapshot:v2:teamStats:KT:2026': jsonEncode({
+        _snapshotKey('teamStats:KT:2026'): jsonEncode({
           'teamId': 'KT',
           'season': 2026,
           'hitting': {'AVG': '0.382'},
@@ -42,7 +42,7 @@ void main() {
     'fresh current season device snapshot is reused after API failure',
     () async {
       SharedPreferences.setMockInitialValues({
-        'player_snapshot:v2:teamStats:KT:2026': jsonEncode({
+        _snapshotKey('teamStats:KT:2026'): jsonEncode({
           'savedAt': DateTime.utc(2026, 5, 20, 11, 50).toIso8601String(),
           'payload': {
             'teamId': 'KT',
@@ -70,7 +70,7 @@ void main() {
 
   test('stale current season device snapshot is ignored', () async {
     SharedPreferences.setMockInitialValues({
-      'player_snapshot:v2:teamStats:KT:2026': jsonEncode({
+      _snapshotKey('teamStats:KT:2026'): jsonEncode({
         'savedAt': DateTime.utc(2026, 5, 20, 5).toIso8601String(),
         'payload': {
           'teamId': 'KT',
@@ -96,7 +96,7 @@ void main() {
 
   test('historical legacy device snapshot remains usable', () async {
     SharedPreferences.setMockInitialValues({
-      'player_snapshot:v2:teamStats:KT:2025': jsonEncode({
+      _snapshotKey('teamStats:KT:2025'): jsonEncode({
         'teamId': 'KT',
         'season': 2025,
         'hitting': {'AVG': '0.277'},
@@ -119,7 +119,7 @@ void main() {
 
   test('incomplete records overview device snapshot is ignored', () async {
     SharedPreferences.setMockInitialValues({
-      'player_snapshot:v2:recordsOverview:2026': jsonEncode({
+      _snapshotKey('recordsOverview:2026'): jsonEncode({
         'savedAt': DateTime.utc(2026, 5, 20, 11, 50).toIso8601String(),
         'payload': {
           'season': 2026,
@@ -155,7 +155,7 @@ void main() {
     'historical incomplete records overview legacy snapshot is ignored',
     () async {
       SharedPreferences.setMockInitialValues({
-        'player_snapshot:v2:recordsOverview:2011': jsonEncode({
+        _snapshotKey('recordsOverview:2011'): jsonEncode({
           'season': 2011,
           'avgLeaders': [_leaderJson(metricKey: 'AVG')],
           'hrLeaders': [_leaderJson(metricKey: 'HR')],
@@ -184,6 +184,91 @@ void main() {
       expect(overview.eraLeaders, isEmpty);
     },
   );
+
+  test('records overview snapshot with missing rank one is ignored', () async {
+    SharedPreferences.setMockInitialValues({
+      _snapshotKey('recordsOverview:2013'): jsonEncode({
+        'season': 2013,
+        'avgLeaders': [_leaderJson(rank: 2, metricKey: 'AVG')],
+        'hrLeaders': [_leaderJson(rank: 2, metricKey: 'HR')],
+        'opsLeaders': [_leaderJson(rank: 2, metricKey: 'OPS', value: '1.000')],
+        'opsPlusLeaders': const [],
+        'eraLeaders': [_leaderJson(rank: 2, metricKey: 'ERA', value: '2.88')],
+        'todayHitter': {'label': '오늘의 타자'},
+        'todayPitcher': {'label': '오늘의 투수'},
+        'monthHitter': {'label': '이달의 타자'},
+        'monthPitcher': {'label': '이달의 투수'},
+      }),
+    });
+    final repository = DeviceSnapshotPlayerRepository(
+      primary: _ThrowingPlayerRepository(),
+      fallback: _FallbackPlayerRepository(
+        teamStats: _emptyStats(teamId: 'KT', season: 2013),
+      ),
+      now: () => DateTime.utc(2026, 5, 20, 12),
+    );
+
+    final overview = await repository.getRecordsOverview(season: 2013);
+
+    expect(overview.avgLeaders, isEmpty);
+    expect(overview.hrLeaders, isEmpty);
+    expect(overview.opsLeaders, isEmpty);
+    expect(overview.eraLeaders, isEmpty);
+  });
+
+  test('previous records overview snapshot version is ignored', () async {
+    SharedPreferences.setMockInitialValues({
+      'player_snapshot:v2:recordsOverview:2013': jsonEncode({
+        'season': 2013,
+        'avgLeaders': [_leaderJson(rank: 2, metricKey: 'AVG')],
+        'hrLeaders': [_leaderJson(rank: 2, metricKey: 'HR')],
+        'opsLeaders': [_leaderJson(rank: 2, metricKey: 'OPS', value: '1.000')],
+        'opsPlusLeaders': const [],
+        'eraLeaders': [_leaderJson(rank: 2, metricKey: 'ERA', value: '2.88')],
+        'todayHitter': {'label': '오늘의 타자'},
+        'todayPitcher': {'label': '오늘의 투수'},
+        'monthHitter': {'label': '이달의 타자'},
+        'monthPitcher': {'label': '이달의 투수'},
+      }),
+    });
+    final repository = DeviceSnapshotPlayerRepository(
+      primary: _ThrowingPlayerRepository(),
+      fallback: _FallbackPlayerRepository(
+        teamStats: _emptyStats(teamId: 'KT', season: 2013),
+      ),
+      now: () => DateTime.utc(2026, 5, 20, 12),
+    );
+
+    final overview = await repository.getRecordsOverview(season: 2013);
+
+    expect(overview.avgLeaders, isEmpty);
+    expect(overview.hrLeaders, isEmpty);
+    expect(overview.opsLeaders, isEmpty);
+    expect(overview.eraLeaders, isEmpty);
+  });
+
+  test('leaderboard snapshot with missing rank one is ignored', () async {
+    SharedPreferences.setMockInitialValues({
+      _snapshotKey('leaderboard:avg:2013'): jsonEncode({
+        'season': 2013,
+        'leaders': [_leaderJson(rank: 2, metricKey: 'AVG')],
+      }),
+    });
+    final repository = DeviceSnapshotPlayerRepository(
+      primary: _ThrowingPlayerRepository(),
+      fallback: _FallbackPlayerRepository(
+        teamStats: _emptyStats(teamId: 'KT', season: 2013),
+      ),
+      now: () => DateTime.utc(2026, 5, 20, 12),
+    );
+
+    final leaders = await repository.getLeaderboard(
+      season: 2013,
+      metric: LeaderboardMetric.avg,
+    );
+
+    expect(leaders, isEmpty);
+  });
 }
 
 TeamStats _emptyStats({required String teamId, required int season}) =>
@@ -195,10 +280,11 @@ TeamStats _emptyStats({required String teamId, required int season}) =>
     );
 
 Map<String, Object> _leaderJson({
+  int rank = 1,
   required String metricKey,
   String value = '1',
 }) => {
-  'rank': 1,
+  'rank': rank,
   'playerId': 'player-1',
   'playerType': 'hitter',
   'name': '테스트',
@@ -206,6 +292,8 @@ Map<String, Object> _leaderJson({
   'value': value,
   'metricKey': metricKey,
 };
+
+String _snapshotKey(String key) => 'player_snapshot:v3:$key';
 
 class _ThrowingPlayerRepository implements PlayerRepository {
   @override

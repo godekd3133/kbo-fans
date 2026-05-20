@@ -10,7 +10,7 @@ import 'player_repository.dart';
 
 class DeviceSnapshotPlayerRepository implements PlayerRepository {
   static const _prefix = 'player_snapshot:';
-  static const _snapshotVersion = 'v2';
+  static const _snapshotVersion = 'v3';
   static const _currentSeasonSnapshotMaxAge = Duration(hours: 6);
 
   final PlayerRepository primary;
@@ -147,6 +147,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
       cacheKey,
       () => primary.getLeaderboard(season: season, metric: metric),
       _encodeLeaders,
+      isValid: _isValidLeaders,
     );
     if (fresh != null) return fresh;
 
@@ -155,7 +156,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
       _decodeLeadersPayload,
       season: season,
     );
-    if (cached != null && cached.isNotEmpty) return cached;
+    if (cached != null && _isValidLeaders(cached)) return cached;
 
     return fallback.getLeaderboard(season: season, metric: metric);
   }
@@ -260,10 +261,13 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
   }
 
   bool _isValidRecordsOverview(RecordsOverview value) =>
-      value.avgLeaders.isNotEmpty &&
-      value.hrLeaders.isNotEmpty &&
-      value.opsLeaders.isNotEmpty &&
-      value.eraLeaders.isNotEmpty;
+      _isValidLeaders(value.avgLeaders) &&
+      _isValidLeaders(value.hrLeaders) &&
+      _isValidLeaders(value.opsLeaders) &&
+      _isValidLeaders(value.eraLeaders);
+
+  bool _isValidLeaders(List<RecordLeader> leaders) =>
+      leaders.isNotEmpty && leaders.first.rank == 1;
 
   Object _encodePlayers(List<PlayerProfile> players) => {
     'players': players.map(_encodePlayer).toList(),
