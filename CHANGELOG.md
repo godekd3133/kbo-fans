@@ -10,6 +10,18 @@
 
 ## [Unreleased]
 
+## [0.0.24] - 2026-05-20
+
+### Changed
+
+- backend `/scoreboard/home`과 `/scoreboard/compact`가 홈/위젯 표면에 필요한 schedule + main list 기반 요약만 만들도록 변경해 경기별 상세 스코어보드 크롤링을 첫 로딩 경로에서 제거
+- full `/scoreboard`와 `/game/{gameId}` 경로는 기존처럼 상세 스코어보드 크롤러와 View1 보강을 유지
+- current `/scoreboard/home`도 원천 실패 시 fresh snapshot으로 정상 응답을 만들지 않도록 회귀 테스트 추가
+
+### Fixed
+
+- 홈 첫 로딩과 compact/widget 갱신이 경기 수만큼 상세 스코어보드 원천 호출을 늘릴 수 있던 fan-out 경로 차단
+
 ## [0.0.23] - 2026-05-20
 
 ### Changed

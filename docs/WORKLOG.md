@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-05-20: 0.0.24 home scoreboard lightweight API split
+
+### 완료
+- [x] 현재 변경은 홈/위젯 스코어보드 API fan-out 감소와 동작 범위 분리라 `0.0.24+24` 새 릴리즈로 판단
+- [x] backend `/scoreboard/home`이 전체 `/scoreboard`를 호출해 경기별 상세 스코어보드 크롤러를 타던 구조를 분리
+- [x] 홈 스코어보드는 schedule + main list 기반 요약 payload만 만들고, full scoreboard/detail 경로만 경기 상세 크롤러를 유지
+- [x] `/scoreboard/compact`도 선택 경기 하나의 요약 payload만 만들도록 변경하고 partial game snapshot 저장은 하지 않게 정리
+- [x] 과거 날짜 홈/compact 조회는 기존 scoreboard snapshot 우선 정책 유지
+- [x] current 홈 스코어보드 원천 실패가 fresh snapshot으로 정상 응답을 만들지 않는 회귀 테스트 추가
+- [x] 홈/compact 경로가 per-game detail crawler를 호출하지 않는 회귀 테스트 추가
+- [x] runtime data 정책 문서, README, APP_SPEC, CHANGELOG, 앱 내 patch notes, `docs/VERSIONING.md`를 lightweight scoreboard 기준으로 동기화
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_scoreboard_service_live_fallback.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/scoreboard.py backend/tests/test_scoreboard_service_cache.py backend/tests/test_scoreboard_service_live_fallback.py`
+- [x] `cd app && fvm flutter test test/data/bootstrap_repository_test.dart -r expanded`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/scoreboard.py`
+- [x] `git diff --check`
+- [x] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/codex-run.sh release-api-health` 실패 확인: `DNS lookup failed for api.kbofans.com`
+
+---
+
 ## 2026-05-20: scoreboard snapshot fallback dead-code cleanup
 
 ### 완료

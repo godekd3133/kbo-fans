@@ -1,5 +1,12 @@
 # 패치노트
 
+## 0.0.24+24 - Lightweight Scoreboard Surfaces
+
+- 홈 스코어보드와 위젯/Live Activity용 compact 스코어보드는 schedule + main list 기반 요약만 사용합니다.
+- 경기별 상세 스코어보드 크롤링은 full 스코어보드와 경기 상세 진입 때만 수행해 첫 로딩 fan-out을 줄였습니다.
+- full 스코어보드는 기존처럼 상세 스코어보드와 View1 보강을 유지해 이닝별 점수, H/E/B, 현재 이닝 품질을 보존합니다.
+- 현재 날짜 홈 스코어보드는 원천 실패 때 fresh snapshot으로 정상 응답처럼 대체하지 않습니다.
+
 ## 0.0.23+23 - Current Team Records Failure Guard
 
 - 현재 시즌 팀 선수, 팀 스탯, 선수 상세는 원천 조회 실패 때 backend/app/device snapshot으로 정상 데이터처럼 대체하지 않습니다.

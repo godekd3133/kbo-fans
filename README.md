@@ -78,7 +78,7 @@ kbo_fans/
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.0.x`
-- Current release: `0.0.23`
+- Current release: `0.0.24`
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
@@ -243,6 +243,7 @@ uvicorn kbo_fans_backend.main:app --reload
 
 - 앱 API cache는 성공 응답 저장과 히스토리 cached-first 조회용입니다. `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜/월/시즌 경로는 API 실패 시 이 cache를 정상 데이터처럼 읽지 않습니다.
 - 홈 스코어보드는 오늘 데이터 로딩 중 별도 로컬 cache를 먼저 렌더링하지 않습니다. 최신 API 응답 또는 명시적 오류 상태를 기준으로 화면을 갱신합니다.
+- backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 표면용 schedule + main list 요약 경로입니다. 경기별 상세 스코어보드 크롤링은 full scoreboard 또는 game detail 진입 때만 수행합니다.
 - 기록실 팀 데이터와 팀 스탯도 현재 시즌에서는 fresh-first/fail-visible 기준을 따르고, 과거 시즌 조회에서만 cached-first 성격을 유지합니다.
 - 순위와 기록실 요약/리더보드 번들 스냅샷은 exact-season-only 정책을 따릅니다. 일반 API-backed current 경로에서는 현재 시즌 API 실패를 번들 snapshot으로 정상 처리하지 않습니다.
 - 기록실 요약/리더보드 API cache와 기기 snapshot은 핵심 리더보드가 1위부터 시작하는 payload만 재사용하거나 저장합니다.
