@@ -117,9 +117,10 @@ class ApiPlayerRepository implements PlayerRepository {
       data = await _client.getCached(
         '/records/overview',
         queryParameters: {'season': season},
-        cacheKey: 'recordsOverview:v3:$season',
+        cacheKey: 'recordsOverview:v4:$season',
         preferCache: isHistoricalSeason,
         maxAge: _stableCacheAge,
+        isValid: _isValidRecordsOverviewPayload,
       );
     } catch (_) {
       if (!isHistoricalSeason) {
@@ -174,9 +175,10 @@ class ApiPlayerRepository implements PlayerRepository {
       data = await _client.getCached(
         '/records/leaderboard',
         queryParameters: {'season': season, 'metric': metric.key},
-        cacheKey: 'leaderboard:v2:${metric.key}:$season',
+        cacheKey: 'leaderboard:v3:${metric.key}:$season',
         preferCache: isHistoricalSeason,
         maxAge: _stableCacheAge,
+        isValid: _isValidLeaderboardPayload,
       );
     } catch (_) {
       if (!isHistoricalSeason) {
@@ -216,6 +218,29 @@ class ApiPlayerRepository implements PlayerRepository {
     }
     final direct = leaders[metric.key] as List<dynamic>?;
     return direct != null && direct.isNotEmpty ? direct : null;
+  }
+
+  bool _isValidRecordsOverviewPayload(Map<String, dynamic> data) {
+    final leaders = data['leaders'] as Map<String, dynamic>? ?? const {};
+    return _isValidLeaderPayloadList(leaders['avg']) &&
+        _isValidLeaderPayloadList(leaders['hr']) &&
+        _isValidLeaderPayloadList(leaders['ops']) &&
+        _isValidLeaderPayloadList(leaders['era']);
+  }
+
+  bool _isValidLeaderboardPayload(Map<String, dynamic> data) =>
+      _isValidLeaderPayloadList(data['leaders']);
+
+  bool _isValidLeaderPayloadList(Object? value) {
+    final leaders = value as List<dynamic>? ?? const [];
+    if (leaders.isEmpty) {
+      return false;
+    }
+    final first = leaders.first;
+    if (first is! Map<String, dynamic>) {
+      return false;
+    }
+    return (first['rank'] as num?)?.toInt() == 1;
   }
 
   PlayerProfile _parsePlayer(Map<String, dynamic> json) {

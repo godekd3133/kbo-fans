@@ -88,10 +88,14 @@ class ApiClient {
     required String cacheKey,
     bool preferCache = false,
     Duration? maxAge,
+    bool Function(Map<String, dynamic> data)? isValid,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = '$_cachePrefix$cacheKey';
-    final cached = _readCachedPayload(prefs, storageKey);
+    var cached = _readCachedPayload(prefs, storageKey);
+    if (cached != null && isValid != null && !isValid(cached.data)) {
+      cached = null;
+    }
     final isFresh = cached != null && _isCacheFresh(cached, maxAge);
 
     if (preferCache && cached != null && isFresh) {
@@ -106,6 +110,7 @@ class ApiClient {
             queryParameters: queryParameters,
             prefs: prefs,
             storageKey: storageKey,
+            isValid: isValid,
           ),
         );
       }
@@ -114,6 +119,9 @@ class ApiClient {
 
     try {
       final fresh = await get(path, queryParameters: queryParameters);
+      if (isValid != null && !isValid(fresh)) {
+        throw StateError('Invalid API cache payload for $cacheKey');
+      }
       await _writeCachedPayload(prefs, storageKey, fresh);
       return fresh;
     } catch (_) {
@@ -247,9 +255,13 @@ class ApiClient {
     required SharedPreferences prefs,
     required String storageKey,
     Map<String, dynamic>? queryParameters,
+    bool Function(Map<String, dynamic> data)? isValid,
   }) async {
     try {
       final fresh = await get(path, queryParameters: queryParameters);
+      if (isValid != null && !isValid(fresh)) {
+        return;
+      }
       await _writeCachedPayload(prefs, storageKey, fresh);
     } catch (_) {
       // Cached-first paths should remain silent on refresh failure.
