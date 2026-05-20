@@ -1,6 +1,10 @@
+import json
 import threading
 import time
+from datetime import date as date_type
 from pathlib import Path
+
+import pytest
 
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
@@ -138,6 +142,11 @@ class _SlowScheduleCrawler(_StubScheduleCrawler):
 
     def release(self):
         self._gate.set()
+
+
+class _FailingScheduleCrawler:
+    def get_games_by_date(self, date: str):
+        raise RuntimeError("schedule unavailable")
 
 
 def test_get_scoreboard_uses_ttl_cache_for_same_date(tmp_path: Path) -> None:
@@ -293,6 +302,99 @@ def test_get_compact_scoreboard_enriches_only_selected_game(tmp_path: Path) -> N
     assert scoreboard.game_ids == ["20260331OBSS0"]
 
 
+def test_current_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
+    tmp_path: Path,
+) -> None:
+    today = date_type.today().isoformat()
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    _write_snapshot_record(
+        tmp_path / "snapshots",
+        "scoreboard",
+        today,
+        {
+            "date": today,
+            "games": [
+                {
+                    "gameId": f"{today.replace('-', '')}KTSS0",
+                    "status": "LIVE",
+                    "away": {"score": 0},
+                    "home": {"score": 0},
+                }
+            ],
+        },
+    )
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_scoreboard(today)
+
+
+def test_current_scoreboard_uses_fresh_terminal_snapshot_on_failure(
+    tmp_path: Path,
+) -> None:
+    today = date_type.today().isoformat()
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    expected = {
+        "date": today,
+        "games": [
+            {
+                "gameId": f"{today.replace('-', '')}KTSS0",
+                "status": "FINAL",
+                "away": {"score": 4},
+                "home": {"score": 2},
+            }
+        ],
+    }
+    snapshot_store.save("scoreboard", today, expected)
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    assert service.get_scoreboard(today) == expected
+
+
+def test_current_compact_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
+    tmp_path: Path,
+) -> None:
+    today = date_type.today().isoformat()
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    _write_snapshot_record(
+        tmp_path / "snapshots",
+        "scoreboard",
+        today,
+        {
+            "date": today,
+            "games": [
+                {
+                    "gameId": f"{today.replace('-', '')}KTSS0",
+                    "status": "LIVE",
+                    "awayId": "KT",
+                    "homeId": "SS",
+                    "away": {"score": 0},
+                    "home": {"score": 0},
+                }
+            ],
+        },
+    )
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_compact_scoreboard(today, my_team="KT")
+
+
 def test_get_scoreboard_coalesces_concurrent_same_date_requests(
     tmp_path: Path,
 ) -> None:
@@ -308,9 +410,7 @@ def test_get_scoreboard_coalesces_concurrent_same_date_requests(
     results = []
 
     threads = [
-        threading.Thread(
-            target=lambda: results.append(service.get_scoreboard("2026-03-31"))
-        )
+        threading.Thread(target=lambda: results.append(service.get_scoreboard("2026-03-31")))
         for _ in range(3)
     ]
     for thread in threads:
@@ -325,3 +425,23 @@ def test_get_scoreboard_coalesces_concurrent_same_date_requests(
     assert results[0] == results[1] == results[2]
     assert schedule.calls == 1
     assert main.calls == 1
+
+
+def _write_snapshot_record(
+    base_dir: Path,
+    namespace: str,
+    key: str,
+    payload: dict,
+) -> None:
+    path = base_dir / namespace / f"{key}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "savedAt": "2000-01-01T00:00:00+00:00",
+                "payload": payload,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )

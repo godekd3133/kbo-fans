@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
@@ -22,6 +22,10 @@ class RecordsOverviewCrawler(BaseCrawler):
         "era": (_PITCHER_ERA_URL, "ERA", "pitcher"),
     }
     _SEASON_FIELD = "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason"
+    _PLAYER_LINK_PATTERN = re.compile(
+        r'href="/Record/(?:Player/(?:Hitter|Pitcher)Detail/Basic|Retire/(?:Hitter|Pitcher))\.aspx\?playerId=(\d+)"',
+        re.I,
+    )
 
     def get_overview(self, season: int) -> Dict[str, Any]:
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
@@ -121,21 +125,19 @@ class RecordsOverviewCrawler(BaseCrawler):
             cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
             if len(cells) <= value_index:
                 continue
-            player_link = re.search(
-                r'href="/Record/Player/(?:Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)"',
-                cells[1],
-            )
+            player_link = self._extract_player_link(cells[1])
             if not player_link:
                 continue
             leaders.append(
                 {
                     "rank": int(strip_tags(cells[0])),
-                    "playerId": player_link.group(1),
+                    "playerId": player_link[0],
                     "playerType": player_type,
                     "metricKey": metric_key,
                     "name": strip_tags(cells[1]),
                     "teamId": self._team_name_to_id(strip_tags(cells[2])),
                     "value": strip_tags(cells[value_index]),
+                    "isRetired": player_link[1],
                 }
             )
             if len(leaders) >= 5:
@@ -177,21 +179,19 @@ class RecordsOverviewCrawler(BaseCrawler):
             cells = re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
             if len(cells) <= value_index:
                 continue
-            player_link = re.search(
-                r'href="/Record/Player/(?:Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)"',
-                cells[1],
-            )
+            player_link = self._extract_player_link(cells[1])
             if not player_link:
                 continue
             leaders.append(
                 {
                     "rank": int(strip_tags(cells[0])),
-                    "playerId": player_link.group(1),
+                    "playerId": player_link[0],
                     "playerType": player_type,
                     "metricKey": metric_key,
                     "name": strip_tags(cells[1]),
                     "teamId": self._team_name_to_id(strip_tags(cells[2])),
                     "value": strip_tags(cells[value_index]),
+                    "isRetired": player_link[1],
                 }
             )
         return leaders
@@ -204,6 +204,13 @@ class RecordsOverviewCrawler(BaseCrawler):
             if metric_key.upper() in labels:
                 return labels.index(metric_key.upper())
         return 3
+
+    @classmethod
+    def _extract_player_link(cls, html: str) -> Optional[Tuple[str, bool]]:
+        match = cls._PLAYER_LINK_PATTERN.search(html)
+        if not match:
+            return None
+        return match.group(1), "/Record/Retire/" in match.group(0)
 
     def _build_featured_player(
         self,

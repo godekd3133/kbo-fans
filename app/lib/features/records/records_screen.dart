@@ -766,9 +766,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppPressable(
-        onTap: () => context.push(
-          '/records/player/${player.id}?season=$_selectedSeason',
-        ),
+        onTap: player.isRetired
+            ? null
+            : () => context.push(
+                '/records/player/${player.id}?season=$_selectedSeason',
+              ),
         pressedScale: 0.985,
         child: Container(
           padding: const EdgeInsets.all(14),
@@ -854,7 +856,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: AppColors.textDisabled),
+              if (!player.isRetired)
+                const Icon(Icons.chevron_right, color: AppColors.textDisabled),
             ],
           ),
         ),
@@ -863,6 +866,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _statusBadge(PlayerProfile player) {
+    if (player.isRetired) {
+      return _pill('은퇴', AppColors.textDisabled);
+    }
     switch (player.status) {
       case PlayerAvailabilityStatus.available:
         return _pill('정상', AppColors.positive);

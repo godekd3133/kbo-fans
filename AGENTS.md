@@ -68,7 +68,7 @@
   - Records must stay API-backed or generated snapshot-backed. Do not silently fall back to incomplete mock data there.
   - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings require a fresh `generatedAt`, and unverified historical seasons must stay empty instead of repeating another season.
   - Current-season team player/team stat fallback must require a fresh `savedAt` timestamp. Reject timestamp-less legacy device caches and stale bundled assets instead of showing old season-start records.
-  - Backend current-season schedule, standings, records overview, and leaderboard snapshot fallback must require a fresh `savedAt`; historical seasons/months may still use stored snapshots.
+  - Backend current-date scoreboard and current-season/month schedule, standings, records overview, and leaderboard snapshot fallback must require a fresh `savedAt`; historical dates/seasons/months may still use stored snapshots.
 - When touching direct KBO parsers in `app/lib/data/repositories/kbo_direct_repository.dart`, keep field parity with backend contracts. Schedule status, scores, and standings parsing have already drifted once and broke UI state.
 - Dev-only diagnostics should stay in Dev Console when possible. Avoid promoting debugging affordances to user-facing UI unless explicitly requested.
 - Snapshot fallback is only approved for relatively stable data:

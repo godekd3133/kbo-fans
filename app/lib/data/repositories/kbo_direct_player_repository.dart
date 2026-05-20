@@ -43,6 +43,10 @@ class KboDirectPlayerRepository implements PlayerRepository {
         LeaderboardMetric.opsPlus: (_hitterOpsUrl, 'OPS', 'hitter'),
         LeaderboardMetric.era: (_pitcherEraUrl, 'ERA', 'pitcher'),
       };
+  static final _recordPlayerLinkPattern = RegExp(
+    r'href="/Record/(?:Player/(?:Hitter|Pitcher)Detail/Basic|Retire/(?:Hitter|Pitcher))\.aspx\?playerId=(\d+)"',
+    caseSensitive: false,
+  );
   static const _teamHitterUrl = '$_kboBase/Record/Team/Hitter/Basic1.aspx';
   static const _teamPitcherUrl = '$_kboBase/Record/Team/Pitcher/Basic1.aspx';
 
@@ -551,9 +555,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
         continue;
       }
 
-      final playerLink = RegExp(
-        r'href="/Record/Player/(?:Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)"',
-      ).firstMatch(rawCells[1]);
+      final playerLink = _extractRecordPlayerLink(rawCells[1]);
       if (playerLink == null) {
         continue;
       }
@@ -561,10 +563,11 @@ class KboDirectPlayerRepository implements PlayerRepository {
       final cells = rawCells.map(_stripTags).toList();
       rows.add(
         _TeamPlayerRecordRow(
-          id: playerLink.group(1) ?? '',
+          id: playerLink.playerId,
           name: cells[1],
           teamId: _teamNameToId(cells[2]),
           playerType: playerType,
+          isRetired: playerLink.isRetired,
           stats: {
             for (var i = 0; i < headers.length; i++)
               headers[i].replaceAll('팀명', 'TEAM').trim(): cells[i],
@@ -871,20 +874,19 @@ class KboDirectPlayerRepository implements PlayerRepository {
       if (cells.length <= valueIndex) {
         continue;
       }
-      final playerLink = RegExp(
-        r'href="/Record/Player/(?:Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)"',
-      ).firstMatch(cells[1]);
+      final playerLink = _extractRecordPlayerLink(cells[1]);
       if (playerLink == null) {
         continue;
       }
       leaders.add(
         RecordLeader(
           rank: int.tryParse(_stripTags(cells[0])) ?? 0,
-          playerId: playerLink.group(1) ?? '',
+          playerId: playerLink.playerId,
           playerType: playerType,
           name: _stripTags(cells[1]),
           teamId: _teamNameToId(_stripTags(cells[2])),
           value: _stripTags(cells[valueIndex]),
+          isRetired: playerLink.isRetired,
         ),
       );
       if (leaders.length >= 5) {
@@ -917,20 +919,19 @@ class KboDirectPlayerRepository implements PlayerRepository {
       if (cells.length <= valueIndex) {
         continue;
       }
-      final playerLink = RegExp(
-        r'href="/Record/Player/(?:Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)"',
-      ).firstMatch(cells[1]);
+      final playerLink = _extractRecordPlayerLink(cells[1]);
       if (playerLink == null) {
         continue;
       }
       leaders.add(
         RecordLeader(
           rank: int.tryParse(_stripTags(cells[0])) ?? 0,
-          playerId: playerLink.group(1) ?? '',
+          playerId: playerLink.playerId,
           playerType: playerType,
           name: _stripTags(cells[1]),
           teamId: _teamNameToId(_stripTags(cells[2])),
           value: _stripTags(cells[valueIndex]),
+          isRetired: playerLink.isRetired,
         ),
       );
     }
@@ -1097,6 +1098,18 @@ class KboDirectPlayerRepository implements PlayerRepository {
       ops: sortMetrics['ops'],
       era: sortMetrics['era'],
       whip: sortMetrics['whip'],
+      isRetired: row.isRetired,
+    );
+  }
+
+  _RecordPlayerLink? _extractRecordPlayerLink(String html) {
+    final match = _recordPlayerLinkPattern.firstMatch(html);
+    if (match == null) {
+      return null;
+    }
+    return _RecordPlayerLink(
+      playerId: match.group(1) ?? '',
+      isRetired: match.group(0)?.contains('/Record/Retire/') ?? false,
     );
   }
 
@@ -1248,6 +1261,7 @@ class _TeamPlayerRecordRow {
   final String name;
   final String teamId;
   final PlayerType playerType;
+  final bool isRetired;
   final Map<String, String> stats;
 
   const _TeamPlayerRecordRow({
@@ -1255,6 +1269,14 @@ class _TeamPlayerRecordRow {
     required this.name,
     required this.teamId,
     required this.playerType,
+    required this.isRetired,
     required this.stats,
   });
+}
+
+class _RecordPlayerLink {
+  final String playerId;
+  final bool isRetired;
+
+  const _RecordPlayerLink({required this.playerId, required this.isRetired});
 }

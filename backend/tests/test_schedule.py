@@ -1,4 +1,7 @@
+import json
 from datetime import date as date_type
+
+import pytest
 
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.services.schedule import ScheduleService
@@ -54,6 +57,16 @@ class _ScheduledZeroMainCrawler:
         ]
 
 
+class _FailingScheduleCrawler:
+    def get_month_schedule(self, month: str):
+        raise RuntimeError("schedule unavailable")
+
+
+class _FailingMainCrawler:
+    def get_kbo_game_list(self, date: str):
+        raise RuntimeError("main unavailable")
+
+
 def test_derive_status_marks_start_pit_as_scheduled() -> None:
     html = (
         "<a href='/Schedule/GameCenter/Main.aspx?"
@@ -68,8 +81,8 @@ def test_derive_status_marks_start_pit_as_scheduled() -> None:
 
 def test_parse_play_score_extracts_final_score() -> None:
     play_html = (
-        "<span>KT</span><em><span class=\"win\">11</span>"
-        "<span>vs</span><span class=\"lose\">7</span></em><span>LG</span>"
+        '<span>KT</span><em><span class="win">11</span>'
+        '<span>vs</span><span class="lose">7</span></em><span>LG</span>'
     )
 
     away_score, home_score = ScheduleCrawler._parse_play_score(play_html)
@@ -137,3 +150,83 @@ def test_schedule_saves_non_terminal_month_snapshot(tmp_path) -> None:
     payload = service.get_month_schedule(today[:7])
 
     assert store.load_payload("schedule", today[:7]) == payload
+
+
+def test_current_month_schedule_rejects_old_snapshot_on_failure(tmp_path) -> None:
+    today = date_type.today().isoformat()
+    month = today[:7]
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    _write_snapshot_record(
+        tmp_path,
+        "schedule",
+        month,
+        {
+            "month": month,
+            "days": [
+                {
+                    "date": today,
+                    "games": [
+                        {
+                            "gameId": f"{today.replace('-', '')}LGOB0",
+                            "status": "SCHEDULED",
+                            "awayScore": 0,
+                            "homeScore": 0,
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    service = ScheduleService(
+        schedule_crawler=_FailingScheduleCrawler(),
+        main_crawler=_FailingMainCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_month_schedule(month)
+
+
+def test_current_month_schedule_uses_fresh_snapshot_on_failure(tmp_path) -> None:
+    today = date_type.today().isoformat()
+    month = today[:7]
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    expected = {
+        "month": month,
+        "days": [
+            {
+                "date": today,
+                "games": [
+                    {
+                        "gameId": f"{today.replace('-', '')}LGOB0",
+                        "status": "SCHEDULED",
+                        "awayScore": None,
+                        "homeScore": None,
+                    }
+                ],
+            }
+        ],
+    }
+    store.save("schedule", month, expected)
+    service = ScheduleService(
+        schedule_crawler=_FailingScheduleCrawler(),
+        main_crawler=_FailingMainCrawler(),
+        snapshot_store=store,
+    )
+
+    assert service.get_month_schedule(month) == expected
+
+
+def _write_snapshot_record(tmp_path, namespace: str, key: str, payload: dict) -> None:
+    path = tmp_path / namespace / f"{key}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "savedAt": "2000-01-01T00:00:00+00:00",
+                "payload": payload,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )

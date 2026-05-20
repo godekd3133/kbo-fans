@@ -64,6 +64,7 @@ class RecordLeader {
   final String name;
   final String teamId;
   final String value;
+  final bool isRetired;
 
   const RecordLeader({
     required this.rank,
@@ -72,6 +73,7 @@ class RecordLeader {
     required this.name,
     required this.teamId,
     required this.value,
+    this.isRetired = false,
   });
 }
 
@@ -147,6 +149,7 @@ List<RecordLeader> computeOpsPlusLeaders(List<RecordLeader> opsLeaders) {
       name: entry.leader.name,
       teamId: entry.leader.teamId,
       value: '$opsPlus',
+      isRetired: entry.leader.isRetired,
     );
   }).toList()..sort((a, b) => int.parse(b.value).compareTo(int.parse(a.value)));
 
@@ -159,6 +162,7 @@ List<RecordLeader> computeOpsPlusLeaders(List<RecordLeader> opsLeaders) {
         name: calculated[index].name,
         teamId: calculated[index].teamId,
         value: calculated[index].value,
+        isRetired: calculated[index].isRetired,
       ),
   ];
 }

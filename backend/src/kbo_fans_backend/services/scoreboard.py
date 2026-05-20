@@ -5,6 +5,7 @@ import logging
 import re
 import time
 from datetime import date as date_type
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.main import MainCrawler
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 class ScoreboardService:
     _SCOREBOARD_CACHE_TTL_SECONDS = 30
+    _CURRENT_DATE_SNAPSHOT_MAX_AGE = timedelta(hours=6)
 
     def __init__(
         self,
@@ -48,7 +50,8 @@ class ScoreboardService:
     def get_scoreboard(self, date: str) -> dict[str, Any]:
         started_at = time.perf_counter()
         date = self._normalize_date(date)
-        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        snapshot_record = self.snapshot_store.load("scoreboard", date)
+        snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._is_historical_date(date) and snapshot is not None:
             logger.info("scoreboard snapshot hit %s", date)
             return snapshot
@@ -60,12 +63,18 @@ class ScoreboardService:
 
         return self._singleflight.call(
             f"scoreboard:{date}",
-            lambda: self._get_scoreboard_uncached(date, snapshot, started_at),
+            lambda: self._get_scoreboard_uncached(
+                date,
+                snapshot_record,
+                snapshot,
+                started_at,
+            ),
         )
 
     def _get_scoreboard_uncached(
         self,
         date: str,
+        snapshot_record: Optional[dict[str, Any]],
         snapshot: Optional[dict[str, Any]],
         started_at: float,
     ) -> dict[str, Any]:
@@ -85,19 +94,21 @@ class ScoreboardService:
             )
         except Exception:
             stale = self._scoreboard_cache.get_stale(date)
-            if stale is not None:
+            if self._is_historical_date(date) and stale is not None:
                 logger.warning("scoreboard stale cache fallback %s", date)
                 return stale
-            if snapshot is not None:
+            if self._can_use_scoreboard_snapshot_after_failure(
+                date,
+                snapshot_record,
+                snapshot,
+            ):
                 logger.warning("scoreboard snapshot fallback %s", date)
                 return snapshot
             raise
 
         try:
             main_started_at = time.perf_counter()
-            game_list = {
-                game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
-            }
+            game_list = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
             logger.info(
                 "scoreboard main list %s %.0fms",
                 date,
@@ -112,9 +123,7 @@ class ScoreboardService:
             enrich_started_at = time.perf_counter()
             enriched_games = list(
                 executor.map(
-                    lambda game: self._enrich_game(
-                        game, game_list.get(game.get("gameId"), {})
-                    ),
+                    lambda game: self._enrich_game(game, game_list.get(game.get("gameId"), {})),
                     games,
                 )
             )
@@ -179,7 +188,8 @@ class ScoreboardService:
             logger.info("compact scoreboard cache hit after wait %s", cache_key)
             return cached
 
-        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        snapshot_record = self.snapshot_store.load("scoreboard", date)
+        snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._is_historical_date(date) and snapshot is not None:
             payload = self._compact_from_snapshot(date, snapshot, my_team)
             self._compact_scoreboard_cache.set(cache_key, payload)
@@ -189,17 +199,19 @@ class ScoreboardService:
             games = self.schedule_crawler.get_games_by_date(date)
         except Exception:
             stale = self._compact_scoreboard_cache.get_stale(cache_key)
-            if stale is not None:
+            if self._is_historical_date(date) and stale is not None:
                 logger.warning("compact scoreboard stale fallback %s", cache_key)
                 return stale
-            if snapshot is not None:
+            if self._can_use_scoreboard_snapshot_after_failure(
+                date,
+                snapshot_record,
+                snapshot,
+            ):
                 return self._compact_from_snapshot(date, snapshot, my_team)
             raise
 
         try:
-            game_list = {
-                game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
-            }
+            game_list = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
         except Exception:
             game_list = {}
             logger.warning("compact scoreboard main list failed %s", date)
@@ -279,9 +291,7 @@ class ScoreboardService:
             return None
 
         try:
-            game_list = {
-                game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
-            }
+            game_list = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
         except Exception:
             game_list = {}
             logger.warning("game summary main list failed %s %s", date, game_id)
@@ -292,9 +302,7 @@ class ScoreboardService:
             self.snapshot_store.save("games", game_id, game)
         return game
 
-    def _enrich_game(
-        self, game: dict[str, Any], main_game: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _enrich_game(self, game: dict[str, Any], main_game: dict[str, Any]) -> dict[str, Any]:
         game_id = game.get("gameId")
         resolved_status = str(game.get("status") or "")
         if main_game:
@@ -368,7 +376,11 @@ class ScoreboardService:
                 continue
             game_id = game.get("gameId")
             main_game = game_list.get(game_id, {})
-            status = self._map_status(main_game.get("GAME_STATE_SC")) if main_game else game.get("status")
+            status = (
+                self._map_status(main_game.get("GAME_STATE_SC"))
+                if main_game
+                else game.get("status")
+            )
             if only_live and status != "LIVE":
                 continue
             return game
@@ -599,6 +611,42 @@ class ScoreboardService:
 
         terminal_statuses = {"FINAL", "CANCELLED", "SUSPENDED"}
         return bool(games) and all(game.get("status") in terminal_statuses for game in games)
+
+    def _can_use_scoreboard_snapshot_after_failure(
+        self,
+        date: str,
+        snapshot_record: Optional[dict[str, Any]],
+        snapshot: Optional[dict[str, Any]],
+    ) -> bool:
+        if snapshot is None:
+            return False
+        if self._is_historical_date(date):
+            return True
+        return self._is_fresh_snapshot(snapshot_record) and self._is_terminal_snapshot(
+            snapshot,
+        )
+
+    @staticmethod
+    def _is_terminal_snapshot(snapshot: dict[str, Any]) -> bool:
+        games = snapshot.get("games")
+        if not isinstance(games, list) or not games:
+            return False
+        terminal_statuses = {"FINAL", "CANCELLED", "SUSPENDED"}
+        return all(game.get("status") in terminal_statuses for game in games)
+
+    def _is_fresh_snapshot(self, snapshot_record: Optional[dict[str, Any]]) -> bool:
+        if snapshot_record is None:
+            return False
+        saved_at_raw = snapshot_record.get("savedAt")
+        if not isinstance(saved_at_raw, str) or not saved_at_raw:
+            return False
+        try:
+            saved_at = datetime.fromisoformat(saved_at_raw.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        if saved_at.tzinfo is None:
+            saved_at = saved_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) - saved_at <= self._CURRENT_DATE_SNAPSHOT_MAX_AGE
 
     @staticmethod
     def _strip_home_payload(game: dict[str, Any]) -> dict[str, Any]:

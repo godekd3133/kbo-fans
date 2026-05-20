@@ -282,6 +282,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
             'name': leader.name,
             'teamId': leader.teamId,
             'value': leader.value,
+            'isRetired': leader.isRetired,
           },
         )
         .toList(),
@@ -297,6 +298,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
           name: map['name'] as String? ?? '',
           teamId: map['teamId'] as String? ?? '',
           value: map['value'] as String? ?? '',
+          isRetired: map['isRetired'] as bool? ?? false,
         );
       }).toList();
 
@@ -334,6 +336,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     'ops': player.ops,
     'era': player.era,
     'whip': player.whip,
+    'isRetired': player.isRetired,
   };
 
   PlayerProfile _decodePlayer(Map<String, dynamic> json) {
@@ -380,6 +383,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
       ops: (json['ops'] as num?)?.toDouble(),
       era: (json['era'] as num?)?.toDouble(),
       whip: (json['whip'] as num?)?.toDouble(),
+      isRetired: json['isRetired'] as bool? ?? false,
     );
   }
 
@@ -460,6 +464,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     'name': leader.name,
     'teamId': leader.teamId,
     'value': leader.value,
+    'isRetired': leader.isRetired,
   };
 
   List<RecordLeader> _decodeLeaders(List<dynamic>? list) =>
@@ -472,6 +477,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
           name: map['name'] as String? ?? '',
           teamId: map['teamId'] as String? ?? '',
           value: map['value'] as String? ?? '',
+          isRetired: map['isRetired'] as bool? ?? false,
         );
       }).toList();
 

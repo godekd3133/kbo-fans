@@ -202,6 +202,7 @@ class ApiPlayerRepository implements PlayerRepository {
               'name': leader.name,
               'teamId': leader.teamId,
               'value': leader.value,
+              'isRetired': leader.isRetired,
             },
           )
           .toList();
@@ -261,6 +262,7 @@ class ApiPlayerRepository implements PlayerRepository {
       ops: (sortMetrics['ops'] as num?)?.toDouble(),
       era: (sortMetrics['era'] as num?)?.toDouble(),
       whip: (sortMetrics['whip'] as num?)?.toDouble(),
+      isRetired: json['isRetired'] as bool? ?? false,
     );
   }
 
@@ -307,6 +309,7 @@ class ApiPlayerRepository implements PlayerRepository {
         name: map['name'] as String? ?? '',
         teamId: map['teamId'] as String? ?? '',
         value: map['value'] as String? ?? '',
+        isRetired: map['isRetired'] as bool? ?? false,
       );
     }).toList();
   }

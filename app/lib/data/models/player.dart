@@ -43,6 +43,7 @@ class PlayerProfile {
   final double? ops;
   final double? era;
   final double? whip;
+  final bool isRetired;
 
   const PlayerProfile({
     required this.id,
@@ -69,5 +70,6 @@ class PlayerProfile {
     this.ops,
     this.era,
     this.whip,
+    this.isRetired = false,
   });
 }

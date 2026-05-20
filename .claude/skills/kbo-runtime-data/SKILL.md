@@ -19,7 +19,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Historical standings, records, and completed-game data should prefer snapshots when available.
 - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings require a fresh `generatedAt`; unverified historical seasons should remain empty instead of repeating another season.
 - Current-season team player/team stat fallback must be timestamped and fresh. Reject timestamp-less legacy device caches and stale bundled bootstrap assets instead of showing old records.
-- Backend current-season schedule, standings, records overview, and leaderboard snapshot fallback must require a fresh `savedAt`; historical seasons/months may still use stored snapshots.
+- Backend current-date scoreboard and current-season/month schedule, standings, records overview, and leaderboard snapshot fallback must require a fresh `savedAt`; historical dates/seasons/months may still use stored snapshots.
 - Team records should load after team selection, not for every team at once.
 - Home should prefer lightweight/cached data for first paint, then refresh in background.
 - Never block `runApp()` on non-critical platform plugin initialization.

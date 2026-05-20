@@ -103,8 +103,11 @@ class LeaderboardScreen extends ConsumerWidget {
     );
 
     return AppPressable(
-      onTap: () =>
-          context.push('/records/player/${leader.playerId}?season=$season'),
+      onTap: leader.isRetired
+          ? null
+          : () => context.push(
+              '/records/player/${leader.playerId}?season=$season',
+            ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
@@ -168,12 +171,22 @@ class LeaderboardScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          leader.name,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                leader.name,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            if (leader.isRetired) ...[
+                              const SizedBox(width: 6),
+                              _retiredBadge(),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -228,6 +241,24 @@ class LeaderboardScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _retiredBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.textDisabled.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: const Text(
+        '은퇴',
+        style: TextStyle(
+          fontSize: 10,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
