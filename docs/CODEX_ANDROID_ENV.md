@@ -11,6 +11,7 @@ Codex에서 안드로이드 앱을 실행할 때 아래를 자동으로 맞추�
 - AVD 자동 부팅
 - `flutter run` 전 `pub get`
 - 로컬 백엔드 기준 `APP_ENV=local`
+- 로컬 API 없는 release 검증 기준 `APP_ENV=release`
 
 ## 권장 실행 명령
 
@@ -22,6 +23,18 @@ Codex에서 안드로이드 앱을 실행할 때 아래를 자동으로 맞추�
 
 ```bash
 ./scripts/codex-run.sh android
+```
+
+로컬 API 없이 release API로 검증할 때:
+
+```bash
+./scripts/codex-run-android-release.sh
+```
+
+또는
+
+```bash
+./scripts/codex-run.sh android-release
 ```
 
 ## 스크립트가 자동으로 하는 일
@@ -37,6 +50,8 @@ Codex에서 안드로이드 앱을 실행할 때 아래를 자동으로 맞추�
    - 우선값: `Medium_Phone_API_36`
 6. `sys.boot_completed=1` 대기
 7. `fvm flutter run -d <serial> --dart-define=APP_ENV=local`
+
+release 경로는 실행 전에 `scripts/release-api-health-check.sh` 로 DNS, TLS, 핵심 API endpoint를 확인한다. 실패하면 Android 설치/실행을 시작하지 않는다.
 
 ## 현재 기본 가정
 
@@ -54,7 +69,7 @@ Codex에서 안드로이드 앱을 실행할 때 아래를 자동으로 맞추�
 
 해결:
 
-- Codex 실행은 반드시 `./scripts/codex-run-android.sh` 사용
+- Codex local 실행은 반드시 `./scripts/codex-run-android.sh` 사용
 - 스크립트가 Android Studio JBR(Java 17)을 자동 선택함
 
 ### 2. Android SDK Platform 36 손상
@@ -93,3 +108,4 @@ ls ~/Library/Android/sdk/platforms/android-36/android.jar
 
 - `/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/scripts/codex-run.sh`
 - `/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/scripts/codex-run-android.sh`
+- `/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/scripts/codex-run-android-release.sh`

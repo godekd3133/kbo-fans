@@ -107,7 +107,7 @@ flutter run -d android
 - `web/` 플랫폼은 추가되어 있으며 기본 웹 실행은 release API health gate를 거치는 `./scripts/codex-run-web.sh` 로 실행합니다.
 - Chrome 디버그 세션이 필요하면 `./scripts/codex-run-web-dev.sh` 또는 `flutter run -d chrome` 을 사용합니다.
 - `macos/` 프로젝트는 아직 생성되지 않았습니다.
-- 현재 홈 화면은 일부 목데이터를 사용하므로, UI 확인만 목적이면 백엔드 없이도 실행 가능합니다.
+- 데이터 정확성 검증은 release API health gate를 통과한 경로에서만 유효합니다. 백엔드 검증 없이 화면 틀만 확인할 때는 `./scripts/codex-run-web-static.sh` 를 사용합니다.
 - 예매 오픈 알림은 앱 로컬 예약 알림으로 동작합니다. 현재 예매처/오픈 시간은 홈팀 기본 정책 기준 추정값입니다.
 - 위젯 갱신은 앱 foreground에서는 라이브 30초 / 예정 5분 기준으로 반영되며, 백그라운드 주기는 OS 정책에 따라 제한됩니다.
 
@@ -159,7 +159,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 참고:
 
 - `./scripts/codex-run-web.sh` 는 local backend 없이 release API health gate를 통과한 URL만 주입해 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
-- `./scripts/codex-run-web-static.sh` 는 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 프리뷰 경로입니다.
+- `./scripts/codex-run-web-static.sh` 는 release API health gate 없이 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 UI-only 프리뷰 경로입니다.
 - `./scripts/codex-run-web-release.sh` 는 `./scripts/codex-run-web.sh` 와 같은 release API health-gated 웹 실행 래퍼입니다.
 - `./scripts/codex-run-web-dev.sh` 는 Chrome 디버그 세션을 직접 띄우는 개발용 경로입니다.
 - `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 `--profile --dart-define=APP_ENV=local` 로 실행합니다. local backend가 LAN에서 접근 가능해야 하며, 스크립트가 `API_BASE_URL`을 주입합니다.

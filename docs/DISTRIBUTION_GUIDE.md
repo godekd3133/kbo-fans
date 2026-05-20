@@ -14,7 +14,8 @@
 
 - 앱: Flutter + Dart
 - 백엔드: FastAPI
-- 웹 실행: 가능 (`./scripts/codex-run-web.sh`)
+- 웹 실행: 가능 (`./scripts/codex-run-web.sh`, release API health-gated)
+- 웹 UI-only 프리뷰: 가능 (`./scripts/codex-run-web-static.sh`, 데이터 검증용 아님)
 - iOS 실행: Xcode / iOS platform support 상태에 영향 받음
 - Android 실행: 에뮬레이터 또는 실제 기기 준비 필요
 
@@ -305,10 +306,16 @@ GitHub Actions 의 `web-<env>` 아티팩트를 내려받으면 정적 웹 빌드
 
 설치가 아니라 빠른 확인이 목적이면 웹이 가장 쉽다.
 
-실행:
+release API 기준 실행:
 
 ```bash
 ./scripts/codex-run-web.sh
+```
+
+UI-only 정적 프리뷰:
+
+```bash
+./scripts/codex-run-web-static.sh
 ```
 
 장점:
@@ -359,9 +366,18 @@ GitHub Actions 의 `web-<env>` 아티팩트를 내려받으면 정적 웹 빌드
 
 Codex 앱에서 플랫폼별 실행 경로는 아래 스크립트로 분리되어 있다.
 
-- iOS: `./scripts/codex-run-ios.sh`
-- Android: `./scripts/codex-run-android.sh`
-- Web: `./scripts/codex-run-web.sh`
+- iOS local: `./scripts/codex-run-ios.sh`
+- iOS release: `./scripts/codex-run-ios-release.sh`
+- Android local: `./scripts/codex-run-android.sh`
+- Android release: `./scripts/codex-run-android-release.sh`
+- Web release/default: `./scripts/codex-run-web.sh`
+- Web release explicit: `./scripts/codex-run-web-release.sh`
+- Web UI-only static preview: `./scripts/codex-run-web-static.sh`
+
+메모:
+
+- release 계열은 local API 없이 `scripts/release-api-health-check.sh` 를 먼저 통과해야 실행/빌드가 시작된다.
+- static preview는 화면 구조 확인용이다. 현재 경기/기록/순위 데이터 검증 경로로 취급하지 않는다.
 
 ## 메모
 

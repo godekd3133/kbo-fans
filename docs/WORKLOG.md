@@ -10,7 +10,7 @@
 - [x] `backend/data/snapshots/leaderboard/2013_hr.json` 추가: 2013 홈런 리더보드가 `박병호 37`부터 은퇴 선수 포함 순위로 복구
 - [x] backend 회귀 테스트로 두 snapshot의 1위 선수/값/은퇴 플래그를 고정
 - [x] `scripts/codex-run-web.sh`를 release API health gate 경로로 맞추고, `scripts/codex-run-web-release.sh`, `scripts/codex-run-android-release.sh` wrapper 추가
-- [x] `0.0.18` 기준 `pubspec.yaml`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `docs/VERSIONING.md`, `README.md` 갱신
+- [x] `0.0.18` 기준 `pubspec.yaml`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `docs/VERSIONING.md`, `README.md`, `docs/DISTRIBUTION_GUIDE.md`, `docs/CODEX_ANDROID_ENV.md` 갱신
 
 ### 검증
 - [x] `python3 -m json.tool backend/data/snapshots/leaderboard/2011_era.json >/dev/null`
@@ -18,6 +18,7 @@
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py`
 - [x] `bash -n scripts/codex-run-web.sh scripts/codex-run-web-release.sh scripts/codex-run-android-release.sh`
 - [x] `./scripts/codex-run-web.sh` 실패 확인: `DNS lookup failed for api.kbofans.com`
+- [x] `./scripts/codex-run-android-release.sh` 실패 확인: `DNS lookup failed for api.kbofans.com`
 
 ---
 
