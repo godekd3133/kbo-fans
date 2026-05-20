@@ -1,25 +1,284 @@
 {
-  "savedAt": "2026-03-31T07:20:23.305451+00:00",
+  "savedAt": "2026-05-20T05:10:06.697178+00:00",
   "payload": {
     "season": 2020,
     "leaders": {
-      "avg": [],
-      "hr": [],
-      "ops": [],
-      "era": []
+      "avg": [
+        {
+          "rank": 1,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "최형우",
+          "teamId": "HT",
+          "value": "0.354"
+        },
+        {
+          "rank": 2,
+          "playerId": "77532",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "손아섭",
+          "teamId": "LT",
+          "value": "0.352"
+        },
+        {
+          "rank": 4,
+          "playerId": "62907",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "박민우",
+          "teamId": "NC",
+          "value": "0.345"
+        },
+        {
+          "rank": 7,
+          "playerId": "79240",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "허경민",
+          "teamId": "OB",
+          "value": "0.332"
+        },
+        {
+          "rank": 8,
+          "playerId": "76290",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "김현수",
+          "teamId": "LG",
+          "value": "0.331"
+        }
+      ],
+      "hr": [
+        {
+          "rank": 3,
+          "playerId": "62947",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "나성범",
+          "teamId": "NC",
+          "value": "34"
+        },
+        {
+          "rank": 4,
+          "playerId": "75847",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "최정",
+          "teamId": "SK",
+          "value": "33"
+        },
+        {
+          "rank": 4,
+          "playerId": "76232",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "양의지",
+          "teamId": "NC",
+          "value": "33"
+        },
+        {
+          "rank": 9,
+          "playerId": "78224",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "김재환",
+          "teamId": "OB",
+          "value": "30"
+        },
+        {
+          "rank": 11,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "최형우",
+          "teamId": "HT",
+          "value": "28"
+        }
+      ],
+      "ops": [
+        {
+          "rank": 2,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "최형우",
+          "teamId": "HT",
+          "value": "1.023"
+        },
+        {
+          "rank": 3,
+          "playerId": "76232",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "양의지",
+          "teamId": "NC",
+          "value": "1.003"
+        },
+        {
+          "rank": 4,
+          "playerId": "62947",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "나성범",
+          "teamId": "NC",
+          "value": "0.986"
+        },
+        {
+          "rank": 5,
+          "playerId": "68050",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "강백호",
+          "teamId": "KT",
+          "value": "0.955"
+        },
+        {
+          "rank": 9,
+          "playerId": "75847",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "최정",
+          "teamId": "SK",
+          "value": "0.930"
+        }
+      ],
+      "opsPlus": [
+        {
+          "rank": 1,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "최형우",
+          "teamId": "HT",
+          "value": "115"
+        },
+        {
+          "rank": 2,
+          "playerId": "76232",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "양의지",
+          "teamId": "NC",
+          "value": "113"
+        },
+        {
+          "rank": 3,
+          "playerId": "62947",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "나성범",
+          "teamId": "NC",
+          "value": "111"
+        },
+        {
+          "rank": 4,
+          "playerId": "68050",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "강백호",
+          "teamId": "KT",
+          "value": "107"
+        },
+        {
+          "rank": 5,
+          "playerId": "75847",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "최정",
+          "teamId": "SK",
+          "value": "104"
+        }
+      ],
+      "era": [
+        {
+          "rank": 4,
+          "playerId": "69045",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "알칸타라",
+          "teamId": "OB",
+          "value": "2.54"
+        },
+        {
+          "rank": 8,
+          "playerId": "68419",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "최지명",
+          "teamId": "SS",
+          "value": "3.58"
+        },
+        {
+          "rank": 9,
+          "playerId": "62869",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "문승원",
+          "teamId": "SK",
+          "value": "3.65"
+        },
+        {
+          "rank": 10,
+          "playerId": "61101",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "임찬규",
+          "teamId": "LG",
+          "value": "4.08"
+        },
+        {
+          "rank": 16,
+          "playerId": "77637",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "양현종",
+          "teamId": "HT",
+          "value": "4.70"
+        }
+      ]
     },
     "featured": {
       "todayHitter": {
-        "label": "오늘의 타자"
+        "label": "시즌 타율 리더",
+        "playerId": "72443",
+        "playerType": "hitter",
+        "name": "최형우",
+        "teamId": "HT",
+        "headline": "타율 0.354",
+        "summary": "2020 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
       },
       "todayPitcher": {
-        "label": "오늘의 투수"
+        "label": "시즌 ERA 리더",
+        "playerId": "69045",
+        "playerType": "pitcher",
+        "name": "알칸타라",
+        "teamId": "OB",
+        "headline": "ERA 2.54",
+        "summary": "2020 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/69045.jpg"
       },
       "monthHitter": {
-        "label": "이달의 타자"
+        "label": "시즌 홈런왕",
+        "playerId": "62947",
+        "playerType": "hitter",
+        "name": "나성범",
+        "teamId": "NC",
+        "headline": "홈런 34",
+        "summary": "2020 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/62947.jpg"
       },
       "monthPitcher": {
-        "label": "이달의 투수"
+        "label": "시즌 OPS 리더",
+        "playerId": "72443",
+        "playerType": "hitter",
+        "name": "최형우",
+        "teamId": "HT",
+        "headline": "OPS 1.023",
+        "summary": "2020 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
       }
     }
   }

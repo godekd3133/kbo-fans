@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-19T17:25:31.979787+00:00",
-  "source": "backend/data/snapshots/records_overview/2026.json",
-  "policy": "exact-season-only; no cross-season fallback",
+  "generatedAt": "2026-05-20T05:01:37.110210+00:00",
+  "source": "backend/data/snapshots/records_overview/{season}.json",
+  "policy": "exact-season-only; unverified seasons stay empty",
   "seasons": {
     "2001": {
       "season": 2001,

@@ -66,6 +66,7 @@
   - Direct KBO must not be used as an automatic fallback in normal app mode.
   - Direct KBO is allowed only for explicit temporary direct-primary builds with `PREFER_DIRECT_SCRAPE=true`, including API-not-yet-implemented validation paths such as `ios-local-release`.
   - Records must stay API-backed or generated snapshot-backed. Do not silently fall back to incomplete mock data there.
+  - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings/records overview require a fresh `generatedAt`, and unverified historical seasons must stay empty instead of repeating another season.
   - Current-season team player/team stat fallback must require a fresh `savedAt` timestamp. Reject timestamp-less legacy device caches and stale bundled assets instead of showing old season-start records.
 - When touching direct KBO parsers in `app/lib/data/repositories/kbo_direct_repository.dart`, keep field parity with backend contracts. Schedule status, scores, and standings parsing have already drifted once and broke UI state.
 - Dev-only diagnostics should stay in Dev Console when possible. Avoid promoting debugging affordances to user-facing UI unless explicitly requested.

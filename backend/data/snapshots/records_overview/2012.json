@@ -1,25 +1,266 @@
 {
-  "savedAt": "2026-03-31T07:21:48.350295+00:00",
+  "savedAt": "2026-05-20T05:10:31.852395+00:00",
   "payload": {
     "season": 2012,
     "leaders": {
-      "avg": [],
-      "hr": [],
-      "ops": [],
-      "era": []
+      "avg": [
+        {
+          "rank": 3,
+          "playerId": "77532",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "손아섭",
+          "teamId": "LT",
+          "value": "0.314"
+        },
+        {
+          "rank": 13,
+          "playerId": "75847",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "최정",
+          "teamId": "SK",
+          "value": "0.300"
+        },
+        {
+          "rank": 16,
+          "playerId": "76290",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "김현수",
+          "teamId": "OB",
+          "value": "0.291"
+        },
+        {
+          "rank": 18,
+          "playerId": "79608",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "안치홍",
+          "teamId": "HT",
+          "value": "0.288"
+        },
+        {
+          "rank": 19,
+          "playerId": "74163",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "이용규",
+          "teamId": "HT",
+          "value": "0.283"
+        }
+      ],
+      "hr": [
+        {
+          "rank": 2,
+          "playerId": "75847",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "최정",
+          "teamId": "SK",
+          "value": "26"
+        },
+        {
+          "rank": 6,
+          "playerId": "74540",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "강민호",
+          "teamId": "LT",
+          "value": "19"
+        },
+        {
+          "rank": 11,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "최형우",
+          "teamId": "SS",
+          "value": "14"
+        },
+        {
+          "rank": 12,
+          "playerId": "79109",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "오지환",
+          "teamId": "LG",
+          "value": "12"
+        },
+        {
+          "rank": 26,
+          "playerId": "78513",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "전준우",
+          "teamId": "LT",
+          "value": "7"
+        }
+      ],
+      "ops": [
+        {
+          "rank": 5,
+          "playerId": "75847",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "최정",
+          "teamId": "SK",
+          "value": "0.923"
+        },
+        {
+          "rank": 10,
+          "playerId": "74540",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "강민호",
+          "teamId": "LT",
+          "value": "0.823"
+        },
+        {
+          "rank": 16,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "최형우",
+          "teamId": "SS",
+          "value": "0.773"
+        },
+        {
+          "rank": 18,
+          "playerId": "77532",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "손아섭",
+          "teamId": "LT",
+          "value": "0.766"
+        },
+        {
+          "rank": 21,
+          "playerId": "76232",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "양의지",
+          "teamId": "OB",
+          "value": "0.748"
+        }
+      ],
+      "opsPlus": [
+        {
+          "rank": 1,
+          "playerId": "75847",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "최정",
+          "teamId": "SK",
+          "value": "121"
+        },
+        {
+          "rank": 2,
+          "playerId": "74540",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "강민호",
+          "teamId": "LT",
+          "value": "108"
+        },
+        {
+          "rank": 3,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "최형우",
+          "teamId": "SS",
+          "value": "102"
+        },
+        {
+          "rank": 4,
+          "playerId": "77532",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "손아섭",
+          "teamId": "LT",
+          "value": "101"
+        },
+        {
+          "rank": 5,
+          "playerId": "76232",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "양의지",
+          "teamId": "OB",
+          "value": "98"
+        }
+      ],
+      "era": [
+        {
+          "rank": 2,
+          "playerId": "73211",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "노경은",
+          "teamId": "OB",
+          "value": "2.53"
+        },
+        {
+          "rank": 5,
+          "playerId": "76715",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "류현진",
+          "teamId": "HH",
+          "value": "2.66"
+        },
+        {
+          "rank": 7,
+          "playerId": "77211",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "이용찬",
+          "teamId": "OB",
+          "value": "3.00"
+        }
+      ]
     },
     "featured": {
       "todayHitter": {
-        "label": "오늘의 타자"
+        "label": "시즌 타율 리더",
+        "playerId": "77532",
+        "playerType": "hitter",
+        "name": "손아섭",
+        "teamId": "LT",
+        "headline": "타율 0.314",
+        "summary": "2012 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/77532.jpg"
       },
       "todayPitcher": {
-        "label": "오늘의 투수"
+        "label": "시즌 ERA 리더",
+        "playerId": "73211",
+        "playerType": "pitcher",
+        "name": "노경은",
+        "teamId": "OB",
+        "headline": "ERA 2.53",
+        "summary": "2012 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/73211.jpg"
       },
       "monthHitter": {
-        "label": "이달의 타자"
+        "label": "시즌 홈런왕",
+        "playerId": "75847",
+        "playerType": "hitter",
+        "name": "최정",
+        "teamId": "SK",
+        "headline": "홈런 26",
+        "summary": "2012 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75847.jpg"
       },
       "monthPitcher": {
-        "label": "이달의 투수"
+        "label": "시즌 OPS 리더",
+        "playerId": "75847",
+        "playerType": "hitter",
+        "name": "최정",
+        "teamId": "SK",
+        "headline": "OPS 0.923",
+        "summary": "2012 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75847.jpg"
       }
     }
   }

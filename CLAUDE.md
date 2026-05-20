@@ -78,7 +78,8 @@ kbo_fans/
 - 로컬 네이티브 실행도 기본은 API 경로다. direct KBO crawler 경로는 `PREFER_DIRECT_SCRAPE=true` 명시 임시 direct-primary 빌드에서만 쓴다
 - 홈 첫 진입은 경량 payload / 캐시 우선, 이후 background refresh 방식으로 체감 속도를 확보한다
 - 지난 경기 결과, 과거 시즌 순위, 기록실 과거 시즌 데이터는 snapshot 우선 전략을 유지한다
-- 현재 시즌 팀 선수/팀 스탯 fallback 은 `savedAt` 기준 최신 snapshot 만 허용하고, timestamp 없는 legacy 기기 cache 나 오래된 번들 asset 은 빈 상태로 처리한다
+- 앱 번들 standings fallback 은 exact-season-only 로 제한한다. 현재 시즌은 `generatedAt` 기준 최신 snapshot 만 허용하고, 검증되지 않은 과거 시즌은 다른 시즌 순위를 빌리지 않는다
+- 현재 시즌 팀 선수 / 팀 스탯 fallback 은 `savedAt` 기준 최신 snapshot 만 허용하고, timestamp 없는 legacy 기기 cache 나 오래된 번들 asset 은 빈 상태로 처리한다
 - 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다
 - Git push 시 기본 `origin` 이슈가 있으면 `git@github-personal:godekd3133/kbo-fans.git` 경로를 사용한다
 
@@ -101,7 +102,7 @@ kbo_fans/
   - `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 임시 direct-primary 빌드
   - 일반 local/dev/release 앱 모드에서는 자동 direct fallback 금지
 - 기록실 선수 상세/엔트리 전체는 API 또는 생성된 snapshot 기준으로 유지한다.
-- 기록실 요약/리더보드는 요청 시즌과 정확히 맞는 검증된 snapshot 만 사용하고, current-season 팀 선수/팀 스탯은 6시간 이내 snapshot 만 fallback 으로 인정한다.
+- 순위/기록실 요약/리더보드는 요청 시즌과 정확히 맞는 검증된 snapshot 만 사용하고, current-season standings / 팀 선수 / 팀 스탯은 6시간 이내 snapshot 만 fallback 으로 인정한다. 검증되지 않은 과거 순위는 빈 exact snapshot 으로 둔다.
 - Dev Console 은 현재 API base URL, API latency, 홈/일정/기록실 로딩 완료 로그, 기록실 진단 로그를 표시하는 운영 도구다.
 - direct-primary 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
 - `.claude/skills/`에 이미 같은 작업 패턴이 있으면 먼저 그 스킬을 참고한다

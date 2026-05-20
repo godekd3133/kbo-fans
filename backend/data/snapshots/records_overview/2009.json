@@ -1,25 +1,167 @@
 {
-  "savedAt": "2026-03-31T07:21:42.303002+00:00",
+  "savedAt": "2026-05-20T05:10:22.980685+00:00",
   "payload": {
     "season": 2009,
     "leaders": {
-      "avg": [],
-      "hr": [],
-      "ops": [],
-      "era": []
+      "avg": [
+        {
+          "rank": 3,
+          "playerId": "76290",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "김현수",
+          "teamId": "OB",
+          "value": "0.357"
+        },
+        {
+          "rank": 30,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "최형우",
+          "teamId": "SS",
+          "value": "0.284"
+        }
+      ],
+      "hr": [
+        {
+          "rank": 11,
+          "playerId": "76290",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "김현수",
+          "teamId": "OB",
+          "value": "23"
+        },
+        {
+          "rank": 11,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "최형우",
+          "teamId": "SS",
+          "value": "23"
+        },
+        {
+          "rank": 19,
+          "playerId": "75847",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "최정",
+          "teamId": "SK",
+          "value": "19"
+        }
+      ],
+      "ops": [
+        {
+          "rank": 3,
+          "playerId": "76290",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "김현수",
+          "teamId": "OB",
+          "value": "1.037"
+        },
+        {
+          "rank": 14,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "최형우",
+          "teamId": "SS",
+          "value": "0.883"
+        }
+      ],
+      "opsPlus": [
+        {
+          "rank": 1,
+          "playerId": "76290",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "김현수",
+          "teamId": "OB",
+          "value": "108"
+        },
+        {
+          "rank": 2,
+          "playerId": "72443",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "최형우",
+          "teamId": "SS",
+          "value": "92"
+        }
+      ],
+      "era": [
+        {
+          "rank": 1,
+          "playerId": "77829",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "김광현",
+          "teamId": "SK",
+          "value": "2.80"
+        },
+        {
+          "rank": 5,
+          "playerId": "77637",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "양현종",
+          "teamId": "HT",
+          "value": "3.15"
+        },
+        {
+          "rank": 8,
+          "playerId": "76715",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "류현진",
+          "teamId": "HH",
+          "value": "3.57"
+        }
+      ]
     },
     "featured": {
       "todayHitter": {
-        "label": "오늘의 타자"
+        "label": "시즌 타율 리더",
+        "playerId": "76290",
+        "playerType": "hitter",
+        "name": "김현수",
+        "teamId": "OB",
+        "headline": "타율 0.357",
+        "summary": "2009 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/76290.jpg"
       },
       "todayPitcher": {
-        "label": "오늘의 투수"
+        "label": "시즌 ERA 리더",
+        "playerId": "77829",
+        "playerType": "pitcher",
+        "name": "김광현",
+        "teamId": "SK",
+        "headline": "ERA 2.80",
+        "summary": "2009 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/77829.jpg"
       },
       "monthHitter": {
-        "label": "이달의 타자"
+        "label": "시즌 홈런왕",
+        "playerId": "76290",
+        "playerType": "hitter",
+        "name": "김현수",
+        "teamId": "OB",
+        "headline": "홈런 23",
+        "summary": "2009 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/76290.jpg"
       },
       "monthPitcher": {
-        "label": "이달의 투수"
+        "label": "시즌 OPS 리더",
+        "playerId": "76290",
+        "playerType": "hitter",
+        "name": "김현수",
+        "teamId": "OB",
+        "headline": "OPS 1.037",
+        "summary": "2009 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/76290.jpg"
       }
     }
   }

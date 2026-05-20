@@ -1186,6 +1186,8 @@ GET /api/standings?season={YYYY}
 **응답 정책**:
 - 기본 응답은 최신 standings snapshot 을 사용한다.
 - 당일 경기 진행 중에는 짧은 캐시 + 재계산을 허용하되, 지난 날짜 기준 순위는 저장된 snapshot 을 우선 사용한다.
+- 앱 번들 standings fallback 은 요청 시즌 exact snapshot 이고 순위 배열이 비어 있지 않을 때만 사용한다.
+- 현재 시즌 standings 번들은 `generatedAt` 기준 6시간 이내일 때만 사용한다. 검증되지 않은 과거 시즌은 빈 exact snapshot 으로 둬 다른 시즌/개막 초반 순위를 빌려 보여주지 않는다.
 
 **응답**:
 ```json

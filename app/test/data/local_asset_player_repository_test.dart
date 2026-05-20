@@ -37,13 +37,29 @@ void main() {
       now: () => DateTime.utc(2026, 5, 20),
     );
 
-    final players = await repository.getTeamPlayers('KT', season: 2026);
-    final stats = await repository.getTeamStats('KT', season: 2026);
+    final players = await repository.getTeamPlayers('LG', season: 2026);
+    final stats = await repository.getTeamStats('LG', season: 2026);
 
     expect(players, isEmpty);
     expect(stats.season, 2026);
     expect(stats.hitting, isEmpty);
     expect(stats.pitching, isEmpty);
+  });
+
+  test('fresh current team records bundled snapshot remains usable', () async {
+    final repository = LocalAssetPlayerRepository(
+      now: () => DateTime.utc(2026, 5, 20, 5),
+    );
+
+    final players = await repository.getTeamPlayers('KT', season: 2026);
+    final stats = await repository.getTeamStats('KT', season: 2026);
+
+    expect(players, hasLength(61));
+    expect(players.every((player) => player.teamId == 'KT'), isTrue);
+    expect(players.first.name, '배제성');
+    expect(stats.hitting['AVG'], '0.287');
+    expect(stats.hitting['G'], '43');
+    expect(stats.pitching['ERA'], '4.50');
   });
 
   test('historical team players load exact bundled season snapshots', () async {
