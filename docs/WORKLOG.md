@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-05-20: GitHub Actions backend test gate
+
+### 완료
+- [x] `app-build-artifacts` workflow에 `backend_tests` job 추가
+- [x] backend job에서 Python 3.11, pip cache, `python -m pip install -e ".[dev]"`, `python -m pytest -q` 순서로 backend 테스트 실행
+- [x] `prepare` job이 `backend_tests`를 `needs`로 기다리게 해 backend 테스트 실패 시 Android/Web/iOS 빌드 job이 시작되지 않도록 변경
+
+### 검증
+- [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml"); puts "yaml ok"'`
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+
+---
+
 ## 2026-05-20: 0.0.21 records API cache and error surface
 
 ### 완료

@@ -10,7 +10,9 @@
 
 ## [Unreleased]
 
-- 다음 릴리즈 후보에서 기록합니다.
+### Changed
+
+- GitHub Actions app artifact workflow가 Android/Web/iOS 빌드 전에 backend pytest를 먼저 실행하도록 변경
 
 ## [0.0.21] - 2026-05-20
 
