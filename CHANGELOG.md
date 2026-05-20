@@ -20,6 +20,7 @@
 - 과거 날짜/시즌/월 스코어보드, 일정, 순위, 기록실 snapshot은 기존처럼 저장본 우선 fallback을 유지하도록 current 데이터 freshness와 분리
 - 현재 날짜 scoreboard snapshot fallback은 fresh + terminal 상태일 때만 허용해 진행 중 경기의 오래된 snapshot 재노출을 차단
 - 앱 기록실 선수/리더 모델과 device/local snapshot 직렬화에서 `isRetired` 플래그를 보존하도록 변경
+- 앱 API cached-first 요청은 원격 실패 시에도 TTL이 지난 cache를 fallback으로 반환하지 않도록 제한
 
 ### Fixed
 

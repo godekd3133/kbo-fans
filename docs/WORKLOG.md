@@ -13,6 +13,7 @@
 - [x] `ScoreboardService`가 current-day scoreboard/compact crawler 실패 시 fresh + terminal snapshot만 fallback으로 사용하고, 오래된 non-terminal snapshot은 거부하도록 보정
 - [x] historical date/season/month stale cache와 저장 snapshot fallback은 기존처럼 유지
 - [x] 앱 기록실 선수/리더 모델과 API/local/device snapshot 직렬화에서 `isRetired` 플래그 보존
+- [x] 앱 API cached-first 요청이 원격 실패 시에도 TTL이 지난 cache를 반환하지 않도록 보정
 - [x] `AGENTS.md`, `CLAUDE.md`, `.claude/skills/kbo-runtime-data/SKILL.md`, `docs/APP_SPEC.md`, `README.md`, `docs/VERSIONING.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`를 `0.0.16` 기준으로 갱신
 
 ### 검증
@@ -25,6 +26,7 @@
 - [x] `cd app && fvm dart format lib/data/models/player.dart lib/data/models/records_overview.dart lib/data/repositories/api_player_repository.dart lib/data/repositories/device_snapshot_player_repository.dart lib/data/repositories/local_asset_player_repository.dart`
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test test/data/local_asset_player_repository_test.dart test/data/device_snapshot_player_repository_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/data/models/records_overview_test.dart -r expanded`
 
 ---
 

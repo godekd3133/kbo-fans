@@ -6,6 +6,7 @@
 - 현재 날짜 스코어보드는 fresh + 경기 종료/취소/중단 snapshot일 때만 fallback으로 사용해 진행 중 경기의 오래된 snapshot 재노출을 막았습니다.
 - 과거 날짜/시즌/월 데이터는 기존처럼 저장된 snapshot을 우선 사용해 히스토리 화면이 빠르게 열리도록 유지했습니다.
 - 앱 기록실 선수/리더 데이터의 은퇴 선수 플래그를 API, local asset, device snapshot 사이에서 보존하도록 했습니다.
+- 앱 API cache도 TTL이 지난 데이터는 원격 실패 fallback으로 다시 보여주지 않도록 제한했습니다.
 
 ## 0.0.15+15 - Standings Bootstrap Cleanup
 
