@@ -78,7 +78,7 @@ kbo_fans/
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.0.x`
-- Current release: `0.0.25`
+- Current release: `0.0.26`
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
@@ -243,7 +243,10 @@ uvicorn kbo_fans_backend.main:app --reload
 
 - 앱 API cache는 성공 응답 저장과 히스토리 cached-first 조회용입니다. `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜/월/시즌 경로는 API 실패 시 이 cache를 정상 데이터처럼 읽지 않습니다.
 - 홈 스코어보드는 오늘 데이터 로딩 중 별도 로컬 cache를 먼저 렌더링하지 않습니다. 최신 API 응답 또는 명시적 오류 상태를 기준으로 화면을 갱신합니다.
+- 홈 secondary aggregate는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전에 `/home` 부가 API가 시작되지 않도록 합니다.
+- 홈 자동 refresh timer는 현재 scoreboard signature가 바뀔 때만 재스케줄해 unrelated rebuild가 live polling을 뒤로 밀지 않도록 합니다.
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 표면용 schedule + main list 요약 경로입니다. 경기별 상세 스코어보드 크롤링은 full scoreboard 또는 game detail 진입 때만 수행합니다.
+- backend current data routes는 `api/runtime_services.py`의 공용 service singleton을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache를 재사용합니다.
 - 앱은 요약 스코어보드의 미수집 H/E/B `null` 값을 실제 0 기록처럼 표시하지 않습니다.
 - 기록실 팀 데이터와 팀 스탯도 현재 시즌에서는 fresh-first/fail-visible 기준을 따르고, 과거 시즌 조회에서만 cached-first 성격을 유지합니다.
 - 순위와 기록실 요약/리더보드 번들 스냅샷은 exact-season-only 정책을 따릅니다. 일반 API-backed current 경로에서는 현재 시즌 API 실패를 번들 snapshot으로 정상 처리하지 않습니다.

@@ -17,11 +17,12 @@ description: 홈 첫 진입 속도와 초기 로딩 체감을 개선할 때 사�
 - 홈 loading: 전체 스피너 대신 스켈레톤 카드
 - home API: `/scoreboard/home`
 - scoreboard: 오늘 결과 캐시 우선 렌더
+- refresh timer: interval + scoreboard signature 가 바뀔 때만 재스케줄
 - secondary sections:
   - `schedule`
   - `standings`
   - `recordsOverview`
-  는 첫 프레임 뒤에 지연 로딩
+  는 첫 scoreboard 데이터 프레임 뒤에 provider 구독 자체를 지연
 - platform services:
   - push
   - widget sync
@@ -58,4 +59,6 @@ description: 홈 첫 진입 속도와 초기 로딩 체감을 개선할 때 사�
 
 - 홈 첫 화면에서 상세용 highlight/youtube fetch 수행
 - 홈 진입 시 전체 API를 한꺼번에 강제 구독
+- `_secondarySectionsEnabled`가 false인 상태에서 `homeAggregateProvider`를 watch
+- build/rebuild마다 홈 refresh timer를 cancel/restart
 - 첫 프레임 전에 무거운 `SharedPreferences`/plugin init 몰아넣기

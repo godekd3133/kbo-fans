@@ -1,5 +1,12 @@
 # 패치노트
 
+## 0.0.26+26 - Home First Paint Cache Sharing
+
+- 홈 화면은 스코어보드가 먼저 그려진 뒤에만 마이팀 브리프와 KBO 브리프용 `/home` aggregate를 구독합니다.
+- backend `/scoreboard/home`, `/home`, 일정, 순위, 기록실, 경기 상세 계열이 공용 runtime service를 공유해 같은 TTL 캐시를 재사용합니다.
+- 홈 자동 새로고침 타이머가 관계없는 rebuild마다 다시 시작되지 않도록 scoreboard signature 기준으로 안정화했습니다.
+- 작은 홈 로딩 카드가 일부 모바일/테스트 뷰포트에서 overflow 될 수 있던 간격을 보정했습니다.
+
 ## 0.0.25+25 - Missing Team Totals Guard
 
 - 스코어 탭과 문자중계 요약에서 안타/실책/사사구 원천값이 없으면 `0` 대신 `-`로 표시합니다.

@@ -10,6 +10,18 @@
 
 ## [Unreleased]
 
+## [0.0.26] - 2026-05-20
+
+### Changed
+
+- backend current data routes가 공통 runtime service singleton을 공유하도록 정리해 `/scoreboard/home` 직후 `/home` 또는 game detail 계열 호출에서 같은 TTL 캐시를 재사용하도록 변경
+- 홈 화면 secondary `/home` aggregate provider 구독을 scoreboard 첫 데이터 프레임 이후로 지연해 첫 화면 렌더 전에 부가 API가 시작되지 않도록 변경
+- 홈 자동 refresh timer가 unrelated rebuild 때마다 재시작되지 않도록 scoreboard signature 기반으로 안정화
+
+### Fixed
+
+- 홈 로딩 스켈레톤의 작은 카드가 모바일/테스트 뷰포트에서 overflow 될 수 있던 간격 보정
+
 ## [0.0.25] - 2026-05-20
 
 ### Changed

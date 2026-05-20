@@ -85,7 +85,10 @@ kbo_fans/
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule / standings / records overview 실패를 빈 섹션이나 placeholder 로 숨기지 않는다. 과거 날짜 홈 조회만 partial fallback 을 허용한다
 - 앱 API cache 는 현재 날짜/월/시즌 데이터의 실패 fallback 으로 쓰지 않는다. `allowCacheOnFailure` 기본값은 false 로 유지하고, historical 경로만 cached-first/snapshot 정책을 명시적으로 허용한다
 - 홈 첫 로딩은 오늘 스코어보드 별도 local cache 를 먼저 렌더링하지 않는다. 최신 API 데이터 또는 명시적 loading/error 상태만 보여준다
+- 홈 secondary aggregate provider 는 첫 scoreboard 데이터 프레임 이후에만 구독한다
+- 홈 refresh timer 는 unrelated rebuild 때 cancel/restart 하지 않고 interval 또는 scoreboard signature 변경 시에만 재스케줄한다
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 전용 경로라 경기별 상세 스코어보드 크롤러를 호출하지 않는다. 상세 크롤링은 full scoreboard 와 game detail 로 제한한다
+- backend current data route 는 `api/runtime_services.py` singleton 을 공유해 sibling endpoint 간 TTL cache 를 재사용한다
 - 앱 UI는 scoreboard 팀 합계 H/E/B가 `null`인 값을 실제 0 기록처럼 렌더링하지 않는다
 - 앱 전역 Provider retry 는 비활성화한다. API 실패를 자동 재시도로 숨기지 말고 화면 오류 상태와 Dev Console 로그로 드러낸다
 - 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다

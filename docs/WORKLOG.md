@@ -2,6 +2,37 @@
 
 ---
 
+## 2026-05-20: 0.0.26 home first paint cache sharing
+
+### 완료
+- [x] `/scoreboard/home`과 `/home`이 별도 `ScoreboardService` 인스턴스를 써 같은 날짜 schedule/main list 조회를 중복 수행할 수 있던 route-level 구조 확인
+- [x] `api/runtime_services.py`에 current data route 공용 singleton을 만들고 scoreboard/home/schedule/standings/records/game routes가 이를 공유하도록 정리
+- [x] `/home`은 `/scoreboard/home`과 같은 `ScoreboardService` TTL cache를 재사용하고, game detail relay도 같은 scoreboard service를 사용
+- [x] route service 공유 관계 회귀 테스트 추가
+- [x] 홈 화면이 scoreboard 첫 데이터 프레임 전부터 `homeAggregateProvider`를 watch하던 구조를 확인하고, secondary section 활성화 이후에만 `/home` aggregate provider를 구독하도록 변경
+- [x] 홈 로딩 스켈레톤의 82px 카드 내부 간격이 모바일/테스트 뷰포트에서 overflow 되던 문제 보정
+- [x] secondary `/home` provider가 scoreboard paint 이후에 시작되는 widget test 추가
+- [x] 홈 자동 refresh timer가 build마다 cancel/restart 되던 구조를 확인하고, refresh interval + scoreboard signature가 바뀔 때만 재스케줄하도록 안정화
+- [x] 현재 변경은 앱 첫 화면 동작과 backend current data route cache 재사용 정책 변경이라 `0.0.26+26` 새 릴리즈로 판단
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart -r expanded`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py backend/tests/test_scoreboard_service_cache.py backend/tests/test_scoreboard_service_live_fallback.py`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/api/runtime_services.py backend/src/kbo_fans_backend/api/routes/home.py backend/src/kbo_fans_backend/api/routes/scoreboard.py backend/src/kbo_fans_backend/api/routes/schedule.py backend/src/kbo_fans_backend/api/routes/standings.py backend/src/kbo_fans_backend/api/routes/records.py backend/src/kbo_fans_backend/api/routes/games.py backend/tests/test_home.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/api`
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/api backend/tests/test_home.py`
+- [x] `python3 -m compileall backend/src`
+- [x] `git diff --check`
+
+### 릴리즈 주의
+- [ ] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/codex-run.sh release-api-health` 실패: 현재 로컬 DNS가 `api.kbofans.com`을 해석하지 못함
+
+---
+
 ## 2026-05-20: 0.0.25 missing team totals display guard
 
 ### 완료
