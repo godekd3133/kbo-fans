@@ -24,6 +24,7 @@
   - relay diff: 홈런 / 이닝 교대
   - lineup diff: 선발 라인업 공개 / 변경
   - 따라서 앱이 완전히 죽어 있으면 서버 push처럼 즉시 오지 않는다.
+- 홈 scoreboard 자동 refresh cadence는 live 30초, scheduled 5분, terminal 정지로 둔다.
 
 ## Widget / Live Activity
 
@@ -34,7 +35,7 @@
   4. 오늘 다른 예정 경기
 - 홈 위젯과 Live Activity는 가능한 한 같은 source scoreboard 를 기준으로 동기화한다.
 - 중복 업데이트는 signature 비교로 억제한다.
-- 앱이 resumed 될 때 scoreboard 를 다시 invalidate 해 Live Activity 를 재동기화한다.
+- 앱이 native에서 resumed 될 때만 scoreboard 를 다시 invalidate 해 Live Activity 를 재동기화한다. 웹은 홈 위젯/Live Activity가 없으므로 전역 resume refresh를 등록하지 않는다.
 - Live Activity 는 코드상 연결만으로 끝나지 않는다.
   - Widget extension signing
   - App Group entitlement

@@ -123,12 +123,13 @@ This review is based on the current code paths below:
 | All-player image map | `app/lib/data/providers.dart:270-305` can still loop through all 10 teams if explicitly watched, but normal detail tabs now use selected teams instead. |
 | Home fallback fan-out | `app/lib/features/home/home_screen.dart:430-455` skips local fallback assembly when aggregate fails. |
 | Home preload | Removed. Home now renders from the visible scoreboard provider or the local home scoreboard cache without `GameDetailPreloadService`. |
-| Home live refresh | `app/lib/features/home/home_screen.dart:809` invalidates the visible scoreboard provider. |
+| Home live refresh | `app/lib/features/home/home_screen.dart:791-812` invalidates the visible scoreboard provider only on live 30s / scheduled 5m cadence and stops after terminal games. |
+| Web resume refresh | `app/lib/main.dart:127-142` registers the app-level resume observer only on native widget-capable runtimes, so web records/schedule views do not trigger unrelated scoreboard refresh. |
 | Schedule preload | Removed. `app/lib/features/schedule/schedule_screen.dart:74-76` opens detail on tap without top-3 detail preload. |
 | Detail visible-tab refresh | `app/lib/features/game_detail/game_detail_screen.dart:220-250` refreshes game summary and only the visible tab provider. |
 | Score tab relay dependency | Removed. `app/lib/features/game_detail/tabs/score_tab.dart:22-35` renders from `Game` inning scores without watching relay. |
 | Relay tab player data | `app/lib/features/game_detail/tabs/relay_tab.dart:44-70` watches game, relay, and the two selected team player lists. |
-| Lineup tab data | `app/lib/features/game_detail/tabs/lineup_tab.dart:52-64` watches lineup, boxscore-derived batters/pitchers, and the two selected team player lists. |
+| Lineup tab data | `app/lib/features/game_detail/tabs/lineup_tab.dart:52-60` watches lineup and the two selected team player lists; it no longer fetches boxscore-derived batters/pitchers on first entry. |
 | Widget background refresh | `app/lib/services/widget_sync_service.dart:67-76` uses compact API in normal mode; direct KBO is explicit temporary direct-primary only. |
 | Alert relay path | `app/lib/services/game_event_alert_service.dart:86-101` loops tracked games, and `app/lib/services/game_event_alert_service.dart:151-169` fetches relay per live tracked game. |
 | Direct KBO queue/dedupe | `app/lib/data/repositories/kbo_direct_repository.dart:38-45` has request maps/queue; `app/lib/data/repositories/kbo_direct_repository.dart:96-115` serializes network calls. |
@@ -226,18 +227,17 @@ Decision:
 
 Current:
 
-- Lineup tab now watches lineup, away/home batters, away/home pitchers, and selected away/home team players.
+- Lineup tab now watches lineup and selected away/home team players.
 
 Residual risk:
 
-- It still derives batters/pitchers from boxscore data for lineup comparison.
 - It still reads two selected team player lists for images/profile context.
 - It no longer watches relay, all-player image map, standings, schedules, or team stats by default.
 
 Decision:
 
 - Keep lineup as the only required payload.
-- Treat boxscore-derived matchup and player images as optional decoration.
+- Treat player images as optional decoration.
 - Do not fetch relay, all-player image map, schedule, standings, or team stats directly from Lineup tab.
 
 ### P1 Finding 6 - `allPlayerImageMapProvider` is too expensive for live tabs
@@ -245,7 +245,7 @@ Decision:
 Current:
 
 - The provider loops 10 teams and calls `getTeamPlayers` for each.
-- Relay and Lineup tabs use it as a fallback image map.
+- Relay and Lineup tabs use selected-team player payloads for image context instead of the all-team image map.
 
 Why this is a problem:
 
@@ -325,7 +325,7 @@ Recommended budgets:
 | `/game/{gameId}` | 0 for final snapshot hit; 1 compact live lookup for live/today |
 | `/game/{gameId}/relay` | 1 relay request, optional scoreboard fallback from cache only |
 | `/game/{gameId}/boxscore` | 1 boxscore request; no schedule lookup unless canonical id repair needed |
-| `/game/{gameId}/lineup` | 1 lineup request; no boxscore request except fallback starter fill |
+| `/game/{gameId}/lineup` | 1 lineup request; no boxscore request on first entry |
 | `/team/{teamId}/records` | 0 crawler after snapshot exists; scheduled warmer owns refresh |
 
 ### Home
@@ -445,12 +445,12 @@ Target:
 
 Current flow:
 
-- Watches lineup, both teams' batters/pitchers, and the two selected teams' players.
+- Watches lineup and the two selected teams' players.
 
 Residual risk:
 
 - A lineup tab should not reintroduce schedule, standings, team stats, relay, or all-player image crawling by default.
-- Boxscore-derived batters/pitchers should remain scoped to the visible lineup tab.
+- Boxscore-derived batters/pitchers should remain in Boxscore tab unless a compact matchup endpoint replaces them.
 
 Target:
 
@@ -591,7 +591,7 @@ To move this from design to code, use measurable checks:
 | Tap Game Detail Score tab | game summary only | 1 game summary call |
 | Switch to Relay tab | relay + selected two-team players | 1 relay call, optional two-team cached player lookup only |
 | Switch to Boxscore tab | boxscore + selected team players | 1 boxscore call, optional selected-team cached players |
-| Switch to Lineup tab | lineup + boxscore-derived matchup + selected two-team players | 1 lineup call, optional scoped matchup/player enrichment |
+| Switch to Lineup tab | lineup + selected two-team players | 1 lineup call, optional two-team cached player lookup only |
 | Widget background refresh | direct KBO scoreboard + current at-bat | 1 compact API/cache call |
 
 ## Done Criteria
@@ -622,7 +622,6 @@ Applied in app code:
 
 Still intentionally left for P1:
 
-- `LineupTab` still derives batter/pitcher matchup decoration from boxscore data; a compact matchup-summary endpoint can replace that later.
 - `BoxscoreTab` still reads selected-team player data for richer post-game cards.
 - Backend still needs route-level request budget tests and compact matchup/inning-summary endpoints.
 

@@ -10,12 +10,19 @@
 - [x] 값이 더 이상 set되지 않는 `startupScoreboardProvider`와 Home/Main의 의존성 제거
 - [x] 홈 첫 화면 데이터 흐름을 `scoreboardProvider` + 지연 `homeAggregateProvider`로 고정하고, aggregate 실패 시 schedule/standings/records 로컬 조립 fallback이 재진입하지 않도록 문서 기준 재정렬
 - [x] 실제 startup은 local onboarding/my-team 상태만 확인하고, 화면별 원격 데이터는 해당 route/provider가 소유하도록 정리
+- [x] 웹에서는 홈 위젯/Live Activity resume observer를 등록하지 않도록 하여 기록실/일정 화면 복귀 시 전역 scoreboard refresh가 끼어들지 않게 정리
+- [x] 더 이상 set되지 않는 `startup_preload_done:*` Home 플래그 읽기 제거
+- [x] 홈 scoreboard 자동 refresh를 live 30초 / scheduled 5분 / terminal 정지로 조정해 같은 정보를 과하게 반복 호출하지 않도록 정리
+- [x] 라인업 탭 첫 진입에서 박스스코어 파생 batter/pitcher fallback watch를 제거하고 `/game/{gameId}/lineup` + 양 팀 선수 이미지 lookup만 사용하도록 축소
+- [x] 라인업 선발 비교에서 박스스코어가 없을 때 `0.00` 같은 가짜 수치 대신 `-` / `선발 발표`로 표시하도록 보정
 - [x] 상세/스코어/중계/박스스코어/라인업 탭의 현재 provider fan-out 문서를 실제 구현 기준으로 갱신
 - [x] local native 기본 API-first, `PREFER_DIRECT_SCRAPE=true` 명시 임시 direct-primary 검증 모드 기준을 엔지니어링 노트에 반영
 
 ### 검증
 - [x] `rg`로 Home에서 `recordsOverviewProvider(season)`, overview lazy section, `GameDetailPreloadService` 재참조가 없는지 확인
 - [x] `rg`로 startup blocking prefetch / startup preload version / startup API task batch 재참조가 없는지 확인
+- [x] `rg`로 app/lib의 `startup_preload_done` 재참조가 없는지 확인
+- [x] `rg`로 Lineup tab의 `battersProvider` / `pitchersProvider` / `gameBoxscoreProvider` 재참조가 없는지 확인
 - [x] 데이터 리프레시 문서의 stale direct-debug / 이전 시즌 snapshot 차용 / 과거 preload 표현 제거 확인
 - [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart`
 - [x] `cd app && fvm flutter analyze`
@@ -24,6 +31,7 @@
 - [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
 - [x] 웹 재빌드 후 Home 네트워크 호출이 `/api/scoreboard/home` + `/api/home` 2개로 제한되는지 Playwright network log로 확인
 - [x] 웹 재빌드 후 Records는 `/api/records/overview`, Schedule은 `/api/schedule` 단일 호출로 진입하는지 확인
+- [x] 웹 재빌드 후 `#/game/20260519KTSS0?tab=lineup` 네트워크 호출에서 `/api/game/.../boxscore`가 사라지고 `/api/game`, `/lineup`, 양 팀 `/players`만 남는지 확인
 
 ---
 

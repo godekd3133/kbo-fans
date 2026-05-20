@@ -9,7 +9,6 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
@@ -52,7 +51,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     WidgetsBinding.instance.addObserver(this);
     _homeLoadStartedAtMicros = DateTime.now().microsecondsSinceEpoch;
     unawaited(_loadCachedScoreboard());
-    unawaited(_applyStartupPreloadFlags());
   }
 
   @override
@@ -793,17 +791,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _scheduleRefresh(List<Game> games, String? myTeamId) {
     final interval = _resolveRefreshInterval(games);
     _refreshTimer?.cancel();
+    if (interval == null) {
+      return;
+    }
     _refreshTimer = Timer(interval, _invalidateTodayScoreboard);
   }
 
-  Duration _resolveRefreshInterval(List<Game> games) {
+  Duration? _resolveRefreshInterval(List<Game> games) {
     if (games.any((game) => game.status == GameStatus.live)) {
-      return const Duration(seconds: 10);
+      return const Duration(seconds: 30);
     }
     if (games.any((game) => game.status == GameStatus.scheduled)) {
-      return const Duration(minutes: 2);
+      return const Duration(minutes: 5);
     }
-    return const Duration(minutes: 5);
+    return null;
   }
 
   void _invalidateTodayScoreboard() {
@@ -838,20 +839,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       setState(() {
         _secondarySectionsEnabled = true;
       });
-    });
-  }
-
-  Future<void> _applyStartupPreloadFlags() async {
-    final prefs = await SharedPreferences.getInstance();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final key =
-        'startup_preload_done:${AppConfig.instance.environment.name}:$today';
-    final isReady = prefs.getBool(key) ?? false;
-    if (!mounted || !isReady) {
-      return;
-    }
-    setState(() {
-      _secondarySectionsEnabled = true;
     });
   }
 

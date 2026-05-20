@@ -50,10 +50,6 @@ class LineupTab extends ConsumerWidget {
     }
 
     final gameLineupAsync = ref.watch(gameLineupProvider(gameId));
-    final awayBattersAsync = ref.watch(battersProvider('$gameId|true'));
-    final homeBattersAsync = ref.watch(battersProvider('$gameId|false'));
-    final awayPitchersAsync = ref.watch(pitchersProvider('$gameId|true'));
-    final homePitchersAsync = ref.watch(pitchersProvider('$gameId|false'));
     final season = DateTime.now().year;
     final awayPlayersAsync = awayTeamId.isEmpty
         ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
@@ -91,18 +87,6 @@ class LineupTab extends ConsumerWidget {
                     style: const TextStyle(color: AppColors.textDisabled),
                   ),
                   data: (gameLineup) {
-                    final awayPitchers =
-                        awayPitchersAsync.asData?.value.cast<PitcherRecord>() ??
-                        const <PitcherRecord>[];
-                    final homePitchers =
-                        homePitchersAsync.asData?.value.cast<PitcherRecord>() ??
-                        const <PitcherRecord>[];
-                    final awayBatters =
-                        awayBattersAsync.asData?.value.cast<BatterRecord>() ??
-                        const <BatterRecord>[];
-                    final homeBatters =
-                        homeBattersAsync.asData?.value.cast<BatterRecord>() ??
-                        const <BatterRecord>[];
                     final awayImageMap = _buildPlayerImageMap(
                       allImageMap: allImageMap,
                       teamPlayers:
@@ -128,32 +112,20 @@ class LineupTab extends ConsumerWidget {
                       scheduleDays: const [],
                       awayTeamStats: null,
                       homeTeamStats: null,
-                      awayStarter: _starterPitcher(
-                        awayPitchers,
-                        gameLineup.away.starterName,
-                      ),
-                      homeStarter: _starterPitcher(
-                        homePitchers,
-                        gameLineup.home.starterName,
-                      ),
+                      awayStarter: null,
+                      homeStarter: null,
                       awayStarterName: gameLineup.away.starterName,
                       homeStarterName: gameLineup.home.starterName,
                       awayStarterImageUrl: _resolveStarterImageUrl(
                         awayImageMap,
-                        name:
-                            gameLineup.away.starterName ??
-                            awayPitchers.firstOrNull?.name ??
-                            '',
+                        name: gameLineup.away.starterName ?? '',
                         starterId: gameLineup.away.starterId,
                         starterImageUrl: gameLineup.away.starterImageUrl,
                         season: season,
                       ),
                       homeStarterImageUrl: _resolveStarterImageUrl(
                         homeImageMap,
-                        name:
-                            gameLineup.home.starterName ??
-                            homePitchers.firstOrNull?.name ??
-                            '',
+                        name: gameLineup.home.starterName ?? '',
                         starterId: gameLineup.home.starterId,
                         starterImageUrl: gameLineup.home.starterImageUrl,
                         season: season,
@@ -184,11 +156,11 @@ class LineupTab extends ConsumerWidget {
                             starterName: gameLineup.away.starterName,
                             starterImageUrl: gameLineup.away.starterImageUrl,
                             lineup: gameLineup.away.lineup,
-                            batterFallback: awayBatters,
-                            pitchers: awayPitchers,
+                            batterFallback: const <BatterRecord>[],
+                            pitchers: const <PitcherRecord>[],
                             relayData: null,
                             imageMap: awayImageMap,
-                            showBullpen: true,
+                            showBullpen: false,
                             isLive: gameStatus == GameStatus.live,
                             isAwayTeam: true,
                           ),
@@ -201,11 +173,11 @@ class LineupTab extends ConsumerWidget {
                             starterName: gameLineup.home.starterName,
                             starterImageUrl: gameLineup.home.starterImageUrl,
                             lineup: gameLineup.home.lineup,
-                            batterFallback: homeBatters,
-                            pitchers: homePitchers,
+                            batterFallback: const <BatterRecord>[],
+                            pitchers: const <PitcherRecord>[],
                             relayData: null,
                             imageMap: homeImageMap,
-                            showBullpen: true,
+                            showBullpen: false,
                             isLive: gameStatus == GameStatus.live,
                             isAwayTeam: false,
                           ),
@@ -340,12 +312,12 @@ _MatchupCompareData _buildMatchupCompareData({
       starter: _StarterCompareData(
         name: awayStarterName ?? awayStarter?.name ?? '선발 미발표',
         imageUrl: awayStarterImageUrl,
-        winsLosses: awayStarter?.decision ?? '0승 0패',
-        innings: awayStarter?.innings ?? '0',
+        winsLosses: awayStarter?.decision ?? '-',
+        innings: awayStarter?.innings ?? '-',
         era: awayStarter == null
-            ? '0.00'
+            ? '-'
             : awayStarter.earnedRuns.toStringAsFixed(2),
-        whip: awayStarter == null ? '0.00' : _pitcherWhip(awayStarter),
+        whip: awayStarter == null ? '-' : _pitcherWhip(awayStarter),
       ),
     ),
     home: _TeamCompareData(
@@ -365,12 +337,12 @@ _MatchupCompareData _buildMatchupCompareData({
       starter: _StarterCompareData(
         name: homeStarterName ?? homeStarter?.name ?? '선발 미발표',
         imageUrl: homeStarterImageUrl,
-        winsLosses: homeStarter?.decision ?? '0승 0패',
-        innings: homeStarter?.innings ?? '0',
+        winsLosses: homeStarter?.decision ?? '-',
+        innings: homeStarter?.innings ?? '-',
         era: homeStarter == null
-            ? '0.00'
+            ? '-'
             : homeStarter.earnedRuns.toStringAsFixed(2),
-        whip: homeStarter == null ? '0.00' : _pitcherWhip(homeStarter),
+        whip: homeStarter == null ? '-' : _pitcherWhip(homeStarter),
       ),
     ),
   );
@@ -1182,7 +1154,7 @@ class _LineupColumn extends StatelessWidget {
       ),
     ];
     final starterDetail = starter == null
-        ? '발표 대기'
+        ? ((starterName?.isNotEmpty ?? false) ? '선발 발표' : '발표 대기')
         : starter.innings.isEmpty
         ? '실시간 경기 기준 투수'
         : '${starter.innings}이닝 · 삼진 ${starter.strikeouts} · 볼넷 ${starter.walks}';

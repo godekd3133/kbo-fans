@@ -126,8 +126,8 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(_lifecycleObserver);
     if (!kIsWeb && !_isWidgetTestBinding()) {
+      WidgetsBinding.instance.addObserver(_lifecycleObserver);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_initializeHomeWidgetRouting());
       });
@@ -137,7 +137,9 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   @override
   void dispose() {
     unawaited(_homeWidgetClickSubscription?.cancel());
-    WidgetsBinding.instance.removeObserver(_lifecycleObserver);
+    if (!kIsWeb && !_isWidgetTestBinding()) {
+      WidgetsBinding.instance.removeObserver(_lifecycleObserver);
+    }
     super.dispose();
   }
 
