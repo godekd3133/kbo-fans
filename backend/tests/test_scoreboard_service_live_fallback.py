@@ -81,7 +81,7 @@ class _StubScoreboardCrawler:
         }
 
 
-def test_live_scoreboard_uses_view1_fallback_for_totals_and_main_inning(
+def test_full_scoreboard_uses_view1_fallback_for_totals_and_main_inning(
     tmp_path: Path,
 ) -> None:
     service = ScoreboardService(
@@ -91,7 +91,7 @@ def test_live_scoreboard_uses_view1_fallback_for_totals_and_main_inning(
         snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
     )
 
-    payload = service.get_home_scoreboard("2026-03-31")
+    payload = service.get_scoreboard("2026-03-31")
     game = payload["games"][0]
 
     assert game["status"] == "LIVE"

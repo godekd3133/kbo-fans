@@ -955,6 +955,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 홈/일정/순위/기록실의 히스토리 데이터는 stale-while-revalidate 를 유지하되, current 데이터는 fresh-first/fail-visible 로 처리한다.
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 첫 로딩은 오늘 스코어보드 별도 로컬 cache 를 먼저 렌더링하지 않고, 최신 API 응답 또는 명시적 오류 상태를 기준으로 전환한다.
+- backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
 - 앱 전역 Provider retry 는 비활성화한다. 화면은 API 실패를 자동 retry 뒤에 숨기지 않고 오류 카드, 빈 상태, 또는 Dev Console 로그로 명시한다.
 - `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록/팀 선수/팀 스탯/선수 상세는 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.

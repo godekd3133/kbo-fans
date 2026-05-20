@@ -37,6 +37,9 @@ class ScoreboardService:
         self._scoreboard_cache: TtlCache[str, dict[str, Any]] = TtlCache(
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
+        self._home_scoreboard_cache: TtlCache[str, dict[str, Any]] = TtlCache(
+            self._SCOREBOARD_CACHE_TTL_SECONDS
+        )
         self._game_cache: TtlCache[str, dict[str, Any]] = TtlCache(
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
@@ -143,11 +146,68 @@ class ScoreboardService:
         return payload
 
     def get_home_scoreboard(self, date: str) -> dict[str, Any]:
-        payload = self.get_scoreboard(date)
-        return {
-            "date": payload["date"],
-            "games": [self._strip_home_payload(game) for game in payload["games"]],
+        date = self._normalize_date(date)
+        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        if self._is_historical_date(date) and snapshot is not None:
+            return {
+                "date": snapshot["date"],
+                "games": [self._strip_home_payload(game) for game in snapshot["games"]],
+            }
+
+        cached = self._home_scoreboard_cache.get(date)
+        if cached is not None:
+            logger.info("home scoreboard cache hit %s", date)
+            return cached
+
+        return self._singleflight.call(
+            f"home_scoreboard:{date}",
+            lambda: self._get_home_scoreboard_uncached(date, snapshot),
+        )
+
+    def _get_home_scoreboard_uncached(
+        self,
+        date: str,
+        snapshot: Optional[dict[str, Any]],
+    ) -> dict[str, Any]:
+        cached = self._home_scoreboard_cache.get(date)
+        if cached is not None:
+            logger.info("home scoreboard cache hit after wait %s", date)
+            return cached
+
+        try:
+            games = self.schedule_crawler.get_games_by_date(date)
+        except Exception:
+            stale = self._home_scoreboard_cache.get_stale(date)
+            if self._is_historical_date(date) and stale is not None:
+                logger.warning("home scoreboard stale cache fallback %s", date)
+                return stale
+            if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
+                return {
+                    "date": snapshot["date"],
+                    "games": [self._strip_home_payload(game) for game in snapshot["games"]],
+                }
+            raise
+
+        try:
+            game_list = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
+        except Exception:
+            game_list = {}
+            logger.warning("home scoreboard main list failed %s", date)
+
+        payload = {
+            "date": date,
+            "games": [
+                self._strip_home_payload(
+                    self._build_lightweight_game(
+                        game,
+                        game_list.get(game.get("gameId"), {}),
+                    )
+                )
+                for game in games
+            ],
         }
+        self._home_scoreboard_cache.set(date, payload)
+        return payload
 
     def get_compact_scoreboard(
         self,
@@ -206,10 +266,8 @@ class ScoreboardService:
         compact_games = []
         if selected is not None:
             game_id = selected.get("gameId")
-            enriched = self._enrich_game(selected, game_list.get(game_id, {}))
+            enriched = self._build_lightweight_game(selected, game_list.get(game_id, {}))
             compact_games = [self._strip_home_payload(enriched)]
-            if self._should_persist_snapshot(date, [enriched]) and game_id:
-                self.snapshot_store.save("games", str(game_id), enriched)
 
         payload = {
             "date": date,
@@ -309,6 +367,45 @@ class ScoreboardService:
             **game,
             **detail,
             **self._merge_main_game(main_game),
+            "ticketInfo": self.ticketing_service.build_ticket_info(
+                home_team_id=game.get("homeId"),
+                game_id=game_id,
+                start_time=main_game.get("G_TM") or game.get("time"),
+                status=resolved_status,
+            ),
+            "highlightInfo": {
+                "officialUrl": self._build_official_highlight_url(game_id),
+                "youtubeVideos": [],
+            },
+        }
+
+    def _build_lightweight_game(
+        self,
+        game: dict[str, Any],
+        main_game: dict[str, Any],
+    ) -> dict[str, Any]:
+        game_id = game.get("gameId")
+        resolved_status = str(game.get("status") or "")
+        if main_game:
+            resolved_status = self._map_status(main_game.get("GAME_STATE_SC"))
+
+        detail = self._scheduled_fallback_detail(game)
+        if resolved_status == "LIVE" and not main_game:
+            detail["inning"] = "진행중"
+        elif resolved_status == "FINAL" and not main_game:
+            detail["inning"] = "경기종료"
+        elif resolved_status == "CANCELLED":
+            detail["inning"] = "경기취소"
+        elif resolved_status == "SUSPENDED":
+            detail["inning"] = "서스펜디드"
+
+        detail = self._merge_main_game_scores(detail, main_game)
+        detail = self._backfill_team_identity(game, detail)
+        return {
+            **game,
+            **detail,
+            **self._merge_main_game(main_game),
+            "status": resolved_status,
             "ticketInfo": self.ticketing_service.build_ticket_info(
                 home_team_id=game.get("homeId"),
                 game_id=game_id,

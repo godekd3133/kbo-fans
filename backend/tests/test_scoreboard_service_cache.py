@@ -189,6 +189,30 @@ def test_get_game_enriches_only_requested_game(tmp_path: Path) -> None:
     assert scoreboard.game_ids == ["20260331OBSS0"]
 
 
+def test_get_home_scoreboard_does_not_fetch_per_game_detail(tmp_path: Path) -> None:
+    schedule = _MultiGameScheduleCrawler()
+    main = _MultiGameMainCrawler()
+    scoreboard = _TrackingScoreboardCrawler()
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=scoreboard,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    payload = service.get_home_scoreboard("2026-03-31")
+
+    assert payload["date"] == "2026-03-31"
+    assert [game["gameId"] for game in payload["games"]] == [
+        "20260331HTLG0",
+        "20260331OBSS0",
+    ]
+    assert [game["status"] for game in payload["games"]] == ["FINAL", "FINAL"]
+    assert schedule.calls == 1
+    assert main.calls == 1
+    assert scoreboard.game_ids == []
+
+
 def test_get_game_ignores_snapshot_for_non_historical_game(tmp_path: Path) -> None:
     game_id = "29990331OBSS0"
     snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
@@ -282,7 +306,7 @@ def test_get_game_uses_snapshot_for_historical_game(tmp_path: Path) -> None:
     assert game["home"]["score"] == 4
 
 
-def test_get_compact_scoreboard_enriches_only_selected_game(tmp_path: Path) -> None:
+def test_get_compact_scoreboard_uses_lightweight_selected_game(tmp_path: Path) -> None:
     schedule = _MultiGameScheduleCrawler()
     main = _MultiGameMainCrawler()
     scoreboard = _TrackingScoreboardCrawler()
@@ -297,9 +321,10 @@ def test_get_compact_scoreboard_enriches_only_selected_game(tmp_path: Path) -> N
 
     assert payload["date"] == "2026-03-31"
     assert [game["gameId"] for game in payload["games"]] == ["20260331OBSS0"]
+    assert payload["games"][0]["status"] == "FINAL"
     assert schedule.calls == 1
     assert main.calls == 1
-    assert scoreboard.game_ids == ["20260331OBSS0"]
+    assert scoreboard.game_ids == []
 
 
 def test_current_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
@@ -394,6 +419,39 @@ def test_current_compact_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
 
     with pytest.raises(RuntimeError):
         service.get_compact_scoreboard(today, my_team="KT")
+
+
+def test_current_home_scoreboard_rejects_fresh_snapshot_on_failure(
+    tmp_path: Path,
+) -> None:
+    today = date_type.today().isoformat()
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "scoreboard",
+        today,
+        {
+            "date": today,
+            "games": [
+                {
+                    "gameId": f"{today.replace('-', '')}KTSS0",
+                    "status": "FINAL",
+                    "awayId": "KT",
+                    "homeId": "SS",
+                    "away": {"score": 4},
+                    "home": {"score": 2},
+                }
+            ],
+        },
+    )
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_home_scoreboard(today)
 
 
 def test_get_scoreboard_coalesces_concurrent_same_date_requests(
