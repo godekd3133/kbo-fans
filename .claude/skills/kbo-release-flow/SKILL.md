@@ -21,6 +21,7 @@ description: Use when preparing commits, pushes, numeric release tags, release n
 - If production API is not `https://api.kbofans.com/api`, set `RELEASE_API_BASE_URL` or pass the GitHub Actions `release_api_base_url` input.
 - If default `origin` SSH push fails, use `git@github-personal:godekd3133/kbo-fans.git`.
 - Use plain numeric tags only, e.g. `0.0.11`. Do not create `*-preview*` tags or GitHub prereleases unless the Director explicitly changes the policy.
+- If the Director says "이어서 해", continue autonomously and decide whether to version up or reinforce the current GitHub release notes based on the actual diff.
 
 ## Validation
 - `git status --short --branch`

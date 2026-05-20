@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.11+11`
-- Current release tag: `0.0.11`
+- Flutter app version: `0.0.12+12`
+- Current release tag: `0.0.12`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -15,7 +15,7 @@
 
 - App version: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Git tag: `MAJOR.MINOR.PATCH`
-- In-app patch note heading: app version with build, for example `0.0.11+11 - Lineup Fan-out & Patch Notes`
+- In-app patch note heading: app version with build, for example `0.0.12+12 - Records Image & Motion Polish`
 
 ## Bump Rules
 
@@ -44,6 +44,7 @@ Every version or release change must update these surfaces in the same work unit
 - GitHub releases should be normal releases, not prereleases, under the current no-preview policy.
 - Mark only the newest numeric release as `Latest`.
 - `APP_ENV=release` artifacts must pass the release API health gate before release artifact creation.
+- When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app patch notes change.
 
 ## Numeric Release Map
 
@@ -58,6 +59,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.9`: home secondary fan-out removal and API-first/direct-primary documentation cleanup.
 - `0.0.10`: direct-primary historical records recovery, WebForms session handling, and startup remote prefetch removal.
 - `0.0.11`: lineup tab request fan-out reduction, web resume refresh scope fix, patch-note cleanup, and current app build `0.0.11+11`.
+- `0.0.12`: home KBO brief, records image fallback, wRC+ records label, home quick item player images, pre-game score hiding, app-wide micro motion, finished-game detail snapshot-first reads, and update-loop load reduction with current app build `0.0.12+12`.
 
 ## GitHub Release Note Template
 

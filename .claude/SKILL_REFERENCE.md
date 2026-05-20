@@ -57,6 +57,7 @@
   - 현재 저장소의 커밋 / 푸시 / numeric release tag / release note 흐름
 - `kbo-version-release`
   - 앱 버전 변경, GitHub 릴리즈/태그 정리, 앱 내 패치노트 갱신 루틴
+  - `이어서 해` 요청 시 실제 diff 기준으로 다음 숫자 버전 또는 기존 릴리즈 노트 보강을 자율 판단
 - `mobile-preview-release`
   - legacy 배포 체크리스트, TestFlight / Android 배포 준비
 - `app-distribution`

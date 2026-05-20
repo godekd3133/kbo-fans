@@ -57,6 +57,7 @@
 - `kbo-doc-sync`: use when architecture/API/UX changes also require synced updates across AGENTS, CLAUDE, spec docs, worklog, changelog, and skills.
 - `kbo-release-flow`: use when preparing commits, pushes, numeric release tags, or friend/TestFlight-facing release steps for this repository.
 - `kbo-version-release`: use when changing app versions, creating/reworking GitHub releases, or updating in-app patch notes.
+- If the Director says `이어서 해`, continue autonomously and decide from the actual diff whether to create the next numeric release or only reinforce the current GitHub Release notes.
 
 ## Implementation Insights
 - Keep app data sources consistent by domain. Do not let one screen use mock data while another uses live API for the same product surface.

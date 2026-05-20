@@ -163,6 +163,7 @@ kbo_fans/
 ## 반복 작업 스킬
 - 전체 스킬 인덱스: `.claude/SKILL_REFERENCE.md`
 - 버전 변경 / GitHub 릴리즈 / 앱 내 패치노트 갱신 시: `.claude/skills/kbo-version-release/SKILL.md`
+- Director가 `이어서 해`라고 하면 diff 규모를 보고 새 숫자 버전 생성 또는 현재 GitHub Release notes 보강을 자율 판단한다.
 - 히스토리 데이터 / snapshot-first 캐시 구조 작업 시: `.claude/skills/kbo-history-snapshot/SKILL.md`
 - 아키텍처/API/UX 변경 후 문서 동기화 시: `.claude/skills/kbo-doc-sync/SKILL.md`
 - iOS 위젯 / Live Activity / Dynamic Island 수정 시: `.claude/skills/ios-live-activity-widget/SKILL.md`

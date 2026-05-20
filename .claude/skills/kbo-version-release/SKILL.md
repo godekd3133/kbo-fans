@@ -21,6 +21,7 @@ description: Use when changing KBO Fans app versions, creating GitHub releases o
 7. If workflow rules changed, update `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/SKILL_REFERENCE.md`, and related skills.
 8. Create an immutable tag only after commits are final.
 9. Create or rewrite GitHub release notes from the changelog and in-app patch notes.
+10. When the Director says "이어서 해", decide whether to create the next numeric version or only reinforce the current release notes. Use a new version for app behavior, API behavior, visible UI, or in-app patch-note changes; use release-note reinforcement for wording-only cleanup.
 
 ## Version Rules
 
@@ -29,6 +30,7 @@ description: Use when changing KBO Fans app versions, creating GitHub releases o
 - Use plain numeric releases from `0.0.1` upward while the app is in early tester mode.
 - Do not create `*-preview*` tags, GitHub prereleases, or preview train names unless the Director explicitly changes the policy.
 - Do not force-update, delete, or recreate published tags unless the Director explicitly approves a historical release rewrite.
+- "이어서 해" means continue autonomously through versioning/release-note judgment without asking unless the choice is risky or ambiguous.
 
 ## Minimum Verification
 

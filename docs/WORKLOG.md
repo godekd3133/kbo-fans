@@ -2,6 +2,43 @@
 
 ---
 
+## 2026-05-20: 0.0.12 릴리즈 및 이어서 해 운영 규칙 반영
+
+### 완료
+- [x] 현재 남은 변경은 사용자 표면과 backend 데이터 정책이 바뀌는 규모라 `0.0.11` 보강이 아니라 `0.0.12+12` 새 릴리즈로 판단
+- [x] `app/pubspec.yaml`, `docs/VERSIONING.md`, `README.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`를 `0.0.12` 기준으로 갱신
+- [x] Director가 "이어서 해"라고 하면 이후에는 변경 규모에 따라 새 버전 생성 또는 기존 GitHub Release notes 보강을 Codex가 자율 판단하도록 `kbo-version-release` / `kbo-release-flow`에 기록
+- [x] 종료/과거 경기 상세의 박스스코어, 라인업, 문자중계는 완성된 snapshot을 우선 반환하도록 backend 서비스 정책 보강
+- [x] 경기 전 홈/일정 표기는 점수 대신 `vs`로 처리하고, 최근 경기 흐름은 종료 경기만 집계하도록 보정
+- [x] 홈 마이팀 브리프 아래에 `KBO 브리프`를 실제 API/model/UI로 연결해 리그 전체 관전 포인트, 기록 레이더, 순위 흐름을 3개 카드로 노출
+
+### 검증
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py backend/tests/test_records_overview.py backend/tests/test_player_stats_crawler.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_boxscore_service.py backend/tests/test_lineup.py backend/tests/test_relay_service.py backend/tests/test_home.py backend/tests/test_records_overview.py backend/tests/test_player_stats_crawler.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_schedule.py backend/tests/test_home.py`
+- [x] 완료 경기 `20260519KTSS0` 상세 API 실측: `/relay` 0.014s, `/boxscore` 0.014s, `/lineup` 0.005s, 이후 재측정 `/boxscore` 0.006s, `/lineup` 0.003s
+- [x] 완료 경기 상세 탭 웹 네트워크 실측: relay 탭은 `/game` + `/relay` + 양 팀 `/players`, boxscore 탭은 `/game` + `/boxscore` + 필요 팀 `/players`, lineup 탭은 `/game` + `/lineup` + 양 팀 `/players`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/core/router/app_router_test.dart test/data/models/home_aggregate_test.dart test/data/models/records_overview_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/data/models/home_aggregate_test.dart test/widget_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/data/models/home_aggregate_test.dart test/features/schedule/widgets/schedule_game_card_test.dart -r expanded`
+
+---
+
+## 2026-05-20: 기록실 wRC+ 카드 및 과거 시즌 선수 이미지 보정
+
+### 완료
+- [x] 기록실 첫 화면의 미지원 `WAR` 카드 노출을 제거하고 기존 상대 타격 리더 지표 카드 표시를 `wRC+`로 교체
+- [x] 2013년 리더 선수 이미지 URL이 `.../middle/2013/{playerId}.jpg`로 생성되어 CDN 404가 나는 원인 확인
+- [x] 기록실/선수 상세/홈 quick item에서 과거 시즌 선수 이미지는 CDN에서 확인 가능한 최소 폴더인 `2022`를 사용하도록 공통 helper 적용
+
+### 검증 메모
+- `curl -I .../middle/2013/76232.jpg`는 `HTTP 404`, `.../middle/2026/76232.jpg`는 `HTTP 200`으로 확인
+- 2013 리더 예시 `77532`, `75847`, `72443`, `60263`, `73211`, `73117`은 `2022` 이미지 경로에서 `HTTP 200` 확인
+
+---
+
 ## 2026-05-20: preview 없는 0.0.x 릴리즈 체계 재정렬
 
 ### 완료
@@ -16,6 +53,70 @@
 - [x] 기존 `0.1.0-preview.1~4`, `0.0.1-preview`, `0.0.1-preview.1`, `0.0.2-preview` GitHub 릴리즈/태그 삭제 대상 확정
 - [x] 기존 충돌 숫자 태그 `0.0.2~0.0.5`는 Director 승인 범위 안에서 새 numeric release map에 맞춰 재생성 대상 확정
 - [x] 새 릴리즈는 `0.0.1`부터 `0.0.11`까지 모두 일반 GitHub Release로 생성하고, `0.0.11`만 Latest로 표시 예정
+
+---
+
+## 2026-05-20: 경기/마이팀 선수 기록 인사이트 기획 정리
+
+### 완료
+- [x] 구현 시도 코드는 되돌리고, 구현 전 기획/검증안만 `docs/PLAYER_RECORD_INSIGHTS_PLAN_2026-05-20.md`로 분리
+- [x] 현재 snapshot 기준 데이터 가능 범위를 확인: boxscore는 멀티히트/타점/탈삼진/QS 류, relay는 같은 경기 안의 타석 흐름 판정에 적합
+- [x] 선수별 최근 경기 snapshot의 `recentGames`는 2026 auto snapshot 623개가 모두 비어 있어 `몇 경기 연속 안타`는 별도 game-log 적재 없이는 확정 불가로 분류
+- [x] KBO 통산/개인 통산/KBO 최초/최연소/최단 경기 같은 역사적 기록 레이어를 P3로 추가하고, `record_catalog` 기준선 없이는 자동 노출하지 않는 원칙을 반영
+- [x] 경기 예정일 때 `오늘 달성 가능`, 경기 종료/다음날 `오늘/어제 달성`을 보여주는 `기록 레이더` 피드 기획을 추가
+- [x] `daily_record_candidates` / `daily_record_achievements` snapshot 개념과 예정/진행/종료/다음날 상태별 UX 문구 원칙을 정리
+- [x] 마이팀 브리프 아래에 리그 전체 강한 정보를 요약하는 `KBO 브리프` 영역을 추가 기획
+- [x] `KBO 브리프`를 경기 전/중/종료/다음날/경기 없음 상태별로 나누고, 빅매치/경기 흐름/선수 활약/기록 레이더/순위 변동 카드 타입을 정리
+
+### 검증 메모
+- `backend/data/snapshots/boxscore/20260519LGHT0.json`: 타자별 `atBats/hits/rbi/runs`, 투수별 `innings/strikeouts/earnedRuns` 확인
+- `backend/data/snapshots/relay/20260519LGHT0.json`: `N번타자`와 결과 텍스트(`홈런`, `안타`)가 순서대로 있어 같은 경기 내 연속 타석 분석 가능
+- `backend/data/snapshots/player_detail/*-2026-auto.json`: `recentGames` non-empty 0개 확인
+- 역사적 기록은 개인 career total, all-time leaderboard, 공식/검수 record catalog가 있어야 안정적으로 판정 가능
+- 오늘 가능 후보는 경기 전에는 confidence가 낮고, 라인업 발표 후/경기 종료 후에만 확정성이 올라가므로 상태별 문구를 분리해야 함
+- `KBO 브리프`는 마이팀 브리프와 역할이 겹치지 않게 리그 전체 맥락을 담당하고, 같은 경기에서 여러 이슈가 나오면 가장 강한 하나만 홈에 올리는 원칙으로 정리
+
+---
+
+## 2026-05-20: 문자중계 선수 이미지 경로 확인 및 라인업 투수 사진 비율 조정
+
+### 완료
+- [x] 문자중계 현재 타석 카드가 `batterImageUrl` / `pitcherImageUrl`을 우선 사용하고, 없을 때 선수 이미지 맵을 fallback으로 쓰는 구조인지 확인
+- [x] 라인업 탭 선발투수 hero 카드의 이미지 표시 영역을 카드 전체 폭/높이에서 제한해 얼굴이 과도하게 커 보이지 않도록 조정
+- [x] 선발투수 이미지 대비 카드 박스가 과하게 커 보이는 피드백 반영: 카드 높이와 radius를 줄이고 내부 사진 비율을 재조정
+
+### 검증
+- [x] `app/lib/features/game_detail/tabs/relay_tab.dart` 코드 경로 확인
+- [x] `app/lib/features/game_detail/tabs/lineup_tab.dart` 표시 비율 패치 확인
+- [x] `cd app && fvm flutter analyze lib/features/game_detail/tabs/lineup_tab.dart lib/features/game_detail/tabs/relay_tab.dart lib/data/models/home_aggregate.dart`
+- [x] `cd app && fvm flutter analyze lib/features/game_detail/tabs/lineup_tab.dart`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py`
+
+### 메모
+- 문자중계는 홈 quick item처럼 aggregate payload에서 `imageUrl`이 빠지는 경로가 아니라, 경기 상세 payload의 현재 타석 선수 이미지 URL을 직접 우선 사용한다.
+- 현재 변경은 선발투수 카드의 시각 비율만 조정하며 선수 이미지 조회 로직은 바꾸지 않았다.
+
+---
+
+## 2026-05-20: 홈 quick item 선수 얼굴 fallback 원인 확인 및 보정
+
+### 완료
+- [x] 웹 preview에서 김도영 선수 상세(`/records/player/52605?season=2026`)는 CDN 사진이 정상 표시되는지 확인
+- [x] `/api/home` aggregate의 `홈런왕` quick item이 `imageUrl` 없이 내려와 홈 카드가 `fallbackLabel` 첫 글자인 `김`으로 표시되는 원인 확인
+- [x] backend 홈 aggregate의 홈런왕 quick item에 선수 상세 route와 KBO 선수 이미지 URL을 포함하도록 보정
+- [x] app local aggregate fallback도 backend와 같은 선수 상세 route / 이미지 URL 규칙으로 보정
+- [x] backend/app 회귀 테스트 추가
+
+### 검증
+- [x] `curl -I https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52605.jpg` 가 `HTTP 200`으로 응답하는지 확인
+- [x] 패치 후 local backend `/api/home?date=2026-05-20`의 홈런왕 quick item에 `imageUrl`과 선수 상세 route가 포함되는지 확인
+- [x] 390x844 웹 preview에서 김도영 선수 상세 카드의 얼굴 이미지 정상 렌더링 확인
+- [x] 390x844 웹 preview 홈 quick item에서 `김` fallback 대신 김도영 얼굴 이미지가 렌더링되는지 확인
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py`
+- [x] `cd app && fvm flutter test test/data/models/home_aggregate_test.dart`
+
+### 메모
+- 원인은 선수 이미지 파일 부재가 아니라 홈 quick item payload 누락이었다.
 
 ---
 
@@ -1424,6 +1525,11 @@ kbo_fans/
 - [x] 홈 스코어보드 로딩/캐시/데이터/에러 전환에 공통 fade + 미세 slide 적용
 - [x] 일정, 순위, 기록실, 선수 상세의 Async 상태 전환에 공통 모션 적용
 - [x] 홈 경기 카드, 일정 경기 카드, 구장별 일정, 순위 행, 기록실 선수 카드, 리더보드 행에 짧은 등장 모션 적용
+- [x] 하단 탭, 경기/일정 카드, 온보딩 구단 카드, 일정 필터/헤더 버튼, 기록실 카드/필터/정렬 chip, 리더보드 행에 press scale + opacity 피드백 적용
+- [x] 홈/마이팀/일정/경기 상세 스코어에 value swap 모션 적용
+- [x] 홈 마이팀 브리프, 최근 경기 chip, 오늘 경기 보조 행, 빠른 콘텐츠 카드까지 press 피드백 확장
+- [x] 경기 상세 스코어 탭 회차 셀, 문자중계 이닝 chip, 박스스코어 팀 토글/선수 카드/선수 리스트 등장 모션, 하이라이트 카드/모드 chip에 micro motion 확장
+- [x] 일정 달력 날짜 셀과 설정 마이팀 카드/알림 row/정보 row/전달 방식 option에 press 피드백 확장
 - [x] 모션 원칙을 `docs/APP_SPEC.md`와 `CHANGELOG.md`에 반영
 - [x] `LocalAssetPlayerRepository`의 `MockPlayerRepository` fallback 제거: 번들 스냅샷이 비어 있으면 빈 상태/명시적 오류를 반환해 기록실에 가짜 선수 데이터가 재유입되지 않도록 보정
 - [x] local native `API_BASE_URL` 명시 경로에서 `/home` 실패 시 direct/provider 조립 fallback으로 재진입하지 않도록 차단
@@ -1446,6 +1552,8 @@ kbo_fans/
 - [x] direct-primary 과거 시즌 팀 기록실은 현재 로스터 검색 대신 KBO 시즌/팀 filter 기록 테이블에서 야수/투수 선수 기록을 구성하도록 보정
 - [x] backend `RecordsOverviewCrawler` / `TeamStatsCrawler`도 동일한 전체 WebForms form payload 방식으로 보정해 이후 bootstrap/snapshot 생성이 빈 과거 시즌 데이터로 재생성되지 않도록 정리
 - [x] 홈 스코어보드 캐시 저장이 `build` 이후 반복 `setState`를 유발할 수 있던 경로를 payload guard와 무상태 캐시 갱신으로 차단해 실기기 CPU/발열 위험을 낮춤
+- [x] 실기기 발열 후보 추가 감사: 홈 이벤트 알림 side effect를 scoreboard payload당 1회로 제한하고, iOS widget App Group 초기화와 닫힌 Dev Console 로그 rebuild를 중복 실행하지 않도록 보정
+- [x] 추가 발열 후보 감사: 경기 상세/기록실/일정/홈의 반복 팀 로고와 선수 썸네일에 메모리 디코딩 크기 상한을 걸어 작은 UI 이미지가 원본 크기로 디코딩되는 부담을 낮춤
 
 ### 검증 메모
 - 모션은 새 패키지 없이 Flutter 기본 위젯만 사용했고, `MediaQuery.disableAnimations`가 켜진 경우 생략되도록 처리함
@@ -1456,3 +1564,7 @@ kbo_fans/
 - backend crawler 실측으로 2025 overview 각 리더 5개와 LG 2025 팀 타율/ERA 응답을 확인했고, `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_teams.py` 통과
 - 추가 검증으로 `python3 -m py_compile backend/src/kbo_fans_backend/crawlers/base.py backend/src/kbo_fans_backend/crawlers/records_overview.py backend/src/kbo_fans_backend/crawlers/team_stats.py`, `fvm flutter analyze`, `fvm flutter test test/data/local_asset_player_repository_test.dart` 통과
 - 홈 캐시 루프 보정 후 `fvm flutter analyze app/lib/features/home/home_screen.dart`, `fvm flutter test test/widget_test.dart` 통과
+- 발열 후보 추가 보정 후 `fvm flutter analyze app/lib/features/home/home_screen.dart app/lib/services/widget_sync_service.dart app/lib/core/widgets/dev_console.dart`, `fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart` 통과
+- 이미지 디코딩 상한 보정 후 `fvm dart format app/lib/features/home/home_screen.dart app/lib/features/home/widgets/game_card.dart app/lib/features/home/widgets/my_team_game_card.dart app/lib/features/game_detail/game_detail_screen.dart app/lib/features/game_detail/tabs/boxscore_tab.dart app/lib/features/game_detail/tabs/relay_tab.dart app/lib/features/game_detail/tabs/lineup_tab.dart app/lib/features/records/leaderboard_screen.dart app/lib/features/records/records_screen.dart app/lib/features/standings/standings_screen.dart app/lib/features/schedule/widgets/schedule_game_card.dart`, `fvm flutter analyze app/lib/features/home/home_screen.dart app/lib/features/home/widgets/game_card.dart app/lib/features/home/widgets/my_team_game_card.dart app/lib/features/game_detail/game_detail_screen.dart app/lib/features/game_detail/tabs/boxscore_tab.dart app/lib/features/game_detail/tabs/relay_tab.dart app/lib/features/game_detail/tabs/lineup_tab.dart app/lib/features/records/leaderboard_screen.dart app/lib/features/records/records_screen.dart app/lib/features/standings/standings_screen.dart app/lib/features/schedule/widgets/schedule_game_card.dart`, `fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart` 통과
+- 터치 피드백/점수 전환 모션 보강 후 `fvm dart format`, `fvm flutter analyze`, 기존 Flutter 테스트 3종, `fvm flutter build web --release --dart-define=APP_ENV=local` 통과. `http://127.0.0.1:7357` Puppeteer smoke로 home, schedule, standings, records, game detail 렌더 확인
+- 추가 micro motion 확장 후 `fvm dart format`, `fvm flutter analyze`, 기존 Flutter 테스트 3종, `fvm flutter build web --release --dart-define=APP_ENV=local` 통과. local FastAPI + `http://127.0.0.1:7357` Puppeteer smoke로 home/schedule/standings/records/settings/game detail 및 score/relay/boxscore/lineup 탭 렌더 확인. 기존 dirty worktree의 backend/release 문서 변경은 건드리지 않고 Flutter UI 범위만 좁게 수정
