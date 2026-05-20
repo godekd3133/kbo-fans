@@ -118,6 +118,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run.sh android
 ./scripts/codex-run.sh android-release
 ./scripts/codex-run.sh web
+./scripts/codex-run.sh web-dev
 ./scripts/codex-run.sh web-static
 ./scripts/codex-run.sh web-release
 ./scripts/codex-run.sh backend
@@ -167,7 +168,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - `./scripts/codex-run-ios-profile.sh` 는 위 동작을 명시적으로 호출하는 iPhone local profile 테스트용 래퍼입니다.
 - `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` 로 설치합니다. 아직 API 구현이 비어 있는 영역을 검증하기 위한 임시 direct-primary 경로이며, API 실패 후 fallback으로 전환되는 구조가 아닙니다.
 - `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=release` 로 실행합니다. 실행 전 release API health gate가 `DNS / TLS / 핵심 API`를 확인하며, 실패하면 설치/실행을 중단합니다.
-- `./scripts/codex-run.sh android-release` 와 `./scripts/codex-run.sh web-release` 도 local backend 없이 release API health gate를 통과한 URL만 앱에 주입합니다.
+- `./scripts/codex-run.sh android-release`, `./scripts/codex-run.sh web`, `./scripts/codex-run.sh web-release` 는 local backend 없이 release API health gate를 통과한 URL만 앱에 주입합니다.
 - 웹 `APP_ENV=local` 빌드는 명시적 `API_BASE_URL` override가 없으면 local backend 대신 운영 API를 기본값으로 사용합니다.
 - 모바일 local native 모드도 기본은 API 경로입니다. backend가 켜져 있으면 iOS 실기기는 Mac LAN IP, iOS Simulator는 `localhost`, Android Emulator는 `10.0.2.2`, Android 실기기는 Mac LAN IP를 `API_BASE_URL`로 주입합니다.
 - KBO direct scrape는 일반 fallback이 아니며, `APP_ENV=local` 네이티브 빌드에서 `API_BASE_URL` override 없이 `--dart-define=PREFER_DIRECT_SCRAPE=true` 를 명시한 임시 direct-primary 검증 경로에서만 사용합니다.

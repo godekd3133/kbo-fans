@@ -20,6 +20,7 @@ Usage:
   ./scripts/codex-run.sh android
   ./scripts/codex-run.sh android-release
   ./scripts/codex-run.sh web
+  ./scripts/codex-run.sh web-dev
   ./scripts/codex-run.sh web-static
   ./scripts/codex-run.sh web-release
   ./scripts/codex-run.sh backend
@@ -34,7 +35,8 @@ Commands:
   ios-release  Run the Flutter app on a connected iPhone in production release mode
   android  Run the Flutter app on Android device/emulator
   android-release  Run Android in release mode against the health-checked release API
-  web      Run the Flutter app in Chrome
+  web      Build web release against the health-checked release API and serve it locally
+  web-dev  Run the Flutter app in Chrome for a debug session
   web-static  Build web release and serve it locally on port 7357
   web-release  Build web release against the health-checked release API and serve it locally
   backend  Run the FastAPI backend with a local virtualenv
@@ -946,6 +948,9 @@ main() {
       run_android_release
       ;;
     web)
+      run_web_release_static
+      ;;
+    web-dev)
       run_web
       ;;
     web-static)
