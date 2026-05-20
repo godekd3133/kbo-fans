@@ -78,7 +78,7 @@ kbo_fans/
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.0.x`
-- Current release: `0.0.16`
+- Current release: `0.0.17`
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
@@ -116,8 +116,10 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ```bash
 ./scripts/codex-run.sh ios
 ./scripts/codex-run.sh android
+./scripts/codex-run.sh android-release
 ./scripts/codex-run.sh web
 ./scripts/codex-run.sh web-static
+./scripts/codex-run.sh web-release
 ./scripts/codex-run.sh backend
 ./scripts/codex-run.sh doctor
 ```
@@ -130,8 +132,10 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - iOS local release-mode 실행 액션: `./scripts/codex-run-ios-local-release.sh`
 - iOS production release 실행 액션: `./scripts/codex-run-ios-release.sh`
 - Android 실행 액션: `./scripts/codex-run-android.sh`
+- Android release 실행 액션: `./scripts/codex-run.sh android-release`
 - Web 실행 액션: `./scripts/codex-run-web.sh`
 - 정적 웹 프리뷰 실행 액션: `./scripts/codex-run-web-static.sh`
+- Web release 실행 액션: `./scripts/codex-run.sh web-release`
 - 웹 Chrome 디버그 실행 액션: `./scripts/codex-run-web-dev.sh`
 - Backend 실행 액션: `./scripts/codex-run.sh backend`
 - 환경 점검 액션: `./scripts/codex-run.sh doctor`
@@ -145,8 +149,10 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run-ios-local-release.sh
 ./scripts/codex-run-ios-release.sh
 ./scripts/codex-run-android.sh
+./scripts/codex-run.sh android-release
 ./scripts/codex-run-web.sh
 ./scripts/codex-run-web-static.sh
+./scripts/codex-run.sh web-release
 ./scripts/codex-run-web-dev.sh
 ```
 
@@ -160,9 +166,10 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - `./scripts/codex-run-ios-profile.sh` 는 위 동작을 명시적으로 호출하는 iPhone local profile 테스트용 래퍼입니다.
 - `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` 로 설치합니다. 아직 API 구현이 비어 있는 영역을 검증하기 위한 임시 direct-primary 경로이며, API 실패 후 fallback으로 전환되는 구조가 아닙니다.
 - `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=release` 로 실행합니다. 실행 전 release API health gate가 `DNS / TLS / 핵심 API`를 확인하며, 실패하면 설치/실행을 중단합니다.
+- `./scripts/codex-run.sh android-release` 와 `./scripts/codex-run.sh web-release` 도 local backend 없이 release API health gate를 통과한 URL만 앱에 주입합니다.
 - 웹 `APP_ENV=local` 빌드는 명시적 `API_BASE_URL` override가 없으면 local backend 대신 운영 API를 기본값으로 사용합니다.
 - 모바일 local native 모드도 기본은 API 경로입니다. backend가 켜져 있으면 iOS 실기기는 Mac LAN IP, iOS Simulator는 `localhost`, Android Emulator는 `10.0.2.2`, Android 실기기는 Mac LAN IP를 `API_BASE_URL`로 주입합니다.
-- KBO direct scrape는 일반 fallback이 아니며, 필요할 때만 `--dart-define=PREFER_DIRECT_SCRAPE=true` 로 명시한 임시 direct-primary 빌드에서 사용합니다.
+- KBO direct scrape는 일반 fallback이 아니며, `APP_ENV=local` 네이티브 빌드에서 `API_BASE_URL` override 없이 `--dart-define=PREFER_DIRECT_SCRAPE=true` 를 명시한 임시 direct-primary 검증 경로에서만 사용합니다.
 - `./scripts/codex-run-android.sh` 는 Android Studio JBR(Java 17), Android SDK, AVD 부팅, `APP_ENV=local` 기준까지 포함한 Codex용 안드로이드 실행 경로입니다.
 - 안드로이드 실행 환경 메모는 `docs/CODEX_ANDROID_ENV.md` 를 참고합니다.
 
@@ -209,7 +216,7 @@ Release health gate:
 
 - Android 는 서명 시크릿이 없으면 현재 Gradle 설정대로 debug signing fallback 으로 release 빌드를 만듭니다.
 - iOS 는 기본으로 simulator용 unsigned 앱만 만들고, 실제 IPA 는 인증서/프로비저닝 시크릿이 있어야 합니다.
-- `local` 환경 빌드는 CI에서 컴파일은 가능하지만, 런타임 API 기준은 실행 환경별 local API 설정을 따릅니다. 웹은 운영 API, 네이티브는 `localhost`, `10.0.2.2`, 또는 LAN IP가 기본입니다. 단, `ios-local-release` / `codex-run-ios-local-release.sh` 는 API 미구현 영역 검증을 위해 임시 direct-primary 모드를 명시합니다.
+- `local` 환경 빌드는 CI에서 컴파일은 가능하지만, 런타임 API 기준은 실행 환경별 local API 설정을 따릅니다. 웹은 운영 API, 네이티브는 `localhost`, `10.0.2.2`, 또는 LAN IP가 기본입니다. 단, `ios-local-release` / `codex-run-ios-local-release.sh` 는 API 미구현 영역 검증을 위해 `API_BASE_URL` override 없는 local native direct-primary 모드를 명시합니다.
 
 권장 시크릿:
 

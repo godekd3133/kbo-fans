@@ -12,6 +12,21 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
+## [0.0.17] - 2026-05-20
+
+### Changed
+
+- 앱/홈 aggregate/widget background의 direct KBO 라우팅을 `APP_ENV=local`, 네이티브 런타임, `API_BASE_URL` 미지정, `PREFER_DIRECT_SCRAPE=true` 조건을 모두 만족할 때만 허용하도록 통일
+- provider routing 회귀 테스트를 추가해 웹, release, API override 빌드가 direct KBO 경로로 빠지지 않도록 검증
+- local backend 없이 검증하는 `android-release`, `web-release` 실행 경로를 추가하고 release API health gate 통과 URL만 주입하도록 정리
+- device records overview snapshot은 AVG/HR/OPS/ERA가 모두 있는 완성본만 저장/재사용하도록 제한
+
+### Fixed
+
+- `PREFER_DIRECT_SCRAPE=true` 하나만으로 API override가 있는 local native나 widget background 경로가 direct KBO를 선택할 수 있던 위험 차단
+- 기본 운영 API 도메인이 DNS/TLS/API health gate를 통과하지 못하면 release 실행/빌드가 시작되지 않도록 로컬 실행 경로까지 차단
+- 불완전한 records overview 응답이 device snapshot으로 저장되어 이후 기록실 첫 화면을 부분 데이터로 오염시킬 수 있던 경로 차단
+
 ## [0.0.16] - 2026-05-20
 
 ### Changed

@@ -1,5 +1,13 @@
 # 패치노트
 
+## 0.0.17+17 - Direct Routing Guard
+
+- direct KBO 경로는 local native 빌드에서 `PREFER_DIRECT_SCRAPE=true`를 명시하고 `API_BASE_URL` override가 없을 때만 사용합니다.
+- 웹, release, API override 빌드는 항상 backend API 경로를 우선하도록 앱 provider와 widget background 동기화 경로를 맞췄습니다.
+- provider routing 테스트를 추가해 임시 direct-primary 검증 경로가 일반 앱 실행으로 새지 않도록 했습니다.
+- Android/Web release 실행도 local backend 없이 release API health gate를 통과한 URL만 사용하도록 정리했습니다.
+- 기록실 요약 device snapshot은 AVG/HR/OPS/ERA가 모두 있는 완성본만 저장하고 재사용합니다.
+
 ## 0.0.16+16 - Backend Snapshot Freshness
 
 - backend 현재 날짜 스코어보드와 현재 시즌/월 일정, 순위, 기록실 요약, 리더보드는 원천 조회 실패 때도 6시간 이내 저장 snapshot만 fallback으로 사용합니다.

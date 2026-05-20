@@ -14,7 +14,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 ## Rules
 - Web and release builds should go through backend API paths.
 - Local native debugging should go through backend API paths by default.
-- Direct KBO crawling is opt-in only with `--dart-define=PREFER_DIRECT_SCRAPE=true` for temporary direct-primary validation builds.
+- Direct KBO crawling is opt-in only when `APP_ENV=local`, native runtime, no `API_BASE_URL` override, and `--dart-define=PREFER_DIRECT_SCRAPE=true` are all true for temporary direct-primary validation builds.
 - Slow detail-only payloads such as multi-highlight lookup should be lazy-loaded on a separate endpoint.
 - Historical standings, records, and completed-game data should prefer snapshots when available.
 - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings and records overview require a fresh `generatedAt`; unverified historical seasons should remain empty instead of repeating another season.

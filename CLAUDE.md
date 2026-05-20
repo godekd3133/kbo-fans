@@ -75,7 +75,7 @@ kbo_fans/
 
 ## 런타임 / 운영 메모
 - 웹과 release 빌드는 KBO 원본 직접 호출 대신 백엔드 API 경로를 기본으로 사용한다
-- 로컬 네이티브 실행도 기본은 API 경로다. direct KBO crawler 경로는 `PREFER_DIRECT_SCRAPE=true` 명시 임시 direct-primary 빌드에서만 쓴다
+- 로컬 네이티브 실행도 기본은 API 경로다. direct KBO crawler 경로는 `APP_ENV=local`, native runtime, `API_BASE_URL` override 없음, `PREFER_DIRECT_SCRAPE=true` 조건을 모두 만족하는 임시 direct-primary 빌드에서만 쓴다
 - 홈 첫 진입은 경량 payload / 캐시 우선, 이후 background refresh 방식으로 체감 속도를 확보한다
 - 지난 경기 결과, 과거 시즌 순위, 기록실 과거 시즌 데이터는 snapshot 우선 전략을 유지한다
 - 앱 번들 standings / records overview fallback 은 exact-season-only 로 제한한다. 현재 시즌은 `generatedAt` 기준 최신 snapshot 만 허용하고, 검증되지 않은 과거 시즌은 다른 시즌 데이터를 빌리지 않는다
@@ -100,7 +100,7 @@ kbo_fans/
 - 실기기 디버그 환경에서 `localhost` 백엔드는 신뢰하지 않는다. 모바일 디버그는 실행 스크립트가 주입하는 Mac LAN IP 기반 API 경로가 현재 원칙이다.
 - 데이터 소스 혼선은 실제 장애처럼 보이므로 화면별로 다른 저장소를 보게 두지 않는다.
 - 현재 허용된 direct KBO 범위:
-  - `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 임시 direct-primary 빌드
+  - `APP_ENV=local`, native runtime, `API_BASE_URL` override 없음, `PREFER_DIRECT_SCRAPE=true` 를 모두 만족하는 명시적 임시 direct-primary 빌드
   - 일반 local/dev/release 앱 모드에서는 자동 direct fallback 금지
 - 기록실 선수 상세/엔트리 전체는 API 또는 생성된 snapshot 기준으로 유지한다.
 - 순위/기록실 요약/리더보드는 요청 시즌과 정확히 맞는 검증된 snapshot 만 사용하고, current-season standings / records overview / 팀 선수 / 팀 스탯은 6시간 이내 snapshot 만 fallback 으로 인정한다. 검증되지 않은 과거 순위는 빈 exact snapshot 으로 둔다.

@@ -43,7 +43,7 @@
 
 ## Runtime Notes
 - Web and release builds should use backend API paths, not direct KBO ASMX/HTML calls.
-- Local native runs should use backend API paths by default. Direct KBO crawling is opt-in only with `PREFER_DIRECT_SCRAPE=true` for temporary direct-primary validation builds.
+- Local native runs should use backend API paths by default. Direct KBO crawling is opt-in only when `APP_ENV=local`, native runtime, no `API_BASE_URL` override, and `PREFER_DIRECT_SCRAPE=true` are all true for temporary direct-primary validation builds.
 - Home first paint should prefer lightweight/cached payloads, then refresh in the background.
 - Historical standings, records, and finished-game detail should prefer stored snapshots when available over re-crawling upstream pages.
 - Team records UX should enter through team selection first, then fetch team-specific records after selection.
@@ -64,7 +64,7 @@
 - For mobile debug builds on real devices, `localhost` API assumptions are unsafe. Use the run scripts so `API_BASE_URL` is injected as the Mac LAN IP.
 - Current fallback policy:
   - Direct KBO must not be used as an automatic fallback in normal app mode.
-  - Direct KBO is allowed only for explicit temporary direct-primary builds with `PREFER_DIRECT_SCRAPE=true`, including API-not-yet-implemented validation paths such as `ios-local-release`.
+  - Direct KBO is allowed only for explicit temporary direct-primary builds where `APP_ENV=local`, native runtime, no `API_BASE_URL` override, and `PREFER_DIRECT_SCRAPE=true` are all true, including API-not-yet-implemented validation paths such as `ios-local-release`.
   - Records must stay API-backed or generated snapshot-backed. Do not silently fall back to incomplete mock data there.
   - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings and records overview require a fresh `generatedAt`, and unverified historical seasons must stay empty instead of repeating another season.
   - Current-season team player/team stat fallback must require a fresh `savedAt` timestamp. Reject timestamp-less legacy device caches and stale bundled assets instead of showing old season-start records.
