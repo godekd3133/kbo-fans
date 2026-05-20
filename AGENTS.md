@@ -78,6 +78,7 @@
   - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.
   - Backend `/scoreboard/home` and `/scoreboard/compact` are lightweight summary paths. Do not call per-game scoreboard detail crawlers there; reserve detail crawling for full scoreboard and game detail.
   - Backend current data routes should share `api/runtime_services.py` singletons so sibling endpoints reuse the same TTL caches instead of duplicating KBO calls.
+  - LIVE summary scoreboard paths should prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0.
   - App UI must treat null H/E/B team totals as unavailable instead of rendering fake 0 records.
 - App-wide Provider retry is intentionally disabled. Do not depend on Riverpod automatic retries to hide API failures; surface errors in screen state and log technical detail to Dev Console.
 - When touching direct KBO parsers in `app/lib/data/repositories/kbo_direct_repository.dart`, keep field parity with backend contracts. Schedule status, scores, and standings parsing have already drifted once and broke UI state.

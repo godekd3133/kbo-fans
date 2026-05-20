@@ -1,5 +1,11 @@
 # 패치노트
 
+## 0.0.27+27 - Live Score Freshness Guard
+
+- LIVE 홈/위젯 요약 스코어보드에서 KBO main list의 실제 득점을 schedule/detail fallback의 0점보다 우선합니다.
+- 진행 중 경기가 실제로 득점 중인데도 fallback 0:0 때문에 홈이나 위젯에서 0:0으로 남을 수 있던 경로를 막았습니다.
+- 같은 케이스가 다시 생기지 않도록 backend 회귀 테스트를 추가했습니다.
+
 ## 0.0.26+26 - Home First Paint Cache Sharing
 
 - 홈 화면은 스코어보드가 먼저 그려진 뒤에만 마이팀 브리프와 KBO 브리프용 `/home` aggregate를 구독합니다.

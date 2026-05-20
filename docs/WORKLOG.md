@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-05-20: 0.0.27 live scoreboard score freshness guard
+
+### 완료
+- [x] 라이브 상태와 이닝은 KBO main list에서 갱신되지만, schedule/detail fallback의 `0` 점수가 이미 있으면 main list 실제 점수로 덮이지 않는 구조 확인
+- [x] `ScoreboardService._merge_main_game_scores`가 KBO main list의 유효한 점수를 schedule fallback 점수보다 우선하도록 보정
+- [x] `/scoreboard/home` 경량 경로에서 detail crawler/View1이 실패하고 schedule 점수가 0:0이어도 LIVE main score를 표시하는 회귀 테스트 추가
+- [x] 실제 2026-05-20 홈 경량 스코어보드 호출을 수행해 현재 취소/예정 경기의 0점은 정상 상태임을 분리 확인
+- [x] 현재 변경은 LIVE 홈/위젯 score API 동작 변경이라 `0.0.27+27` 새 릴리즈로 판단
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_live_fallback.py backend/tests/test_scoreboard_service_cache.py`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/scoreboard.py backend/tests/test_scoreboard_service_live_fallback.py`
+- [x] `backend/.venv/bin/python - <<'PY' ... ScoreboardService().get_home_scoreboard(date.today().isoformat()) ... PY`
+- [x] `cd app && fvm flutter analyze`
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+- [x] `python3 -m compileall backend/src`
+- [x] `git diff --check`
+
+### 릴리즈 주의
+- [ ] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/codex-run.sh release-api-health` 실패: 현재 로컬 DNS가 `api.kbofans.com`을 해석하지 못함
+- [ ] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services backend/tests`는 기존 `push.py` / `test_push_service.py` import sort 이슈로 실패. 이번 변경 파일 ruff는 통과.
+
+---
+
 ## 2026-05-20: 0.0.26 home first paint cache sharing
 
 ### 완료

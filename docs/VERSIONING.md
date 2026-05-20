@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.26+26`
-- Current release tag: `0.0.26`
+- Flutter app version: `0.0.27+27`
+- Current release tag: `0.0.27`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -15,7 +15,7 @@
 
 - App version: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Git tag: `MAJOR.MINOR.PATCH`
-- In-app patch note heading: app version with build, for example `0.0.26+26 - Home First Paint Cache Sharing`
+- In-app patch note heading: app version with build, for example `0.0.27+27 - Live Score Freshness Guard`
 
 ## Bump Rules
 
@@ -74,6 +74,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.24`: backend `/scoreboard/home` and `/scoreboard/compact` now use lightweight schedule + main list summaries without per-game scoreboard detail fan-out, full scoreboard/game detail keep detailed View1 enrichment, current home scoreboard keeps fail-visible snapshot policy, and current app build `0.0.24+24`.
 - `0.0.25`: app scoreboard, relay summary, my-team card, and local KBO brief now distinguish missing H/E/B team totals from real zero values, display unavailable totals as `-` or hide that row, and current app build `0.0.25+25`.
 - `0.0.26`: home secondary aggregate provider now waits until the first scoreboard data frame, home refresh timers are signature-stable across unrelated rebuilds, backend current data routes share `api/runtime_services.py` singletons to reuse TTL caches across sibling endpoints, home skeleton spacing avoids small-card overflow, and current app build `0.0.26+26`.
+- `0.0.27`: LIVE home/widget summary scoreboard paths now prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0, with regression coverage and current app build `0.0.27+27`.
 
 ## GitHub Release Note Template
 

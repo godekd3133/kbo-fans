@@ -29,6 +29,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.
 - Backend `/scoreboard/home` and `/scoreboard/compact` should stay lightweight for first paint / widget surfaces. Do not call per-game scoreboard detail crawlers from those paths; reserve them for full scoreboard and game detail.
 - Backend current data routes should share the runtime service singletons from `api/runtime_services.py` so sibling endpoints reuse the same TTL caches.
+- LIVE summary scoreboard paths should prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0.
 - App UI must treat null H/E/B team totals as unavailable, not as 0 records.
 - App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.

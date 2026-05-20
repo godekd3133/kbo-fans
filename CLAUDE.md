@@ -89,6 +89,7 @@ kbo_fans/
 - 홈 refresh timer 는 unrelated rebuild 때 cancel/restart 하지 않고 interval 또는 scoreboard signature 변경 시에만 재스케줄한다
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 전용 경로라 경기별 상세 스코어보드 크롤러를 호출하지 않는다. 상세 크롤링은 full scoreboard 와 game detail 로 제한한다
 - backend current data route 는 `api/runtime_services.py` singleton 을 공유해 sibling endpoint 간 TTL cache 를 재사용한다
+- LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다
 - 앱 UI는 scoreboard 팀 합계 H/E/B가 `null`인 값을 실제 0 기록처럼 렌더링하지 않는다
 - 앱 전역 Provider retry 는 비활성화한다. API 실패를 자동 재시도로 숨기지 말고 화면 오류 상태와 Dev Console 로그로 드러낸다
 - 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다

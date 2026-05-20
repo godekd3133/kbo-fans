@@ -959,6 +959,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 홈 자동 refresh timer 는 refresh interval 과 scoreboard signature 가 바뀔 때만 재스케줄해 unrelated rebuild 로 live polling 이 지연되지 않게 한다.
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
 - backend current data routes 는 공용 runtime service singleton 을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache 를 재사용한다.
+- LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다.
 - 앱은 scoreboard payload의 팀 합계 H/E/B가 `null`이면 미수집 값으로 처리하고, 이를 `0` 기록처럼 렌더링하지 않는다.
 - 앱 전역 Provider retry 는 비활성화한다. 화면은 API 실패를 자동 retry 뒤에 숨기지 않고 오류 카드, 빈 상태, 또는 Dev Console 로그로 명시한다.
 - `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록/팀 선수/팀 스탯/선수 상세는 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
