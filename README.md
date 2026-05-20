@@ -78,7 +78,7 @@ kbo_fans/
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.0.x`
-- Current release: `0.0.21`
+- Current release: `0.0.22`
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
@@ -241,19 +241,20 @@ uvicorn kbo_fans_backend.main:app --reload
 
 ## Operational Notes
 
-- 홈 스코어보드는 날짜 기준 `30초 TTL` 캐시를 사용합니다.
-- 홈 스코어보드 로컬 cache는 `savedAt` envelope 기준으로 live 60초, scheduled/empty 5분, terminal 6시간 안의 payload만 먼저 렌더링합니다.
-- 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `5분 TTL` 캐시를 사용합니다.
+- 앱 API cache는 성공 응답 저장과 히스토리 cached-first 조회용입니다. `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜/월/시즌 경로는 API 실패 시 이 cache를 정상 데이터처럼 읽지 않습니다.
+- 홈 스코어보드는 오늘 데이터 로딩 중 별도 로컬 cache를 먼저 렌더링하지 않습니다. 최신 API 응답 또는 명시적 오류 상태를 기준으로 화면을 갱신합니다.
+- 기록실 팀 데이터와 팀 스탯도 현재 시즌에서는 fresh-first/fail-visible 기준을 따르고, 과거 시즌 조회에서만 cached-first 성격을 유지합니다.
 - 순위와 기록실 요약/리더보드는 시즌별 번들 스냅샷 fallback을 사용하되, 다른 시즌 데이터를 빌려 보여주지 않는 exact-season-only 정책을 따릅니다. 현재 시즌 순위/기록실 요약 번들은 6시간 이내 생성본만 fallback으로 사용합니다.
 - 기록실 요약/리더보드 API cache와 기기 snapshot은 핵심 리더보드가 1위부터 시작하는 payload만 재사용하거나 저장합니다.
 - 현재 시즌 팀 선수/팀 스탯은 원천 조회를 우선하고, 원천 실패 시에도 6시간 이내 backend/app/device snapshot만 fallback으로 사용합니다.
-- backend 현재 날짜 스코어보드와 현재 시즌/월 일정/순위/기록실 요약/리더보드는 원천 실패 시 6시간 이내 저장 snapshot만 fallback으로 사용합니다. 과거 날짜/시즌/월은 저장 snapshot 우선 정책을 유지합니다.
+- backend 현재 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot으로 정상 상태를 만들지 않습니다. 과거 날짜/시즌/월은 저장 snapshot 우선 정책을 유지합니다.
 - backend `/home` aggregate는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션으로 숨기지 않습니다. 과거 날짜만 부분 fallback을 허용합니다.
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE 문자중계는 원천 실패를 과거 snapshot이나 요약 payload로 숨기지 않습니다. 실패는 API 실패/미지원 상태로 노출합니다.
 - 일반 API-backed 앱 모드에서는 현재 시즌 순위/기록실 API 실패를 앱 번들 데이터로 대체하지 않습니다. local backend 없이 원격 API가 죽어 있으면 release health gate 또는 화면 오류로 드러나게 둡니다.
+- 현재 날짜/월/시즌 API 요청은 원격 실패 시 TTL 안의 로컬 API cache도 정상 데이터처럼 재사용하지 않습니다. 과거 날짜/시즌/월 조회만 cached-first 또는 snapshot fallback을 유지합니다.
 - 앱 전역 Provider retry는 비활성화되어 API 실패가 반복 재시도 뒤에 숨지 않고 화면 오류 상태와 Dev Console에 드러나야 합니다.
 - 지난 경기 결과, 선수 과거 기록, 지난 날짜 순위는 화면 요청 시 원천 크롤링보다 저장된 snapshot/정규화 레코드를 우선 사용합니다.
-- 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장합니다. 앱은 히스토리 데이터만 stale-while-revalidate 로 먼저 보여주고, 현재 날짜/시즌 데이터는 TTL 안의 캐시만 임시 표시합니다.
+- 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장합니다. 앱은 히스토리 데이터만 stale-while-revalidate 로 먼저 보여주고, 현재 날짜/시즌 데이터는 서버 최신 응답을 우선하며 실패 시 로컬 API cache로 정상 상태를 만들지 않습니다.
 - 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.
 - 개발 환경에서는 앱 Dev Console 에 `API`, `HOME loaded`, `RECORDS loaded` 타이밍 로그가 표시됩니다.
 - 백엔드는 `backend/logs/backend.log`, `backend/logs/client_metrics.log` 에 느린 요청과 클라이언트 실측 지표를 저장합니다.

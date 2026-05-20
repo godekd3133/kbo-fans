@@ -14,6 +14,21 @@
 
 - GitHub Actions app artifact workflow가 Android/Web/iOS 빌드 전에 backend pytest를 먼저 실행하도록 변경
 
+## [0.0.22] - 2026-05-20
+
+### Changed
+
+- 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, 문자중계, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록은 API 실패 시 TTL 안의 로컬 API cache를 정상 데이터처럼 재사용하지 않도록 변경
+- backend 현재 스코어보드, 일정, 순위, 기록실 요약, 리더보드도 crawler 실패 시 fresh snapshot을 정상 응답처럼 반환하지 않도록 변경
+- 홈 첫 로딩에서 오늘 스코어보드 별도 로컬 cache를 먼저 렌더링하던 경로 제거
+- 과거 날짜/시즌/월 조회만 기존 cached-first 또는 snapshot fallback 정책을 유지해 히스토리 화면의 빠른 조회는 보존
+- 2026-05-20 취소 경기와 현재 순위/기록실 snapshot 저장 시각을 최신 수집본 기준으로 갱신
+
+### Fixed
+
+- 서버/API가 죽었는데 웹/앱에 남은 fresh API cache 때문에 현재 경기나 현재 기록이 최신 정보처럼 보일 수 있던 masking 경로 차단
+- backend 현재 데이터 crawler 실패가 current snapshot으로 숨겨질 수 있던 경로 차단
+
 ## [0.0.21] - 2026-05-20
 
 ### Changed

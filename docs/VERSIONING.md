@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.21+21`
-- Current release tag: `0.0.21`
+- Flutter app version: `0.0.22+22`
+- Current release tag: `0.0.22`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -15,7 +15,7 @@
 
 - App version: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Git tag: `MAJOR.MINOR.PATCH`
-- In-app patch note heading: app version with build, for example `0.0.21+21 - Records Cache & Error Surface`
+- In-app patch note heading: app version with build, for example `0.0.22+22 - Current Data Cache Guard`
 
 ## Bump Rules
 
@@ -69,6 +69,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.19`: current/live game detail stale snapshot masking guards for boxscore, lineup, relay, and team records, `codex-run.sh web` release API health-gated default command, `web-dev` debug split, release execution documentation cleanup, and current app build `0.0.19+19`.
 - `0.0.20`: current/future home aggregate fail-fast for schedule, standings, and records overview section failures, historical home partial fallback preservation, records overview crawler/snapshot featured canonicalization, device snapshot v3 rank-one guard for records overview/leaderboards, runtime data docs/skill alignment, and current app build `0.0.20+20`.
 - `0.0.21`: app API cache validator path for records overview/leaderboards, web/API cache key invalidation for rank-gap records payloads, 2013 AVG leaderboard snapshot recovery, records overview error card, team records error messaging, app-wide provider retry disablement, and current app build `0.0.21+21`.
+- `0.0.22`: current-date/current-season app API requests no longer reuse fresh local API cache after backend failure, backend current scoreboard/schedule/standings/records overview/leaderboards no longer return snapshots after crawler failure, home first paint no longer renders separate today-scoreboard local cache, 2026-05-20 cancellation/current snapshot refresh, and historical cached-first/snapshot behavior is preserved, with current app build `0.0.22+22`.
 
 ## GitHub Release Note Template
 

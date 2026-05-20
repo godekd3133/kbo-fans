@@ -937,8 +937,8 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 
 | 계층 | 대상 데이터 | 서버 처리 방식 | 앱 처리 방식 |
 |------|-------------|----------------|--------------|
-| Live | 진행 중 경기 scoreboard, relay, 현재 타석, 당일 라인업 변경 | 짧은 TTL + adaptive polling, stale snapshot masking 금지 | TTL 안의 마지막 응답만 임시 표시 후 백그라운드 갱신 |
-| Warm Cache | 오늘 일정, 경기 단건 상세, 당일/직전 경기 박스스코어, 최근 팀 기록 | 메모리/Redis TTL 캐시 + 종료 직후 증분 갱신 | 화면 진입 전 prefetch, pull-to-refresh |
+| Live | 진행 중 경기 scoreboard, relay, 현재 타석, 당일 라인업 변경 | 짧은 TTL + adaptive polling, stale snapshot masking 금지 | fresh-first. API 실패 시 TTL 안의 로컬 API cache도 정상 데이터처럼 재사용하지 않음 |
+| Warm Cache | 오늘 일정, 경기 단건 상세, 당일/직전 경기 박스스코어, 최근 팀 기록 | 메모리/Redis TTL 캐시 + 종료 직후 증분 갱신 | 화면 진입 전 prefetch, pull-to-refresh. 현재 날짜/월/시즌 실패는 오류로 노출 |
 | Persisted Snapshot | 선수 과거 기록, 지난 경기 결과, 지난 날짜 순위, 시즌 누적 팀/선수 통계 | DB/스토리지에 정규화 후 저장, 재크롤링보다 snapshot 우선 | 로컬 캐시와 함께 즉시 렌더링, 필요 시 조용한 재검증 |
 
 ### 히스토리 데이터 저장 원칙
@@ -951,13 +951,14 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 
 ### 앱 렌더링 정책
 
-- 앱은 cold start 시 현재 날짜/시즌 데이터는 TTL 안의 로컬 응답만 먼저 렌더링하고, TTL 이 지난 데이터는 서버 최신값을 기다린다.
-- 홈/일정/순위/기록실의 히스토리 데이터는 stale-while-revalidate 를 유지하되, current 데이터는 fresh-first 로 처리한다.
+- 앱은 cold start 시 현재 날짜/월/시즌 데이터는 서버 최신 응답을 우선하고, API 실패 시 TTL 안의 로컬 API cache도 정상 데이터처럼 렌더링하지 않는다.
+- 홈/일정/순위/기록실의 히스토리 데이터는 stale-while-revalidate 를 유지하되, current 데이터는 fresh-first/fail-visible 로 처리한다.
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
-- 홈 스코어보드 로컬 cache 는 `savedAt` envelope 가 있는 payload 만 인정하고, live 60초 / scheduled 또는 empty 5분 / terminal 6시간 TTL 을 적용한다.
+- 홈 첫 로딩은 오늘 스코어보드 별도 로컬 cache 를 먼저 렌더링하지 않고, 최신 API 응답 또는 명시적 오류 상태를 기준으로 전환한다.
 - 앱 전역 Provider retry 는 비활성화한다. 화면은 API 실패를 자동 retry 뒤에 숨기지 않고 오류 카드, 빈 상태, 또는 Dev Console 로그로 명시한다.
+- `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록은 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.
-- backend current-date 스코어보드와 current-season/month 일정/순위/기록실 요약/리더보드 snapshot fallback 은 `savedAt` 기준 6시간 이내 저장본만 사용한다. 과거 날짜/시즌/월 snapshot 은 저장본 우선 정책을 유지한다.
+- backend current 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot 으로 정상 상태를 만들지 않는다. 과거 날짜/시즌/월 snapshot 은 저장본 우선 정책을 유지한다.
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다.
 
 ---
@@ -1198,7 +1199,7 @@ GET /api/standings?season={YYYY}
 - 앱 번들 standings fallback 은 요청 시즌 exact snapshot 이고 순위 배열이 비어 있지 않을 때만 사용한다.
 - 현재 시즌 standings 번들은 `generatedAt` 기준 6시간 이내일 때만 사용한다. 검증되지 않은 과거 시즌은 빈 exact snapshot 으로 둬 다른 시즌/개막 초반 순위를 빌려 보여주지 않는다.
 - 앱 번들 records overview fallback 도 요청 시즌 exact snapshot 만 사용하고, 현재 시즌은 `generatedAt` 기준 6시간 이내일 때만 사용한다.
-- 일반 API-backed 앱 모드에서는 현재 시즌 standings API 실패를 앱 번들 standings 로 대체하지 않고 오류로 노출한다. current standings snapshot fallback 은 backend API 응답 내부에서만 허용한다.
+- 일반 API-backed 앱 모드에서는 현재 시즌 standings API 실패를 앱 번들 standings, fresh local API cache, backend current snapshot 으로 대체하지 않고 오류로 노출한다.
 
 **응답**:
 ```json

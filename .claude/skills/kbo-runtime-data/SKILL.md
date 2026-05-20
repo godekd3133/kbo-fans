@@ -21,11 +21,13 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings and records overview require a fresh `generatedAt`; unverified historical seasons should remain empty instead of repeating another season.
 - Current-season team player/team stat fallback must be timestamped and fresh. Reject timestamp-less legacy device caches and stale bundled bootstrap assets instead of showing old records.
 - Records overview and leaderboard API caches and device snapshots must only be reused when core leaderboards start at rank 1. Bump cache keys or device snapshot versions when invalidating old malformed cache shapes.
-- Backend current-date scoreboard and current-season/month schedule, standings, records overview, and leaderboard snapshot fallback must require a fresh `savedAt`; historical dates/seasons/months may still use stored snapshots.
+- Backend current scoreboard, schedule, standings, records overview, and leaderboard paths must not fall back to snapshots on crawler failure. Historical dates/seasons/months may still use stored snapshots.
 - Backend `/home` aggregate must not mask current/future schedule, standings, or records overview failures with empty sections or placeholder cards. Historical home queries may keep partial fallback.
+- App API cache must not mask current date/month/season failures. Keep `allowCacheOnFailure` default false; only historical paths should explicitly opt in to cached-first/snapshot behavior.
+- Home first paint must not render a separate today-scoreboard local cache while current scoreboard API is loading. Keep current data paths latest-API-or-visible-error.
 - App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.
-- Home should prefer lightweight/cached data for first paint, then refresh in background.
+- Home should prefer lightweight backend payloads for first paint. Do not render separate current-day local cache before the current scoreboard API resolves.
 - Never block `runApp()` on non-critical platform plugin initialization.
 
 ## Validation

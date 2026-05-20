@@ -81,8 +81,10 @@ kbo_fans/
 - 앱 번들 standings / records overview fallback 은 exact-season-only 로 제한한다. 현재 시즌은 `generatedAt` 기준 최신 snapshot 만 허용하고, 검증되지 않은 과거 시즌은 다른 시즌 데이터를 빌리지 않는다
 - 현재 시즌 팀 선수 / 팀 스탯 fallback 은 `savedAt` 기준 최신 snapshot 만 허용하고, timestamp 없는 legacy 기기 cache 나 오래된 번들 asset 은 빈 상태로 처리한다
 - records overview / leaderboard API cache 와 기기 snapshot 은 리더보드가 1위부터 시작할 때만 저장/재사용한다. malformed cache shape 을 무효화할 때는 cache key 또는 device snapshot version 을 올린다
-- backend 현재 날짜 스코어보드와 현재 시즌/월 일정/순위/기록실 요약/리더보드 snapshot fallback 은 `savedAt` 기준 최신 snapshot 만 허용한다. 과거 날짜/시즌/월은 저장 snapshot 우선 전략을 유지한다
+- backend 현재 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 crawler 실패 시 snapshot fallback 을 쓰지 않는다. 과거 날짜/시즌/월은 저장 snapshot 우선 전략을 유지한다
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule / standings / records overview 실패를 빈 섹션이나 placeholder 로 숨기지 않는다. 과거 날짜 홈 조회만 partial fallback 을 허용한다
+- 앱 API cache 는 현재 날짜/월/시즌 데이터의 실패 fallback 으로 쓰지 않는다. `allowCacheOnFailure` 기본값은 false 로 유지하고, historical 경로만 cached-first/snapshot 정책을 명시적으로 허용한다
+- 홈 첫 로딩은 오늘 스코어보드 별도 local cache 를 먼저 렌더링하지 않는다. 최신 API 데이터 또는 명시적 loading/error 상태만 보여준다
 - 앱 전역 Provider retry 는 비활성화한다. API 실패를 자동 재시도로 숨기지 말고 화면 오류 상태와 Dev Console 로그로 드러낸다
 - 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다
 - Git push 시 기본 `origin` 이슈가 있으면 `git@github-personal:godekd3133/kbo-fans.git` 경로를 사용한다
@@ -107,7 +109,7 @@ kbo_fans/
   - 일반 local/dev/release 앱 모드에서는 자동 direct fallback 금지
 - 기록실 선수 상세/엔트리 전체는 API 또는 생성된 snapshot 기준으로 유지한다.
 - 순위/기록실 요약/리더보드는 요청 시즌과 정확히 맞는 검증된 snapshot 만 사용하고, current-season standings / records overview / 팀 선수 / 팀 스탯은 6시간 이내 snapshot 만 fallback 으로 인정한다. 검증되지 않은 과거 순위는 빈 exact snapshot 으로 둔다.
-- 일반 API-backed 앱 모드에서는 current-season standings / records overview / leaderboard API 실패를 앱 번들 bootstrap 이나 구형 API cache 로 숨기지 않는다. current 데이터 snapshot fallback 은 backend API 내부에서만 처리한다.
+- 일반 API-backed 앱 모드에서는 current-season standings / records overview / leaderboard API 실패를 앱 번들 bootstrap 이나 구형/fresh API cache 로 숨기지 않는다. current 데이터 snapshot fallback 은 backend API 내부에서만 처리한다.
 - Dev Console 은 현재 API base URL, API latency, 홈/일정/기록실 로딩 완료 로그, 기록실 진단 로그를 표시하는 운영 도구다.
 - direct-primary 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
 - `.claude/skills/`에 이미 같은 작업 패턴이 있으면 먼저 그 스킬을 참고한다

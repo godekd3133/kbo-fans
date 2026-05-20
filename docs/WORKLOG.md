@@ -2,6 +2,44 @@
 
 ---
 
+## 2026-05-20: 0.0.22 current data API cache failure guard
+
+### 완료
+- [x] 현재 변경은 현재 날짜/월/시즌 데이터의 API cache 실패 fallback 정책 변경이라 `0.0.22+22` 새 릴리즈로 판단
+- [x] `ApiClient.getCached`에 `allowCacheOnFailure` 옵션을 추가해 fresh local API cache reuse를 호출부별로 분리
+- [x] `allowCacheOnFailure` 기본값을 false 로 두고 historical 호출부만 명시적으로 true 가 되게 해 새 API 호출부의 기본 동작이 fail-visible 이 되도록 보정
+- [x] 현재 날짜 스코어보드, compact scoreboard, 홈 aggregate, 경기 상세, 하이라이트, 문자중계, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록은 API 실패 시 local API cache를 정상 데이터처럼 반환하지 않도록 보정
+- [x] backend 현재 스코어보드, 일정, 순위, 기록실 요약, 리더보드도 crawler 실패 시 fresh snapshot fallback을 반환하지 않도록 보정하고 회귀 테스트 갱신
+- [x] 홈 화면의 `home_scoreboard_cache_*` 로딩 중 선표시 경로를 제거해 오늘 스코어보드가 stale 로컬 cache로 먼저 보이지 않도록 정리
+- [x] 과거 날짜/시즌/월 조회는 기존 cached-first 또는 snapshot fallback 정책을 유지
+- [x] 2026-05-20 취소 경기 4건과 현재 순위/기록실 snapshot 저장 시각을 최신 수집본 기준으로 갱신
+- [x] fresh API cache가 있어도 현재 스코어보드/순위/기록실/리더보드 API 실패를 가리지 않는 회귀 테스트 추가
+- [x] `README.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `docs/VERSIONING.md`, `docs/APP_SPEC.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/skills/kbo-runtime-data/SKILL.md` 갱신
+
+### 검증
+- [x] `cd app && fvm dart format lib/data/api/api_client.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/api_home_repository.dart lib/data/repositories/api_player_repository.dart lib/features/home/home_screen.dart test/data/api_client_test.dart`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart test/widget_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/data/api_client_test.dart test/data/device_snapshot_player_repository_test.dart test/data/models/records_overview_test.dart test/data/bootstrap_repository_test.dart -r expanded`
+- [x] `cd app && fvm flutter analyze`
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/records_overview.py backend/src/kbo_fans_backend/services/schedule.py backend/src/kbo_fans_backend/services/scoreboard.py backend/src/kbo_fans_backend/services/standings.py backend/tests/test_records_overview.py backend/tests/test_schedule.py backend/tests/test_scoreboard_service_cache.py backend/tests/test_snapshot_services.py`
+- [x] `python3 -m json.tool backend/data/snapshots/schedule/2026-05.json >/dev/null`
+- [x] `python3 -m json.tool backend/data/snapshots/standings_latest/2026.json >/dev/null`
+- [x] `python3 -m json.tool backend/data/snapshots/records_overview/2026.json >/dev/null`
+- [x] `git diff --check`
+- [x] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/codex-run.sh release-api-health` 실패 확인: `DNS lookup failed for api.kbofans.com`
+- [x] `rg -n "home_scoreboard_cache|home-cache|_cachedToday" app/lib docs README.md AGENTS.md CLAUDE.md .claude/skills/kbo-runtime-data/SKILL.md CHANGELOG.md app/assets/bootstrap/patch_notes.md`
+- [x] `./scripts/codex-run.sh web-static` 로 새 web release build를 `http://localhost:7357`에 재기동
+- [x] seeded fake current cache + production API DNS 실패 조건에서 records/home/schedule/standings/game detail 화면이 fake cache를 표시하지 않고 오류 상태를 노출하는지 Chrome headless screenshot으로 확인
+  - `artifacts/current-data-cache-guard/records-seeded-cache-dns-fail-reload.png`
+  - `artifacts/current-data-cache-guard/home-seeded-cache-dns-fail-reload.png`
+  - `artifacts/current-data-cache-guard/schedule-seeded-cache-dns-fail.png`
+  - `artifacts/current-data-cache-guard/standings-seeded-cache-dns-fail.png`
+  - `artifacts/current-data-cache-guard/game-seeded-cache-dns-fail.png`
+
+---
+
 ## 2026-05-20: GitHub Actions backend test gate
 
 ### 완료
