@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-05-20: 0.0.23 backend current team/player snapshot failure guard
+
+### 완료
+- [x] 현재 변경은 backend 현재 시즌 팀/선수 기록 실패 masking 정책 변경이라 `0.0.23+23` 새 릴리즈로 판단
+- [x] backend `PlayerStatsService` 현재 시즌 팀 선수와 선수 상세이 crawler 실패 시 stale cache 또는 저장 snapshot으로 정상 응답을 만들 수 있던 경로 차단
+- [x] backend `TeamStatsService` 현재 시즌 팀 스탯이 crawler 실패 시 stale cache 또는 저장 snapshot으로 정상 응답을 만들 수 있던 경로 차단
+- [x] 과거 시즌 팀 선수/팀 스탯/선수 상세 snapshot 우선 및 실패 fallback 정책은 유지
+- [x] 현재 시즌 fresh snapshot까지 거부하는 회귀 테스트 추가
+- [x] runtime data 정책 문서, README, APP_SPEC, AGENTS, CLAUDE, repo skill, CHANGELOG, 앱 내 patch notes, `docs/VERSIONING.md`를 현재 fail-visible 기준으로 동기화
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_snapshot_services.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/player_stats.py backend/src/kbo_fans_backend/services/team_stats.py backend/tests/test_snapshot_services.py`
+- [x] `cd app && fvm flutter test test/data/bootstrap_repository_test.dart -r expanded`
+- [x] `git diff --check`
+- [x] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/codex-run.sh release-api-health` 실패 확인: `DNS lookup failed for api.kbofans.com`
+
+---
+
 ## 2026-05-20: 0.0.22 current data API cache failure guard
 
 ### 완료

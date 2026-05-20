@@ -1,5 +1,13 @@
 # 패치노트
 
+## 0.0.23+23 - Current Team Records Failure Guard
+
+- 현재 시즌 팀 선수, 팀 스탯, 선수 상세는 원천 조회 실패 때 backend/app/device snapshot으로 정상 데이터처럼 대체하지 않습니다.
+- backend도 현재 시즌 팀 선수, 팀 스탯, 선수 상세 crawler 실패 시 fresh snapshot을 반환하지 않습니다.
+- 과거 시즌 팀 선수, 팀 스탯, 선수 상세는 기존처럼 저장 snapshot을 우선 사용해 빠르게 열립니다.
+- 현재 시즌 기록실 팀/선수 화면이 원천 실패인데도 저장 데이터 때문에 최신처럼 보일 수 있던 경로를 막았습니다.
+- GitHub Actions 앱 빌드는 backend 테스트를 먼저 통과해야 Android/Web/iOS artifact 빌드로 넘어갑니다.
+
 ## 0.0.22+22 - Current Data Cache Guard
 
 - 현재 날짜 스코어보드, 홈, 경기 상세, 문자중계, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록은 API 실패 시 로컬 API 캐시로 정상처럼 대체하지 않습니다.

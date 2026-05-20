@@ -10,9 +10,17 @@
 
 ## [Unreleased]
 
+## [0.0.23] - 2026-05-20
+
 ### Changed
 
 - GitHub Actions app artifact workflow가 Android/Web/iOS 빌드 전에 backend pytest를 먼저 실행하도록 변경
+- backend 현재 시즌 팀 선수, 팀 스탯, 선수 상세 API가 crawler 실패 시 fresh/stale snapshot이나 stale in-memory cache로 정상 응답을 만들지 않도록 변경
+- 과거 시즌 팀 선수, 팀 스탯, 선수 상세는 기존처럼 저장 snapshot 우선 및 crawler 실패 fallback 정책 유지
+
+### Fixed
+
+- 현재 시즌 기록실 팀/선수 화면이 원천 조회 실패 상태인데도 저장 snapshot 때문에 최신 데이터처럼 보일 수 있던 경로 차단
 
 ## [0.0.22] - 2026-05-20
 
