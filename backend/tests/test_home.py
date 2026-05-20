@@ -1,7 +1,14 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from kbo_fans_backend.api.routes import home
+from kbo_fans_backend.api.routes import (
+    games,
+    home,
+    records,
+    schedule,
+    scoreboard,
+    standings,
+)
 from kbo_fans_backend.main import app
 from kbo_fans_backend.services.home import HomeService
 
@@ -39,6 +46,17 @@ class _FailingRecordsOverviewService:
 class _EmptyRecordsOverviewService:
     def get_overview(self, season: int):
         return {"season": season, "leaders": {"hr": []}, "featured": {}}
+
+
+def test_current_data_routes_share_runtime_services() -> None:
+    assert home.service.scoreboard_service is scoreboard.service
+    assert home.service.schedule_service is schedule.service
+    assert home.service.standings_service is standings.service
+    assert home.service.records_overview_service is records.service
+    assert games.scoreboard_service is scoreboard.service
+    assert games.schedule_service is schedule.service
+    assert games.relay_service.scoreboard_service is scoreboard.service
+    assert games.boxscore_service.schedule_service is schedule.service
 
 
 def test_get_home_returns_aggregate_payload(monkeypatch) -> None:

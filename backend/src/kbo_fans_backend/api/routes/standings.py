@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
+from kbo_fans_backend.api.runtime_services import standings_service as service
 from kbo_fans_backend.schemas.common import ApiEnvelope
-from kbo_fans_backend.services.standings import StandingsService
 
 router = APIRouter()
-service = StandingsService()
 
 
 @router.get("/standings", response_model=ApiEnvelope[dict])

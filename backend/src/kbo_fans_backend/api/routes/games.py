@@ -4,20 +4,18 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from kbo_fans_backend.api.runtime_services import (
+    boxscore_service,
+    relay_service,
+    schedule_service,
+    scoreboard_service,
+)
 from kbo_fans_backend.schemas.common import ApiEnvelope
-from kbo_fans_backend.services.boxscore import BoxscoreService
 from kbo_fans_backend.services.lineup import LineupService
-from kbo_fans_backend.services.relay import RelayService
-from kbo_fans_backend.services.schedule import ScheduleService
-from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.youtube_highlight import YoutubeHighlightService
 
 router = APIRouter(prefix="/game/{game_id}")
-scoreboard_service = ScoreboardService()
-schedule_service = ScheduleService()
-boxscore_service = BoxscoreService()
 lineup_service = LineupService()
-relay_service = RelayService(scoreboard_service=scoreboard_service)
 youtube_highlight_service = YoutubeHighlightService()
 
 

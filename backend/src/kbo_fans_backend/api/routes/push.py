@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 
 from kbo_fans_backend.schemas.common import ApiEnvelope
-from kbo_fans_backend.schemas.push import PushRegisterRequest
-from kbo_fans_backend.schemas.push import PushTestRequest
+from kbo_fans_backend.schemas.push import PushRegisterRequest, PushTestRequest
 from kbo_fans_backend.services.push import PushService
 
 router = APIRouter(prefix="/push")

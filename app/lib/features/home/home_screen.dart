@@ -32,6 +32,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   Timer? _refreshTimer;
+  String? _refreshTimerKey;
   final ScrollController _scrollController = ScrollController();
   String? _lastSyncSignature;
   String? _lastEventAlertSignature;
@@ -190,9 +191,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _loadingLine(widthFactor: 0.34),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6),
                   _loadingLine(widthFactor: 0.64),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   _loadingLine(widthFactor: 0.48),
                 ],
               ),
@@ -343,10 +344,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Consumer(
                 builder: (context, ref, _) {
                   final aggregateKey = '$today|${myTeamId ?? ''}';
-                  final aggregateAsync = ref.watch(
-                    homeAggregateProvider(aggregateKey),
-                  );
-                  final aggregate = aggregateAsync.asData?.value;
+                  final AsyncValue<HomeAggregate>? aggregateAsync =
+                      _secondarySectionsEnabled
+                      ? ref.watch(homeAggregateProvider(aggregateKey))
+                      : null;
+                  final aggregate = aggregateAsync?.asData?.value;
                   final aggregateBrief = _myTeamBriefFromAggregate(
                     aggregate?.myTeamBrief,
                     games,
@@ -366,7 +368,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     myTeamBrief = aggregateBrief;
                     baseQuickItems = aggregateQuickItems;
                     useAggregate = true;
-                  } else if (!aggregateAsync.hasError) {
+                  } else if (aggregateAsync == null ||
+                      !aggregateAsync.hasError) {
                     myTeamBrief = null;
                     baseQuickItems = const <_QuickContentItemData>[];
                   } else {
@@ -411,9 +414,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                           child: _QuickContentSection(items: baseQuickItems),
                         ),
-                      if (!_secondarySectionsEnabled &&
-                          aggregateAsync.isLoading &&
-                          !useAggregate)
+                      if (!_secondarySectionsEnabled && !useAggregate)
                         const SizedBox.shrink(),
                     ],
                   );
@@ -728,11 +729,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _scheduleRefresh(List<Game> games, String? myTeamId) {
     final interval = _resolveRefreshInterval(games);
-    _refreshTimer?.cancel();
     if (interval == null) {
+      _refreshTimer?.cancel();
+      _refreshTimerKey = null;
       return;
     }
-    _refreshTimer = Timer(interval, _invalidateTodayScoreboard);
+
+    final key =
+        '${interval.inMilliseconds}|${_scoreboardWorkSignature(games, myTeamId)}';
+    if (_refreshTimerKey == key && (_refreshTimer?.isActive ?? false)) {
+      return;
+    }
+
+    _refreshTimer?.cancel();
+    _refreshTimerKey = key;
+    _refreshTimer = Timer(interval, () {
+      _refreshTimerKey = null;
+      _invalidateTodayScoreboard();
+    });
   }
 
   Duration? _resolveRefreshInterval(List<Game> games) {

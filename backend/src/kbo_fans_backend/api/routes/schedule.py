@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Query
 
+from kbo_fans_backend.api.runtime_services import schedule_service as service
 from kbo_fans_backend.schemas.common import ApiEnvelope
-from kbo_fans_backend.services.schedule import ScheduleService
 
 router = APIRouter()
-service = ScheduleService()
 
 
 @router.get("/schedule", response_model=ApiEnvelope[dict])

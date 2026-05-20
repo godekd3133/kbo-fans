@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Query
 
+from kbo_fans_backend.api.runtime_services import records_overview_service as service
 from kbo_fans_backend.schemas.common import ApiEnvelope
-from kbo_fans_backend.services.records_overview import RecordsOverviewService
 
 router = APIRouter(prefix="/records")
-service = RecordsOverviewService()
 
 
 @router.get("/overview", response_model=ApiEnvelope[dict])

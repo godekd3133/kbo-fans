@@ -5,11 +5,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 
+from kbo_fans_backend.api.runtime_services import home_service as service
 from kbo_fans_backend.schemas.common import ApiEnvelope
-from kbo_fans_backend.services.home import HomeService
 
 router = APIRouter()
-service = HomeService()
 
 
 @router.get("/home", response_model=ApiEnvelope[dict])
