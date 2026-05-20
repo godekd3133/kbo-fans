@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.17+17`
-- Current release tag: `0.0.17`
+- Flutter app version: `0.0.18+18`
+- Current release tag: `0.0.18`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -15,7 +15,7 @@
 
 - App version: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Git tag: `MAJOR.MINOR.PATCH`
-- In-app patch note heading: app version with build, for example `0.0.17+17 - Direct Routing Guard`
+- In-app patch note heading: app version with build, for example `0.0.18+18 - Historical Leaderboard Snapshots`
 
 ## Bump Rules
 
@@ -65,6 +65,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.15`: standings bootstrap exact-season cleanup, current-season standings freshness guard, records overview bootstrap generation from stored snapshots, selected historical records overview snapshots, stale historical standings bundle removal, web local API default hardening, and KT 2026 bundle refresh with current app build `0.0.15+15`.
 - `0.0.16`: backend current-date scoreboard and current-season/month schedule, standings, records overview, and leaderboard snapshot freshness guard, app home scoreboard cache TTL, current-season records/team-player freshness cleanup, retired-player leaderboard preservation, and current app build `0.0.16+16`.
 - `0.0.17`: direct KBO routing guard for local native explicit direct-primary builds only, provider/widget background API route alignment, Android/Web release API health-gated run paths, complete records-overview device snapshot guard, current API failure masking prevention, and provider routing/API cache regression tests with current app build `0.0.17+17`.
+- `0.0.18`: historical backend leaderboard snapshots for 2011 ERA and 2013 HR with retired top-leader regression coverage, release-gated web default wrapper, Android/Web release action wrappers, and current app build `0.0.18+18`.
 
 ## GitHub Release Note Template
 

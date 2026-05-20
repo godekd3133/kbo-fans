@@ -78,7 +78,7 @@ kbo_fans/
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.0.x`
-- Current release: `0.0.17`
+- Current release: `0.0.18`
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
@@ -104,7 +104,7 @@ flutter run -d android
 참고:
 
 - 현재 저장소에는 `ios/`와 `android/` 프로젝트가 모두 포함되어 있습니다.
-- `web/` 플랫폼은 추가되어 있으며 기본 웹 프리뷰는 `./scripts/codex-run-web.sh` 로 실행합니다.
+- `web/` 플랫폼은 추가되어 있으며 기본 웹 실행은 release API health gate를 거치는 `./scripts/codex-run-web.sh` 로 실행합니다.
 - Chrome 디버그 세션이 필요하면 `./scripts/codex-run-web-dev.sh` 또는 `flutter run -d chrome` 을 사용합니다.
 - `macos/` 프로젝트는 아직 생성되지 않았습니다.
 - 현재 홈 화면은 일부 목데이터를 사용하므로, UI 확인만 목적이면 백엔드 없이도 실행 가능합니다.
@@ -132,10 +132,10 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - iOS local release-mode 실행 액션: `./scripts/codex-run-ios-local-release.sh`
 - iOS production release 실행 액션: `./scripts/codex-run-ios-release.sh`
 - Android 실행 액션: `./scripts/codex-run-android.sh`
-- Android release 실행 액션: `./scripts/codex-run.sh android-release`
+- Android release 실행 액션: `./scripts/codex-run-android-release.sh`
 - Web 실행 액션: `./scripts/codex-run-web.sh`
 - 정적 웹 프리뷰 실행 액션: `./scripts/codex-run-web-static.sh`
-- Web release 실행 액션: `./scripts/codex-run.sh web-release`
+- Web release 실행 액션: `./scripts/codex-run-web-release.sh`
 - 웹 Chrome 디버그 실행 액션: `./scripts/codex-run-web-dev.sh`
 - Backend 실행 액션: `./scripts/codex-run.sh backend`
 - 환경 점검 액션: `./scripts/codex-run.sh doctor`
@@ -149,17 +149,18 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run-ios-local-release.sh
 ./scripts/codex-run-ios-release.sh
 ./scripts/codex-run-android.sh
-./scripts/codex-run.sh android-release
+./scripts/codex-run-android-release.sh
 ./scripts/codex-run-web.sh
 ./scripts/codex-run-web-static.sh
-./scripts/codex-run.sh web-release
+./scripts/codex-run-web-release.sh
 ./scripts/codex-run-web-dev.sh
 ```
 
 참고:
 
-- `./scripts/codex-run-web.sh` 는 기본 웹 프리뷰 경로이며, `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
+- `./scripts/codex-run-web.sh` 는 local backend 없이 release API health gate를 통과한 URL만 주입해 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
 - `./scripts/codex-run-web-static.sh` 는 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 프리뷰 경로입니다.
+- `./scripts/codex-run-web-release.sh` 는 `./scripts/codex-run-web.sh` 와 같은 release API health-gated 웹 실행 래퍼입니다.
 - `./scripts/codex-run-web-dev.sh` 는 Chrome 디버그 세션을 직접 띄우는 개발용 경로입니다.
 - `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 `--profile --dart-define=APP_ENV=local` 로 실행합니다. local backend가 LAN에서 접근 가능해야 하며, 스크립트가 `API_BASE_URL`을 주입합니다.
 - `./scripts/codex-run-ios-debug.sh` 는 연결된 iPhone 실기기에서 `--debug` 로 실행합니다. 디버거 연결 상태에서 개발할 때만 쓰는 경로입니다.

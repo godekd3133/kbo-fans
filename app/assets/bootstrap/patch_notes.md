@@ -1,5 +1,12 @@
 # 패치노트
 
+## 0.0.18+18 - Historical Leaderboard Snapshots
+
+- 2011 ERA와 2013 홈런 리더보드 backend snapshot을 추가했습니다.
+- 원천 조회가 실패해도 `윤석민 2.45`, `박병호 37`처럼 은퇴 선수가 포함된 과거 대표 리더보드가 fallback으로 복구됩니다.
+- snapshot 상위 리더가 다시 빠지지 않도록 backend 회귀 테스트를 추가했습니다.
+- 웹 기본 실행 wrapper를 release API health gate 경로로 맞추고 Android/Web release 전용 wrapper를 추가했습니다.
+
 ## 0.0.17+17 - Direct Routing Guard
 
 - direct KBO 경로는 local native 빌드에서 `PREFER_DIRECT_SCRAPE=true`를 명시하고 `API_BASE_URL` override가 없을 때만 사용합니다.

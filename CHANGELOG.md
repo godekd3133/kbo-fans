@@ -12,6 +12,19 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
+## [0.0.18] - 2026-05-20
+
+### Changed
+
+- backend historical leaderboard snapshot에 2011 ERA, 2013 HR 저장본을 추가해 원천 조회 실패 시에도 대표 과거 리더보드가 복구되도록 보강
+- 2011 ERA 1위 `윤석민 2.45`, 2013 HR 1위 `박병호 37`처럼 은퇴 선수가 포함된 snapshot 상위 리더를 회귀 테스트로 고정
+- Codex 웹 기본 실행 wrapper를 release API health gate 경로로 맞추고, Android/Web release 전용 wrapper를 추가
+
+### Fixed
+
+- 2011 ERA, 2013 HR 단건 리더보드 endpoint가 원천 조회 실패 시 snapshot fallback 없이 비어 있거나 실패할 수 있던 경로 보강
+- release API DNS/TLS/API health gate를 거치지 않은 웹 기본 실행으로 release 검증을 착각할 수 있던 경로 차단
+
 ## [0.0.17] - 2026-05-20
 
 ### Changed

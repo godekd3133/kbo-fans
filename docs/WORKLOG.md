@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-20: 0.0.18 historical leaderboard snapshot 보강
+
+### 완료
+- [x] 현재 변경은 backend historical leaderboard fallback 데이터가 추가되는 사용자 영향 변경이라 `0.0.18+18` 새 릴리즈로 판단
+- [x] `backend/data/snapshots/leaderboard/2011_era.json` 추가: 2011 ERA 리더보드가 `윤석민 2.45`부터 은퇴 선수 포함 순위로 복구
+- [x] `backend/data/snapshots/leaderboard/2013_hr.json` 추가: 2013 홈런 리더보드가 `박병호 37`부터 은퇴 선수 포함 순위로 복구
+- [x] backend 회귀 테스트로 두 snapshot의 1위 선수/값/은퇴 플래그를 고정
+- [x] `scripts/codex-run-web.sh`를 release API health gate 경로로 맞추고, `scripts/codex-run-web-release.sh`, `scripts/codex-run-android-release.sh` wrapper 추가
+- [x] `0.0.18` 기준 `pubspec.yaml`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `docs/VERSIONING.md`, `README.md` 갱신
+
+### 검증
+- [x] `python3 -m json.tool backend/data/snapshots/leaderboard/2011_era.json >/dev/null`
+- [x] `python3 -m json.tool backend/data/snapshots/leaderboard/2013_hr.json >/dev/null`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py`
+- [x] `bash -n scripts/codex-run-web.sh scripts/codex-run-web-release.sh scripts/codex-run-android-release.sh`
+- [x] `./scripts/codex-run-web.sh` 실패 확인: `DNS lookup failed for api.kbofans.com`
+
+---
+
 ## 2026-05-20: 0.0.17 direct KBO routing guard
 
 ### 완료
