@@ -48,8 +48,7 @@ class ScoreboardService:
     def get_scoreboard(self, date: str) -> dict[str, Any]:
         started_at = time.perf_counter()
         date = self._normalize_date(date)
-        snapshot_record = self.snapshot_store.load("scoreboard", date)
-        snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
+        snapshot = self.snapshot_store.load_payload("scoreboard", date)
         if self._is_historical_date(date) and snapshot is not None:
             logger.info("scoreboard snapshot hit %s", date)
             return snapshot
@@ -63,7 +62,6 @@ class ScoreboardService:
             f"scoreboard:{date}",
             lambda: self._get_scoreboard_uncached(
                 date,
-                snapshot_record,
                 snapshot,
                 started_at,
             ),
@@ -72,7 +70,6 @@ class ScoreboardService:
     def _get_scoreboard_uncached(
         self,
         date: str,
-        snapshot_record: Optional[dict[str, Any]],
         snapshot: Optional[dict[str, Any]],
         started_at: float,
     ) -> dict[str, Any]:
@@ -95,11 +92,7 @@ class ScoreboardService:
             if self._is_historical_date(date) and stale is not None:
                 logger.warning("scoreboard stale cache fallback %s", date)
                 return stale
-            if self._can_use_scoreboard_snapshot_after_failure(
-                date,
-                snapshot_record,
-                snapshot,
-            ):
+            if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
                 logger.warning("scoreboard snapshot fallback %s", date)
                 return snapshot
             raise
@@ -186,8 +179,7 @@ class ScoreboardService:
             logger.info("compact scoreboard cache hit after wait %s", cache_key)
             return cached
 
-        snapshot_record = self.snapshot_store.load("scoreboard", date)
-        snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
+        snapshot = self.snapshot_store.load_payload("scoreboard", date)
         if self._is_historical_date(date) and snapshot is not None:
             payload = self._compact_from_snapshot(date, snapshot, my_team)
             self._compact_scoreboard_cache.set(cache_key, payload)
@@ -200,11 +192,7 @@ class ScoreboardService:
             if self._is_historical_date(date) and stale is not None:
                 logger.warning("compact scoreboard stale fallback %s", cache_key)
                 return stale
-            if self._can_use_scoreboard_snapshot_after_failure(
-                date,
-                snapshot_record,
-                snapshot,
-            ):
+            if self._can_use_scoreboard_snapshot_after_failure(date, snapshot):
                 return self._compact_from_snapshot(date, snapshot, my_team)
             raise
 
@@ -613,7 +601,6 @@ class ScoreboardService:
     def _can_use_scoreboard_snapshot_after_failure(
         self,
         date: str,
-        snapshot_record: Optional[dict[str, Any]],
         snapshot: Optional[dict[str, Any]],
     ) -> bool:
         if snapshot is None:
@@ -621,15 +608,6 @@ class ScoreboardService:
         if self._is_historical_date(date):
             return True
         return False
-
-    @staticmethod
-    def _is_terminal_snapshot(snapshot: dict[str, Any]) -> bool:
-        games = snapshot.get("games")
-        if not isinstance(games, list) or not games:
-            return False
-        terminal_statuses = {"FINAL", "CANCELLED", "SUSPENDED"}
-        return all(game.get("status") in terminal_statuses for game in games)
-
 
     @staticmethod
     def _strip_home_payload(game: dict[str, Any]) -> dict[str, Any]:

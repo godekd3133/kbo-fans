@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-05-20: scoreboard snapshot fallback dead-code cleanup
+
+### 완료
+- [x] `ScoreboardService` current snapshot fallback 차단 이후 남은 `snapshot_record` 전달 인자와 미사용 terminal snapshot helper 제거
+- [x] scoreboard snapshot payload 조회를 `JsonSnapshotStore.load_payload`로 단순화
+- [x] 동작 변경 없는 내부 정리라 새 버전은 만들지 않고 main cleanup 커밋으로 처리
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_snapshot_services.py`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/scoreboard.py backend/tests/test_scoreboard_service_cache.py backend/tests/test_snapshot_services.py`
+- [x] `git diff --check`
+
+---
+
 ## 2026-05-20: 0.0.23 backend current team/player snapshot failure guard
 
 ### 완료
