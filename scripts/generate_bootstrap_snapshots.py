@@ -55,7 +55,7 @@ def build_records_overview_bootstrap(generated_at: str) -> dict:
     data = {
         "generatedAt": generated_at,
         "source": "backend/data/snapshots/records_overview/{season}.json",
-        "policy": "exact-season-only; unverified seasons stay empty",
+        "policy": "exact-season-only; current season requires freshness; unverified seasons stay empty",
         "seasons": {str(season): empty_records_overview(season) for season in SEASONS},
     }
     record = load_snapshot_record(

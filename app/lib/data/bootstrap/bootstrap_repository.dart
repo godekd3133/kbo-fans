@@ -39,6 +39,9 @@ class BootstrapRepository {
 
     final direct = seasons['$season'] as Map<String, dynamic>?;
     if (_hasOverviewData(direct)) {
+      if (_requiresFreshSnapshot(season) && !_isFreshGeneratedAt(data)) {
+        return null;
+      }
       return direct;
     }
     return null;

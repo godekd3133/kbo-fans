@@ -11,7 +11,8 @@
           "metricKey": "AVG",
           "name": "박성한",
           "teamId": "SK",
-          "value": "0.379"
+          "value": "0.379",
+          "isRetired": false
         },
         {
           "rank": 2,
@@ -20,7 +21,8 @@
           "metricKey": "AVG",
           "name": "오스틴",
           "teamId": "LG",
-          "value": "0.356"
+          "value": "0.356",
+          "isRetired": false
         },
         {
           "rank": 3,
@@ -29,7 +31,8 @@
           "metricKey": "AVG",
           "name": "최형우",
           "teamId": "SS",
-          "value": "0.354"
+          "value": "0.354",
+          "isRetired": false
         },
         {
           "rank": 4,
@@ -38,7 +41,8 @@
           "metricKey": "AVG",
           "name": "이우성",
           "teamId": "NC",
-          "value": "0.353"
+          "value": "0.353",
+          "isRetired": false
         },
         {
           "rank": 5,
@@ -47,7 +51,8 @@
           "metricKey": "AVG",
           "name": "최원준",
           "teamId": "KT",
-          "value": "0.351"
+          "value": "0.351",
+          "isRetired": false
         }
       ],
       "hr": [
@@ -58,7 +63,8 @@
           "metricKey": "HR",
           "name": "김도영",
           "teamId": "HT",
-          "value": "13"
+          "value": "13",
+          "isRetired": false
         },
         {
           "rank": 2,
@@ -67,7 +73,8 @@
           "metricKey": "HR",
           "name": "힐리어드",
           "teamId": "KT",
-          "value": "12"
+          "value": "12",
+          "isRetired": false
         },
         {
           "rank": 3,
@@ -76,7 +83,8 @@
           "metricKey": "HR",
           "name": "오스틴",
           "teamId": "LG",
-          "value": "11"
+          "value": "11",
+          "isRetired": false
         },
         {
           "rank": 3,
@@ -85,7 +93,8 @@
           "metricKey": "HR",
           "name": "최정",
           "teamId": "SK",
-          "value": "11"
+          "value": "11",
+          "isRetired": false
         },
         {
           "rank": 5,
@@ -94,7 +103,8 @@
           "metricKey": "HR",
           "name": "강백호",
           "teamId": "HH",
-          "value": "10"
+          "value": "10",
+          "isRetired": false
         }
       ],
       "ops": [
@@ -105,7 +115,8 @@
           "metricKey": "OPS",
           "name": "오스틴",
           "teamId": "LG",
-          "value": "1.073"
+          "value": "1.073",
+          "isRetired": false
         },
         {
           "rank": 2,
@@ -114,7 +125,8 @@
           "metricKey": "OPS",
           "name": "최형우",
           "teamId": "SS",
-          "value": "1.030"
+          "value": "1.030",
+          "isRetired": false
         },
         {
           "rank": 3,
@@ -123,7 +135,8 @@
           "metricKey": "OPS",
           "name": "문현빈",
           "teamId": "HH",
-          "value": "1.002"
+          "value": "1.002",
+          "isRetired": false
         },
         {
           "rank": 4,
@@ -132,7 +145,8 @@
           "metricKey": "OPS",
           "name": "박성한",
           "teamId": "SK",
-          "value": "0.989"
+          "value": "0.989",
+          "isRetired": false
         },
         {
           "rank": 5,
@@ -141,7 +155,8 @@
           "metricKey": "OPS",
           "name": "김도영",
           "teamId": "HT",
-          "value": "0.975"
+          "value": "0.975",
+          "isRetired": false
         }
       ],
       "opsPlus": [
@@ -152,7 +167,8 @@
           "metricKey": "OPSPLUS",
           "name": "오스틴",
           "teamId": "LG",
-          "value": "121"
+          "value": "121",
+          "isRetired": false
         },
         {
           "rank": 2,
@@ -161,7 +177,8 @@
           "metricKey": "OPSPLUS",
           "name": "최형우",
           "teamId": "SS",
-          "value": "116"
+          "value": "116",
+          "isRetired": false
         },
         {
           "rank": 3,
@@ -170,7 +187,8 @@
           "metricKey": "OPSPLUS",
           "name": "문현빈",
           "teamId": "HH",
-          "value": "113"
+          "value": "113",
+          "isRetired": false
         },
         {
           "rank": 4,
@@ -179,7 +197,8 @@
           "metricKey": "OPSPLUS",
           "name": "박성한",
           "teamId": "SK",
-          "value": "111"
+          "value": "111",
+          "isRetired": false
         },
         {
           "rank": 5,
@@ -188,7 +207,8 @@
           "metricKey": "OPSPLUS",
           "name": "김도영",
           "teamId": "HT",
-          "value": "110"
+          "value": "110",
+          "isRetired": false
         }
       ],
       "era": [
@@ -199,7 +219,8 @@
           "metricKey": "ERA",
           "name": "최민석",
           "teamId": "OB",
-          "value": "2.17"
+          "value": "2.17",
+          "isRetired": false
         },
         {
           "rank": 2,
@@ -208,7 +229,8 @@
           "metricKey": "ERA",
           "name": "후라도",
           "teamId": "SS",
-          "value": "2.33"
+          "value": "2.33",
+          "isRetired": false
         },
         {
           "rank": 3,
@@ -217,7 +239,8 @@
           "metricKey": "ERA",
           "name": "올러",
           "teamId": "HT",
-          "value": "2.72"
+          "value": "2.72",
+          "isRetired": false
         },
         {
           "rank": 4,
@@ -226,7 +249,8 @@
           "metricKey": "ERA",
           "name": "왕옌청",
           "teamId": "HH",
-          "value": "2.74"
+          "value": "2.74",
+          "isRetired": false
         },
         {
           "rank": 5,
@@ -235,7 +259,8 @@
           "metricKey": "ERA",
           "name": "나균안",
           "teamId": "LT",
-          "value": "2.96"
+          "value": "2.96",
+          "isRetired": false
         }
       ]
     },

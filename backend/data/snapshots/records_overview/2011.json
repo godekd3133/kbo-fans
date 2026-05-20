@@ -1,9 +1,19 @@
 {
-  "savedAt": "2026-05-20T05:10:10.601799+00:00",
+  "savedAt": "2026-05-20T05:31:34.011793+00:00",
   "payload": {
     "season": 2011,
     "leaders": {
       "avg": [
+        {
+          "rank": 1,
+          "playerId": "71564",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "이대호",
+          "teamId": "LT",
+          "value": "0.357",
+          "isRetired": true
+        },
         {
           "rank": 2,
           "playerId": "72443",
@@ -11,7 +21,18 @@
           "metricKey": "AVG",
           "name": "최형우",
           "teamId": "SS",
-          "value": "0.340"
+          "value": "0.340",
+          "isRetired": false
+        },
+        {
+          "rank": 3,
+          "playerId": "97109",
+          "playerType": "hitter",
+          "metricKey": "AVG",
+          "name": "이병규",
+          "teamId": "LG",
+          "value": "0.338",
+          "isRetired": true
         },
         {
           "rank": 4,
@@ -20,7 +41,8 @@
           "metricKey": "AVG",
           "name": "이용규",
           "teamId": "HT",
-          "value": "0.333"
+          "value": "0.333",
+          "isRetired": false
         },
         {
           "rank": 5,
@@ -29,25 +51,8 @@
           "metricKey": "AVG",
           "name": "손아섭",
           "teamId": "LT",
-          "value": "0.326"
-        },
-        {
-          "rank": 6,
-          "playerId": "79608",
-          "playerType": "hitter",
-          "metricKey": "AVG",
-          "name": "안치홍",
-          "teamId": "HT",
-          "value": "0.315"
-        },
-        {
-          "rank": 7,
-          "playerId": "75847",
-          "playerType": "hitter",
-          "metricKey": "AVG",
-          "name": "최정",
-          "teamId": "SK",
-          "value": "0.310"
+          "value": "0.326",
+          "isRetired": false
         }
       ],
       "hr": [
@@ -58,7 +63,18 @@
           "metricKey": "HR",
           "name": "최형우",
           "teamId": "SS",
-          "value": "30"
+          "value": "30",
+          "isRetired": false
+        },
+        {
+          "rank": 2,
+          "playerId": "71564",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "이대호",
+          "teamId": "LT",
+          "value": "27",
+          "isRetired": true
         },
         {
           "rank": 3,
@@ -67,7 +83,18 @@
           "metricKey": "HR",
           "name": "최정",
           "teamId": "SK",
-          "value": "20"
+          "value": "20",
+          "isRetired": false
+        },
+        {
+          "rank": 3,
+          "playerId": "61332",
+          "playerType": "hitter",
+          "metricKey": "HR",
+          "name": "알드리지",
+          "teamId": "넥센",
+          "value": "20",
+          "isRetired": true
         },
         {
           "rank": 5,
@@ -76,25 +103,8 @@
           "metricKey": "HR",
           "name": "강민호",
           "teamId": "LT",
-          "value": "19"
-        },
-        {
-          "rank": 12,
-          "playerId": "77532",
-          "playerType": "hitter",
-          "metricKey": "HR",
-          "name": "손아섭",
-          "teamId": "LT",
-          "value": "15"
-        },
-        {
-          "rank": 19,
-          "playerId": "76290",
-          "playerType": "hitter",
-          "metricKey": "HR",
-          "name": "김현수",
-          "teamId": "OB",
-          "value": "13"
+          "value": "19",
+          "isRetired": false
         }
       ],
       "ops": [
@@ -105,7 +115,18 @@
           "metricKey": "OPS",
           "name": "최형우",
           "teamId": "SS",
-          "value": "1.044"
+          "value": "1.044",
+          "isRetired": false
+        },
+        {
+          "rank": 2,
+          "playerId": "71564",
+          "playerType": "hitter",
+          "metricKey": "OPS",
+          "name": "이대호",
+          "teamId": "LT",
+          "value": "1.011",
+          "isRetired": true
         },
         {
           "rank": 3,
@@ -114,7 +135,8 @@
           "metricKey": "OPS",
           "name": "최정",
           "teamId": "SK",
-          "value": "0.928"
+          "value": "0.928",
+          "isRetired": false
         },
         {
           "rank": 4,
@@ -123,25 +145,18 @@
           "metricKey": "OPS",
           "name": "손아섭",
           "teamId": "LT",
-          "value": "0.892"
+          "value": "0.892",
+          "isRetired": false
         },
         {
-          "rank": 7,
-          "playerId": "74540",
+          "rank": 5,
+          "playerId": "98218",
           "playerType": "hitter",
           "metricKey": "OPS",
-          "name": "강민호",
-          "teamId": "LT",
-          "value": "0.846"
-        },
-        {
-          "rank": 8,
-          "playerId": "76290",
-          "playerType": "hitter",
-          "metricKey": "OPS",
-          "name": "김현수",
+          "name": "김동주",
           "teamId": "OB",
-          "value": "0.836"
+          "value": "0.868",
+          "isRetired": true
         }
       ],
       "opsPlus": [
@@ -152,80 +167,143 @@
           "metricKey": "OPSPLUS",
           "name": "최형우",
           "teamId": "SS",
-          "value": "124"
+          "value": "129",
+          "isRetired": false
         },
         {
           "rank": 2,
+          "playerId": "71564",
+          "playerType": "hitter",
+          "metricKey": "OPSPLUS",
+          "name": "이대호",
+          "teamId": "LT",
+          "value": "124",
+          "isRetired": true
+        },
+        {
+          "rank": 3,
           "playerId": "75847",
           "playerType": "hitter",
           "metricKey": "OPSPLUS",
           "name": "최정",
           "teamId": "SK",
-          "value": "110"
+          "value": "114",
+          "isRetired": false
         },
         {
-          "rank": 3,
+          "rank": 4,
           "playerId": "77532",
           "playerType": "hitter",
           "metricKey": "OPSPLUS",
           "name": "손아섭",
           "teamId": "LT",
-          "value": "106"
-        },
-        {
-          "rank": 4,
-          "playerId": "74540",
-          "playerType": "hitter",
-          "metricKey": "OPSPLUS",
-          "name": "강민호",
-          "teamId": "LT",
-          "value": "101"
+          "value": "110",
+          "isRetired": false
         },
         {
           "rank": 5,
-          "playerId": "76290",
+          "playerId": "98218",
           "playerType": "hitter",
           "metricKey": "OPSPLUS",
-          "name": "김현수",
+          "name": "김동주",
           "teamId": "OB",
-          "value": "100"
+          "value": "107",
+          "isRetired": true
         }
       ],
-      "era": []
+      "era": [
+        {
+          "rank": 1,
+          "playerId": "75620",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "윤석민",
+          "teamId": "HT",
+          "value": "2.45",
+          "isRetired": true
+        },
+        {
+          "rank": 2,
+          "playerId": "61240",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "니퍼트",
+          "teamId": "OB",
+          "value": "2.55",
+          "isRetired": true
+        },
+        {
+          "rank": 3,
+          "playerId": "78232",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "김선우",
+          "teamId": "OB",
+          "value": "3.13",
+          "isRetired": true
+        },
+        {
+          "rank": 4,
+          "playerId": "74513",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "장원준",
+          "teamId": "LT",
+          "value": "3.14",
+          "isRetired": true
+        },
+        {
+          "rank": 5,
+          "playerId": "74454",
+          "playerType": "pitcher",
+          "metricKey": "ERA",
+          "name": "윤성환",
+          "teamId": "SS",
+          "value": "3.54",
+          "isRetired": true
+        }
+      ]
     },
     "featured": {
       "todayHitter": {
-        "label": "시즌 타율 리더",
-        "playerId": "72443",
-        "playerType": "hitter",
-        "name": "최형우",
-        "teamId": "SS",
-        "headline": "타율 0.340",
-        "summary": "2011 시즌 KBO 공식 기록 기준",
-        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
-      },
-      "todayPitcher": {
-        "label": "시즌 ERA 리더"
-      },
-      "monthHitter": {
-        "label": "시즌 홈런왕",
-        "playerId": "72443",
-        "playerType": "hitter",
-        "name": "최형우",
-        "teamId": "SS",
-        "headline": "홈런 30",
-        "summary": "2011 시즌 KBO 공식 기록 기준",
-        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
-      },
-      "monthPitcher": {
-        "label": "시즌 OPS 리더",
+        "label": "오늘의 타자",
         "playerId": "72443",
         "playerType": "hitter",
         "name": "최형우",
         "teamId": "SS",
         "headline": "OPS 1.044",
-        "summary": "2011 시즌 KBO 공식 기록 기준",
+        "summary": "AVG 2위 + HR 1위",
         "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
+      },
+      "todayPitcher": {
+        "label": "오늘의 투수",
+        "playerId": "75620",
+        "playerType": "pitcher",
+        "name": "윤석민",
+        "teamId": "HT",
+        "headline": "ERA 2.45",
+        "summary": "ERA 1위",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75620.jpg"
+      },
+      "monthHitter": {
+        "label": "이달의 타자",
+        "playerId": "72443",
+        "playerType": "hitter",
+        "name": "최형우",
+        "teamId": "SS",
+        "headline": "OPS 1.044",
+        "summary": "AVG 2위 + HR 1위",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/72443.jpg"
+      },
+      "monthPitcher": {
+        "label": "이달의 투수",
+        "playerId": "75620",
+        "playerType": "pitcher",
+        "name": "윤석민",
+        "teamId": "HT",
+        "headline": "ERA 2.45",
+        "summary": "ERA 1위",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75620.jpg"
       }
     }
   }

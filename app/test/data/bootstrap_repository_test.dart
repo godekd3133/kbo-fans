@@ -38,7 +38,7 @@ void main() {
   });
 
   test(
-    'records overview bootstrap uses exact season without freshness gate',
+    'current records overview bootstrap uses fresh exact season snapshot',
     () async {
       final repository = BootstrapRepository(
         now: () => DateTime.utc(2026, 5, 20, 5),
@@ -50,4 +50,12 @@ void main() {
       expect(await repository.loadRecordsOverview(2025), isNull);
     },
   );
+
+  test('stale current records overview bootstrap is not exposed', () async {
+    final repository = BootstrapRepository(
+      now: () => DateTime.utc(2026, 5, 21, 5),
+    );
+
+    expect(await repository.loadRecordsOverview(2026), isNull);
+  });
 }

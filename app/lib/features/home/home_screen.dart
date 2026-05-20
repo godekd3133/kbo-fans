@@ -47,6 +47,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   List<Game>? _cachedTodayGames;
   String? _cachedTodayKey;
   String? _cachedTodayPayload;
+  static const _liveScoreboardCacheMaxAge = Duration(seconds: 60);
+  static const _scheduledScoreboardCacheMaxAge = Duration(minutes: 5);
+  static const _terminalScoreboardCacheMaxAge = Duration(hours: 6);
 
   @override
   void initState() {
@@ -285,10 +288,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
 
     try {
-      final decoded = jsonDecode(payload) as List<dynamic>;
-      final games = decoded
-          .map((item) => _gameFromJson(item as Map<String, dynamic>))
-          .toList();
+      final cached = _decodeCachedScoreboard(payload);
+      if (cached == null ||
+          !_canUseCachedScoreboard(cached.games, cached.savedAt)) {
+        return;
+      }
       if (!mounted) {
         return;
       }
@@ -297,7 +301,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       }
       setState(() {
         _cachedTodayKey = today;
-        _cachedTodayGames = games;
+        _cachedTodayGames = cached.games;
         _cachedTodayPayload = payload;
       });
     } catch (_) {
@@ -306,7 +310,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _saveCachedScoreboard(String today, List<Game> games) async {
-    final payload = jsonEncode(games.map(_gameToJson).toList());
+    final gamesPayload = jsonEncode(games.map(_gameToJson).toList());
+    final currentPayload = _cachedTodayKey == today
+        ? _cachedTodayPayload
+        : null;
+    final current = currentPayload == null
+        ? null
+        : _decodeCachedScoreboard(currentPayload);
+    if (current != null &&
+        _canUseCachedScoreboard(current.games, current.savedAt) &&
+        jsonEncode(current.games.map(_gameToJson).toList()) == gamesPayload) {
+      return;
+    }
+
+    final payload = jsonEncode({
+      'savedAt': DateTime.now().toUtc().toIso8601String(),
+      'games': jsonDecode(gamesPayload),
+    });
     if (_cachedTodayKey == today && _cachedTodayPayload == payload) {
       return;
     }
@@ -322,6 +342,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     _cachedTodayKey = today;
     _cachedTodayGames = games;
     _cachedTodayPayload = payload;
+  }
+
+  ({DateTime savedAt, List<Game> games})? _decodeCachedScoreboard(
+    String payload,
+  ) {
+    final decoded = jsonDecode(payload);
+    if (decoded is! Map<String, dynamic>) {
+      return null;
+    }
+    final savedAtRaw = decoded['savedAt'];
+    final gamesRaw = decoded['games'];
+    if (savedAtRaw is! String || gamesRaw is! List<dynamic>) {
+      return null;
+    }
+    final savedAt = DateTime.tryParse(savedAtRaw.replaceAll('Z', '+00:00'));
+    if (savedAt == null) {
+      return null;
+    }
+    final games = gamesRaw
+        .map((item) => _gameFromJson(item as Map<String, dynamic>))
+        .toList();
+    return (savedAt: savedAt.toUtc(), games: games);
+  }
+
+  bool _canUseCachedScoreboard(List<Game> games, DateTime savedAt) {
+    final age = DateTime.now().toUtc().difference(savedAt);
+    final maxAge = _scoreboardCacheMaxAge(games);
+    return !age.isNegative && age <= maxAge;
+  }
+
+  Duration _scoreboardCacheMaxAge(List<Game> games) {
+    if (games.any((game) => game.status == GameStatus.live)) {
+      return _liveScoreboardCacheMaxAge;
+    }
+    if (games.isEmpty ||
+        games.any((game) => game.status == GameStatus.scheduled)) {
+      return _scheduledScoreboardCacheMaxAge;
+    }
+    return _terminalScoreboardCacheMaxAge;
   }
 
   void _logSecondarySectionsLoaded({
