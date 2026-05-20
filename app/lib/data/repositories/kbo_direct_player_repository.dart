@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
 import '../models/player.dart';
 import '../models/records_overview.dart';
@@ -31,6 +33,10 @@ class KboDirectPlayerRepository implements PlayerRepository {
       '$_kboBase/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT';
   static const _pitcherEraUrl =
       '$_kboBase/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT';
+  static const _seasonField =
+      'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlSeason\$ddlSeason';
+  static const _teamField =
+      'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlTeam\$ddlTeam';
   static const _leaderboardMetrics =
       <LeaderboardMetric, (String, String, String)>{
         LeaderboardMetric.avg: (_hitterAvgUrl, 'AVG', 'hitter'),
@@ -79,16 +85,23 @@ class KboDirectPlayerRepository implements PlayerRepository {
           headers: const {
             'User-Agent':
                 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            'Referer': 'https://www.koreabaseball.com/',
+            'Origin': 'https://www.koreabaseball.com',
           },
         ),
-      );
+      ) {
+    _dio.interceptors.add(CookieManager(CookieJar()));
+  }
 
   @override
   Future<List<PlayerProfile>> getTeamPlayers(
     String teamId, {
     required int season,
   }) async {
-    _throwIfHistoricalTeamRosterSeason(season);
+    if (season < DateTime.now().year) {
+      return _fetchHistoricalTeamPlayers(teamId, season);
+    }
+
     final entryKeys = await _parseRegisterAllEntries(teamId);
     final grouped = await Future.wait(
       _positionGroups.map((group) => _fetchPlayerSearchRows(teamId, group)),
@@ -174,7 +187,6 @@ class KboDirectPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
-    _throwIfHistoricalTeamRosterSeason(season);
     final results = await Future.wait([
       getTeamPlayers(teamId, season: season),
       getTeamStats(teamId, season: season),
@@ -283,9 +295,80 @@ class KboDirectPlayerRepository implements PlayerRepository {
       options: Options(
         responseType: ResponseType.plain,
         contentType: Headers.formUrlEncodedContentType,
+        followRedirects: true,
+        validateStatus: (status) => status != null && status < 400,
       ),
     );
+    final location = response.headers.value('location');
+    if (response.statusCode != null &&
+        response.statusCode! >= 300 &&
+        location != null &&
+        location.isNotEmpty) {
+      return _getText(Uri.parse(url).resolve(location).toString());
+    }
     return response.data ?? '';
+  }
+
+  Future<String> _postSeasonPage(String url, String initialHtml, int season) {
+    return _postText(
+      url,
+      data: _buildWebFormsPayload(
+        initialHtml,
+        overrides: {_seasonField: '$season'},
+        eventTarget: _seasonField,
+      ),
+    );
+  }
+
+  Future<String> _postTeamPage(String url, String seasonHtml, String teamId) {
+    return _postText(
+      url,
+      data: _buildWebFormsPayload(
+        seasonHtml,
+        overrides: {_teamField: teamId},
+        eventTarget: _teamField,
+      ),
+    );
+  }
+
+  Map<String, String> _buildWebFormsPayload(
+    String html, {
+    Map<String, String> overrides = const {},
+    String eventTarget = '',
+  }) {
+    final fields = <String, String>{};
+
+    for (final match in RegExp(
+      r'<input\b[^>]*>',
+      caseSensitive: false,
+      dotAll: true,
+    ).allMatches(html)) {
+      final tag = match.group(0) ?? '';
+      final name = _extractAttribute(tag, 'name');
+      if (name == null || name.isEmpty) {
+        continue;
+      }
+      fields[name] = _decodeHtmlValue(_extractAttribute(tag, 'value') ?? '');
+    }
+
+    for (final match in RegExp(
+      r'<select\b[^>]*name="([^"]+)"[^>]*>(.*?)</select>',
+      caseSensitive: false,
+      dotAll: true,
+    ).allMatches(html)) {
+      final name = match.group(1);
+      if (name == null || name.isEmpty) {
+        continue;
+      }
+      fields[name] = _decodeHtmlValue(
+        _selectedOptionValue(match.group(2) ?? ''),
+      );
+    }
+
+    fields.addAll(overrides);
+    fields['__EVENTTARGET'] = eventTarget;
+    fields['__EVENTARGUMENT'] = '';
+    return fields;
   }
 
   Future<Set<(String, int)>> _parseRegisterAllEntries(String teamId) async {
@@ -387,6 +470,111 @@ class KboDirectPlayerRepository implements PlayerRepository {
       );
     }
     return players;
+  }
+
+  Future<List<PlayerProfile>> _fetchHistoricalTeamPlayers(
+    String teamId,
+    int season,
+  ) async {
+    final hitterBasicRows = await _fetchTeamPlayerRecordRows(
+      _hitterAvgUrl,
+      season,
+      teamId,
+      PlayerType.hitter,
+    );
+    final hitterOpsRows = await _fetchTeamPlayerRecordRows(
+      _hitterOpsUrl,
+      season,
+      teamId,
+      PlayerType.hitter,
+    );
+    final pitcherRows = await _fetchTeamPlayerRecordRows(
+      _pitcherEraUrl,
+      season,
+      teamId,
+      PlayerType.pitcher,
+    );
+
+    final hitterOpsById = {for (final row in hitterOpsRows) row.id: row.stats};
+    return [
+      for (final row in hitterBasicRows)
+        _buildPlayerFromRecordRow(
+          row,
+          season: season,
+          stats: {...row.stats, ...?hitterOpsById[row.id]},
+        ),
+      for (final row in pitcherRows)
+        _buildPlayerFromRecordRow(row, season: season, stats: row.stats),
+    ];
+  }
+
+  Future<List<_TeamPlayerRecordRow>> _fetchTeamPlayerRecordRows(
+    String url,
+    int season,
+    String teamId,
+    PlayerType playerType,
+  ) async {
+    final initialHtml = await _getText(url);
+    final seasonHtml = await _postSeasonPage(url, initialHtml, season);
+    final html = await _postTeamPage(url, seasonHtml, teamId);
+    return _parseTeamPlayerRecordRows(html, playerType);
+  }
+
+  List<_TeamPlayerRecordRow> _parseTeamPlayerRecordRows(
+    String html,
+    PlayerType playerType,
+  ) {
+    final headerMatch = RegExp(
+      r'<thead>(.*?)</thead>',
+      dotAll: true,
+    ).firstMatch(html);
+    final bodyMatch = RegExp(
+      r'<tbody>(.*?)</tbody>',
+      dotAll: true,
+    ).firstMatch(html);
+    if (headerMatch == null || bodyMatch == null) {
+      return const [];
+    }
+
+    final headers = RegExp(r'<th[^>]*>(.*?)</th>', dotAll: true)
+        .allMatches(headerMatch.group(1)!)
+        .map((cell) => _stripTags(cell.group(1) ?? ''))
+        .toList();
+    final rows = <_TeamPlayerRecordRow>[];
+    for (final row in RegExp(
+      r'<tr>(.*?)</tr>',
+      dotAll: true,
+    ).allMatches(bodyMatch.group(1)!)) {
+      final rawCells = RegExp(r'<t[dh][^>]*>(.*?)</t[dh]>', dotAll: true)
+          .allMatches(row.group(1) ?? '')
+          .map((cell) => cell.group(1) ?? '')
+          .toList();
+      if (rawCells.length != headers.length || rawCells.length < 4) {
+        continue;
+      }
+
+      final playerLink = RegExp(
+        r'href="/Record/Player/(?:Hitter|Pitcher)Detail/Basic\.aspx\?playerId=(\d+)"',
+      ).firstMatch(rawCells[1]);
+      if (playerLink == null) {
+        continue;
+      }
+
+      final cells = rawCells.map(_stripTags).toList();
+      rows.add(
+        _TeamPlayerRecordRow(
+          id: playerLink.group(1) ?? '',
+          name: cells[1],
+          teamId: _teamNameToId(cells[2]),
+          playerType: playerType,
+          stats: {
+            for (var i = 0; i < headers.length; i++)
+              headers[i].replaceAll('팀명', 'TEAM').trim(): cells[i],
+          },
+        ),
+      );
+    }
+    return rows;
   }
 
   Future<PlayerType> _guessPlayerType(String playerId) async {
@@ -671,22 +859,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
     String playerType,
   ) async {
     final initialHtml = await _getText(url);
-    final html = await _postText(
-      url,
-      data: {
-        '__VIEWSTATE': _extractHidden(initialHtml, '__VIEWSTATE'),
-        '__VIEWSTATEGENERATOR': _extractHidden(
-          initialHtml,
-          '__VIEWSTATEGENERATOR',
-        ),
-        '__EVENTVALIDATION': _extractHidden(initialHtml, '__EVENTVALIDATION'),
-        'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlSeason\$ddlSeason':
-            '$season',
-        '__EVENTTARGET':
-            'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlSeason\$ddlSeason',
-        '__EVENTARGUMENT': '',
-      },
-    );
+    final html = await _postSeasonPage(url, initialHtml, season);
 
     final rows = RegExp(r'<tr>(.*?)</tr>', dotAll: true).allMatches(html);
     final valueIndex = _resolveMetricIndex(
@@ -732,22 +905,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
     String playerType,
   ) async {
     final initialHtml = await _getText(url);
-    final html = await _postText(
-      url,
-      data: {
-        '__VIEWSTATE': _extractHidden(initialHtml, '__VIEWSTATE'),
-        '__VIEWSTATEGENERATOR': _extractHidden(
-          initialHtml,
-          '__VIEWSTATEGENERATOR',
-        ),
-        '__EVENTVALIDATION': _extractHidden(initialHtml, '__EVENTVALIDATION'),
-        'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlSeason\$ddlSeason':
-            '$season',
-        '__EVENTTARGET':
-            'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlSeason\$ddlSeason',
-        '__EVENTARGUMENT': '',
-      },
-    );
+    final html = await _postSeasonPage(url, initialHtml, season);
 
     final rows = RegExp(r'<tr>(.*?)</tr>', dotAll: true).allMatches(html);
     final valueIndex = _resolveMetricIndex(
@@ -916,6 +1074,42 @@ class KboDirectPlayerRepository implements PlayerRepository {
     );
   }
 
+  PlayerProfile _buildPlayerFromRecordRow(
+    _TeamPlayerRecordRow row, {
+    required int season,
+    required Map<String, String> stats,
+  }) {
+    final sortMetrics = _buildSortMetrics(row.playerType, stats);
+    return PlayerProfile(
+      id: row.id,
+      teamId: row.teamId,
+      playerType: row.playerType,
+      imageUrl: _playerImageUrl
+          .replaceFirst('{season}', '$season')
+          .replaceFirst('{playerId}', row.id),
+      name: row.name,
+      number: 0,
+      position: row.playerType == PlayerType.pitcher ? '투수' : '야수',
+      roleLabel: row.playerType == PlayerType.pitcher ? '투수' : '야수',
+      handedness: '',
+      heightWeight: '',
+      birthDate: '',
+      career: '',
+      status: PlayerAvailabilityStatus.available,
+      rosterGroup: PlayerRosterGroup.entry,
+      statusNote: null,
+      headlineStat: _buildHeadline(row.playerType, stats),
+      secondaryStat: _buildSecondary(row.playerType, stats),
+      seasonStats: _buildSeasonStatList(row.playerType, stats),
+      highlights: _buildHighlights(row.playerType, stats),
+      recentGames: const [],
+      avg: sortMetrics['avg'],
+      ops: sortMetrics['ops'],
+      era: sortMetrics['era'],
+      whip: sortMetrics['whip'],
+    );
+  }
+
   String _extractHidden(String html, String name) {
     final match = RegExp(
       'name="${RegExp.escape(name)}"[^>]*value="([^"]*)"',
@@ -981,39 +1175,13 @@ class KboDirectPlayerRepository implements PlayerRepository {
     );
   }
 
-  void _throwIfHistoricalTeamRosterSeason(int season) {
-    final currentSeason = DateTime.now().year;
-    if (season >= currentSeason) {
-      return;
-    }
-
-    throw UnsupportedError(
-      'Historical team rosters require bundled or backend snapshots: $season',
-    );
-  }
-
   Future<Map<String, String>> _fetchTeamStatTable(
     String url,
     int season,
     String teamName,
   ) async {
     final initialHtml = await _getText(url);
-    final html = await _postText(
-      url,
-      data: {
-        '__VIEWSTATE': _extractHidden(initialHtml, '__VIEWSTATE'),
-        '__VIEWSTATEGENERATOR': _extractHidden(
-          initialHtml,
-          '__VIEWSTATEGENERATOR',
-        ),
-        '__EVENTVALIDATION': _extractHidden(initialHtml, '__EVENTVALIDATION'),
-        'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlSeason\$ddlSeason':
-            '$season',
-        '__EVENTTARGET':
-            'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlSeason\$ddlSeason',
-        '__EVENTARGUMENT': '',
-      },
-    );
+    final html = await _postSeasonPage(url, initialHtml, season);
 
     final headerMatch = RegExp(
       r'<thead>(.*?)</thead>',
@@ -1049,4 +1217,54 @@ class KboDirectPlayerRepository implements PlayerRepository {
     }
     return {};
   }
+
+  String? _extractAttribute(String tag, String attribute) {
+    final match = RegExp(
+      '$attribute="([^"]*)"',
+      caseSensitive: false,
+    ).firstMatch(tag);
+    return match?.group(1);
+  }
+
+  String _selectedOptionValue(String selectBody) {
+    String? fallback;
+    for (final option in RegExp(
+      r'<option\b[^>]*>',
+      caseSensitive: false,
+      dotAll: true,
+    ).allMatches(selectBody)) {
+      final tag = option.group(0) ?? '';
+      final value = _extractAttribute(tag, 'value') ?? '';
+      fallback ??= value;
+      if (tag.toLowerCase().contains('selected')) {
+        return value;
+      }
+    }
+    return fallback ?? '';
+  }
+
+  String _decodeHtmlValue(String value) {
+    return value
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&amp;', '&')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>');
+  }
+}
+
+class _TeamPlayerRecordRow {
+  final String id;
+  final String name;
+  final String teamId;
+  final PlayerType playerType;
+  final Map<String, String> stats;
+
+  const _TeamPlayerRecordRow({
+    required this.id,
+    required this.name,
+    required this.teamId,
+    required this.playerType,
+    required this.stats,
+  });
 }

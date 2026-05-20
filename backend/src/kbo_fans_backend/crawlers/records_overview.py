@@ -23,6 +23,9 @@ class RecordsOverviewCrawler(BaseCrawler):
         "opsPlus": (_HITTER_OPS_URL, "OPS", "hitter"),
         "era": (_PITCHER_ERA_URL, "ERA", "pitcher"),
     }
+    _SEASON_FIELD = (
+        "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason"
+    )
 
     def get_overview(self, season: int) -> Dict[str, Any]:
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
@@ -105,20 +108,14 @@ class RecordsOverviewCrawler(BaseCrawler):
             f"{self.base_url}{path}",
             breaker_key=f"kbo:records_overview:{path}",
         )
-        payload = {
-            "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
-            "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
-            "__EVENTVALIDATION": self._extract_hidden(html, "__EVENTVALIDATION"),
-            "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason": str(
-                season
-            ),
-            "__EVENTTARGET": "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason",
-            "__EVENTARGUMENT": "",
-        }
         html = self._post_text(
             f"{self.base_url}{path}",
             breaker_key=f"kbo:records_overview:{path}",
-            data=payload,
+            data=self._build_web_form_payload(
+                html,
+                overrides={self._SEASON_FIELD: str(season)},
+                event_target=self._SEASON_FIELD,
+            ),
         )
 
         rows = re.findall(r"<tr>(.*?)</tr>", html, re.S)
@@ -167,20 +164,14 @@ class RecordsOverviewCrawler(BaseCrawler):
             f"{self.base_url}{path}",
             breaker_key=f"kbo:records_leaderboard:{path}",
         )
-        payload = {
-            "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
-            "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
-            "__EVENTVALIDATION": self._extract_hidden(html, "__EVENTVALIDATION"),
-            "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason": str(
-                season
-            ),
-            "__EVENTTARGET": "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason",
-            "__EVENTARGUMENT": "",
-        }
         html = self._post_text(
             f"{self.base_url}{path}",
             breaker_key=f"kbo:records_leaderboard:{path}",
-            data=payload,
+            data=self._build_web_form_payload(
+                html,
+                overrides={self._SEASON_FIELD: str(season)},
+                event_target=self._SEASON_FIELD,
+            ),
         )
 
         rows = re.findall(r"<tr>(.*?)</tr>", html, re.S)

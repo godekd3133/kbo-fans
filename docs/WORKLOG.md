@@ -6,14 +6,21 @@
 
 ### 완료
 - [x] 홈 화면에서 `/home` aggregate 로딩 중 별도로 `recordsOverviewProvider`를 호출하던 보조 섹션 제거
+- [x] 실행되지는 않지만 재활성화 시 첫 화면을 API prefetch에 다시 묶을 수 있던 blocking startup prefetch 죽은 코드 제거
+- [x] 값이 더 이상 set되지 않는 `startupScoreboardProvider`와 Home/Main의 의존성 제거
 - [x] 홈 첫 화면 데이터 흐름을 `scoreboardProvider` + 지연 `homeAggregateProvider`로 고정하고, aggregate 실패 시 schedule/standings/records 로컬 조립 fallback이 재진입하지 않도록 문서 기준 재정렬
+- [x] 실제 startup은 local onboarding/my-team 상태만 확인하고, 화면별 원격 데이터는 해당 route/provider가 소유하도록 정리
 - [x] 상세/스코어/중계/박스스코어/라인업 탭의 현재 provider fan-out 문서를 실제 구현 기준으로 갱신
 - [x] local native 기본 API-first, `PREFER_DIRECT_SCRAPE=true` 명시 임시 direct-primary 검증 모드 기준을 엔지니어링 노트에 반영
 
 ### 검증
 - [x] `rg`로 Home에서 `recordsOverviewProvider(season)`, overview lazy section, `GameDetailPreloadService` 재참조가 없는지 확인
+- [x] `rg`로 startup blocking prefetch / startup preload version / startup API task batch 재참조가 없는지 확인
 - [x] 데이터 리프레시 문서의 stale direct-debug / 이전 시즌 snapshot 차용 / 과거 preload 표현 제거 확인
 - [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/data/local_asset_player_repository_test.dart -r expanded`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_snapshot_services.py backend/tests/test_home.py backend/tests/test_scoreboard_service_cache.py`
 - [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
 - [x] 웹 재빌드 후 Home 네트워크 호출이 `/api/scoreboard/home` + `/api/home` 2개로 제한되는지 Playwright network log로 확인
 - [x] 웹 재빌드 후 Records는 `/api/records/overview`, Schedule은 `/api/schedule` 단일 호출로 진입하는지 확인
@@ -1396,9 +1403,16 @@ kbo_fans/
 - [x] Android debug/profile local API 접속을 위해 해당 variant에만 cleartext traffic 허용
 - [x] 정상 player repository 경로에서 `KboDirectPlayerRepository` 객체 생성도 제거해 temporary direct-primary 분기를 더 명확히 분리
 - [x] 오래된 local native 분석/standalone 문서를 API-first 정책으로 보정해 현재 구현과 문서 충돌 제거
+- [x] direct-primary 기록실의 과거 시즌 조회 실패 원인 분석: KBO WebForms 시즌 변경 POST가 hidden field 일부만 보내 cookie/session form state 없이 오류 페이지로 떨어져 2025/2024 리더보드와 팀 스탯이 빈 결과가 되던 문제 확인
+- [x] `KboDirectPlayerRepository`에 CookieJar 기반 session 유지와 전체 WebForms form payload 재전송을 적용해 과거 시즌 records overview / leaderboard / team stats POST를 정상화
+- [x] direct-primary 과거 시즌 팀 기록실은 현재 로스터 검색 대신 KBO 시즌/팀 filter 기록 테이블에서 야수/투수 선수 기록을 구성하도록 보정
+- [x] backend `RecordsOverviewCrawler` / `TeamStatsCrawler`도 동일한 전체 WebForms form payload 방식으로 보정해 이후 bootstrap/snapshot 생성이 빈 과거 시즌 데이터로 재생성되지 않도록 정리
 
 ### 검증 메모
 - 모션은 새 패키지 없이 Flutter 기본 위젯만 사용했고, `MediaQuery.disableAnimations`가 켜진 경우 생략되도록 처리함
 - 검증으로 `fvm dart format`, `fvm flutter analyze`, 기존 Flutter 테스트 3종, `fvm flutter build web --release --dart-define=APP_ENV=local` 실행, 모두 통과
 - `http://localhost:7357` Puppeteer smoke로 온보딩 완료 후 home, schedule, standings, records, leaderboard, player detail, game detail hash 라우팅 렌더를 확인함
 - 추가 데이터 경로 검증으로 `fvm flutter test test/data/local_asset_player_repository_test.dart`를 실행해 누락 asset이 mock player로 떨어지지 않는지 확인함
+- direct-primary 실측으로 앱 repository가 2025 records overview `avg/hr/ops/opsPlus/era` 각 5개, LG 2025 팀 기록 54명(야수 30명/투수 24명), 팀 타율 `0.278`, 팀 ERA `3.79`를 반환하는지 확인함
+- backend crawler 실측으로 2025 overview 각 리더 5개와 LG 2025 팀 타율/ERA 응답을 확인했고, `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_teams.py` 통과
+- 추가 검증으로 `python3 -m py_compile backend/src/kbo_fans_backend/crawlers/base.py backend/src/kbo_fans_backend/crawlers/records_overview.py backend/src/kbo_fans_backend/crawlers/team_stats.py`, `fvm flutter analyze`, `fvm flutter test test/data/local_asset_player_repository_test.dart` 통과

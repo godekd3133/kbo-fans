@@ -46,6 +46,8 @@
 
 - 일반 빌드에서는 records/player 경로가 API를 먼저 사용하고, 안정 데이터만 generated asset snapshot fallback을 허용한다.
 - 명시적 direct-primary 빌드에서는 records/player 경로가 direct KBO를 먼저 시도하고, 실패 시 local asset snapshot repository로 내려간다.
+- direct-primary 기록실은 KBO WebForms 세션 cookie와 전체 form field를 유지해 시즌 변경 POST를 수행한다.
+- 2025/2024 같은 과거 시즌의 리더보드, 팀 타격/투구 스탯, 팀별 야수/투수 기록은 KBO 기록 테이블의 시즌/팀 filter 결과로 구성한다.
 - asset source:
   - `app/assets/bootstrap/team_players/*.json`
   - `app/assets/bootstrap/team_stats/*.json`
@@ -87,7 +89,8 @@
 ### 기록실
 
 - 현재 모바일 기록실 기본 경로는 API 기반이며, generated local asset snapshot은 안정 데이터 fallback으로만 사용한다.
-- 실시간 크롤링형 팀 기록실은 아직 앱 내부 direct crawler로 완전히 대체되지 않았다.
+- 명시적 direct-primary 빌드에서는 과거 시즌 팀 기록실도 앱 내부 direct crawler가 KBO 기록 테이블에서 가져올 수 있다.
+- 다만 production release 기준은 여전히 backend snapshot/API이며, direct-primary는 운영 backend 준비 전 검증용 경로다.
 
 ### 웹
 

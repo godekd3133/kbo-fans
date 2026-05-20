@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/models/game.dart';
 
 class StartupPrepState {
   final String title;
@@ -96,21 +95,7 @@ class StartupPrepNotifier extends Notifier<StartupPrepState> {
   }
 }
 
-class StartupScoreboardNotifier extends Notifier<List<Game>?> {
-  @override
-  List<Game>? build() => null;
-
-  void setGames(List<Game>? games) {
-    state = games;
-  }
-}
-
 final startupPrepProvider =
     NotifierProvider<StartupPrepNotifier, StartupPrepState>(
       StartupPrepNotifier.new,
-    );
-
-final startupScoreboardProvider =
-    NotifierProvider<StartupScoreboardNotifier, List<Game>?>(
-      StartupScoreboardNotifier.new,
     );

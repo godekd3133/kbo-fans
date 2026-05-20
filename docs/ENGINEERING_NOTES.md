@@ -9,6 +9,7 @@
 
 - `local` 앱 실행은 백엔드가 항상 떠 있다고 가정하지 않는다.
 - 앱 로컬 모드라도 기본 데이터 경로는 API 이며, KBO direct 경로는 `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 임시 direct-primary 검증 세션에서만 사용한다.
+- 앱 startup은 원격 API prefetch를 소유하지 않는다. local onboarding/my-team 상태 확인 후 첫 route로 넘기고, scoreboard/home/records/schedule 요청은 각 화면 provider가 소유한다.
 - noisy fallback 로그가 과하면 `local` / 테스트 바인딩에서 prefetch, metric, push init을 완화하는 방향이 안전하다.
 - local, dev, release API base URL은 코드에 고정 default 를 두되 `API_BASE_URL` override 를 우선한다.
 - iPhone local debug에서 `localhost` API는 실기기에서 직접 닿지 않는다.

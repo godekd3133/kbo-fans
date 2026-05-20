@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +12,6 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
-import 'data/models/game.dart';
 import 'services/game_event_alert_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/ticket_alert_service.dart';
@@ -21,7 +19,6 @@ import 'services/widget_sync_service.dart';
 import 'package:workmanager/workmanager.dart';
 
 final Stopwatch _dartStartupStopwatch = Stopwatch()..start();
-const int _startupPreloadVersion = 2;
 
 void main() async {
   runZonedGuarded(
@@ -121,7 +118,6 @@ class KboFansApp extends ConsumerStatefulWidget {
 class _KboFansAppState extends ConsumerState<KboFansApp> {
   bool _didLogFirstFrame = false;
   bool _didScheduleBootstrap = false;
-  static const int _startupTaskBatchSize = 6;
   StreamSubscription<Uri?>? _homeWidgetClickSubscription;
   Uri? _pendingHomeWidgetUri;
   bool _didInitializeHomeWidgetRouting = false;
@@ -174,17 +170,8 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       DevConsole.instance.warn('myTeam bootstrap fallback: $error');
     }
 
-    final shouldBlock = await _shouldRunBlockingStartupPrep();
-    if (shouldBlock) {
-      await _prefetchInitialData(blocking: true);
-      await _markBlockingStartupPrepDone();
-      ref.read(onboardingDoneProvider.notifier).setValue(onboardingDone);
-      startupPrep.complete();
-    } else {
-      ref.read(onboardingDoneProvider.notifier).setValue(onboardingDone);
-      startupPrep.complete('기존 캐시를 적용했습니다');
-      unawaited(_prefetchInitialData(blocking: false));
-    }
+    ref.read(onboardingDoneProvider.notifier).setValue(onboardingDone);
+    startupPrep.complete('초기 화면으로 이동합니다');
     DevConsole.instance.info(
       'STARTUP bootstrap complete ${_dartStartupStopwatch.elapsedMilliseconds}ms',
     );
@@ -193,174 +180,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   Future<bool> _loadOnboardingState() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getBool('onboardingDone') ?? false;
-  }
-
-  Future<void> _prefetchInitialData({required bool blocking}) async {
-    if (_shouldSkipInitialPrefetch()) {
-      return;
-    }
-    final now = DateTime.now();
-    final today =
-        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final myTeamId = ref.read(myTeamProvider);
-    final startupPrep = ref.read(startupPrepProvider.notifier);
-
-    if (blocking) {
-      startupPrep.configure(message: '최초 실행 데이터를 준비하는 중입니다');
-      await _runBlockingStartupPrefetch(
-        startupPrep: startupPrep,
-        today: today,
-        myTeamId: myTeamId,
-      );
-      return;
-    }
-  }
-
-  Future<void> _runBlockingStartupPrefetch({
-    required StartupPrepNotifier startupPrep,
-    required String today,
-    required String? myTeamId,
-  }) async {
-    final staticTasks = <({String label, Future<void> Function() request})>[
-      (
-        label: '오늘 경기',
-        request: () async {
-          await ref.read(scoreboardProvider(today).future);
-        },
-      ),
-      if (myTeamId != null && myTeamId.isNotEmpty) ...[
-        (
-          label: '홈 요약 카드',
-          request: () async {
-            await ref.read(homeAggregateProvider('$today|$myTeamId').future);
-          },
-        ),
-      ],
-    ];
-
-    startupPrep.configure(totalSteps: 3 + staticTasks.length, blocking: true);
-    await _runStartupTasksBatched(startupPrep, staticTasks);
-
-    final games = await ref.read(scoreboardProvider(today).future);
-    ref.read(startupScoreboardProvider.notifier).setGames(games);
-    await _saveStartupScoreboardCache(today, games);
-  }
-
-  Future<T?> _runStartupTask<T>(
-    StartupPrepNotifier startupPrep,
-    ({String label, Future<T> Function() request}) task,
-  ) async {
-    startupPrep.configure(message: 'API 대기 중: ${task.label} 받아오는 중입니다');
-    try {
-      final result = await task.request();
-      startupPrep.advance('API 완료: ${task.label}');
-      return result;
-    } catch (error) {
-      DevConsole.instance.warn(
-        'startup preload skipped: ${task.label} / $error',
-      );
-      startupPrep.advance('API 실패: ${task.label}');
-      return null;
-    }
-  }
-
-  Future<void> _runStartupTasksBatched(
-    StartupPrepNotifier startupPrep,
-    List<({String label, Future<void> Function() request})> tasks,
-  ) async {
-    for (var i = 0; i < tasks.length; i += _startupTaskBatchSize) {
-      final batch = tasks.skip(i).take(_startupTaskBatchSize).toList();
-      final activeLabels = <String>{};
-      await Future.wait(
-        batch.map((task) async {
-          activeLabels.add(task.label);
-          _updateStartupParallelStatus(startupPrep, activeLabels);
-          try {
-            await _runStartupTask<void>(startupPrep, (
-              label: task.label,
-              request: () async {
-                await task.request();
-              },
-            ));
-          } finally {
-            activeLabels.remove(task.label);
-            _updateStartupParallelStatus(startupPrep, activeLabels);
-          }
-        }),
-      );
-    }
-  }
-
-  void _updateStartupParallelStatus(
-    StartupPrepNotifier startupPrep,
-    Set<String> activeLabels,
-  ) {
-    if (activeLabels.isEmpty) {
-      startupPrep.configure(message: '다음 데이터를 준비하는 중입니다');
-      return;
-    }
-
-    final labels = activeLabels.take(3).toList();
-    final suffix = activeLabels.length > 3
-        ? ' 외 ${activeLabels.length - 3}건'
-        : '';
-    startupPrep.configure(message: '병렬 로딩 중 · ${labels.join(' · ')}$suffix');
-  }
-
-  Future<void> _saveStartupScoreboardCache(
-    String today,
-    List<Game> games,
-  ) async {
-    final prefs = await SharedPreferences.getInstance();
-    final payload = jsonEncode(games.map(_gameToJson).toList());
-    await prefs.setString('home_scoreboard_cache_$today', payload);
-  }
-
-  Map<String, dynamic> _gameToJson(Game game) {
-    return {
-      'gameId': game.gameId,
-      'status': game.status.name,
-      'inning': game.inning,
-      'stadium': game.stadium,
-      'startTime': game.startTime,
-      'crowd': game.crowd,
-      'away': _teamScoreToJson(game.away),
-      'home': _teamScoreToJson(game.home),
-    };
-  }
-
-  Map<String, dynamic> _teamScoreToJson(TeamScore team) {
-    return {
-      'teamId': team.teamId,
-      'teamName': team.teamName,
-      'shortName': team.shortName,
-      'score': team.score,
-      'innings': team.innings,
-      'hits': team.hits,
-      'errors': team.errors,
-      'walks': team.walks,
-    };
-  }
-
-  bool _shouldSkipInitialPrefetch() {
-    if (_isWidgetTestBinding()) {
-      return true;
-    }
-    if (kIsWeb) {
-      return true;
-    }
-    return false;
-  }
-
-  Future<bool> _shouldRunBlockingStartupPrep() async {
-    return false;
-  }
-
-  Future<void> _markBlockingStartupPrepDone() async {
-    final prefs = await SharedPreferences.getInstance();
-    final key =
-        'startup_preload_version:${AppConfig.instance.environment.name}';
-    await prefs.setInt(key, _startupPreloadVersion);
   }
 
   bool _isWidgetTestBinding() {
@@ -374,20 +193,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final onboardingDone = ref.watch(onboardingDoneProvider);
-    if (!kIsWeb) {
-      final myTeamId = ref.watch(myTeamProvider);
-      final startupGames = ref.watch(startupScoreboardProvider);
-
-      if (startupGames != null && startupGames.isNotEmpty) {
-        unawaited(
-          WidgetSyncService.instance.syncScoreboard(
-            games: startupGames,
-            myTeamId: myTeamId,
-            repository: ref.read(gameRepositoryProvider),
-          ),
-        );
-      }
-    }
 
     if (!_didScheduleBootstrap) {
       _didScheduleBootstrap = true;

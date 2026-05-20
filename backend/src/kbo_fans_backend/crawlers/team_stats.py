@@ -11,6 +11,9 @@ from kbo_fans_backend.utils.html import strip_tags
 class TeamStatsCrawler(BaseCrawler):
     _HITTER_URL = "/Record/Team/Hitter/Basic1.aspx"
     _PITCHER_URL = "/Record/Team/Pitcher/Basic1.aspx"
+    _SEASON_FIELD = (
+        "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason"
+    )
     _TEAM_NAME_MAP = {
         "LG": "LG",
         "KT": "KT",
@@ -47,18 +50,14 @@ class TeamStatsCrawler(BaseCrawler):
             f"{self.base_url}{path}",
             breaker_key=f"kbo:team_stats:{path}",
         )
-        payload = {
-            "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
-            "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
-            "__EVENTVALIDATION": self._extract_hidden(html, "__EVENTVALIDATION"),
-            "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason": str(season),
-            "__EVENTTARGET": "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason",
-            "__EVENTARGUMENT": "",
-        }
         html = self._post_text(
             f"{self.base_url}{path}",
             breaker_key=f"kbo:team_stats:{path}",
-            data=payload,
+            data=self._build_web_form_payload(
+                html,
+                overrides={self._SEASON_FIELD: str(season)},
+                event_target=self._SEASON_FIELD,
+            ),
         )
 
         header_match = re.search(r"<thead>(.*?)</thead>", html, re.S)

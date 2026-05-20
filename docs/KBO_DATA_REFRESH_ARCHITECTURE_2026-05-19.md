@@ -15,7 +15,7 @@ Use four data classes:
 | Persisted snapshot | past schedule/results, final game summary, final boxscore, final lineup, final relay summary, standings by date, season records | snapshot-first; recrawl only by scheduled warmer/manual repair | render immediately; background refresh only when explicitly allowed |
 | Bundled bootstrap | standings fallback, records overview, team players/stats assets | app asset fallback after API/cache failure | never hit KBO directly for stable data |
 
-The app should not use direct KBO crawling as a normal fallback. Direct KBO should be an explicit local debug mode only.
+The app should not use direct KBO crawling as a normal fallback. Direct KBO should be an explicit temporary direct-primary validation mode only.
 
 ## Backend Boundary
 
@@ -121,15 +121,15 @@ This review is based on the current code paths below:
 | Repository routing | `app/lib/data/providers.dart:37-49` uses API by default, and only enters `KboDirectRepository` for explicit temporary direct-primary validation builds. |
 | Home aggregate fan-out | `app/lib/data/providers.dart:199-248` uses `/api/home` in normal mode; the local assembly branch is limited to explicit direct-primary validation builds. |
 | All-player image map | `app/lib/data/providers.dart:270-305` can still loop through all 10 teams if explicitly watched, but normal detail tabs now use selected teams instead. |
-| Home fallback fan-out | `app/lib/features/home/home_screen.dart:430-463` skips local fallback assembly when aggregate fails. |
-| Home preload | Removed. Home now renders from startup/scoreboard data without `GameDetailPreloadService`. |
-| Home live refresh | `app/lib/features/home/home_screen.dart:933` invalidates the visible scoreboard provider. |
+| Home fallback fan-out | `app/lib/features/home/home_screen.dart:430-455` skips local fallback assembly when aggregate fails. |
+| Home preload | Removed. Home now renders from the visible scoreboard provider or the local home scoreboard cache without `GameDetailPreloadService`. |
+| Home live refresh | `app/lib/features/home/home_screen.dart:809` invalidates the visible scoreboard provider. |
 | Schedule preload | Removed. `app/lib/features/schedule/schedule_screen.dart:74-76` opens detail on tap without top-3 detail preload. |
 | Detail visible-tab refresh | `app/lib/features/game_detail/game_detail_screen.dart:220-250` refreshes game summary and only the visible tab provider. |
 | Score tab relay dependency | Removed. `app/lib/features/game_detail/tabs/score_tab.dart:22-35` renders from `Game` inning scores without watching relay. |
 | Relay tab player data | `app/lib/features/game_detail/tabs/relay_tab.dart:44-70` watches game, relay, and the two selected team player lists. |
 | Lineup tab data | `app/lib/features/game_detail/tabs/lineup_tab.dart:52-64` watches lineup, boxscore-derived batters/pitchers, and the two selected team player lists. |
-| Widget background refresh | `app/lib/services/widget_sync_service.dart:60-77` uses compact API in normal mode; direct KBO is explicit temporary direct-primary only. |
+| Widget background refresh | `app/lib/services/widget_sync_service.dart:67-76` uses compact API in normal mode; direct KBO is explicit temporary direct-primary only. |
 | Alert relay path | `app/lib/services/game_event_alert_service.dart:86-101` loops tracked games, and `app/lib/services/game_event_alert_service.dart:151-169` fetches relay per live tracked game. |
 | Direct KBO queue/dedupe | `app/lib/data/repositories/kbo_direct_repository.dart:38-45` has request maps/queue; `app/lib/data/repositories/kbo_direct_repository.dart:96-115` serializes network calls. |
 | Direct scoreboard fan-out | `app/lib/data/repositories/kbo_direct_repository.dart:277-315` gets schedule, main game map, and per-game scoreboard/detail calls. |
@@ -465,13 +465,13 @@ Target:
 Current flow:
 
 - Team chooser watches `recordsOverviewProvider`.
-- Team records screen watches `teamRecordsProvider` and `standingsProvider`.
-- Refresh invalidates both.
+- Team records screen watches `teamRecordsProvider`.
+- Refresh invalidates only the selected team records payload.
 
 Risk:
 
 - Mostly acceptable because team selection gates team data.
-- Standing lookup for every team records screen should be included in `teamRecords` or a compact team-rank field to avoid a second endpoint.
+- Regression risk is reintroducing a separate standings request from team records screen.
 
 Target:
 
@@ -611,8 +611,8 @@ Applied in app code:
 - Default `gameRepositoryProvider` no longer wraps API with direct KBO fallback. Normal app mode now uses API-backed data only.
 - Default `playerRepositoryProvider` no longer falls back to direct player crawling. It falls back to generated/local asset player data after API/snapshot failure.
 - Widget background sync now uses `ApiGameRepository(ApiClient())` by default and only uses `KboDirectRepository` in explicit temporary direct-primary mode.
-- Startup prefetch was reduced to first-screen API payloads: today scoreboard, current month schedule, standings, records overview, and my-team home/records when configured.
-- Startup no longer warms all-player image maps, all team records, all historical seasons, every game detail, every boxscore, every lineup, every relay, player details, or bulk image files.
+- Startup no longer performs remote API prefetch before first screen entry. It loads only local onboarding/my-team state, then lets the active route own its own data request.
+- Startup no longer warms scoreboard, schedule, standings, records overview, all-player image maps, all team records, all historical seasons, every game detail, every boxscore, every lineup, every relay, player details, or bulk image files.
 - Home and Schedule no longer trigger game-detail preloads on normal list entry or row tap.
 - Game Detail no longer preloads every tab on entry. Initial entry refreshes only the game summary, and timed/pull refresh only invalidates the visible tab's provider.
 - `GameDetailPreloadService` was removed so the old broad detail warmer cannot be reintroduced accidentally through an existing service call.
@@ -622,9 +622,9 @@ Applied in app code:
 
 Still intentionally left for P1:
 
-- `LineupTab` still reads relay data for bullpen/order enrichment.
-- `BoxscoreTab` still reads relay/lineup/team-player data for richer post-game cards.
-- Backend still needs route-level request budget tests, singleflight/rate-limit coordination, and compact widget/detail endpoints.
+- `LineupTab` still derives batter/pitcher matchup decoration from boxscore data; a compact matchup-summary endpoint can replace that later.
+- `BoxscoreTab` still reads selected-team player data for richer post-game cards.
+- Backend still needs route-level request budget tests and compact matchup/inning-summary endpoints.
 
 Verification:
 
@@ -666,7 +666,7 @@ Request impact:
 - Schedule fallback lookup for `/game/{gameId}` only runs when the scoreboard/game summary path cannot find the game.
 - Widget background refresh requests at most one compact scoreboard game and no longer performs a relay/current-at-bat request.
 - Live Activity updates no longer perform direct KBO current-at-bat fallback from the client.
-- First screen entry is no longer gated by remote prefetch completion.
+- First screen entry is no longer gated by remote prefetch completion; blocking startup prefetch code has been removed from the app.
 
 Verification:
 
@@ -692,7 +692,7 @@ Live loading smoke on 2026-05-19:
 
 - Actual live games were present: NC-두산, LG-KIA, SSG-키움, 롯데-한화, KT-삼성.
 - `get_game(20260519LGHT0)` completed in about 390ms during the run.
-- The web app previously could remain on blocking startup progress if first-run remote prefetch did not finish. After disabling blocking remote prefetch, local web release rendered the live home card instead of staying on the startup loader.
+- The web app previously could remain on blocking startup progress if first-run remote prefetch did not finish. After removing blocking remote prefetch from startup, local web release rendered the live home card instead of staying on the startup loader.
 - Screenshot artifact: `artifacts/kbo-live-loading-check/home-lg-nonblocking-fixed-score.png`.
 - A separate live-score data bug was found and fixed: KBO detail payload can provide inning scores while total `score` is null. Backend now derives missing totals from inning scores.
 - Follow-up detail validation found two additional same-day detail risks:

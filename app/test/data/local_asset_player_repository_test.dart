@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kbo_fans/data/repositories/kbo_direct_player_repository.dart';
 import 'package:kbo_fans/data/repositories/local_asset_player_repository.dart';
 
 void main() {
@@ -90,17 +89,19 @@ void main() {
   );
 
   test(
-    'direct team roster refuses historical seasons before network fetch',
-    () {
-      final repository = KboDirectPlayerRepository();
+    'historical bundled player snapshots include hitter and pitcher types',
+    () async {
+      final repository = LocalAssetPlayerRepository();
+
+      final players = await repository.getTeamPlayers('LG', season: 2025);
 
       expect(
-        repository.getTeamPlayers('LG', season: 2025),
-        throwsA(isA<UnsupportedError>()),
+        players.where((player) => player.playerType.name == 'hitter'),
+        isNotEmpty,
       );
       expect(
-        repository.getTeamRecords('LG', season: 2025),
-        throwsA(isA<UnsupportedError>()),
+        players.where((player) => player.playerType.name == 'pitcher'),
+        isNotEmpty,
       );
     },
   );

@@ -16,7 +16,6 @@ import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/game_status_badge.dart';
 import '../../core/widgets/dev_console.dart';
-import '../../core/bootstrap/startup_prep_state.dart';
 import '../../data/models/game.dart';
 import '../../data/models/home_aggregate.dart';
 import '../../data/models/schedule.dart';
@@ -75,7 +74,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget build(BuildContext context) {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final scoreboardAsync = ref.watch(scoreboardProvider(today));
-    final startupGames = ref.watch(startupScoreboardProvider);
     final myTeamId = ref.watch(myTeamProvider);
     _logHomeLoad(scoreboardAsync, today);
 
@@ -84,13 +82,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: AppMotionSwitcher(
           child: scoreboardAsync.when(
             loading: () {
-              final preloadGames = startupGames;
-              if (preloadGames != null && preloadGames.isNotEmpty) {
-                return KeyedSubtree(
-                  key: ValueKey('home-preload-${preloadGames.length}'),
-                  child: _buildContent(context, preloadGames, myTeamId, today),
-                );
-              }
               return _cachedTodayKey == today && _cachedTodayGames != null
                   ? KeyedSubtree(
                       key: ValueKey('home-cache-${_cachedTodayGames!.length}'),

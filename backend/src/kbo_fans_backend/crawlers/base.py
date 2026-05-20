@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
+from html import unescape
 from typing import Any, Dict, Optional
 
 from requests import Session
@@ -73,3 +75,48 @@ class BaseCrawler:
 
     def _post_json(self, url: str, *, breaker_key: Optional[str] = None, **kwargs):
         return self._request("POST", url, breaker_key=breaker_key, **kwargs).json()
+
+    def _build_web_form_payload(
+        self,
+        html: str,
+        *,
+        overrides: Optional[Dict[str, str]] = None,
+        event_target: str = "",
+    ) -> Dict[str, str]:
+        fields: Dict[str, str] = {}
+
+        for tag in re.findall(r"<input\b[^>]*>", html, re.S | re.I):
+            name = self._extract_attr(tag, "name")
+            if not name:
+                continue
+            fields[name] = unescape(self._extract_attr(tag, "value") or "")
+
+        for match in re.finditer(
+            r'<select\b[^>]*name="([^"]+)"[^>]*>(.*?)</select>',
+            html,
+            re.S | re.I,
+        ):
+            fields[match.group(1)] = unescape(
+                self._selected_option_value(match.group(2))
+            )
+
+        fields.update(overrides or {})
+        fields["__EVENTTARGET"] = event_target
+        fields["__EVENTARGUMENT"] = ""
+        return fields
+
+    @staticmethod
+    def _extract_attr(tag: str, attr: str) -> Optional[str]:
+        match = re.search(r'%s="([^"]*)"' % re.escape(attr), tag, re.I)
+        return match.group(1) if match else None
+
+    @classmethod
+    def _selected_option_value(cls, select_body: str) -> str:
+        fallback: Optional[str] = None
+        for option_tag in re.findall(r"<option\b[^>]*>", select_body, re.S | re.I):
+            value = cls._extract_attr(option_tag, "value") or ""
+            if fallback is None:
+                fallback = value
+            if "selected" in option_tag.lower():
+                return value
+        return fallback or ""
