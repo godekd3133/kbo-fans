@@ -27,6 +27,7 @@ class ApiGameRepository implements GameRepository {
       cacheKey: 'scoreboard_home:$date',
       preferCache: isHistoricalDate,
       maxAge: isHistoricalDate ? _stableCacheAge : _liveishCacheAge,
+      allowCacheOnFailure: isHistoricalDate,
     );
     final games = data['games'] as List<dynamic>? ?? [];
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
@@ -36,6 +37,7 @@ class ApiGameRepository implements GameRepository {
     String date, {
     String? myTeamId,
   }) async {
+    final isHistoricalDate = _isHistoricalDate(date);
     final params = <String, dynamic>{'date': date};
     if (myTeamId != null && myTeamId.isNotEmpty) {
       params['myTeam'] = myTeamId;
@@ -44,8 +46,9 @@ class ApiGameRepository implements GameRepository {
       '/scoreboard/compact',
       queryParameters: params,
       cacheKey: 'scoreboard_compact:$date:${myTeamId ?? ''}',
-      preferCache: false,
-      maxAge: _liveishCacheAge,
+      preferCache: isHistoricalDate,
+      maxAge: isHistoricalDate ? _stableCacheAge : _liveishCacheAge,
+      allowCacheOnFailure: isHistoricalDate,
     );
     final games = data['games'] as List<dynamic>? ?? [];
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
@@ -59,6 +62,7 @@ class ApiGameRepository implements GameRepository {
       cacheKey: 'game_detail_v2:$gameId',
       preferCache: isHistoricalGame,
       maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      allowCacheOnFailure: isHistoricalGame,
     );
     final game = data['game'] as Map<String, dynamic>?;
     if (game == null) {
@@ -69,11 +73,13 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<HighlightInfo?> getHighlightInfo(String gameId) async {
+    final isHistoricalGame = _isHistoricalGameId(gameId);
     final data = await _client.getCached(
       '/game/$gameId/highlights',
       cacheKey: 'highlights:$gameId',
-      preferCache: true,
-      maxAge: _stableCacheAge,
+      preferCache: isHistoricalGame,
+      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      allowCacheOnFailure: isHistoricalGame,
     );
     final highlightInfo = data['highlightInfo'] as Map<String, dynamic>?;
     return _parseHighlightInfo(highlightInfo);
@@ -91,6 +97,7 @@ class ApiGameRepository implements GameRepository {
       cacheKey: 'relay:$gameId:${afterSeqNo ?? ''}',
       preferCache: isHistoricalGame,
       maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      allowCacheOnFailure: isHistoricalGame,
     );
     final items = data['relayItems'] as List<dynamic>? ?? [];
     final atBat = data['currentAtBat'] as Map<String, dynamic>?;
@@ -123,6 +130,7 @@ class ApiGameRepository implements GameRepository {
       cacheKey: 'boxscore:$gameId',
       preferCache: isHistoricalGame,
       maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      allowCacheOnFailure: isHistoricalGame,
     );
     return GameBoxscoreData(
       gameId: gameId,
@@ -162,6 +170,7 @@ class ApiGameRepository implements GameRepository {
       cacheKey: 'lineup:$gameId',
       preferCache: isHistoricalGame,
       maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      allowCacheOnFailure: isHistoricalGame,
     );
     return GameLineupData(
       gameId: gameId,
@@ -188,6 +197,7 @@ class ApiGameRepository implements GameRepository {
       cacheKey: 'schedule:$yearMonth',
       preferCache: isHistoricalMonth,
       maxAge: isHistoricalMonth ? _stableCacheAge : _liveishCacheAge,
+      allowCacheOnFailure: isHistoricalMonth,
     );
     final days = data['days'] as List<dynamic>? ?? [];
     return days.map((d) {
@@ -228,6 +238,7 @@ class ApiGameRepository implements GameRepository {
         cacheKey: 'standings:$season',
         preferCache: isHistoricalSeason,
         maxAge: isHistoricalSeason ? _stableCacheAge : _liveishCacheAge,
+        allowCacheOnFailure: isHistoricalSeason,
       );
       return _parseStandings(data);
     } catch (_) {

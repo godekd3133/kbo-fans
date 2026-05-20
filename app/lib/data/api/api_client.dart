@@ -89,6 +89,7 @@ class ApiClient {
     bool preferCache = false,
     Duration? maxAge,
     bool Function(Map<String, dynamic> data)? isValid,
+    bool allowCacheOnFailure = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = '$_cachePrefix$cacheKey';
@@ -125,7 +126,7 @@ class ApiClient {
       await _writeCachedPayload(prefs, storageKey, fresh);
       return fresh;
     } catch (_) {
-      if (cached != null && isFresh) {
+      if (allowCacheOnFailure && cached != null && isFresh) {
         return cached.data;
       }
       rethrow;

@@ -13,16 +13,12 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'fresh-first API cache reuses only fresh cache after request failure',
+    'fresh-first API cache reuses fresh cache after request failure when explicitly allowed',
     () async {
       SharedPreferences.setMockInitialValues({
-        'api_cache:scoreboard_home:2026-05-20': jsonEncode({
-          'cachedAt': DateTime.now()
-              .toUtc()
-              .subtract(const Duration(seconds: 10))
-              .toIso8601String(),
-          'data': {'source': 'fresh-cache'},
-        }),
+        'api_cache:scoreboard_home:2026-05-20': _cachedApiPayload({
+          'source': 'fresh-cache',
+        }, age: const Duration(seconds: 10)),
       });
 
       final client = ApiClient(
@@ -34,6 +30,7 @@ void main() {
         '/scoreboard/home',
         cacheKey: 'scoreboard_home:2026-05-20',
         maxAge: const Duration(seconds: 30),
+        allowCacheOnFailure: true,
       );
 
       expect(data['source'], 'fresh-cache');
@@ -41,16 +38,38 @@ void main() {
   );
 
   test(
+    'fresh-first API cache can surface failure instead of using fresh cache',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'api_cache:scoreboard_home:2026-05-20': _cachedApiPayload({
+          'source': 'fresh-cache',
+        }, age: const Duration(seconds: 10)),
+      });
+
+      final client = ApiClient(
+        dio: _dioWithAdapter(_FailingAdapter()),
+        enableRequestTiming: false,
+      );
+
+      expect(
+        () => client.getCached(
+          '/scoreboard/home',
+          cacheKey: 'scoreboard_home:2026-05-20',
+          maxAge: const Duration(seconds: 30),
+          allowCacheOnFailure: false,
+        ),
+        throwsA(isA<DioException>()),
+      );
+    },
+  );
+
+  test(
     'fresh-first API cache rejects stale cache after request failure',
     () async {
       SharedPreferences.setMockInitialValues({
-        'api_cache:scoreboard_home:2026-05-20': jsonEncode({
-          'cachedAt': DateTime.now()
-              .toUtc()
-              .subtract(const Duration(minutes: 10))
-              .toIso8601String(),
-          'data': {'source': 'stale-cache'},
-        }),
+        'api_cache:scoreboard_home:2026-05-20': _cachedApiPayload({
+          'source': 'stale-cache',
+        }, age: const Duration(minutes: 10)),
       });
 
       final client = ApiClient(
@@ -71,13 +90,9 @@ void main() {
 
   test('cached-first historical path may reuse stale cache', () async {
     SharedPreferences.setMockInitialValues({
-      'api_cache:scoreboard_home:2026-05-01': jsonEncode({
-        'cachedAt': DateTime.now()
-            .toUtc()
-            .subtract(const Duration(days: 3))
-            .toIso8601String(),
-        'data': {'source': 'historical-cache'},
-      }),
+      'api_cache:scoreboard_home:2026-05-01': _cachedApiPayload({
+        'source': 'historical-cache',
+      }, age: const Duration(days: 3)),
     });
 
     final client = ApiClient(
@@ -97,13 +112,9 @@ void main() {
 
   test('cached-first API cache ignores invalid cached payload', () async {
     SharedPreferences.setMockInitialValues({
-      'api_cache:test_payload': jsonEncode({
-        'cachedAt': DateTime.now()
-            .toUtc()
-            .subtract(const Duration(days: 3))
-            .toIso8601String(),
-        'data': {'source': 'invalid-cache'},
-      }),
+      'api_cache:test_payload': _cachedApiPayload({
+        'source': 'invalid-cache',
+      }, age: const Duration(days: 3)),
     });
 
     final client = ApiClient(
@@ -124,17 +135,10 @@ void main() {
 
   test('historical records overview ignores cached rank gaps', () async {
     SharedPreferences.setMockInitialValues({
-      'api_cache:recordsOverview:v4:2013': jsonEncode({
-        'cachedAt': DateTime.now()
-            .toUtc()
-            .subtract(const Duration(days: 3))
-            .toIso8601String(),
-        'data': _recordsOverviewPayload(
-          season: 2013,
-          firstAvgRank: 2,
-          firstEraRank: 2,
-        ),
-      }),
+      'api_cache:recordsOverview:v4:2013': _cachedApiPayload(
+        _recordsOverviewPayload(season: 2013, firstAvgRank: 2, firstEraRank: 2),
+        age: const Duration(days: 3),
+      ),
     });
     final repository = ApiPlayerRepository(
       ApiClient(
@@ -158,9 +162,14 @@ void main() {
   });
 
   test(
-    'current standings API failure is not masked by app bootstrap',
+    'current scoreboard API failure is not masked by fresh API cache',
     () async {
-      SharedPreferences.setMockInitialValues({});
+      final today = _yyyyMmDd(DateTime.now());
+      SharedPreferences.setMockInitialValues({
+        'api_cache:scoreboard_home:$today': _cachedApiPayload({
+          'games': const [],
+        }, age: const Duration(seconds: 10)),
+      });
       final repository = ApiGameRepository(
         ApiClient(
           dio: _dioWithAdapter(_FailingAdapter()),
@@ -169,16 +178,60 @@ void main() {
       );
 
       expect(
-        () => repository.getStandings(DateTime.now().year),
+        () => repository.getScoreboard(today),
         throwsA(isA<DioException>()),
       );
     },
   );
 
   test(
-    'current records overview API failure is not masked by app bootstrap',
+    'current standings API failure is not masked by fresh API cache or app bootstrap',
+    () async {
+      final season = DateTime.now().year;
+      SharedPreferences.setMockInitialValues({
+        'api_cache:standings:$season': _cachedApiPayload({
+          'standings': [
+            {
+              'rank': 1,
+              'teamId': 'KT',
+              'teamName': 'KT',
+              'wins': 1,
+              'losses': 0,
+              'draws': 0,
+              'pct': '1.000',
+              'gb': '0',
+            },
+          ],
+        }, age: const Duration(seconds: 10)),
+      });
+      final repository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_FailingAdapter()),
+          enableRequestTiming: false,
+        ),
+      );
+
+      expect(
+        () => repository.getStandings(season),
+        throwsA(isA<DioException>()),
+      );
+    },
+  );
+
+  test(
+    'current records overview API failure is not masked by fresh API cache or app bootstrap',
     () {
-      SharedPreferences.setMockInitialValues({});
+      final season = DateTime.now().year;
+      SharedPreferences.setMockInitialValues({
+        'api_cache:recordsOverview:v4:$season': _cachedApiPayload(
+          _recordsOverviewPayload(
+            season: season,
+            firstAvgRank: 1,
+            firstEraRank: 1,
+          ),
+          age: const Duration(seconds: 10),
+        ),
+      });
       final repository = ApiPlayerRepository(
         ApiClient(
           dio: _dioWithAdapter(_FailingAdapter()),
@@ -187,29 +240,52 @@ void main() {
       );
 
       expect(
-        () => repository.getRecordsOverview(season: DateTime.now().year),
+        () => repository.getRecordsOverview(season: season),
         throwsA(isA<DioException>()),
       );
     },
   );
 
-  test('current leaderboard API failure is not masked by app bootstrap', () {
-    SharedPreferences.setMockInitialValues({});
-    final repository = ApiPlayerRepository(
-      ApiClient(
-        dio: _dioWithAdapter(_FailingAdapter()),
-        enableRequestTiming: false,
-      ),
-    );
+  test(
+    'current leaderboard API failure is not masked by fresh API cache or app bootstrap',
+    () {
+      final season = DateTime.now().year;
+      SharedPreferences.setMockInitialValues({
+        'api_cache:leaderboard:v3:avg:$season': _cachedApiPayload({
+          'season': season,
+          'metric': 'avg',
+          'leaders': [_leader(rank: 1, metricKey: 'AVG', value: '0.350')],
+        }, age: const Duration(seconds: 10)),
+      });
+      final repository = ApiPlayerRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_FailingAdapter()),
+          enableRequestTiming: false,
+        ),
+      );
 
-    expect(
-      () => repository.getLeaderboard(
-        season: DateTime.now().year,
-        metric: LeaderboardMetric.avg,
-      ),
-      throwsA(isA<DioException>()),
-    );
-  });
+      expect(
+        () => repository.getLeaderboard(
+          season: season,
+          metric: LeaderboardMetric.avg,
+        ),
+        throwsA(isA<DioException>()),
+      );
+    },
+  );
+}
+
+String _cachedApiPayload(Map<String, dynamic> data, {required Duration age}) =>
+    jsonEncode({
+      'cachedAt': DateTime.now().toUtc().subtract(age).toIso8601String(),
+      'data': data,
+    });
+
+String _yyyyMmDd(DateTime value) {
+  final year = value.year.toString().padLeft(4, '0');
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  return '$year-$month-$day';
 }
 
 Dio _dioWithAdapter(HttpClientAdapter adapter) {

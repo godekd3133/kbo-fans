@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
@@ -32,8 +30,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen>
-    with WidgetsBindingObserver {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   Timer? _refreshTimer;
   final ScrollController _scrollController = ScrollController();
   String? _lastSyncSignature;
@@ -44,34 +41,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   bool _secondarySectionsEnabled = false;
   int? _secondarySectionsStartedAtMicros;
   String? _lastSecondarySectionsLogKey;
-  List<Game>? _cachedTodayGames;
-  String? _cachedTodayKey;
-  String? _cachedTodayPayload;
-  static const _liveScoreboardCacheMaxAge = Duration(seconds: 60);
-  static const _scheduledScoreboardCacheMaxAge = Duration(minutes: 5);
-  static const _terminalScoreboardCacheMaxAge = Duration(hours: 6);
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _homeLoadStartedAtMicros = DateTime.now().microsecondsSinceEpoch;
-    unawaited(_loadCachedScoreboard());
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     _refreshTimer?.cancel();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      unawaited(_loadCachedScoreboard());
-    }
   }
 
   @override
@@ -85,22 +66,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       body: SafeArea(
         child: AppMotionSwitcher(
           child: scoreboardAsync.when(
-            loading: () {
-              return _cachedTodayKey == today && _cachedTodayGames != null
-                  ? KeyedSubtree(
-                      key: ValueKey('home-cache-${_cachedTodayGames!.length}'),
-                      child: _buildContent(
-                        context,
-                        _cachedTodayGames!,
-                        myTeamId,
-                        today,
-                      ),
-                    )
-                  : KeyedSubtree(
-                      key: const ValueKey('home-loading'),
-                      child: _buildLoadingShell(context),
-                    );
-            },
+            loading: () => KeyedSubtree(
+              key: const ValueKey('home-loading'),
+              child: _buildLoadingShell(context),
+            ),
             error: (error, _) => KeyedSubtree(
               key: const ValueKey('home-error'),
               child: Center(
@@ -136,7 +105,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               ),
             ),
             data: (games) {
-              unawaited(_saveCachedScoreboard(today, games));
               _scheduleRefresh(games, myTeamId);
               _syncWidget(games, myTeamId);
               _processGameEventAlerts(games, myTeamId);
@@ -277,110 +245,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     }
     _lastHomeLoadLogKey = logKey;
     _homeLoadStartedAtMicros = null;
-  }
-
-  Future<void> _loadCachedScoreboard() async {
-    final prefs = await SharedPreferences.getInstance();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final payload = prefs.getString('home_scoreboard_cache_$today');
-    if (payload == null || payload.isEmpty) {
-      return;
-    }
-
-    try {
-      final cached = _decodeCachedScoreboard(payload);
-      if (cached == null ||
-          !_canUseCachedScoreboard(cached.games, cached.savedAt)) {
-        return;
-      }
-      if (!mounted) {
-        return;
-      }
-      if (_cachedTodayKey == today && _cachedTodayPayload == payload) {
-        return;
-      }
-      setState(() {
-        _cachedTodayKey = today;
-        _cachedTodayGames = cached.games;
-        _cachedTodayPayload = payload;
-      });
-    } catch (_) {
-      // Ignore broken cache and let network win.
-    }
-  }
-
-  Future<void> _saveCachedScoreboard(String today, List<Game> games) async {
-    final gamesPayload = jsonEncode(games.map(_gameToJson).toList());
-    final currentPayload = _cachedTodayKey == today
-        ? _cachedTodayPayload
-        : null;
-    final current = currentPayload == null
-        ? null
-        : _decodeCachedScoreboard(currentPayload);
-    if (current != null &&
-        _canUseCachedScoreboard(current.games, current.savedAt) &&
-        jsonEncode(current.games.map(_gameToJson).toList()) == gamesPayload) {
-      return;
-    }
-
-    final payload = jsonEncode({
-      'savedAt': DateTime.now().toUtc().toIso8601String(),
-      'games': jsonDecode(gamesPayload),
-    });
-    if (_cachedTodayKey == today && _cachedTodayPayload == payload) {
-      return;
-    }
-
-    final prefs = await SharedPreferences.getInstance();
-    final storageKey = 'home_scoreboard_cache_$today';
-    if (prefs.getString(storageKey) != payload) {
-      await prefs.setString(storageKey, payload);
-    }
-    if (!mounted) {
-      return;
-    }
-    _cachedTodayKey = today;
-    _cachedTodayGames = games;
-    _cachedTodayPayload = payload;
-  }
-
-  ({DateTime savedAt, List<Game> games})? _decodeCachedScoreboard(
-    String payload,
-  ) {
-    final decoded = jsonDecode(payload);
-    if (decoded is! Map<String, dynamic>) {
-      return null;
-    }
-    final savedAtRaw = decoded['savedAt'];
-    final gamesRaw = decoded['games'];
-    if (savedAtRaw is! String || gamesRaw is! List<dynamic>) {
-      return null;
-    }
-    final savedAt = DateTime.tryParse(savedAtRaw.replaceAll('Z', '+00:00'));
-    if (savedAt == null) {
-      return null;
-    }
-    final games = gamesRaw
-        .map((item) => _gameFromJson(item as Map<String, dynamic>))
-        .toList();
-    return (savedAt: savedAt.toUtc(), games: games);
-  }
-
-  bool _canUseCachedScoreboard(List<Game> games, DateTime savedAt) {
-    final age = DateTime.now().toUtc().difference(savedAt);
-    final maxAge = _scoreboardCacheMaxAge(games);
-    return !age.isNegative && age <= maxAge;
-  }
-
-  Duration _scoreboardCacheMaxAge(List<Game> games) {
-    if (games.any((game) => game.status == GameStatus.live)) {
-      return _liveScoreboardCacheMaxAge;
-    }
-    if (games.isEmpty ||
-        games.any((game) => game.status == GameStatus.scheduled)) {
-      return _scheduledScoreboardCacheMaxAge;
-    }
-    return _terminalScoreboardCacheMaxAge;
   }
 
   void _logSecondarySectionsLoaded({
@@ -956,80 +820,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         _secondarySectionsEnabled = true;
       });
     });
-  }
-
-  Map<String, dynamic> _gameToJson(Game game) {
-    return {
-      'gameId': game.gameId,
-      'status': game.status.name,
-      'inning': game.inning,
-      'stadium': game.stadium,
-      'startTime': game.startTime,
-      'crowd': game.crowd,
-      'away': _teamScoreToJson(game.away),
-      'home': _teamScoreToJson(game.home),
-    };
-  }
-
-  Map<String, dynamic> _teamScoreToJson(TeamScore team) {
-    return {
-      'teamId': team.teamId,
-      'teamName': team.teamName,
-      'shortName': team.shortName,
-      'score': team.score,
-      'innings': team.innings,
-      'hits': team.hits,
-      'errors': team.errors,
-      'walks': team.walks,
-    };
-  }
-
-  Game _gameFromJson(Map<String, dynamic> json) {
-    return Game(
-      gameId: json['gameId'] as String? ?? '',
-      status: _statusFromName(json['status'] as String? ?? ''),
-      inning: json['inning'] as String? ?? '',
-      stadium: json['stadium'] as String? ?? '',
-      startTime: json['startTime'] as String? ?? '',
-      crowd: json['crowd'] as int?,
-      away: _teamScoreFromJson(
-        json['away'] as Map<String, dynamic>? ?? const {},
-      ),
-      home: _teamScoreFromJson(
-        json['home'] as Map<String, dynamic>? ?? const {},
-      ),
-    );
-  }
-
-  TeamScore _teamScoreFromJson(Map<String, dynamic> json) {
-    final innings = (json['innings'] as List<dynamic>? ?? const [])
-        .map((e) => e as int?)
-        .toList();
-    return TeamScore(
-      teamId: json['teamId'] as String? ?? '',
-      teamName: json['teamName'] as String? ?? '',
-      shortName: json['shortName'] as String? ?? '',
-      score: json['score'] as int? ?? 0,
-      innings: innings,
-      hits: json['hits'] as int? ?? 0,
-      errors: json['errors'] as int? ?? 0,
-      walks: json['walks'] as int? ?? 0,
-    );
-  }
-
-  GameStatus _statusFromName(String value) {
-    switch (value) {
-      case 'live':
-        return GameStatus.live;
-      case 'final_':
-        return GameStatus.final_;
-      case 'cancelled':
-        return GameStatus.cancelled;
-      case 'suspended':
-        return GameStatus.suspended;
-      default:
-        return GameStatus.scheduled;
-    }
   }
 }
 

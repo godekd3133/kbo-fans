@@ -26,6 +26,7 @@ class ApiPlayerRepository implements PlayerRepository {
       cacheKey: 'teamPlayers:$_playerCacheVersion:$teamId:$season',
       preferCache: isHistoricalSeason,
       maxAge: _stableCacheAge,
+      allowCacheOnFailure: isHistoricalSeason,
     );
     final players = data['players'] as List<dynamic>? ?? [];
     return players
@@ -45,6 +46,7 @@ class ApiPlayerRepository implements PlayerRepository {
       cacheKey: 'playerDetail:$_playerCacheVersion:$playerId:$season',
       preferCache: isHistoricalSeason,
       maxAge: _stableCacheAge,
+      allowCacheOnFailure: isHistoricalSeason,
     );
     return _parsePlayer(data);
   }
@@ -58,6 +60,7 @@ class ApiPlayerRepository implements PlayerRepository {
       cacheKey: 'teamStats:$_playerCacheVersion:$teamId:$season',
       preferCache: isHistoricalSeason,
       maxAge: _stableCacheAge,
+      allowCacheOnFailure: isHistoricalSeason,
     );
     return _parseTeamStats(
       data,
@@ -78,6 +81,7 @@ class ApiPlayerRepository implements PlayerRepository {
       cacheKey: 'teamRecords:$_playerCacheVersion:$teamId:$season',
       preferCache: isHistoricalSeason,
       maxAge: _stableCacheAge,
+      allowCacheOnFailure: isHistoricalSeason,
     );
     final players = data['players'] as List<dynamic>? ?? [];
     return TeamRecordsBundle(
@@ -121,6 +125,7 @@ class ApiPlayerRepository implements PlayerRepository {
         preferCache: isHistoricalSeason,
         maxAge: _stableCacheAge,
         isValid: _isValidRecordsOverviewPayload,
+        allowCacheOnFailure: isHistoricalSeason,
       );
     } catch (_) {
       if (!isHistoricalSeason) {
@@ -179,6 +184,7 @@ class ApiPlayerRepository implements PlayerRepository {
         preferCache: isHistoricalSeason,
         maxAge: _stableCacheAge,
         isValid: _isValidLeaderboardPayload,
+        allowCacheOnFailure: isHistoricalSeason,
       );
     } catch (_) {
       if (!isHistoricalSeason) {

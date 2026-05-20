@@ -23,6 +23,7 @@ class ApiHomeRepository {
       cacheKey: 'homeAggregate:$date:${myTeam ?? ''}',
       preferCache: isHistoricalDate,
       maxAge: _cacheAge,
+      allowCacheOnFailure: isHistoricalDate,
     );
 
     final quickItems = (data['quickItems'] as List<dynamic>? ?? [])
