@@ -76,9 +76,10 @@ kbo_fans/
 ## Versioning
 
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
-- Preview release tag format: `MAJOR.MINOR.PATCH-preview.N`
-- Stable release tag format: `MAJOR.MINOR.PATCH`
-- Current organized preview train: `0.1.0-preview.N`
+- Release tag format: `MAJOR.MINOR.PATCH`
+- Current release line: `0.0.x`
+- Current release: `0.0.11`
+- Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
 자세한 정책은 `docs/VERSIONING.md` 를 기준으로 합니다.

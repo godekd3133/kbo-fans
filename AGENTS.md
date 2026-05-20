@@ -55,7 +55,7 @@
 - `kbo-runtime-data`: use when changing app data-loading paths, cache/snapshot policy, API vs direct KBO routing, or performance-sensitive record/scoreboard flows.
 - `kbo-history-snapshot`: use when classifying live vs historical data, adding snapshot-first backend paths, or making app historical screens cached-first.
 - `kbo-doc-sync`: use when architecture/API/UX changes also require synced updates across AGENTS, CLAUDE, spec docs, worklog, changelog, and skills.
-- `kbo-release-flow`: use when preparing commits, pushes, preview tags, or friend/TestFlight-facing release steps for this repository.
+- `kbo-release-flow`: use when preparing commits, pushes, numeric release tags, or friend/TestFlight-facing release steps for this repository.
 - `kbo-version-release`: use when changing app versions, creating/reworking GitHub releases, or updating in-app patch notes.
 
 ## Implementation Insights
@@ -149,7 +149,7 @@
 ## Repeatable Workflows
 - Reuse `.claude/skills/ios-live-activity-widget/SKILL.md` when touching iOS WidgetKit / Live Activity / Dynamic Island logic.
 - Reuse `.claude/skills/kbo-version-release/SKILL.md` when changing versions, tags, release notes, or in-app patch notes.
-- Reuse `.claude/skills/mobile-preview-release/SKILL.md` when preparing preview tags, GitHub prereleases, TestFlight readiness, or Android signing docs.
+- Reuse `.claude/skills/mobile-preview-release/SKILL.md` only as a legacy checklist when preparing TestFlight readiness or Android signing docs; release tags now follow plain numeric `0.0.x` policy in `kbo-version-release`.
 
 ## Known Document Notes
 - The active mobile direction for this repository is Flutter, not Expo or React Native.

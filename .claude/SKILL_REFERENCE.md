@@ -54,11 +54,11 @@
 - `claude-codex-sync`
   - `.claude/skills` 와 repo context 를 Codex-local skill mirror 로 동기화
 - `kbo-release-flow`
-  - 현재 저장소의 커밋 / 푸시 / preview tag / release note 흐름
+  - 현재 저장소의 커밋 / 푸시 / numeric release tag / release note 흐름
 - `kbo-version-release`
   - 앱 버전 변경, GitHub 릴리즈/태그 정리, 앱 내 패치노트 갱신 루틴
 - `mobile-preview-release`
-  - 프리뷰 릴리즈, 태그, TestFlight / Android 배포 준비
+  - legacy 배포 체크리스트, TestFlight / Android 배포 준비
 - `app-distribution`
   - 친구/테스터 배포, Android signing, Google Play internal testing, TestFlight 준비
 
@@ -68,7 +68,7 @@
 - `kbo-version-release`
   - 버전 번호, changelog, 앱 내 patch notes, GitHub release notes 를 같은 단위로 정리
 - `mobile-preview-release`
-  - 과거 preview-release 체크리스트 참고용
+  - 과거 배포 체크리스트 참고용
 - `app-distribution`
   - 실제 배포 경로 / signing / TestFlight
 - `kbo-doc-sync`

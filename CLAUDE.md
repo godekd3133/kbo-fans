@@ -85,7 +85,7 @@ kbo_fans/
 - `.claude/skills/kbo-runtime-data/SKILL.md`
   - 데이터 로딩 경로, API/direct 선택, cache/snapshot, 성능 검증용 가이드
 - `.claude/skills/kbo-release-flow/SKILL.md`
-  - 커밋/푸시/프리뷰 태그/TestFlight 전환 시 체크해야 할 저장소 전용 릴리즈 가이드
+  - 커밋/푸시/숫자 릴리즈 태그/TestFlight 전환 시 체크해야 할 저장소 전용 릴리즈 가이드
 - `.claude/skills/kbo-version-release/SKILL.md`
   - 앱 버전 변경, GitHub 릴리즈/태그 정리, 앱 내 패치노트 갱신 루틴
 - `.claude/skills/app-startup-runtime-triage/SKILL.md`
@@ -166,7 +166,7 @@ kbo_fans/
 - 히스토리 데이터 / snapshot-first 캐시 구조 작업 시: `.claude/skills/kbo-history-snapshot/SKILL.md`
 - 아키텍처/API/UX 변경 후 문서 동기화 시: `.claude/skills/kbo-doc-sync/SKILL.md`
 - iOS 위젯 / Live Activity / Dynamic Island 수정 시: `.claude/skills/ios-live-activity-widget/SKILL.md`
-- 프리뷰 릴리즈, TestFlight/Android 배포 준비 시: `.claude/skills/mobile-preview-release/SKILL.md`
+- TestFlight/Android 배포 준비 시: `.claude/skills/mobile-preview-release/SKILL.md`는 legacy 체크리스트로만 참고하고, 릴리즈 태그/버전은 `.claude/skills/kbo-version-release/SKILL.md`의 plain `0.0.x` 정책을 따른다
 - 친구/테스터 배포 준비 시: `.claude/skills/app-distribution/SKILL.md`
 
 ## MVP 기능 (Phase 1)

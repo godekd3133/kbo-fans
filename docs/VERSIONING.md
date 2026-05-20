@@ -1,32 +1,29 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
+> Updated: 2026-05-20
 
 ## Current Baseline
 
-- Active release train: `0.1.0-preview`
-- Flutter app version: `0.1.0+4`
-- Current preview tag: `0.1.0-preview.4`
-- Existing `0.0.x` tags are legacy snapshots. Keep the tags immutable unless the Director explicitly asks for a historical rewrite.
+- Active release line: `0.0.x`
+- Flutter app version: `0.0.11+11`
+- Current release tag: `0.0.11`
+- Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
+- Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
 ## Version Formats
 
 - App version: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
-- Stable Git tag: `MAJOR.MINOR.PATCH`
-- Preview Git tag: `MAJOR.MINOR.PATCH-preview.N`
-- In-app patch note heading: app version with build, for example `0.1.0+1 - Preview 1`
+- Git tag: `MAJOR.MINOR.PATCH`
+- In-app patch note heading: app version with build, for example `0.0.11+11 - Lineup Fan-out & Patch Notes`
 
 ## Bump Rules
 
-- `preview.N`: same app semver, new internal/tester preview on the current release train.
-- `PATCH`: user-visible bug fix or safe polish within the same stable line.
-- `MINOR`: feature milestone, data architecture change, release workflow change, or tester-facing bundle that should be understood as a new train.
-- `MAJOR`: post-1.0 product, data, or release contract change that is incompatible with the previous stable line.
-
-Pre-1.0 rule:
-
-- Use `0.MINOR.PATCH` intentionally. Do not keep incrementing `0.0.x` once the app scope has moved beyond the original prototype line.
-- The first organized preview train after the 0.0.x cleanup is `0.1.0-preview.N`.
+- Pre-1.0 release checkpoints increment `PATCH` by one for every tester-facing or release-facing checkpoint.
+- Build number increments with the app release number while this project stays in `0.0.x`.
+- `MINOR` is reserved for a larger product milestone after the current early tester line is stable.
+- `MAJOR` is reserved for post-1.0 product, data, or release contract changes that are incompatible with the previous stable line.
+- Do not use `-preview`, `-alpha`, `-beta`, or `-rc` suffixes unless the Director explicitly changes this policy.
 
 ## Mandatory Version Checklist
 
@@ -42,35 +39,25 @@ Every version or release change must update these surfaces in the same work unit
 ## Release Rules
 
 - Decide the target version before creating commits or tags.
-- Tags are immutable after publish. Do not force-update published tags except for an immediate failed release correction before anyone consumes it.
-- If the Director explicitly asks to reorganize historical releases, prefer adding retrospective tags and rewriting GitHub release notes over deleting or moving existing tags.
-- If a preview was messy, mark it superseded in release notes instead of moving the tag.
-- GitHub prerelease should be used for `*-preview.N`.
-- Stable release should only be marked latest when it is intended as the current stable tester/user baseline.
+- Tags are immutable after publish. Do not force-update, delete, or recreate published tags unless the Director explicitly approves a historical release rewrite.
+- When historical releases are rewritten, update this release map, GitHub releases, in-app patch notes, and changelog in the same pass.
+- GitHub releases should be normal releases, not prereleases, under the current no-preview policy.
+- Mark only the newest numeric release as `Latest`.
 - `APP_ENV=release` artifacts must pass the release API health gate before release artifact creation.
 
-## Preview Segmentation Rule
+## Numeric Release Map
 
-Use separate preview tags when a tester-facing checkpoint changes the behavior class:
-
-- `preview.1`: release train baseline, documentation, version routine, app-visible patch-note surface.
-- `preview.2`: request-budget or startup/home loading behavior changes.
-- `preview.3`: data correctness fixes, crawler/session behavior, snapshot correctness.
-- `preview.4`: detail-screen request fan-out, tab-specific UX correctness, current testable app build.
-
-## Legacy Release Map
-
-- `0.0.1-preview`: initial project scaffold, Flutter/FastAPI baseline, MVP screen skeletons.
-- `0.0.1-preview.1`: early run scripts, documentation, and first widget/live-activity direction cleanup.
-- `0.0.2-preview`: my-team first UX, Dynamic Island/Live Activity iteration, schedule/detail polish.
-- `0.0.2`: records, player detail, game detail, and distribution baseline.
-- `0.0.3`: notification, Firebase, Android/iOS signing, and tester preparation pass.
-- `0.0.4`: compact scoreboard, widget/live-activity data, and API-first release guard improvements.
-- `0.0.5`: final legacy rolling preview cleanup snapshot. Superseded by `0.1.0-preview.N`.
-- `0.1.0-preview.1`: organized preview train baseline with release routine, direct-primary path separation, release health gate, and records snapshot baseline.
-- `0.1.0-preview.2`: home secondary fan-out and API-first/direct-primary documentation cleanup.
-- `0.1.0-preview.3`: direct-primary historical records recovery, WebForms session handling, and startup remote prefetch removal.
-- `0.1.0-preview.4`: lineup tab request fan-out reduction, web resume refresh scope fix, and current app build `0.1.0+4`.
+- `0.0.1`: initial project scaffold, Flutter/FastAPI baseline, MVP screen skeletons.
+- `0.0.2`: early run scripts, documentation, and first widget/live-activity direction cleanup.
+- `0.0.3`: my-team first UX, Dynamic Island/Live Activity iteration, schedule/detail polish.
+- `0.0.4`: records, player detail, game detail, and distribution baseline.
+- `0.0.5`: notification, Firebase, Android/iOS signing, and tester preparation pass.
+- `0.0.6`: compact scoreboard, widget/live-activity data, and API-first release guard improvements.
+- `0.0.7`: final early rolling snapshot before the organized release-routine cleanup.
+- `0.0.8`: release routine baseline, direct-primary path separation, release health gate, and records snapshot baseline.
+- `0.0.9`: home secondary fan-out removal and API-first/direct-primary documentation cleanup.
+- `0.0.10`: direct-primary historical records recovery, WebForms session handling, and startup remote prefetch removal.
+- `0.0.11`: lineup tab request fan-out reduction, web resume refresh scope fix, patch-note cleanup, and current app build `0.0.11+11`.
 
 ## GitHub Release Note Template
 

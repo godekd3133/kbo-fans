@@ -2,20 +2,34 @@
 
 ---
 
-## 2026-05-20: 릴리즈 버저닝 세분화 및 패치노트 재정렬
+## 2026-05-20: preview 없는 0.0.x 릴리즈 체계 재정렬
 
 ### 완료
-- [x] `0.1.0-preview.1`에 뭉쳐 있던 최근 preview train을 `0.1.0-preview.1~4`로 세분화
-- [x] 현재 앱 버전을 `0.1.0+4`로 올려 `0.1.0-preview.4`와 맞춤
-- [x] `docs/VERSIONING.md`에 preview segmentation rule과 `0.1.0-preview.1~4` release map 추가
+- [x] Director 지시에 따라 `preview` / `prerelease` 표기를 릴리즈 정책에서 제거
+- [x] 현재 앱 버전을 `0.0.11+11`로 변경하고 최신 릴리즈 태그 기준을 `0.0.11`로 결정
+- [x] `docs/VERSIONING.md`를 plain numeric tag 정책으로 재작성하고 `0.0.1~0.0.11` release map 정리
+- [x] `CHANGELOG.md`와 앱 내 `patch_notes.md`를 `0.0.1`부터 이어지는 숫자 릴리즈 기준으로 재작성
+- [x] `.claude/skills/kbo-version-release`와 `.claude/skills/kbo-release-flow`에 no-preview 정책 반영
+- [x] `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/SKILL_REFERENCE.md`의 릴리즈 태그 표현 동기화
+
+### 릴리즈 재작성 계획
+- [x] 기존 `0.1.0-preview.1~4`, `0.0.1-preview`, `0.0.1-preview.1`, `0.0.2-preview` GitHub 릴리즈/태그 삭제 대상 확정
+- [x] 기존 충돌 숫자 태그 `0.0.2~0.0.5`는 Director 승인 범위 안에서 새 numeric release map에 맞춰 재생성 대상 확정
+- [x] 새 릴리즈는 `0.0.1`부터 `0.0.11`까지 모두 일반 GitHub Release로 생성하고, `0.0.11`만 Latest로 표시 예정
+
+---
+
+## 2026-05-20: 릴리즈 버저닝 세분화 및 패치노트 재정렬 (superseded)
+
+### 완료
+- [x] 이전 정리안은 preview train 기반이었으나, Director 지시로 위 `0.0.x` 숫자 릴리즈 체계에 의해 폐기
+- [x] 현재 앱 버전은 위 작업에서 `0.0.11+11`로 재정렬
+- [x] `docs/VERSIONING.md`는 preview segmentation rule 대신 plain numeric release map으로 재작성
 - [x] `.claude/skills/kbo-version-release`에 historical release split 시 `docs/VERSIONING.md`와 앱 내 패치노트를 함께 갱신하도록 보강
-- [x] `CHANGELOG.md` 상단에 `0.1.0-preview.2`, `0.1.0-preview.3`, `0.1.0-preview.4` 섹션 추가
-- [x] 앱 내 `patch_notes.md`를 `0.1.0+1~4`와 legacy `0.0.x` 기준으로 재작성
-- [x] Preview 4 범위에 홈 스코어보드 캐시 payload 중복 저장/렌더 방지 변경을 포함
+- [x] `CHANGELOG.md`와 앱 내 `patch_notes.md`는 `0.0.1~0.0.11` 기준으로 재작성
 
 ### 검증
-- [x] 기존 `0.0.x` 태그는 이동하지 않고 legacy 릴리즈로 보존하는 기준 확인
-- [x] 신규 세분화 태그는 `0.1.0-preview.2`, `0.1.0-preview.3`, `0.1.0-preview.4`로 생성 예정
+- [x] 기존 preview/prerelease 태그는 삭제하고 숫자 태그로 재생성하는 기준으로 변경
 
 ---
 
@@ -52,18 +66,17 @@
 
 ---
 
-## 2026-05-20: 버저닝 / 릴리즈 노트 루틴 정리
+## 2026-05-20: 버저닝 / 릴리즈 노트 루틴 정리 (superseded)
 
 ### 완료
-- [x] 기존 `0.0.x` 릴리즈를 legacy preview 라인으로 닫고, 현재 앱 버전 `0.1.0+1` 기준 active train을 `0.1.0-preview.N`으로 정의
+- [x] 이전 정리안은 `0.1.0` preview train을 가정했으나, Director 지시로 no-preview `0.0.x` 체계로 대체
 - [x] 버전 정책 기준 문서 `docs/VERSIONING.md` 추가
 - [x] 버전 변경 시 `CHANGELOG.md`, 앱 내 패치노트(`app/assets/bootstrap/patch_notes.md`), GitHub 릴리즈 노트, `docs/WORKLOG.md`를 함께 갱신하도록 `.claude/skills/kbo-version-release` 추가
 - [x] `kbo-release-flow`, `AGENTS.md`, `CLAUDE.md`, `.claude/SKILL_REFERENCE.md`, `README.md`에 새 루틴 반영
-- [x] 앱 내 패치노트의 다음 업데이트 섹션을 `0.1.0+1 - Preview 1`로 고정
+- [x] 앱 내 패치노트의 업데이트 섹션은 위 작업에서 `0.0.11+11` 기준으로 재작성
 
 ### 검증
-- [x] `docs/VERSIONING.md` 기준으로 기존 `0.0.x` 릴리즈는 태그 보존 + GitHub Release 노트 재작성 대상으로 정리
-- [x] 신규 릴리즈 후보는 `0.1.0-preview.1`로 결정
+- [x] `docs/VERSIONING.md` 기준은 위 작업에서 plain numeric release map으로 변경
 
 ---
 

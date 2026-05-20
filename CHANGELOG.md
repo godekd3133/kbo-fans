@@ -12,18 +12,19 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
-## [0.1.0-preview.4] - 2026-05-20
+## [0.0.11] - 2026-05-20
 
 ### Changed
 
-- 앱 버전을 `0.1.0+4`로 올리고 현재 테스트 가능한 preview 기준을 `0.1.0-preview.4`로 세분화
+- 앱 버전을 `0.0.11+11`로 올리고 현재 테스트 가능한 릴리즈 기준을 `0.0.11`로 정리
+- 과거 preview/prerelease 표기를 제거하고 GitHub 릴리즈, 앱 내 패치노트, 버전 정책을 `0.0.1`부터 이어지는 숫자 릴리즈 기준으로 재작성
 - 라인업 탭 첫 진입에서 박스스코어 파생 타자/투수 fallback 조회를 제거해 `/game/{gameId}/lineup`과 양 팀 선수 이미지 조회만 사용하도록 축소
 - 라인업 선발 비교에서 박스스코어가 없을 때 `0.00` 같은 가짜 수치 대신 `-`와 `선발 발표` 상태로 표시
 - 홈 scoreboard 자동 refresh를 live 30초, scheduled 5분, terminal 정지로 조정
 - 홈 스코어보드 캐시 payload가 같을 때 중복 저장과 불필요한 화면 갱신을 피하도록 보정
 - 웹에서는 홈 위젯/Live Activity용 resume observer를 등록하지 않아 기록실/일정 복귀 시 전역 scoreboard refresh가 끼어들지 않도록 정리
 
-## [0.1.0-preview.3] - 2026-05-20
+## [0.0.10] - 2026-05-20
 
 ### Changed
 
@@ -33,7 +34,7 @@
 - 앱 startup에서 원격 API prefetch 죽은 코드와 `startupScoreboardProvider` 의존성을 제거하고, 첫 route 진입은 local onboarding/my-team 상태만 확인하도록 정리
 - backend records/team stats crawler도 동일한 WebForms payload 방식으로 보정해 snapshot 재생성 안정성을 개선
 
-## [0.1.0-preview.2] - 2026-05-20
+## [0.0.9] - 2026-05-20
 
 ### Changed
 
@@ -42,7 +43,7 @@
 - aggregate 실패 시 schedule/standings/records 로컬 조립 fallback이 다시 실행되지 않도록 데이터 경로 문서와 구현 기준 정리
 - direct-primary 정책 표현을 AGENTS/CLAUDE/엔지니어링 문서에 맞춰 동기화
 
-## [0.1.0-preview.1] - 2026-05-20
+## [0.0.8] - 2026-05-20
 
 ### Added
 
@@ -192,6 +193,57 @@
 - iOS/Android 런치 스크린을 다크 테마로 정리해 앱 시작 시 흰 화면이 길게 보이는 현상을 완화
 - Android release signing 이 `key.properties` 기반 구조를 사용하도록 정리
 - 지난 경기 결과, 선수 과거 기록, 지난 날짜 순위를 저장된 snapshot 우선으로 읽는 데이터 전략을 문서 기준으로 확정해 히스토리 화면 로딩 없이 즉시 보여줄 수 있는 방향을 정리
+
+## [0.0.7] - 2026-05-19
+
+### Changed
+
+- 설정의 알림 전달 방식을 `바로 알림`, `묶음 요약`, `따라가기만`, `끄기`로 정리
+- 경기 상세에서 라이브 경기 `경기 따라가기`를 사용자가 직접 시작하도록 변경
+- iOS 위젯과 Live Activity에서 점수, 팀 로고, 현재 타석 정보를 더 안정적으로 표시하도록 개선
+- 초기 rolling snapshot의 마지막 기준으로 정리
+
+## [0.0.6] - 2026-05-19
+
+### Changed
+
+- compact scoreboard, 위젯/Live Activity 데이터, release API health gate 방향 정리
+- 홈과 경기 상세의 앱 밖 표면을 API-first 기준으로 축소
+- release 빌드 전 production API DNS/TLS/핵심 endpoint를 확인하는 guard 도입
+
+## [0.0.5] - 2026-04-11
+
+### Changed
+
+- Firebase, Android/iOS 배포 준비, signing 문서, tester 공유 흐름 정리
+- 알림과 경기 따라가기 표면을 외부 테스트 준비 기준으로 확장
+
+## [0.0.4] - 2026-04-11
+
+### Changed
+
+- 기록실, 선수 상세, 팀 기록, 경기 상세의 기본 구조를 앱 주요 화면으로 확장
+- 일정, 순위, 예매 정보, 하이라이트 연결을 MVP 화면 흐름에 포함
+
+## [0.0.3] - 2026-03-31
+
+### Changed
+
+- 마이팀 중심 UX, Dynamic Island/Live Activity 방향, 일정/상세 polish를 초기 검증
+- 현재 진행 중이거나 오늘 예정된 마이팀 경기를 앱 밖 표면의 우선 후보로 다루는 방향 정리
+
+## [0.0.2] - 2026-03-31
+
+### Changed
+
+- 초기 실행 스크립트, 문서, 위젯/Live Activity 후속 방향 보강
+- 반복 작업을 `.claude/skills/`로 분리하고 AGENTS/CLAUDE 문서 기준을 동기화
+
+## [0.0.1] - 2026-03-31
+
+### Added
+
+- Flutter 앱 골격, FastAPI backend 골격, MVP 화면 구조, 프로젝트 문서의 첫 릴리즈
 
 ## [2026-03-30]
 

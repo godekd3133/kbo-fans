@@ -1,13 +1,13 @@
 ---
 name: kbo-release-flow
-description: Use when preparing commits, pushes, preview tags, release notes, or friend/TestFlight-facing release steps for this repository.
+description: Use when preparing commits, pushes, numeric release tags, release notes, or friend/TestFlight-facing release steps for this repository.
 ---
 
 # KBO Release Flow
 
 ## When to use
 - Commit/push requests
-- Preview tag creation
+- Numeric release tag creation
 - Release note or changelog prep
 - TestFlight or friend-distribution prep
 
@@ -20,7 +20,7 @@ description: Use when preparing commits, pushes, preview tags, release notes, or
 - `APP_ENV=release` builds must pass `scripts/release-api-health-check.sh` before artifact creation or device install.
 - If production API is not `https://api.kbofans.com/api`, set `RELEASE_API_BASE_URL` or pass the GitHub Actions `release_api_base_url` input.
 - If default `origin` SSH push fails, use `git@github-personal:godekd3133/kbo-fans.git`.
-- Keep preview tags sequential and explicit, e.g. `0.1.0-preview.1`.
+- Use plain numeric tags only, e.g. `0.0.11`. Do not create `*-preview*` tags or GitHub prereleases unless the Director explicitly changes the policy.
 
 ## Validation
 - `git status --short --branch`
