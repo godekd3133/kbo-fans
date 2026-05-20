@@ -19,6 +19,7 @@ void main() {
         name: 'B',
         teamId: 'KT',
         value: '0.800',
+        isRetired: true,
       ),
     ];
 
@@ -29,6 +30,7 @@ void main() {
     expect(opsPlusLeaders[0].value, '111');
     expect(opsPlusLeaders[1].name, 'B');
     expect(opsPlusLeaders[1].value, '89');
+    expect(opsPlusLeaders[1].isRetired, isTrue);
   });
 
   test('과거 시즌 선수 이미지는 2022 CDN 폴더를 사용한다', () {

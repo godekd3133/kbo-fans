@@ -13,43 +13,47 @@ class ApiClient {
   static const _requestTimeout = Duration(seconds: 25);
   static const _cachePrefix = 'api_cache:';
 
-  ApiClient() {
-    _dio = Dio(
-      BaseOptions(
-        baseUrl: AppConfig.instance.apiBaseUrl,
-        // KBO 원본 크롤링을 경유하는 일부 응답은 10초를 넘길 수 있어 웹에서 조기 타임아웃이 자주 났다.
-        connectTimeout: _requestTimeout,
-        receiveTimeout: _requestTimeout,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ),
-    );
+  ApiClient({Dio? dio, bool enableRequestTiming = true}) {
+    _dio =
+        dio ??
+        Dio(
+          BaseOptions(
+            baseUrl: AppConfig.instance.apiBaseUrl,
+            // KBO 원본 크롤링을 경유하는 일부 응답은 10초를 넘길 수 있어 웹에서 조기 타임아웃이 자주 났다.
+            connectTimeout: _requestTimeout,
+            receiveTimeout: _requestTimeout,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          ),
+        );
 
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          options.extra['request_started_at'] =
-              DateTime.now().microsecondsSinceEpoch;
-          handler.next(options);
-        },
-        onResponse: (response, handler) {
-          _logRequestTiming(response.requestOptions, response.statusCode);
-          handler.next(response);
-        },
-        onError: (error, handler) {
-          _logRequestTiming(
-            error.requestOptions,
-            error.response?.statusCode,
-            failed: true,
-          );
-          handler.next(error);
-        },
-      ),
-    );
+    if (enableRequestTiming) {
+      _dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            options.extra['request_started_at'] =
+                DateTime.now().microsecondsSinceEpoch;
+            handler.next(options);
+          },
+          onResponse: (response, handler) {
+            _logRequestTiming(response.requestOptions, response.statusCode);
+            handler.next(response);
+          },
+          onError: (error, handler) {
+            _logRequestTiming(
+              error.requestOptions,
+              error.response?.statusCode,
+              failed: true,
+            );
+            handler.next(error);
+          },
+        ),
+      );
+    }
 
-    if (!AppConfig.instance.isLocal) {
+    if (dio == null && !AppConfig.instance.isLocal) {
       _dio.interceptors.add(
         LogInterceptor(
           requestBody: !AppConfig.instance.isRelease,
@@ -113,7 +117,7 @@ class ApiClient {
       await _writeCachedPayload(prefs, storageKey, fresh);
       return fresh;
     } catch (_) {
-      if (cached != null) {
+      if (cached != null && isFresh) {
         return cached.data;
       }
       rethrow;
