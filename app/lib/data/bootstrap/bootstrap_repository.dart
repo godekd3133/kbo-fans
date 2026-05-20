@@ -10,10 +10,7 @@ class BootstrapRepository {
   static Map<String, dynamic>? _recordsOverviewCache;
 
   Future<Map<String, dynamic>?> loadStandings(int season) async {
-    final data = await _loadJson(
-      _standingsAsset,
-      cached: _standingsCache,
-    );
+    final data = await _loadJson(_standingsAsset, cached: _standingsCache);
     _standingsCache ??= data;
     return (data['seasons'] as Map<String, dynamic>? ?? const {})['$season']
         as Map<String, dynamic>?;
@@ -31,20 +28,7 @@ class BootstrapRepository {
     if (_hasOverviewData(direct)) {
       return direct;
     }
-
-    final available = seasons.keys
-        .map(int.tryParse)
-        .whereType<int>()
-        .where((year) => year <= season)
-        .toList()
-      ..sort();
-    for (final year in available.reversed) {
-      final candidate = seasons['$year'] as Map<String, dynamic>?;
-      if (_hasOverviewData(candidate)) {
-        return candidate;
-      }
-    }
-    return direct;
+    return null;
   }
 
   Future<Map<String, dynamic>> _loadJson(

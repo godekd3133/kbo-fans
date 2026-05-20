@@ -89,6 +89,47 @@ void main() {
   );
 
   test(
+    'records overview uses verified exact current season snapshot',
+    () async {
+      final repository = LocalAssetPlayerRepository();
+
+      final overview = await repository.getRecordsOverview(season: 2026);
+      final leaderNames = [
+        ...overview.avgLeaders.map((leader) => leader.name),
+        ...overview.hrLeaders.map((leader) => leader.name),
+        ...overview.opsLeaders.map((leader) => leader.name),
+        ...overview.opsPlusLeaders.map((leader) => leader.name),
+        ...overview.eraLeaders.map((leader) => leader.name),
+      ];
+
+      expect(overview.avgLeaders.first.name, '박성한');
+      expect(overview.avgLeaders.first.value, '0.379');
+      expect(overview.hrLeaders.first.name, '김도영');
+      expect(overview.hrLeaders.first.value, '13');
+      expect(overview.eraLeaders.first.name, '최민석');
+      expect(overview.eraLeaders.first.value, '2.17');
+      expect(leaderNames, isNot(contains('허경민')));
+      expect(leaderNames, isNot(contains('함덕주')));
+    },
+  );
+
+  test(
+    'missing historical records overview does not borrow another season',
+    () async {
+      final repository = LocalAssetPlayerRepository();
+
+      final overview = await repository.getRecordsOverview(season: 2025);
+
+      expect(overview.season, 2025);
+      expect(overview.avgLeaders, isEmpty);
+      expect(overview.hrLeaders, isEmpty);
+      expect(overview.opsLeaders, isEmpty);
+      expect(overview.opsPlusLeaders, isEmpty);
+      expect(overview.eraLeaders, isEmpty);
+    },
+  );
+
+  test(
     'historical bundled player snapshots include hitter and pitcher types',
     () async {
       final repository = LocalAssetPlayerRepository();
