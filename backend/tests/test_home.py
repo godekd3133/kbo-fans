@@ -1,8 +1,44 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from kbo_fans_backend.api.routes import home
 from kbo_fans_backend.main import app
 from kbo_fans_backend.services.home import HomeService
+
+
+class _EmptyScoreboardService:
+    def get_home_scoreboard(self, date: str):
+        return {"date": date, "games": []}
+
+
+class _FailingScheduleService:
+    def get_month_schedule(self, month: str):
+        raise RuntimeError("schedule unavailable")
+
+
+class _EmptyScheduleService:
+    def get_month_schedule(self, month: str):
+        return {"month": month, "days": []}
+
+
+class _FailingStandingsService:
+    def get_standings(self, season: int):
+        raise RuntimeError("standings unavailable")
+
+
+class _EmptyStandingsService:
+    def get_standings(self, season: int):
+        return {"season": season, "standings": []}
+
+
+class _FailingRecordsOverviewService:
+    def get_overview(self, season: int):
+        raise RuntimeError("records unavailable")
+
+
+class _EmptyRecordsOverviewService:
+    def get_overview(self, season: int):
+        return {"season": season, "leaders": {"hr": []}, "featured": {}}
 
 
 def test_get_home_returns_aggregate_payload(monkeypatch) -> None:
@@ -61,6 +97,57 @@ def test_get_home_returns_aggregate_payload(monkeypatch) -> None:
     assert body["data"]["myTeam"] == "LG"
     assert body["data"]["kboBrief"]["items"][0]["eyebrow"] == "1점 승부"
     assert body["data"]["quickItems"][0]["route"] == "/standings"
+
+
+def test_current_home_does_not_mask_schedule_failure() -> None:
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=_FailingScheduleService(),
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_EmptyRecordsOverviewService(),
+    )
+
+    with pytest.raises(RuntimeError, match="schedule unavailable"):
+        service.get_home("2999-01-01", my_team="LG")
+
+
+def test_current_home_does_not_mask_standings_failure() -> None:
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=_EmptyScheduleService(),
+        standings_service=_FailingStandingsService(),
+        records_overview_service=_EmptyRecordsOverviewService(),
+    )
+
+    with pytest.raises(RuntimeError, match="standings unavailable"):
+        service.get_home("2999-01-01", my_team="LG")
+
+
+def test_current_home_does_not_mask_records_overview_failure() -> None:
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=_EmptyScheduleService(),
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_FailingRecordsOverviewService(),
+    )
+
+    with pytest.raises(RuntimeError, match="records unavailable"):
+        service.get_home("2999-01-01", my_team="LG")
+
+
+def test_historical_home_keeps_partial_section_fallback() -> None:
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=_FailingScheduleService(),
+        standings_service=_FailingStandingsService(),
+        records_overview_service=_FailingRecordsOverviewService(),
+    )
+
+    payload = service.get_home("2001-01-01", my_team="LG")
+
+    assert payload["date"] == "2001-01-01"
+    assert payload["myTeamBrief"]["recentGamesCount"] == 0
+    assert payload["kboBrief"]["items"][0]["type"] == "offday"
 
 
 def test_home_run_quick_item_uses_player_image_and_detail_route() -> None:

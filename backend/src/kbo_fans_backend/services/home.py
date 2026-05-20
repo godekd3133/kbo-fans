@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import concurrent.futures
 import time
-from datetime import date as date_type, timedelta
+from datetime import date as date_type
+from datetime import timedelta
 from typing import Any, Dict, List, Optional
 
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
@@ -57,21 +58,24 @@ class HomeService:
         games = scoreboard_payload.get("games", [])
         year_month = date[:7]
         season = int(date[:4])
+        allow_partial_sections = self._is_historical_date(date)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             schedule_future = executor.submit(self.schedule_service.get_month_schedule, year_month)
             standings_future = executor.submit(self.standings_service.get_standings, season)
             overview_future = executor.submit(self.records_overview_service.get_overview, season)
 
-            schedule_payload = self._safe_result(
+            schedule_payload = self._section_result(
                 schedule_future,
                 {"month": year_month, "days": []},
+                allow_fallback=allow_partial_sections,
             )
-            standings_payload = self._safe_result(
+            standings_payload = self._section_result(
                 standings_future,
                 {"season": season, "standings": []},
+                allow_fallback=allow_partial_sections,
             )
-            overview_payload = self._safe_result(
+            overview_payload = self._section_result(
                 overview_future,
                 {
                     "season": season,
@@ -83,6 +87,7 @@ class HomeService:
                         "monthPitcher": {"label": "이달의 투수"},
                     },
                 },
+                allow_fallback=allow_partial_sections,
             )
 
         my_team_brief = self._build_my_team_brief(
@@ -282,7 +287,10 @@ class HomeService:
                         "득점전 진행 중" if game.get("status") == "LIVE" else "최다 득점 경기"
                     ),
                     title=self._score_line(game),
-                    subtitle=f"양팀 {self._game_total_score(game)}득점 · {self._game_time_label(game)}",
+                    subtitle=(
+                        f"양팀 {self._game_total_score(game)}득점 · "
+                        f"{self._game_time_label(game)}"
+                    ),
                     route=f"/game/{game.get('gameId')}",
                     game=game,
                 )
@@ -455,11 +463,15 @@ class HomeService:
         if hr_leaders:
             leader = hr_leaders[0]
             player_id = str(leader.get("playerId") or "")
+            team_label = self._TEAM_LABELS.get(
+                leader.get("teamId", ""),
+                leader.get("teamId", ""),
+            )
             items.append(
                 {
                     "eyebrow": "홈런왕",
                     "title": f"{leader.get('name')} {leader.get('value')}개",
-                    "subtitle": f"{self._TEAM_LABELS.get(leader.get('teamId', ''), leader.get('teamId', ''))} · 시즌 홈런 1위",
+                    "subtitle": f"{team_label} · 시즌 홈런 1위",
                     "route": (
                         f"/records/player/{player_id}?season={season}" if player_id else "/records"
                     ),
@@ -686,11 +698,26 @@ class HomeService:
             return fallback
 
     @staticmethod
-    def _safe_result(future: concurrent.futures.Future, fallback: Dict[str, Any]) -> Dict[str, Any]:
+    def _section_result(
+        future: concurrent.futures.Future,
+        fallback: Dict[str, Any],
+        *,
+        allow_fallback: bool,
+    ) -> Dict[str, Any]:
+        if not allow_fallback:
+            return future.result()
         try:
             return future.result()
         except Exception:
             return fallback
+
+    @staticmethod
+    def _is_historical_date(value: str) -> bool:
+        try:
+            target = date_type.fromisoformat(value)
+        except ValueError:
+            return False
+        return target < date_type.today()
 
     @staticmethod
     def _is_completed_schedule_game(game: Dict[str, Any]) -> bool:
