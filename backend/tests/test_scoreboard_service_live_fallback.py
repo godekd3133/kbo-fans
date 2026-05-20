@@ -144,3 +144,64 @@ def test_final_scoreboard_uses_view1_when_scroll_table_is_empty(
     assert game["home"]["scores"] == [0, 0, 1, 0, 0, 0, 1, 0, None]
     assert game["away"]["hits"] == 10
     assert game["home"]["hits"] == 4
+
+
+class _LiveScheduleWithZeroScoresCrawler(_StubScheduleCrawler):
+    def get_games_by_date(self, date: str):
+        games = super().get_games_by_date(date)
+        games[0]["awayScore"] = 0
+        games[0]["homeScore"] = 0
+        return games
+
+
+class _FailingScoreboardCrawler(_StubScoreboardCrawler):
+    def get_game_scoreboard(self, game_id: str):
+        raise RuntimeError("scoreboard detail unavailable")
+
+    def get_view1_scoreboard_detail(self, game_id: str):
+        raise RuntimeError("view1 unavailable")
+
+
+def test_live_scoreboard_prefers_main_score_over_scheduled_zero_fallback(
+    tmp_path: Path,
+) -> None:
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_LiveScheduleWithZeroScoresCrawler(),
+        scoreboard_crawler=_FailingScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    payload = service.get_home_scoreboard("2026-03-31")
+    game = payload["games"][0]
+
+    assert game["status"] == "LIVE"
+    assert game["inning"] == "8회말"
+    assert game["away"]["score"] == 5
+    assert game["home"]["score"] == 2
+
+
+class _DetailedScoreboardCrawler(_StubScoreboardCrawler):
+    def get_game_scoreboard(self, game_id: str):
+        payload = super().get_game_scoreboard(game_id)
+        payload["away"]["score"] = 4
+        payload["home"]["score"] = 1
+        return payload
+
+
+def test_live_scoreboard_keeps_valid_detail_score_when_not_using_schedule_fallback(
+    tmp_path: Path,
+) -> None:
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_DetailedScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    payload = service.get_scoreboard("2026-03-31")
+    game = payload["games"][0]
+
+    assert game["status"] == "LIVE"
+    assert game["away"]["score"] == 4
+    assert game["home"]["score"] == 1

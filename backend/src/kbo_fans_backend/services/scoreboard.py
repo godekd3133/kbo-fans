@@ -352,16 +352,23 @@ class ScoreboardService:
         if main_game:
             resolved_status = self._map_status(main_game.get("GAME_STATE_SC"))
 
+        used_scheduled_fallback = False
         if not game_id or resolved_status == "SCHEDULED":
             detail = self._scheduled_fallback_detail(game)
+            used_scheduled_fallback = True
         else:
             try:
                 detail = self.scoreboard_crawler.get_game_scoreboard(game_id)
             except Exception:
                 detail = self._scheduled_fallback_detail(game)
+                used_scheduled_fallback = True
         if resolved_status in {"LIVE", "FINAL"}:
             detail = self._merge_scoreboard_detail_fallback(detail, game_id)
-            detail = self._merge_main_game_scores(detail, main_game)
+            detail = self._merge_main_game_scores(
+                detail,
+                main_game,
+                prefer_main=used_scheduled_fallback,
+            )
         detail = self._backfill_team_identity(game, detail)
         return {
             **game,
@@ -399,7 +406,7 @@ class ScoreboardService:
         elif resolved_status == "SUSPENDED":
             detail["inning"] = "서스펜디드"
 
-        detail = self._merge_main_game_scores(detail, main_game)
+        detail = self._merge_main_game_scores(detail, main_game, prefer_main=True)
         detail = self._backfill_team_identity(game, detail)
         return {
             **game,
@@ -597,6 +604,8 @@ class ScoreboardService:
         self,
         detail: dict[str, Any],
         main_game: dict[str, Any],
+        *,
+        prefer_main: bool = False,
     ) -> dict[str, Any]:
         if not main_game:
             return detail
@@ -604,10 +613,10 @@ class ScoreboardService:
         away = dict(detail.get("away", {}))
         home = dict(detail.get("home", {}))
         away["score"] = self._score_from_main_or_existing(
-            main_game.get("T_SCORE_CN"), away.get("score")
+            main_game.get("T_SCORE_CN"), away.get("score"), prefer_main=prefer_main
         )
         home["score"] = self._score_from_main_or_existing(
-            main_game.get("B_SCORE_CN"), home.get("score")
+            main_game.get("B_SCORE_CN"), home.get("score"), prefer_main=prefer_main
         )
         return {
             **detail,
@@ -616,15 +625,21 @@ class ScoreboardService:
         }
 
     @staticmethod
-    def _score_from_main_or_existing(value: Any, existing: Any) -> Any:
-        if existing is not None:
-            return existing
+    def _score_from_main_or_existing(
+        value: Any,
+        existing: Any,
+        *,
+        prefer_main: bool = False,
+    ) -> Any:
         if value in (None, "", "-"):
             return existing
         try:
-            return int(str(value).replace(",", ""))
+            parsed = int(str(value).replace(",", ""))
         except (TypeError, ValueError):
             return existing
+        if prefer_main or existing is None:
+            return parsed
+        return existing
 
     def _merge_main_game(self, main_game: dict[str, Any]) -> dict[str, Any]:
         if not main_game:
