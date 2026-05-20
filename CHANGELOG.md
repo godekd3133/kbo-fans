@@ -12,6 +12,36 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
+## [0.1.0-preview.4] - 2026-05-20
+
+### Changed
+
+- 앱 버전을 `0.1.0+4`로 올리고 현재 테스트 가능한 preview 기준을 `0.1.0-preview.4`로 세분화
+- 라인업 탭 첫 진입에서 박스스코어 파생 타자/투수 fallback 조회를 제거해 `/game/{gameId}/lineup`과 양 팀 선수 이미지 조회만 사용하도록 축소
+- 라인업 선발 비교에서 박스스코어가 없을 때 `0.00` 같은 가짜 수치 대신 `-`와 `선발 발표` 상태로 표시
+- 홈 scoreboard 자동 refresh를 live 30초, scheduled 5분, terminal 정지로 조정
+- 홈 스코어보드 캐시 payload가 같을 때 중복 저장과 불필요한 화면 갱신을 피하도록 보정
+- 웹에서는 홈 위젯/Live Activity용 resume observer를 등록하지 않아 기록실/일정 복귀 시 전역 scoreboard refresh가 끼어들지 않도록 정리
+
+## [0.1.0-preview.3] - 2026-05-20
+
+### Changed
+
+- 임시 direct-primary iPhone 빌드에서 2025/2024 등 과거 시즌 기록실이 빈 결과로 보이던 문제를 수정
+- KBO WebForms 세션 cookie와 전체 form state를 유지해 과거 시즌 records overview, leaderboard, team stats POST를 정상화
+- 과거 시즌 팀 기록실은 현재 로스터 검색 대신 시즌/팀 필터가 걸린 KBO 기록 테이블에서 야수/투수 기록을 구성하도록 변경
+- 앱 startup에서 원격 API prefetch 죽은 코드와 `startupScoreboardProvider` 의존성을 제거하고, 첫 route 진입은 local onboarding/my-team 상태만 확인하도록 정리
+- backend records/team stats crawler도 동일한 WebForms payload 방식으로 보정해 snapshot 재생성 안정성을 개선
+
+## [0.1.0-preview.2] - 2026-05-20
+
+### Changed
+
+- 홈 화면에서 `/home` aggregate 로딩 중 별도 `recordsOverviewProvider`를 호출하던 보조 섹션 제거
+- 홈 첫 화면 데이터 흐름을 `scoreboardProvider`와 지연 `homeAggregateProvider`로 고정
+- aggregate 실패 시 schedule/standings/records 로컬 조립 fallback이 다시 실행되지 않도록 데이터 경로 문서와 구현 기준 정리
+- direct-primary 정책 표현을 AGENTS/CLAUDE/엔지니어링 문서에 맞춰 동기화
+
 ## [0.1.0-preview.1] - 2026-05-20
 
 ### Added

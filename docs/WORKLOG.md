@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-05-20: 릴리즈 버저닝 세분화 및 패치노트 재정렬
+
+### 완료
+- [x] `0.1.0-preview.1`에 뭉쳐 있던 최근 preview train을 `0.1.0-preview.1~4`로 세분화
+- [x] 현재 앱 버전을 `0.1.0+4`로 올려 `0.1.0-preview.4`와 맞춤
+- [x] `docs/VERSIONING.md`에 preview segmentation rule과 `0.1.0-preview.1~4` release map 추가
+- [x] `.claude/skills/kbo-version-release`에 historical release split 시 `docs/VERSIONING.md`와 앱 내 패치노트를 함께 갱신하도록 보강
+- [x] `CHANGELOG.md` 상단에 `0.1.0-preview.2`, `0.1.0-preview.3`, `0.1.0-preview.4` 섹션 추가
+- [x] 앱 내 `patch_notes.md`를 `0.1.0+1~4`와 legacy `0.0.x` 기준으로 재작성
+- [x] Preview 4 범위에 홈 스코어보드 캐시 payload 중복 저장/렌더 방지 변경을 포함
+
+### 검증
+- [x] 기존 `0.0.x` 태그는 이동하지 않고 legacy 릴리즈로 보존하는 기준 확인
+- [x] 신규 세분화 태그는 `0.1.0-preview.2`, `0.1.0-preview.3`, `0.1.0-preview.4`로 생성 예정
+
+---
+
 ## 2026-05-20: 홈 보조 로딩 fan-out 제거 및 데이터 경로 문서 재정렬
 
 ### 완료
@@ -1415,6 +1432,7 @@ kbo_fans/
 - [x] `KboDirectPlayerRepository`에 CookieJar 기반 session 유지와 전체 WebForms form payload 재전송을 적용해 과거 시즌 records overview / leaderboard / team stats POST를 정상화
 - [x] direct-primary 과거 시즌 팀 기록실은 현재 로스터 검색 대신 KBO 시즌/팀 filter 기록 테이블에서 야수/투수 선수 기록을 구성하도록 보정
 - [x] backend `RecordsOverviewCrawler` / `TeamStatsCrawler`도 동일한 전체 WebForms form payload 방식으로 보정해 이후 bootstrap/snapshot 생성이 빈 과거 시즌 데이터로 재생성되지 않도록 정리
+- [x] 홈 스코어보드 캐시 저장이 `build` 이후 반복 `setState`를 유발할 수 있던 경로를 payload guard와 무상태 캐시 갱신으로 차단해 실기기 CPU/발열 위험을 낮춤
 
 ### 검증 메모
 - 모션은 새 패키지 없이 Flutter 기본 위젯만 사용했고, `MediaQuery.disableAnimations`가 켜진 경우 생략되도록 처리함
@@ -1424,3 +1442,4 @@ kbo_fans/
 - direct-primary 실측으로 앱 repository가 2025 records overview `avg/hr/ops/opsPlus/era` 각 5개, LG 2025 팀 기록 54명(야수 30명/투수 24명), 팀 타율 `0.278`, 팀 ERA `3.79`를 반환하는지 확인함
 - backend crawler 실측으로 2025 overview 각 리더 5개와 LG 2025 팀 타율/ERA 응답을 확인했고, `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_teams.py` 통과
 - 추가 검증으로 `python3 -m py_compile backend/src/kbo_fans_backend/crawlers/base.py backend/src/kbo_fans_backend/crawlers/records_overview.py backend/src/kbo_fans_backend/crawlers/team_stats.py`, `fvm flutter analyze`, `fvm flutter test test/data/local_asset_player_repository_test.dart` 통과
+- 홈 캐시 루프 보정 후 `fvm flutter analyze app/lib/features/home/home_screen.dart`, `fvm flutter test test/widget_test.dart` 통과

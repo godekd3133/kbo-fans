@@ -5,9 +5,9 @@
 ## Current Baseline
 
 - Active release train: `0.1.0-preview`
-- Flutter app version: `0.1.0+1`
-- Current preview tag: `0.1.0-preview.1`
-- Existing `0.0.x` tags are legacy snapshots. Keep the tags immutable and rewrite only GitHub release notes/titles when cleanup is needed.
+- Flutter app version: `0.1.0+4`
+- Current preview tag: `0.1.0-preview.4`
+- Existing `0.0.x` tags are legacy snapshots. Keep the tags immutable unless the Director explicitly asks for a historical rewrite.
 
 ## Version Formats
 
@@ -43,10 +43,20 @@ Every version or release change must update these surfaces in the same work unit
 
 - Decide the target version before creating commits or tags.
 - Tags are immutable after publish. Do not force-update published tags except for an immediate failed release correction before anyone consumes it.
+- If the Director explicitly asks to reorganize historical releases, prefer adding retrospective tags and rewriting GitHub release notes over deleting or moving existing tags.
 - If a preview was messy, mark it superseded in release notes instead of moving the tag.
 - GitHub prerelease should be used for `*-preview.N`.
 - Stable release should only be marked latest when it is intended as the current stable tester/user baseline.
 - `APP_ENV=release` artifacts must pass the release API health gate before release artifact creation.
+
+## Preview Segmentation Rule
+
+Use separate preview tags when a tester-facing checkpoint changes the behavior class:
+
+- `preview.1`: release train baseline, documentation, version routine, app-visible patch-note surface.
+- `preview.2`: request-budget or startup/home loading behavior changes.
+- `preview.3`: data correctness fixes, crawler/session behavior, snapshot correctness.
+- `preview.4`: detail-screen request fan-out, tab-specific UX correctness, current testable app build.
 
 ## Legacy Release Map
 
@@ -56,8 +66,11 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.2`: records, player detail, game detail, and distribution baseline.
 - `0.0.3`: notification, Firebase, Android/iOS signing, and tester preparation pass.
 - `0.0.4`: compact scoreboard, widget/live-activity data, and API-first release guard improvements.
-- `0.0.5`: rolling preview cleanup snapshot. Superseded by `0.1.0-preview.1`.
-- `0.1.0-preview.1`: organized preview train with API-first/direct-primary separation, release health gate, records snapshots, and patch-note routine.
+- `0.0.5`: final legacy rolling preview cleanup snapshot. Superseded by `0.1.0-preview.N`.
+- `0.1.0-preview.1`: organized preview train baseline with release routine, direct-primary path separation, release health gate, and records snapshot baseline.
+- `0.1.0-preview.2`: home secondary fan-out and API-first/direct-primary documentation cleanup.
+- `0.1.0-preview.3`: direct-primary historical records recovery, WebForms session handling, and startup remote prefetch removal.
+- `0.1.0-preview.4`: lineup tab request fan-out reduction, web resume refresh scope fix, and current app build `0.1.0+4`.
 
 ## GitHub Release Note Template
 

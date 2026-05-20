@@ -17,9 +17,10 @@ description: Use when changing KBO Fans app versions, creating GitHub releases o
 3. Update public notes in `CHANGELOG.md`.
 4. Update in-app notes in `app/assets/bootstrap/patch_notes.md`.
 5. Update `docs/WORKLOG.md` with the versioning/release decision and verification.
-6. If workflow rules changed, update `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/SKILL_REFERENCE.md`, and related skills.
-7. Create an immutable tag only after commits are final.
-8. Create or rewrite GitHub release notes from the changelog and in-app patch notes.
+6. If historical releases are split or rewritten, update `docs/VERSIONING.md` release map and keep every new preview section represented in app patch notes.
+7. If workflow rules changed, update `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/SKILL_REFERENCE.md`, and related skills.
+8. Create an immutable tag only after commits are final.
+9. Create or rewrite GitHub release notes from the changelog and in-app patch notes.
 
 ## Version Rules
 
@@ -27,7 +28,7 @@ description: Use when changing KBO Fans app versions, creating GitHub releases o
 - Preview tag format: `MAJOR.MINOR.PATCH-preview.N`.
 - Stable tag format: `MAJOR.MINOR.PATCH`.
 - Do not keep incrementing legacy `0.0.x` for new preview trains; use the active train in `docs/VERSIONING.md`.
-- Do not force-update published tags. Mark messy previews as superseded in release notes.
+- Do not force-update published tags. If the Director asks to reorganize historical releases, prefer adding retrospective tags and rewriting release notes.
 
 ## Minimum Verification
 

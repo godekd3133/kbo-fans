@@ -44,6 +44,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String? _lastSecondarySectionsLogKey;
   List<Game>? _cachedTodayGames;
   String? _cachedTodayKey;
+  String? _cachedTodayPayload;
 
   @override
   void initState() {
@@ -295,9 +296,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       if (!mounted) {
         return;
       }
+      if (_cachedTodayKey == today && _cachedTodayPayload == payload) {
+        return;
+      }
       setState(() {
         _cachedTodayKey = today;
         _cachedTodayGames = games;
+        _cachedTodayPayload = payload;
       });
     } catch (_) {
       // Ignore broken cache and let network win.
@@ -305,16 +310,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _saveCachedScoreboard(String today, List<Game> games) async {
-    final prefs = await SharedPreferences.getInstance();
     final payload = jsonEncode(games.map(_gameToJson).toList());
-    await prefs.setString('home_scoreboard_cache_$today', payload);
+    if (_cachedTodayKey == today && _cachedTodayPayload == payload) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final storageKey = 'home_scoreboard_cache_$today';
+    if (prefs.getString(storageKey) != payload) {
+      await prefs.setString(storageKey, payload);
+    }
     if (!mounted) {
       return;
     }
-    setState(() {
-      _cachedTodayKey = today;
-      _cachedTodayGames = games;
-    });
+    _cachedTodayKey = today;
+    _cachedTodayGames = games;
+    _cachedTodayPayload = payload;
   }
 
   void _logSecondarySectionsLoaded({
