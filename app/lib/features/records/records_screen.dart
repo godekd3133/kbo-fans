@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
+import '../../data/api/api_client.dart';
 import '../../data/models/player.dart';
 import '../../data/models/records_overview.dart';
 import '../../data/models/team_records_bundle.dart';
@@ -71,12 +72,22 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Future<void> _refreshOverview() async {
     ref.invalidate(recordsOverviewProvider(_selectedSeason));
-    await ref.read(recordsOverviewProvider(_selectedSeason).future);
+    try {
+      await ref.read(recordsOverviewProvider(_selectedSeason).future);
+    } catch (error) {
+      DevConsole.instance.warn('RECORDS overview refresh failed: $error');
+    }
   }
 
   Future<void> _refreshTeamRecords(String teamId) async {
     ref.invalidate(teamRecordsProvider('$teamId|$_selectedSeason'));
-    await ref.read(teamRecordsProvider('$teamId|$_selectedSeason').future);
+    try {
+      await ref.read(teamRecordsProvider('$teamId|$_selectedSeason').future);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'RECORDS team refresh failed: $teamId $_selectedSeason $error',
+      );
+    }
   }
 
   Widget _buildTeamChooser() {
@@ -155,7 +166,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 const SizedBox(height: 14),
                 overviewAsync.when(
                   loading: () => const SizedBox.shrink(),
-                  error: (error, stackTrace) => const SizedBox.shrink(),
+                  error: (error, stackTrace) =>
+                      _recordsOverviewErrorCard(error),
                   data: (overview) => Column(
                     children: [
                       _featuredCards(overview),
@@ -509,8 +521,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         ),
                         error: (error, _) => ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          children: const [
-                            SizedBox(
+                          children: [
+                            const SizedBox(
                               height: 420,
                               child: Center(
                                 child: Text(
@@ -518,6 +530,19 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                                   style: TextStyle(
                                     color: AppColors.textDisabled,
                                   ),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              child: Text(
+                                describeAsyncError(error),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textDisabled,
                                 ),
                               ),
                             ),
@@ -531,6 +556,58 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _recordsOverviewErrorCard(Object error) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.info_outline_rounded,
+              size: 20,
+              color: AppColors.textDisabled,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '리그 기록을 불러올 수 없습니다',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    describeAsyncError(error),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              tooltip: '다시 시도',
+              onPressed: () => unawaited(_refreshOverview()),
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+            ),
+          ],
         ),
       ),
     );

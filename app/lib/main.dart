@@ -35,7 +35,9 @@ void main() async {
         );
       };
 
-      runApp(const ProviderScope(child: KboFansApp()));
+      runApp(
+        const ProviderScope(retry: _disableProviderRetry, child: KboFansApp()),
+      );
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_shouldSkipPlatformServices()) {
@@ -49,6 +51,8 @@ void main() async {
     },
   );
 }
+
+Duration? _disableProviderRetry(int retryCount, Object error) => null;
 
 Future<void> _initializePlatformServicesDeferred() async {
   await Future<void>.delayed(const Duration(milliseconds: 1500));
