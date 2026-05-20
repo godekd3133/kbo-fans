@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-05-20: 0.0.25 missing team totals display guard
+
+### 완료
+- [x] 현재 변경은 앱 스코어/중계/홈 카드 표시 동작 변경이라 `0.0.25+25` 새 릴리즈로 판단
+- [x] `TeamScore`에 H/E/B 통계 존재 여부를 나타내는 `hasStats` 플래그 추가
+- [x] API parser가 `hits`, `errors`, `balls`가 실제 int로 내려온 경우에만 팀 통계가 있다고 판단하도록 보정
+- [x] 스코어 탭과 문자중계 요약은 통계가 없으면 `0` 대신 `-`를 표시
+- [x] 홈 마이팀 경기 카드는 양 팀 H/E/B 통계가 없으면 안타/실책/볼넷 요약 행을 숨김
+- [x] KBO 브리프의 `안타 공방` 후보는 통계가 확인된 경기만 사용하도록 보정
+- [x] API parser, 홈 마이팀 카드, local KBO brief 회귀 테스트 추가
+- [x] `CHANGELOG.md`, 앱 내 patch notes, `docs/VERSIONING.md`, `docs/APP_SPEC.md`, `README.md` 갱신
+
+### 검증
+- [x] `cd app && fvm dart format lib/data/models/game.dart lib/data/models/home_aggregate.dart lib/data/repositories/api_game_repository.dart lib/features/game_detail/tabs/relay_tab.dart lib/features/game_detail/tabs/score_tab.dart lib/features/home/widgets/my_team_game_card.dart test/data/api_client_test.dart test/data/models/home_aggregate_test.dart test/features/home/widgets/my_team_game_card_test.dart`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart test/data/models/home_aggregate_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart test/features/home/widgets/my_team_game_card_test.dart test/data/models/home_aggregate_test.dart`
+- [x] `cd app && fvm flutter test test/widget_test.dart test/data/api_client_test.dart test/data/models/home_aggregate_test.dart test/data/bootstrap_repository_test.dart -r expanded`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test`
+- [x] `git diff --check`
+- [x] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/codex-run.sh release-api-health` 실패 확인: `DNS lookup failed for api.kbofans.com`
+
+---
+
 ## 2026-05-20: 0.0.24 home scoreboard lightweight API split
 
 ### 완료
