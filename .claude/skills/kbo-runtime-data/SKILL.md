@@ -17,6 +17,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Direct KBO crawling is opt-in only with `--dart-define=PREFER_DIRECT_SCRAPE=true` for temporary direct-primary validation builds.
 - Slow detail-only payloads such as multi-highlight lookup should be lazy-loaded on a separate endpoint.
 - Historical standings, records, and completed-game data should prefer snapshots when available.
+- Current-season team player/team stat fallback must be timestamped and fresh. Reject timestamp-less legacy device caches and stale bundled bootstrap assets instead of showing old records.
 - Team records should load after team selection, not for every team at once.
 - Home should prefer lightweight/cached data for first paint, then refresh in background.
 - Never block `runApp()` on non-critical platform plugin initialization.

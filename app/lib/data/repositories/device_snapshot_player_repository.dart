@@ -11,14 +11,17 @@ import 'player_repository.dart';
 class DeviceSnapshotPlayerRepository implements PlayerRepository {
   static const _prefix = 'player_snapshot:';
   static const _snapshotVersion = 'v2';
+  static const _currentSeasonSnapshotMaxAge = Duration(hours: 6);
 
   final PlayerRepository primary;
   final PlayerRepository fallback;
+  final DateTime Function() _now;
 
   DeviceSnapshotPlayerRepository({
     required this.primary,
     required this.fallback,
-  });
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   @override
   Future<List<PlayerProfile>> getTeamPlayers(
@@ -33,7 +36,11 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     );
     if (fresh != null) return fresh;
 
-    final cached = await _readSnapshot(cacheKey, _decodePlayers);
+    final cached = await _readSnapshot(
+      cacheKey,
+      _decodePlayers,
+      season: season,
+    );
     if (cached != null && cached.isNotEmpty) return cached;
 
     return fallback.getTeamPlayers(teamId, season: season);
@@ -52,7 +59,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     );
     if (fresh != null) return fresh;
 
-    final cached = await _readSnapshot(cacheKey, _decodePlayer);
+    final cached = await _readSnapshot(cacheKey, _decodePlayer, season: season);
     if (cached != null && cached.id.isNotEmpty) return cached;
 
     return fallback.getPlayerDetail(playerId, season: season);
@@ -69,7 +76,11 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     );
     if (fresh != null) return fresh;
 
-    final cached = await _readSnapshot(cacheKey, _decodeTeamStats);
+    final cached = await _readSnapshot(
+      cacheKey,
+      _decodeTeamStats,
+      season: season,
+    );
     if (cached != null && _isCompleteTeamStats(cached)) {
       return cached;
     }
@@ -91,7 +102,11 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     );
     if (fresh != null) return fresh;
 
-    final cached = await _readSnapshot(cacheKey, _decodeTeamRecordsBundle);
+    final cached = await _readSnapshot(
+      cacheKey,
+      _decodeTeamRecordsBundle,
+      season: season,
+    );
     if (cached != null && _isValidTeamRecordsBundle(cached)) {
       return cached;
     }
@@ -109,7 +124,11 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     );
     if (fresh != null) return fresh;
 
-    final cached = await _readSnapshot(cacheKey, _decodeRecordsOverview);
+    final cached = await _readSnapshot(
+      cacheKey,
+      _decodeRecordsOverview,
+      season: season,
+    );
     if (cached != null &&
         (cached.avgLeaders.isNotEmpty ||
             cached.hrLeaders.isNotEmpty ||
@@ -135,7 +154,11 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     );
     if (fresh != null) return fresh;
 
-    final cached = await _readSnapshot(cacheKey, _decodeLeadersPayload);
+    final cached = await _readSnapshot(
+      cacheKey,
+      _decodeLeadersPayload,
+      season: season,
+    );
     if (cached != null && cached.isNotEmpty) return cached;
 
     return fallback.getLeaderboard(season: season, metric: metric);
@@ -163,24 +186,68 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       '$_prefix$_snapshotVersion:$cacheKey',
-      jsonEncode(payload),
+      jsonEncode({
+        'savedAt': _now().toUtc().toIso8601String(),
+        'payload': payload,
+      }),
     );
   }
 
   Future<T?> _readSnapshot<T>(
     String cacheKey,
-    T Function(Map<String, dynamic> json) decoder,
-  ) async {
+    T Function(Map<String, dynamic> json) decoder, {
+    required int season,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('$_prefix$_snapshotVersion:$cacheKey');
     if (raw == null || raw.isEmpty) {
       return null;
     }
     try {
-      return decoder(jsonDecode(raw) as Map<String, dynamic>);
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final payload = _unwrapSnapshotPayload(decoded, season);
+      if (payload == null) {
+        return null;
+      }
+      return decoder(payload);
     } catch (_) {
       return null;
     }
+  }
+
+  Map<String, dynamic>? _unwrapSnapshotPayload(
+    Map<String, dynamic> decoded,
+    int season,
+  ) {
+    final payload = decoded['payload'];
+    if (payload is Map<String, dynamic>) {
+      final savedAt = _parseSavedAt(decoded['savedAt']);
+      return _canUseSnapshot(savedAt, season) ? payload : null;
+    }
+    if (_requiresFreshSnapshot(season)) {
+      return null;
+    }
+    return decoded;
+  }
+
+  bool _canUseSnapshot(DateTime? savedAt, int season) {
+    if (!_requiresFreshSnapshot(season)) {
+      return true;
+    }
+    if (savedAt == null) {
+      return false;
+    }
+    return _now().toUtc().difference(savedAt.toUtc()) <=
+        _currentSeasonSnapshotMaxAge;
+  }
+
+  bool _requiresFreshSnapshot(int season) => season >= _now().year;
+
+  DateTime? _parseSavedAt(Object? value) {
+    if (value is! String || value.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(value.replaceAll('Z', '+00:00'));
   }
 
   bool _isCompleteTeamStats(TeamStats value) =>

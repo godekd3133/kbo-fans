@@ -12,9 +12,14 @@ import 'player_repository.dart';
 class LocalAssetPlayerRepository implements PlayerRepository {
   static const _teamPlayersDir = 'assets/bootstrap/team_players';
   static const _teamStatsDir = 'assets/bootstrap/team_stats';
+  static const _currentSeasonSnapshotMaxAge = Duration(hours: 6);
   static List<String>? _assetPathsCache;
 
+  final DateTime Function() _now;
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
+
+  LocalAssetPlayerRepository({DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   Future<Map<String, String>> buildPlayerImageMap({required int season}) async {
     final result = <String, String>{};
@@ -44,8 +49,11 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     if (assetPath == null) {
       return const <PlayerProfile>[];
     }
-    final payload = await _loadSnapshot(assetPath);
-    final players = payload?['players'] as List<dynamic>?;
+    final snapshot = await _loadSnapshot(assetPath);
+    if (!_canUseSnapshot(snapshot, season)) {
+      return const <PlayerProfile>[];
+    }
+    final players = snapshot!.payload['players'] as List<dynamic>?;
     if (players == null || players.isEmpty) {
       return const <PlayerProfile>[];
     }
@@ -83,10 +91,11 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     if (assetPath == null) {
       return _emptyTeamStats(teamId: teamId, season: season);
     }
-    final payload = await _loadSnapshot(assetPath);
-    if (payload == null) {
+    final snapshot = await _loadSnapshot(assetPath);
+    if (!_canUseSnapshot(snapshot, season)) {
       return _emptyTeamStats(teamId: teamId, season: season);
     }
+    final payload = snapshot!.payload;
     final hitting = (payload['hitting'] as Map<String, dynamic>? ?? const {})
         .map((key, value) => MapEntry(key, value.toString()));
     final pitching = (payload['pitching'] as Map<String, dynamic>? ?? const {})
@@ -180,14 +189,45 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     };
   }
 
-  Future<Map<String, dynamic>?> _loadSnapshot(String assetPath) async {
+  Future<_LocalSnapshot?> _loadSnapshot(String assetPath) async {
     try {
       final raw = await rootBundle.loadString(assetPath);
       final decoded = jsonDecode(raw) as Map<String, dynamic>;
-      return decoded['payload'] as Map<String, dynamic>?;
+      final payload = decoded['payload'] as Map<String, dynamic>?;
+      if (payload == null) {
+        return null;
+      }
+      return _LocalSnapshot(
+        payload: payload,
+        savedAt: _parseSavedAt(decoded['savedAt']),
+      );
     } catch (_) {
       return null;
     }
+  }
+
+  bool _canUseSnapshot(_LocalSnapshot? snapshot, int season) {
+    if (snapshot == null) {
+      return false;
+    }
+    if (!_requiresFreshSnapshot(season)) {
+      return true;
+    }
+    final savedAt = snapshot.savedAt;
+    if (savedAt == null) {
+      return false;
+    }
+    return _now().toUtc().difference(savedAt.toUtc()) <=
+        _currentSeasonSnapshotMaxAge;
+  }
+
+  bool _requiresFreshSnapshot(int season) => season >= _now().year;
+
+  DateTime? _parseSavedAt(Object? value) {
+    if (value is! String || value.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(value.replaceAll('Z', '+00:00'));
   }
 
   Future<String?> _resolveSeasonAssetPath(
@@ -333,3 +373,10 @@ class LocalAssetPlayerRepository implements PlayerRepository {
 }
 
 const _teamIds = ['LG', 'KT', 'SK', 'SS', 'NC', 'HH', 'LT', 'HT', 'OB', 'WO'];
+
+class _LocalSnapshot {
+  const _LocalSnapshot({required this.payload, required this.savedAt});
+
+  final Map<String, dynamic> payload;
+  final DateTime? savedAt;
+}

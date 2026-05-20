@@ -32,20 +32,18 @@ void main() {
     },
   );
 
-  test('current team records load exact bundled season snapshots', () async {
-    final repository = LocalAssetPlayerRepository();
-
-    final players = await repository.getTeamPlayers('LG', season: 2026);
-    final stats = await repository.getTeamStats('LG', season: 2026);
-
-    expect(players, isNotEmpty);
-    expect(
-      players.every((player) => player.imageUrl?.contains('/2026/') ?? false),
-      isTrue,
+  test('current team records reject stale bundled season snapshots', () async {
+    final repository = LocalAssetPlayerRepository(
+      now: () => DateTime.utc(2026, 5, 20),
     );
+
+    final players = await repository.getTeamPlayers('KT', season: 2026);
+    final stats = await repository.getTeamStats('KT', season: 2026);
+
+    expect(players, isEmpty);
     expect(stats.season, 2026);
-    expect(stats.hitting, isNotEmpty);
-    expect(stats.pitching, isNotEmpty);
+    expect(stats.hitting, isEmpty);
+    expect(stats.pitching, isEmpty);
   });
 
   test('historical team players load exact bundled season snapshots', () async {
