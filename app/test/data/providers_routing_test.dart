@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/data/repositories/api_game_repository.dart';
+import 'package:kbo_fans/data/repositories/api_player_repository.dart';
 import 'package:kbo_fans/data/repositories/device_snapshot_player_repository.dart';
 import 'package:kbo_fans/data/repositories/kbo_direct_repository.dart';
 
@@ -37,7 +38,9 @@ void main() {
     );
     expect(
       container.read(playerRepositoryProvider),
-      isA<DeviceSnapshotPlayerRepository>(),
+      shouldUseDirect
+          ? isA<DeviceSnapshotPlayerRepository>()
+          : isA<ApiPlayerRepository>(),
     );
   });
 }

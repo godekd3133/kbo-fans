@@ -122,6 +122,9 @@ class ApiPlayerRepository implements PlayerRepository {
         maxAge: _stableCacheAge,
       );
     } catch (_) {
+      if (!isHistoricalSeason) {
+        rethrow;
+      }
       final snapshot = await _bootstrapRepository.loadRecordsOverview(season);
       if (snapshot == null) rethrow;
       data = snapshot;
@@ -176,6 +179,9 @@ class ApiPlayerRepository implements PlayerRepository {
         maxAge: _stableCacheAge,
       );
     } catch (_) {
+      if (!isHistoricalSeason) {
+        rethrow;
+      }
       final snapshot = await _bootstrapRepository.loadRecordsOverview(season);
       final leaders = _leadersFromOverviewSnapshot(snapshot, metric);
       if (leaders == null) rethrow;

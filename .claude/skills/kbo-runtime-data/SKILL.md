@@ -17,6 +17,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Direct KBO crawling is opt-in only when `APP_ENV=local`, native runtime, no `API_BASE_URL` override, and `--dart-define=PREFER_DIRECT_SCRAPE=true` are all true for temporary direct-primary validation builds.
 - Slow detail-only payloads such as multi-highlight lookup should be lazy-loaded on a separate endpoint.
 - Historical standings, records, and completed-game data should prefer snapshots when available.
+- Normal API-backed app mode should not mask current-season standings / records overview / leaderboard API failures with app-bundled bootstrap data; backend API may use fresh server snapshots internally.
 - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings and records overview require a fresh `generatedAt`; unverified historical seasons should remain empty instead of repeating another season.
 - Current-season team player/team stat fallback must be timestamped and fresh. Reject timestamp-less legacy device caches and stale bundled bootstrap assets instead of showing old records.
 - Backend current-date scoreboard and current-season/month schedule, standings, records overview, and leaderboard snapshot fallback must require a fresh `savedAt`; historical dates/seasons/months may still use stored snapshots.

@@ -9,8 +9,11 @@
 - [x] `gameRepositoryProvider`, `homeAggregateProvider`, `playerRepositoryProvider`, `WidgetSyncService`가 `preferDirectScrape` 원시 flag 대신 `shouldPreferLocalNativeData` gate를 사용하도록 통일
 - [x] direct KBO는 `APP_ENV=local`, native runtime, `API_BASE_URL` override 없음, `PREFER_DIRECT_SCRAPE=true` 조건이 모두 맞을 때만 허용
 - [x] records overview device snapshot은 AVG/HR/OPS/ERA가 모두 있는 완성본만 저장/재사용하도록 보정
+- [x] normal API-backed 앱 모드에서는 현재 시즌 standings / records overview / leaderboard API 실패를 앱 번들 bootstrap fallback으로 가리지 않도록 보정
 - [x] `android-release`, `web-release` 실행 경로를 추가해 local backend 없이 release API health gate를 통과한 URL만 주입하도록 보강
 - [x] 현재 기본 운영 API `https://api.kbofans.com/api`는 이 머신에서 DNS 해석 실패를 확인했고, release health gate가 실행/빌드를 시작하기 전에 실패 처리하는 것을 확인
+- [x] 일반 API-backed 앱 모드에서 현재 시즌 standings / records overview / leaderboard API 실패를 앱 번들 bootstrap으로 대체하지 않도록 차단
+- [x] native 일반 API 모드의 player repository를 API-only로 정리해 local asset fallback이 current 기록실을 조용히 채우지 않도록 보정
 - [x] provider routing 테스트를 갱신해 direct-primary가 일반 API override/web/release 경로로 새지 않도록 검증
 - [x] `0.0.17` 기준 `pubspec.yaml`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `docs/VERSIONING.md`, `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/skills/kbo-runtime-data/SKILL.md` 갱신
 
@@ -19,9 +22,11 @@
 - [x] `cd app && fvm dart format lib/data/repositories/device_snapshot_player_repository.dart test/data/device_snapshot_player_repository_test.dart lib/data/providers.dart lib/services/widget_sync_service.dart test/data/providers_routing_test.dart`
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test test/data/device_snapshot_player_repository_test.dart test/data/providers_routing_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart test/data/providers_routing_test.dart -r expanded`
 - [x] `cd app && fvm flutter test test/data/providers_routing_test.dart -r expanded`
 - [x] `cd app && fvm flutter test --dart-define=PREFER_DIRECT_SCRAPE=true test/data/providers_routing_test.dart -r expanded`
 - [x] `cd app && fvm flutter test --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true test/data/providers_routing_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart test/data/providers_routing_test.dart -r expanded`
 - [x] `bash -n scripts/codex-run.sh scripts/release-api-health-check.sh`
 - [x] `./scripts/codex-run.sh release-api-health` 실패 확인: `DNS lookup failed for api.kbofans.com`
 - [x] `./scripts/codex-run.sh web-release` 도 build 전에 release API health gate DNS 실패로 중단 확인

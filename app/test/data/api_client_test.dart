@@ -4,6 +4,9 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/data/api/api_client.dart';
+import 'package:kbo_fans/data/models/records_overview.dart';
+import 'package:kbo_fans/data/repositories/api_game_repository.dart';
+import 'package:kbo_fans/data/repositories/api_player_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -90,6 +93,60 @@ void main() {
     );
 
     expect(data['source'], 'historical-cache');
+  });
+
+  test(
+    'current standings API failure is not masked by app bootstrap',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final repository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_FailingAdapter()),
+          enableRequestTiming: false,
+        ),
+      );
+
+      expect(
+        () => repository.getStandings(DateTime.now().year),
+        throwsA(isA<DioException>()),
+      );
+    },
+  );
+
+  test(
+    'current records overview API failure is not masked by app bootstrap',
+    () {
+      SharedPreferences.setMockInitialValues({});
+      final repository = ApiPlayerRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_FailingAdapter()),
+          enableRequestTiming: false,
+        ),
+      );
+
+      expect(
+        () => repository.getRecordsOverview(season: DateTime.now().year),
+        throwsA(isA<DioException>()),
+      );
+    },
+  );
+
+  test('current leaderboard API failure is not masked by app bootstrap', () {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ApiPlayerRepository(
+      ApiClient(
+        dio: _dioWithAdapter(_FailingAdapter()),
+        enableRequestTiming: false,
+      ),
+    );
+
+    expect(
+      () => repository.getLeaderboard(
+        season: DateTime.now().year,
+        metric: LeaderboardMetric.avg,
+      ),
+      throwsA(isA<DioException>()),
+    );
   });
 }
 

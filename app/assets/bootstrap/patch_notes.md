@@ -6,6 +6,7 @@
 - 웹, release, API override 빌드는 항상 backend API 경로를 우선하도록 앱 provider와 widget background 동기화 경로를 맞췄습니다.
 - provider routing 테스트를 추가해 임시 direct-primary 검증 경로가 일반 앱 실행으로 새지 않도록 했습니다.
 - Android/Web release 실행도 local backend 없이 release API health gate를 통과한 URL만 사용하도록 정리했습니다.
+- 일반 API-backed 앱 모드에서는 현재 시즌 순위/기록실 요약/리더보드 API 실패를 앱 번들 데이터로 대체하지 않습니다.
 - 기록실 요약 device snapshot은 AVG/HR/OPS/ERA가 모두 있는 완성본만 저장하고 재사용합니다.
 
 ## 0.0.16+16 - Backend Snapshot Freshness

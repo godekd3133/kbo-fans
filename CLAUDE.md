@@ -104,6 +104,7 @@ kbo_fans/
   - 일반 local/dev/release 앱 모드에서는 자동 direct fallback 금지
 - 기록실 선수 상세/엔트리 전체는 API 또는 생성된 snapshot 기준으로 유지한다.
 - 순위/기록실 요약/리더보드는 요청 시즌과 정확히 맞는 검증된 snapshot 만 사용하고, current-season standings / records overview / 팀 선수 / 팀 스탯은 6시간 이내 snapshot 만 fallback 으로 인정한다. 검증되지 않은 과거 순위는 빈 exact snapshot 으로 둔다.
+- 일반 API-backed 앱 모드에서는 current-season standings / records overview / leaderboard API 실패를 앱 번들 bootstrap 으로 숨기지 않는다. current 데이터 snapshot fallback 은 backend API 내부에서만 처리한다.
 - Dev Console 은 현재 API base URL, API latency, 홈/일정/기록실 로딩 완료 로그, 기록실 진단 로그를 표시하는 운영 도구다.
 - direct-primary 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
 - `.claude/skills/`에 이미 같은 작업 패턴이 있으면 먼저 그 스킬을 참고한다

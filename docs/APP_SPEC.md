@@ -289,6 +289,7 @@ GET /api/team/{teamId}/players?season=2026
 - 앱은 기록실 로딩 완료 시간을 Dev Console 과 `/api/metrics/client` 로 함께 기록한다.
 - 기록실 요약/리더보드 번들 스냅샷은 요청한 시즌과 정확히 일치할 때만 사용한다.
 - 현재 시즌 기록실 요약 번들은 `generatedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다.
+- 일반 API-backed 앱 모드에서는 현재 시즌 기록실 요약/리더보드 API 실패를 앱 번들 bootstrap 으로 대체하지 않는다. current 데이터 fallback 은 backend API 내부의 fresh snapshot 정책으로만 처리한다.
 - 다른 시즌 기록으로 대체 표시하지 않는다. exact snapshot 이 없거나 비어 있으면 빈 상태/오류를 노출해 가짜 리더가 재유입되지 않게 한다.
 - 팀 선수/팀 스탯 local asset 은 요청한 팀/시즌의 exact snapshot 만 사용한다. 해당 시즌 snapshot 이 없거나 팀 스탯의 타격/투구 중 한쪽만 있으면 다른 시즌 데이터를 빌리지 않고 빈 상태로 처리한다.
 - 현재 시즌 팀 선수/팀 스탯 local asset 과 기기 snapshot cache 는 `savedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다. timestamp 가 없는 legacy cache 나 오래된 번들 asset 은 현재 시즌에서 무효 처리한다.
@@ -1192,6 +1193,7 @@ GET /api/standings?season={YYYY}
 - 앱 번들 standings fallback 은 요청 시즌 exact snapshot 이고 순위 배열이 비어 있지 않을 때만 사용한다.
 - 현재 시즌 standings 번들은 `generatedAt` 기준 6시간 이내일 때만 사용한다. 검증되지 않은 과거 시즌은 빈 exact snapshot 으로 둬 다른 시즌/개막 초반 순위를 빌려 보여주지 않는다.
 - 앱 번들 records overview fallback 도 요청 시즌 exact snapshot 만 사용하고, 현재 시즌은 `generatedAt` 기준 6시간 이내일 때만 사용한다.
+- 일반 API-backed 앱 모드에서는 현재 시즌 standings API 실패를 앱 번들 standings 로 대체하지 않고 오류로 노출한다. current standings snapshot fallback 은 backend API 응답 내부에서만 허용한다.
 
 **응답**:
 ```json

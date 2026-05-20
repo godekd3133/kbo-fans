@@ -231,6 +231,9 @@ class ApiGameRepository implements GameRepository {
       );
       return _parseStandings(data);
     } catch (_) {
+      if (!isHistoricalSeason) {
+        rethrow;
+      }
       final snapshot = await _bootstrapRepository.loadStandings(season);
       if (snapshot == null) rethrow;
       return _parseStandings(snapshot);

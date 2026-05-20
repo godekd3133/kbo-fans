@@ -245,6 +245,7 @@ uvicorn kbo_fans_backend.main:app --reload
 - 순위와 기록실 요약/리더보드는 시즌별 번들 스냅샷 fallback을 사용하되, 다른 시즌 데이터를 빌려 보여주지 않는 exact-season-only 정책을 따릅니다. 현재 시즌 순위/기록실 요약 번들은 6시간 이내 생성본만 fallback으로 사용합니다.
 - 현재 시즌 팀 선수/팀 스탯은 원천 조회를 우선하고, 원천 실패 시에도 6시간 이내 backend/app/device snapshot만 fallback으로 사용합니다.
 - backend 현재 날짜 스코어보드와 현재 시즌/월 일정/순위/기록실 요약/리더보드는 원천 실패 시 6시간 이내 저장 snapshot만 fallback으로 사용합니다. 과거 날짜/시즌/월은 저장 snapshot 우선 정책을 유지합니다.
+- 일반 API-backed 앱 모드에서는 현재 시즌 순위/기록실 API 실패를 앱 번들 데이터로 대체하지 않습니다. local backend 없이 원격 API가 죽어 있으면 release health gate 또는 화면 오류로 드러나게 둡니다.
 - 지난 경기 결과, 선수 과거 기록, 지난 날짜 순위는 화면 요청 시 원천 크롤링보다 저장된 snapshot/정규화 레코드를 우선 사용합니다.
 - 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장합니다. 앱은 히스토리 데이터만 stale-while-revalidate 로 먼저 보여주고, 현재 날짜/시즌 데이터는 TTL 안의 캐시만 임시 표시합니다.
 - 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.
