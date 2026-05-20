@@ -16,12 +16,14 @@
 
 ### Changed
 
-- backend 현재 시즌 일정/순위/기록실 요약/리더보드 snapshot fallback도 `savedAt` 기준 6시간 이내 저장본만 사용하도록 제한
-- 과거 시즌/월 일정, 순위, 기록실 snapshot은 기존처럼 저장본 우선 fallback을 유지하도록 current-season freshness와 분리
+- backend 현재 날짜 스코어보드와 현재 시즌/월 일정/순위/기록실 요약/리더보드 snapshot fallback도 `savedAt` 기준 6시간 이내 저장본만 사용하도록 제한
+- 과거 날짜/시즌/월 스코어보드, 일정, 순위, 기록실 snapshot은 기존처럼 저장본 우선 fallback을 유지하도록 current 데이터 freshness와 분리
+- 현재 날짜 scoreboard snapshot fallback은 fresh + terminal 상태일 때만 허용해 진행 중 경기의 오래된 snapshot 재노출을 차단
+- 앱 기록실 선수/리더 모델과 device/local snapshot 직렬화에서 `isRetired` 플래그를 보존하도록 변경
 
 ### Fixed
 
-- 원천 조회 실패 시 오래된 현재 시즌 backend snapshot이 최신 데이터처럼 재노출될 수 있던 경로 차단
+- 원천 조회 실패 시 오래된 현재 날짜/시즌 backend snapshot이 최신 데이터처럼 재노출될 수 있던 경로 차단
 
 ## [0.0.15] - 2026-05-20
 

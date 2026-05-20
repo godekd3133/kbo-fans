@@ -236,7 +236,7 @@ uvicorn kbo_fans_backend.main:app --reload
 - 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `5분 TTL` 캐시를 사용합니다.
 - 순위와 기록실 요약/리더보드는 시즌별 번들 스냅샷 fallback을 사용하되, 다른 시즌 데이터를 빌려 보여주지 않는 exact-season-only 정책을 따릅니다. 현재 시즌 순위 번들은 6시간 이내 생성본만 fallback으로 사용합니다.
 - 현재 시즌 팀 선수/팀 스탯은 원천 조회를 우선하고, 원천 실패 시에도 6시간 이내 backend/app/device snapshot만 fallback으로 사용합니다.
-- backend 현재 시즌 일정/순위/기록실 요약/리더보드는 원천 실패 시 6시간 이내 저장 snapshot만 fallback으로 사용합니다. 과거 시즌/월은 저장 snapshot 우선 정책을 유지합니다.
+- backend 현재 날짜 스코어보드와 현재 시즌/월 일정/순위/기록실 요약/리더보드는 원천 실패 시 6시간 이내 저장 snapshot만 fallback으로 사용합니다. 과거 날짜/시즌/월은 저장 snapshot 우선 정책을 유지합니다.
 - 지난 경기 결과, 선수 과거 기록, 지난 날짜 순위는 화면 요청 시 원천 크롤링보다 저장된 snapshot/정규화 레코드를 우선 사용합니다.
 - 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장하고, 앱은 stale-while-revalidate 방식으로 마지막 성공 데이터를 먼저 보여주는 방향을 기준으로 합니다.
 - 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.

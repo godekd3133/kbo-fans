@@ -6,15 +6,25 @@
 
 ### 완료
 - [x] 현재 변경은 backend fallback 동작이 바뀌는 규모라 `0.0.16+16` 새 릴리즈로 판단
+- [x] `ScoreboardService`가 current-date crawler 실패 시 6시간 이내 terminal scoreboard snapshot만 fallback으로 사용하도록 보정
 - [x] `StandingsService`가 current-season crawler 실패 시 6시간 이내 `standings_latest` snapshot만 fallback으로 사용하도록 보정
 - [x] `ScheduleService`가 current-month crawler 실패 시 6시간 이내 schedule snapshot만 fallback으로 사용하도록 보정
 - [x] `RecordsOverviewService`가 current-season overview/leaderboard crawler 실패 시 6시간 이내 snapshot만 fallback으로 사용하도록 보정
-- [x] historical season/month stale cache와 저장 snapshot fallback은 기존처럼 유지
+- [x] `ScoreboardService`가 current-day scoreboard/compact crawler 실패 시 fresh + terminal snapshot만 fallback으로 사용하고, 오래된 non-terminal snapshot은 거부하도록 보정
+- [x] historical date/season/month stale cache와 저장 snapshot fallback은 기존처럼 유지
+- [x] 앱 기록실 선수/리더 모델과 API/local/device snapshot 직렬화에서 `isRetired` 플래그 보존
 - [x] `AGENTS.md`, `CLAUDE.md`, `.claude/skills/kbo-runtime-data/SKILL.md`, `docs/APP_SPEC.md`, `README.md`, `docs/VERSIONING.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`를 `0.0.16` 기준으로 갱신
 
 ### 검증
 - [x] `python3 -m compileall backend/src`
-- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py backend/tests/test_schedule.py backend/tests/test_scoreboard_service_cache.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_scoreboard_service_live_fallback.py backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py backend/tests/test_schedule.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py`
+- [x] local API 실측: `/api/scoreboard/home` 0.306s, `/api/schedule?month=2026-05` 0.263s, `/api/standings?season=2026` 0.065s, `/api/records/overview?season=2026` 0.652s
+- [x] local API 값 확인: 2026-05-20 현재 18:30 예정 5경기는 점수 `None`, 순위 상위 `SS/KT 25-17-1 .595`, 기록 리더 `박성한 .379`, `김도영 13`
+- [x] `cd app && fvm dart format lib/data/models/player.dart lib/data/models/records_overview.dart lib/data/repositories/api_player_repository.dart lib/data/repositories/device_snapshot_player_repository.dart lib/data/repositories/local_asset_player_repository.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/data/local_asset_player_repository_test.dart test/data/device_snapshot_player_repository_test.dart -r expanded`
 
 ---
 
