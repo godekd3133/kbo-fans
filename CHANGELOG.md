@@ -12,6 +12,22 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
+## [0.0.21] - 2026-05-20
+
+### Changed
+
+- 앱 공통 `ApiClient.getCached`에 payload validator를 추가해 캐시를 읽거나 새로 저장하기 전에 malformed 응답을 차단
+- records overview API cache key를 `v4`, leaderboard API cache key를 `v3`로 올려 웹/앱에 남은 구형 기록실 캐시를 무효화
+- 앱 전역 Riverpod retry를 비활성화해 API 실패가 반복 재시도 뒤에 숨지 않고 화면 오류 상태로 바로 전달되도록 변경
+- backend 2013 타율 리더보드 snapshot과 records overview featured 카드를 시즌 공식 리더 기준으로 보강
+
+### Fixed
+
+- 기록실 웹/API cache에 남은 1위 누락 리더보드가 2013 타율처럼 다시 표시될 수 있던 경로 차단
+- 2013 타율 리더보드 fallback이 이병규 1위부터 시작하지 못하던 snapshot 누락 보강
+- 기록실 리그 요약 실패가 빈 공간처럼 숨겨지던 화면을 오류 카드와 다시 시도 버튼으로 노출하도록 보강
+- 팀 기록실 오류 상태에 사용자용 실패 문구를 표시하고 refresh 실패는 Dev Console에 기록하도록 정리
+
 ## [0.0.20] - 2026-05-20
 
 ### Changed
@@ -25,7 +41,7 @@
 
 - 홈 첫 화면에서 현재 데이터 일부가 실패했는데도 `오늘 경기 없음`, 빈 순위, 빈 기록 카드처럼 정상 상태로 오해될 수 있던 경로 차단
 - records overview snapshot 재생성 시 OPS 하위권 선수가 `시즌 OPS 리더`로 노출될 수 있던 데이터 생성 경로 차단
-- 기록실 웹/디바이스에 남은 구형 `recordsOverview` 캐시가 2013 타율처럼 1위가 누락된 리더보드를 계속 표시할 수 있던 경로 차단
+- 기록실 디바이스 snapshot에 남은 구형 `recordsOverview` 캐시가 1위가 누락된 리더보드를 계속 표시할 수 있던 경로 차단
 - records overview / leaderboard device snapshot은 핵심 리더보드가 1위부터 시작할 때만 저장/재사용하도록 보강
 
 ## [0.0.19] - 2026-05-20

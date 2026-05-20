@@ -20,9 +20,10 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Normal API-backed app mode should not mask current-season standings / records overview / leaderboard API failures with app-bundled bootstrap data; backend API may use fresh server snapshots internally.
 - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings and records overview require a fresh `generatedAt`; unverified historical seasons should remain empty instead of repeating another season.
 - Current-season team player/team stat fallback must be timestamped and fresh. Reject timestamp-less legacy device caches and stale bundled bootstrap assets instead of showing old records.
-- Records overview and leaderboard device snapshots must only be reused when core leaderboards start at rank 1. Bump the device snapshot version when invalidating old malformed cache shapes.
+- Records overview and leaderboard API caches and device snapshots must only be reused when core leaderboards start at rank 1. Bump cache keys or device snapshot versions when invalidating old malformed cache shapes.
 - Backend current-date scoreboard and current-season/month schedule, standings, records overview, and leaderboard snapshot fallback must require a fresh `savedAt`; historical dates/seasons/months may still use stored snapshots.
 - Backend `/home` aggregate must not mask current/future schedule, standings, or records overview failures with empty sections or placeholder cards. Historical home queries may keep partial fallback.
+- App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.
 - Home should prefer lightweight/cached data for first paint, then refresh in background.
 - Never block `runApp()` on non-critical platform plugin initialization.

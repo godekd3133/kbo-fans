@@ -2,19 +2,28 @@
 
 ---
 
-## 2026-05-20: records overview stale device snapshot guard
+## 2026-05-20: 0.0.21 records API cache and error surface
 
 ### 완료
+- [x] 현재 변경은 앱 API cache reuse 정책, 기록실 오류 UI, 전역 provider retry 정책 변경이라 `0.0.21+21` 새 릴리즈로 판단
 - [x] 웹 화면 QA에서 2013 시즌 기록실이 백엔드 정상 응답에도 구형 브라우저 캐시 때문에 `2, 9, 13...` 순위로 재노출되는 문제 확인
-- [x] `DeviceSnapshotPlayerRepository` snapshot 버전을 `v3`로 올려 기존 `v2` records overview 오염 캐시를 강제 무효화
-- [x] records overview / leaderboard snapshot은 핵심 리더보드 첫 항목이 1위일 때만 저장/재사용하도록 보강
-- [x] 불완전 overview, 1위 누락 overview, 구버전 overview, 1위 누락 leaderboard 캐시 회귀 테스트 추가
+- [x] `ApiPlayerRepository` records overview cache key를 `v4`, leaderboard cache key를 `v3`로 올려 웹 `api_cache` 오염 캐시를 강제 무효화
+- [x] `ApiClient.getCached`에 validator를 추가해 invalid cache read, invalid fresh write, invalid silent refresh write를 차단
+- [x] records overview / leaderboard API cache는 핵심 리더보드 첫 항목이 1위일 때만 저장/재사용하도록 보강
+- [x] 2013 타율 리더보드 backend snapshot을 추가하고 records overview featured 카드를 시즌 공식 리더 기준으로 보강
+- [x] 기록실 리그 요약 실패가 빈 공간으로 숨겨지지 않고 오류 카드와 다시 시도 버튼으로 보이도록 보강
+- [x] 팀 기록실 오류 상태에 사용자용 실패 문구를 표시하고 refresh 실패는 Dev Console에 기록하도록 정리
+- [x] 앱 전역 Provider retry를 비활성화해 API 실패가 자동 재시도 뒤에 숨지 않도록 변경
+- [x] invalid API cache, historical rank gap, records screen error card 회귀 테스트 추가
 
 ### 검증
-- [x] `cd app && fvm dart format lib/data/repositories/device_snapshot_player_repository.dart test/data/device_snapshot_player_repository_test.dart`
+- [x] `cd app && fvm dart format lib/main.dart lib/data/api/api_client.dart lib/data/repositories/api_player_repository.dart lib/features/records/records_screen.dart test/data/api_client_test.dart test/widget_test.dart`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart test/widget_test.dart -r expanded`
 - [x] `cd app && fvm flutter analyze`
-- [x] `cd app && fvm flutter test test/data/device_snapshot_player_repository_test.dart test/data/models/records_overview_test.dart test/data/bootstrap_repository_test.dart`
+- [x] `python3 -m json.tool backend/data/snapshots/leaderboard/2013_avg.json >/dev/null`
+- [x] `python3 -m json.tool backend/data/snapshots/records_overview/2013.json >/dev/null`
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py`
+- [x] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/release-api-health-check.sh` 실패 확인: `DNS lookup failed for api.kbofans.com`
 
 ---
 
