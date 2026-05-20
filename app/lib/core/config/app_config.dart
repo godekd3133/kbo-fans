@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import 'local_api_base_url_io.dart'
+    if (dart.library.js_interop) 'local_api_base_url_web.dart';
+
 enum AppEnvironment { local, dev, release }
 
 class AppConfig {
@@ -53,20 +56,11 @@ class AppConfig {
     switch (env) {
       case AppEnvironment.local:
         // LOCAL:
-        // - 웹은 localhost
+        // - 웹은 local backend를 기본값으로 쓰지 않는다.
         // - Android 에뮬레이터는 10.0.2.2
         // - iOS Simulator는 localhost
         // - iOS/Android 실기기는 실행 스크립트에서 Mac LAN IP를 API_BASE_URL로 주입
-        if (kIsWeb) {
-          return 'http://localhost:8000/api';
-        }
-        if (defaultTargetPlatform == TargetPlatform.android) {
-          return 'http://10.0.2.2:8000/api';
-        }
-        if (defaultTargetPlatform == TargetPlatform.iOS) {
-          return 'http://localhost:8000/api';
-        }
-        return 'http://localhost:8000/api';
+        return defaultLocalApiBaseUrl();
       case AppEnvironment.dev:
         // DEV: AWS dev 서버
         return 'https://dev-api.kbofans.com/api';

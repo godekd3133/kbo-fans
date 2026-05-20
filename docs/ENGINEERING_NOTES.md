@@ -12,6 +12,7 @@
 - 앱 startup은 원격 API prefetch를 소유하지 않는다. local onboarding/my-team 상태 확인 후 첫 route로 넘기고, scoreboard/home/records/schedule 요청은 각 화면 provider가 소유한다.
 - noisy fallback 로그가 과하면 `local` / 테스트 바인딩에서 prefetch, metric, push init을 완화하는 방향이 안전하다.
 - local, dev, release API base URL은 코드에 고정 default 를 두되 `API_BASE_URL` override 를 우선한다.
+- 웹 빌드는 `APP_ENV=local` 이어도 명시적 `API_BASE_URL` override가 없으면 local backend를 기본값으로 쓰지 않고 운영 API를 본다.
 - iPhone local debug에서 `localhost` API는 실기기에서 직접 닿지 않는다.
   - backend를 켜고 실기기에서 API를 쓰려면 Mac LAN IP를 `API_BASE_URL`로 주입해야 한다.
   - `scripts/codex-run.sh ios` 는 backend가 8000 포트로 떠 있으면 자동으로 LAN IP를 주입하도록 유지한다.
