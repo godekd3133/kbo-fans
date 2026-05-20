@@ -84,6 +84,17 @@ def test_build_ops_plus_leaders_from_ops_values() -> None:
     assert ops_plus_leaders[1]["value"] == "89"
 
 
+def test_extract_player_link_accepts_active_and_retired_records() -> None:
+    active = (
+        '<a href="/Record/Player/HitterDetail/Basic.aspx?playerId=77532">'
+        "손아섭</a>"
+    )
+    retired = '<a href="/Record/Retire/Pitcher.aspx?playerId=75620">윤석민</a>'
+
+    assert RecordsOverviewCrawler._extract_player_link(active) == ("77532", False)
+    assert RecordsOverviewCrawler._extract_player_link(retired) == ("75620", True)
+
+
 def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     season = datetime.now(timezone.utc).year
