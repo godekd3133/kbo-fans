@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
+from kbo_fans_backend.utils.player_images import kbo_player_image_url
 
 
 class RecordsOverviewCrawler(BaseCrawler):
@@ -13,9 +14,6 @@ class RecordsOverviewCrawler(BaseCrawler):
     _HITTER_HR_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HR_CN"
     _HITTER_OPS_URL = "/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT"
     _PITCHER_ERA_URL = "/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT"
-    _PLAYER_IMAGE_URL = (
-        "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{season}/{player_id}.jpg"
-    )
     _LEADERBOARD_METRICS = {
         "avg": (_HITTER_AVG_URL, "AVG", "hitter"),
         "hr": (_HITTER_HR_URL, "HR", "hitter"),
@@ -23,9 +21,7 @@ class RecordsOverviewCrawler(BaseCrawler):
         "opsPlus": (_HITTER_OPS_URL, "OPS", "hitter"),
         "era": (_PITCHER_ERA_URL, "ERA", "pitcher"),
     }
-    _SEASON_FIELD = (
-        "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason"
-    )
+    _SEASON_FIELD = "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason"
 
     def get_overview(self, season: int) -> Dict[str, Any]:
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
@@ -245,9 +241,7 @@ class RecordsOverviewCrawler(BaseCrawler):
                 target_type=target_type,
                 period_label=period_label,
             ),
-            "imageUrl": self._PLAYER_IMAGE_URL.format(
-                season=season, player_id=leader["playerId"]
-            ),
+            "imageUrl": kbo_player_image_url(season, leader["playerId"]),
         }
 
     def _feature_reason(
@@ -260,10 +254,7 @@ class RecordsOverviewCrawler(BaseCrawler):
         reasons = []
         for metric, leaders in leader_groups.items():
             for leader in leaders:
-                if (
-                    leader["playerId"] == player_id
-                    and leader["playerType"] == target_type
-                ):
+                if leader["playerId"] == player_id and leader["playerType"] == target_type:
                     reasons.append(f"{metric.upper()} {leader['rank']}위")
         if not reasons:
             return ""

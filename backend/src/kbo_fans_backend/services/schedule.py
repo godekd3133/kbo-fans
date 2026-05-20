@@ -150,15 +150,24 @@ class ScheduleService:
         status = self._map_main_status(main_game.get("GAME_STATE_SC"))
         if status == "UNKNOWN":
             status = str(game.get("status") or "UNKNOWN")
+        should_show_score = status in {"LIVE", "FINAL", "SUSPENDED"}
 
         updated = {
             **game,
             "time": main_game.get("G_TM") or game.get("time"),
-            "awayScore": self._main_score_or_existing(
-                main_game.get("T_SCORE_CN"), game.get("awayScore")
+            "awayScore": (
+                self._main_score_or_existing(
+                    main_game.get("T_SCORE_CN"), game.get("awayScore")
+                )
+                if should_show_score
+                else None
             ),
-            "homeScore": self._main_score_or_existing(
-                main_game.get("B_SCORE_CN"), game.get("homeScore")
+            "homeScore": (
+                self._main_score_or_existing(
+                    main_game.get("B_SCORE_CN"), game.get("homeScore")
+                )
+                if should_show_score
+                else None
             ),
             "stadium": main_game.get("S_NM") or game.get("stadium"),
             "status": status,

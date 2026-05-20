@@ -12,8 +12,6 @@ import 'player_repository.dart';
 class LocalAssetPlayerRepository implements PlayerRepository {
   static const _teamPlayersDir = 'assets/bootstrap/team_players';
   static const _teamStatsDir = 'assets/bootstrap/team_stats';
-  static const _kboPersonImageBase =
-      'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
   static List<String>? _assetPathsCache;
 
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
@@ -330,7 +328,7 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     if (player.id.isEmpty) {
       return null;
     }
-    return '$_kboPersonImageBase/$season/${player.id}.jpg';
+    return kboPlayerImageUrl(season: season, playerId: player.id);
   }
 }
 

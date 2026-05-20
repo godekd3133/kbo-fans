@@ -1,4 +1,5 @@
 from kbo_fans_backend.services.boxscore import BoxscoreService
+from kbo_fans_backend.storage import JsonSnapshotStore
 
 
 class _StubBoxscoreCrawler:
@@ -47,11 +48,12 @@ class _StubScheduleService:
         }
 
 
-def test_boxscore_service_retries_with_adjacent_canonical_game_id() -> None:
+def test_boxscore_service_retries_with_adjacent_canonical_game_id(tmp_path) -> None:
     crawler = _StubBoxscoreCrawler()
     service = BoxscoreService(
         crawler=crawler,
         schedule_service=_StubScheduleService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
     )
 
     payload = service.get_boxscore("20260330KTLG0")
@@ -59,6 +61,32 @@ def test_boxscore_service_retries_with_adjacent_canonical_game_id() -> None:
     assert crawler.calls == ["20260330KTLG0", "20260329KTLG0"]
     assert payload["away"]["batters"] == [{"name": "A"}]
     assert payload["home"]["pitchers"] == [{"name": "Q"}]
+
+
+def test_boxscore_service_uses_snapshot_first_for_past_game(tmp_path) -> None:
+    class FailingCrawler:
+        def get_boxscore(self, game_id: str):
+            raise AssertionError("crawler should not be called")
+
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
+    snapshot_store.save(
+        "boxscore",
+        "20260330KTLG0",
+        {
+            "gameId": "20260330KTLG0",
+            "away": {"teamId": "KT", "batters": [{"name": "A"}], "pitchers": []},
+            "home": {"teamId": "LG", "batters": [], "pitchers": [{"name": "P"}]},
+        },
+    )
+    service = BoxscoreService(
+        crawler=FailingCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    payload = service.get_boxscore("20260330KTLG0")
+
+    assert payload["away"]["batters"] == [{"name": "A"}]
+    assert payload["home"]["pitchers"] == [{"name": "P"}]
 
 
 def test_boxscore_service_marks_empty_payload_as_not_official() -> None:

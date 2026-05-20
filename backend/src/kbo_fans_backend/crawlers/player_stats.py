@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
+from kbo_fans_backend.utils.player_images import kbo_player_image_url
 
 
 class PlayerStatsCrawler(BaseCrawler):
@@ -19,7 +20,6 @@ class PlayerStatsCrawler(BaseCrawler):
     _PITCHER_DETAIL_URL = "/Record/Player/PitcherDetail/Basic.aspx?playerId={player_id}"
     _HITTER_TOTAL_URL = "/Record/Player/HitterDetail/Total.aspx?playerId={player_id}"
     _PITCHER_TOTAL_URL = "/Record/Player/PitcherDetail/Total.aspx?playerId={player_id}"
-    _PLAYER_IMAGE_URL = "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{season}/{player_id}.jpg"
     _TEAM_SEARCH_CODE_MAP = {
         "LG": "lg",
         "KT": "kt",
@@ -236,7 +236,9 @@ class PlayerStatsCrawler(BaseCrawler):
         return players
 
     def _parse_register_all_entries(self, team_id: str) -> set[Tuple[str, int]]:
-        html = self.session.get(f"{self.base_url}{self._REGISTER_ALL_URL}", timeout=self.timeout).text
+        html = self.session.get(
+            f"{self.base_url}{self._REGISTER_ALL_URL}", timeout=self.timeout
+        ).text
         team_name = self._REGISTER_TEAM_NAME_MAP.get(team_id, team_id)
         row_match = re.search(
             r'<tr>\s*<th scope="row" class="fir">%s</th>(.*?)</tr>' % re.escape(team_name),
@@ -303,9 +305,7 @@ class PlayerStatsCrawler(BaseCrawler):
         return {
             "id": player_id,
             "playerType": player_type,
-            "imageUrl": self._PLAYER_IMAGE_URL.format(
-                season=season, player_id=player_id
-            ),
+            "imageUrl": kbo_player_image_url(season, player_id),
             "name": name,
             "number": number,
             "position": position,
@@ -331,14 +331,19 @@ class PlayerStatsCrawler(BaseCrawler):
         if not match:
             return {}
 
-        headers = [strip_tags(cell) for cell in re.findall(r"<th[^>]*>(.*?)</th>", match.group(1), re.S)]
+        headers = [
+            strip_tags(cell) for cell in re.findall(r"<th[^>]*>(.*?)</th>", match.group(1), re.S)
+        ]
         rows = re.findall(r"<tr>(.*?)</tr>", match.group(2), re.S)
         for row in rows:
             values = [strip_tags(cell) for cell in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
             if not values or values[0] != str(season):
                 continue
             if len(values) == len(headers):
-                return {header.replace("팀명", "TEAM").strip(): value for header, value in zip(headers, values)}
+                return {
+                    header.replace("팀명", "TEAM").strip(): value
+                    for header, value in zip(headers, values)
+                }
         return {}
 
     @staticmethod
@@ -472,7 +477,9 @@ class PlayerStatsCrawler(BaseCrawler):
             return "OPS %s" % stats["OPS"]
         return "%s홈런" % stats.get("HR", "0")
 
-    def _build_sort_metrics(self, player_type: str, stats: Dict[str, str]) -> Dict[str, Optional[float]]:
+    def _build_sort_metrics(
+        self, player_type: str, stats: Dict[str, str]
+    ) -> Dict[str, Optional[float]]:
         if player_type == "pitcher":
             return {
                 "era": self._parse_float(stats.get("ERA")),
@@ -514,9 +521,7 @@ class PlayerStatsCrawler(BaseCrawler):
             "id": player["id"],
             "teamId": player["teamId"],
             "playerType": player_type,
-            "imageUrl": self._PLAYER_IMAGE_URL.format(
-                season=season, player_id=player["id"]
-            ),
+            "imageUrl": kbo_player_image_url(season, player["id"]),
             "name": player.get("name", ""),
             "number": player.get("number", 0),
             "position": position,

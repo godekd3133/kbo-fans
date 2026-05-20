@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date as date_type
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
@@ -11,8 +12,7 @@ from kbo_fans_backend.storage import JsonSnapshotStore
 
 class LineupService:
     _PLAYER_IMAGE_URL = (
-        "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle"
-        "/{season}/{player_id}.jpg"
+        "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{season}/{player_id}.jpg"
     )
 
     def __init__(
@@ -31,6 +31,13 @@ class LineupService:
 
     def get_lineup(self, game_id: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("lineup", game_id)
+        if (
+            snapshot is not None
+            and self._is_past_game_id(game_id)
+            and self._has_ready_lineup(snapshot)
+        ):
+            return snapshot
+
         try:
             lineup = self.lineup_crawler.get_lineup(game_id)
             boxscore = self.boxscore_crawler.get_boxscore(game_id)
@@ -59,11 +66,9 @@ class LineupService:
                 self.push_service.send_lineup_opened(
                     game_id=game_id,
                     away_team_id=lineup["away"]["teamId"],
-                    away_team_name=lineup["away"].get("teamName")
-                    or lineup["away"]["teamId"],
+                    away_team_name=lineup["away"].get("teamName") or lineup["away"]["teamId"],
                     home_team_id=lineup["home"]["teamId"],
-                    home_team_name=lineup["home"].get("teamName")
-                    or lineup["home"]["teamId"],
+                    home_team_name=lineup["home"].get("teamName") or lineup["home"]["teamId"],
                 )
             except Exception:
                 pass
@@ -88,9 +93,7 @@ class LineupService:
             return None
 
     @staticmethod
-    def _starter_id(
-        main_game: Optional[dict[str, Any]], side: str
-    ) -> Optional[str]:
+    def _starter_id(main_game: Optional[dict[str, Any]], side: str) -> Optional[str]:
         if main_game is None:
             return None
         key = "T_PIT_P_ID" if side == "away" else "B_PIT_P_ID"
@@ -101,9 +104,7 @@ class LineupService:
         return text or None
 
     @staticmethod
-    def _starter_name(
-        main_game: Optional[dict[str, Any]], side: str
-    ) -> Optional[str]:
+    def _starter_name(main_game: Optional[dict[str, Any]], side: str) -> Optional[str]:
         if main_game is None:
             return None
         key = "T_PIT_P_NM" if side == "away" else "B_PIT_P_NM"
@@ -113,14 +114,10 @@ class LineupService:
         text = str(value).strip()
         return text or None
 
-    def _starter_image_url(
-        self, game_id: str, starter_id: Optional[str]
-    ) -> Optional[str]:
+    def _starter_image_url(self, game_id: str, starter_id: Optional[str]) -> Optional[str]:
         if not starter_id:
             return None
-        return self._PLAYER_IMAGE_URL.format(
-            season=game_id[:4], player_id=starter_id
-        )
+        return self._PLAYER_IMAGE_URL.format(season=game_id[:4], player_id=starter_id)
 
     @staticmethod
     def _should_notify_lineup_opened(
@@ -133,7 +130,24 @@ class LineupService:
             and previous.get("home", {}).get("lineup")
         )
         curr_ready = bool(
-            current.get("away", {}).get("lineup")
-            and current.get("home", {}).get("lineup")
+            current.get("away", {}).get("lineup") and current.get("home", {}).get("lineup")
         )
         return (not prev_ready) and curr_ready
+
+    @staticmethod
+    def _has_ready_lineup(payload: dict[str, Any]) -> bool:
+        return bool(payload.get("away", {}).get("lineup") and payload.get("home", {}).get("lineup"))
+
+    @staticmethod
+    def _is_past_game_id(game_id: str) -> bool:
+        if len(game_id) < 8:
+            return False
+        try:
+            game_date = date_type(
+                int(game_id[:4]),
+                int(game_id[4:6]),
+                int(game_id[6:8]),
+            )
+        except ValueError:
+            return False
+        return game_date < date_type.today()

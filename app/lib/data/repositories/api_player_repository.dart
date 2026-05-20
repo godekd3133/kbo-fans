@@ -239,7 +239,7 @@ class ApiPlayerRepository implements PlayerRepository {
           (json['playerType'] as String? ?? '').toLowerCase() == 'pitcher'
           ? PlayerType.pitcher
           : PlayerType.hitter,
-      imageUrl: json['imageUrl'] as String?,
+      imageUrl: _normalizePlayerImageUrl(json['imageUrl'] as String?, json),
       name: json['name'] as String? ?? '',
       number: json['number'] as int? ?? 0,
       position: json['position'] as String? ?? '',
@@ -274,6 +274,28 @@ class ApiPlayerRepository implements PlayerRepository {
       default:
         return PlayerAvailabilityStatus.available;
     }
+  }
+
+  String? _normalizePlayerImageUrl(
+    String? imageUrl,
+    Map<String, dynamic> json,
+  ) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      final playerId = json['id'] as String? ?? '';
+      final season = json['season'] as int?;
+      if (season != null &&
+          season < kboPlayerImageMinSeason &&
+          playerId.isNotEmpty) {
+        return kboPlayerImageUrl(season: season, playerId: playerId);
+      }
+      return imageUrl;
+    }
+    final playerId = json['id'] as String? ?? '';
+    final season = json['season'] as int?;
+    if (season == null || playerId.isEmpty) {
+      return imageUrl;
+    }
+    return kboPlayerImageUrl(season: season, playerId: playerId);
   }
 
   List<RecordLeader> _parseLeaders(List<dynamic> list) {

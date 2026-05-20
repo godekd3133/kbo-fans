@@ -40,6 +40,20 @@ class _StubMainCrawler:
         ]
 
 
+class _ScheduledZeroMainCrawler:
+    def get_kbo_game_list(self, date: str):
+        return [
+            {
+                "G_ID": f"{date.replace('-', '')}LGOB0",
+                "G_TM": "18:30",
+                "GAME_STATE_SC": "1",
+                "T_SCORE_CN": "0",
+                "B_SCORE_CN": "0",
+                "S_NM": "잠실",
+            }
+        ]
+
+
 def test_derive_status_marks_start_pit_as_scheduled() -> None:
     html = (
         "<a href='/Schedule/GameCenter/Main.aspx?"
@@ -91,6 +105,24 @@ def test_current_day_schedule_status_is_enriched_from_main_game(tmp_path) -> Non
     assert game["status"] == "LIVE"
     assert game["awayScore"] == 4
     assert game["homeScore"] == 2
+
+
+def test_current_day_scheduled_game_keeps_scores_empty_even_when_main_has_zero(
+    tmp_path,
+) -> None:
+    today = date_type.today().isoformat()
+    service = ScheduleService(
+        schedule_crawler=_StubScheduleCrawler(),
+        main_crawler=_ScheduledZeroMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_month_schedule(today[:7])
+    game = payload["days"][0]["games"][0]
+
+    assert game["status"] == "SCHEDULED"
+    assert game["awayScore"] is None
+    assert game["homeScore"] is None
 
 
 def test_schedule_saves_non_terminal_month_snapshot(tmp_path) -> None:

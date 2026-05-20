@@ -21,6 +21,13 @@ class BoxscoreService:
 
     def get_boxscore(self, game_id: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("boxscore", game_id)
+        if (
+            snapshot is not None
+            and self._is_past_game_id(game_id)
+            and not self._is_empty_payload(snapshot)
+        ):
+            return snapshot
+
         try:
             payload = self.crawler.get_boxscore(game_id)
         except Exception:
@@ -74,8 +81,7 @@ class BoxscoreService:
                 try:
                     delta = abs(
                         (
-                            date_type.fromisoformat(date_str)
-                            - date_type.fromisoformat(target_date)
+                            date_type.fromisoformat(date_str) - date_type.fromisoformat(target_date)
                         ).days
                     )
                 except ValueError:
@@ -95,6 +101,23 @@ class BoxscoreService:
     def _is_empty_payload(payload: dict[str, Any]) -> bool:
         away = payload.get("away", {})
         home = payload.get("home", {})
-        return not away.get("batters") and not away.get("pitchers") and not home.get(
-            "batters"
-        ) and not home.get("pitchers")
+        return (
+            not away.get("batters")
+            and not away.get("pitchers")
+            and not home.get("batters")
+            and not home.get("pitchers")
+        )
+
+    @staticmethod
+    def _is_past_game_id(game_id: str) -> bool:
+        if len(game_id) < 8:
+            return False
+        try:
+            game_date = date_type(
+                int(game_id[:4]),
+                int(game_id[4:6]),
+                int(game_id[6:8]),
+            )
+        except ValueError:
+            return False
+        return game_date < date_type.today()

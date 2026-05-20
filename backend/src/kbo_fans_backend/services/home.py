@@ -8,6 +8,7 @@ from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.standings import StandingsService
+from kbo_fans_backend.utils.player_images import kbo_player_image_url
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -37,15 +38,9 @@ class HomeService:
         self.scoreboard_service = scoreboard_service or ScoreboardService()
         self.schedule_service = schedule_service or ScheduleService()
         self.standings_service = standings_service or StandingsService()
-        self.records_overview_service = (
-            records_overview_service or RecordsOverviewService()
-        )
-        self._live_cache: TtlCache[str, Dict[str, Any]] = TtlCache(
-            self._LIVE_CACHE_TTL_SECONDS
-        )
-        self._stable_cache: TtlCache[str, Dict[str, Any]] = TtlCache(
-            self._STABLE_CACHE_TTL_SECONDS
-        )
+        self.records_overview_service = records_overview_service or RecordsOverviewService()
+        self._live_cache: TtlCache[str, Dict[str, Any]] = TtlCache(self._LIVE_CACHE_TTL_SECONDS)
+        self._stable_cache: TtlCache[str, Dict[str, Any]] = TtlCache(self._STABLE_CACHE_TTL_SECONDS)
 
     def get_home(self, date: str, my_team: Optional[str] = None) -> Dict[str, Any]:
         cache_key = f"{date}|{my_team or ''}"
@@ -63,15 +58,9 @@ class HomeService:
         season = int(date[:4])
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            schedule_future = executor.submit(
-                self.schedule_service.get_month_schedule, year_month
-            )
-            standings_future = executor.submit(
-                self.standings_service.get_standings, season
-            )
-            overview_future = executor.submit(
-                self.records_overview_service.get_overview, season
-            )
+            schedule_future = executor.submit(self.schedule_service.get_month_schedule, year_month)
+            standings_future = executor.submit(self.standings_service.get_standings, season)
+            overview_future = executor.submit(self.records_overview_service.get_overview, season)
 
             schedule_payload = self._safe_result(
                 schedule_future,
@@ -150,9 +139,7 @@ class HomeService:
         )
 
         flat_games = [
-            (day.get("date", ""), game)
-            for day in schedule_days
-            for game in day.get("games", [])
+            (day.get("date", ""), game) for day in schedule_days for game in day.get("games", [])
         ]
         flat_games.sort(key=lambda item: item[0])
 
@@ -161,6 +148,7 @@ class HomeService:
             for date_key, game in flat_games
             if date_key <= today
             and (game.get("awayId") == my_team or game.get("homeId") == my_team)
+            and self._is_completed_schedule_game(game)
             and game.get("awayScore") is not None
             and game.get("homeScore") is not None
         ]
@@ -173,9 +161,7 @@ class HomeService:
         for _, game in recent_games[:3]:
             is_away = game.get("awayId") == my_team
             my_score = game.get("awayScore") if is_away else game.get("homeScore")
-            opponent_score = (
-                game.get("homeScore") if is_away else game.get("awayScore")
-            )
+            opponent_score = game.get("homeScore") if is_away else game.get("awayScore")
             if my_score is None or opponent_score is None:
                 continue
             if my_score > opponent_score:
@@ -190,9 +176,7 @@ class HomeService:
             recent_summaries.append(
                 {
                     "result": result,
-                    "opponentName": (
-                        game.get("homeName") if is_away else game.get("awayName")
-                    ),
+                    "opponentName": (game.get("homeName") if is_away else game.get("awayName")),
                     "score": f"{my_score}:{opponent_score}",
                 }
             )
@@ -228,8 +212,8 @@ class HomeService:
         overview: Dict[str, Any],
         games: List[Dict[str, Any]],
         season: int,
-    ) -> List[Dict[str, str]]:
-        items: List[Dict[str, str]] = []
+    ) -> List[Dict[str, Any]]:
+        items: List[Dict[str, Any]] = []
 
         today_game_id = (my_team_brief or {}).get("todayGameId")
         today_game = next(
@@ -245,8 +229,7 @@ class HomeService:
                 title = f"{away.get('shortName')} vs {home.get('shortName')}"
             else:
                 title = (
-                    f"{away.get('shortName')} {away_score} : "
-                    f"{home_score} {home.get('shortName')}"
+                    f"{away.get('shortName')} {away_score} : {home_score} {home.get('shortName')}"
                 )
             items.append(
                 {
@@ -258,7 +241,6 @@ class HomeService:
                     "fallbackLabel": (my_team_brief or {}).get("teamLabel"),
                 }
             )
-
         next_game = (my_team_brief or {}).get("nextGame")
         ticket_info = (next_game or {}).get("ticketInfo")
         if next_game and ticket_info and ticket_info.get("openAt"):
@@ -297,13 +279,17 @@ class HomeService:
         hr_leaders = overview.get("leaders", {}).get("hr", [])
         if hr_leaders:
             leader = hr_leaders[0]
+            player_id = str(leader.get("playerId") or "")
             items.append(
                 {
                     "eyebrow": "홈런왕",
                     "title": f"{leader.get('name')} {leader.get('value')}개",
                     "subtitle": f"{self._TEAM_LABELS.get(leader.get('teamId', ''), leader.get('teamId', ''))} · 시즌 홈런 1위",
-                    "route": "/records",
+                    "route": (
+                        f"/records/player/{player_id}?season={season}" if player_id else "/records"
+                    ),
                     "teamId": leader.get("teamId"),
+                    "imageUrl": self._record_leader_image_url(leader, season),
                     "fallbackLabel": leader.get("name"),
                 }
             )
@@ -339,10 +325,23 @@ class HomeService:
         return items[:4]
 
     @staticmethod
-    def _safe_result(
-        future: concurrent.futures.Future, fallback: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _safe_result(future: concurrent.futures.Future, fallback: Dict[str, Any]) -> Dict[str, Any]:
         try:
             return future.result()
         except Exception:
             return fallback
+
+    @staticmethod
+    def _is_completed_schedule_game(game: Dict[str, Any]) -> bool:
+        return str(game.get("status") or "").upper() == "FINAL"
+
+    @staticmethod
+    def _record_leader_image_url(leader: Dict[str, Any], season: int) -> Optional[str]:
+        image_url = leader.get("imageUrl")
+        if isinstance(image_url, str) and image_url:
+            return image_url
+
+        player_id = str(leader.get("playerId") or "")
+        if not player_id:
+            return None
+        return kbo_player_image_url(season, player_id)

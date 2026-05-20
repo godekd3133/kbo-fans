@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 from kbo_fans_backend.crawlers.records_overview import RecordsOverviewCrawler
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.ttl_cache import TtlCache
+from kbo_fans_backend.utils.player_images import kbo_player_image_url
 
 
 class RecordsOverviewService:
@@ -66,17 +67,13 @@ class RecordsOverviewService:
         self.snapshot_store.save("leaderboard", cache_key, payload)
         return payload
 
-    def _normalize_overview_payload(
-        self, payload: Dict[str, Any], season: int
-    ) -> Dict[str, Any]:
+    def _normalize_overview_payload(self, payload: Dict[str, Any], season: int) -> Dict[str, Any]:
         normalized = dict(payload)
         normalized["season"] = normalized.get("season", season)
         leaders = dict(normalized.get("leaders") or {})
         if not leaders.get("opsPlus"):
             ops_leaders = leaders.get("ops") or []
-            leaders["opsPlus"] = RecordsOverviewCrawler._build_ops_plus_leaders(
-                ops_leaders
-            )[:5]
+            leaders["opsPlus"] = RecordsOverviewCrawler._build_ops_plus_leaders(ops_leaders)[:5]
         normalized["leaders"] = leaders
         normalized["featured"] = self._build_canonical_featured(
             leaders=leaders,
@@ -135,8 +132,5 @@ class RecordsOverviewService:
             "summary": f"{season} 시즌 KBO 공식 기록 기준",
         }
         if player_id:
-            payload["imageUrl"] = RecordsOverviewCrawler._PLAYER_IMAGE_URL.format(
-                season=season,
-                player_id=player_id,
-            )
+            payload["imageUrl"] = kbo_player_image_url(season, player_id)
         return payload

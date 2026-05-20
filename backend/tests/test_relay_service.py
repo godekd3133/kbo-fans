@@ -75,7 +75,7 @@ def test_relay_service_builds_current_at_bat_for_live_game() -> None:
                 "away": {"shortName": "KT", "score": 1, "scores": [1]},
                 "home": {"shortName": "LG", "score": 0, "scores": [0]},
             }
-        )
+        ),
     )
 
     relay = service.get_relay("20260330KTLG0")
@@ -140,6 +140,46 @@ def test_relay_service_uses_full_relay_for_final_game_when_available() -> None:
     assert relay["relayItems"][0]["event"] == "HIT"
     assert relay["relayItems"][0]["text"] == "나승엽: 2타점 적시 2루타"
     assert relay["relayItems"][1]["event"] == "SUBSTITUTION"
+
+
+def test_relay_service_uses_snapshot_first_for_final_game(tmp_path: Path) -> None:
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "relay",
+        "20260329LTSS0",
+        {
+            "gameId": "20260329LTSS0",
+            "currentAtBat": None,
+            "relayItems": [
+                {
+                    "seqNo": 10,
+                    "inning": 1,
+                    "half": "top",
+                    "event": "HIT",
+                    "isScoring": False,
+                    "text": "나승엽 : 우익수 앞 1루타",
+                    "pitchSequence": None,
+                }
+            ],
+        },
+    )
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": "20260329LTSS0",
+                "status": "FINAL",
+                "away": {"shortName": "롯데", "score": 6, "scores": [0]},
+                "home": {"shortName": "삼성", "score": 2, "scores": [0]},
+            }
+        ),
+        snapshot_store=snapshot_store,
+    )
+
+    relay = service.get_relay("20260329LTSS0")
+
+    assert relay["relayItems"][0]["event"] == "HIT"
+    assert relay["relayItems"][0]["text"] == "나승엽 : 우익수 앞 1루타"
 
 
 def test_relay_service_skips_crawler_for_scheduled_game() -> None:

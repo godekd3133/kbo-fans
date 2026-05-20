@@ -31,6 +31,28 @@ def test_build_player_summary_preserves_profile_fields() -> None:
     assert payload["career"] == "서울고-고려대"
 
 
+def test_build_player_summary_uses_2022_image_folder_for_old_seasons() -> None:
+    crawler = PlayerStatsCrawler()
+
+    payload = crawler._build_player_summary(  # type: ignore[attr-defined]
+        player={
+            "id": "12345",
+            "teamId": "LG",
+            "playerType": "hitter",
+            "name": "홍길동",
+            "number": 11,
+            "position": "야수",
+        },
+        season=2013,
+        season_stats={},
+        roster_group="entry",
+        status="available",
+        status_note=None,
+    )
+
+    assert payload["imageUrl"].endswith("/2022/12345.jpg")
+
+
 def test_parse_profile_uses_requested_season_for_image_url() -> None:
     crawler = PlayerStatsCrawler()
     html = """
@@ -52,3 +74,24 @@ def test_parse_profile_uses_requested_season_for_image_url() -> None:
     assert profile["imageUrl"].endswith("/2028/99999.jpg")
     assert profile["handedness"] == "우투우타"
     assert profile["roleLabel"] == "투수"
+
+
+def test_parse_profile_uses_2022_image_folder_for_old_seasons() -> None:
+    crawler = PlayerStatsCrawler()
+    html = """
+    <span id="lblName">홍길동</span>
+    <span id="lblBackNo">10</span>
+    <span id="lblBirthday">2000-01-01</span>
+    <span id="lblPosition">타자(우투좌타)</span>
+    <span id="lblHeightWeight">180cm/80kg</span>
+    <span id="lblCareer">서울고-고려대</span>
+    """
+
+    profile = crawler._parse_profile(  # type: ignore[attr-defined]
+        html,
+        "99999",
+        "hitter",
+        2013,
+    )
+
+    assert profile["imageUrl"].endswith("/2022/99999.jpg")

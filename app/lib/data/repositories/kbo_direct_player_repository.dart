@@ -23,8 +23,6 @@ class KboDirectPlayerRepository implements PlayerRepository {
       '$_kboBase/Record/Player/HitterDetail/Total.aspx?playerId={playerId}';
   static const _pitcherTotalUrl =
       '$_kboBase/Record/Player/PitcherDetail/Total.aspx?playerId={playerId}';
-  static const _playerImageUrl =
-      'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{season}/{playerId}.jpg';
   static const _hitterAvgUrl =
       '$_kboBase/Record/Player/HitterBasic/Basic1.aspx?sort=HRA_RT';
   static const _hitterHrUrl =
@@ -618,9 +616,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
       id: playerId,
       teamId: '',
       playerType: playerType,
-      imageUrl: _playerImageUrl
-          .replaceFirst('{season}', '$season')
-          .replaceFirst('{playerId}', playerId),
+      imageUrl: kboPlayerImageUrl(season: season, playerId: playerId),
       name: _extractProfileField(html, 'lblName'),
       number: _parseInt(_extractProfileField(html, 'lblBackNo')) ?? 0,
       position: position,
@@ -996,9 +992,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
         targetType: targetType,
         periodLabel: periodLabel,
       ),
-      imageUrl: _playerImageUrl
-          .replaceFirst('{season}', '$season')
-          .replaceFirst('{playerId}', leader.playerId),
+      imageUrl: kboPlayerImageUrl(season: season, playerId: leader.playerId),
     );
   }
 
@@ -1046,9 +1040,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
       id: player.id,
       teamId: player.teamId,
       playerType: player.playerType,
-      imageUrl: _playerImageUrl
-          .replaceFirst('{season}', '$season')
-          .replaceFirst('{playerId}', player.id),
+      imageUrl: kboPlayerImageUrl(season: season, playerId: player.id),
       name: player.name,
       number: player.number,
       position: player.position,
@@ -1084,9 +1076,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
       id: row.id,
       teamId: row.teamId,
       playerType: row.playerType,
-      imageUrl: _playerImageUrl
-          .replaceFirst('{season}', '$season')
-          .replaceFirst('{playerId}', row.id),
+      imageUrl: kboPlayerImageUrl(season: season, playerId: row.id),
       name: row.name,
       number: 0,
       position: row.playerType == PlayerType.pitcher ? '투수' : '야수',

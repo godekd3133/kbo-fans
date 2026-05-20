@@ -213,3 +213,40 @@ def test_overview_snapshot_is_normalized_with_ops_plus(tmp_path) -> None:
         "111",
         "89",
     ]
+
+
+def test_overview_featured_images_use_2022_folder_for_old_seasons(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    store.save(
+        "records_overview",
+        "2013",
+        {
+            "season": 2013,
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 1,
+                        "playerId": "77532",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "손아섭",
+                        "teamId": "LT",
+                        "value": "0.345",
+                    }
+                ],
+                "hr": [],
+                "ops": [],
+                "era": [],
+            },
+            "featured": {},
+        },
+    )
+
+    service = RecordsOverviewService(
+        crawler=_FailingRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    payload = service.get_overview(2013)
+
+    assert payload["featured"]["todayHitter"]["imageUrl"].endswith("/2022/77532.jpg")

@@ -23,12 +23,24 @@ class RelayService:
         snapshot = self.snapshot_store.load_payload("relay", game_id)
         game_status = game.get("status") if game is not None else None
 
+        if (
+            game_status == "FINAL"
+            and snapshot is not None
+            and self._has_detailed_items(snapshot.get("relayItems", []))
+        ):
+            if after is not None:
+                snapshot = {
+                    **snapshot,
+                    "relayItems": [
+                        item for item in snapshot.get("relayItems", []) if item["seqNo"] > after
+                    ],
+                }
+            return snapshot
+
         if game_status in {"SCHEDULED", "CANCELLED", "SUSPENDED"}:
             relay_items = self._build_summary_items(game)
             if after is not None:
-                relay_items = [
-                    item for item in relay_items if item["seqNo"] > after
-                ]
+                relay_items = [item for item in relay_items if item["seqNo"] > after]
             payload = {
                 "gameId": game_id,
                 "currentAtBat": None,

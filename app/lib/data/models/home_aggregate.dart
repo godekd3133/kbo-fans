@@ -131,6 +131,7 @@ HomeMyTeamBrief? _buildLocalMyTeamBrief({
           .where(
             (entry) => entry.$2.awayId == myTeam || entry.$2.homeId == myTeam,
           )
+          .where((entry) => entry.$2.status.toUpperCase() == 'FINAL')
           .where(
             (entry) => entry.$2.awayScore != null && entry.$2.homeScore != null,
           )
@@ -202,11 +203,13 @@ List<HomeQuickItem> _buildLocalQuickItems({
             .firstOrNull;
 
   if (todayGame != null) {
+    final showScore = todayGame.status != GameStatus.scheduled;
     items.add(
       HomeQuickItem(
         eyebrow: '마이팀 경기',
-        title:
-            '${todayGame.away.shortName} ${todayGame.away.score} : ${todayGame.home.score} ${todayGame.home.shortName}',
+        title: showScore
+            ? '${todayGame.away.shortName} ${todayGame.away.score} : ${todayGame.home.score} ${todayGame.home.shortName}'
+            : '${todayGame.away.shortName} vs ${todayGame.home.shortName}',
         subtitle:
             '${todayGame.inning.isEmpty ? todayGame.startTime : todayGame.inning} · ${todayGame.stadium}',
         route: '/game/${todayGame.gameId}',
@@ -245,13 +248,19 @@ List<HomeQuickItem> _buildLocalQuickItems({
 
   if (overview.hrLeaders.isNotEmpty) {
     final leader = overview.hrLeaders.first;
+    final leaderImageUrl = leader.playerId.isEmpty
+        ? null
+        : kboPlayerImageUrl(season: season, playerId: leader.playerId);
     items.add(
       HomeQuickItem(
         eyebrow: '홈런왕',
         title: '${leader.name} ${leader.value}개',
         subtitle: '${leader.teamId} · 시즌 홈런 1위',
-        route: '/records',
+        route: leader.playerId.isEmpty
+            ? '/records'
+            : '/records/player/${leader.playerId}?season=$season',
         teamId: leader.teamId,
+        imageUrl: leaderImageUrl,
         fallbackLabel: leader.name,
       ),
     );

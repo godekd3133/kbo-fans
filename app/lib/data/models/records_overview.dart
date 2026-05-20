@@ -1,5 +1,15 @@
 enum LeaderboardMetric { avg, hr, ops, era, war, opsPlus }
 
+const kboPlayerImageBase =
+    'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
+const kboPlayerImageMinSeason = 2022;
+
+int kboPlayerImageSeason(int season) =>
+    season < kboPlayerImageMinSeason ? kboPlayerImageMinSeason : season;
+
+String kboPlayerImageUrl({required int season, required String playerId}) =>
+    '$kboPlayerImageBase/${kboPlayerImageSeason(season)}/$playerId.jpg';
+
 extension LeaderboardMetricX on LeaderboardMetric {
   String get key => switch (this) {
     LeaderboardMetric.avg => 'avg',
@@ -16,7 +26,7 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.ops => '리그 OPS 리더보드',
     LeaderboardMetric.era => '리그 ERA 리더보드',
     LeaderboardMetric.war => '리그 WAR 리더보드',
-    LeaderboardMetric.opsPlus => '리그 OPS+ 리더보드',
+    LeaderboardMetric.opsPlus => '리그 wRC+ 리더보드',
   };
 
   String get shortLabel => switch (this) {
@@ -25,7 +35,7 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.ops => 'OPS',
     LeaderboardMetric.era => 'ERA',
     LeaderboardMetric.war => 'WAR',
-    LeaderboardMetric.opsPlus => 'OPS+',
+    LeaderboardMetric.opsPlus => 'wRC+',
   };
 
   bool get supportedByOfficialSource => switch (this) {

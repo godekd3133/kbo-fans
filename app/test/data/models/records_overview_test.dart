@@ -30,4 +30,17 @@ void main() {
     expect(opsPlusLeaders[1].name, 'B');
     expect(opsPlusLeaders[1].value, '89');
   });
+
+  test('과거 시즌 선수 이미지는 2022 CDN 폴더를 사용한다', () {
+    expect(kboPlayerImageSeason(2013), 2022);
+    expect(
+      kboPlayerImageUrl(season: 2013, playerId: '77532'),
+      'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/77532.jpg',
+    );
+  });
+
+  test('OPS 기반 상대 리더보드 표시 라벨은 wRC+를 사용한다', () {
+    expect(LeaderboardMetric.opsPlus.title, '리그 wRC+ 리더보드');
+    expect(LeaderboardMetric.opsPlus.shortLabel, 'wRC+');
+  });
 }
