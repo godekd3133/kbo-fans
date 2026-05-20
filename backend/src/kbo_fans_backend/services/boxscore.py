@@ -31,7 +31,11 @@ class BoxscoreService:
         try:
             payload = self.crawler.get_boxscore(game_id)
         except Exception:
-            if snapshot is not None and not self._is_empty_payload(snapshot):
+            if (
+                snapshot is not None
+                and self._is_past_game_id(game_id)
+                and not self._is_empty_payload(snapshot)
+            ):
                 return snapshot
             raise
 
@@ -46,7 +50,11 @@ class BoxscoreService:
                 except Exception:
                     pass
 
-            if snapshot is not None and not self._is_empty_payload(snapshot):
+            if (
+                snapshot is not None
+                and self._is_past_game_id(game_id)
+                and not self._is_empty_payload(snapshot)
+            ):
                 return snapshot
             return payload
 

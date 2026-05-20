@@ -1,3 +1,5 @@
+import pytest
+
 from kbo_fans_backend.services.boxscore import BoxscoreService
 from kbo_fans_backend.storage import JsonSnapshotStore
 
@@ -113,3 +115,27 @@ def test_boxscore_service_marks_empty_payload_as_not_official() -> None:
     assert payload["officialAvailable"] is False
     assert payload["away"]["batters"] == []
     assert payload["home"]["pitchers"] == []
+
+
+def test_boxscore_service_does_not_use_snapshot_for_current_game_failure(tmp_path) -> None:
+    class FailingCrawler:
+        def get_boxscore(self, game_id: str):
+            raise RuntimeError("boxscore unavailable")
+
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
+    snapshot_store.save(
+        "boxscore",
+        "29990101KTLG0",
+        {
+            "gameId": "29990101KTLG0",
+            "away": {"teamId": "KT", "batters": [{"name": "A"}], "pitchers": []},
+            "home": {"teamId": "LG", "batters": [], "pitchers": [{"name": "P"}]},
+        },
+    )
+    service = BoxscoreService(
+        crawler=FailingCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    with pytest.raises(RuntimeError, match="boxscore unavailable"):
+        service.get_boxscore("29990101KTLG0")

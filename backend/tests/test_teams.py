@@ -39,7 +39,7 @@ def test_get_team_records_returns_players_and_stats(monkeypatch) -> None:
     assert body["data"]["teamStats"] == expected_stats
 
 
-def test_get_team_records_returns_partial_payload_when_players_fail(monkeypatch) -> None:
+def test_get_team_records_propagates_player_failure(monkeypatch) -> None:
     expected_stats = {
         "teamId": "LG",
         "season": 2026,
@@ -57,12 +57,8 @@ def test_get_team_records_returns_partial_payload_when_players_fail(monkeypatch)
         lambda team_id, season: expected_stats,
     )
 
-    client = TestClient(app)
+    client = TestClient(app, raise_server_exceptions=False)
 
     response = client.get("/api/team/LG/records", params={"season": 2026})
 
-    assert response.status_code == 200
-    body = response.json()
-    assert body["success"] is True
-    assert body["data"]["players"] == []
-    assert body["data"]["teamStats"] == expected_stats
+    assert response.status_code == 500

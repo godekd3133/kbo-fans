@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from kbo_fans_backend.services.relay import RelayService
 from kbo_fans_backend.storage import JsonSnapshotStore
 
@@ -58,7 +60,7 @@ def test_relay_service_builds_summary_items_for_final_game(tmp_path: Path) -> No
     assert relay["relayItems"][-1]["event"] == "GAME_END"
 
 
-def test_relay_service_builds_current_at_bat_for_live_game() -> None:
+def test_relay_service_does_not_summary_fallback_for_live_game() -> None:
     service = RelayService(
         relay_crawler=_FailingRelayCrawler(),
         scoreboard_service=_StubScoreboardService(
@@ -78,15 +80,8 @@ def test_relay_service_builds_current_at_bat_for_live_game() -> None:
         ),
     )
 
-    relay = service.get_relay("20260330KTLG0")
-
-    assert relay["currentAtBat"]["batter"]["name"] == "홍길동"
-    assert relay["currentAtBat"]["pitcher"]["name"] == "김투수"
-    assert relay["currentAtBat"]["ballCount"] == {
-        "balls": 2,
-        "strikes": 1,
-        "outs": 1,
-    }
+    with pytest.raises(RuntimeError, match="relay unavailable"):
+        service.get_relay("20260330KTLG0")
 
 
 def test_relay_service_uses_full_relay_for_final_game_when_available() -> None:

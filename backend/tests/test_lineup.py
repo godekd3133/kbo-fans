@@ -1,3 +1,5 @@
+import pytest
+
 from kbo_fans_backend.services.lineup import LineupService
 from kbo_fans_backend.storage import JsonSnapshotStore
 
@@ -96,3 +98,34 @@ def test_lineup_service_uses_snapshot_first_for_past_game(tmp_path) -> None:
 
     assert payload["away"]["lineup"] == [{"name": "홍창기"}]
     assert payload["home"]["lineup"] == [{"name": "박준영"}]
+
+
+def test_lineup_service_does_not_use_snapshot_for_current_game_failure(tmp_path) -> None:
+    class FailingLineupCrawler:
+        def get_lineup(self, game_id: str):
+            raise RuntimeError("lineup unavailable")
+
+    class FailingBoxscoreCrawler:
+        def get_boxscore(self, game_id: str):
+            raise RuntimeError("boxscore unavailable")
+
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
+    snapshot_store.save(
+        "lineup",
+        "29990101LGOB0",
+        {
+            "gameId": "29990101LGOB0",
+            "away": {"teamId": "LG", "lineup": [{"name": "홍창기"}]},
+            "home": {"teamId": "OB", "lineup": [{"name": "박준영"}]},
+        },
+    )
+    service = LineupService(
+        lineup_crawler=FailingLineupCrawler(),
+        boxscore_crawler=FailingBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=snapshot_store,
+        push_service=_NoopPushService(),
+    )
+
+    with pytest.raises(RuntimeError, match="lineup unavailable"):
+        service.get_lineup("29990101LGOB0")

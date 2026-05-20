@@ -42,7 +42,11 @@ class LineupService:
             lineup = self.lineup_crawler.get_lineup(game_id)
             boxscore = self.boxscore_crawler.get_boxscore(game_id)
         except Exception:
-            if snapshot is not None:
+            if (
+                snapshot is not None
+                and self._is_past_game_id(game_id)
+                and self._has_ready_lineup(snapshot)
+            ):
                 return snapshot
             raise
 

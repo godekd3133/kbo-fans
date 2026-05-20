@@ -68,7 +68,11 @@ class RelayService:
                 self.snapshot_store.save("relay", game_id, payload)
             return payload
         except Exception:
-            if snapshot is not None and self._has_detailed_items(snapshot.get("relayItems", [])):
+            if (
+                game_status != "LIVE"
+                and snapshot is not None
+                and self._has_detailed_items(snapshot.get("relayItems", []))
+            ):
                 if after is not None:
                     snapshot = {
                         **snapshot,
@@ -77,6 +81,8 @@ class RelayService:
                         ],
                     }
                 return snapshot
+            if game_status == "LIVE":
+                raise
 
         if game is None:
             return {

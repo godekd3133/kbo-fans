@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import concurrent.futures
-from typing import Any, Dict
 
 from fastapi import APIRouter, Query
 
@@ -29,19 +28,8 @@ def get_team_records(team_id: str, season: int = Query(...)) -> ApiEnvelope[dict
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         players_future = executor.submit(service.get_team_players, team_id, season)
         stats_future = executor.submit(team_stats_service.get_team_stats, team_id, season)
-        players_payload = _safe_future_result(
-            players_future,
-            fallback={"teamId": team_id, "season": season, "players": []},
-        )
-        stats_payload = _safe_future_result(
-            stats_future,
-            fallback={
-                "teamId": team_id,
-                "season": season,
-                "hitting": {},
-                "pitching": {},
-            },
-        )
+        players_payload = players_future.result()
+        stats_payload = stats_future.result()
 
     return ApiEnvelope.success_response(
         {
@@ -51,12 +39,3 @@ def get_team_records(team_id: str, season: int = Query(...)) -> ApiEnvelope[dict
             "teamStats": stats_payload,
         }
     )
-
-
-def _safe_future_result(
-    future: concurrent.futures.Future, fallback: Dict[str, Any]
-) -> Dict[str, Any]:
-    try:
-        return future.result()
-    except Exception:
-        return fallback
