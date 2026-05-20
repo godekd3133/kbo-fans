@@ -13,7 +13,10 @@
 - [x] `ScoreboardService`가 current-day scoreboard/compact crawler 실패 시 fresh + terminal snapshot만 fallback으로 사용하고, 오래된 non-terminal snapshot은 거부하도록 보정
 - [x] historical date/season/month stale cache와 저장 snapshot fallback은 기존처럼 유지
 - [x] 앱 기록실 선수/리더 모델과 API/local/device snapshot 직렬화에서 `isRetired` 플래그 보존
-- [x] 앱 API cached-first 요청이 원격 실패 시에도 TTL이 지난 cache를 반환하지 않도록 보정
+- [x] 앱 API cache 분기에서 cached-first historical 경로와 fresh-first current 경로를 분리하고, fresh-first 원격 실패 시 TTL이 지난 cache를 반환하지 않도록 보정
+- [x] 현재 시즌 records overview 번들 fallback도 `generatedAt` 6시간 신선도 기준으로 제한
+- [x] 홈 오늘 스코어보드 임시 cache를 `savedAt` envelope 로 저장하고 live/scheduled/terminal 상태별 TTL 안에서만 로딩 대체 UI로 표시
+- [x] 현재 시즌 팀 선수 API 요청은 historical season과 달리 오래된 cache 우선 표시를 하지 않고 원격 최신값을 먼저 시도하도록 보정
 - [x] `AGENTS.md`, `CLAUDE.md`, `.claude/skills/kbo-runtime-data/SKILL.md`, `docs/APP_SPEC.md`, `README.md`, `docs/VERSIONING.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`를 `0.0.16` 기준으로 갱신
 
 ### 검증
@@ -24,9 +27,13 @@
 - [x] local API 실측: `/api/scoreboard/home` 0.306s, `/api/schedule?month=2026-05` 0.263s, `/api/standings?season=2026` 0.065s, `/api/records/overview?season=2026` 0.652s
 - [x] local API 값 확인: 2026-05-20 현재 18:30 예정 5경기는 점수 `None`, 순위 상위 `SS/KT 25-17-1 .595`, 기록 리더 `박성한 .379`, `김도영 13`
 - [x] `cd app && fvm dart format lib/data/models/player.dart lib/data/models/records_overview.dart lib/data/repositories/api_player_repository.dart lib/data/repositories/device_snapshot_player_repository.dart lib/data/repositories/local_asset_player_repository.dart`
+- [x] `cd app && fvm dart format lib/data/api/api_client.dart lib/data/repositories/api_player_repository.dart lib/data/bootstrap/bootstrap_repository.dart lib/features/home/home_screen.dart test/data/api_client_test.dart test/data/bootstrap_repository_test.dart`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart test/data/bootstrap_repository_test.dart -r expanded`
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test test/data/local_asset_player_repository_test.dart test/data/device_snapshot_player_repository_test.dart -r expanded`
 - [x] `cd app && fvm flutter test test/data/models/records_overview_test.dart -r expanded`
+- [x] `python3 -m py_compile scripts/generate_bootstrap_snapshots.py`
+- [x] `cd app && fvm flutter test test/data/api_client_test.dart test/data/bootstrap_repository_test.dart test/data/local_asset_player_repository_test.dart test/data/device_snapshot_player_repository_test.dart test/data/models/records_overview_test.dart -r expanded`
 
 ---
 
@@ -1655,6 +1662,8 @@ kbo_fans/
 - [x] direct-primary 기록실의 과거 시즌 조회 실패 원인 분석: KBO WebForms 시즌 변경 POST가 hidden field 일부만 보내 cookie/session form state 없이 오류 페이지로 떨어져 2025/2024 리더보드와 팀 스탯이 빈 결과가 되던 문제 확인
 - [x] `KboDirectPlayerRepository`에 CookieJar 기반 session 유지와 전체 WebForms form payload 재전송을 적용해 과거 시즌 records overview / leaderboard / team stats POST를 정상화
 - [x] direct-primary 과거 시즌 팀 기록실은 현재 로스터 검색 대신 KBO 시즌/팀 filter 기록 테이블에서 야수/투수 선수 기록을 구성하도록 보정
+- [x] KBO 과거 리더보드에서 은퇴 선수 링크(`/Record/Retire/...`)를 버리던 파서를 보정해 2013 타율/홈런/OPS와 2011 ERA가 실제 공식 순위 1위부터 표시되도록 수정
+- [x] 은퇴 선수 리더/팀 선수 항목은 `isRetired` 플래그를 앱/백엔드/snapshot 모델에 보존하고, 앱에서 은퇴 배지를 표시하며 상세 화면 진입은 막도록 보정
 - [x] backend `RecordsOverviewCrawler` / `TeamStatsCrawler`도 동일한 전체 WebForms form payload 방식으로 보정해 이후 bootstrap/snapshot 생성이 빈 과거 시즌 데이터로 재생성되지 않도록 정리
 - [x] 홈 스코어보드 캐시 저장이 `build` 이후 반복 `setState`를 유발할 수 있던 경로를 payload guard와 무상태 캐시 갱신으로 차단해 실기기 CPU/발열 위험을 낮춤
 - [x] 실기기 발열 후보 추가 감사: 홈 이벤트 알림 side effect를 scoreboard payload당 1회로 제한하고, iOS widget App Group 초기화와 닫힌 Dev Console 로그 rebuild를 중복 실행하지 않도록 보정
@@ -1667,6 +1676,8 @@ kbo_fans/
 - 추가 데이터 경로 검증으로 `fvm flutter test test/data/local_asset_player_repository_test.dart`를 실행해 누락 asset이 mock player로 떨어지지 않는지 확인함
 - direct-primary 실측으로 앱 repository가 2025 records overview `avg/hr/ops/opsPlus/era` 각 5개, LG 2025 팀 기록 54명(야수 30명/투수 24명), 팀 타율 `0.278`, 팀 ERA `3.79`를 반환하는지 확인함
 - backend crawler 실측으로 2025 overview 각 리더 5개와 LG 2025 팀 타율/ERA 응답을 확인했고, `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_teams.py` 통과
+- 은퇴 선수 링크 보정 후 backend crawler 실측으로 2013 `avg/hr/ops/era`와 2011 `avg/hr/ops/era`가 공식 순위 1위부터 반환되는지 확인했고, 특히 2011 ERA가 `윤석민 2.45`부터 채워지는지 확인함
+- 은퇴 선수 링크 보정 검증으로 `fvm flutter analyze`, `fvm flutter test test/data/models/records_overview_test.dart`, `python3 -m compileall -q backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py` 통과
 - 추가 검증으로 `python3 -m py_compile backend/src/kbo_fans_backend/crawlers/base.py backend/src/kbo_fans_backend/crawlers/records_overview.py backend/src/kbo_fans_backend/crawlers/team_stats.py`, `fvm flutter analyze`, `fvm flutter test test/data/local_asset_player_repository_test.dart` 통과
 - 홈 캐시 루프 보정 후 `fvm flutter analyze app/lib/features/home/home_screen.dart`, `fvm flutter test test/widget_test.dart` 통과
 - 발열 후보 추가 보정 후 `fvm flutter analyze app/lib/features/home/home_screen.dart app/lib/services/widget_sync_service.dart app/lib/core/widgets/dev_console.dart`, `fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart` 통과

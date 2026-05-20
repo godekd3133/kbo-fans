@@ -21,10 +21,15 @@
 - 현재 날짜 scoreboard snapshot fallback은 fresh + terminal 상태일 때만 허용해 진행 중 경기의 오래된 snapshot 재노출을 차단
 - 앱 기록실 선수/리더 모델과 device/local snapshot 직렬화에서 `isRetired` 플래그를 보존하도록 변경
 - 앱 API cached-first 요청은 원격 실패 시에도 TTL이 지난 cache를 fallback으로 반환하지 않도록 제한
+- 현재 시즌 records overview 번들은 `generatedAt` 기준 최신 snapshot만 fallback으로 사용하도록 제한
+- 홈 스코어보드 로컬 cache는 `savedAt` 포함 payload만 인정하고 경기 상태별 TTL을 적용하도록 변경
+- 현재 시즌 팀 선수 API 요청은 오래된 cache 우선 표시를 피하고 원격 최신값을 먼저 시도하도록 변경
 
 ### Fixed
 
 - 원천 조회 실패 시 오래된 현재 날짜/시즌 backend snapshot이 최신 데이터처럼 재노출될 수 있던 경로 차단
+- 과거 시즌 기록실 리더보드가 은퇴 선수를 누락해 `2, 9, 13위`처럼 보이거나 2011 ERA가 빈 데이터로 표시되던 문제를 수정
+- 앱 재실행 직후 오래된 홈 스코어보드 로컬 cache가 최신 현재 경기처럼 먼저 보일 수 있던 경로 차단
 
 ## [0.0.15] - 2026-05-20
 

@@ -288,6 +288,7 @@ GET /api/team/{teamId}/players?season=2026
 - 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `5분 TTL` 캐시를 사용한다.
 - 앱은 기록실 로딩 완료 시간을 Dev Console 과 `/api/metrics/client` 로 함께 기록한다.
 - 기록실 요약/리더보드 번들 스냅샷은 요청한 시즌과 정확히 일치할 때만 사용한다.
+- 현재 시즌 기록실 요약 번들은 `generatedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다.
 - 다른 시즌 기록으로 대체 표시하지 않는다. exact snapshot 이 없거나 비어 있으면 빈 상태/오류를 노출해 가짜 리더가 재유입되지 않게 한다.
 - 팀 선수/팀 스탯 local asset 은 요청한 팀/시즌의 exact snapshot 만 사용한다. 해당 시즌 snapshot 이 없거나 팀 스탯의 타격/투구 중 한쪽만 있으면 다른 시즌 데이터를 빌리지 않고 빈 상태로 처리한다.
 - 현재 시즌 팀 선수/팀 스탯 local asset 과 기기 snapshot cache 는 `savedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다. timestamp 가 없는 legacy cache 나 오래된 번들 asset 은 현재 시즌에서 무효 처리한다.
@@ -947,9 +948,10 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 
 ### 앱 렌더링 정책
 
-- 앱은 cold start 시 로컬에 남아 있는 마지막 성공 응답을 먼저 렌더링하고, 서버 최신값은 백그라운드에서 동기화한다.
-- 홈/일정/순위/기록실은 모두 stale-while-revalidate 패턴을 기본값으로 삼는다.
+- 앱은 cold start 시 현재 날짜/시즌 데이터는 TTL 안의 로컬 응답만 먼저 렌더링하고, TTL 이 지난 데이터는 서버 최신값을 기다린다.
+- 홈/일정/순위/기록실의 히스토리 데이터는 stale-while-revalidate 를 유지하되, current 데이터는 fresh-first 로 처리한다.
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
+- 홈 스코어보드 로컬 cache 는 `savedAt` envelope 가 있는 payload 만 인정하고, live 60초 / scheduled 또는 empty 5분 / terminal 6시간 TTL 을 적용한다.
 - backend current-date 스코어보드와 current-season/month 일정/순위/기록실 요약/리더보드 snapshot fallback 은 `savedAt` 기준 6시간 이내 저장본만 사용한다. 과거 날짜/시즌/월 snapshot 은 저장본 우선 정책을 유지한다.
 
 ---
@@ -1189,6 +1191,7 @@ GET /api/standings?season={YYYY}
 - 당일 경기 진행 중에는 짧은 캐시 + 재계산을 허용하되, 지난 날짜 기준 순위는 저장된 snapshot 을 우선 사용한다.
 - 앱 번들 standings fallback 은 요청 시즌 exact snapshot 이고 순위 배열이 비어 있지 않을 때만 사용한다.
 - 현재 시즌 standings 번들은 `generatedAt` 기준 6시간 이내일 때만 사용한다. 검증되지 않은 과거 시즌은 빈 exact snapshot 으로 둬 다른 시즌/개막 초반 순위를 빌려 보여주지 않는다.
+- 앱 번들 records overview fallback 도 요청 시즌 exact snapshot 만 사용하고, 현재 시즌은 `generatedAt` 기준 6시간 이내일 때만 사용한다.
 
 **응답**:
 ```json
