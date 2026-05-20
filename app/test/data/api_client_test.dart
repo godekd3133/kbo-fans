@@ -184,6 +184,75 @@ void main() {
     },
   );
 
+  test('scoreboard parser keeps missing team totals unavailable', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ApiGameRepository(
+      ApiClient(
+        dio: _dioWithAdapter(
+          _SuccessAdapter({
+            'date': '2026-05-20',
+            'games': [
+              {
+                'gameId': '20260520XXYY0',
+                'status': 'LIVE',
+                'inning': '8회초',
+                'away': {
+                  'teamId': 'XX',
+                  'teamName': '원정',
+                  'shortName': '원정',
+                  'score': 2,
+                  'scores': [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                  ],
+                  'hits': null,
+                  'errors': null,
+                  'balls': null,
+                },
+                'home': {
+                  'teamId': 'YY',
+                  'teamName': '홈',
+                  'shortName': '홈',
+                  'score': 1,
+                  'scores': [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                  ],
+                  'hits': null,
+                  'errors': null,
+                  'balls': null,
+                },
+                'stadium': '잠실',
+                'startTime': '18:30',
+              },
+            ],
+          }),
+        ),
+        enableRequestTiming: false,
+      ),
+    );
+
+    final games = await repository.getScoreboard('2026-05-20');
+
+    expect(games.single.hasTeamStats, isFalse);
+    expect(games.single.away.hits, 0);
+    expect(games.single.home.walks, 0);
+  });
+
   test(
     'current standings API failure is not masked by fresh API cache or app bootstrap',
     () async {

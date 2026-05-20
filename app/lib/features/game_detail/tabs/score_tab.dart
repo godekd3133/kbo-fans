@@ -169,11 +169,15 @@ class ScoreTab extends StatelessWidget {
                 : () => _openInningSheet(context, i + 1, relayItems),
           ),
         _tableCell(context, '${team.score}', boldStyle),
-        _tableCell(context, '${team.hits}', boldStyle),
-        _tableCell(context, '${team.errors}', boldStyle),
-        _tableCell(context, '${team.walks}', boldStyle),
+        _tableCell(context, _teamStatText(team, team.hits), boldStyle),
+        _tableCell(context, _teamStatText(team, team.errors), boldStyle),
+        _tableCell(context, _teamStatText(team, team.walks), boldStyle),
       ],
     );
+  }
+
+  String _teamStatText(TeamScore team, int value) {
+    return team.hasStats ? '$value' : '-';
   }
 
   Widget _tableCell(

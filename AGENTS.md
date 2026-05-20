@@ -75,6 +75,7 @@
   - App API cache must not be used as an error fallback for current date/month/season data. Keep `allowCacheOnFailure` default false and only let historical paths opt in to cached-first/snapshot behavior.
   - Home first paint must not render a separate today-scoreboard local cache while current scoreboard API is still loading. Show latest API data or an explicit loading/error state.
   - Backend `/scoreboard/home` and `/scoreboard/compact` are lightweight summary paths. Do not call per-game scoreboard detail crawlers there; reserve detail crawling for full scoreboard and game detail.
+  - App UI must treat null H/E/B team totals as unavailable instead of rendering fake 0 records.
 - App-wide Provider retry is intentionally disabled. Do not depend on Riverpod automatic retries to hide API failures; surface errors in screen state and log technical detail to Dev Console.
 - When touching direct KBO parsers in `app/lib/data/repositories/kbo_direct_repository.dart`, keep field parity with backend contracts. Schedule status, scores, and standings parsing have already drifted once and broke UI state.
 - Dev-only diagnostics should stay in Dev Console when possible. Avoid promoting debugging affordances to user-facing UI unless explicitly requested.

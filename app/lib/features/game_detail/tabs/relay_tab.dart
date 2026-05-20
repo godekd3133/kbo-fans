@@ -412,11 +412,9 @@ class _RelayGameSummary extends StatelessWidget {
           const SizedBox(height: 12),
           _RelayStatRow(
             leftLabel: game.away.shortName,
-            leftValue:
-                '안타 ${game.away.hits} · 실책 ${game.away.errors} · 사사구 ${game.away.walks}',
+            leftValue: _teamStatSummary(game.away),
             rightLabel: game.home.shortName,
-            rightValue:
-                '안타 ${game.home.hits} · 실책 ${game.home.errors} · 사사구 ${game.home.walks}',
+            rightValue: _teamStatSummary(game.home),
           ),
           const SizedBox(height: 12),
           _LineScoreStrip(away: game.away, home: game.home),
@@ -424,6 +422,13 @@ class _RelayGameSummary extends StatelessWidget {
       ),
     );
   }
+}
+
+String _teamStatSummary(TeamScore team) {
+  if (!team.hasStats) {
+    return '안타 - · 실책 - · 사사구 -';
+  }
+  return '안타 ${team.hits} · 실책 ${team.errors} · 사사구 ${team.walks}';
 }
 
 class _RelayFallbackNotice extends StatelessWidget {

@@ -196,7 +196,7 @@
 | KBO 브리프 | `오늘의 KBO 관전 포인트`, `지금 KBO`, `어제의 KBO 브리프`처럼 날짜/경기 상태별 리그 전체 핵심 이슈 3~5개 노출 |
 | 오늘의 야구 | 경기 수, LIVE 수, 종료 수를 한 줄 요약 카드로 표시 |
 | 빠른 콘텐츠 | 리그 리더/오늘의 플레이어/마이팀 순위 등 2~3개 카드형 콘텐츠. 선수 카드 탭 시 최근 기록 요약 바텀시트 후 상세 진입 가능 |
-| 마이팀 경기 카드 | 상단 고정, 확대 카드. 이닝별 스코어(R/H/E/B) 포함 |
+| 마이팀 경기 카드 | 상단 고정, 확대 카드. 이닝별 스코어(R/H/E/B) 포함. H/E/B 원천값이 없으면 해당 요약 행은 숨김 |
 | 일반 경기 카드 | 간략 표시: 양팀 로고 + 팀명 + 스코어 + 이닝/상태 |
 | 경기 상태 뱃지 | `경기 전` / `1회초` ~ `12회말` / `경기종료` / `우천취소` |
 
@@ -382,7 +382,7 @@ GET /api/player/{playerId}?season=2026
 | 요소 | 설명 |
 |------|------|
 | 이닝 스코어 테이블 | 가로 스크롤 (9이닝+연장). 현재 이닝 하이라이트 |
-| R/H/E/B 요약 | 하단 고정. 안타/실책/볼넷 합계 |
+| R/H/E/B 요약 | 하단 고정. 안타/실책/볼넷 합계. 원천값이 없으면 `0`이 아니라 `-`로 표시 |
 | 현재 이닝 | 컬럼 배경색으로 강조 |
 | 미진행 이닝 | `-` 표시 |
 | 이닝 상세 보기 | 이닝/점수 셀 탭 시 해당 회차 주요 이벤트 바텀시트 표시 |
@@ -956,6 +956,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 첫 로딩은 오늘 스코어보드 별도 로컬 cache 를 먼저 렌더링하지 않고, 최신 API 응답 또는 명시적 오류 상태를 기준으로 전환한다.
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
+- 앱은 scoreboard payload의 팀 합계 H/E/B가 `null`이면 미수집 값으로 처리하고, 이를 `0` 기록처럼 렌더링하지 않는다.
 - 앱 전역 Provider retry 는 비활성화한다. 화면은 API 실패를 자동 retry 뒤에 숨기지 않고 오류 카드, 빈 상태, 또는 Dev Console 로그로 명시한다.
 - `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록/팀 선수/팀 스탯/선수 상세는 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.

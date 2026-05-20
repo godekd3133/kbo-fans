@@ -12,6 +12,7 @@ class TeamScore {
   final int hits;
   final int errors;
   final int walks;
+  final bool hasStats;
 
   const TeamScore({
     required this.teamId,
@@ -22,6 +23,7 @@ class TeamScore {
     this.hits = 0,
     this.errors = 0,
     this.walks = 0,
+    this.hasStats = true,
   });
 }
 
@@ -49,4 +51,6 @@ class Game {
     this.ticketInfo,
     this.highlightInfo,
   });
+
+  bool get hasTeamStats => away.hasStats && home.hasStats;
 }

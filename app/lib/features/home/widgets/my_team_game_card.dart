@@ -156,31 +156,33 @@ class MyTeamGameCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _statusTile(
-                    '안타',
-                    '${game.away.hits}-${game.home.hits}',
+            if (game.hasTeamStats) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _statusTile(
+                      '안타',
+                      '${game.away.hits}-${game.home.hits}',
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _statusTile(
-                    '실책',
-                    '${game.away.errors}-${game.home.errors}',
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _statusTile(
+                      '실책',
+                      '${game.away.errors}-${game.home.errors}',
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _statusTile(
-                    '볼넷',
-                    '${game.away.walks}-${game.home.walks}',
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _statusTile(
+                      '볼넷',
+                      '${game.away.walks}-${game.home.walks}',
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
             Row(
               children: [
                 Expanded(

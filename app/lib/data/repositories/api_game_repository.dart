@@ -306,6 +306,8 @@ class ApiGameRepository implements GameRepository {
     final scores =
         (json['scores'] as List<dynamic>?)?.map((s) => s as int?).toList() ??
         List.filled(9, null);
+    final hasStats =
+        json['hits'] is int && json['errors'] is int && json['balls'] is int;
 
     return TeamScore(
       teamId: json['teamId'] as String? ?? '',
@@ -316,6 +318,7 @@ class ApiGameRepository implements GameRepository {
       hits: json['hits'] as int? ?? 0,
       errors: json['errors'] as int? ?? 0,
       walks: json['balls'] as int? ?? 0,
+      hasStats: hasStats,
     );
   }
 

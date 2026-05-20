@@ -203,4 +203,65 @@ void main() {
     expect(aggregate.kboBrief?.title, '오늘의 KBO 관전 포인트');
     expect(aggregate.kboBrief?.items.first.title, '두산 vs LG');
   });
+
+  test(
+    'local KBO brief does not treat missing hit totals as high-hit game',
+    () {
+      final aggregate = buildLocalHomeAggregate(
+        date: '2026-05-20',
+        myTeam: null,
+        games: const [
+          Game(
+            gameId: '20260520OBSS0',
+            status: GameStatus.live,
+            inning: '8회초',
+            away: TeamScore(
+              teamId: 'OB',
+              teamName: '두산 베어스',
+              shortName: '두산',
+              score: 5,
+              innings: [],
+              hits: 11,
+              hasStats: false,
+            ),
+            home: TeamScore(
+              teamId: 'SS',
+              teamName: '삼성 라이온즈',
+              shortName: '삼성',
+              score: 4,
+              innings: [],
+              hits: 8,
+              hasStats: false,
+            ),
+            stadium: '대구',
+            startTime: '18:30',
+          ),
+        ],
+        scheduleDays: const [],
+        standings: const [],
+        overview: const RecordsOverview(
+          season: 2026,
+          avgLeaders: [],
+          hrLeaders: [],
+          opsLeaders: [],
+          opsPlusLeaders: [],
+          eraLeaders: [],
+          todayHitter: FeaturedPlayerCard(label: 'today hitter'),
+          todayPitcher: FeaturedPlayerCard(label: 'today pitcher'),
+          monthHitter: FeaturedPlayerCard(label: 'month hitter'),
+          monthPitcher: FeaturedPlayerCard(label: 'month pitcher'),
+        ),
+      );
+
+      final titles = aggregate.kboBrief!.items
+          .map((item) => item.title)
+          .toList();
+      final highHitItems = aggregate.kboBrief!.items.where(
+        (item) => item.type == 'player_performance',
+      );
+
+      expect(titles, isNot(contains('두산-삼성 합계 19안타')));
+      expect(highHitItems, isEmpty);
+    },
+  );
 }

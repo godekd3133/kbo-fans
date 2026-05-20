@@ -423,7 +423,7 @@ HomeKboBrief _buildLocalKboBrief({
 
   final highHitGames =
       activeGames
-          .where((game) => game.away.hits + game.home.hits >= 18)
+          .where((game) => game.hasTeamStats && _totalHits(game) >= 18)
           .toList()
         ..sort((a, b) => _totalHits(b).compareTo(_totalHits(a)));
   if (highHitGames.isNotEmpty) {

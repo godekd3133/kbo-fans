@@ -26,6 +26,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - App API cache must not mask current date/month/season failures. Keep `allowCacheOnFailure` default false; only historical paths should explicitly opt in to cached-first/snapshot behavior.
 - Home first paint must not render a separate today-scoreboard local cache while current scoreboard API is loading. Keep current data paths latest-API-or-visible-error.
 - Backend `/scoreboard/home` and `/scoreboard/compact` should stay lightweight for first paint / widget surfaces. Do not call per-game scoreboard detail crawlers from those paths; reserve them for full scoreboard and game detail.
+- App UI must treat null H/E/B team totals as unavailable, not as 0 records.
 - App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.
 - Home should prefer lightweight backend payloads for first paint. Do not render separate current-day local cache before the current scoreboard API resolves.
