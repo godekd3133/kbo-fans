@@ -1,0 +1,169 @@
+{
+  "savedAt": "2026-05-20T05:31:34.011793+00:00",
+  "payload": {
+    "season": 2011,
+    "metric": "era",
+    "leaders": [
+      {
+        "rank": 1,
+        "playerId": "75620",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "윤석민",
+        "teamId": "HT",
+        "value": "2.45",
+        "isRetired": true
+      },
+      {
+        "rank": 2,
+        "playerId": "61240",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "니퍼트",
+        "teamId": "OB",
+        "value": "2.55",
+        "isRetired": true
+      },
+      {
+        "rank": 3,
+        "playerId": "78232",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "김선우",
+        "teamId": "OB",
+        "value": "3.13",
+        "isRetired": true
+      },
+      {
+        "rank": 4,
+        "playerId": "74513",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "장원준",
+        "teamId": "LT",
+        "value": "3.14",
+        "isRetired": true
+      },
+      {
+        "rank": 5,
+        "playerId": "74454",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "윤성환",
+        "teamId": "SS",
+        "value": "3.54",
+        "isRetired": true
+      },
+      {
+        "rank": 6,
+        "playerId": "61154",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "주키치",
+        "teamId": "LG",
+        "value": "3.60",
+        "isRetired": true
+      },
+      {
+        "rank": 7,
+        "playerId": "76455",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "차우찬",
+        "teamId": "SS",
+        "value": "3.69",
+        "isRetired": true
+      },
+      {
+        "rank": 8,
+        "playerId": "61158",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "리즈",
+        "teamId": "LG",
+        "value": "3.88",
+        "isRetired": true
+      },
+      {
+        "rank": 9,
+        "playerId": "60594",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "사도스키",
+        "teamId": "LT",
+        "value": "3.91",
+        "isRetired": true
+      },
+      {
+        "rank": 10,
+        "playerId": "79644",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "로페즈",
+        "teamId": "HT",
+        "value": "3.98",
+        "isRetired": true
+      },
+      {
+        "rank": 11,
+        "playerId": "77591",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "송승준",
+        "teamId": "LT",
+        "value": "4.18",
+        "isRetired": true
+      },
+      {
+        "rank": 12,
+        "playerId": "79817",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "박현준",
+        "teamId": "LG",
+        "value": "4.18",
+        "isRetired": true
+      },
+      {
+        "rank": 13,
+        "playerId": "79349",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "고원준",
+        "teamId": "LT",
+        "value": "4.19",
+        "isRetired": true
+      },
+      {
+        "rank": 14,
+        "playerId": "75750",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "양훈",
+        "teamId": "HH",
+        "value": "4.28",
+        "isRetired": true
+      },
+      {
+        "rank": 15,
+        "playerId": "79430",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "나이트",
+        "teamId": "넥센",
+        "value": "4.70",
+        "isRetired": true
+      },
+      {
+        "rank": 16,
+        "playerId": "60713",
+        "playerType": "pitcher",
+        "metricKey": "ERA",
+        "name": "안승민",
+        "teamId": "HH",
+        "value": "5.89",
+        "isRetired": true
+      }
+    ]
+  }
+}

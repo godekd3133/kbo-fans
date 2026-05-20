@@ -1,0 +1,309 @@
+{
+  "savedAt": "2026-05-20T05:31:34.011793+00:00",
+  "payload": {
+    "season": 2013,
+    "metric": "hr",
+    "leaders": [
+      {
+        "rank": 1,
+        "playerId": "75125",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "박병호",
+        "teamId": "넥센",
+        "value": "37",
+        "isRetired": true
+      },
+      {
+        "rank": 2,
+        "playerId": "72443",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "최형우",
+        "teamId": "SS",
+        "value": "29",
+        "isRetired": false
+      },
+      {
+        "rank": 3,
+        "playerId": "75847",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "최정",
+        "teamId": "SK",
+        "value": "28",
+        "isRetired": false
+      },
+      {
+        "rank": 4,
+        "playerId": "70756",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "이범호",
+        "teamId": "HT",
+        "value": "24",
+        "isRetired": true
+      },
+      {
+        "rank": 5,
+        "playerId": "76325",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "강정호",
+        "teamId": "넥센",
+        "value": "22",
+        "isRetired": true
+      },
+      {
+        "rank": 6,
+        "playerId": "78629",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "나지완",
+        "teamId": "HT",
+        "value": "21",
+        "isRetired": true
+      },
+      {
+        "rank": 7,
+        "playerId": "94629",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "이호준",
+        "teamId": "NC",
+        "value": "20",
+        "isRetired": true
+      },
+      {
+        "rank": 8,
+        "playerId": "74465",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "박석민",
+        "teamId": "SS",
+        "value": "18",
+        "isRetired": true
+      },
+      {
+        "rank": 8,
+        "playerId": "74846",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "박정권",
+        "teamId": "SK",
+        "value": "18",
+        "isRetired": true
+      },
+      {
+        "rank": 8,
+        "playerId": "73136",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "이성열",
+        "teamId": "넥센",
+        "value": "18",
+        "isRetired": true
+      },
+      {
+        "rank": 11,
+        "playerId": "76290",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "김현수",
+        "teamId": "OB",
+        "value": "16",
+        "isRetired": false
+      },
+      {
+        "rank": 12,
+        "playerId": "99222",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "홍성흔",
+        "teamId": "OB",
+        "value": "15",
+        "isRetired": true
+      },
+      {
+        "rank": 12,
+        "playerId": "77564",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "김민성",
+        "teamId": "넥센",
+        "value": "15",
+        "isRetired": false
+      },
+      {
+        "rank": 12,
+        "playerId": "63963",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "권희동",
+        "teamId": "NC",
+        "value": "15",
+        "isRetired": false
+      },
+      {
+        "rank": 15,
+        "playerId": "62895",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "한유섬",
+        "teamId": "SK",
+        "value": "14",
+        "isRetired": false
+      },
+      {
+        "rank": 15,
+        "playerId": "62947",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "나성범",
+        "teamId": "NC",
+        "value": "14",
+        "isRetired": false
+      },
+      {
+        "rank": 17,
+        "playerId": "95436",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "이승엽",
+        "teamId": "SS",
+        "value": "13",
+        "isRetired": true
+      },
+      {
+        "rank": 18,
+        "playerId": "78813",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "모창민",
+        "teamId": "NC",
+        "value": "12",
+        "isRetired": true
+      },
+      {
+        "rank": 19,
+        "playerId": "77463",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "채태인",
+        "teamId": "SS",
+        "value": "11",
+        "isRetired": true
+      },
+      {
+        "rank": 19,
+        "playerId": "74540",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "강민호",
+        "teamId": "LT",
+        "value": "11",
+        "isRetired": false
+      },
+      {
+        "rank": 19,
+        "playerId": "77532",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "손아섭",
+        "teamId": "LT",
+        "value": "11",
+        "isRetired": false
+      },
+      {
+        "rank": 19,
+        "playerId": "77623",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "최희섭",
+        "teamId": "HT",
+        "value": "11",
+        "isRetired": true
+      },
+      {
+        "rank": 23,
+        "playerId": "71837",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "김강민",
+        "teamId": "SK",
+        "value": "10",
+        "isRetired": true
+      },
+      {
+        "rank": 23,
+        "playerId": "75566",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "이원석",
+        "teamId": "OB",
+        "value": "10",
+        "isRetired": true
+      },
+      {
+        "rank": 23,
+        "playerId": "71752",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "김태균",
+        "teamId": "HH",
+        "value": "10",
+        "isRetired": true
+      },
+      {
+        "rank": 26,
+        "playerId": "75808",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "정근우",
+        "teamId": "SK",
+        "value": "9",
+        "isRetired": true
+      },
+      {
+        "rank": 26,
+        "playerId": "76249",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "민병헌",
+        "teamId": "OB",
+        "value": "9",
+        "isRetired": true
+      },
+      {
+        "rank": 26,
+        "playerId": "74605",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "김주형",
+        "teamId": "HT",
+        "value": "9",
+        "isRetired": true
+      },
+      {
+        "rank": 26,
+        "playerId": "73342",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "이택근",
+        "teamId": "넥센",
+        "value": "9",
+        "isRetired": true
+      },
+      {
+        "rank": 26,
+        "playerId": "79109",
+        "playerType": "hitter",
+        "metricKey": "HR",
+        "name": "오지환",
+        "teamId": "LG",
+        "value": "9",
+        "isRetired": false
+      }
+    ]
+  }
+}

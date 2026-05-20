@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -93,6 +94,20 @@ def test_extract_player_link_accepts_active_and_retired_records() -> None:
 
     assert RecordsOverviewCrawler._extract_player_link(active) == ("77532", False)
     assert RecordsOverviewCrawler._extract_player_link(retired) == ("75620", True)
+
+
+def test_historical_leaderboard_snapshots_include_retired_top_leaders() -> None:
+    root = Path(__file__).resolve().parents[1]
+    snapshots = root / "data" / "snapshots" / "leaderboard"
+    era_2011 = json.loads((snapshots / "2011_era.json").read_text(encoding="utf-8"))
+    hr_2013 = json.loads((snapshots / "2013_hr.json").read_text(encoding="utf-8"))
+
+    assert era_2011["payload"]["leaders"][0]["name"] == "윤석민"
+    assert era_2011["payload"]["leaders"][0]["value"] == "2.45"
+    assert era_2011["payload"]["leaders"][0]["isRetired"] is True
+    assert hr_2013["payload"]["leaders"][0]["name"] == "박병호"
+    assert hr_2013["payload"]["leaders"][0]["value"] == "37"
+    assert hr_2013["payload"]["leaders"][0]["isRetired"] is True
 
 
 def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:
