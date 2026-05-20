@@ -155,7 +155,10 @@ class RelayService:
                     "half": "bottom",
                     "event": "GAME_END",
                     "isScoring": False,
-                    "text": f"경기종료 {away_name} {away.get('score', 0)} : {home.get('score', 0)} {home_name}",
+                    "text": (
+                        f"경기종료 {away_name} {away.get('score', 0)} : "
+                        f"{home.get('score', 0)} {home_name}"
+                    ),
                     "pitchSequence": None,
                 }
             )
