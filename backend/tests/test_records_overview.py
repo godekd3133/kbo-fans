@@ -1,3 +1,8 @@
+import json
+from datetime import datetime, timezone
+
+import pytest
+
 from kbo_fans_backend.crawlers.records_overview import RecordsOverviewCrawler
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.storage import JsonSnapshotStore
@@ -81,8 +86,9 @@ def test_build_ops_plus_leaders_from_ops_values() -> None:
 
 def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
     expected = {
-        "season": 2026,
+        "season": season,
         "metric": "avg",
         "leaders": [
             {
@@ -95,14 +101,36 @@ def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:
             }
         ],
     }
-    store.save("leaderboard", "2026:avg", expected)
+    store.save("leaderboard", f"{season}:avg", expected)
 
     service = RecordsOverviewService(
         crawler=_FailingRecordsCrawler(),
         snapshot_store=store,
     )
 
-    assert service.get_leaderboard(2026, "avg") == expected
+    assert service.get_leaderboard(season, "avg") == expected
+
+
+def test_current_leaderboard_rejects_old_snapshot_on_failure(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    _write_snapshot_record(
+        tmp_path,
+        "leaderboard",
+        f"{season}:avg",
+        {
+            "season": season,
+            "metric": "avg",
+            "leaders": [{"rank": 1, "name": "Stale", "teamId": "KT", "value": ".100"}],
+        },
+    )
+    service = RecordsOverviewService(
+        crawler=_FailingRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_leaderboard(season, "avg")
 
 
 def test_leaderboard_prefers_fresh_crawler_over_snapshot(tmp_path) -> None:
@@ -215,6 +243,43 @@ def test_overview_snapshot_is_normalized_with_ops_plus(tmp_path) -> None:
     ]
 
 
+def test_current_overview_rejects_old_snapshot_on_failure(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    _write_snapshot_record(
+        tmp_path,
+        "records_overview",
+        str(season),
+        {
+            "season": season,
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 1,
+                        "playerId": "stale",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Stale",
+                        "teamId": "KT",
+                        "value": ".100",
+                    }
+                ],
+                "hr": [],
+                "ops": [],
+                "era": [],
+            },
+            "featured": {},
+        },
+    )
+    service = RecordsOverviewService(
+        crawler=_FailingRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_overview(season)
+
+
 def test_overview_featured_images_use_2022_folder_for_old_seasons(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     store.save(
@@ -250,3 +315,18 @@ def test_overview_featured_images_use_2022_folder_for_old_seasons(tmp_path) -> N
     payload = service.get_overview(2013)
 
     assert payload["featured"]["todayHitter"]["imageUrl"].endswith("/2022/77532.jpg")
+
+
+def _write_snapshot_record(tmp_path, namespace: str, key: str, payload: dict) -> None:
+    path = tmp_path / namespace / f"{key}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "savedAt": "2000-01-01T00:00:00+00:00",
+                "payload": payload,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )

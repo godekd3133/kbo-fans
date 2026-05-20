@@ -1,6 +1,8 @@
 import json
 from datetime import datetime, timezone
 
+import pytest
+
 from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
@@ -87,19 +89,42 @@ def test_scoreboard_uses_historical_snapshot_before_crawling(tmp_path) -> None:
 
 def test_standings_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
     expected = {
-        "season": 2026,
+        "season": season,
         "standings": [{"rank": 1, "teamId": "LG", "teamName": "LG 트윈스"}],
-        "updatedAt": "2026-03-31T16:30:00+09:00",
+        "updatedAt": f"{season}-03-31T16:30:00+09:00",
     }
-    store.save("standings_latest", "2026", expected)
+    store.save("standings_latest", str(season), expected)
 
     service = StandingsService(
         crawler=_FailingStandingsCrawler(),
         snapshot_store=store,
     )
 
-    assert service.get_standings(2026) == expected
+    assert service.get_standings(season) == expected
+
+
+def test_current_standings_reject_old_snapshot_on_failure(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    _write_snapshot_record(
+        tmp_path,
+        "standings_latest",
+        str(season),
+        {
+            "season": season,
+            "standings": [{"rank": 1, "teamId": "LG", "teamName": "LG 트윈스"}],
+            "updatedAt": f"{season}-03-31T16:30:00+09:00",
+        },
+    )
+    service = StandingsService(
+        crawler=_FailingStandingsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_standings(season)
 
 
 def test_player_detail_falls_back_to_snapshot(tmp_path) -> None:

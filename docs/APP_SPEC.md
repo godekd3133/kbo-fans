@@ -950,6 +950,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 앱은 cold start 시 로컬에 남아 있는 마지막 성공 응답을 먼저 렌더링하고, 서버 최신값은 백그라운드에서 동기화한다.
 - 홈/일정/순위/기록실은 모두 stale-while-revalidate 패턴을 기본값으로 삼는다.
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
+- backend current-season 일정/순위/기록실 요약/리더보드 snapshot fallback 은 `savedAt` 기준 6시간 이내 저장본만 사용한다. 과거 시즌/월 snapshot 은 저장본 우선 정책을 유지한다.
 
 ---
 

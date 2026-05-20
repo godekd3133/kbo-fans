@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date as date_type
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.main import MainCrawler
@@ -12,6 +13,7 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 class ScheduleService:
     _CACHE_TTL_SECONDS = 300
+    _CURRENT_MONTH_SNAPSHOT_MAX_AGE = timedelta(hours=6)
 
     def __init__(
         self,
@@ -31,7 +33,8 @@ class ScheduleService:
         if cached is not None:
             return cached
 
-        snapshot = self.snapshot_store.load_payload("schedule", month)
+        snapshot_record = self.snapshot_store.load("schedule", month)
+        snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._is_historical_month(month) and snapshot is not None:
             self._cache.set(month, snapshot)
             return snapshot
@@ -40,9 +43,9 @@ class ScheduleService:
             rows = self.schedule_crawler.get_month_schedule(month)
         except Exception:
             stale = self._cache.get_stale(month)
-            if stale is not None:
+            if self._is_historical_month(month) and stale is not None:
                 return stale
-            if snapshot is not None:
+            if self._can_use_snapshot_after_failure(month, snapshot_record, snapshot):
                 return snapshot
             raise
 
@@ -103,24 +106,41 @@ class ScheduleService:
 
     @staticmethod
     def _should_persist_month_snapshot(payload: dict[str, Any]) -> bool:
-        games = [
-            game
-            for day in payload.get("days", [])
-            for game in day.get("games", [])
-        ]
+        games = [game for day in payload.get("days", []) for game in day.get("games", [])]
         return bool(games)
 
-    def _enrich_current_day_with_main_games(
-        self, payload: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _can_use_snapshot_after_failure(
+        self,
+        month: str,
+        snapshot_record: Optional[dict[str, Any]],
+        snapshot: Optional[dict[str, Any]],
+    ) -> bool:
+        if snapshot is None:
+            return False
+        return self._is_historical_month(month) or self._is_fresh_snapshot(snapshot_record)
+
+    def _is_fresh_snapshot(self, snapshot_record: Optional[dict[str, Any]]) -> bool:
+        if snapshot_record is None:
+            return False
+        saved_at_raw = snapshot_record.get("savedAt")
+        if not isinstance(saved_at_raw, str) or not saved_at_raw:
+            return False
+        try:
+            saved_at = datetime.fromisoformat(saved_at_raw.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        if saved_at.tzinfo is None:
+            saved_at = saved_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) - saved_at <= self._CURRENT_MONTH_SNAPSHOT_MAX_AGE
+
+    def _enrich_current_day_with_main_games(self, payload: dict[str, Any]) -> dict[str, Any]:
         today = date_type.today().isoformat()
         if not any(day.get("date") == today for day in payload.get("days", [])):
             return payload
 
         try:
             main_games = {
-                game.get("G_ID"): game
-                for game in self.main_crawler.get_kbo_game_list(today)
+                game.get("G_ID"): game for game in self.main_crawler.get_kbo_game_list(today)
             }
         except Exception:
             return payload
@@ -156,16 +176,12 @@ class ScheduleService:
             **game,
             "time": main_game.get("G_TM") or game.get("time"),
             "awayScore": (
-                self._main_score_or_existing(
-                    main_game.get("T_SCORE_CN"), game.get("awayScore")
-                )
+                self._main_score_or_existing(main_game.get("T_SCORE_CN"), game.get("awayScore"))
                 if should_show_score
                 else None
             ),
             "homeScore": (
-                self._main_score_or_existing(
-                    main_game.get("B_SCORE_CN"), game.get("homeScore")
-                )
+                self._main_score_or_existing(main_game.get("B_SCORE_CN"), game.get("homeScore"))
                 if should_show_score
                 else None
             ),
@@ -193,9 +209,8 @@ class ScheduleService:
             main_game_id = str(main_game.get("G_ID") or "")
             if len(main_game_id) < 12:
                 continue
-            if (
-                main_game_id[8:10] == game.get("awayId")
-                and main_game_id[10:12] == game.get("homeId")
+            if main_game_id[8:10] == game.get("awayId") and main_game_id[10:12] == game.get(
+                "homeId"
             ):
                 return main_game
         return None
