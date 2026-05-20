@@ -87,7 +87,25 @@ def test_scoreboard_uses_historical_snapshot_before_crawling(tmp_path) -> None:
     assert service.get_game("20260328KTLG0") == expected["games"][0]
 
 
-def test_standings_falls_back_to_snapshot(tmp_path) -> None:
+def test_historical_standings_falls_back_to_snapshot(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year - 1
+    expected = {
+        "season": season,
+        "standings": [{"rank": 1, "teamId": "LG", "teamName": "LG 트윈스"}],
+        "updatedAt": f"{season}-03-31T16:30:00+09:00",
+    }
+    store.save("standings_latest", str(season), expected)
+
+    service = StandingsService(
+        crawler=_FailingStandingsCrawler(),
+        snapshot_store=store,
+    )
+
+    assert service.get_standings(season) == expected
+
+
+def test_current_standings_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     season = datetime.now(timezone.utc).year
     expected = {
@@ -102,7 +120,8 @@ def test_standings_falls_back_to_snapshot(tmp_path) -> None:
         snapshot_store=store,
     )
 
-    assert service.get_standings(season) == expected
+    with pytest.raises(RuntimeError):
+        service.get_standings(season)
 
 
 def test_current_standings_reject_old_snapshot_on_failure(tmp_path) -> None:
@@ -243,8 +262,9 @@ def test_current_season_team_stats_reject_old_snapshot_on_failure(tmp_path) -> N
 
 def test_records_overview_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year - 1
     expected = {
-        "season": 2026,
+        "season": season,
         "leaders": {"avg": [], "hr": [], "ops": [], "era": [], "opsPlus": []},
         "featured": {
             "todayHitter": {"label": "시즌 타율 리더"},
@@ -253,14 +273,14 @@ def test_records_overview_falls_back_to_snapshot(tmp_path) -> None:
             "monthPitcher": {"label": "시즌 OPS 리더"},
         },
     }
-    store.save("records_overview", "2026", expected)
+    store.save("records_overview", str(season), expected)
 
     service = RecordsOverviewService(
         crawler=_FailingRecordsOverviewCrawler(),
         snapshot_store=store,
     )
 
-    assert service.get_overview(2026) == expected
+    assert service.get_overview(season) == expected
 
 
 def _write_snapshot_record(tmp_path, namespace: str, key: str, payload: dict) -> None:

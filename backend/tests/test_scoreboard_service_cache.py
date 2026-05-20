@@ -334,7 +334,7 @@ def test_current_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
         service.get_scoreboard(today)
 
 
-def test_current_scoreboard_uses_fresh_terminal_snapshot_on_failure(
+def test_current_scoreboard_rejects_fresh_terminal_snapshot_on_failure(
     tmp_path: Path,
 ) -> None:
     today = date_type.today().isoformat()
@@ -358,7 +358,8 @@ def test_current_scoreboard_uses_fresh_terminal_snapshot_on_failure(
         snapshot_store=snapshot_store,
     )
 
-    assert service.get_scoreboard(today) == expected
+    with pytest.raises(RuntimeError):
+        service.get_scoreboard(today)
 
 
 def test_current_compact_scoreboard_rejects_old_nonterminal_snapshot_on_failure(

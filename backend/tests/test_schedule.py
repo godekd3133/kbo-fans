@@ -187,7 +187,7 @@ def test_current_month_schedule_rejects_old_snapshot_on_failure(tmp_path) -> Non
         service.get_month_schedule(month)
 
 
-def test_current_month_schedule_uses_fresh_snapshot_on_failure(tmp_path) -> None:
+def test_current_month_schedule_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
     today = date_type.today().isoformat()
     month = today[:7]
     store = JsonSnapshotStore(base_dir=str(tmp_path))
@@ -214,7 +214,8 @@ def test_current_month_schedule_uses_fresh_snapshot_on_failure(tmp_path) -> None
         snapshot_store=store,
     )
 
-    assert service.get_month_schedule(month) == expected
+    with pytest.raises(RuntimeError):
+        service.get_month_schedule(month)
 
 
 def _write_snapshot_record(tmp_path, namespace: str, key: str, payload: dict) -> None:

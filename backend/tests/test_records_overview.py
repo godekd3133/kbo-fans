@@ -112,7 +112,7 @@ def test_historical_leaderboard_snapshots_include_retired_top_leaders() -> None:
 
 def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = datetime.now(timezone.utc).year - 1
     expected = {
         "season": season,
         "metric": "avg",
@@ -148,6 +148,27 @@ def test_current_leaderboard_rejects_old_snapshot_on_failure(tmp_path) -> None:
             "season": season,
             "metric": "avg",
             "leaders": [{"rank": 1, "name": "Stale", "teamId": "KT", "value": ".100"}],
+        },
+    )
+    service = RecordsOverviewService(
+        crawler=_FailingRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_leaderboard(season, "avg")
+
+
+def test_current_leaderboard_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    store.save(
+        "leaderboard",
+        f"{season}:avg",
+        {
+            "season": season,
+            "metric": "avg",
+            "leaders": [{"rank": 1, "name": "Fresh Snapshot", "teamId": "KT", "value": ".400"}],
         },
     )
     service = RecordsOverviewService(
@@ -225,11 +246,12 @@ def test_overview_prefers_fresh_crawler_over_snapshot(tmp_path) -> None:
 
 def test_overview_snapshot_is_normalized_with_ops_plus(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year - 1
     store.save(
         "records_overview",
-        "2026",
+        str(season),
         {
-            "season": 2026,
+            "season": season,
             "leaders": {
                 "ops": [
                     {
@@ -261,7 +283,7 @@ def test_overview_snapshot_is_normalized_with_ops_plus(tmp_path) -> None:
         snapshot_store=store,
     )
 
-    payload = service.get_overview(2026)
+    payload = service.get_overview(season)
 
     assert [leader["value"] for leader in payload["leaders"]["opsPlus"]] == [
         "111",
@@ -288,6 +310,42 @@ def test_current_overview_rejects_old_snapshot_on_failure(tmp_path) -> None:
                         "name": "Stale",
                         "teamId": "KT",
                         "value": ".100",
+                    }
+                ],
+                "hr": [],
+                "ops": [],
+                "era": [],
+            },
+            "featured": {},
+        },
+    )
+    service = RecordsOverviewService(
+        crawler=_FailingRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_overview(season)
+
+
+def test_current_overview_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    store.save(
+        "records_overview",
+        str(season),
+        {
+            "season": season,
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 1,
+                        "playerId": "fresh",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Fresh Snapshot",
+                        "teamId": "KT",
+                        "value": ".400",
                     }
                 ],
                 "hr": [],

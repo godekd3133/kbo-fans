@@ -5,7 +5,6 @@ import logging
 import re
 import time
 from datetime import date as date_type
-from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.main import MainCrawler
@@ -21,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 class ScoreboardService:
     _SCOREBOARD_CACHE_TTL_SECONDS = 30
-    _CURRENT_DATE_SNAPSHOT_MAX_AGE = timedelta(hours=6)
 
     def __init__(
         self,
@@ -622,9 +620,7 @@ class ScoreboardService:
             return False
         if self._is_historical_date(date):
             return True
-        return self._is_fresh_snapshot(snapshot_record) and self._is_terminal_snapshot(
-            snapshot,
-        )
+        return False
 
     @staticmethod
     def _is_terminal_snapshot(snapshot: dict[str, Any]) -> bool:
@@ -634,19 +630,6 @@ class ScoreboardService:
         terminal_statuses = {"FINAL", "CANCELLED", "SUSPENDED"}
         return all(game.get("status") in terminal_statuses for game in games)
 
-    def _is_fresh_snapshot(self, snapshot_record: Optional[dict[str, Any]]) -> bool:
-        if snapshot_record is None:
-            return False
-        saved_at_raw = snapshot_record.get("savedAt")
-        if not isinstance(saved_at_raw, str) or not saved_at_raw:
-            return False
-        try:
-            saved_at = datetime.fromisoformat(saved_at_raw.replace("Z", "+00:00"))
-        except ValueError:
-            return False
-        if saved_at.tzinfo is None:
-            saved_at = saved_at.replace(tzinfo=timezone.utc)
-        return datetime.now(timezone.utc) - saved_at <= self._CURRENT_DATE_SNAPSHOT_MAX_AGE
 
     @staticmethod
     def _strip_home_payload(game: dict[str, Any]) -> dict[str, Any]:
