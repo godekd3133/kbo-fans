@@ -954,6 +954,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 홈/일정/순위/기록실의 히스토리 데이터는 stale-while-revalidate 를 유지하되, current 데이터는 fresh-first 로 처리한다.
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 스코어보드 로컬 cache 는 `savedAt` envelope 가 있는 payload 만 인정하고, live 60초 / scheduled 또는 empty 5분 / terminal 6시간 TTL 을 적용한다.
+- backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.
 - backend current-date 스코어보드와 current-season/month 일정/순위/기록실 요약/리더보드 snapshot fallback 은 `savedAt` 기준 6시간 이내 저장본만 사용한다. 과거 날짜/시즌/월 snapshot 은 저장본 우선 정책을 유지한다.
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다.
 

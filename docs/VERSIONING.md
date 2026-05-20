@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.19+19`
-- Current release tag: `0.0.19`
+- Flutter app version: `0.0.20+20`
+- Current release tag: `0.0.20`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -15,7 +15,7 @@
 
 - App version: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Git tag: `MAJOR.MINOR.PATCH`
-- In-app patch note heading: app version with build, for example `0.0.19+19 - Release Web Command Guard`
+- In-app patch note heading: app version with build, for example `0.0.20+20 - Home Aggregate Failure Guard`
 
 ## Bump Rules
 
@@ -67,6 +67,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.17`: direct KBO routing guard for local native explicit direct-primary builds only, provider/widget background API route alignment, Android/Web release API health-gated run paths, complete records-overview device snapshot guard, current API failure masking prevention, and provider routing/API cache regression tests with current app build `0.0.17+17`.
 - `0.0.18`: historical backend leaderboard snapshots for 2011 ERA and 2013 HR with retired top-leader regression coverage, release-gated web wrapper, Android/Web release action wrappers, and current app build `0.0.18+18`.
 - `0.0.19`: current/live game detail stale snapshot masking guards for boxscore, lineup, relay, and team records, `codex-run.sh web` release API health-gated default command, `web-dev` debug split, release execution documentation cleanup, and current app build `0.0.19+19`.
+- `0.0.20`: current/future home aggregate fail-fast for schedule, standings, and records overview section failures, historical home partial fallback preservation, records overview crawler/snapshot featured canonicalization, device snapshot v3 rank-one guard for records overview/leaderboards, runtime data docs/skill alignment, and current app build `0.0.20+20`.
 
 ## GitHub Release Note Template
 

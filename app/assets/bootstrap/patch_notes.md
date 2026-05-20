@@ -1,5 +1,13 @@
 # 패치노트
 
+## 0.0.20+20 - Home Aggregate Failure Guard
+
+- 홈 aggregate가 현재/미래 날짜에서 일정, 순위, 기록실 요약 실패를 빈 섹션처럼 숨기지 않도록 바꿨습니다.
+- 현재 데이터 일부가 실패했는데도 `오늘 경기 없음`, 빈 순위, 빈 기록 카드처럼 정상으로 보일 수 있던 경로를 막았습니다.
+- 과거 날짜 홈 조회만 기존 partial fallback을 유지합니다.
+- 기록실 overview snapshot을 다시 만들 때 featured 카드가 시즌 리더 기준으로 생성되도록 crawler와 2011 snapshot을 맞췄습니다.
+- 기록실 device snapshot 버전을 `v3`로 올려 구형/불완전 캐시가 1위 누락 리더보드를 계속 보여주지 않도록 했습니다.
+
 ## 0.0.19+19 - Release Web Command Guard
 
 - 현재/진행 예정 경기의 박스스코어와 라인업은 과거 snapshot을 실패 fallback으로 쓰지 않도록 막았습니다.

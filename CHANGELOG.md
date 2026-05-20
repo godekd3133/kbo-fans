@@ -12,6 +12,22 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
+## [0.0.20] - 2026-05-20
+
+### Changed
+
+- backend `/home` aggregate는 현재/미래 날짜에서 schedule, standings, records overview 하위 호출 실패를 빈 섹션/placeholder로 조용히 대체하지 않도록 변경
+- 과거 날짜 `/home` aggregate만 기존 partial fallback을 유지해 히스토리 조회 안정성은 보존
+- records overview crawler와 2011 snapshot의 featured 카드를 canonical 시즌 리더 기준으로 정리하고 회귀 테스트 추가
+- runtime data 정책 문서와 skill에 home aggregate current-date fail-fast 기준 추가
+
+### Fixed
+
+- 홈 첫 화면에서 현재 데이터 일부가 실패했는데도 `오늘 경기 없음`, 빈 순위, 빈 기록 카드처럼 정상 상태로 오해될 수 있던 경로 차단
+- records overview snapshot 재생성 시 OPS 하위권 선수가 `시즌 OPS 리더`로 노출될 수 있던 데이터 생성 경로 차단
+- 기록실 웹/디바이스에 남은 구형 `recordsOverview` 캐시가 2013 타율처럼 1위가 누락된 리더보드를 계속 표시할 수 있던 경로 차단
+- records overview / leaderboard device snapshot은 핵심 리더보드가 1위부터 시작할 때만 저장/재사용하도록 보강
+
 ## [0.0.19] - 2026-05-20
 
 ### Changed

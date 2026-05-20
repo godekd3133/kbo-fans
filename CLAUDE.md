@@ -80,7 +80,9 @@ kbo_fans/
 - 지난 경기 결과, 과거 시즌 순위, 기록실 과거 시즌 데이터는 snapshot 우선 전략을 유지한다
 - 앱 번들 standings / records overview fallback 은 exact-season-only 로 제한한다. 현재 시즌은 `generatedAt` 기준 최신 snapshot 만 허용하고, 검증되지 않은 과거 시즌은 다른 시즌 데이터를 빌리지 않는다
 - 현재 시즌 팀 선수 / 팀 스탯 fallback 은 `savedAt` 기준 최신 snapshot 만 허용하고, timestamp 없는 legacy 기기 cache 나 오래된 번들 asset 은 빈 상태로 처리한다
+- records overview / leaderboard 기기 snapshot 은 리더보드가 1위부터 시작할 때만 저장/재사용한다. malformed cache shape 을 무효화할 때는 device snapshot version 을 올린다
 - backend 현재 날짜 스코어보드와 현재 시즌/월 일정/순위/기록실 요약/리더보드 snapshot fallback 은 `savedAt` 기준 최신 snapshot 만 허용한다. 과거 날짜/시즌/월은 저장 snapshot 우선 전략을 유지한다
+- backend `/home` aggregate 는 현재/미래 날짜에서 schedule / standings / records overview 실패를 빈 섹션이나 placeholder 로 숨기지 않는다. 과거 날짜 홈 조회만 partial fallback 을 허용한다
 - 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다
 - Git push 시 기본 `origin` 이슈가 있으면 `git@github-personal:godekd3133/kbo-fans.git` 경로를 사용한다
 

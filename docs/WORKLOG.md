@@ -2,6 +2,49 @@
 
 ---
 
+## 2026-05-20: records overview stale device snapshot guard
+
+### 완료
+- [x] 웹 화면 QA에서 2013 시즌 기록실이 백엔드 정상 응답에도 구형 브라우저 캐시 때문에 `2, 9, 13...` 순위로 재노출되는 문제 확인
+- [x] `DeviceSnapshotPlayerRepository` snapshot 버전을 `v3`로 올려 기존 `v2` records overview 오염 캐시를 강제 무효화
+- [x] records overview / leaderboard snapshot은 핵심 리더보드 첫 항목이 1위일 때만 저장/재사용하도록 보강
+- [x] 불완전 overview, 1위 누락 overview, 구버전 overview, 1위 누락 leaderboard 캐시 회귀 테스트 추가
+
+### 검증
+- [x] `cd app && fvm dart format lib/data/repositories/device_snapshot_player_repository.dart test/data/device_snapshot_player_repository_test.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/data/device_snapshot_player_repository_test.dart test/data/models/records_overview_test.dart test/data/bootstrap_repository_test.dart`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py`
+
+---
+
+## 2026-05-20: 0.0.20 home aggregate failure guard
+
+### 완료
+- [x] 현재 변경은 backend `/home` API의 current/future failure masking 정책 변경이라 `0.0.20+20` 새 릴리즈로 판단
+- [x] 현재/미래 날짜 `/home` aggregate 에서 schedule / standings / records overview 하위 호출 실패를 빈 섹션/placeholder 로 대체하지 않고 실패를 전파하도록 변경
+- [x] 과거 날짜 `/home` aggregate 는 기존 partial fallback 을 유지해 히스토리 조회 안정성은 보존
+- [x] 실패 masking 회귀 테스트 추가: current/future schedule, standings, records overview 실패 각각 검증
+- [x] historical home partial fallback 유지 테스트 추가
+- [x] records overview crawler 와 2011 snapshot 의 featured 카드가 canonical 시즌 리더를 보도록 정리하고 회귀 테스트 추가
+- [x] records overview / leaderboard device snapshot 이 1위부터 시작하는 리더보드일 때만 저장/재사용되도록 보정하고 snapshot version 을 `v3`로 갱신
+- [x] `README.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `docs/VERSIONING.md`, `docs/APP_SPEC.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/skills/kbo-runtime-data/SKILL.md` 갱신
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/home.py backend/src/kbo_fans_backend/crawlers/records_overview.py`
+- [x] `python3 -m json.tool backend/data/snapshots/records_overview/2011.json >/dev/null`
+- [x] `cd app && fvm dart format lib/data/repositories/device_snapshot_player_repository.dart test/data/device_snapshot_player_repository_test.dart`
+- [x] `cd app && fvm flutter test test/data/device_snapshot_player_repository_test.dart -r expanded`
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/home.py backend/src/kbo_fans_backend/crawlers/records_overview.py backend/tests/test_home.py backend/tests/test_records_overview.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend`
+- [x] `cd app && fvm flutter analyze`
+- [x] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/codex-run.sh web` 실패 확인: `DNS lookup failed for api.kbofans.com`
+
+---
+
 ## 2026-05-20: 0.0.19 release web command guard
 
 ### 완료
