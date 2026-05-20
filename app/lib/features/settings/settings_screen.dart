@@ -10,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/providers.dart';
 import '../../services/game_event_alert_service.dart';
@@ -492,8 +493,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     required VoidCallback onTap,
   }) {
     final color = _deliveryColor(delivery, teamColor);
-    return InkWell(
+    return AppPressable(
       onTap: onTap,
+      pressedScale: 0.985,
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 66),
         child: Padding(
@@ -752,7 +754,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
     return Semantics(
       button: true,
-      child: InkWell(onTap: onTap, child: row),
+      child: AppPressable(onTap: onTap, child: row),
     );
   }
 
@@ -914,8 +916,9 @@ class _MyTeamCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppPressable(
       onTap: () => context.go('/onboarding?mode=edit'),
+      pressedScale: 0.975,
       child: Container(
         height: 56,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1144,10 +1147,12 @@ class _DeliveryPickerSheet extends StatelessWidget {
     required IconData icon,
   }) {
     final selected = current == delivery;
-    return InkWell(
+    return AppPressable(
       onTap: () => Navigator.of(context).pop(delivery),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
+      pressedScale: 0.97,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(

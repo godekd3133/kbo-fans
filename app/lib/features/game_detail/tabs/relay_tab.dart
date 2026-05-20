@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
 import '../../../data/models/relay.dart';
@@ -314,9 +315,12 @@ class _RelayTabState extends ConsumerState<RelayTab> {
           final isActive = label == '전체'
               ? _selectedInningLabel == null
               : _selectedInningLabel == label;
-          return GestureDetector(
+          return AppPressable(
             onTap: () => _selectInning(label),
-            child: Container(
+            pressedScale: 0.94,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: isActive ? AppColors.textPrimary : AppColors.cardSub,
@@ -1105,6 +1109,7 @@ class _RelayPlayerAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl != null && imageUrl!.isNotEmpty) {
+      final cacheSize = (size * 3).round();
       return ClipRRect(
         borderRadius: BorderRadius.circular(radius),
         child: CachedNetworkImage(
@@ -1112,6 +1117,8 @@ class _RelayPlayerAvatar extends StatelessWidget {
           httpHeaders: _imageHeaders,
           width: size,
           height: size,
+          memCacheWidth: cacheSize,
+          memCacheHeight: cacheSize,
           fit: BoxFit.cover,
           errorWidget: (_, _, _) => _fallback(),
           placeholder: (_, _) => _fallback(),
@@ -1890,6 +1897,8 @@ class _MomentPlayerSummary extends StatelessWidget {
                       httpHeaders: _RelayPlayerAvatar._imageHeaders,
                       width: 22,
                       height: 22,
+                      memCacheWidth: 66,
+                      memCacheHeight: 66,
                       fit: BoxFit.contain,
                       errorWidget: (_, _, _) => const SizedBox(width: 22),
                       placeholder: (_, _) => const SizedBox(width: 22),

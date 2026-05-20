@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import time
+from datetime import date as date_type, timedelta
 from typing import Any, Dict, List, Optional
 
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
@@ -91,6 +92,13 @@ class HomeService:
             standings=standings_payload.get("standings", []),
             today=date,
         )
+        kbo_brief = self._build_kbo_brief(
+            today=date,
+            my_team=my_team,
+            games=games,
+            standings=standings_payload.get("standings", []),
+            overview=overview_payload,
+        )
         quick_items = self._build_quick_items(
             my_team_brief=my_team_brief,
             overview=overview_payload,
@@ -102,6 +110,7 @@ class HomeService:
             "date": date,
             "myTeam": my_team,
             "myTeamBrief": my_team_brief,
+            "kboBrief": kbo_brief,
             "quickItems": quick_items,
             "meta": {"generatedAt": time.time()},
         }
@@ -175,6 +184,7 @@ class HomeService:
                 draws += 1
             recent_summaries.append(
                 {
+                    "gameId": game.get("gameId"),
                     "result": result,
                     "opponentName": (game.get("homeName") if is_away else game.get("awayName")),
                     "score": f"{my_score}:{opponent_score}",
@@ -203,6 +213,171 @@ class HomeService:
             "recentDraws": draws,
             "recentGamesCount": len(recent_summaries),
             "recentSummaries": recent_summaries,
+        }
+
+    def _build_kbo_brief(
+        self,
+        *,
+        today: str,
+        my_team: Optional[str],
+        games: List[Dict[str, Any]],
+        standings: List[Dict[str, Any]],
+        overview: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        live_games = [game for game in games if game.get("status") == "LIVE"]
+        final_games = [game for game in games if game.get("status") == "FINAL"]
+        scheduled_games = [game for game in games if game.get("status") == "SCHEDULED"]
+        active_games = [
+            game for game in [*live_games, *final_games] if self._game_total_score(game) > 0
+        ]
+
+        items: List[Dict[str, Any]] = []
+
+        def add(item: Dict[str, Any]) -> None:
+            duplicate = any(
+                existing.get("route") == item.get("route")
+                and existing.get("eyebrow") == item.get("eyebrow")
+                for existing in items
+            )
+            if not duplicate:
+                items.append(item)
+
+        close_games = [
+            game
+            for game in active_games
+            if abs(self._team_score(game, "away") - self._team_score(game, "home")) <= 1
+        ]
+        close_games.sort(
+            key=lambda game: (
+                0 if game.get("status") == "LIVE" else 1,
+                -self._game_total_score(game),
+            )
+        )
+        if close_games:
+            game = close_games[0]
+            add(
+                self._kbo_brief_item(
+                    item_type="game_flow",
+                    eyebrow="접전 진행 중" if game.get("status") == "LIVE" else "1점 승부",
+                    title=self._score_line(game),
+                    subtitle=f"{self._game_time_label(game)} · {game.get('stadium') or ''}".strip(
+                        " ·"
+                    ),
+                    route=f"/game/{game.get('gameId')}",
+                    game=game,
+                )
+            )
+
+        highest_score_games = sorted(
+            active_games,
+            key=lambda game: self._game_total_score(game),
+            reverse=True,
+        )
+        if highest_score_games:
+            game = highest_score_games[0]
+            add(
+                self._kbo_brief_item(
+                    item_type="game_flow",
+                    eyebrow=(
+                        "득점전 진행 중" if game.get("status") == "LIVE" else "최다 득점 경기"
+                    ),
+                    title=self._score_line(game),
+                    subtitle=f"양팀 {self._game_total_score(game)}득점 · {self._game_time_label(game)}",
+                    route=f"/game/{game.get('gameId')}",
+                    game=game,
+                )
+            )
+
+        high_hit_games = [game for game in active_games if self._game_total_hits(game) >= 18]
+        high_hit_games.sort(
+            key=lambda game: self._game_total_hits(game),
+            reverse=True,
+        )
+        if high_hit_games:
+            game = high_hit_games[0]
+            add(
+                self._kbo_brief_item(
+                    item_type="player_performance",
+                    eyebrow="안타 공방",
+                    title=(
+                        f"{self._team_short_name(game, 'away')}-"
+                        f"{self._team_short_name(game, 'home')} 합계 "
+                        f"{self._game_total_hits(game)}안타"
+                    ),
+                    subtitle=f"{self._score_line(game)} · 타격전 체크",
+                    route=f"/game/{game.get('gameId')}",
+                    game=game,
+                )
+            )
+
+        if len(live_games) > 1:
+            add(
+                {
+                    "type": "league_now",
+                    "eyebrow": "LIVE",
+                    "title": f"지금 {len(live_games)}경기 진행 중",
+                    "subtitle": "스코어보드에서 접전과 흐름 변화를 같이 확인하세요.",
+                    "route": "/schedule",
+                    "gameId": None,
+                    "teamIds": self._team_ids_for_games(live_games),
+                }
+            )
+
+        if scheduled_games:
+            game = scheduled_games[0]
+            add(
+                self._kbo_brief_item(
+                    item_type="big_match",
+                    eyebrow="오늘 일정",
+                    title=(
+                        f"{self._team_short_name(game, 'away')} vs "
+                        f"{self._team_short_name(game, 'home')}"
+                    ),
+                    subtitle=(
+                        f"{game.get('startTime') or game.get('time') or ''} · "
+                        f"{game.get('stadium') or ''} · 오늘 {len(scheduled_games)}경기 예정"
+                    ).strip(" ·"),
+                    route=f"/game/{game.get('gameId')}",
+                    game=game,
+                )
+            )
+
+        standings_item = self._build_standings_brief_item(standings)
+        if standings_item is not None:
+            add(standings_item)
+
+        record_item = self._build_record_brief_item(overview, int(today[:4]))
+        if record_item is not None:
+            add(record_item)
+
+        if not items:
+            add(
+                {
+                    "type": "offday",
+                    "eyebrow": "리그 체크",
+                    "title": "오늘은 KBO 경기가 없습니다",
+                    "subtitle": "순위표와 리더보드로 다음 경기 관전 포인트를 준비하세요.",
+                    "route": "/records",
+                    "gameId": None,
+                    "teamIds": [],
+                }
+            )
+
+        prioritized_items = self._prioritize_kbo_brief_items(items, my_team)[:5]
+        return {
+            "title": self._kbo_brief_title(
+                today=today,
+                has_games=bool(games),
+                has_live=bool(live_games),
+                has_final=bool(final_games),
+            ),
+            "subtitle": self._kbo_brief_subtitle(
+                total_games=len(games),
+                live_games=len(live_games),
+                final_games=len(final_games),
+                scheduled_games=len(scheduled_games),
+            ),
+            "items": prioritized_items,
         }
 
     def _build_quick_items(
@@ -323,6 +498,192 @@ class HomeService:
             )
 
         return items[:4]
+
+    def _build_standings_brief_item(
+        self,
+        standings: List[Dict[str, Any]],
+    ) -> Optional[Dict[str, Any]]:
+        if not standings:
+            return None
+
+        sorted_standings = sorted(
+            standings,
+            key=lambda item: self._as_int(item.get("rank"), fallback=999),
+        )
+        leader = sorted_standings[0]
+        second = sorted_standings[1] if len(sorted_standings) > 1 else None
+        second_gap = str((second or {}).get("gb") or "")
+        subtitle = (
+            f"{second.get('teamName')}와 {second_gap}G차"
+            if second is not None and second_gap and second_gap != "-"
+            else "선두권 흐름 확인"
+        )
+        return {
+            "type": "standings",
+            "eyebrow": "선두권",
+            "title": f"{leader.get('rank')}위 {leader.get('teamName')}",
+            "subtitle": subtitle,
+            "route": "/standings",
+            "gameId": None,
+            "teamIds": [
+                team_id
+                for team_id in [leader.get("teamId"), (second or {}).get("teamId")]
+                if isinstance(team_id, str) and team_id
+            ],
+        }
+
+    def _build_record_brief_item(
+        self,
+        overview: Dict[str, Any],
+        season: int,
+    ) -> Optional[Dict[str, Any]]:
+        hr_leaders = overview.get("leaders", {}).get("hr", [])
+        if not hr_leaders:
+            return None
+
+        leader = hr_leaders[0]
+        player_id = str(leader.get("playerId") or "")
+        team_id = str(leader.get("teamId") or "")
+        route = f"/records/player/{player_id}?season={season}" if player_id else "/records"
+        return {
+            "type": "record_radar",
+            "eyebrow": "기록 레이더",
+            "title": f"{leader.get('name')} {leader.get('value')}홈런",
+            "subtitle": f"{self._TEAM_LABELS.get(team_id, team_id)} · 시즌 홈런 1위",
+            "route": route,
+            "gameId": None,
+            "teamIds": [team_id] if team_id else [],
+        }
+
+    def _kbo_brief_item(
+        self,
+        *,
+        item_type: str,
+        eyebrow: str,
+        title: str,
+        subtitle: str,
+        route: str,
+        game: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        return {
+            "type": item_type,
+            "eyebrow": eyebrow,
+            "title": title,
+            "subtitle": subtitle,
+            "route": route,
+            "gameId": game.get("gameId"),
+            "teamIds": self._team_ids_for_games([game]),
+        }
+
+    def _prioritize_kbo_brief_items(
+        self,
+        items: List[Dict[str, Any]],
+        my_team: Optional[str],
+    ) -> List[Dict[str, Any]]:
+        if not my_team:
+            return items
+        league_items = [item for item in items if my_team not in (item.get("teamIds") or [])]
+        my_team_items = [item for item in items if my_team in (item.get("teamIds") or [])]
+        return [*league_items, *my_team_items]
+
+    @staticmethod
+    def _kbo_brief_title(
+        *,
+        today: str,
+        has_games: bool,
+        has_live: bool,
+        has_final: bool,
+    ) -> str:
+        if not has_games:
+            return "이번 주 KBO 포인트"
+        if has_live:
+            return "지금 KBO"
+        if has_final:
+            return "어제의 KBO 브리프" if HomeService._is_yesterday(today) else "오늘의 KBO 요약"
+        return "오늘의 KBO 관전 포인트"
+
+    @staticmethod
+    def _kbo_brief_subtitle(
+        *,
+        total_games: int,
+        live_games: int,
+        final_games: int,
+        scheduled_games: int,
+    ) -> str:
+        if total_games == 0:
+            return "경기가 없는 날도 리그 흐름은 이어집니다."
+        if live_games > 0:
+            return f"{live_games}경기 진행 중 · 강한 흐름부터 정리"
+        if final_games > 0:
+            return f"{final_games}경기 종료 · 기록과 흐름을 빠르게 확인"
+        return f"{scheduled_games}경기 예정 · 경기 전 체크포인트"
+
+    @staticmethod
+    def _is_yesterday(value: str) -> bool:
+        try:
+            target = date_type.fromisoformat(value)
+        except ValueError:
+            return False
+        return target == date_type.today() - timedelta(days=1)
+
+    @staticmethod
+    def _team_ids_for_games(games: List[Dict[str, Any]]) -> List[str]:
+        team_ids: List[str] = []
+        for game in games:
+            for side in ("away", "home"):
+                team_id = (game.get(side) or {}).get("teamId")
+                if isinstance(team_id, str) and team_id and team_id not in team_ids:
+                    team_ids.append(team_id)
+        return team_ids
+
+    @staticmethod
+    def _score_line(game: Dict[str, Any]) -> str:
+        return (
+            f"{HomeService._team_short_name(game, 'away')} "
+            f"{HomeService._team_score(game, 'away')} : "
+            f"{HomeService._team_score(game, 'home')} "
+            f"{HomeService._team_short_name(game, 'home')}"
+        )
+
+    @staticmethod
+    def _game_time_label(game: Dict[str, Any]) -> str:
+        for key in ("inning", "startTime", "time"):
+            value = game.get(key)
+            if isinstance(value, str) and value:
+                return value
+        return "경기 정보"
+
+    @staticmethod
+    def _game_total_score(game: Dict[str, Any]) -> int:
+        return HomeService._team_score(game, "away") + HomeService._team_score(game, "home")
+
+    @staticmethod
+    def _game_total_hits(game: Dict[str, Any]) -> int:
+        return HomeService._team_hits(game, "away") + HomeService._team_hits(game, "home")
+
+    @staticmethod
+    def _team_score(game: Dict[str, Any], side: str) -> int:
+        return HomeService._as_int((game.get(side) or {}).get("score"))
+
+    @staticmethod
+    def _team_hits(game: Dict[str, Any], side: str) -> int:
+        return HomeService._as_int((game.get(side) or {}).get("hits"))
+
+    @staticmethod
+    def _team_short_name(game: Dict[str, Any], side: str) -> str:
+        team = game.get(side) or {}
+        return str(team.get("shortName") or team.get("teamName") or game.get(f"{side}Name") or "-")
+
+    @staticmethod
+    def _as_int(value: Any, fallback: int = 0) -> int:
+        if isinstance(value, int):
+            return value
+        if value in (None, "", "-"):
+            return fallback
+        try:
+            return int(str(value).replace(",", ""))
+        except (TypeError, ValueError):
+            return fallback
 
     @staticmethod
     def _safe_result(future: concurrent.futures.Future, fallback: Dict[str, Any]) -> Dict[str, Any]:

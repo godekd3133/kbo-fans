@@ -40,6 +40,79 @@ void main() {
     expect(item.title, '김도영 13개');
     expect(item.route, '/records/player/52605?season=2026');
     expect(item.imageUrl, endsWith('/2026/52605.jpg'));
+    expect(aggregate.kboBrief?.title, '이번 주 KBO 포인트');
+    expect(aggregate.kboBrief?.items.single.title, '김도영 13홈런');
+  });
+
+  test('local KBO brief puts league game ahead of my-team duplicate', () {
+    final aggregate = buildLocalHomeAggregate(
+      date: '2026-05-20',
+      myTeam: 'LG',
+      games: const [
+        Game(
+          gameId: '20260520HTLG0',
+          status: GameStatus.live,
+          inning: '8회말',
+          away: TeamScore(
+            teamId: 'HT',
+            teamName: 'KIA 타이거즈',
+            shortName: 'KIA',
+            score: 3,
+            innings: [],
+          ),
+          home: TeamScore(
+            teamId: 'LG',
+            teamName: 'LG 트윈스',
+            shortName: 'LG',
+            score: 3,
+            innings: [],
+          ),
+          stadium: '잠실',
+          startTime: '18:30',
+        ),
+        Game(
+          gameId: '20260520NCOB0',
+          status: GameStatus.live,
+          inning: '7회초',
+          away: TeamScore(
+            teamId: 'NC',
+            teamName: 'NC 다이노스',
+            shortName: 'NC',
+            score: 9,
+            innings: [],
+          ),
+          home: TeamScore(
+            teamId: 'OB',
+            teamName: '두산 베어스',
+            shortName: '두산',
+            score: 7,
+            innings: [],
+          ),
+          stadium: '창원',
+          startTime: '18:30',
+        ),
+      ],
+      scheduleDays: const [],
+      standings: const [],
+      overview: const RecordsOverview(
+        season: 2026,
+        avgLeaders: [],
+        hrLeaders: [],
+        opsLeaders: [],
+        opsPlusLeaders: [],
+        eraLeaders: [],
+        todayHitter: FeaturedPlayerCard(label: 'today hitter'),
+        todayPitcher: FeaturedPlayerCard(label: 'today pitcher'),
+        monthHitter: FeaturedPlayerCard(label: 'month hitter'),
+        monthPitcher: FeaturedPlayerCard(label: 'month pitcher'),
+      ),
+    );
+
+    final firstItem = aggregate.kboBrief!.items.first;
+
+    expect(aggregate.kboBrief!.title, '지금 KBO');
+    expect(firstItem.route, '/game/20260520NCOB0');
+    expect(firstItem.teamIds, isNot(contains('LG')));
   });
 
   test('scheduled zero score is not treated as a recent draw', () {
@@ -127,5 +200,7 @@ void main() {
     expect(brief.recentDraws, 0);
     expect(brief.recentSummaries.single.score, '5:2');
     expect(aggregate.quickItems.first.title, '두산 vs LG');
+    expect(aggregate.kboBrief?.title, '오늘의 KBO 관전 포인트');
+    expect(aggregate.kboBrief?.items.first.title, '두산 vs LG');
   });
 }

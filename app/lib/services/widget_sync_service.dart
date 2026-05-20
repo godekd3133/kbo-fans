@@ -49,12 +49,18 @@ class WidgetSyncService {
 
   static final WidgetSyncService instance = WidgetSyncService._();
   String? _lastSyncSignature;
+  bool _initialized = false;
 
   Future<void> initialize() async {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    if (_initialized || kIsWeb) {
+      return;
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
       await HomeWidget.setAppGroupId(_widgetGroupId);
       DevConsole.instance.info('Widget app group initialized');
     }
+    _initialized = true;
   }
 
   GameRepository createRepositoryForBackground() {
@@ -85,14 +91,14 @@ class WidgetSyncService {
       return;
     }
 
-    await initialize();
-
     final selected = _selectGame(games, myTeamId);
     final signature = _buildSignature(games: games, myTeamId: myTeamId);
     if (_lastSyncSignature == signature) {
       DevConsole.instance.info('Widget sync skipped: same signature');
       return;
     }
+
+    await initialize();
     _lastSyncSignature = signature;
     DevConsole.instance.info(
       'Widget sync begin: game=${selected?.gameId ?? '-'} myTeam=${myTeamId ?? '-'}',

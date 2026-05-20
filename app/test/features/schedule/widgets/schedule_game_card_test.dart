@@ -87,6 +87,30 @@ void main() {
     expect(find.text('vs'), findsOneWidget);
   });
 
+  testWidgets('예정 경기는 0:0 점수가 들어와도 vs를 노출한다', (tester) async {
+    const game = ScheduleGame(
+      gameId: '20260331KTLG0',
+      time: '18:30',
+      awayId: 'KT',
+      awayName: 'KT',
+      awayScore: 0,
+      homeId: 'LG',
+      homeName: 'LG',
+      homeScore: 0,
+      stadium: '잠실',
+      status: 'SCHEDULED',
+    );
+
+    await tester.pumpWidget(
+      wrap(const ScheduleGameCard(game: game, showTeamLogos: false)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('경기 전'), findsOneWidget);
+    expect(find.text('vs'), findsOneWidget);
+    expect(find.text('0'), findsNothing);
+  });
+
   testWidgets('서스펜디드 경기는 서스펜디드 라벨을 노출한다', (tester) async {
     const game = ScheduleGame(
       gameId: '20260331KTLG0',

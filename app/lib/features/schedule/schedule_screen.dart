@@ -461,8 +461,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return AppPressable(
       onTap: onTap,
+      pressedScale: 0.97,
       child: Container(
         height: 42,
         alignment: Alignment.center,
@@ -487,8 +488,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return AppPressable(
       onTap: onTap,
+      pressedScale: 0.96,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
@@ -669,7 +671,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   );
 
                   return Expanded(
-                    child: GestureDetector(
+                    child: AppPressable(
                       onTap: () => setState(() {
                         _currentMonth = DateTime(date.year, date.month);
                         _selectedDay = date.day;
@@ -682,6 +684,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                           _calendarPageController.jumpToPage(targetPage);
                         }
                       }),
+                      pressedScale: 0.92,
                       child: SizedBox(
                         height: 40,
                         child: Column(
@@ -965,8 +968,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required int gameCount,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return AppPressable(
       onTap: onTap,
+      pressedScale: 0.96,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -1070,8 +1074,9 @@ class _HeaderIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppPressable(
       onTap: onTap,
+      pressedScale: 0.94,
       child: Container(
         width: 36,
         height: 36,

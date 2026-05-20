@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/relay.dart';
 
@@ -192,7 +193,12 @@ class ScoreTab extends StatelessWidget {
       return child;
     }
 
-    return InkWell(onTap: onTap, child: child);
+    return AppPressable(
+      onTap: onTap,
+      pressedScale: 0.97,
+      pressedOpacity: 0.92,
+      child: child,
+    );
   }
 
   void _openInningSheet(

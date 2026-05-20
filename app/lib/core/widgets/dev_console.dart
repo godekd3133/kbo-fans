@@ -106,6 +106,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
   bool _collapseOldLogs = true;
   String _query = '';
   LogCategory _category = LogCategory.all;
+  int _lastErrorCount = 0;
   final Set<LogLevel> _visibleLevels = {
     LogLevel.info,
     LogLevel.warn,
@@ -116,6 +117,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
   @override
   void initState() {
     super.initState();
+    _lastErrorCount = _errorCount;
     DevConsole.instance.addListener(_onLog);
     _restoreFilters();
   }
@@ -129,6 +131,12 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
 
   void _onLog() {
     if (!mounted) return;
+    final nextErrorCount = _errorCount;
+    final shouldRebuild = _isOpen || nextErrorCount != _lastErrorCount;
+    _lastErrorCount = nextErrorCount;
+    if (!shouldRebuild) {
+      return;
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -249,296 +257,296 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                 ),
                 child: Column(
                   children: [
-                  // 헤더
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1A1A1A),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(12),
+                    // 헤더
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
                       ),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    '🔧 Dev Console',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1A1A1A),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      '🔧 Dev Console',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'API ${AppConfig.instance.apiBaseUrl}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textDisabled,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'API ${AppConfig.instance.apiBaseUrl}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textDisabled,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            GestureDetector(
-                              onTap: () {
-                                final text = DevConsole.instance.logs
-                                    .map((e) {
-                                      final t =
-                                          '${e.time.hour.toString().padLeft(2, '0')}:${e.time.minute.toString().padLeft(2, '0')}:${e.time.second.toString().padLeft(2, '0')}';
-                                      final lvl = e.level.name.toUpperCase();
-                                      return '[$t][$lvl] ${e.message}';
-                                    })
-                                    .join('\n');
-                                Clipboard.setData(ClipboardData(text: text));
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('로그 복사됨'),
-                                    duration: Duration(seconds: 1),
-                                  ),
-                                );
-                              },
-                              child: const Icon(
-                                Icons.copy,
-                                size: 16,
-                                color: AppColors.accent,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            GestureDetector(
-                              onTap: () => DevConsole.instance.clear(),
-                              child: const Text(
-                                'Clear',
-                                style: TextStyle(
-                                  fontSize: 12,
+                              GestureDetector(
+                                onTap: () {
+                                  final text = DevConsole.instance.logs
+                                      .map((e) {
+                                        final t =
+                                            '${e.time.hour.toString().padLeft(2, '0')}:${e.time.minute.toString().padLeft(2, '0')}:${e.time.second.toString().padLeft(2, '0')}';
+                                        final lvl = e.level.name.toUpperCase();
+                                        return '[$t][$lvl] ${e.message}';
+                                      })
+                                      .join('\n');
+                                  Clipboard.setData(ClipboardData(text: text));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('로그 복사됨'),
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                                child: const Icon(
+                                  Icons.copy,
+                                  size: 16,
                                   color: AppColors.accent,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            GestureDetector(
-                              onTap: () => setState(() => _isOpen = false),
-                              child: const Icon(
-                                Icons.close,
-                                size: 18,
-                                color: AppColors.textDisabled,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            _quickChip(
-                              selected: !_apiOnly,
-                              label: 'ALL',
-                              onTap: () {
-                                setState(() => _apiOnly = false);
-                                _persistFilters();
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            _quickChip(
-                              selected: _apiOnly,
-                              label: 'API',
-                              onTap: () {
-                                setState(() => _apiOnly = true);
-                                _persistFilters();
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            _quickChip(
-                              selected: _collapseOldLogs,
-                              label: '최근',
-                              onTap: () => setState(
-                                () => _collapseOldLogs = !_collapseOldLogs,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            _filterChip(LogLevel.info, 'INFO'),
-                            const SizedBox(width: 8),
-                            _filterChip(LogLevel.warn, 'WARN'),
-                            const SizedBox(width: 8),
-                            _filterChip(LogLevel.error, 'ERROR'),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: (value) {
-                                  setState(() => _query = value.trim());
-                                },
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textPrimary,
-                                ),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  hintText: '로그 검색',
-                                  hintStyle: const TextStyle(
+                              const SizedBox(width: 12),
+                              GestureDetector(
+                                onTap: () => DevConsole.instance.clear(),
+                                child: const Text(
+                                  'Clear',
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textDisabled,
-                                  ),
-                                  prefixIcon: const Icon(
-                                    Icons.search,
-                                    size: 16,
-                                    color: AppColors.textDisabled,
-                                  ),
-                                  suffixIcon: _query.isEmpty
-                                      ? null
-                                      : GestureDetector(
-                                          onTap: () {
-                                            _searchController.clear();
-                                            setState(() => _query = '');
-                                          },
-                                          child: const Icon(
-                                            Icons.close,
-                                            size: 16,
-                                            color: AppColors.textDisabled,
-                                          ),
-                                        ),
-                                  filled: true,
-                                  fillColor: AppColors.background.withValues(
-                                    alpha: 0.5,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: AppColors.divider,
-                                    ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: AppColors.divider,
-                                    ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                    borderSide: const BorderSide(
-                                      color: AppColors.accent,
-                                    ),
+                                    color: AppColors.accent,
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              _categoryChip(LogCategory.all, 'ALL'),
-                              const SizedBox(width: 8),
-                              _categoryChip(LogCategory.api, 'API'),
-                              const SizedBox(width: 8),
-                              _categoryChip(LogCategory.kbo, 'KBO'),
-                              const SizedBox(width: 8),
-                              _categoryChip(LogCategory.ui, 'UI'),
-                              const SizedBox(width: 8),
-                              _categoryChip(LogCategory.push, 'PUSH'),
+                              const SizedBox(width: 12),
+                              GestureDetector(
+                                onTap: () => setState(() => _isOpen = false),
+                                child: const Icon(
+                                  Icons.close,
+                                  size: 18,
+                                  color: AppColors.textDisabled,
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // 로그 리스트
-                  Expanded(
-                    child: _filteredLogs.isEmpty
-                        ? const Center(
-                            child: Text(
-                              '표시할 로그가 없습니다',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textDisabled,
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              _quickChip(
+                                selected: !_apiOnly,
+                                label: 'ALL',
+                                onTap: () {
+                                  setState(() => _apiOnly = false);
+                                  _persistFilters();
+                                },
                               ),
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(8),
-                            itemCount: _filteredLogs.length,
-                            itemBuilder: (_, i) {
-                              final entry = _filteredLogs[i];
-                              final color = switch (entry.level) {
-                                LogLevel.error => AppColors.live,
-                                LogLevel.warn => AppColors.ballYellow,
-                                LogLevel.info => AppColors.textSecondary,
-                              };
-                              final accent = _categoryColor(entry.message);
-                              final timeStr =
-                                  '${entry.time.hour.toString().padLeft(2, '0')}:${entry.time.minute.toString().padLeft(2, '0')}:${entry.time.second.toString().padLeft(2, '0')}';
-                              final repeatSuffix = entry.count > 1
-                                  ? ' ×${entry.count}'
-                                  : '';
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: GestureDetector(
-                                  onLongPress: () async {
-                                    await Clipboard.setData(
-                                      ClipboardData(
-                                        text:
-                                            '[$timeStr][${entry.level.name.toUpperCase()}] ${entry.message}',
-                                      ),
-                                    );
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('로그 1건 복사됨'),
-                                          duration: Duration(seconds: 1),
-                                        ),
-                                      );
-                                    }
+                              const SizedBox(width: 8),
+                              _quickChip(
+                                selected: _apiOnly,
+                                label: 'API',
+                                onTap: () {
+                                  setState(() => _apiOnly = true);
+                                  _persistFilters();
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              _quickChip(
+                                selected: _collapseOldLogs,
+                                label: '최근',
+                                onTap: () => setState(
+                                  () => _collapseOldLogs = !_collapseOldLogs,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              _filterChip(LogLevel.info, 'INFO'),
+                              const SizedBox(width: 8),
+                              _filterChip(LogLevel.warn, 'WARN'),
+                              const SizedBox(width: 8),
+                              _filterChip(LogLevel.error, 'ERROR'),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: (value) {
+                                    setState(() => _query = value.trim());
                                   },
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 6,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    hintText: '로그 검색',
+                                    hintStyle: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textDisabled,
                                     ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.background.withValues(
-                                        alpha: 0.22,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border(
-                                        left: BorderSide(
-                                          color: accent,
-                                          width: 3,
-                                        ),
+                                    prefixIcon: const Icon(
+                                      Icons.search,
+                                      size: 16,
+                                      color: AppColors.textDisabled,
+                                    ),
+                                    suffixIcon: _query.isEmpty
+                                        ? null
+                                        : GestureDetector(
+                                            onTap: () {
+                                              _searchController.clear();
+                                              setState(() => _query = '');
+                                            },
+                                            child: const Icon(
+                                              Icons.close,
+                                              size: 16,
+                                              color: AppColors.textDisabled,
+                                            ),
+                                          ),
+                                    filled: true,
+                                    fillColor: AppColors.background.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.divider,
                                       ),
                                     ),
-                                    child: Text(
-                                      '[$timeStr] ${entry.message}$repeatSuffix',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: color,
-                                        fontFamily: 'monospace',
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.divider,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.accent,
                                       ),
                                     ),
                                   ),
                                 ),
-                              );
-                            },
+                              ),
+                            ],
                           ),
-                  ),
+                          const SizedBox(height: 10),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _categoryChip(LogCategory.all, 'ALL'),
+                                const SizedBox(width: 8),
+                                _categoryChip(LogCategory.api, 'API'),
+                                const SizedBox(width: 8),
+                                _categoryChip(LogCategory.kbo, 'KBO'),
+                                const SizedBox(width: 8),
+                                _categoryChip(LogCategory.ui, 'UI'),
+                                const SizedBox(width: 8),
+                                _categoryChip(LogCategory.push, 'PUSH'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // 로그 리스트
+                    Expanded(
+                      child: _filteredLogs.isEmpty
+                          ? const Center(
+                              child: Text(
+                                '표시할 로그가 없습니다',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textDisabled,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(8),
+                              itemCount: _filteredLogs.length,
+                              itemBuilder: (_, i) {
+                                final entry = _filteredLogs[i];
+                                final color = switch (entry.level) {
+                                  LogLevel.error => AppColors.live,
+                                  LogLevel.warn => AppColors.ballYellow,
+                                  LogLevel.info => AppColors.textSecondary,
+                                };
+                                final accent = _categoryColor(entry.message);
+                                final timeStr =
+                                    '${entry.time.hour.toString().padLeft(2, '0')}:${entry.time.minute.toString().padLeft(2, '0')}:${entry.time.second.toString().padLeft(2, '0')}';
+                                final repeatSuffix = entry.count > 1
+                                    ? ' ×${entry.count}'
+                                    : '';
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: GestureDetector(
+                                    onLongPress: () async {
+                                      await Clipboard.setData(
+                                        ClipboardData(
+                                          text:
+                                              '[$timeStr][${entry.level.name.toUpperCase()}] ${entry.message}',
+                                        ),
+                                      );
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('로그 1건 복사됨'),
+                                            duration: Duration(seconds: 1),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.background.withValues(
+                                          alpha: 0.22,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border(
+                                          left: BorderSide(
+                                            color: accent,
+                                            width: 3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        '[$timeStr] ${entry.message}$repeatSuffix',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: color,
+                                          fontFamily: 'monospace',
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
                   ],
                 ),
               ),

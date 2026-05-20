@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/game_status_label.dart';
+import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/game_status_badge.dart';
 import '../../../data/models/schedule.dart';
 
@@ -31,7 +32,7 @@ class ScheduleGameCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return AppPressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -90,6 +91,7 @@ class ScheduleGameCard extends StatelessWidget {
                 _ScoreOrVersus(
                   awayScore: game.awayScore,
                   homeScore: game.homeScore,
+                  status: game.status,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -208,11 +210,14 @@ class _TeamLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final team = KboTeams.byId(teamId);
+    final cacheSize = (size * 3).round();
     return CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
       httpHeaders: _kboImageHeaders,
       width: size,
       height: size,
+      memCacheWidth: cacheSize,
+      memCacheHeight: cacheSize,
       placeholder: (_, _) => Container(
         width: size,
         height: size,
@@ -245,12 +250,20 @@ class _TeamLogo extends StatelessWidget {
 class _ScoreOrVersus extends StatelessWidget {
   final int? awayScore;
   final int? homeScore;
+  final String status;
 
-  const _ScoreOrVersus({required this.awayScore, required this.homeScore});
+  const _ScoreOrVersus({
+    required this.awayScore,
+    required this.homeScore,
+    required this.status,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final hasScore = awayScore != null && homeScore != null;
+    final hasScore =
+        status.toUpperCase() != 'SCHEDULED' &&
+        awayScore != null &&
+        homeScore != null;
     if (!hasScore) {
       return const Text(
         'vs',
@@ -261,9 +274,12 @@ class _ScoreOrVersus extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          '$awayScore',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+        AppMotionValue(
+          value: 'away-$awayScore',
+          child: Text(
+            '$awayScore',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+          ),
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
@@ -272,9 +288,12 @@ class _ScoreOrVersus extends StatelessWidget {
             style: TextStyle(fontSize: 16, color: AppColors.textDisabled),
           ),
         ),
-        Text(
-          '$homeScore',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+        AppMotionValue(
+          value: 'home-$homeScore',
+          child: Text(
+            '$homeScore',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+          ),
         ),
       ],
     );

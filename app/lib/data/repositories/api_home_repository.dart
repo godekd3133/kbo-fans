@@ -29,11 +29,13 @@ class ApiHomeRepository {
         .map((item) => _parseQuickItem(item as Map<String, dynamic>))
         .toList();
     final briefMap = data['myTeamBrief'] as Map<String, dynamic>?;
+    final kboBriefMap = data['kboBrief'] as Map<String, dynamic>?;
 
     return HomeAggregate(
       date: data['date'] as String? ?? date,
       myTeam: data['myTeam'] as String?,
       myTeamBrief: briefMap == null ? null : _parseMyTeamBrief(briefMap),
+      kboBrief: kboBriefMap == null ? null : _parseKboBrief(kboBriefMap),
       quickItems: quickItems,
     );
   }
@@ -47,6 +49,35 @@ class ApiHomeRepository {
       teamId: json['teamId'] as String?,
       imageUrl: json['imageUrl'] as String?,
       fallbackLabel: json['fallbackLabel'] as String?,
+    );
+  }
+
+  HomeKboBrief _parseKboBrief(Map<String, dynamic> json) {
+    final items = (json['items'] as List<dynamic>? ?? [])
+        .map((item) => _parseKboBriefItem(item as Map<String, dynamic>))
+        .where((item) => item.title.isNotEmpty)
+        .toList();
+
+    return HomeKboBrief(
+      title: json['title'] as String? ?? 'KBO 브리프',
+      subtitle: json['subtitle'] as String? ?? '',
+      items: items,
+    );
+  }
+
+  HomeKboBriefItem _parseKboBriefItem(Map<String, dynamic> json) {
+    final teamIds = (json['teamIds'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .where((value) => value.isNotEmpty)
+        .toList();
+    return HomeKboBriefItem(
+      type: json['type'] as String? ?? 'league',
+      eyebrow: json['eyebrow'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      subtitle: json['subtitle'] as String? ?? '',
+      route: json['route'] as String? ?? '/home',
+      gameId: json['gameId'] as String?,
+      teamIds: teamIds,
     );
   }
 

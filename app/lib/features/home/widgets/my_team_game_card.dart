@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/game_status_label.dart';
+import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/game.dart';
 
 const _kboImageHeaders = {
@@ -36,8 +37,9 @@ class MyTeamGameCard extends StatelessWidget {
         awayTeam?.primaryColor ?? homeTeam?.primaryColor ?? AppColors.live;
     final primaryAction = _primaryAction();
     final secondaryAction = _secondaryAction();
+    final scoreText = _scoreboardText();
 
-    return GestureDetector(
+    return AppPressable(
       onTap: onOpenDetail,
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -120,14 +122,17 @@ class MyTeamGameCard extends StatelessWidget {
                   width: 124,
                   child: Column(
                     children: [
-                      Text(
-                        '${_scoreText(game.away.score)}:${_scoreText(game.home.score)}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 42,
-                          height: 1,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0,
+                      AppMotionValue(
+                        value: '${game.away.score}:${game.home.score}',
+                        child: Text(
+                          scoreText,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 42,
+                            height: 1,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -220,6 +225,13 @@ class MyTeamGameCard extends StatelessWidget {
   }
 
   String _scoreText(int? score) => score == null ? '-' : '$score';
+
+  String _scoreboardText() {
+    if (game.status == GameStatus.scheduled) {
+      return 'vs';
+    }
+    return '${_scoreText(game.away.score)}:${_scoreText(game.home.score)}';
+  }
 
   _CardAction _primaryAction() {
     final detail = onOpenDetail;
@@ -342,8 +354,14 @@ class MyTeamGameCard extends StatelessWidget {
     if (imageUrl.isEmpty) {
       return _logoFallback(team?.shortName ?? shortName, size);
     }
+    final cacheSize = (size * 3).round();
     return Image(
-      image: CachedNetworkImageProvider(imageUrl, headers: _kboImageHeaders),
+      image: CachedNetworkImageProvider(
+        imageUrl,
+        headers: _kboImageHeaders,
+        maxWidth: cacheSize,
+        maxHeight: cacheSize,
+      ),
       width: size,
       height: size,
       errorBuilder: (_, _, _) =>

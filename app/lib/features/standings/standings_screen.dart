@@ -289,6 +289,8 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     imageUrl: team?.logoUrl ?? '',
                     width: 24,
                     height: 24,
+                    memCacheWidth: 72,
+                    memCacheHeight: 72,
                     placeholder: (_, _) =>
                         const SizedBox(width: 24, height: 24),
                     errorWidget: (_, _, _) => Container(

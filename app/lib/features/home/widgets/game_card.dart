@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/game_status_label.dart';
+import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/game_status_badge.dart';
 import '../../../data/models/game.dart';
 
@@ -23,8 +24,9 @@ class GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLive = game.status == GameStatus.live;
     final secondary = _secondaryText();
+    final showScore = game.status != GameStatus.scheduled;
 
-    return GestureDetector(
+    return AppPressable(
       onTap: onTap,
       child: Container(
         height: 92,
@@ -51,11 +53,14 @@ class GameCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    '${game.away.score}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                  AppMotionValue(
+                    value: 'away-${game.away.score}',
+                    child: Text(
+                      showScore ? '${game.away.score}' : '-',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -97,11 +102,14 @@ class GameCard extends StatelessWidget {
             Expanded(
               child: Row(
                 children: [
-                  Text(
-                    '${game.home.score}',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                  AppMotionValue(
+                    value: 'home-${game.home.score}',
+                    child: Text(
+                      showScore ? '${game.home.score}' : '-',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -143,8 +151,14 @@ class GameCard extends StatelessWidget {
     if (imageUrl.isEmpty) {
       return _logoFallback(team?.shortName ?? shortName, size);
     }
+    final cacheSize = (size * 3).round();
     return Image(
-      image: CachedNetworkImageProvider(imageUrl, headers: _kboImageHeaders),
+      image: CachedNetworkImageProvider(
+        imageUrl,
+        headers: _kboImageHeaders,
+        maxWidth: cacheSize,
+        maxHeight: cacheSize,
+      ),
       width: size,
       height: size,
       errorBuilder: (_, _, _) =>

@@ -462,13 +462,17 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                             const SizedBox(width: 12),
                             Column(
                               children: [
-                                Text(
-                                  '${game.away.score}:${game.home.score}',
-                                  style: const TextStyle(
-                                    fontSize: 38,
-                                    height: 1,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 0,
+                                AppMotionValue(
+                                  value:
+                                      '${game.away.score}:${game.home.score}',
+                                  child: Text(
+                                    '${game.away.score}:${game.home.score}',
+                                    style: const TextStyle(
+                                      fontSize: 38,
+                                      height: 1,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(height: 7),
@@ -580,6 +584,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
           httpHeaders: _kboImageHeaders,
           width: 48,
           height: 48,
+          memCacheWidth: 144,
+          memCacheHeight: 144,
           placeholder: (_, _) => Container(
             width: 48,
             height: 48,
@@ -1156,10 +1162,11 @@ class _HighlightCardState extends State<_HighlightCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            InkWell(
+            AppPressable(
               onTap: isPlayable
                   ? () => _playInline(video.videoId)
                   : () => _openUrl(video.videoUrl),
+              pressedScale: 0.985,
               child: AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Stack(
@@ -1169,6 +1176,8 @@ class _HighlightCardState extends State<_HighlightCard> {
                       CachedNetworkImage(
                         imageUrl: thumbnailUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 960,
+                        memCacheHeight: 540,
                         errorWidget: (_, _, _) => _thumbnailFallback(),
                         placeholder: (_, _) =>
                             Container(color: AppColors.cardSub),
@@ -1306,6 +1315,8 @@ class _HighlightCardState extends State<_HighlightCard> {
             imageUrl: team?.logoUrl ?? '',
             width: 34,
             height: 34,
+            memCacheWidth: 102,
+            memCacheHeight: 102,
             errorWidget: (_, _, _) => _teamBadgeFallback(shortName),
             placeholder: (_, _) => _teamBadgeFallback(shortName),
           ),
@@ -1510,12 +1521,16 @@ class _HighlightCardState extends State<_HighlightCard> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: selected ? AppColors.textPrimary : Colors.transparent,
-      borderRadius: BorderRadius.circular(999),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
+    return AppPressable(
+      onTap: onTap,
+      pressedScale: 0.94,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.textPrimary : Colors.transparent,
+          borderRadius: BorderRadius.circular(999),
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Text(

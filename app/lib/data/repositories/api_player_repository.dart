@@ -19,12 +19,11 @@ class ApiPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
-    final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/team/$teamId/players',
       queryParameters: {'season': season},
       cacheKey: 'teamPlayers:$_playerCacheVersion:$teamId:$season',
-      preferCache: isHistoricalSeason,
+      preferCache: true,
       maxAge: _stableCacheAge,
     );
     final players = data['players'] as List<dynamic>? ?? [];

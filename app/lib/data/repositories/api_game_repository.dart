@@ -53,11 +53,12 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<Game?> getGame(String gameId) async {
+    final isHistoricalGame = _isHistoricalGameId(gameId);
     final data = await _client.getCached(
       '/game/$gameId',
       cacheKey: 'game_detail_v2:$gameId',
-      preferCache: false,
-      maxAge: _liveishCacheAge,
+      preferCache: isHistoricalGame,
+      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
     );
     final game = data['game'] as Map<String, dynamic>?;
     if (game == null) {
@@ -82,10 +83,14 @@ class ApiGameRepository implements GameRepository {
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {
     final params = <String, dynamic>{};
     if (afterSeqNo != null) params['after'] = afterSeqNo;
+    final isHistoricalGame = _isHistoricalGameId(gameId);
 
-    final data = await _client.get(
+    final data = await _client.getCached(
       '/game/$gameId/relay',
       queryParameters: params,
+      cacheKey: 'relay:$gameId:${afterSeqNo ?? ''}',
+      preferCache: isHistoricalGame,
+      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
     );
     final items = data['relayItems'] as List<dynamic>? ?? [];
     final atBat = data['currentAtBat'] as Map<String, dynamic>?;
@@ -112,11 +117,12 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<GameBoxscoreData> getBoxscoreData(String gameId) async {
+    final isHistoricalGame = _isHistoricalGameId(gameId);
     final data = await _client.getCached(
       '/game/$gameId/boxscore',
       cacheKey: 'boxscore:$gameId',
-      preferCache: false,
-      maxAge: _liveishCacheAge,
+      preferCache: isHistoricalGame,
+      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
     );
     return GameBoxscoreData(
       gameId: gameId,
@@ -150,11 +156,12 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<GameLineupData> getLineupData(String gameId) async {
+    final isHistoricalGame = _isHistoricalGameId(gameId);
     final data = await _client.getCached(
       '/game/$gameId/lineup',
       cacheKey: 'lineup:$gameId',
-      preferCache: false,
-      maxAge: _liveishCacheAge,
+      preferCache: isHistoricalGame,
+      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
     );
     return GameLineupData(
       gameId: gameId,
@@ -472,5 +479,14 @@ class ApiGameRepository implements GameRepository {
     final now = DateTime.now();
     final current = DateTime(now.year, now.month);
     return requested.isBefore(current);
+  }
+
+  bool _isHistoricalGameId(String gameId) {
+    if (gameId.length < 8) {
+      return false;
+    }
+    final date =
+        '${gameId.substring(0, 4)}-${gameId.substring(4, 6)}-${gameId.substring(6, 8)}';
+    return _isHistoricalDate(date);
   }
 }

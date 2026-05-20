@@ -875,30 +875,40 @@ class _StarterHeroCard extends StatelessWidget {
     return Column(
       children: [
         Container(
-          height: 220,
+          height: 148,
           decoration: BoxDecoration(
             color: AppColors.cardSub,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: accent.withValues(alpha: 0.24)),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             child: data.imageUrl != null && data.imageUrl!.isNotEmpty
                 ? Container(
                     color: AppColors.cardSub,
                     alignment: Alignment.bottomCenter,
-                    padding: const EdgeInsets.only(top: 12),
-                    child: CachedNetworkImage(
-                      imageUrl: data.imageUrl!,
-                      httpHeaders: _kboImageHeaders,
-                      fit: BoxFit.contain,
-                      width: double.infinity,
-                      height: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
+                    child: Align(
                       alignment: Alignment.bottomCenter,
-                      placeholder: (_, _) =>
-                          _starterFallback(accent, data.name),
-                      errorWidget: (_, _, _) =>
-                          _starterFallback(accent, data.name),
+                      child: FractionallySizedBox(
+                        widthFactor: 0.9,
+                        heightFactor: 0.94,
+                        alignment: Alignment.bottomCenter,
+                        child: CachedNetworkImage(
+                          imageUrl: data.imageUrl!,
+                          httpHeaders: _kboImageHeaders,
+                          fit: BoxFit.contain,
+                          width: double.infinity,
+                          height: double.infinity,
+                          memCacheWidth: 720,
+                          memCacheHeight: 660,
+                          alignment: Alignment.bottomCenter,
+                          placeholder: (_, _) =>
+                              _starterFallback(accent, data.name),
+                          errorWidget: (_, _, _) =>
+                              _starterFallback(accent, data.name),
+                        ),
+                      ),
                     ),
                   )
                 : _starterFallback(accent, data.name),
@@ -1754,6 +1764,8 @@ class _LineupAvatar extends StatelessWidget {
               httpHeaders: _kboImageHeaders,
               width: 42,
               height: 42,
+              memCacheWidth: 126,
+              memCacheHeight: 126,
               fit: BoxFit.cover,
               placeholder: (_, _) => _fallback(),
               errorWidget: (_, _, _) => _fallback(),
@@ -1837,11 +1849,14 @@ class _TeamLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final team = KboTeams.byId(teamId);
+    final cacheSize = (size * 3).round();
     return CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
       httpHeaders: _kboImageHeaders,
       width: size,
       height: size,
+      memCacheWidth: cacheSize,
+      memCacheHeight: cacheSize,
       placeholder: (_, _) => Container(
         width: size,
         height: size,

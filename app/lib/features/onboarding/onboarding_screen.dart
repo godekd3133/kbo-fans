@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/router/app_router.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -109,9 +110,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   itemBuilder: (context, index) {
                     final team = KboTeams.teams[index];
                     final isSelected = effectiveSelectedTeamId == team.id;
-                    return GestureDetector(
+                    return AppPressable(
                       onTap: () => setState(() => _selectedTeamId = team.id),
-                      child: Container(
+                      pressedScale: 0.96,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
                         decoration: BoxDecoration(
                           color: AppColors.card,
                           borderRadius: BorderRadius.circular(8),
@@ -230,10 +234,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
               ),
               const SizedBox(height: 14),
-              GestureDetector(
+              AppPressable(
                 onTap: widget.isEditMode
                     ? () => context.go('/settings')
                     : _saveAndProceed,
+                pressedScale: 0.97,
                 child: Text(
                   widget.isEditMode ? '취소' : '나중에 설정에서 선택하기',
                   style: TextStyle(fontSize: 14, color: AppColors.textDisabled),

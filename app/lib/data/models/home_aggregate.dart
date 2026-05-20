@@ -22,6 +22,38 @@ class HomeQuickItem {
   });
 }
 
+class HomeKboBriefItem {
+  final String type;
+  final String eyebrow;
+  final String title;
+  final String subtitle;
+  final String route;
+  final String? gameId;
+  final List<String> teamIds;
+
+  const HomeKboBriefItem({
+    required this.type,
+    required this.eyebrow,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+    this.gameId,
+    this.teamIds = const [],
+  });
+}
+
+class HomeKboBrief {
+  final String title;
+  final String subtitle;
+  final List<HomeKboBriefItem> items;
+
+  const HomeKboBrief({
+    required this.title,
+    required this.subtitle,
+    required this.items,
+  });
+}
+
 class HomeRecentGameSummary {
   final String gameId;
   final String result;
@@ -66,12 +98,14 @@ class HomeAggregate {
   final String date;
   final String? myTeam;
   final HomeMyTeamBrief? myTeamBrief;
+  final HomeKboBrief? kboBrief;
   final List<HomeQuickItem> quickItems;
 
   const HomeAggregate({
     required this.date,
     required this.myTeam,
     required this.myTeamBrief,
+    required this.kboBrief,
     required this.quickItems,
   });
 }
@@ -99,11 +133,19 @@ HomeAggregate buildLocalHomeAggregate({
     games: games,
     season: overview.season,
   );
+  final kboBrief = _buildLocalKboBrief(
+    date: date,
+    myTeam: myTeam,
+    games: games,
+    standings: standings,
+    overview: overview,
+  );
 
   return HomeAggregate(
     date: date,
     myTeam: myTeam,
     myTeamBrief: myTeamBrief,
+    kboBrief: kboBrief,
     quickItems: quickItems,
   );
 }
@@ -289,4 +331,294 @@ List<HomeQuickItem> _buildLocalQuickItems({
   }
 
   return items.take(4).toList();
+}
+
+HomeKboBrief _buildLocalKboBrief({
+  required String date,
+  required String? myTeam,
+  required List<Game> games,
+  required List<TeamStanding> standings,
+  required RecordsOverview overview,
+}) {
+  final liveGames = games
+      .where((game) => game.status == GameStatus.live)
+      .toList();
+  final finalGames = games
+      .where((game) => game.status == GameStatus.final_)
+      .toList();
+  final scheduledGames = games
+      .where((game) => game.status == GameStatus.scheduled)
+      .toList();
+  final activeGames = [
+    ...liveGames,
+    ...finalGames,
+  ].where((game) => game.away.score + game.home.score > 0).toList();
+
+  final title = _kboBriefTitle(
+    date: date,
+    hasGames: games.isNotEmpty,
+    hasLive: liveGames.isNotEmpty,
+    hasFinal: finalGames.isNotEmpty,
+  );
+  final subtitle = _kboBriefSubtitle(
+    totalGames: games.length,
+    liveGames: liveGames.length,
+    finalGames: finalGames.length,
+    scheduledGames: scheduledGames.length,
+  );
+  final items = <HomeKboBriefItem>[];
+
+  void add(HomeKboBriefItem item) {
+    final duplicate = items.any(
+      (current) =>
+          current.route == item.route && current.eyebrow == item.eyebrow,
+    );
+    if (!duplicate) {
+      items.add(item);
+    }
+  }
+
+  final closeGame =
+      activeGames
+          .where((game) => (game.away.score - game.home.score).abs() <= 1)
+          .toList()
+        ..sort((a, b) {
+          final liveCompare = _gameLivePriority(
+            a,
+          ).compareTo(_gameLivePriority(b));
+          if (liveCompare != 0) return liveCompare;
+          return _totalScore(b).compareTo(_totalScore(a));
+        });
+  if (closeGame.isNotEmpty) {
+    final game = closeGame.first;
+    add(
+      HomeKboBriefItem(
+        type: 'game_flow',
+        eyebrow: game.status == GameStatus.live ? '접전 진행 중' : '1점 승부',
+        title: _scoreLine(game),
+        subtitle: '${_gameTimeLabel(game)} · ${game.stadium}',
+        route: '/game/${game.gameId}',
+        gameId: game.gameId,
+        teamIds: [game.away.teamId, game.home.teamId],
+      ),
+    );
+  }
+
+  final highestScoreGames = [...activeGames]
+    ..sort((a, b) => _totalScore(b).compareTo(_totalScore(a)));
+  if (highestScoreGames.isNotEmpty) {
+    final game = highestScoreGames.first;
+    add(
+      HomeKboBriefItem(
+        type: 'game_flow',
+        eyebrow: game.status == GameStatus.live ? '득점전 진행 중' : '최다 득점 경기',
+        title: _scoreLine(game),
+        subtitle: '양팀 ${_totalScore(game)}득점 · ${_gameTimeLabel(game)}',
+        route: '/game/${game.gameId}',
+        gameId: game.gameId,
+        teamIds: [game.away.teamId, game.home.teamId],
+      ),
+    );
+  }
+
+  final highHitGames =
+      activeGames
+          .where((game) => game.away.hits + game.home.hits >= 18)
+          .toList()
+        ..sort((a, b) => _totalHits(b).compareTo(_totalHits(a)));
+  if (highHitGames.isNotEmpty) {
+    final game = highHitGames.first;
+    add(
+      HomeKboBriefItem(
+        type: 'player_performance',
+        eyebrow: '안타 공방',
+        title:
+            '${game.away.shortName}-${game.home.shortName} 합계 ${_totalHits(game)}안타',
+        subtitle: '${_scoreLine(game)} · 타격전 체크',
+        route: '/game/${game.gameId}',
+        gameId: game.gameId,
+        teamIds: [game.away.teamId, game.home.teamId],
+      ),
+    );
+  }
+
+  if (liveGames.length > 1) {
+    add(
+      HomeKboBriefItem(
+        type: 'league_now',
+        eyebrow: 'LIVE',
+        title: '지금 ${liveGames.length}경기 진행 중',
+        subtitle: '스코어보드에서 접전과 흐름 변화를 같이 확인하세요.',
+        route: '/schedule',
+        teamIds: liveGames
+            .expand((game) => [game.away.teamId, game.home.teamId])
+            .toSet()
+            .toList(),
+      ),
+    );
+  }
+
+  if (scheduledGames.isNotEmpty) {
+    final game = scheduledGames.first;
+    add(
+      HomeKboBriefItem(
+        type: 'big_match',
+        eyebrow: '오늘 일정',
+        title: '${game.away.shortName} vs ${game.home.shortName}',
+        subtitle:
+            '${game.startTime} · ${game.stadium} · 오늘 ${scheduledGames.length}경기 예정',
+        route: '/game/${game.gameId}',
+        gameId: game.gameId,
+        teamIds: [game.away.teamId, game.home.teamId],
+      ),
+    );
+  }
+
+  final standingsItem = _buildStandingsBriefItem(standings);
+  if (standingsItem != null) {
+    add(standingsItem);
+  }
+
+  final recordItem = _buildRecordBriefItem(overview);
+  if (recordItem != null) {
+    add(recordItem);
+  }
+
+  if (items.isEmpty) {
+    add(
+      const HomeKboBriefItem(
+        type: 'offday',
+        eyebrow: '리그 체크',
+        title: '오늘은 KBO 경기가 없습니다',
+        subtitle: '순위표와 리더보드로 다음 경기 관전 포인트를 준비하세요.',
+        route: '/records',
+      ),
+    );
+  }
+
+  final prioritizedItems = _prioritizeKboBriefItems(
+    items,
+    myTeam,
+  ).take(5).toList();
+  return HomeKboBrief(
+    title: title,
+    subtitle: subtitle,
+    items: prioritizedItems,
+  );
+}
+
+HomeKboBriefItem? _buildStandingsBriefItem(List<TeamStanding> standings) {
+  if (standings.isEmpty) {
+    return null;
+  }
+  final sorted = [...standings]..sort((a, b) => a.rank.compareTo(b.rank));
+  final leader = sorted.first;
+  final second = sorted.length > 1 ? sorted[1] : null;
+  final gap = second == null || second.gb.isEmpty || second.gb == '-'
+      ? '선두권 흐름 확인'
+      : '${second.teamName}와 ${second.gb}G차';
+  return HomeKboBriefItem(
+    type: 'standings',
+    eyebrow: '선두권',
+    title: '${leader.rank}위 ${leader.teamName}',
+    subtitle: gap,
+    route: '/standings',
+    teamIds: [leader.teamId, if (second != null) second.teamId],
+  );
+}
+
+HomeKboBriefItem? _buildRecordBriefItem(RecordsOverview overview) {
+  if (overview.hrLeaders.isEmpty) {
+    return null;
+  }
+  final leader = overview.hrLeaders.first;
+  return HomeKboBriefItem(
+    type: 'record_radar',
+    eyebrow: '기록 레이더',
+    title: '${leader.name} ${leader.value}홈런',
+    subtitle: '${leader.teamId} · 시즌 홈런 1위',
+    route: leader.playerId.isEmpty
+        ? '/records'
+        : '/records/player/${leader.playerId}?season=${overview.season}',
+    teamIds: [leader.teamId],
+  );
+}
+
+List<HomeKboBriefItem> _prioritizeKboBriefItems(
+  List<HomeKboBriefItem> items,
+  String? myTeam,
+) {
+  if (myTeam == null || myTeam.isEmpty) {
+    return items;
+  }
+  final leagueItems = items.where((item) => !item.teamIds.contains(myTeam));
+  final myTeamItems = items.where((item) => item.teamIds.contains(myTeam));
+  return [...leagueItems, ...myTeamItems];
+}
+
+String _kboBriefTitle({
+  required String date,
+  required bool hasGames,
+  required bool hasLive,
+  required bool hasFinal,
+}) {
+  if (!hasGames) {
+    return '이번 주 KBO 포인트';
+  }
+  if (hasLive) {
+    return '지금 KBO';
+  }
+  if (hasFinal) {
+    return _isYesterday(date) ? '어제의 KBO 브리프' : '오늘의 KBO 요약';
+  }
+  return '오늘의 KBO 관전 포인트';
+}
+
+String _kboBriefSubtitle({
+  required int totalGames,
+  required int liveGames,
+  required int finalGames,
+  required int scheduledGames,
+}) {
+  if (totalGames == 0) {
+    return '경기가 없는 날도 리그 흐름은 이어집니다.';
+  }
+  if (liveGames > 0) {
+    return '$liveGames경기 진행 중 · 강한 흐름부터 정리';
+  }
+  if (finalGames > 0) {
+    return '$finalGames경기 종료 · 기록과 흐름을 빠르게 확인';
+  }
+  return '$scheduledGames경기 예정 · 경기 전 체크포인트';
+}
+
+bool _isYesterday(String date) {
+  final parsed = DateTime.tryParse(date);
+  if (parsed == null) {
+    return false;
+  }
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(parsed.year, parsed.month, parsed.day);
+  return target == today.subtract(const Duration(days: 1));
+}
+
+int _gameLivePriority(Game game) => game.status == GameStatus.live ? 0 : 1;
+
+int _totalScore(Game game) => game.away.score + game.home.score;
+
+int _totalHits(Game game) => game.away.hits + game.home.hits;
+
+String _scoreLine(Game game) {
+  return '${game.away.shortName} ${game.away.score} : ${game.home.score} ${game.home.shortName}';
+}
+
+String _gameTimeLabel(Game game) {
+  if (game.inning.isNotEmpty) {
+    return game.inning;
+  }
+  if (game.startTime.isNotEmpty) {
+    return game.startTime;
+  }
+  return '경기 정보';
 }

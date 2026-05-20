@@ -97,13 +97,14 @@ class LeaderboardScreen extends ConsumerWidget {
     required int season,
   }) {
     final team = KboTeams.byId(leader.teamId);
-    final imageUrl =
-        'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/$season/${leader.playerId}.jpg';
+    final imageUrl = kboPlayerImageUrl(
+      season: season,
+      playerId: leader.playerId,
+    );
 
-    return InkWell(
+    return AppPressable(
       onTap: () =>
           context.push('/records/player/${leader.playerId}?season=$season'),
-      borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
@@ -129,6 +130,8 @@ class LeaderboardScreen extends ConsumerWidget {
                 imageUrl: imageUrl,
                 width: 40,
                 height: 40,
+                memCacheWidth: 120,
+                memCacheHeight: 120,
                 fit: BoxFit.cover,
                 errorWidget: (_, _, _) => Container(
                   width: 40,
@@ -154,6 +157,8 @@ class LeaderboardScreen extends ConsumerWidget {
                       imageUrl: team.logoUrl,
                       width: 26,
                       height: 26,
+                      memCacheWidth: 78,
+                      memCacheHeight: 78,
                       errorWidget: (_, _, _) =>
                           _teamLogoFallback(team.shortName),
                     ),

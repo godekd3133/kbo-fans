@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
@@ -113,7 +114,14 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                   children: [
                     _buildTeamToggle(),
                     const SizedBox(height: 16),
-                    content,
+                    AppMotionSwitcher(
+                      child: KeyedSubtree(
+                        key: ValueKey(
+                          'boxscore-$_selectedTeamId-${boxscoreAsync.isLoading}-${boxscoreAsync.hasError}',
+                        ),
+                        child: content,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -267,8 +275,11 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
-        ...batters.map(
-          (batter) => _buildBatterCard(batter, accent, playersByName),
+        ...batters.asMap().entries.map(
+          (entry) => AppMotionListItem(
+            index: entry.key,
+            child: _buildBatterCard(entry.value, accent, playersByName),
+          ),
         ),
         const SizedBox(height: 18),
         const Text(
@@ -276,8 +287,11 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 10),
-        ...pitchers.map(
-          (pitcher) => _buildPitcherCard(pitcher, accent, playersByName),
+        ...pitchers.asMap().entries.map(
+          (entry) => AppMotionListItem(
+            index: batters.length + entry.key,
+            child: _buildPitcherCard(entry.value, accent, playersByName),
+          ),
         ),
       ],
     );
@@ -295,93 +309,89 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final todayAvg = batter.atBats > 0 ? (batter.hits / batter.atBats) : 0.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: player == null
-              ? null
-              : () => context.push(
-                  '/records/player/${player.id}?season=${DateTime.now().year}',
-                ),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: accent.withValues(alpha: 0.18)),
-            ),
-            child: Row(
-              children: [
-                _PlayerAvatar(
-                  imageUrl: imageUrl,
-                  fallbackLabel: batter.name,
-                  accent: accent,
-                  badgeLabel: (player?.number ?? 0) > 0
-                      ? '${player!.number}'
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              batter.name,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                              ),
+      child: AppPressable(
+        onTap: player == null
+            ? null
+            : () => context.push(
+                '/records/player/${player.id}?season=${DateTime.now().year}',
+              ),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: accent.withValues(alpha: 0.18)),
+          ),
+          child: Row(
+            children: [
+              _PlayerAvatar(
+                imageUrl: imageUrl,
+                fallbackLabel: batter.name,
+                accent: accent,
+                badgeLabel: (player?.number ?? 0) > 0
+                    ? '${player!.number}'
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            batter.name,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          _InfoPill(label: '${batter.order}번', accent: accent),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${batter.position} 포지션',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
                         ),
+                        _InfoPill(label: '${batter.order}번', accent: accent),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${batter.position} 포지션',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
                       ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _InfoPill(
-                            label: '오늘 타율 ${todayAvg.toStringAsFixed(3)}',
-                            accent: accent,
-                          ),
-                          _InfoPill(
-                            label: '타수 ${batter.atBats}',
-                            accent: AppColors.textDisabled,
-                            subtle: true,
-                          ),
-                          _InfoPill(
-                            label: '안타 ${batter.hits}',
-                            accent: AppColors.positive,
-                          ),
-                          _InfoPill(
-                            label: '타점 ${batter.rbi}',
-                            accent: AppColors.live,
-                          ),
-                          _InfoPill(
-                            label: '득점 ${batter.runs}',
-                            accent: AppColors.ballYellow,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _InfoPill(
+                          label: '오늘 타율 ${todayAvg.toStringAsFixed(3)}',
+                          accent: accent,
+                        ),
+                        _InfoPill(
+                          label: '타수 ${batter.atBats}',
+                          accent: AppColors.textDisabled,
+                          subtle: true,
+                        ),
+                        _InfoPill(
+                          label: '안타 ${batter.hits}',
+                          accent: AppColors.positive,
+                        ),
+                        _InfoPill(
+                          label: '타점 ${batter.rbi}',
+                          accent: AppColors.live,
+                        ),
+                        _InfoPill(
+                          label: '득점 ${batter.runs}',
+                          accent: AppColors.ballYellow,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -399,97 +409,93 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         _resolveImageUrl(_playerImageMap(playersByName), pitcher.name);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: player == null
-              ? null
-              : () => context.push(
-                  '/records/player/${player.id}?season=${DateTime.now().year}',
-                ),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: accent.withValues(alpha: 0.18)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _PlayerAvatar(
-                      imageUrl: imageUrl,
-                      fallbackLabel: pitcher.name,
-                      accent: accent,
-                      badgeLabel: (player?.number ?? 0) > 0
-                          ? '${player!.number}'
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            pitcher.name,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
+      child: AppPressable(
+        onTap: player == null
+            ? null
+            : () => context.push(
+                '/records/player/${player.id}?season=${DateTime.now().year}',
+              ),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: accent.withValues(alpha: 0.18)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _PlayerAvatar(
+                    imageUrl: imageUrl,
+                    fallbackLabel: pitcher.name,
+                    accent: accent,
+                    badgeLabel: (player?.number ?? 0) > 0
+                        ? '${player!.number}'
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          pitcher.name,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '투수 기록',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '투수 기록',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    if (pitcher.decision != null) ...[
-                      const SizedBox(width: 8),
-                      _InfoPill(
-                        label: pitcher.decision!,
-                        accent: AppColors.positive,
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _InfoPill(label: '이닝 ${pitcher.innings}', accent: accent),
+                  ),
+                  if (pitcher.decision != null) ...[
+                    const SizedBox(width: 8),
                     _InfoPill(
-                      label: '안타 ${pitcher.hits}',
-                      accent: AppColors.textDisabled,
-                      subtle: true,
-                    ),
-                    _InfoPill(
-                      label: '삼진 ${pitcher.strikeouts}',
-                      accent: AppColors.live,
-                    ),
-                    _InfoPill(
-                      label: '사사구 ${pitcher.walks}',
-                      accent: AppColors.ballYellow,
-                    ),
-                    _InfoPill(
-                      label: '자책 ${pitcher.earnedRuns}',
-                      accent: AppColors.textDisabled,
-                      subtle: true,
+                      label: pitcher.decision!,
+                      accent: AppColors.positive,
                     ),
                   ],
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _InfoPill(label: '이닝 ${pitcher.innings}', accent: accent),
+                  _InfoPill(
+                    label: '안타 ${pitcher.hits}',
+                    accent: AppColors.textDisabled,
+                    subtle: true,
+                  ),
+                  _InfoPill(
+                    label: '삼진 ${pitcher.strikeouts}',
+                    accent: AppColors.live,
+                  ),
+                  _InfoPill(
+                    label: '사사구 ${pitcher.walks}',
+                    accent: AppColors.ballYellow,
+                  ),
+                  _InfoPill(
+                    label: '자책 ${pitcher.earnedRuns}',
+                    accent: AppColors.textDisabled,
+                    subtle: true,
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -650,59 +656,56 @@ class _TeamToggleCard extends StatelessWidget {
       shortName: teamName,
     );
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: active ? AppColors.card : AppColors.background,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: active
-                  ? (team?.primaryColor ?? AppColors.textPrimary)
-                  : AppColors.divider,
-            ),
+    return AppPressable(
+      onTap: onTap,
+      pressedScale: 0.97,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: active ? AppColors.card : AppColors.background,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: active
+                ? (team?.primaryColor ?? AppColors.textPrimary)
+                : AppColors.divider,
           ),
-          child: Row(
-            children: [
-              _TeamLogo(teamId: teamId, fallback: teamName),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sideLabel,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: active
-                            ? (team?.primaryColor ?? AppColors.textPrimary)
-                            : AppColors.textDisabled,
-                      ),
+        ),
+        child: Row(
+          children: [
+            _TeamLogo(teamId: teamId, fallback: teamName),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    sideLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: active
+                          ? (team?.primaryColor ?? AppColors.textPrimary)
+                          : AppColors.textDisabled,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      teamName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: active
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    teamName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: active
+                          ? AppColors.textPrimary
+                          : AppColors.textSecondary,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -727,6 +730,8 @@ class _TeamLogo extends StatelessWidget {
       httpHeaders: _kboImageHeaders,
       width: 46,
       height: 46,
+      memCacheWidth: 138,
+      memCacheHeight: 138,
       placeholder: (_, _) => _fallbackAvatar(team, fallback),
       errorWidget: (_, _, _) => _fallbackAvatar(team, fallback),
     );
@@ -909,6 +914,8 @@ class _PlayerAvatar extends StatelessWidget {
               httpHeaders: _kboImageHeaders,
               width: 52,
               height: 52,
+              memCacheWidth: 156,
+              memCacheHeight: 156,
               fit: BoxFit.cover,
               placeholder: (_, _) => _fallbackAvatar(),
               errorWidget: (_, _, _) => _fallbackAvatar(),

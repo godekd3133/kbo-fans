@@ -174,12 +174,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       const SizedBox(height: 10),
                       _leaderboardCard('리그 ERA 리더보드', overview.eraLeaders),
                       const SizedBox(height: 10),
-                      _leaderboardCard(
-                        LeaderboardMetric.war.title,
-                        const [],
-                        metric: LeaderboardMetric.war,
-                      ),
-                      const SizedBox(height: 10),
                       const SizedBox(height: 14),
                     ],
                   ),
@@ -239,8 +233,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _teamChooserCard(KboTeam team, {required bool isMyTeam}) {
-    return GestureDetector(
+    return AppPressable(
       onTap: () => context.push('/records/team/${team.id}'),
+      pressedScale: 0.97,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
@@ -256,6 +251,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               imageUrl: team.logoUrl,
               width: 40,
               height: 40,
+              memCacheWidth: 120,
+              memCacheHeight: 120,
               errorWidget: (_, _, _) => _logoFallback(team.shortName, 40),
             ),
             const SizedBox(width: 12),
@@ -377,6 +374,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         imageUrl: team.logoUrl,
                         width: 40,
                         height: 40,
+                        memCacheWidth: 120,
+                        memCacheHeight: 120,
                         errorWidget: (_, _, _) =>
                             _logoFallback(team.shortName, 40),
                       ),
@@ -766,10 +765,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final team = KboTeams.byId(player.teamId);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
+      child: AppPressable(
         onTap: () => context.push(
           '/records/player/${player.id}?season=$_selectedSeason',
         ),
+        pressedScale: 0.985,
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -882,6 +882,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           imageUrl: photoUrl,
           width: 52,
           height: 52,
+          memCacheWidth: 156,
+          memCacheHeight: 156,
           fit: BoxFit.cover,
           placeholder: (_, _) => _playerPhotoFallback(player.number, team),
           errorWidget: (_, _, _) => _playerPhotoFallback(player.number, team),
@@ -1040,8 +1042,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return AppPressable(
       onTap: onTap,
+      pressedScale: 0.96,
       child: Container(
         height: 38,
         alignment: Alignment.center,
@@ -1067,8 +1070,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     required bool selected,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    return AppPressable(
       onTap: onTap,
+      pressedScale: 0.96,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -1272,9 +1276,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       name: leader.name,
       teamId: leader.teamId,
       headline: '${_metricLabelFromFeaturedLabel(label)} ${leader.value}',
-      summary: '$_selectedSeason 시즌 KBO 공식 기록 기준',
-      imageUrl:
-          'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/$_selectedSeason/${leader.playerId}.jpg',
+      imageUrl: kboPlayerImageUrl(
+        season: _selectedSeason,
+        playerId: leader.playerId,
+      ),
     );
   }
 
@@ -1312,6 +1317,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     imageUrl: card.imageUrl!,
                     width: 56,
                     height: 72,
+                    memCacheWidth: 168,
+                    memCacheHeight: 216,
                     fit: BoxFit.cover,
                     errorWidget: (_, _, _) =>
                         _logoFallback(team?.shortName ?? '', 56),
@@ -1345,13 +1352,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         height: 1.35,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      card.summary ?? '-',
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12),
-                    ),
+                    if (card.summary?.isNotEmpty ?? false) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        card.summary!,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1370,8 +1379,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final resolvedMetric = metric ?? _metricFromTitle(title);
     final supported = resolvedMetric?.supportedByOfficialSource ?? true;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
+    return AppPressable(
       onTap: resolvedMetric == null
           ? null
           : () => context.push(

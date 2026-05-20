@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../theme/app_theme.dart';
+import 'app_motion.dart';
 
 class MainScaffold extends StatelessWidget {
   final Widget child;
@@ -75,8 +76,10 @@ class _NavItem extends StatelessWidget {
     const animationDuration = Duration(milliseconds: 180);
     const animationCurve = Curves.easeOutCubic;
 
-    return GestureDetector(
+    return AppPressable(
       behavior: HitTestBehavior.opaque,
+      pressedScale: 0.94,
+      pressedOpacity: 0.9,
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
