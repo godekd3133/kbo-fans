@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-05-20: 0.0.14 앱 기록실 snapshot 신선도 보강
+
+### 완료
+- [x] 현재 변경은 앱 기록실 fallback 동작이 바뀌는 규모라 `0.0.14+14` 새 릴리즈로 판단
+- [x] `DeviceSnapshotPlayerRepository` 기기 snapshot 저장 형식을 `savedAt` + `payload` envelope로 변경
+- [x] 현재 시즌 기기 snapshot은 `savedAt` 기준 6시간 이내일 때만 팀 선수/선수 상세/팀 스탯/팀 기록/리더보드 fallback 으로 사용
+- [x] `savedAt`이 없는 legacy device snapshot은 현재 시즌 기록실에서 무시
+- [x] `LocalAssetPlayerRepository`도 현재 시즌 팀 선수/팀 스탯 번들 asset을 6시간 이내 snapshot일 때만 사용하도록 보정
+- [x] `docs/APP_SPEC.md`, `README.md`, `docs/VERSIONING.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`를 `0.0.14` 기준으로 갱신
+
+### 검증
+- [x] `cd app && fvm dart format app/lib/data/repositories/device_snapshot_player_repository.dart app/lib/data/repositories/local_asset_player_repository.dart app/test/data/local_asset_player_repository_test.dart app/test/data/device_snapshot_player_repository_test.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/data/local_asset_player_repository_test.dart test/data/device_snapshot_player_repository_test.dart -r expanded`
+- [x] `cd app && fvm flutter test test/data/device_snapshot_player_repository_test.dart -r expanded`
+
+---
+
 ## 2026-05-20: 0.0.13 기록실 번들 snapshot 및 구단 로고 보정
 
 ### 완료
