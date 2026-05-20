@@ -1,5 +1,14 @@
 # 패치노트
 
+## 0.0.15+15 - Standings Bootstrap Cleanup
+
+- 순위 번들도 요청한 시즌의 검증된 snapshot만 사용하도록 정리했습니다.
+- 현재 시즌 순위 번들은 6시간 이내 생성본일 때만 fallback으로 쓰고, 오래된 순위는 빈 상태로 처리합니다.
+- 2001~2025 시즌에 2026 초반 순위가 반복되어 보일 수 있던 번들 데이터를 제거했습니다.
+- 웹 빌드가 `APP_ENV=local`이어도 명시적 override 없이는 `localhost` 대신 운영 API를 사용하도록 해 웹 프리뷰의 API 실패 가능성을 줄였습니다.
+- 2009~2013, 2020 기록실 요약 backend snapshot을 실제 시즌 리더 데이터로 보강했습니다.
+- KT 2026 팀 선수/팀 스탯 번들 snapshot을 최신 저장 snapshot 기준으로 갱신했습니다.
+
 ## 0.0.14+14 - Device Snapshot Freshness
 
 - 앱이 기기에 저장하는 기록실 snapshot에 저장 시각을 함께 남기도록 바꿨습니다.

@@ -12,6 +12,20 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
+## [0.0.15] - 2026-05-20
+
+### Changed
+
+- 순위 번들 fallback도 exact-season-only 정책으로 고정하고, 현재 시즌 순위는 6시간 이내 생성본만 사용하도록 제한
+- bootstrap snapshot 생성 스크립트가 live API를 여러 시즌에 팬아웃하지 않고, backend 저장 snapshot만 앱 번들로 동기화하도록 변경
+- 웹 `APP_ENV=local` 빌드가 명시적 `API_BASE_URL` 없이 `localhost`를 보지 않고 운영 API 기본값을 사용하도록 변경
+- 2009~2013, 2020 기록실 요약 backend snapshot을 실제 시즌 리더 데이터로 보강
+- KT 2026 팀 선수/팀 스탯 번들 snapshot을 최신 backend snapshot 기준으로 갱신
+
+### Fixed
+
+- 2026 시즌 초반 2경기 기준 순위가 2001~2025 시즌까지 반복되어 보일 수 있던 번들 데이터 제거
+
 ## [0.0.14] - 2026-05-20
 
 ### Changed

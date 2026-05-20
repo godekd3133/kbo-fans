@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-05-20: 0.0.15 순위 bootstrap 및 웹 local API 기본값 정리
+
+### 완료
+- [x] 현재 변경은 순위 fallback, 웹 API 기본값, 앱 번들 데이터가 바뀌는 규모라 `0.0.15+15` 새 릴리즈로 판단
+- [x] `BootstrapRepository.loadStandings`를 exact-season-only + current-season `generatedAt` 6시간 신선도 정책으로 보정
+- [x] `app/assets/bootstrap/standings.json`을 backend 2026 최신 snapshot 기준으로 재생성하고, 검증되지 않은 2001~2025 순위는 빈 exact snapshot 으로 정리
+- [x] `scripts/generate_bootstrap_snapshots.py`가 live API를 시즌별 반복 호출하지 않고 backend snapshot에서 standings/records bootstrap을 생성하도록 변경
+- [x] 웹 `APP_ENV=local` 빌드가 명시적 `API_BASE_URL` 없이 `localhost:8000`을 기본 API로 보지 않도록 `AppConfig`의 local API 기본값을 platform-specific 파일로 분리
+- [x] 웹 local 기본값은 운영 API(`https://api.kbofans.com/api`)로 고정하고, 네이티브 local 기본값은 기존 `localhost` / Android emulator `10.0.2.2` 정책 유지
+- [x] 2009~2013, 2020 기록실 요약 backend snapshot을 실제 시즌 리더 데이터로 보강
+- [x] KT 2026 팀 선수/팀 스탯 번들 snapshot을 최신 backend snapshot 기준으로 갱신
+- [x] `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`, `docs/APP_SPEC.md`, `README.md`, `docs/VERSIONING.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`를 `0.0.15` 기준으로 갱신
+
+### 검증
+- [x] `python3 -m py_compile scripts/generate_bootstrap_snapshots.py`
+- [x] `python3 -m json.tool app/assets/bootstrap/standings.json >/dev/null`
+- [x] `python3 -m json.tool app/assets/bootstrap/records_overview.json >/dev/null`
+- [x] `python3 -m json.tool app/assets/bootstrap/team_players/KT-2026.json >/dev/null`
+- [x] `python3 -m json.tool app/assets/bootstrap/team_stats/KT-2026.json >/dev/null`
+- [x] `python3 -m json.tool backend/data/snapshots/records_overview/{2009,2010,2011,2012,2013,2020}.json >/dev/null`
+- [x] `cd app && fvm dart format lib/core/config/app_config.dart lib/core/config/local_api_base_url_io.dart lib/core/config/local_api_base_url_web.dart lib/data/bootstrap/bootstrap_repository.dart test/data/bootstrap_repository_test.dart test/data/local_asset_player_repository_test.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/data/bootstrap_repository_test.dart test/data/local_asset_player_repository_test.dart test/data/device_snapshot_player_repository_test.dart -r expanded`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local`
+- [x] `rg -n "localhost:8000|127\\.0\\.0\\.1:8000|10\\.0\\.2\\.2:8000" app/build/web` 미검출, `rg -n "api\\.kbofans\\.com" app/build/web` 검출 확인
+
+---
+
 ## 2026-05-20: 0.0.14 앱 기록실 snapshot 신선도 보강
 
 ### 완료
