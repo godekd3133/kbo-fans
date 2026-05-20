@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-05-20: 0.0.19 release web command guard
+
+### 완료
+- [x] 현재 변경은 backend current/live 데이터 실패 masking 차단과 release-facing 실행 명령의 실제 동작 변경이라 `0.0.19+19` 새 릴리즈로 판단
+- [x] 현재/진행 예정 경기의 박스스코어와 라인업은 과거 snapshot을 실패 fallback으로 쓰지 않도록 제한
+- [x] LIVE 경기 문자중계는 crawler 실패 시 요약/과거 snapshot으로 정상처럼 보이지 않고 실패를 전파하도록 제한
+- [x] 팀 기록 API는 선수 목록/팀 스탯 중 한쪽 실패를 빈 payload로 숨기지 않고 실패를 전파하도록 정리
+- [x] `./scripts/codex-run.sh web` 기본 실행을 release API health gate를 통과한 static web release 경로로 변경
+- [x] Chrome debug 세션은 `./scripts/codex-run.sh web-dev`와 `scripts/codex-run-web-dev.sh`로 분리
+- [x] `README.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `docs/VERSIONING.md`, `docs/APP_SPEC.md`를 current/live failure masking guard와 web 기본 실행/web-dev 분리 기준으로 갱신
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_boxscore_service.py backend/tests/test_lineup.py backend/tests/test_relay_service.py backend/tests/test_teams.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend`
+- [x] `bash -n scripts/codex-run.sh scripts/codex-run-web-dev.sh scripts/codex-run-web.sh scripts/codex-run-web-release.sh`
+- [x] `./scripts/codex-run.sh web` 실패 확인: `DNS lookup failed for api.kbofans.com`
+- [x] `./scripts/codex-run.sh web-dev`는 명령 라우팅 문법 검증 대상으로 분리
+
+---
+
 ## 2026-05-20: 0.0.18 historical leaderboard snapshot 보강
 
 ### 완료
@@ -9,7 +29,8 @@
 - [x] `backend/data/snapshots/leaderboard/2011_era.json` 추가: 2011 ERA 리더보드가 `윤석민 2.45`부터 은퇴 선수 포함 순위로 복구
 - [x] `backend/data/snapshots/leaderboard/2013_hr.json` 추가: 2013 홈런 리더보드가 `박병호 37`부터 은퇴 선수 포함 순위로 복구
 - [x] backend 회귀 테스트로 두 snapshot의 1위 선수/값/은퇴 플래그를 고정
-- [x] `scripts/codex-run-web.sh`를 release API health gate 경로로 맞추고, `scripts/codex-run-web-release.sh`, `scripts/codex-run-android-release.sh` wrapper 추가
+- [x] `scripts/codex-run-web.sh`를 release API health gate 경로로 맞춤
+- [x] `scripts/codex-run-web-release.sh`, `scripts/codex-run-android-release.sh` wrapper 추가
 - [x] `0.0.18` 기준 `pubspec.yaml`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `docs/VERSIONING.md`, `README.md`, `docs/DISTRIBUTION_GUIDE.md`, `docs/CODEX_ANDROID_ENV.md` 갱신
 
 ### 검증
@@ -17,6 +38,7 @@
 - [x] `python3 -m json.tool backend/data/snapshots/leaderboard/2013_hr.json >/dev/null`
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py`
 - [x] `bash -n scripts/codex-run-web.sh scripts/codex-run-web-release.sh scripts/codex-run-android-release.sh`
+- [x] `./scripts/codex-run.sh web-release` 실패 확인: `DNS lookup failed for api.kbofans.com`
 - [x] `./scripts/codex-run-web.sh` 실패 확인: `DNS lookup failed for api.kbofans.com`
 - [x] `./scripts/codex-run-android-release.sh` 실패 확인: `DNS lookup failed for api.kbofans.com`
 

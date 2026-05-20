@@ -12,18 +12,34 @@
 
 - 다음 릴리즈 후보에서 기록합니다.
 
+## [0.0.19] - 2026-05-20
+
+### Changed
+
+- 현재/진행 예정 경기의 박스스코어와 라인업은 과거 snapshot을 실패 fallback으로 쓰지 않고 최신 원천 실패를 그대로 노출하도록 변경
+- LIVE 경기 문자중계는 crawler 실패 시 요약/과거 snapshot으로 조용히 대체하지 않고 실패를 전파하도록 변경
+- 팀 기록 API는 선수 목록이나 팀 스탯 중 한쪽 실패를 빈 payload로 숨기지 않고 API 실패로 처리하도록 변경
+- `./scripts/codex-run.sh web` 기본 실행을 release API health gate를 통과한 static web release 경로로 변경
+- Chrome debug 세션용 실행 경로를 `./scripts/codex-run.sh web-dev`와 `scripts/codex-run-web-dev.sh`로 분리
+- README, APP_SPEC, 릴리즈 문서를 current/live failure masking guard와 web 기본 실행, web-dev, web-release 역할 기준으로 정리
+
+### Fixed
+
+- 현재 경기 상세/라인업/중계가 오래된 snapshot 또는 요약 fallback으로 정상 데이터처럼 보일 수 있던 경로 차단
+- 팀 기록에서 부분 실패가 빈 선수 목록이나 빈 팀 스탯처럼 표시되어 데이터가 없는 것처럼 오해될 수 있던 경로 차단
+- release API DNS/TLS/API health gate를 거치지 않은 웹 기본 실행 명령으로 release 검증을 착각할 수 있던 경로 차단
+
 ## [0.0.18] - 2026-05-20
 
 ### Changed
 
 - backend historical leaderboard snapshot에 2011 ERA, 2013 HR 저장본을 추가해 원천 조회 실패 시에도 대표 과거 리더보드가 복구되도록 보강
 - 2011 ERA 1위 `윤석민 2.45`, 2013 HR 1위 `박병호 37`처럼 은퇴 선수가 포함된 snapshot 상위 리더를 회귀 테스트로 고정
-- Codex 웹 기본 실행 wrapper를 release API health gate 경로로 맞추고, Android/Web release 전용 wrapper를 추가
+- Codex 웹 wrapper를 release API health gate 경로로 맞추고, Android/Web release 전용 wrapper를 추가
 
 ### Fixed
 
 - 2011 ERA, 2013 HR 단건 리더보드 endpoint가 원천 조회 실패 시 snapshot fallback 없이 비어 있거나 실패할 수 있던 경로 보강
-- release API DNS/TLS/API health gate를 거치지 않은 웹 기본 실행으로 release 검증을 착각할 수 있던 경로 차단
 
 ## [0.0.17] - 2026-05-20
 

@@ -439,6 +439,7 @@ GET /api/player/{playerId}?season=2026
 - 자동 스크롤 → 새 중계 추가 시 상단에 삽입 + 부드러운 애니메이션
 - 회차 선택 → `전체 / N회초 / N회말` 칩을 눌러 해당 회차 문자중계만 필터링
 - 경기 종료 시 → "경기가 종료되었습니다" 배너
+- LIVE 경기에서는 relay 원천 실패를 득점 요약이나 과거 snapshot 으로 대체하지 않고 실패/미지원 상태로 노출
 - 종료 경기라도 원문 relay 확보가 가능하면 득점 요약이 아니라 실제 play-by-play와 교체 로그를 우선 표시하고, 실패 시에만 summary fallback 사용
 
 **데이터 바인딩**:
@@ -935,7 +936,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 
 | 계층 | 대상 데이터 | 서버 처리 방식 | 앱 처리 방식 |
 |------|-------------|----------------|--------------|
-| Live | 진행 중 경기 scoreboard, relay, 현재 타석, 당일 라인업 변경 | 짧은 TTL + adaptive polling + stale fallback | 마지막 응답 즉시 표시 후 백그라운드 갱신 |
+| Live | 진행 중 경기 scoreboard, relay, 현재 타석, 당일 라인업 변경 | 짧은 TTL + adaptive polling, stale snapshot masking 금지 | TTL 안의 마지막 응답만 임시 표시 후 백그라운드 갱신 |
 | Warm Cache | 오늘 일정, 경기 단건 상세, 당일/직전 경기 박스스코어, 최근 팀 기록 | 메모리/Redis TTL 캐시 + 종료 직후 증분 갱신 | 화면 진입 전 prefetch, pull-to-refresh |
 | Persisted Snapshot | 선수 과거 기록, 지난 경기 결과, 지난 날짜 순위, 시즌 누적 팀/선수 통계 | DB/스토리지에 정규화 후 저장, 재크롤링보다 snapshot 우선 | 로컬 캐시와 함께 즉시 렌더링, 필요 시 조용한 재검증 |
 
@@ -954,6 +955,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 스코어보드 로컬 cache 는 `savedAt` envelope 가 있는 payload 만 인정하고, live 60초 / scheduled 또는 empty 5분 / terminal 6시간 TTL 을 적용한다.
 - backend current-date 스코어보드와 current-season/month 일정/순위/기록실 요약/리더보드 snapshot fallback 은 `savedAt` 기준 6시간 이내 저장본만 사용한다. 과거 날짜/시즌/월 snapshot 은 저장본 우선 정책을 유지한다.
+- 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다.
 
 ---
 

@@ -1,11 +1,20 @@
 # 패치노트
 
+## 0.0.19+19 - Release Web Command Guard
+
+- 현재/진행 예정 경기의 박스스코어와 라인업은 과거 snapshot을 실패 fallback으로 쓰지 않도록 막았습니다.
+- LIVE 경기 문자중계가 실패했을 때 요약/과거 snapshot으로 정상처럼 보이는 경로를 차단했습니다.
+- 팀 기록 API는 선수 목록이나 팀 스탯 중 한쪽 실패를 빈 데이터처럼 숨기지 않고 실패로 처리합니다.
+- `./scripts/codex-run.sh web` 기본 실행이 release API health gate를 통과한 static web release 경로로 동작하도록 바꿨습니다.
+- Chrome debug 세션은 `./scripts/codex-run.sh web-dev`와 `scripts/codex-run-web-dev.sh`로 분리했습니다.
+- 현재/라이브 데이터 실패 masking guard와 웹 기본 실행 기준을 문서와 실행 경로에 맞췄습니다.
+
 ## 0.0.18+18 - Historical Leaderboard Snapshots
 
 - 2011 ERA와 2013 홈런 리더보드 backend snapshot을 추가했습니다.
 - 원천 조회가 실패해도 `윤석민 2.45`, `박병호 37`처럼 은퇴 선수가 포함된 과거 대표 리더보드가 fallback으로 복구됩니다.
 - snapshot 상위 리더가 다시 빠지지 않도록 backend 회귀 테스트를 추가했습니다.
-- 웹 기본 실행 wrapper를 release API health gate 경로로 맞추고 Android/Web release 전용 wrapper를 추가했습니다.
+- 웹 wrapper를 release API health gate 경로로 맞추고 Android/Web release 전용 wrapper를 추가했습니다.
 
 ## 0.0.17+17 - Direct Routing Guard
 
