@@ -52,3 +52,7 @@ app/test/features/schedule/widgets/failures/
 
 # FVM Version Cache
 .fvm/
+
+# Local QA artifacts
+artifacts/current-data-cache-guard/
+artifacts/emulator-records-check/
