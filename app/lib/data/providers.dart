@@ -41,7 +41,7 @@ final gameRepositoryProvider = Provider<GameRepository>((ref) {
     return apiRepository;
   }
 
-  if (AppConfig.instance.preferDirectScrape) {
+  if (AppConfig.instance.shouldPreferLocalNativeData) {
     return KboDirectRepository();
   }
 
@@ -204,7 +204,7 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
   final date = parts[0];
   final myTeam = parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
 
-  final shouldUseApiHome = !AppConfig.instance.preferDirectScrape;
+  final shouldUseApiHome = !AppConfig.instance.shouldPreferLocalNativeData;
 
   if (shouldUseApiHome) {
     try {
@@ -252,7 +252,7 @@ final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
   if (kIsWeb) {
     return apiRepository;
   }
-  if (AppConfig.instance.preferDirectScrape) {
+  if (AppConfig.instance.shouldPreferLocalNativeData) {
     return DeviceSnapshotPlayerRepository(
       primary: KboDirectPlayerRepository(),
       fallback: FallbackPlayerRepository(
@@ -261,10 +261,7 @@ final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
       ),
     );
   }
-  return DeviceSnapshotPlayerRepository(
-    primary: apiRepository,
-    fallback: LocalAssetPlayerRepository(),
-  );
+  return apiRepository;
 });
 
 final allPlayerImageMapProvider =

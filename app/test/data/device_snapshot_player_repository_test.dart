@@ -116,6 +116,74 @@ void main() {
     expect(stats.hitting['AVG'], '0.277');
     expect(stats.pitching['ERA'], '4.11');
   });
+
+  test('incomplete records overview device snapshot is ignored', () async {
+    SharedPreferences.setMockInitialValues({
+      'player_snapshot:v2:recordsOverview:2026': jsonEncode({
+        'savedAt': DateTime.utc(2026, 5, 20, 11, 50).toIso8601String(),
+        'payload': {
+          'season': 2026,
+          'avgLeaders': [_leaderJson(metricKey: 'AVG')],
+          'hrLeaders': const [],
+          'opsLeaders': [_leaderJson(metricKey: 'OPS', value: '1.000')],
+          'opsPlusLeaders': const [],
+          'eraLeaders': const [],
+          'todayHitter': {'label': '오늘의 타자'},
+          'todayPitcher': {'label': '오늘의 투수'},
+          'monthHitter': {'label': '이달의 타자'},
+          'monthPitcher': {'label': '이달의 투수'},
+        },
+      }),
+    });
+    final repository = DeviceSnapshotPlayerRepository(
+      primary: _ThrowingPlayerRepository(),
+      fallback: _FallbackPlayerRepository(
+        teamStats: _emptyStats(teamId: 'KT', season: 2026),
+      ),
+      now: () => DateTime.utc(2026, 5, 20, 12),
+    );
+
+    final overview = await repository.getRecordsOverview(season: 2026);
+
+    expect(overview.avgLeaders, isEmpty);
+    expect(overview.hrLeaders, isEmpty);
+    expect(overview.opsLeaders, isEmpty);
+    expect(overview.eraLeaders, isEmpty);
+  });
+
+  test(
+    'historical incomplete records overview legacy snapshot is ignored',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'player_snapshot:v2:recordsOverview:2011': jsonEncode({
+          'season': 2011,
+          'avgLeaders': [_leaderJson(metricKey: 'AVG')],
+          'hrLeaders': [_leaderJson(metricKey: 'HR')],
+          'opsLeaders': [_leaderJson(metricKey: 'OPS', value: '1.000')],
+          'opsPlusLeaders': const [],
+          'eraLeaders': const [],
+          'todayHitter': {'label': '오늘의 타자'},
+          'todayPitcher': {'label': '오늘의 투수'},
+          'monthHitter': {'label': '이달의 타자'},
+          'monthPitcher': {'label': '이달의 투수'},
+        }),
+      });
+      final repository = DeviceSnapshotPlayerRepository(
+        primary: _ThrowingPlayerRepository(),
+        fallback: _FallbackPlayerRepository(
+          teamStats: _emptyStats(teamId: 'KT', season: 2011),
+        ),
+        now: () => DateTime.utc(2026, 5, 20, 12),
+      );
+
+      final overview = await repository.getRecordsOverview(season: 2011);
+
+      expect(overview.avgLeaders, isEmpty);
+      expect(overview.hrLeaders, isEmpty);
+      expect(overview.opsLeaders, isEmpty);
+      expect(overview.eraLeaders, isEmpty);
+    },
+  );
 }
 
 TeamStats _emptyStats({required String teamId, required int season}) =>
@@ -125,6 +193,19 @@ TeamStats _emptyStats({required String teamId, required int season}) =>
       hitting: const {},
       pitching: const {},
     );
+
+Map<String, Object> _leaderJson({
+  required String metricKey,
+  String value = '1',
+}) => {
+  'rank': 1,
+  'playerId': 'player-1',
+  'playerType': 'hitter',
+  'name': '테스트',
+  'teamId': 'KT',
+  'value': value,
+  'metricKey': metricKey,
+};
 
 class _ThrowingPlayerRepository implements PlayerRepository {
   @override

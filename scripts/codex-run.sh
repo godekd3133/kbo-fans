@@ -18,8 +18,10 @@ Usage:
   ./scripts/codex-run.sh ios-local-release
   ./scripts/codex-run.sh ios-release
   ./scripts/codex-run.sh android
+  ./scripts/codex-run.sh android-release
   ./scripts/codex-run.sh web
   ./scripts/codex-run.sh web-static
+  ./scripts/codex-run.sh web-release
   ./scripts/codex-run.sh backend
   ./scripts/codex-run.sh release-api-health
   ./scripts/codex-run.sh doctor
@@ -31,8 +33,10 @@ Commands:
   ios-local-release  Run a release-mode local build on a connected iPhone
   ios-release  Run the Flutter app on a connected iPhone in production release mode
   android  Run the Flutter app on Android device/emulator
+  android-release  Run Android in release mode against the health-checked release API
   web      Run the Flutter app in Chrome
   web-static  Build web release and serve it locally on port 7357
+  web-release  Build web release against the health-checked release API and serve it locally
   backend  Run the FastAPI backend with a local virtualenv
   release-api-health  Check the production API DNS/TLS and release-critical endpoints
   doctor   Check local Flutter/FVM and Python prerequisites
@@ -759,6 +763,52 @@ EOF
   )
 }
 
+run_android_release() {
+  local java_home
+  local serial
+  local adb_bin
+  local release_api_url
+
+  java_home="$(android_java_home)"
+  if [[ -z "$java_home" ]]; then
+    cat >&2 <<'EOF'
+Java 17 runtime was not found for Android builds.
+
+Next step:
+1. Install Android Studio (recommended), or
+2. Install JDK 17 and export JAVA_HOME
+3. Rerun:
+   ./scripts/codex-run.sh android-release
+EOF
+    exit 1
+  fi
+
+  release_api_url="$(release_api_base_url)"
+  run_release_api_health
+  serial="$(ensure_android_runtime)"
+  adb_bin="$(android_adb_bin)"
+  echo "Running Android release against release API: $release_api_url"
+
+  if [[ -n "$adb_bin" ]]; then
+    "$adb_bin" -s "$serial" uninstall "$ANDROID_APPLICATION_ID" >/dev/null 2>&1 || true
+  fi
+
+  (
+    export JAVA_HOME="$java_home"
+    export ANDROID_SDK_ROOT="$(android_sdk_root)"
+    cd "$APP_DIR"
+    local flutter
+    flutter="$(flutter_cmd)"
+    if [[ -z "$flutter" ]]; then
+      echo "Flutter or FVM is not installed or not on PATH." >&2
+      exit 1
+    fi
+    eval "$flutter clean"
+    eval "$flutter pub get"
+    eval "$flutter run --release --uninstall-first -d $serial --dart-define=APP_ENV=release --dart-define=API_BASE_URL=$release_api_url"
+  )
+}
+
 run_web() {
   run_flutter run -d chrome
 }
@@ -780,6 +830,32 @@ run_web_static() {
     eval "$flutter build web --release"
     cd build/web
     echo "Serving Flutter web release build at http://localhost:7357"
+    python3 -m http.server 7357
+  )
+}
+
+run_web_release_static() {
+  local flutter
+  local release_api_url
+
+  flutter="$(flutter_cmd)"
+
+  if [[ -z "$flutter" ]]; then
+    echo "Flutter or FVM is not installed or not on PATH." >&2
+    exit 1
+  fi
+
+  require_cmd python3
+  release_api_url="$(release_api_base_url)"
+  run_release_api_health
+
+  (
+    cd "$APP_DIR"
+    eval "$flutter pub get"
+    eval "$flutter build web --release --dart-define=APP_ENV=release --dart-define=API_BASE_URL=$release_api_url"
+    cd build/web
+    echo "Serving Flutter web release build at http://localhost:7357"
+    echo "Using release API: $release_api_url"
     python3 -m http.server 7357
   )
 }
@@ -866,11 +942,17 @@ main() {
     android)
       run_android
       ;;
+    android-release)
+      run_android_release
+      ;;
     web)
       run_web
       ;;
     web-static)
       run_web_static
+      ;;
+    web-release)
+      run_web_release_static
       ;;
     backend)
       run_backend

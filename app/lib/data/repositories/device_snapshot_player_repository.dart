@@ -121,6 +121,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
       cacheKey,
       () => primary.getRecordsOverview(season: season),
       _encodeRecordsOverview,
+      isValid: _isValidRecordsOverview,
     );
     if (fresh != null) return fresh;
 
@@ -129,12 +130,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
       _decodeRecordsOverview,
       season: season,
     );
-    if (cached != null &&
-        (cached.avgLeaders.isNotEmpty ||
-            cached.hrLeaders.isNotEmpty ||
-            cached.opsLeaders.isNotEmpty ||
-            cached.opsPlusLeaders.isNotEmpty ||
-            cached.eraLeaders.isNotEmpty)) {
+    if (cached != null && _isValidRecordsOverview(cached)) {
       return cached;
     }
 
@@ -262,6 +258,12 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     }
     return value.players.isNotEmpty || _isCompleteTeamStats(value.teamStats);
   }
+
+  bool _isValidRecordsOverview(RecordsOverview value) =>
+      value.avgLeaders.isNotEmpty &&
+      value.hrLeaders.isNotEmpty &&
+      value.opsLeaders.isNotEmpty &&
+      value.eraLeaders.isNotEmpty;
 
   Object _encodePlayers(List<PlayerProfile> players) => {
     'players': players.map(_encodePlayer).toList(),

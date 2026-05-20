@@ -64,7 +64,7 @@ class WidgetSyncService {
   }
 
   GameRepository createRepositoryForBackground() {
-    if (AppConfig.instance.preferDirectScrape) {
+    if (AppConfig.instance.shouldPreferLocalNativeData) {
       return KboDirectRepository();
     }
     return ApiGameRepository(ApiClient());
@@ -74,7 +74,7 @@ class WidgetSyncService {
     required String date,
     required String? myTeamId,
   }) {
-    if (AppConfig.instance.preferDirectScrape) {
+    if (AppConfig.instance.shouldPreferLocalNativeData) {
       return KboDirectRepository().getScoreboard(date);
     }
     return ApiGameRepository(
