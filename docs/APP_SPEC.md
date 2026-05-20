@@ -252,7 +252,7 @@ GET /api/scoreboard?date=2026-03-28
 - 예정 경기일 때 KBO scoreboard 세부 테이블이 비어도 홈 화면은 fallback payload 로 렌더링한다.
 - 예정 경기는 YouTube 검색을 생략하고 KBO 공식 하이라이트 링크만 유지한다.
 - 웹 진단 화면은 `health / scoreboard / schedule` 상태를 한 번에 확인한다.
-- 순위는 시즌별 번들 스냅샷 fallback(`2001~현재`)을 사용한다.
+- 순위 히스토리 조회는 시즌별 번들 스냅샷 fallback(`2001~현재`)을 사용할 수 있다. 일반 API-backed current 경로의 실패는 번들 snapshot으로 숨기지 않는다.
 
 ---
 
@@ -290,10 +290,10 @@ GET /api/team/{teamId}/players?season=2026
 - 기록실 요약/리더보드 번들 스냅샷은 요청한 시즌과 정확히 일치할 때만 사용한다.
 - 현재 시즌 기록실 요약 번들은 `generatedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다.
 - 기록실 요약/리더보드 API cache 와 기기 snapshot 은 핵심 리더보드 첫 항목이 1위일 때만 재사용하거나 저장한다.
-- 일반 API-backed 앱 모드에서는 현재 시즌 기록실 요약/리더보드 API 실패를 앱 번들 bootstrap 으로 대체하지 않는다. current 데이터 fallback 은 backend API 내부의 fresh snapshot 정책으로만 처리한다.
+- 일반 API-backed 앱 모드에서는 현재 시즌 기록실 요약/리더보드 API 실패를 앱 번들 bootstrap, fresh local API cache, backend current snapshot 으로 대체하지 않는다.
 - 다른 시즌 기록으로 대체 표시하지 않는다. exact snapshot 이 없거나 비어 있으면 빈 상태/오류를 노출해 가짜 리더가 재유입되지 않게 한다.
 - 팀 선수/팀 스탯 local asset 은 요청한 팀/시즌의 exact snapshot 만 사용한다. 해당 시즌 snapshot 이 없거나 팀 스탯의 타격/투구 중 한쪽만 있으면 다른 시즌 데이터를 빌리지 않고 빈 상태로 처리한다.
-- 현재 시즌 팀 선수/팀 스탯 local asset 과 기기 snapshot cache 는 `savedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다. timestamp 가 없는 legacy cache 나 오래된 번들 asset 은 현재 시즌에서 무효 처리한다.
+- 일반 API-backed current 경로에서 현재 시즌 팀 선수/팀 스탯/선수 상세 실패는 backend/app/device snapshot 으로 대체하지 않는다. 과거 시즌만 저장 snapshot 과 cached-first 조회를 허용한다.
 
 ---
 
@@ -956,7 +956,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 첫 로딩은 오늘 스코어보드 별도 로컬 cache 를 먼저 렌더링하지 않고, 최신 API 응답 또는 명시적 오류 상태를 기준으로 전환한다.
 - 앱 전역 Provider retry 는 비활성화한다. 화면은 API 실패를 자동 retry 뒤에 숨기지 않고 오류 카드, 빈 상태, 또는 Dev Console 로그로 명시한다.
-- `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록은 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
+- `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록/팀 선수/팀 스탯/선수 상세는 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.
 - backend current 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot 으로 정상 상태를 만들지 않는다. 과거 날짜/시즌/월 snapshot 은 저장본 우선 정책을 유지한다.
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다.
@@ -1199,7 +1199,7 @@ GET /api/standings?season={YYYY}
 - 앱 번들 standings fallback 은 요청 시즌 exact snapshot 이고 순위 배열이 비어 있지 않을 때만 사용한다.
 - 현재 시즌 standings 번들은 `generatedAt` 기준 6시간 이내일 때만 사용한다. 검증되지 않은 과거 시즌은 빈 exact snapshot 으로 둬 다른 시즌/개막 초반 순위를 빌려 보여주지 않는다.
 - 앱 번들 records overview fallback 도 요청 시즌 exact snapshot 만 사용하고, 현재 시즌은 `generatedAt` 기준 6시간 이내일 때만 사용한다.
-- 일반 API-backed 앱 모드에서는 현재 시즌 standings API 실패를 앱 번들 standings, fresh local API cache, backend current snapshot 으로 대체하지 않고 오류로 노출한다.
+- 일반 API-backed 앱 모드에서는 현재 시즌 standings / records overview / leaderboard / team players / team stats / player detail API 실패를 앱 번들 데이터, fresh local API cache, backend current snapshot 으로 대체하지 않고 오류로 노출한다.
 
 **응답**:
 ```json

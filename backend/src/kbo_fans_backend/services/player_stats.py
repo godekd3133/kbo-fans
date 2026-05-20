@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from kbo_fans_backend.crawlers.player_stats import PlayerStatsCrawler
@@ -11,7 +11,6 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 class PlayerStatsService:
     _TEAM_PLAYERS_CACHE_TTL_SECONDS = 300
     _PLAYER_DETAIL_CACHE_TTL_SECONDS = 300
-    _CURRENT_SEASON_SNAPSHOT_MAX_AGE = timedelta(hours=6)
 
     def __init__(
         self,
@@ -36,7 +35,7 @@ class PlayerStatsService:
         snapshot_key = self._team_players_snapshot_key(team_id, season)
         snapshot_record = self.snapshot_store.load("team_players", snapshot_key)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
-        if self._can_use_snapshot_before_crawling(season, snapshot_record, snapshot):
+        if self._can_use_snapshot_before_crawling(season, snapshot):
             return snapshot
 
         try:
@@ -47,9 +46,9 @@ class PlayerStatsService:
             }
         except Exception:
             stale = self._team_players_cache.get_stale(cache_key)
-            if stale is not None:
+            if self._is_historical_season(season) and stale is not None:
                 return stale
-            if self._can_use_snapshot_after_failure(season, snapshot_record, snapshot):
+            if self._can_use_snapshot_after_failure(season, snapshot):
                 return snapshot
             raise
         self._team_players_cache.set(cache_key, payload)
@@ -66,7 +65,7 @@ class PlayerStatsService:
 
         snapshot_key = self._player_detail_snapshot_key(player_id, season, player_type)
         snapshot = self.snapshot_store.load_payload("player_detail", snapshot_key)
-        if snapshot is not None:
+        if snapshot is not None and self._is_historical_season(season):
             return snapshot
 
         try:
@@ -78,9 +77,9 @@ class PlayerStatsService:
             )
         except Exception:
             stale = self._player_detail_cache.get_stale(cache_key)
-            if stale is not None:
+            if self._is_historical_season(season) and stale is not None:
                 return stale
-            if snapshot is not None:
+            if snapshot is not None and self._is_historical_season(season):
                 return snapshot
             raise
 
@@ -122,7 +121,6 @@ class PlayerStatsService:
     def _can_use_snapshot_before_crawling(
         self,
         season: int,
-        snapshot_record: Optional[Dict[str, Any]],
         snapshot: Optional[Dict[str, Any]],
     ) -> bool:
         return (
@@ -134,30 +132,15 @@ class PlayerStatsService:
     def _can_use_snapshot_after_failure(
         self,
         season: int,
-        snapshot_record: Optional[Dict[str, Any]],
         snapshot: Optional[Dict[str, Any]],
     ) -> bool:
         if snapshot is None or not self._is_localized_team_players_payload(snapshot):
             return False
-        return self._is_historical_season(season) or self._is_fresh_snapshot(snapshot_record)
+        return self._is_historical_season(season)
 
     @staticmethod
     def _is_historical_season(season: int) -> bool:
         return season < datetime.now(timezone.utc).year
-
-    def _is_fresh_snapshot(self, snapshot_record: Optional[Dict[str, Any]]) -> bool:
-        if snapshot_record is None:
-            return False
-        saved_at_raw = snapshot_record.get("savedAt")
-        if not isinstance(saved_at_raw, str) or not saved_at_raw:
-            return False
-        try:
-            saved_at = datetime.fromisoformat(saved_at_raw.replace("Z", "+00:00"))
-        except ValueError:
-            return False
-        if saved_at.tzinfo is None:
-            saved_at = saved_at.replace(tzinfo=timezone.utc)
-        return datetime.now(timezone.utc) - saved_at <= self._CURRENT_SEASON_SNAPSHOT_MAX_AGE
 
     @staticmethod
     def _player_detail_snapshot_key(player_id: str, season: int, player_type: Optional[str]) -> str:
