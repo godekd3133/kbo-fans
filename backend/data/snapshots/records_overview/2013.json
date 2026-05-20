@@ -1,5 +1,5 @@
 {
-  "savedAt": "2026-05-20T05:31:34.011793+00:00",
+  "savedAt": "2026-05-20T06:30:43.253538+00:00",
   "payload": {
     "season": 2013,
     "leaders": {
@@ -266,44 +266,44 @@
     },
     "featured": {
       "todayHitter": {
-        "label": "오늘의 타자",
-        "playerId": "75125",
+        "label": "시즌 타율 리더",
+        "playerId": "97109",
         "playerType": "hitter",
-        "name": "박병호",
-        "teamId": "넥센",
-        "headline": "OPS 1.039",
-        "summary": "HR 1위 + OPS 1위",
-        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75125.jpg"
+        "name": "이병규",
+        "teamId": "LG",
+        "headline": "타율 0.348",
+        "summary": "2013 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/97109.jpg"
       },
       "todayPitcher": {
-        "label": "오늘의 투수",
+        "label": "시즌 ERA 리더",
         "playerId": "63939",
         "playerType": "pitcher",
         "name": "찰리",
         "teamId": "NC",
         "headline": "ERA 2.48",
-        "summary": "ERA 1위",
+        "summary": "2013 시즌 KBO 공식 기록 기준",
         "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/63939.jpg"
       },
       "monthHitter": {
-        "label": "이달의 타자",
+        "label": "시즌 홈런왕",
+        "playerId": "75125",
+        "playerType": "hitter",
+        "name": "박병호",
+        "teamId": "넥센",
+        "headline": "홈런 37",
+        "summary": "2013 시즌 KBO 공식 기록 기준",
+        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75125.jpg"
+      },
+      "monthPitcher": {
+        "label": "시즌 OPS 리더",
         "playerId": "75125",
         "playerType": "hitter",
         "name": "박병호",
         "teamId": "넥센",
         "headline": "OPS 1.039",
-        "summary": "HR 1위 + OPS 1위",
+        "summary": "2013 시즌 KBO 공식 기록 기준",
         "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/75125.jpg"
-      },
-      "monthPitcher": {
-        "label": "이달의 투수",
-        "playerId": "63939",
-        "playerType": "pitcher",
-        "name": "찰리",
-        "teamId": "NC",
-        "headline": "ERA 2.48",
-        "summary": "ERA 1위",
-        "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2022/63939.jpg"
       }
     }
   }
