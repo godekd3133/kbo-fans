@@ -78,7 +78,7 @@ kbo_fans/
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.0.x`
-- Current release: `0.0.12`
+- Current release: `0.0.13`
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
@@ -233,7 +233,8 @@ uvicorn kbo_fans_backend.main:app --reload
 
 - 홈 스코어보드는 날짜 기준 `30초 TTL` 캐시를 사용합니다.
 - 기록실 팀 데이터와 팀 스탯은 팀/시즌 기준 `5분 TTL` 캐시를 사용합니다.
-- 순위와 기록실 요약/리더보드는 시즌별 번들 스냅샷 fallback(`2001~현재`)을 사용합니다.
+- 순위와 기록실 요약/리더보드는 시즌별 번들 스냅샷 fallback을 사용하되, 기록실 요약은 다른 시즌 데이터를 빌려 보여주지 않는 exact-season-only 정책을 따릅니다.
+- 현재 시즌 팀 선수/팀 스탯은 원천 조회를 우선하고, 원천 실패 시에도 6시간 이내 snapshot만 fallback으로 사용합니다.
 - 지난 경기 결과, 선수 과거 기록, 지난 날짜 순위는 화면 요청 시 원천 크롤링보다 저장된 snapshot/정규화 레코드를 우선 사용합니다.
 - 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장하고, 앱은 stale-while-revalidate 방식으로 마지막 성공 데이터를 먼저 보여주는 방향을 기준으로 합니다.
 - 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.

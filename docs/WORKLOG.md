@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-05-20: 0.0.13 기록실 번들 snapshot 및 구단 로고 보정
+
+### 완료
+- [x] 현재 추가 변경은 앱 표시 데이터와 fallback 정책이 바뀌는 규모라 `0.0.12` 보강이 아니라 `0.0.13+13` 새 릴리즈로 판단
+- [x] 앱 공통 구단 로고 URL을 KBO 모바일 구단소개에서 쓰는 `fixed/emblem_*_L.png`로 교체해 온보딩/홈/상세/일정/순위 로고 원본 해상도 개선
+- [x] 번들 `records_overview.json`에 남아 있던 2026-03-31 기준 허경민/함덕주 기록 데이터를 제거하고 backend 2026 snapshot 값으로 교체
+- [x] 기록실 번들 fallback 이 다른 시즌 데이터를 빌려 표시하지 않도록 `BootstrapRepository.loadRecordsOverview`를 exact-season-only 정책으로 보정
+- [x] 현재 시즌 팀 선수/팀 스탯 snapshot은 원천 조회 전 선사용하지 않고, 실패 fallback도 6시간 이내 snapshot으로 제한
+- [x] backend 2026 홈런 리더보드 snapshot을 추가해 `/records/leaderboard?metric=hr`의 snapshot fallback 보강
+- [x] KT 2026 팀 선수/팀 스탯 snapshot을 최신 원천 기준으로 갱신
+- [x] `app/pubspec.yaml`, `docs/VERSIONING.md`, `README.md`, `CHANGELOG.md`, 앱 내 `patch_notes.md`를 `0.0.13` 기준으로 갱신
+
+### 검증
+- [x] `python3 -m json.tool app/assets/bootstrap/records_overview.json >/dev/null`
+- [x] `python3 -m json.tool backend/data/snapshots/leaderboard/2026_hr.json >/dev/null`
+- [x] 번들 records overview 검증: `허경민`/`함덕주` 문자열 제거, 2026 top 리더 `박성한 .379`, `김도영 13`, `최민석 2.17` 확인, 2001/2025는 빈 exact snapshot 으로 유지
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/data/local_asset_player_repository_test.dart test/data/models/records_overview_test.dart -r expanded`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py`
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_snapshot_services.py backend/tests/test_records_overview.py`
+
+---
+
 ## 2026-05-20: 0.0.12 릴리즈 및 이어서 해 운영 규칙 반영
 
 ### 완료
@@ -11,9 +35,6 @@
 - [x] 종료/과거 경기 상세의 박스스코어, 라인업, 문자중계는 완성된 snapshot을 우선 반환하도록 backend 서비스 정책 보강
 - [x] 경기 전 홈/일정 표기는 점수 대신 `vs`로 처리하고, 최근 경기 흐름은 종료 경기만 집계하도록 보정
 - [x] 홈 마이팀 브리프 아래에 `KBO 브리프`를 실제 API/model/UI로 연결해 리그 전체 관전 포인트, 기록 레이더, 순위 흐름을 3개 카드로 노출
-- [x] 앱 공통 구단 로고 URL을 KBO 모바일 구단소개에서 쓰는 `fixed/emblem_*_L.png`로 교체해 온보딩/홈/상세/일정/순위 로고 원본 해상도 개선
-- [x] 번들 `records_overview.json`에 남아 있던 2026-03-31 기준 허경민/함덕주 기록 데이터를 제거하고 backend 2026 snapshot 값으로 교체
-- [x] 기록실 번들 fallback 이 다른 시즌 데이터를 빌려 표시하지 않도록 `BootstrapRepository.loadRecordsOverview`를 exact-season-only 정책으로 보정
 
 ### 검증
 - [x] `python3 -m compileall backend/src`
@@ -24,8 +45,6 @@
 - [x] 완료 경기 상세 탭 웹 네트워크 실측: relay 탭은 `/game` + `/relay` + 양 팀 `/players`, boxscore 탭은 `/game` + `/boxscore` + 필요 팀 `/players`, lineup 탭은 `/game` + `/lineup` + 양 팀 `/players`
 - [x] 완료 경기 상세 재진입/탭 전환 웹 네트워크 실측: 첫 중계 진입은 `/game` + `/relay` + 양 팀 `/players`, 박스 탭은 `/boxscore` 1건, 라인업 탭은 `/lineup` 1건, 다시 중계 탭은 API 0건
 - [x] records/schedule/standings/home 웹 화면 직접 확인: records는 `/records/overview?season=2026`, schedule은 `/schedule?month=2026-05`, standings는 `/standings?season=2026`, home은 `/scoreboard/home` + `/home`만 호출
-- [x] 온보딩 구단 로고 네트워크 확인: `https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/fixed/emblem_{TEAM}_L.png` 10개 팀 `200` 응답 및 390x844 캡처 확인
-- [x] 번들 records overview 검증: `허경민`/`함덕주` 문자열 제거, 2026 top 리더 `박성한 .379`, `김도영 13`, `최민석 2.17` 확인, 2001/2025는 빈 exact snapshot 으로 유지
 - [x] `cd app && fvm flutter analyze`
 - [x] `cd app && fvm flutter test test/widget_test.dart test/core/router/app_router_test.dart test/data/models/home_aggregate_test.dart test/data/models/records_overview_test.dart -r expanded`
 - [x] `cd app && fvm flutter test test/data/models/home_aggregate_test.dart test/widget_test.dart -r expanded`

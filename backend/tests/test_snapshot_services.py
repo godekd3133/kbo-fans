@@ -1,7 +1,11 @@
+import json
+from datetime import datetime, timezone
+
 from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.standings import StandingsService
+from kbo_fans_backend.services.team_stats import TeamStatsService
 from kbo_fans_backend.storage import JsonSnapshotStore
 
 
@@ -31,6 +35,29 @@ class _FailingPlayerCrawler:
 
     def get_player_detail(self, player_id: str, player_type, season: int, include_recent: bool):
         raise RuntimeError("player unavailable")
+
+
+class _FreshPlayerCrawler:
+    def get_team_players(self, team_id: str, season: int):
+        return [{"id": "67893", "name": "박성한", "position": "내야수"}]
+
+    def get_player_detail(self, player_id: str, player_type, season: int, include_recent: bool):
+        raise RuntimeError("player unavailable")
+
+
+class _FailingTeamStatsCrawler:
+    def get_team_stats(self, team_id: str, season: int):
+        raise RuntimeError("team stats unavailable")
+
+
+class _FreshTeamStatsCrawler:
+    def get_team_stats(self, team_id: str, season: int):
+        return {
+            "teamId": team_id,
+            "season": season,
+            "hitting": {"AVG": "0.279"},
+            "pitching": {"ERA": "3.88"},
+        }
 
 
 class _FailingRecordsOverviewCrawler:
@@ -94,6 +121,101 @@ def test_player_detail_falls_back_to_snapshot(tmp_path) -> None:
     assert service.get_player_detail("61102", season=2026) == expected
 
 
+def test_current_season_team_players_crawl_before_snapshot(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    stale = {
+        "teamId": "KT",
+        "season": season,
+        "players": [{"id": "79240", "name": "허경민", "position": "내야수"}],
+    }
+    store.save("team_players", f"KT-{season}", stale)
+
+    service = PlayerStatsService(
+        crawler=_FreshPlayerCrawler(),
+        snapshot_store=store,
+    )
+
+    payload = service.get_team_players("KT", season=season)
+    assert payload["players"][0]["name"] == "박성한"
+
+
+def test_current_season_team_players_reject_old_snapshot_on_failure(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    _write_snapshot_record(
+        tmp_path,
+        "team_players",
+        f"KT-{season}",
+        {
+            "teamId": "KT",
+            "season": season,
+            "players": [{"id": "79240", "name": "허경민", "position": "내야수"}],
+        },
+    )
+
+    service = PlayerStatsService(
+        crawler=_FailingPlayerCrawler(),
+        snapshot_store=store,
+    )
+
+    try:
+        service.get_team_players("KT", season=season)
+    except RuntimeError as error:
+        assert "players unavailable" in str(error)
+    else:
+        raise AssertionError("old current-season team player snapshot was used")
+
+
+def test_current_season_team_stats_crawl_before_snapshot(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    stale = {
+        "teamId": "KT",
+        "season": season,
+        "hitting": {"AVG": "0.382"},
+        "pitching": {"ERA": "6.00"},
+    }
+    store.save("team_stats", f"KT-{season}", stale)
+
+    service = TeamStatsService(
+        crawler=_FreshTeamStatsCrawler(),
+        snapshot_store=store,
+    )
+
+    payload = service.get_team_stats("KT", season=season)
+    assert payload["hitting"]["AVG"] == "0.279"
+    assert payload["pitching"]["ERA"] == "3.88"
+
+
+def test_current_season_team_stats_reject_old_snapshot_on_failure(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year
+    _write_snapshot_record(
+        tmp_path,
+        "team_stats",
+        f"KT-{season}",
+        {
+            "teamId": "KT",
+            "season": season,
+            "hitting": {"AVG": "0.382"},
+            "pitching": {"ERA": "6.00"},
+        },
+    )
+
+    service = TeamStatsService(
+        crawler=_FailingTeamStatsCrawler(),
+        snapshot_store=store,
+    )
+
+    try:
+        service.get_team_stats("KT", season=season)
+    except RuntimeError as error:
+        assert "team stats unavailable" in str(error)
+    else:
+        raise AssertionError("old current-season team stats snapshot was used")
+
+
 def test_records_overview_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     expected = {
@@ -114,3 +236,18 @@ def test_records_overview_falls_back_to_snapshot(tmp_path) -> None:
     )
 
     assert service.get_overview(2026) == expected
+
+
+def _write_snapshot_record(tmp_path, namespace: str, key: str, payload: dict) -> None:
+    path = tmp_path / namespace / f"{key}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "savedAt": "2000-01-01T00:00:00+00:00",
+                "payload": payload,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )

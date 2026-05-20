@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from kbo_fans_backend.crawlers.team_stats import TeamStatsCrawler
@@ -9,6 +10,7 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 class TeamStatsService:
     _TEAM_STATS_CACHE_TTL_SECONDS = 300
+    _CURRENT_SEASON_SNAPSHOT_MAX_AGE = timedelta(hours=6)
 
     def __init__(
         self,
@@ -28,8 +30,9 @@ class TeamStatsService:
             return cached
 
         snapshot_key = f"{team_id}-{season}"
-        snapshot = self.snapshot_store.load_payload("team_stats", snapshot_key)
-        if snapshot is not None:
+        snapshot_record = self.snapshot_store.load("team_stats", snapshot_key)
+        snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
+        if self._can_use_snapshot_before_crawling(season, snapshot):
             return snapshot
 
         try:
@@ -38,14 +41,47 @@ class TeamStatsService:
             stale = self._team_stats_cache.get_stale(cache_key)
             if stale is not None:
                 return stale
-            if snapshot is not None:
+            if self._can_use_snapshot_after_failure(season, snapshot_record, snapshot):
                 return snapshot
             raise
         self._team_stats_cache.set(cache_key, payload)
         self.snapshot_store.save("team_stats", snapshot_key, payload)
         return payload
 
-    def _get_cached_team_stats(
-        self, cache_key: Tuple[str, int]
-    ) -> Optional[Dict[str, Any]]:
+    def _get_cached_team_stats(self, cache_key: Tuple[str, int]) -> Optional[Dict[str, Any]]:
         return self._team_stats_cache.get(cache_key)
+
+    def _can_use_snapshot_before_crawling(
+        self,
+        season: int,
+        snapshot: Optional[Dict[str, Any]],
+    ) -> bool:
+        return snapshot is not None and self._is_historical_season(season)
+
+    def _can_use_snapshot_after_failure(
+        self,
+        season: int,
+        snapshot_record: Optional[Dict[str, Any]],
+        snapshot: Optional[Dict[str, Any]],
+    ) -> bool:
+        if snapshot is None:
+            return False
+        return self._is_historical_season(season) or self._is_fresh_snapshot(snapshot_record)
+
+    @staticmethod
+    def _is_historical_season(season: int) -> bool:
+        return season < datetime.now(timezone.utc).year
+
+    def _is_fresh_snapshot(self, snapshot_record: Optional[Dict[str, Any]]) -> bool:
+        if snapshot_record is None:
+            return False
+        saved_at_raw = snapshot_record.get("savedAt")
+        if not isinstance(saved_at_raw, str) or not saved_at_raw:
+            return False
+        try:
+            saved_at = datetime.fromisoformat(saved_at_raw.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        if saved_at.tzinfo is None:
+            saved_at = saved_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc) - saved_at <= self._CURRENT_SEASON_SNAPSHOT_MAX_AGE
