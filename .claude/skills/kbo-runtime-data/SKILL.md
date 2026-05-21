@@ -32,6 +32,7 @@ description: Use when changing KBO data-loading paths, deciding between backend 
 - Backend current data routes should share the runtime service singletons from `api/runtime_services.py` so sibling endpoints reuse the same TTL caches.
 - LIVE summary scoreboard paths should prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0.
 - Boxscore adjacent game-id fallback is historical-only. Current/live boxscore must not borrow a previous game's player rows; return the empty official-unavailable state instead.
+- Direct relay summary fallback must not synthesize inning skeletons for scheduled/cancelled/suspended games or games without any real line-score inning values. Return the empty relay state instead.
 - App UI must treat null H/E/B team totals as unavailable, not as 0 records.
 - App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.

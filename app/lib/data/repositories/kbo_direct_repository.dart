@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:html/dom.dart' as dom;
 import 'package:html/parser.dart' as html_parser;
 import 'dart:convert';
@@ -2513,14 +2513,24 @@ class KboDirectRepository implements GameRepository {
     if (game == null) {
       return const RelayData(currentAtBat: null, relayItems: []);
     }
+    if (shouldSuppressDirectRelaySummaryFallback(game.status)) {
+      return const RelayData(currentAtBat: null, relayItems: []);
+    }
 
     final items = <RelayItem>[];
     var seqNo = 1;
-    final innings = game.away.innings.length > game.home.innings.length
-        ? game.away.innings.length
-        : game.home.innings.length;
+    final inningIndexes = directRelaySummaryInningIndexes(game);
 
-    for (var i = 0; i < innings; i++) {
+    if (inningIndexes.isEmpty) {
+      return RelayData(
+        currentAtBat: game.status == GameStatus.live
+            ? _currentAtBatFromMainGame(mainGame, fallbackInning: game.inning)
+            : null,
+        relayItems: const [],
+      );
+    }
+
+    for (final i in inningIndexes) {
       final inning = i + 1;
       final awayRuns = i < game.away.innings.length
           ? game.away.innings[i]
@@ -2705,6 +2715,27 @@ class KboDirectRepository implements GameRepository {
     }
     return '만루';
   }
+}
+
+@visibleForTesting
+bool shouldSuppressDirectRelaySummaryFallback(GameStatus status) {
+  return status == GameStatus.scheduled ||
+      status == GameStatus.cancelled ||
+      status == GameStatus.suspended;
+}
+
+@visibleForTesting
+List<int> directRelaySummaryInningIndexes(Game game) {
+  final innings = game.away.innings.length > game.home.innings.length
+      ? game.away.innings.length
+      : game.home.innings.length;
+  return [
+    for (var i = 0; i < innings; i++)
+      if ((i < game.away.innings.length ? game.away.innings[i] : null) !=
+              null ||
+          (i < game.home.innings.length ? game.home.innings[i] : null) != null)
+        i,
+  ];
 }
 
 class _ScheduleRow {

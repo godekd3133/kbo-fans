@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-05-21: direct KBO source validation and relay fallback guard
+
+### 완료
+- [x] 백엔드 API를 쓰지 않는 direct KBO 기준으로 `GetScheduleList` 원본 ASMX 호출을 실측해 2026-05-21 일정 5경기 응답 확인
+- [x] `APP_ENV=local`, native, `PREFER_DIRECT_SCRAPE=true`, `API_BASE_URL` 없음 조건에서 앱 provider가 direct repository를 선택하는지 확인
+- [x] direct repository smoke로 2026-05-21 5경기 전체 schedule/scoreboard/boxscore/relay/lineup shape를 확인
+- [x] 예정 경기에서 direct relay summary fallback이 실제 중계 없이 `1회초/1회말` skeleton 24개를 만들던 문제 확인
+- [x] 예정/취소/서스펜디드 경기에서는 direct relay fallback을 빈 상태로 반환하고, 라인스코어가 있는 경기에서만 요약 fallback을 만들도록 보정
+- [x] direct records overview, avg/hr/ops/opsPlus/era leaderboard, KT 팀 기록, 리더 선수 상세가 KBO 원본 기준으로 응답되는지 확인
+
+### 검증
+- [x] `python3 - <<'PY' ... https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList ... PY`
+- [x] `cd app && fvm flutter test test/data/providers_routing_test.dart --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true`
+- [x] 임시 direct smoke: `cd app && fvm flutter test test/data/direct_kbo_source_smoke_test.dart --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true --reporter expanded`
+- [x] direct smoke 확인값: 오늘 5경기 `scheduled`, boxscore `official=false 0/0`, relay `0`, lineup `0/0`
+- [x] direct records 확인값: AVG `박성한 0.382`, HR `김도영 13`, OPS `오스틴 1.073`, OPS+ `오스틴 121`, ERA `최민석 2.17`
+- [x] direct team/player 확인값: KT 팀 타율 `0.287`, 팀 ERA `4.50`, 박성한 선수상세 `타율 0.382`
+- [x] `cd app && fvm dart format lib/data/repositories/kbo_direct_repository.dart test/data/kbo_direct_repository_test.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test test/data/kbo_direct_repository_test.dart`
+- [x] `git diff --check`
+
+---
+
 ## 2026-05-20: 0.0.28 current boxscore adjacent fallback guard
 
 ### 완료

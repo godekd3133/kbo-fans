@@ -10,6 +10,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- direct-primary 문자중계 요약 fallback이 예정 경기에서도 1회초/1회말 skeleton을 만들어 실제 중계처럼 보일 수 있던 경로 차단
+
 ## [0.0.28] - 2026-05-20
 
 ### Fixed
