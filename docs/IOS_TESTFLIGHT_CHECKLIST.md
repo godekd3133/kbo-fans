@@ -36,6 +36,13 @@ Firebase를 실제로 사용할 계획이면:
 - [ ] `GoogleService-Info.plist` 포함
 - [ ] Firebase 프로젝트와 Bundle ID 일치
 - [ ] 푸시를 쓸 경우 APNs / FCM 설정 점검
+- [ ] 앱 종료 후 Dynamic Island 갱신을 시연할 경우 운영 backend / APNs ActivityKit 설정 점검
+  - 세부 항목: `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`
+- [ ] 운영 backend `GET /api/push/config-status`의 `readyForIphoneOnlyDemo=true` 확인
+- [ ] AWS sync worker 또는 scheduler가 30~60초 간격으로 scoreboard sync를 실행 중인지 확인
+- [ ] TestFlight release build에 운영 `API_BASE_URL`이 주입됐는지 확인
+  - CI: `release_api_base_url` input 또는 `RELEASE_API_BASE_URL` variable/secret
+  - 로컬: `RELEASE_API_BASE_URL=https://... ./scripts/codex-run-ios-release.sh`
 
 주의:
 

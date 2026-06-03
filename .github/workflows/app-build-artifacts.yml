@@ -29,13 +29,15 @@ on:
         default: false
         type: boolean
       release_api_base_url:
-        description: API base URL to health-check and embed for APP_ENV=release builds
+        description: Production API base URL used for release push/Live Activity registration
         required: false
         default: https://api.kbofans.com/api
         type: string
-
 permissions:
   contents: read
+
+env:
+  RELEASE_API_BASE_URL: ${{ inputs.release_api_base_url || vars.RELEASE_API_BASE_URL || secrets.RELEASE_API_BASE_URL || 'https://api.kbofans.com/api' }}
 
 concurrency:
   group: app-build-artifacts-${{ github.ref }}-${{ github.event.inputs.platform || 'all' }}-${{ github.event.inputs.app_environment || 'all' }}
@@ -107,28 +109,36 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Flutter pub get
-        run: flutter pub get
-
-      - name: Resolve release API health gate
+      - name: Restore Firebase Android config
         env:
-          RELEASE_API_BASE_URL_INPUT: ${{ inputs.release_api_base_url }}
-          RELEASE_API_BASE_URL_VAR: ${{ vars.RELEASE_API_BASE_URL }}
-          RELEASE_API_BASE_URL_SECRET: ${{ secrets.RELEASE_API_BASE_URL }}
+          ANDROID_GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
         run: |
           set -euo pipefail
 
-          echo "API_DART_DEFINE=" >> "$GITHUB_ENV"
-          echo "RELEASE_API_BASE_URL_EFFECTIVE=" >> "$GITHUB_ENV"
+          if [[ -z "${ANDROID_GOOGLE_SERVICES_JSON}" ]]; then
+            echo "Missing GitHub secret: ANDROID_GOOGLE_SERVICES_JSON" >&2
+            exit 2
+          fi
+          printf '%s' "${ANDROID_GOOGLE_SERVICES_JSON}" > android/app/google-services.json
+          python3 -m json.tool android/app/google-services.json >/dev/null
 
-          if [[ "${{ matrix.app_environment }}" != "release" ]]; then
-            exit 0
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Configure no-backend data mode
+        run: |
+          set -euo pipefail
+
+          api_dart_define="--dart-define=PREFER_DIRECT_SCRAPE=true"
+          push_api_base_url=""
+          if [[ "${{ matrix.app_environment }}" == "release" ]]; then
+            push_api_base_url="${RELEASE_API_BASE_URL}"
+            api_dart_define="${api_dart_define} --dart-define=API_BASE_URL=${push_api_base_url}"
           fi
 
-          release_api_base_url="${RELEASE_API_BASE_URL_INPUT:-${RELEASE_API_BASE_URL_VAR:-${RELEASE_API_BASE_URL_SECRET:-https://api.kbofans.com/api}}}"
-          ../scripts/release-api-health-check.sh "$release_api_base_url"
-          echo "API_DART_DEFINE=--dart-define=API_BASE_URL=$release_api_base_url" >> "$GITHUB_ENV"
-          echo "RELEASE_API_BASE_URL_EFFECTIVE=$release_api_base_url" >> "$GITHUB_ENV"
+          echo "API_DART_DEFINE=${api_dart_define}" >> "$GITHUB_ENV"
+          echo "DATA_MODE=no-backend-direct" >> "$GITHUB_ENV"
+          echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Configure Android signing
         env:
@@ -173,7 +183,8 @@ jobs:
           cat > build/android-build-metadata-${{ matrix.app_environment }}.txt <<EOF
           platform=android
           app_environment=${{ matrix.app_environment }}
-          api_base_url=${RELEASE_API_BASE_URL_EFFECTIVE}
+          data_mode=${DATA_MODE}
+          push_api_base_url=${PUSH_API_BASE_URL}
           apk=build/app/outputs/flutter-apk/app-release.apk
           aab=build/app/outputs/bundle/release/app-release.aab
           signing=${ANDROID_SIGNING_STATUS}
@@ -225,25 +236,20 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Resolve release API health gate
-        env:
-          RELEASE_API_BASE_URL_INPUT: ${{ inputs.release_api_base_url }}
-          RELEASE_API_BASE_URL_VAR: ${{ vars.RELEASE_API_BASE_URL }}
-          RELEASE_API_BASE_URL_SECRET: ${{ secrets.RELEASE_API_BASE_URL }}
+      - name: Configure no-backend data mode
         run: |
           set -euo pipefail
 
-          echo "API_DART_DEFINE=" >> "$GITHUB_ENV"
-          echo "RELEASE_API_BASE_URL_EFFECTIVE=" >> "$GITHUB_ENV"
-
-          if [[ "${{ matrix.app_environment }}" != "release" ]]; then
-            exit 0
+          api_dart_define="--dart-define=PREFER_DIRECT_SCRAPE=true"
+          push_api_base_url=""
+          if [[ "${{ matrix.app_environment }}" == "release" ]]; then
+            push_api_base_url="${RELEASE_API_BASE_URL}"
+            api_dart_define="${api_dart_define} --dart-define=API_BASE_URL=${push_api_base_url}"
           fi
 
-          release_api_base_url="${RELEASE_API_BASE_URL_INPUT:-${RELEASE_API_BASE_URL_VAR:-${RELEASE_API_BASE_URL_SECRET:-https://api.kbofans.com/api}}}"
-          ../scripts/release-api-health-check.sh "$release_api_base_url"
-          echo "API_DART_DEFINE=--dart-define=API_BASE_URL=$release_api_base_url" >> "$GITHUB_ENV"
-          echo "RELEASE_API_BASE_URL_EFFECTIVE=$release_api_base_url" >> "$GITHUB_ENV"
+          echo "API_DART_DEFINE=${api_dart_define}" >> "$GITHUB_ENV"
+          echo "DATA_MODE=no-backend-direct" >> "$GITHUB_ENV"
+          echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Build Web
         run: flutter build web --release --dart-define=APP_ENV=${{ matrix.app_environment }} $API_DART_DEFINE
@@ -258,7 +264,8 @@ jobs:
           cat > build/web-build-metadata-${{ matrix.app_environment }}.txt <<EOF
           platform=web
           app_environment=${{ matrix.app_environment }}
-          api_base_url=${RELEASE_API_BASE_URL_EFFECTIVE}
+          data_mode=${DATA_MODE}
+          push_api_base_url=${PUSH_API_BASE_URL}
           archive=build/kbo-fans-web-${{ matrix.app_environment }}.zip
           EOF
 
@@ -292,6 +299,19 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Restore Firebase iOS config
+        env:
+          IOS_GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${IOS_GOOGLE_SERVICE_INFO_PLIST}" ]]; then
+            echo "Missing GitHub secret: IOS_GOOGLE_SERVICE_INFO_PLIST" >&2
+            exit 2
+          fi
+          printf '%s' "${IOS_GOOGLE_SERVICE_INFO_PLIST}" > ios/Runner/GoogleService-Info.plist
+          python3 -c 'import plistlib; plistlib.load(open("ios/Runner/GoogleService-Info.plist", "rb"))'
+
       - name: Flutter pub get
         run: flutter pub get
 
@@ -299,25 +319,20 @@ jobs:
         working-directory: app/ios
         run: pod install
 
-      - name: Resolve release API health gate
-        env:
-          RELEASE_API_BASE_URL_INPUT: ${{ inputs.release_api_base_url }}
-          RELEASE_API_BASE_URL_VAR: ${{ vars.RELEASE_API_BASE_URL }}
-          RELEASE_API_BASE_URL_SECRET: ${{ secrets.RELEASE_API_BASE_URL }}
+      - name: Configure no-backend data mode
         run: |
           set -euo pipefail
 
-          echo "API_DART_DEFINE=" >> "$GITHUB_ENV"
-          echo "RELEASE_API_BASE_URL_EFFECTIVE=" >> "$GITHUB_ENV"
-
-          if [[ "${{ matrix.app_environment }}" != "release" ]]; then
-            exit 0
+          api_dart_define="--dart-define=PREFER_DIRECT_SCRAPE=true"
+          push_api_base_url=""
+          if [[ "${{ matrix.app_environment }}" == "release" ]]; then
+            push_api_base_url="${RELEASE_API_BASE_URL}"
+            api_dart_define="${api_dart_define} --dart-define=API_BASE_URL=${push_api_base_url}"
           fi
 
-          release_api_base_url="${RELEASE_API_BASE_URL_INPUT:-${RELEASE_API_BASE_URL_VAR:-${RELEASE_API_BASE_URL_SECRET:-https://api.kbofans.com/api}}}"
-          ../scripts/release-api-health-check.sh "$release_api_base_url"
-          echo "API_DART_DEFINE=--dart-define=API_BASE_URL=$release_api_base_url" >> "$GITHUB_ENV"
-          echo "RELEASE_API_BASE_URL_EFFECTIVE=$release_api_base_url" >> "$GITHUB_ENV"
+          echo "API_DART_DEFINE=${api_dart_define}" >> "$GITHUB_ENV"
+          echo "DATA_MODE=no-backend-direct" >> "$GITHUB_ENV"
+          echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Build iOS simulator app
         run: flutter build ios --simulator --release --no-codesign --dart-define=APP_ENV=${{ matrix.app_environment }} $API_DART_DEFINE
@@ -333,7 +348,8 @@ jobs:
           platform=ios
           artifact_type=simulator-app
           app_environment=${{ matrix.app_environment }}
-          api_base_url=${RELEASE_API_BASE_URL_EFFECTIVE}
+          data_mode=${DATA_MODE}
+          push_api_base_url=${PUSH_API_BASE_URL}
           archive=build/ios-simulator-${{ matrix.app_environment }}.zip
           signing=no-codesign
           EOF
@@ -479,25 +495,33 @@ jobs:
           </plist>
           EOF
 
-      - name: Resolve release API health gate
+      - name: Restore Firebase iOS config
         env:
-          RELEASE_API_BASE_URL_INPUT: ${{ inputs.release_api_base_url }}
-          RELEASE_API_BASE_URL_VAR: ${{ vars.RELEASE_API_BASE_URL }}
-          RELEASE_API_BASE_URL_SECRET: ${{ secrets.RELEASE_API_BASE_URL }}
+          IOS_GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST }}
         run: |
           set -euo pipefail
 
-          echo "API_DART_DEFINE=" >> "$GITHUB_ENV"
-          echo "RELEASE_API_BASE_URL_EFFECTIVE=" >> "$GITHUB_ENV"
+          if [[ -z "${IOS_GOOGLE_SERVICE_INFO_PLIST}" ]]; then
+            echo "Missing GitHub secret: IOS_GOOGLE_SERVICE_INFO_PLIST" >&2
+            exit 2
+          fi
+          printf '%s' "${IOS_GOOGLE_SERVICE_INFO_PLIST}" > ios/Runner/GoogleService-Info.plist
+          python3 -c 'import plistlib; plistlib.load(open("ios/Runner/GoogleService-Info.plist", "rb"))'
 
-          if [[ "${{ matrix.app_environment }}" != "release" ]]; then
-            exit 0
+      - name: Configure no-backend data mode
+        run: |
+          set -euo pipefail
+
+          api_dart_define="--dart-define=PREFER_DIRECT_SCRAPE=true"
+          push_api_base_url=""
+          if [[ "${{ matrix.app_environment }}" == "release" ]]; then
+            push_api_base_url="${RELEASE_API_BASE_URL}"
+            api_dart_define="${api_dart_define} --dart-define=API_BASE_URL=${push_api_base_url}"
           fi
 
-          release_api_base_url="${RELEASE_API_BASE_URL_INPUT:-${RELEASE_API_BASE_URL_VAR:-${RELEASE_API_BASE_URL_SECRET:-https://api.kbofans.com/api}}}"
-          ../scripts/release-api-health-check.sh "$release_api_base_url"
-          echo "API_DART_DEFINE=--dart-define=API_BASE_URL=$release_api_base_url" >> "$GITHUB_ENV"
-          echo "RELEASE_API_BASE_URL_EFFECTIVE=$release_api_base_url" >> "$GITHUB_ENV"
+          echo "API_DART_DEFINE=${api_dart_define}" >> "$GITHUB_ENV"
+          echo "DATA_MODE=no-backend-direct" >> "$GITHUB_ENV"
+          echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Build signed iOS IPA
         run: |
@@ -513,7 +537,8 @@ jobs:
           platform=ios
           artifact_type=signed-ipa
           app_environment=${{ matrix.app_environment }}
-          api_base_url=${RELEASE_API_BASE_URL_EFFECTIVE}
+          data_mode=${DATA_MODE}
+          push_api_base_url=${PUSH_API_BASE_URL}
           archive=build/ios/ipa/*.ipa
           export_method=${IOS_EXPORT_METHOD:-app-store}
           team_id=${IOS_TEAM_ID}

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +28,11 @@ void main() async {
 
       AppConfig.initialize();
       DevConsole.instance.info('환경: ${AppConfig.instance.environment.name}');
+      if (!kIsWeb) {
+        FirebaseMessaging.onBackgroundMessage(
+          firebaseMessagingBackgroundHandler,
+        );
+      }
 
       FlutterError.onError = (details) {
         DevConsole.instance.error('Flutter: ${details.exceptionAsString()}');

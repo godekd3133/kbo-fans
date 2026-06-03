@@ -2,6 +2,186 @@
 
 ---
 
+## 2026-06-04: KBO Fans 8분 발표 자료 제작
+
+### 완료
+- [x] `CLAUDE.md`, `docs/PLANNING.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `docs/WORKLOG.md`, `README.md`, `CHANGELOG.md` 기준으로 8분 발표 흐름 정리
+- [x] "기획한 기능과 구현한 것이 너무 추상적"이라는 피드백을 반영해 발표 원고를 `docs/presentations/kbo_fans_8min_presentation.md`에 재작성
+- [x] 각 슬라이드를 `기획한 기능` / `구현한 것` / `발표 포인트` 구조로 재정리
+- [x] "어떤 기능 뭐뭐뭐" 식으로 더 직관적인 기능 목록과 기능별 설명이 필요하다는 추가 피드백을 반영
+- [x] 발표 원고를 `어떤 기능인가` / `기획 내용` / `구현 내용` 반복 구조로 확장
+- [x] `핵심 메시지`, `최종 메시지`, `발표 문장`, `Self-Review`처럼 AI 생성물처럼 보이는 메타 표현 제거
+- [x] 발표 원고와 PPTX 문구를 `화면에서 하는 일` / `왜 넣었나` / `구현한 것` 중심의 자연스러운 발표 톤으로 재작성
+- [x] 실제 앱 화면 중심으로 14장 humanized PPTX 구성
+  - 온보딩 / 홈 / 일정 / 순위 / 기록실 / 경기 상세 스코어 / 중계 / 박스 / 라인업 / 설정 알림 화면 반영
+- [x] 기술 설명은 상세 아키텍처보다 UX 신뢰성 관점으로 축소
+- [x] 최종 PPTX 생성: `outputs/019e8edf-f74f-7c13-9da8-b88d32e0a45c/presentations/kbo-fans-8min/output/kbo-fans-8min-humanized-presentation.pptx`
+
+### 검증
+- [x] 기존 Playwright 검증 artifact의 실제 앱 화면을 발표 자료용 화면 근거로 선별
+- [x] artifact-tool PPTX export 성공: 14 slides, 3.8MB
+- [x] rendered contact sheet 시각 검수
+- [x] `check_layout_quality.mjs --layout ... --warn-only`: 14개 layout 파일 기준 error 0개, warning 0개
+
+---
+
+## 2026-06-04: no-backend 기본 런타임 전환
+
+### 완료
+- [x] Director의 “backend/API 연결이 없어도 앱/웹이 기본으로 동작해야 한다”는 기준을 현재 런타임 정책으로 반영
+- [x] `AppConfig`에 `USE_BACKEND_API=true` 명시 opt-in을 추가하고, 기본 provider routing을 direct KBO + snapshot 경로로 전환
+- [x] 웹 기록실/선수 direct 조회가 KBO source를 CORS proxy 경로로 접근하도록 `KboDirectPlayerRepository` 보강
+- [x] widget background scoreboard와 Codex iOS/Android/Web 실행 스크립트를 backend health/API URL 주입 없이 no-backend direct mode로 전환
+- [x] GitHub Actions app artifact workflow를 no-backend direct data mode로 빌드하도록 전환
+- [x] `home_widget 0.9.0`의 `androidx.glance:glance-appwidget:1.+` 동적 의존성이 `1.3.0-alpha01`을 잡아 `compileSdk 37 / AGP 9.1`을 요구하던 Android metadata 실패를 확인하고, repo Gradle에서 Glance `1.0.0`으로 고정
+- [x] macOS JDK spawn helper 실패(`Failed to exec spawn helper`)를 확인하고, Codex Android 실행 스크립트가 `GRADLE_OPTS=-Djdk.lang.Process.launchMechanism=FORK`를 주입하도록 보강
+- [x] 로컬 CocoaPods/Ruby 설치가 깨져 iOS pod install 전 단계에서 실패하던 상태를 Homebrew 재설치로 복구
+- [x] README, AGENTS, CLAUDE, APP_SPEC, ENGINEERING_NOTES, APP_STANDALONE_MODE, DISTRIBUTION_GUIDE, VERSIONING, repo skills 문서 동기화
+
+### 검증
+- [x] `bash -n scripts/codex-run.sh scripts/codex-run-web.sh scripts/codex-run-web-release.sh scripts/codex-run-ios-release.sh scripts/codex-run-android-release.sh`
+- [x] `cd app && fvm dart format lib/core/config/app_config.dart lib/data/providers.dart lib/data/repositories/kbo_direct_player_repository.dart lib/services/widget_sync_service.dart test/data/providers_routing_test.dart`
+- [x] `cd app && fvm flutter test test/data/providers_routing_test.dart`
+- [x] `cd app && fvm flutter test --dart-define=USE_BACKEND_API=true test/data/providers_routing_test.dart`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test`
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true`
+- [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml"); puts "workflow yaml ok"'`
+- [x] `cd app/android && ./gradlew :app:dependencies --configuration debugRuntimeClasspath | rg -n "androidx.glance:glance-appwidget|remote-creation" -C 2` (`glance-appwidget:1.+ -> 1.0.0`, `remote-creation` alpha 제거 확인)
+- [x] `cd app/android && GRADLE_OPTS='-Djdk.lang.Process.launchMechanism=FORK' ./gradlew :app:assembleDebug --no-daemon --stacktrace -Ptarget-platform=android-arm,android-arm64,android-x64 -Ptarget=lib/main.dart -Pbase-application-name=android.app.Application -Pdart-defines=QVBQX0VOVj1sb2NhbA==,UFJFRkVSX0RJUkVDVF9TQ1JBUEU9dHJ1ZQ== -Pdart-obfuscation=false -Ptrack-widget-creation=true -Ptree-shake-icons=false` (`BUILD SUCCESSFUL in 4m 25s`)
+- [x] `cd app && GRADLE_OPTS='-Djdk.lang.Process.launchMechanism=FORK' fvm flutter build apk --debug --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/app/outputs/flutter-apk/app-debug.apk`)
+- [x] `cd app && GRADLE_OPTS='-Djdk.lang.Process.launchMechanism=FORK' fvm flutter build apk --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/app/outputs/flutter-apk/app-release.apk`)
+- [x] `cd app/ios && pod install`
+- [x] `cd app && fvm flutter build ios --debug --no-codesign --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/ios/iphoneos/Runner.app`)
+- [x] Playwright 390x844 정적 로드: `http://localhost:7357` 앱 title 확인, `#/home` route 진입 확인
+- [x] `git diff --check`
+
+### Android 빌드 진단 기록
+- 1차 실패: `home_widget` Glance 동적 의존성이 `1.3.0-alpha01`을 잡아 Android API 37 / AGP 9.1 요구
+- 2차 지연: Flutter wrapper의 quiet Gradle 실행에서는 진행 지점이 보이지 않아 중단
+- 원인 분리: 직접 Gradle 실행에서 macOS JDK spawn helper 실패 확인
+- 보정 후 직접 Gradle `assembleDebug`, Flutter wrapper 기반 debug APK, release APK 모두 성공.
+
+### iOS 빌드 진단 기록
+- 1차 실패: CocoaPods 설치 상태가 깨져 Flutter가 pod install을 건너뛰고 iOS build를 중단
+- 보정: `brew reinstall ruby cocoapods` 후 `pod --version` `1.16.2`, `cd app/ios && pod install` 성공
+- 2차 실패: Xcode AssetCatalog 처리 중 `Failed to launch AssetCatalogSimulatorAgent via CoreSimulator spawn`
+- 보정: CoreSimulator service 재시작 후 같은 no-backend dart-define로 `flutter build ios --debug --no-codesign` 성공.
+
+---
+
+## 2026-06-04: 앱 종료 후 푸시 / Dynamic Island 실시간 갱신 기반
+
+### 완료
+- [x] Firebase/FCM은 일반 푸시 전달 채널이고, 앱 종료 후 iOS Live Activity / Dynamic Island 갱신은 backend + APNs ActivityKit push가 필요하다는 구조로 정리
+- [x] FCM background handler를 앱 시작 초기에 등록하고, iOS FCM token sync 전에 APNs token 준비를 기다리도록 보강
+- [x] iOS Live Activity를 `pushType: .token`으로 시작하고 ActivityKit push token을 Flutter channel과 native URLSession 양쪽에서 backend에 등록하도록 연결
+- [x] Runner entitlement에 `aps-environment`를 추가하고 Debug/Profile은 development, Release는 production으로 분리
+- [x] backend에 FCM device token / ActivityKit push token registry를 추가하고, 실제 token 저장 경로를 `backend/data/runtime/` gitignore 영역으로 분리
+- [x] backend에 APNs `liveactivity` provider sender, Live Activity register/unregister/update API, scoreboard 기반 sync trigger를 추가
+- [x] 같은 scoreboard sync에서 이전 scoreboard state와 비교해 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change` FCM topic push를 발행하도록 보강
+- [x] iOS Runner/Widget plist에 `NSSupportsLiveActivitiesFrequentUpdates`를 추가해 잦은 Live Activity 갱신 의도를 명시
+- [x] AWS 배포 후 Firebase/APNs/registry/scheduler secret 누락을 확인할 수 있도록 `GET /api/push/config-status`와 `python -m kbo_fans_backend.scheduler.push_config_status`를 추가
+- [x] 외부에서 `/health`와 push readiness를 한 번에 검증하는 `scripts/push-readiness-check.sh`와 `./scripts/codex-run.sh push-readiness` entrypoint를 추가
+- [x] AWS 배포 시작점을 위해 `backend/Dockerfile`, `backend/.dockerignore`, `python -m kbo_fans_backend.scheduler.live_activity_sync` scheduler CLI를 추가
+- [x] 노트북이 꺼진 시연을 위해 AWS/운영 backend, Firebase, APNs, EventBridge/cron 설정 절차를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`에 문서화
+- [x] AWS ECS/Fargate에서 파일 mount 없이 Secrets Manager env로 Firebase Admin JSON / APNs `.p8`를 주입할 수 있도록 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`를 backend 설정에 추가
+- [x] AWS UTC 기준 날짜 오판을 피하도록 Live Activity scoreboard sync 기본 날짜를 `Asia/Seoul` KBO 경기일로 계산
+- [x] 30~60초 시연용 long-running sync worker CLI `python -m kbo_fans_backend.scheduler.live_activity_sync_loop`를 추가
+- [x] ECS/Fargate API service + sync worker service 템플릿을 `infra/aws/ecs-fargate/`에 추가
+- [x] worker가 실제로 실행됐는지 확인할 수 있도록 scoreboard sync heartbeat를 registry에 기록하고 `GET /api/push/config-status`의 `scheduler.lastSyncAt`으로 노출
+- [x] Firebase Admin JSON / APNs `.p8` / sync secret을 AWS Secrets Manager에 생성 또는 갱신하고 renderer용 `SECRET_ARN_*` export를 출력하는 `scripts/aws-push-secrets.sh`, `./scripts/codex-run.sh aws-push-secrets` entrypoint를 추가
+- [x] AWS ECS task definition placeholder를 환경변수로 렌더링/검증하는 `infra/aws/ecs-fargate/render_task_definitions.py`, `scripts/aws-push-task-definitions.sh`, `./scripts/codex-run.sh aws-push-task-defs` entrypoint를 추가
+- [x] ECS task execution role trust policy와 Firebase/APNs/sync secret read inline policy 템플릿을 추가하고, task definition renderer가 IAM policy도 함께 렌더링하도록 보강
+- [x] AWS push 배포 env checklist `infra/aws/ecs-fargate/deploy.env.example`와 env/rendered JSON/AWS 리소스를 확인하는 `scripts/aws-push-deploy-check.sh`, `./scripts/codex-run.sh aws-push-deploy-check` entrypoint를 추가
+- [x] AWS 배포 문서 순서를 secret 생성, IAM role 생성, ECR/EFS/log group 준비, template 렌더링, secret-read policy 부착, deploy preflight 순서로 정리
+- [x] ALB, ECS Fargate API service, scoreboard sync worker, EFS registry, IAM role, CloudWatch log group을 한 stack으로 만드는 `infra/aws/cloudformation/push-demo-stack.json`와 `scripts/aws-push-cloudformation.sh`, `./scripts/codex-run.sh aws-push-cloudformation` entrypoint를 추가
+- [x] backend Docker image를 ECR에 build/tag/push하고 `CONTAINER_IMAGE_URI` env를 남기는 `scripts/aws-push-image.sh`, `./scripts/codex-run.sh aws-push-image` entrypoint를 추가
+- [x] CloudFormation stack output `ApiBaseUrl`을 release build용 `RELEASE_API_BASE_URL` / `API_BASE_URL`로 추출하는 `scripts/aws-push-stack-outputs.sh`, `./scripts/codex-run.sh aws-push-stack-outputs` entrypoint를 추가
+- [x] secret upload, ECR image push, CloudFormation deploy, stack output export, readiness를 순서대로 실행하는 `scripts/aws-push-demo-deploy.sh`, `./scripts/codex-run.sh aws-push-demo-deploy` 통합 entrypoint를 추가
+- [x] 배포 전 앱 Firebase 파일, APNs/Live Activity capability, backend secret env, AWS env 형태를 secret 출력 없이 확인하는 `scripts/push-live-preflight.sh`, `./scripts/codex-run.sh push-live-preflight` entrypoint를 추가
+- [x] 로컬 AWS CLI credential과 Docker daemon 상태를 확인하는 `scripts/aws-push-tooling-check.sh`, `./scripts/codex-run.sh aws-push-tooling` entrypoint를 추가
+- [x] 로컬 AWS CLI/Docker 상태에 의존하지 않고 GitHub Actions runner에서 같은 push demo deploy pipeline을 실행할 수 있도록 `.github/workflows/push-demo-deploy.yml` 수동 workflow를 추가
+- [x] 로컬 env 파일, Firebase client config, Firebase Admin JSON, APNs 파일을 기준으로 GitHub Actions secrets/variables를 dry-run 또는 `--apply` 업로드할 수 있는 `scripts/github-push-secrets.sh`, `./scripts/codex-run.sh github-push-secrets` entrypoint를 추가
+- [x] GitHub Actions app artifact workflow에서 ignored Firebase client config 파일을 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON` secrets에서 복원하도록 보강
+- [x] GitHub Actions `Push Demo Deploy` workflow를 CLI에서 dispatch하고, 원격 workflow 미등록 시 커밋/푸시 필요 상태를 안내하는 `scripts/github-push-demo-run.sh`, `./scripts/codex-run.sh github-push-demo-run` entrypoint를 추가
+- [x] 수동 ECS 템플릿 경로와 CloudFormation full-stack 경로의 역할 차이를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, `README.md`, `backend/README.md`, `infra/aws/cloudformation/README.md`에 기록
+- [x] release no-backend direct 실행/CI artifact도 push / Live Activity token 등록을 위해 운영 `API_BASE_URL`을 주입하도록 `scripts/codex-run.sh`와 `.github/workflows/app-build-artifacts.yml`을 보강
+- [x] `API_BASE_URL` override가 provider routing을 backend mode로 바꾸지 않고 push registration base URL만 바꿀 수 있음을 `providers_routing_test.dart`에 추가 확인
+
+### 운영 조건
+- [ ] 시연용 iPhone만 켜 둔 상태에서 동작하려면 FastAPI backend가 AWS ECS/Fargate 또는 EC2 같은 상시 서버에 떠 있어야 한다.
+- [ ] 운영 backend에는 `FIREBASE_SERVICE_ACCOUNT_JSON` 또는 `FIREBASE_SERVICE_ACCOUNT_PATH`, `FIREBASE_PROJECT_ID`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_AUTH_KEY_P8` 또는 `APNS_AUTH_KEY_PATH`, `APNS_BUNDLE_ID`, `APNS_USE_SANDBOX=false`, `PUSH_SYNC_SECRET`를 secret/env로 넣어야 한다.
+- [ ] ECS task execution role에는 AWS managed `AmazonECSTaskExecutionRolePolicy`와 rendered `iam-task-execution-secrets-policy.rendered.json` inline policy를 붙여야 한다.
+- [ ] ECS task definition 등록 또는 service 생성 전 `./scripts/aws-push-deploy-check.sh`가 AWS credential, secret, IAM role, ECR, EFS, CloudWatch log group을 모두 확인해야 한다.
+- [ ] CloudFormation 경로를 쓸 경우 ECR image, ACM certificate, VPC/subnet, Firebase/APNs secret ARN을 먼저 준비하고, stack output `ApiBaseUrl`을 release `API_BASE_URL`로 주입해야 한다.
+- [ ] backend image는 `./scripts/aws-push-image.sh`로 ECR에 push되어 있어야 ECS service가 정상 기동할 수 있다.
+- [ ] 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`로 secret/image/stack/output/readiness 순서가 끊기지 않는지 확인해야 한다.
+- [ ] 전체 시연 배포 전 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`가 failures 0개로 통과해야 한다.
+- [ ] 로컬 배포는 `./scripts/aws-push-tooling-check.sh`가 failures 0개여야 가능하다. 로컬 tooling이 안 되면 GitHub Actions `Push Demo Deploy` workflow를 사용한다.
+- [ ] GitHub Actions 배포 전 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` dry-run으로 업로드 대상 이름을 확인하고, 값이 맞으면 `--apply`로 secrets/variables를 등록해야 한다.
+- [ ] GitHub Actions workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`와 `--dry-run false --watch` 순서로 실행해야 한다.
+- [ ] release TestFlight/Android artifact에는 운영 `API_BASE_URL`이 push / Live Activity token registration endpoint로 주입되어야 한다.
+- [ ] API task와 scheduler task가 분리되면 `PUSH_REGISTRY_PATH`는 EFS/EBS/DynamoDB 등 공유 영속 저장소를 바라봐야 한다.
+- [ ] ECS sync worker, EventBridge Scheduler, 또는 cron이 live 경기 중 30~60초 간격으로 scoreboard sync를 실행해야 한다.
+- [ ] 운영 확인 시 `GET /api/push/config-status`의 `scheduler.lastSyncAt`이 최근 시각으로 갱신되어야 한다.
+- [ ] 실기기 TestFlight/release 검증에는 Firebase plist, Push Notifications capability, APNs production profile이 필요하다.
+
+### 검증
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B infra/aws/ecs-fargate/render_task_definitions.py backend/src/kbo_fans_backend/core/config.py backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/apns_live_activity.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/src/kbo_fans_backend/services/push_diagnostics.py backend/src/kbo_fans_backend/api/routes/push.py backend/src/kbo_fans_backend/scheduler/live_activity_sync.py backend/src/kbo_fans_backend/scheduler/live_activity_sync_loop.py backend/src/kbo_fans_backend/scheduler/push_config_status.py backend/tests/test_push_service.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (14 passed, Live Activity update + FCM scoreboard moment diff + config-status guard + AWS secret-env diagnostics 포함)
+- [x] `python3 -m compileall backend/src/kbo_fans_backend`
+- [x] `python3 -m json.tool infra/aws/ecs-fargate/task-definition-api.json >/dev/null && python3 -m json.tool infra/aws/ecs-fargate/task-definition-sync-worker.json >/dev/null`
+- [x] `python3 -m json.tool infra/aws/ecs-fargate/ecs-task-assume-role-policy.json`
+- [x] `python3 -m json.tool infra/aws/ecs-fargate/iam-task-execution-secrets-policy.json`
+- [x] `python3 -m json.tool infra/aws/cloudformation/push-demo-stack.json`
+- [x] `bash -n infra/aws/ecs-fargate/deploy.env.example scripts/aws-push-cloudformation.sh scripts/aws-push-demo-deploy.sh scripts/aws-push-deploy-check.sh scripts/aws-push-image.sh scripts/aws-push-stack-outputs.sh scripts/aws-push-task-definitions.sh scripts/codex-run.sh`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B infra/aws/ecs-fargate/render_task_definitions.py`
+- [x] `python3 -m py_compile infra/aws/ecs-fargate/render_task_definitions.py`
+- [x] `bash -n scripts/aws-push-secrets.sh scripts/aws-push-task-definitions.sh scripts/codex-run.sh`
+- [x] invalid Firebase JSON / invalid APNs `.p8` dry-run failure path 확인
+- [x] mock Firebase JSON / APNs `.p8`로 `./scripts/aws-push-secrets.sh --dry-run` 성공 및 `outputs/aws/ecs-fargate/secrets.env` 생성 확인
+- [x] `python3 infra/aws/ecs-fargate/render_task_definitions.py --validate-only` missing env failure path 확인
+- [x] mock AWS env로 `./scripts/aws-push-task-definitions.sh --validate-only` 성공 확인 (`aws_ecs_templates=status=ok mode=validate-only`)
+- [x] mock AWS env로 `./scripts/codex-run.sh aws-push-task-defs`가 `outputs/aws/ecs-fargate/*.rendered.json`를 생성하고 rendered JSON 검증 통과
+- [x] mock AWS env로 rendered IAM policy / API task definition / sync-worker task definition 3개 JSON 파싱과 placeholder 잔존 없음 확인
+- [x] mock AWS env로 `./scripts/aws-push-deploy-check.sh --skip-aws`와 `./scripts/codex-run.sh aws-push-deploy-check --skip-aws` 통과
+- [x] mock AWS env로 `./scripts/aws-push-image.sh --dry-run --tag 0.0.29`와 `./scripts/codex-run.sh aws-push-image --dry-run --tag 0.0.29` 통과
+- [x] mock AWS env로 `./scripts/aws-push-cloudformation.sh --dry-run`와 `./scripts/codex-run.sh aws-push-cloudformation --dry-run` 통과
+- [x] mock CloudFormation `describe-stacks` JSON으로 `./scripts/aws-push-stack-outputs.sh --input-json ...`와 `./scripts/codex-run.sh aws-push-stack-outputs --input-json ...` 통과
+- [x] mock Firebase JSON / APNs `.p8` / AWS env로 `./scripts/aws-push-demo-deploy.sh --dry-run --tag 0.0.29`와 `./scripts/codex-run.sh aws-push-demo-deploy --dry-run --tag 0.0.29` 통과
+- [x] `bash -n scripts/push-live-preflight.sh scripts/codex-run.sh infra/aws/ecs-fargate/deploy.env.example`
+- [x] `./scripts/push-live-preflight.sh --app-only` 통과 (`checks=25`, `warnings=1`, `failures=0`; warning은 backend secret check skip)
+- [x] mock Firebase JSON / APNs `.p8` / AWS env로 `./scripts/push-live-preflight.sh --env-file ... --aws` 통과 (`checks=42`, `warnings=5`, `failures=0`; warnings는 mock placeholder ARN/account 및 secret ARN 생성 전 상태)
+- [x] `./scripts/codex-run.sh push-live-preflight --app-only` 통과
+- [x] 현재 머신 외부 배포 가능 상태 확인: `aws sts get-caller-identity`는 `command not found: aws`, `docker info`는 Docker CLI 존재 / daemon 미실행(`Cannot connect to the Docker daemon`)으로 확인
+- [x] `bash -n scripts/aws-push-tooling-check.sh scripts/codex-run.sh scripts/aws-push-demo-deploy.sh scripts/push-live-preflight.sh`
+- [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/push-demo-deploy.yml")'` workflow YAML parse 통과
+- [x] `./scripts/aws-push-tooling-check.sh` 현재 머신 상태 확인: Homebrew ok, AWS CLI missing, Docker CLI ok, Docker daemon not running
+- [x] `bash -n scripts/github-push-secrets.sh scripts/codex-run.sh`
+- [x] mock Firebase client config / Firebase Admin JSON / APNs `.p8` / AWS OIDC role env로 `./scripts/github-push-secrets.sh --env-file ... --repo godekd3133/kbo-fans` dry-run 통과. 출력은 secret/variable 이름만 포함하고 secret 값은 출력하지 않음
+- [x] `bash -n scripts/github-push-demo-run.sh scripts/codex-run.sh`
+- [x] `./scripts/codex-run.sh github-push-demo-run --repo godekd3133/kbo-fans --dry-run true` 현재 원격 상태에서 expected failure 확인: `push-demo-deploy.yml`가 default branch에 없어 커밋/푸시 필요 안내
+- [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
+- [x] `cd app && fvm flutter test --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://demo-api.kbofans.example/api test/data/providers_routing_test.dart` (`API_BASE_URL` override + direct provider routing 유지 확인)
+- [x] `plutil -lint app/ios/Runner/Info.plist app/ios/KboFansWidget/Info.plist app/ios/Runner/Runner.entitlements app/ios/KboFansWidgetExtension.entitlements`
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter analyze lib/main.dart lib/services/push_notification_service.dart lib/services/live_activity_service.dart test/services/push_notification_service_test.dart test/services/live_activity_service_test.dart`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart test/services/live_activity_service_test.dart`
+- [x] `PYTHONPATH=backend/src backend/.venv/bin/python -m kbo_fans_backend.scheduler.push_config_status` (현재 로컬 missing config JSON 출력 확인)
+- [x] `bash -n scripts/push-readiness-check.sh scripts/codex-run.sh`
+- [x] `ALLOW_INSECURE_PUSH_READINESS=true PUSH_SYNC_SECRET=secret ./scripts/push-readiness-check.sh http://127.0.0.1:8765/api` mock success path 통과
+- [x] mock `readyForIphoneOnlyDemo=false` path에서 `push_config=status=fail ... missing=['APNS_USE_SANDBOX=false']`로 실패 확인
+- [x] `ALLOW_INSECURE_PUSH_READINESS=true PUSH_SYNC_SECRET=secret API_BASE_URL=http://127.0.0.1:8767/api bash ./scripts/codex-run.sh push-readiness` mock success path 통과
+- [x] `PYTHONPATH=backend/src PUSH_REGISTRY_PATH=/tmp/kbo-empty-push-registry.json backend/.venv/bin/python -m kbo_fans_backend.scheduler.live_activity_sync` (`checkedGames: 0`, `updatedGames: []`, `pushedMoments: []`, 빈 registry 안전 종료 확인)
+- [x] `git diff --check`
+- [ ] `docker build -t kbo-fans-backend:codex-check backend`는 로컬 Docker daemon 미실행으로 검증 불가
+- [ ] `./scripts/aws-push-deploy-check.sh` 전체 AWS 리소스 조회는 현재 로컬에 AWS CLI/credential이 없어 미수행. `--skip-aws` 경로로 env/rendered JSON 검증만 확인
+- [ ] `cd app && fvm flutter build ios --simulator --debug`는 로컬 CocoaPods 설치 상태가 깨져 pod install 전 단계에서 실패
+- [ ] XcodeBuildMCP `build_sim({ extraArgs: ["CODE_SIGNING_ALLOWED=NO"] })`는 120초 제한 초과. 프로세스 확인 결과 `KboFansWidget` asset catalog 처리(`actool`/`ibtoold`)에서 멈춰 수동 종료
+
+---
+
 ## 2026-06-04: 0.0.29 릴리즈 문서화와 무결성 감사
 
 ### 완료

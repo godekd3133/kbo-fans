@@ -5,6 +5,15 @@
 
 ---
 
+## 0. 현재 런타임 기준
+
+- 앱의 기본 런타임은 no-backend mode다. iOS, Android, Web, local, dev, release 모두 direct KBO source와 허용된 generated/bundled/device snapshot을 기본 데이터 경로로 사용한다.
+- Backend API 경로는 legacy/reference이며 `USE_BACKEND_API=true` 를 명시한 검증 세션에서만 사용한다. `API_BASE_URL` 단독 지정은 정상 앱 라우팅을 API mode로 바꾸지 않는다.
+- 단, release push / Live Activity token 등록은 운영 backend endpoint가 필요하므로 no-backend direct data build에서도 `API_BASE_URL`을 push registration base URL로 사용할 수 있다.
+- 이 문서의 API 계약 섹션은 backend reference와 향후 재도입 가능성을 위한 계약 기록이며, 현재 앱 완성 기준의 blocker가 아니다.
+
+---
+
 ## 1. 앱 네비게이션 구조
 
 ### Bottom Tab Navigation (5탭)
@@ -252,7 +261,7 @@ GET /api/scoreboard?date=2026-03-28
 - 예정 경기일 때 KBO scoreboard 세부 테이블이 비어도 홈 화면은 fallback payload 로 렌더링한다.
 - 예정 경기는 YouTube 검색을 생략하고 KBO 공식 하이라이트 링크만 유지한다.
 - 웹 진단 화면은 `health / scoreboard / schedule` 상태를 한 번에 확인한다.
-- 순위 히스토리 조회는 시즌별 번들 스냅샷 fallback(`2001~현재`)을 사용할 수 있다. 일반 API-backed current 경로의 실패는 번들 snapshot으로 숨기지 않는다.
+- 순위 히스토리 조회는 시즌별 번들 스냅샷 fallback(`2001~현재`)을 사용할 수 있다. 명시적 API-backed current 경로의 실패는 번들 snapshot으로 숨기지 않는다.
 
 ---
 
@@ -290,10 +299,10 @@ GET /api/team/{teamId}/players?season=2026
 - 기록실 요약/리더보드 번들 스냅샷은 요청한 시즌과 정확히 일치할 때만 사용한다.
 - 현재 시즌 기록실 요약 번들은 `generatedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다.
 - 기록실 요약/리더보드 API cache 와 기기 snapshot 은 핵심 리더보드 첫 항목이 1위일 때만 재사용하거나 저장한다.
-- 일반 API-backed 앱 모드에서는 현재 시즌 기록실 요약/리더보드 API 실패를 앱 번들 bootstrap, fresh local API cache, backend current snapshot 으로 대체하지 않는다.
+- 명시적 API-backed 앱 모드에서는 현재 시즌 기록실 요약/리더보드 API 실패를 앱 번들 bootstrap, fresh local API cache, backend current snapshot 으로 대체하지 않는다.
 - 다른 시즌 기록으로 대체 표시하지 않는다. exact snapshot 이 없거나 비어 있으면 빈 상태/오류를 노출해 가짜 리더가 재유입되지 않게 한다.
 - 팀 선수/팀 스탯 local asset 은 요청한 팀/시즌의 exact snapshot 만 사용한다. 해당 시즌 snapshot 이 없거나 팀 스탯의 타격/투구 중 한쪽만 있으면 다른 시즌 데이터를 빌리지 않고 빈 상태로 처리한다.
-- 일반 API-backed current 경로에서 현재 시즌 팀 선수/팀 스탯/선수 상세 실패는 backend/app/device snapshot 으로 대체하지 않는다. 과거 시즌만 저장 snapshot 과 cached-first 조회를 허용한다.
+- 명시적 API-backed current 경로에서 현재 시즌 팀 선수/팀 스탯/선수 상세 실패는 backend/app/device snapshot 으로 대체하지 않는다. 과거 시즌만 저장 snapshot 과 cached-first 조회를 허용한다.
 
 ---
 
@@ -316,7 +325,7 @@ GET /api/player/{playerId}?season=2026
 ```
 
 **운영 메모**:
-- 선수 프로필과 시즌 누적 기록은 경기 종료 후 백엔드가 선수/시즌 기준으로 증분 반영한 스냅샷을 우선 사용한다.
+- 선수 프로필과 시즌 누적 기록은 저장된 선수/시즌 기준 스냅샷이 있으면 우선 사용할 수 있다.
 - 최근 경기 기록은 최근 N경기 요약을 미리 정규화해 저장하고, 앱은 마지막 스냅샷을 먼저 렌더링한 뒤 필요 시 백그라운드 재검증만 수행한다.
 - 당일 live 경기 중 변할 수 있는 오늘 경기 누적값만 짧은 TTL 또는 live 소스와 병행하고, 과거 날짜 기록은 원천 재크롤링 없이 저장된 히스토리 레코드를 우선 조회한다.
 
@@ -763,6 +772,7 @@ GET /api/standings?season=2026
 - 경기 상세를 보고 있는 동안 같은 경기의 중복 push 는 억제하고, 따라가기 화면 또는 화면 내 상태 갱신으로 대체한다
 - "경기 따라가기"는 알림 설정이 아니라 현재 경기 session 시작 action 이며, 경기 종료 또는 사용자의 "그만 보기"로 종료한다
 - local 모바일에서는 같은 Moment 규칙으로 로컬 알림을 생성하되, records/mock fallback 으로 불완전한 알림을 만들지 않는다
+- 앱 종료 후에도 `바로 알림`과 iOS Live Activity / Dynamic Island를 갱신하려면 운영 백엔드가 KBO 상태를 polling하고 FCM/APNs로 발송해야 한다. Firebase만으로 경기 상태가 실시간 생성되지는 않는다.
 
 ---
 
@@ -795,6 +805,13 @@ GET /api/standings?season=2026
 │ [그만 보기]      │
 └────────────────┘
 ```
+
+**원격 갱신 계약**:
+- iOS Live Activity는 앱에서 `ActivityKit` push token을 발급받아 `/api/push/live-activity/register`로 백엔드에 등록한다.
+- 백엔드는 live 경기 중 30~60초 간격으로 scoreboard를 갱신하고, 등록된 ActivityKit token에 APNs `liveactivity` update payload를 보낸다.
+- 같은 scheduler는 이전 scoreboard state와 현재 state를 비교해 일반 푸시용 FCM topic moment를 발행한다. 첫 관측은 baseline 저장만 하고, 이후 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`를 감지한다.
+- 경기 종료/취소/서스펜디드 상태에서는 APNs `end` event와 final content state를 보내고 token registry에서 세션을 제거한다.
+- FCM은 일반 push notification과 topic subscription에 사용한다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
 
 **따라가기 화면 원칙**:
 - 사용자가 직접 "경기 따라가기"를 누른 경기만 시작한다.
@@ -905,6 +922,8 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 ---
 
 ## 5. Backend API 명세
+
+현재 기본 앱 런타임은 no-backend direct mode다. 이 섹션은 legacy/reference backend 계약으로 유지하며, 앱 기본 동작은 이 API의 배포 여부에 의존하지 않는다.
 
 ### Base URL
 ```
@@ -1207,7 +1226,7 @@ GET /api/standings?season={YYYY}
 - 앱 번들 standings fallback 은 요청 시즌 exact snapshot 이고 순위 배열이 비어 있지 않을 때만 사용한다.
 - 현재 시즌 standings 번들은 `generatedAt` 기준 6시간 이내일 때만 사용한다. 검증되지 않은 과거 시즌은 빈 exact snapshot 으로 둬 다른 시즌/개막 초반 순위를 빌려 보여주지 않는다.
 - 앱 번들 records overview fallback 도 요청 시즌 exact snapshot 만 사용하고, 현재 시즌은 `generatedAt` 기준 6시간 이내일 때만 사용한다.
-- 일반 API-backed 앱 모드에서는 현재 시즌 standings / records overview / leaderboard / team players / team stats / player detail API 실패를 앱 번들 데이터, fresh local API cache, backend current snapshot 으로 대체하지 않고 오류로 노출한다.
+- 명시적 API-backed 앱 모드에서는 현재 시즌 standings / records overview / leaderboard / team players / team stats / player detail API 실패를 앱 번들 데이터, fresh local API cache, backend current snapshot 으로 대체하지 않고 오류로 노출한다.
 
 **응답**:
 ```json
@@ -1330,14 +1349,29 @@ POST /api/push/register
 }
 ```
 
+```
+POST /api/push/live-activity/register
+POST /api/push/live-activity/unregister
+POST /api/push/live-activity/update
+POST /api/push/live-activity/sync-scoreboard
+GET /api/push/config-status
+```
+
+**Live Activity 운영 계약**:
+- `register`: 앱/iOS native가 `gameId`, `activityId`, `activityPushToken`을 등록한다.
+- `update`: 내부 운영 도구나 worker가 특정 `gameId`의 `content-state`를 APNs로 발송한다.
+- `sync-scoreboard`: backend scheduler가 scoreboard를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 scoreboard diff 기반 FCM moment push도 발행한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다.
+
 **응답**:
 ```json
 {
   "success": true,
   "data": {
     "registered": true,
-    "subscribedTopics": ["moment_scoring_LG", "moment_homerun_LG", "moment_reversal_LG"],
-    "summaryTopics": ["moment_gameStart_LG", "moment_gameEnd_LG", "moment_lineupOpened_LG"],
+    "subscribedTopics": ["scoring_LG", "homerun_LG", "reversal_LG"],
+    "summaryTopics": ["game_start_LG", "game_end_LG", "lineup_opened_LG"],
     "liveSurfaceGameIds": ["20260328KTLG0"]
   }
 }
@@ -1403,6 +1437,8 @@ GET /api/game/{gameId}
 | GET | `/api/schedule` | 경기 일정 | 월 단위 1시간 / 지난 날짜 snapshot 우선 |
 | GET | `/api/standings` | 팀 순위 | latest 5분 / 과거 기준 standings snapshot |
 | POST | `/api/push/register` | Push 등록 / Moment Subscription 저장 | 없음 |
+| POST | `/api/push/live-activity/register` | iOS ActivityKit push token 등록 | 없음 |
+| POST | `/api/push/live-activity/sync-scoreboard` | backend scheduler용 Live Activity scoreboard push trigger | 없음 |
 
 ---
 

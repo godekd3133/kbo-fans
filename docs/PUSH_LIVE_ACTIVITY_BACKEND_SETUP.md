@@ -1,0 +1,323 @@
+# Push / Live Activity Backend Setup
+
+> 작성일: 2026-06-04
+
+## 결론
+
+Firebase만으로는 경기 상황을 실시간으로 만들 수 없다.
+
+- FCM: 일반 앱 푸시 알림 전달 채널
+- APNs ActivityKit: iOS Live Activity / Dynamic Island 원격 갱신 채널
+- Backend: KBO 경기 상태를 주기적으로 읽고, 변화된 상태를 FCM/APNs로 보내는 실행 주체
+
+시연 때 노트북을 끄고 iPhone만 켜 둘 계획이면, backend는 AWS 같은 상시 실행 환경에 배포되어 있어야 한다.
+
+## 필요한 계정 / 키
+
+### Firebase
+
+1. Firebase 프로젝트 생성
+2. iOS 앱 등록
+   - Bundle ID: `com.kbofans.kboFans`
+   - 설정 파일: `GoogleService-Info.plist`
+   - 저장 위치: `app/ios/Runner/GoogleService-Info.plist`
+3. Android 앱 등록
+   - Package: `com.kbofans.kbo_fans`
+   - 설정 파일: `google-services.json`
+   - 저장 위치: `app/android/app/google-services.json`
+4. Firebase Admin service account 발급
+   - 파일 예시: `backend/firebase-service-account.json`
+   - git에 커밋하지 않는다.
+
+### Apple Developer
+
+1. App ID `com.kbofans.kboFans`에서 Push Notifications capability 활성화
+2. Runner provisioning profile 재생성
+3. Widget extension provisioning profile도 App Group 포함 상태로 재생성
+4. APNs Auth Key 발급
+   - Key ID: `APNS_KEY_ID`
+   - Team ID: `APNS_TEAM_ID`
+   - `.p8` 파일: 예시 `backend/AuthKey_<KEY_ID>.p8`
+   - git에 커밋하지 않는다.
+
+## Backend 환경 변수
+
+운영 backend에는 아래 값을 secret/env로 넣는다.
+
+```bash
+APP_ENV=release
+APP_DEBUG=false
+API_PREFIX=/api
+FIREBASE_PROJECT_ID=<firebase-project-id>
+FIREBASE_SERVICE_ACCOUNT_JSON=<firebase-admin-service-account-json>
+APNS_KEY_ID=<apple-apns-key-id>
+APNS_TEAM_ID=<apple-team-id>
+APNS_AUTH_KEY_P8=<apple-apns-auth-key-p8-content>
+APNS_BUNDLE_ID=com.kbofans.kboFans
+APNS_USE_SANDBOX=false
+PUSH_REGISTRY_PATH=/var/lib/kbo-fans/push_registry.json
+PUSH_SYNC_SECRET=<long-random-secret>
+PUSH_SYNC_INTERVAL_SECONDS=60
+```
+
+AWS ECS/Fargate에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`과 `APNS_AUTH_KEY_P8`을 AWS Secrets Manager에서 환경변수로 주입하는 방식을 권장한다. 로컬/EC2 파일 배포에서는 기존처럼 `FIREBASE_SERVICE_ACCOUNT_PATH`, `APNS_AUTH_KEY_PATH`를 사용할 수 있다.
+
+개발/실기기 debug에서는 `APNS_USE_SANDBOX=true`를 쓴다. TestFlight / App Store 시연은 `APNS_USE_SANDBOX=false`가 필요하다.
+
+AWS Secrets Manager 업로드:
+
+```bash
+AWS_REGION=<region> \
+FIREBASE_SERVICE_ACCOUNT_FILE=/path/firebase-service-account.json \
+APNS_AUTH_KEY_FILE=/path/AuthKey_<KEY_ID>.p8 \
+./scripts/aws-push-secrets.sh
+```
+
+이 스크립트는 secret 값을 출력하지 않고, task definition renderer에서 쓸 `SECRET_ARN_*` export를 출력하고 `outputs/aws/ecs-fargate/secrets.env`에 저장한다.
+
+## AWS 배포 권장안
+
+가장 단순한 시연용 구조:
+
+1. AWS ECS Fargate 또는 EC2에 FastAPI backend 배포
+2. HTTPS 도메인 연결
+   - 권장: `https://api.kbofans.com/api`
+3. Firebase service account와 APNs `.p8`는 AWS Secrets Manager 또는 EC2 파일 secret으로 주입
+4. `PUSH_REGISTRY_PATH`는 재시작 후에도 남는 저장소를 사용
+   - EC2: EBS 경로
+   - ECS: EFS 또는 이후 DB/DynamoDB로 대체
+5. Fargate sync worker, EventBridge Scheduler, 또는 cron으로 scoreboard sync를 30~60초마다 실행
+   - ActivityKit token이 등록된 경기는 APNs `liveactivity` update/end 발송
+   - FCM device/topic 등록이 있으면 scoreboard diff 기준 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change` topic push 발행
+
+```bash
+curl -X POST "https://api.kbofans.com/api/push/live-activity/sync-scoreboard" \
+  -H "X-Kbo-Push-Sync-Secret: $PUSH_SYNC_SECRET"
+```
+
+```bash
+python -m kbo_fans_backend.scheduler.live_activity_sync
+```
+
+Fargate에서 30초 단위 시연이 필요하면 장기 실행 worker를 쓴다.
+
+```bash
+python -m kbo_fans_backend.scheduler.live_activity_sync_loop
+```
+
+배포 후 설정 진단:
+
+```bash
+curl "https://api.kbofans.com/api/push/config-status" \
+  -H "X-Kbo-Push-Sync-Secret: $PUSH_SYNC_SECRET"
+```
+
+repo에서 한 번에 확인:
+
+```bash
+PUSH_SYNC_SECRET=<long-random-secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api
+```
+
+또는 서버/ECS task 안에서:
+
+```bash
+python -m kbo_fans_backend.scheduler.push_config_status
+```
+
+`readyForIphoneOnlyDemo`가 `true`여야 TestFlight/운영 APNs, Firebase Admin, registry 저장소, scheduler secret이 모두 준비된 상태다.
+`scheduler.lastSyncAt` / `scheduler.lastSyncDate`가 갱신되면 sync worker 또는 scheduler가 실제로 실행된 상태다.
+
+KBO live 경기는 30~60초, 예정 경기는 5분, 종료 경기는 sync 중단 정책이 적절하다.
+
+배포 전에 로컬 설정 파일과 env 형태를 먼저 확인한다. 이 명령은 AWS를 호출하지 않고 secret 값을 출력하지 않는다.
+
+```bash
+./scripts/push-live-preflight.sh --app-only
+./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws
+```
+
+`--app-only`는 Firebase client 파일, APNs entitlement, Live Activity plist, Android google-services plugin, Flutter push registration 연결만 확인한다. `--env-file ... --aws`는 Firebase Admin JSON, APNs `.p8`, `PUSH_SYNC_SECRET`, ECR/VPC/subnet/ACM env 형태까지 같이 확인한다.
+
+## Backend Docker 이미지
+
+저장소에는 `backend/Dockerfile`이 있다.
+
+```bash
+cd backend
+docker build -t kbo-fans-backend .
+docker run --rm -p 8000:8000 --env-file .env kbo-fans-backend
+```
+
+ECS/Fargate에서는 같은 이미지를 두 방식으로 쓴다.
+
+- API service: 기본 `CMD`
+- Sync worker service command override:
+  - `python`
+  - `-m`
+  - `kbo_fans_backend.scheduler.live_activity_sync_loop`
+- EventBridge one-shot task command override:
+  - `python`
+  - `-m`
+  - `kbo_fans_backend.scheduler.live_activity_sync`
+
+API service와 Scheduler task가 같은 ActivityKit token registry를 봐야 하므로, `PUSH_REGISTRY_PATH`는 EFS/EBS 같은 공유 영속 경로를 사용한다. 다중 인스턴스 운영으로 커지면 DynamoDB/RDS로 바꾸는 것이 맞다.
+
+ECS/Fargate용 템플릿은 `infra/aws/ecs-fargate/`에 있다.
+
+ECS/Fargate 배포는 두 경로가 있다.
+
+- `infra/aws/ecs-fargate/`: 이미 만든 AWS 리소스에 task definition / IAM policy를 등록하는 수동 경로
+- `infra/aws/cloudformation/`: ALB, ECS API service, sync worker, EFS, IAM, log group을 한 stack으로 만드는 경로
+
+`infra/aws/ecs-fargate/deploy.env.example`를 로컬 env 파일로 복사한 뒤, 실제 AWS / Firebase / Apple 값을 채운다. 수동 경로의 실행 순서는 아래가 안전하다.
+
+1. `./scripts/aws-push-secrets.sh`로 Secrets Manager 값을 만들고 `outputs/aws/ecs-fargate/secrets.env`를 생성한다.
+2. `./scripts/aws-push-image.sh`로 backend Docker image를 ECR에 push하고 `outputs/aws/ecr/image.env`를 생성한다.
+3. ECS task execution role / task role을 만든다.
+4. ECR repository, EFS, CloudWatch log group을 만든다.
+5. role ARN / ECR URI / EFS ID / secret ARN을 env로 넣고 `./scripts/aws-push-task-definitions.sh`를 실행한다.
+6. 렌더링된 secret-read policy를 execution role에 붙인다.
+7. `./scripts/aws-push-deploy-check.sh`로 AWS 리소스와 rendered JSON을 점검한다.
+
+ECS IAM 최소 구성:
+
+```bash
+aws iam create-role \
+  --role-name kbo-fans-ecs-task-execution \
+  --assume-role-policy-document file://infra/aws/ecs-fargate/ecs-task-assume-role-policy.json
+
+aws iam attach-role-policy \
+  --role-name kbo-fans-ecs-task-execution \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+aws iam create-role \
+  --role-name kbo-fans-ecs-task \
+  --assume-role-policy-document file://infra/aws/ecs-fargate/ecs-task-assume-role-policy.json
+```
+
+CloudWatch log group도 task 실행 전에 만들어 둔다.
+
+```bash
+aws logs create-log-group \
+  --region <AWS_REGION> \
+  --log-group-name /ecs/kbo-fans-backend
+```
+
+task definition placeholder는 직접 편집하지 말고, AWS ARN/ID 값을 환경변수로 넣은 뒤 renderer로 생성한다. 이 renderer는 ECS task definition 2개와 task execution role에 붙일 Secrets Manager read policy를 함께 만든다.
+
+```bash
+source /path/to/kbo-fans-aws.env
+source outputs/aws/ecs-fargate/secrets.env
+
+./scripts/aws-push-task-definitions.sh
+./scripts/aws-push-deploy-check.sh --skip-aws
+```
+
+렌더링 후 execution role에 push secret read inline policy를 붙인다.
+
+```bash
+aws iam put-role-policy \
+  --role-name kbo-fans-ecs-task-execution \
+  --policy-name kbo-fans-read-push-secrets \
+  --policy-document file://outputs/aws/ecs-fargate/iam-task-execution-secrets-policy.rendered.json
+```
+
+AWS 리소스까지 실제로 보이는지 사전점검한다.
+
+```bash
+./scripts/aws-push-deploy-check.sh
+```
+
+렌더링 결과는 `outputs/aws/ecs-fargate/`에 생성되며 gitignore 대상이다. `AmazonECSTaskExecutionRolePolicy`는 ECR image pull과 CloudWatch Logs 기록에 필요하고, `kbo-fans-read-push-secrets` inline policy는 Firebase Admin JSON / APNs `.p8` / sync secret 주입에 필요하다. Secrets Manager 값이 customer-managed KMS key로 암호화되어 있으면 execution role에 해당 key의 `kms:Decrypt`도 추가한다.
+
+CloudFormation 경로는 ECR image, ACM certificate, VPC/subnet, Firebase/APNs secret ARN이 준비된 뒤 실행한다. 기본 image는 `$ECR_REPOSITORY_URI:latest`이고, 특정 tag를 쓰려면 `CONTAINER_IMAGE_URI`를 지정한다.
+
+```bash
+source /path/to/kbo-fans-aws.env
+
+./scripts/aws-push-demo-deploy.sh --dry-run
+./scripts/aws-push-demo-deploy.sh
+source outputs/aws/cloudformation/stack.env
+```
+
+통합 스크립트는 secret 업로드, backend image ECR push, CloudFormation deploy, stack output 추출, push readiness를 순서대로 실행한다. 실행 전에 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 로컬 앱 설정과 배포 env 형태를 확인한다. stack output의 `ApiBaseUrl`을 release `API_BASE_URL`로 사용한다. `aws-push-stack-outputs.sh`는 이 값을 `outputs/aws/cloudformation/stack.env`에 `RELEASE_API_BASE_URL` / `API_BASE_URL`로 저장한다. 커스텀 도메인(`https://api.kbofans.com/api`)을 쓸 경우 Route53 alias/CNAME을 output `LoadBalancerDnsName`으로 연결한 뒤 해당 도메인을 앱 release build에 주입한다.
+
+로컬 Mac에서 배포할 때는 먼저 AWS CLI credential과 Docker daemon 상태를 확인한다.
+
+```bash
+./scripts/aws-push-tooling-check.sh
+```
+
+AWS CLI가 없거나 Docker Desktop이 꺼져 있으면 로컬 image build/push와 CloudFormation deploy가 진행되지 않는다. 이 경우 GitHub Actions의 `Push Demo Deploy` workflow로 같은 파이프라인을 runner에서 실행할 수 있다.
+
+GitHub Actions에 넣을 값:
+
+- `AWS_ROLE_TO_ASSUME` 또는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION`
+- `IOS_GOOGLE_SERVICE_INFO_PLIST`
+- `ANDROID_GOOGLE_SERVICES_JSON`
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
+- `APNS_AUTH_KEY_P8`
+- `APNS_KEY_ID`
+- `APNS_TEAM_ID`
+- `PUSH_SYNC_SECRET`
+- `ECR_REPOSITORY_URI`
+- `VPC_ID`
+- `PUBLIC_SUBNET_A_ID`
+- `PUBLIC_SUBNET_B_ID`
+- `ACM_CERTIFICATE_ARN`
+
+Actions workflow `Push Demo Deploy`에서 `dry_run=true`를 먼저 실행하면 secret/env 형태와 repo script path를 검증한다. `dry_run=false`는 실제 secret upload, ECR image push, CloudFormation deploy, stack output export, readiness를 실행한다.
+
+GitHub Actions secrets/variables는 `gh` CLI로도 넣을 수 있다. 기본은 dry-run이고 실제 업로드는 `--apply`를 붙였을 때만 실행된다.
+
+```bash
+./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env
+./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env --apply
+```
+
+이 스크립트는 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET`, `AWS_ROLE_TO_ASSUME` 또는 AWS access key를 GitHub Secrets로 넣고, `AWS_REGION`, `FIREBASE_PROJECT_ID`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `ECR_REPOSITORY_URI`, `VPC_ID`, subnet, ACM ARN은 GitHub Variables로 넣는다. secret 값은 로그에 출력하지 않는다.
+
+workflow 파일이 GitHub default branch에 올라간 뒤에는 CLI로 dispatch할 수 있다.
+
+```bash
+./scripts/github-push-demo-run.sh --dry-run true --watch
+./scripts/github-push-demo-run.sh --dry-run false --watch
+```
+
+현재 원격에 `.github/workflows/push-demo-deploy.yml`가 없으면 이 스크립트는 실패하면서 커밋/푸시가 필요하다고 안내한다.
+
+## 앱 빌드 설정
+
+iOS release/TestFlight 앱은 아래가 필요하다.
+
+- `app/ios/Runner/GoogleService-Info.plist`
+- Runner target Push Notifications capability
+- Runner entitlements의 `aps-environment`
+  - Debug/Profile: `development`
+  - Release: `production`
+- Runner와 Widget extension `Info.plist`의 `NSSupportsLiveActivities=true`
+- 30~60초 스포츠 갱신 시연을 위한 `NSSupportsLiveActivitiesFrequentUpdates=true`
+- App Group: `group.com.kbofans.kbo_fans`
+- Widget extension 포함 provisioning profile
+
+앱은 사용자가 경기 상세에서 `경기 따라가기`를 누르면 ActivityKit push token을 backend에 등록한다. 이후 앱이 꺼져 있어도 backend가 APNs `liveactivity` push를 보내면 Dynamic Island가 갱신된다. 일반 푸시 설정은 FCM topic subscription으로 동작하며, backend scheduler가 scoreboard diff를 보고 득점/역전/종료 같은 moment push를 발행한다.
+
+## 완료 확인
+
+- `POST /api/push/register`가 FCM token을 registry에 저장
+- `POST /api/push/live-activity/register`가 ActivityKit token을 registry에 저장
+- `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`가 실패 0개로 통과
+- `GET /api/push/config-status`의 `readyForIphoneOnlyDemo`가 `true`
+- `GET /api/push/config-status`의 `scheduler.lastSyncAt`이 sync worker 주기에 맞춰 갱신
+- `PUSH_SYNC_SECRET=<...> ./scripts/push-readiness-check.sh https://api.kbofans.com/api` 통과
+- `POST /api/push/live-activity/sync-scoreboard`가 등록된 live game에 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff 기반 FCM moment push를 보냄
+- iPhone 실기기에서 앱을 종료한 뒤에도 Live Activity `updatedAt`이 서버 sync 주기에 맞춰 변경
+- 일반 push는 Firebase Console, `/api/push/test`, 또는 scheduler의 `pushedMoments` 응답으로 수신 확인
+
+## 현재 코드 기준 주의
+
+- `backend/data/runtime/`은 gitignore되어 실제 토큰이 커밋되지 않는다.
+- 지금 token registry는 JSON 파일 기반이다. 시연에는 충분하지만, 다중 서버 운영으로 가면 DynamoDB/RDS 같은 영속 저장소로 바꿔야 한다.
+- 앱 화면 데이터는 no-backend direct KBO 경로를 유지할 수 있지만, 앱 종료 후 push/Dynamic Island 실시간 갱신은 backend 없이는 불가능하다.

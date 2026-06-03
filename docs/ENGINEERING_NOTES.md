@@ -8,15 +8,17 @@
 ## Local / Dev Data Behavior
 
 - `local` 앱 실행은 백엔드가 항상 떠 있다고 가정하지 않는다.
-- 앱 로컬 모드라도 기본 데이터 경로는 API 이며, KBO direct 경로는 `PREFER_DIRECT_SCRAPE=true` 를 준 명시적 임시 direct-primary 검증 세션에서만 사용한다.
+- 앱 local/dev/release/web/native 기본 데이터 경로는 no-backend direct KBO source + 허용된 snapshot 이다.
+- 백엔드 API 경로는 legacy/optional이며 `USE_BACKEND_API=true` 를 명시한 세션에서만 사용한다. `API_BASE_URL` 단독 지정은 provider routing을 API 모드로 바꾸지 않는다.
+- no-backend direct release build여도 push / Live Activity token registration에는 운영 backend URL이 필요하다. `API_BASE_URL`은 `USE_BACKEND_API=true` 없이는 provider routing을 바꾸지 않으므로, release build에서는 push registration endpoint로 함께 주입해도 된다.
 - 앱 startup은 원격 API prefetch를 소유하지 않는다. local onboarding/my-team 상태 확인 후 첫 route로 넘기고, scoreboard/home/records/schedule 요청은 각 화면 provider가 소유한다.
 - noisy fallback 로그가 과하면 `local` / 테스트 바인딩에서 prefetch, metric, push init을 완화하는 방향이 안전하다.
-- local, dev, release API base URL은 코드에 고정 default 를 두되 `API_BASE_URL` override 를 우선한다.
-- 웹 빌드는 `APP_ENV=local` 이어도 명시적 `API_BASE_URL` override가 없으면 local backend를 기본값으로 쓰지 않고 운영 API를 본다.
+- local, dev, release API base URL은 legacy backend mode용으로만 유지한다.
+- 웹 빌드는 `APP_ENV=local` / `APP_ENV=release` 모두 기본 no-backend direct 경로를 사용한다.
 - iPhone local debug에서 `localhost` API는 실기기에서 직접 닿지 않는다.
-  - backend를 켜고 실기기에서 API를 쓰려면 Mac LAN IP를 `API_BASE_URL`로 주입해야 한다.
-  - `scripts/codex-run.sh ios` 는 backend가 8000 포트로 떠 있으면 자동으로 LAN IP를 주입하도록 유지한다.
-- backend가 없는 local iPhone 경로에서도 direct KBO source로 자동 fallback 하지 않는다. 필요하면 명시적 임시 direct-primary build로 분리한다.
+  - 명시적 backend mode를 검증할 때는 Mac LAN IP를 `API_BASE_URL`로 주입하고 `USE_BACKEND_API=true` 를 함께 지정해야 한다.
+  - 기본 `scripts/codex-run.sh ios` 는 backend health를 요구하지 않고 no-backend direct mode로 실행한다.
+- direct KBO source는 fallback이 아니라 기본 primary 경로다.
   - scoreboard live status는 `Main.asmx/GetKboGameList` 를 우선 참고한다.
   - 일정 파서는 `GetScheduleList`의 빈 action cell에서도 `gameId`를 날짜+팀 코드로 복원해야 한다.
   - relay는 `LiveTextView2.aspx` markup(`#numCont*`, `p.present`, `.playerBox`) 기준으로 파싱한다.
@@ -25,6 +27,23 @@
   - relay diff: 홈런 / 이닝 교대
   - lineup diff: 선발 라인업 공개 / 변경
   - 따라서 앱이 완전히 죽어 있으면 서버 push처럼 즉시 오지 않는다.
+- 앱이 꺼진 뒤에도 알림이나 Dynamic Island가 바뀌려면 앱 direct KBO 경로가 아니라 운영 백엔드가 상태 변화를 읽어야 한다.
+  - FCM은 일반 push notification 전달 채널이다.
+  - iOS Live Activity / Dynamic Island 원격 갱신은 ActivityKit push token + APNs `liveactivity` push 채널이다.
+  - backend scheduler가 live 경기 중 30~60초 간격으로 scoreboard를 갱신하고, 등록된 ActivityKit token에는 update/end payload를 보낸다.
+  - 같은 scheduler가 이전 scoreboard state와 비교해 FCM topic push용 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change` moment를 발행한다.
+  - 배포 후 `GET /api/push/config-status` 또는 `python -m kbo_fans_backend.scheduler.push_config_status`로 Firebase/APNs/registry/scheduler secret 누락을 먼저 확인한다.
+  - 외부에서 `PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api`를 실행하면 `/health`와 push readiness를 같이 확인할 수 있다.
+  - backend image는 `./scripts/aws-push-image.sh`로 ECR에 push하고, 출력되는 `CONTAINER_IMAGE_URI`를 CloudFormation 배포에 사용할 수 있다.
+  - AWS ECS/Fargate에서는 Firebase Admin JSON과 APNs `.p8`를 Secrets Manager에서 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8` env로 주입하는 것이 파일 mount보다 단순하다. 로컬/EC2 파일 배포는 `*_PATH`를 계속 쓸 수 있다.
+  - ECS task definition의 `secrets` env 주입은 task execution role 권한에 의존한다. `./scripts/aws-push-task-definitions.sh`가 생성한 `iam-task-execution-secrets-policy.rendered.json`를 execution role inline policy로 붙이고, AWS managed `AmazonECSTaskExecutionRolePolicy`도 함께 붙인다.
+  - ECS task 등록이나 service 생성 전 `./scripts/aws-push-deploy-check.sh`로 env, rendered JSON, secret, IAM role, ECR, EFS, CloudWatch log group을 한 번에 확인한다.
+  - 수동 ECS 조립 대신 `./scripts/aws-push-cloudformation.sh`를 쓰면 ALB, API service, sync worker, EFS token registry, IAM role, log group을 한 stack으로 만든다. ECR image, ACM certificate, VPC/subnet, Firebase/APNs secret ARN은 여전히 사전 준비가 필요하다.
+  - CloudFormation deploy 후 `./scripts/aws-push-stack-outputs.sh`가 stack output `ApiBaseUrl`을 `RELEASE_API_BASE_URL` / `API_BASE_URL`로 저장한다.
+  - 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`를 우선 사용한다. 이 스크립트는 secret upload, ECR image push, CloudFormation deploy, stack output export, push readiness 순서로 실행한다.
+  - scoreboard sync 기본 날짜는 AWS UTC가 아니라 KBO 경기일 기준인 `Asia/Seoul`로 계산해야 한다.
+  - 30~60초 시연에는 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` long-running worker가 EventBridge 1분 one-shot보다 예측 가능하다.
+  - `config-status.scheduler.lastSyncAt`은 sync worker가 실제로 registry에 heartbeat를 남겼는지 보는 운영 신호다. secret readiness와 worker activity를 구분해서 판단한다.
 - 홈 scoreboard 자동 refresh cadence는 live 30초, scheduled 5분, terminal 정지로 둔다.
 
 ## Widget / Live Activity
@@ -40,6 +59,9 @@
 - Live Activity 는 코드상 연결만으로 끝나지 않는다.
   - Widget extension signing
   - App Group entitlement
+  - Push Notifications entitlement
+  - ActivityKit push token backend registration
+  - APNs provider key / team id / bundle id
   - 실제 기기 검증
   를 별도로 확인해야 한다.
 - local iPhone debug에서는 `home_widget` / App Group / Workmanager 경로가 런타임 안정성을 해칠 수 있다.

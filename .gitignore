@@ -28,6 +28,7 @@ app/android/key.properties
 app/android/app/google-services.json
 app/ios/Runner/GoogleService-Info.plist
 backend/firebase-service-account.json
+backend/data/runtime/
 *.jks
 *.keystore
 
@@ -56,3 +57,4 @@ app/test/features/schedule/widgets/failures/
 # Local QA artifacts
 artifacts/current-data-cache-guard/
 artifacts/emulator-records-check/
+outputs/aws/

@@ -1,0 +1,778 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "KBO Fans push and Live Activity demo stack: ALB, ECS Fargate API, sync worker, EFS registry, IAM roles, and logs.",
+  "Parameters": {
+    "StackNamePrefix": {
+      "Type": "String",
+      "Default": "kbo-fans",
+      "MaxLength": 24,
+      "AllowedPattern": "[a-zA-Z0-9-]+",
+      "Description": "Prefix used for ECS, IAM, ALB, EFS, and log resources."
+    },
+    "VpcId": {
+      "Type": "AWS::EC2::VPC::Id",
+      "Description": "VPC where the ALB, ECS tasks, and EFS mount targets run."
+    },
+    "PublicSubnetAId": {
+      "Type": "AWS::EC2::Subnet::Id",
+      "Description": "First public subnet for ALB, ECS tasks, and EFS mount target."
+    },
+    "PublicSubnetBId": {
+      "Type": "AWS::EC2::Subnet::Id",
+      "Description": "Second public subnet in another AZ."
+    },
+    "AcmCertificateArn": {
+      "Type": "String",
+      "Description": "ACM certificate ARN in the same region as the ALB."
+    },
+    "ContainerImageUri": {
+      "Type": "String",
+      "Description": "ECR image URI with tag, for example 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/kbo-fans-backend:latest."
+    },
+    "FirebaseProjectId": {
+      "Type": "String",
+      "Description": "Firebase project id used for FCM topic/device push."
+    },
+    "ApnsKeyId": {
+      "Type": "String",
+      "Description": "Apple APNs auth key id."
+    },
+    "ApnsTeamId": {
+      "Type": "String",
+      "Description": "Apple Developer Team ID."
+    },
+    "FirebaseServiceAccountSecretArn": {
+      "Type": "String",
+      "Description": "Secrets Manager ARN containing the Firebase Admin service account JSON."
+    },
+    "ApnsAuthKeySecretArn": {
+      "Type": "String",
+      "Description": "Secrets Manager ARN containing the Apple APNs .p8 private key content."
+    },
+    "PushSyncSecretArn": {
+      "Type": "String",
+      "Description": "Secrets Manager ARN containing the scheduler sync secret."
+    },
+    "ApiDesiredCount": {
+      "Type": "Number",
+      "Default": 1,
+      "MinValue": 1,
+      "Description": "Number of API service tasks."
+    },
+    "SyncWorkerDesiredCount": {
+      "Type": "Number",
+      "Default": 1,
+      "MinValue": 1,
+      "Description": "Number of scoreboard sync worker tasks."
+    },
+    "PushSyncIntervalSeconds": {
+      "Type": "Number",
+      "Default": 60,
+      "MinValue": 30,
+      "Description": "Sync worker polling interval. Use 30 to 60 seconds for live sports demos."
+    },
+    "HealthCheckPath": {
+      "Type": "String",
+      "Default": "/api/health",
+      "Description": "ALB target group health check path."
+    }
+  },
+  "Resources": {
+    "LogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/ecs/${StackNamePrefix}-backend"
+        },
+        "RetentionInDays": 14
+      }
+    },
+    "Cluster": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": {
+          "Fn::Sub": "${StackNamePrefix}"
+        }
+      }
+    },
+    "LoadBalancerSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow public HTTPS traffic to KBO Fans API ALB.",
+        "VpcId": {
+          "Ref": "VpcId"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 443,
+            "ToPort": 443,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "TaskSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow ALB to reach KBO Fans ECS tasks.",
+        "VpcId": {
+          "Ref": "VpcId"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 8000,
+            "ToPort": 8000,
+            "SourceSecurityGroupId": {
+              "Ref": "LoadBalancerSecurityGroup"
+            }
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "EfsSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow KBO Fans ECS tasks to mount EFS.",
+        "VpcId": {
+          "Ref": "VpcId"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 2049,
+            "ToPort": 2049,
+            "SourceSecurityGroupId": {
+              "Ref": "TaskSecurityGroup"
+            }
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "-1",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "PushRegistryFileSystem": {
+      "Type": "AWS::EFS::FileSystem",
+      "Properties": {
+        "Encrypted": true,
+        "FileSystemTags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "${StackNamePrefix}-push-registry"
+            }
+          }
+        ]
+      }
+    },
+    "PushRegistryMountTargetA": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "PushRegistryFileSystem"
+        },
+        "SubnetId": {
+          "Ref": "PublicSubnetAId"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "EfsSecurityGroup"
+          }
+        ]
+      }
+    },
+    "PushRegistryMountTargetB": {
+      "Type": "AWS::EFS::MountTarget",
+      "Properties": {
+        "FileSystemId": {
+          "Ref": "PushRegistryFileSystem"
+        },
+        "SubnetId": {
+          "Ref": "PublicSubnetBId"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "EfsSecurityGroup"
+          }
+        ]
+      }
+    },
+    "TaskExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${StackNamePrefix}-ecs-task-execution"
+        },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        ],
+        "Policies": [
+          {
+            "PolicyName": "read-push-secrets",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": [
+                    {
+                      "Ref": "FirebaseServiceAccountSecretArn"
+                    },
+                    {
+                      "Ref": "ApnsAuthKeySecretArn"
+                    },
+                    {
+                      "Ref": "PushSyncSecretArn"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "TaskRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${StackNamePrefix}-ecs-task"
+        },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        }
+      }
+    },
+    "LoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${StackNamePrefix}-api"
+        },
+        "Scheme": "internet-facing",
+        "Type": "application",
+        "SecurityGroups": [
+          {
+            "Ref": "LoadBalancerSecurityGroup"
+          }
+        ],
+        "Subnets": [
+          {
+            "Ref": "PublicSubnetAId"
+          },
+          {
+            "Ref": "PublicSubnetBId"
+          }
+        ]
+      }
+    },
+    "ApiTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${StackNamePrefix}-api"
+        },
+        "VpcId": {
+          "Ref": "VpcId"
+        },
+        "Port": 8000,
+        "Protocol": "HTTP",
+        "TargetType": "ip",
+        "HealthCheckPath": {
+          "Ref": "HealthCheckPath"
+        },
+        "Matcher": {
+          "HttpCode": "200-399"
+        }
+      }
+    },
+    "HttpsListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": {
+          "Ref": "LoadBalancer"
+        },
+        "Port": 443,
+        "Protocol": "HTTPS",
+        "Certificates": [
+          {
+            "CertificateArn": {
+              "Ref": "AcmCertificateArn"
+            }
+          }
+        ],
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "ApiTargetGroup"
+            }
+          }
+        ]
+      }
+    },
+    "ApiTaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "Family": {
+          "Fn::Sub": "${StackNamePrefix}-backend-api"
+        },
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "Cpu": "512",
+        "Memory": "1024",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "TaskExecutionRole",
+            "Arn"
+          ]
+        },
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "TaskRole",
+            "Arn"
+          ]
+        },
+        "ContainerDefinitions": [
+          {
+            "Name": "api",
+            "Image": {
+              "Ref": "ContainerImageUri"
+            },
+            "Essential": true,
+            "PortMappings": [
+              {
+                "ContainerPort": 8000,
+                "HostPort": 8000,
+                "Protocol": "tcp"
+              }
+            ],
+            "Environment": [
+              {
+                "Name": "APP_ENV",
+                "Value": "release"
+              },
+              {
+                "Name": "APP_DEBUG",
+                "Value": "false"
+              },
+              {
+                "Name": "API_PREFIX",
+                "Value": "/api"
+              },
+              {
+                "Name": "PORT",
+                "Value": "8000"
+              },
+              {
+                "Name": "FIREBASE_PROJECT_ID",
+                "Value": {
+                  "Ref": "FirebaseProjectId"
+                }
+              },
+              {
+                "Name": "APNS_KEY_ID",
+                "Value": {
+                  "Ref": "ApnsKeyId"
+                }
+              },
+              {
+                "Name": "APNS_TEAM_ID",
+                "Value": {
+                  "Ref": "ApnsTeamId"
+                }
+              },
+              {
+                "Name": "APNS_BUNDLE_ID",
+                "Value": "com.kbofans.kboFans"
+              },
+              {
+                "Name": "APNS_USE_SANDBOX",
+                "Value": "false"
+              },
+              {
+                "Name": "PUSH_REGISTRY_PATH",
+                "Value": "/var/lib/kbo-fans/push_registry.json"
+              }
+            ],
+            "Secrets": [
+              {
+                "Name": "FIREBASE_SERVICE_ACCOUNT_JSON",
+                "ValueFrom": {
+                  "Ref": "FirebaseServiceAccountSecretArn"
+                }
+              },
+              {
+                "Name": "APNS_AUTH_KEY_P8",
+                "ValueFrom": {
+                  "Ref": "ApnsAuthKeySecretArn"
+                }
+              },
+              {
+                "Name": "PUSH_SYNC_SECRET",
+                "ValueFrom": {
+                  "Ref": "PushSyncSecretArn"
+                }
+              }
+            ],
+            "MountPoints": [
+              {
+                "SourceVolume": "push-runtime",
+                "ContainerPath": "/var/lib/kbo-fans",
+                "ReadOnly": false
+              }
+            ],
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "LogGroup"
+                },
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                },
+                "awslogs-stream-prefix": "api"
+              }
+            }
+          }
+        ],
+        "Volumes": [
+          {
+            "Name": "push-runtime",
+            "EFSVolumeConfiguration": {
+              "FilesystemId": {
+                "Ref": "PushRegistryFileSystem"
+              },
+              "RootDirectory": "/",
+              "TransitEncryption": "ENABLED"
+            }
+          }
+        ]
+      }
+    },
+    "SyncWorkerTaskDefinition": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "Family": {
+          "Fn::Sub": "${StackNamePrefix}-backend-sync-worker"
+        },
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "Cpu": "512",
+        "Memory": "1024",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "TaskExecutionRole",
+            "Arn"
+          ]
+        },
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "TaskRole",
+            "Arn"
+          ]
+        },
+        "ContainerDefinitions": [
+          {
+            "Name": "sync-worker",
+            "Image": {
+              "Ref": "ContainerImageUri"
+            },
+            "Essential": true,
+            "Command": [
+              "python",
+              "-m",
+              "kbo_fans_backend.scheduler.live_activity_sync_loop"
+            ],
+            "Environment": [
+              {
+                "Name": "APP_ENV",
+                "Value": "release"
+              },
+              {
+                "Name": "APP_DEBUG",
+                "Value": "false"
+              },
+              {
+                "Name": "API_PREFIX",
+                "Value": "/api"
+              },
+              {
+                "Name": "FIREBASE_PROJECT_ID",
+                "Value": {
+                  "Ref": "FirebaseProjectId"
+                }
+              },
+              {
+                "Name": "APNS_KEY_ID",
+                "Value": {
+                  "Ref": "ApnsKeyId"
+                }
+              },
+              {
+                "Name": "APNS_TEAM_ID",
+                "Value": {
+                  "Ref": "ApnsTeamId"
+                }
+              },
+              {
+                "Name": "APNS_BUNDLE_ID",
+                "Value": "com.kbofans.kboFans"
+              },
+              {
+                "Name": "APNS_USE_SANDBOX",
+                "Value": "false"
+              },
+              {
+                "Name": "PUSH_REGISTRY_PATH",
+                "Value": "/var/lib/kbo-fans/push_registry.json"
+              },
+              {
+                "Name": "PUSH_SYNC_INTERVAL_SECONDS",
+                "Value": {
+                  "Fn::Sub": "${PushSyncIntervalSeconds}"
+                }
+              }
+            ],
+            "Secrets": [
+              {
+                "Name": "FIREBASE_SERVICE_ACCOUNT_JSON",
+                "ValueFrom": {
+                  "Ref": "FirebaseServiceAccountSecretArn"
+                }
+              },
+              {
+                "Name": "APNS_AUTH_KEY_P8",
+                "ValueFrom": {
+                  "Ref": "ApnsAuthKeySecretArn"
+                }
+              },
+              {
+                "Name": "PUSH_SYNC_SECRET",
+                "ValueFrom": {
+                  "Ref": "PushSyncSecretArn"
+                }
+              }
+            ],
+            "MountPoints": [
+              {
+                "SourceVolume": "push-runtime",
+                "ContainerPath": "/var/lib/kbo-fans",
+                "ReadOnly": false
+              }
+            ],
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "LogGroup"
+                },
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                },
+                "awslogs-stream-prefix": "sync-worker"
+              }
+            }
+          }
+        ],
+        "Volumes": [
+          {
+            "Name": "push-runtime",
+            "EFSVolumeConfiguration": {
+              "FilesystemId": {
+                "Ref": "PushRegistryFileSystem"
+              },
+              "RootDirectory": "/",
+              "TransitEncryption": "ENABLED"
+            }
+          }
+        ]
+      }
+    },
+    "ApiService": {
+      "Type": "AWS::ECS::Service",
+      "DependsOn": [
+        "HttpsListener",
+        "PushRegistryMountTargetA",
+        "PushRegistryMountTargetB"
+      ],
+      "Properties": {
+        "ServiceName": {
+          "Fn::Sub": "${StackNamePrefix}-api"
+        },
+        "Cluster": {
+          "Ref": "Cluster"
+        },
+        "DesiredCount": {
+          "Ref": "ApiDesiredCount"
+        },
+        "LaunchType": "FARGATE",
+        "PlatformVersion": "LATEST",
+        "TaskDefinition": {
+          "Ref": "ApiTaskDefinition"
+        },
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "SecurityGroups": [
+              {
+                "Ref": "TaskSecurityGroup"
+              }
+            ],
+            "Subnets": [
+              {
+                "Ref": "PublicSubnetAId"
+              },
+              {
+                "Ref": "PublicSubnetBId"
+              }
+            ]
+          }
+        },
+        "LoadBalancers": [
+          {
+            "ContainerName": "api",
+            "ContainerPort": 8000,
+            "TargetGroupArn": {
+              "Ref": "ApiTargetGroup"
+            }
+          }
+        ]
+      }
+    },
+    "SyncWorkerService": {
+      "Type": "AWS::ECS::Service",
+      "DependsOn": [
+        "PushRegistryMountTargetA",
+        "PushRegistryMountTargetB"
+      ],
+      "Properties": {
+        "ServiceName": {
+          "Fn::Sub": "${StackNamePrefix}-sync-worker"
+        },
+        "Cluster": {
+          "Ref": "Cluster"
+        },
+        "DesiredCount": {
+          "Ref": "SyncWorkerDesiredCount"
+        },
+        "LaunchType": "FARGATE",
+        "PlatformVersion": "LATEST",
+        "TaskDefinition": {
+          "Ref": "SyncWorkerTaskDefinition"
+        },
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "SecurityGroups": [
+              {
+                "Ref": "TaskSecurityGroup"
+              }
+            ],
+            "Subnets": [
+              {
+                "Ref": "PublicSubnetAId"
+              },
+              {
+                "Ref": "PublicSubnetBId"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ApiBaseUrl": {
+      "Description": "Use this as API_BASE_URL for release push / Live Activity token registration.",
+      "Value": {
+        "Fn::Sub": "https://${LoadBalancer.DNSName}/api"
+      }
+    },
+    "LoadBalancerDnsName": {
+      "Description": "Create a Route53 CNAME or alias to this ALB DNS name if using a custom API domain.",
+      "Value": {
+        "Fn::GetAtt": [
+          "LoadBalancer",
+          "DNSName"
+        ]
+      }
+    },
+    "ClusterName": {
+      "Value": {
+        "Ref": "Cluster"
+      }
+    },
+    "ApiServiceName": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ApiService",
+          "Name"
+        ]
+      }
+    },
+    "SyncWorkerServiceName": {
+      "Value": {
+        "Fn::GetAtt": [
+          "SyncWorkerService",
+          "Name"
+        ]
+      }
+    },
+    "PushRegistryFileSystemId": {
+      "Value": {
+        "Ref": "PushRegistryFileSystem"
+      }
+    },
+    "LogGroupName": {
+      "Value": {
+        "Ref": "LogGroup"
+      }
+    }
+  }
+}

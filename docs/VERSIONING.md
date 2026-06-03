@@ -43,7 +43,7 @@ Every version or release change must update these surfaces in the same work unit
 - When historical releases are rewritten, update this release map, GitHub releases, in-app patch notes, and changelog in the same pass.
 - GitHub releases should be normal releases, not prereleases, under the current no-preview policy.
 - Mark only the newest numeric release as `Latest`.
-- `APP_ENV=release` artifacts must pass the release API health gate before release artifact creation.
+- `APP_ENV=release` artifacts default to no-backend direct data mode and must not require the release API health gate. They should still carry the production `API_BASE_URL` for push / Live Activity token registration. Run `scripts/release-api-health-check.sh` only for explicit legacy/backend verification.
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app patch notes change.
 
 ## Numeric Release Map

@@ -25,6 +25,18 @@ Usage:
   ./scripts/codex-run.sh web-release
   ./scripts/codex-run.sh backend
   ./scripts/codex-run.sh release-api-health
+  ./scripts/codex-run.sh push-live-preflight [--env-file /path/to/kbo-fans-aws.env] [--aws]
+  ./scripts/codex-run.sh push-readiness
+  ./scripts/codex-run.sh aws-push-secrets
+  ./scripts/codex-run.sh aws-push-task-defs
+  ./scripts/codex-run.sh aws-push-deploy-check [--skip-aws]
+  ./scripts/codex-run.sh aws-push-image [--dry-run]
+  ./scripts/codex-run.sh aws-push-cloudformation [--dry-run]
+  ./scripts/codex-run.sh aws-push-stack-outputs
+  ./scripts/codex-run.sh aws-push-demo-deploy [--dry-run]
+  ./scripts/codex-run.sh aws-push-tooling
+  ./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env [--apply]
+  ./scripts/codex-run.sh github-push-demo-run [--dry-run true] [--watch]
   ./scripts/codex-run.sh doctor
 
 Commands:
@@ -34,13 +46,25 @@ Commands:
   ios-local-release  Run a release-mode local build on a connected iPhone
   ios-release  Run the Flutter app on a connected iPhone in production release mode
   android  Run the Flutter app on Android device/emulator
-  android-release  Run Android in release mode against the health-checked release API
-  web      Build web release against the health-checked release API and serve it locally
+  android-release  Run Android in release mode with no-backend direct data
+  web      Build web release with no-backend direct data and serve it locally
   web-dev  Run the Flutter app in Chrome for a debug session
   web-static  Build web release and serve it locally on port 7357
-  web-release  Build web release against the health-checked release API and serve it locally
+  web-release  Build web release with no-backend direct data and serve it locally
   backend  Run the FastAPI backend with a local virtualenv
   release-api-health  Check the production API DNS/TLS and release-critical endpoints
+  push-live-preflight  Check local Firebase/APNs/Live Activity/AWS prerequisites
+  push-readiness  Check production push/Live Activity backend readiness
+  aws-push-secrets  Create or update AWS Secrets Manager values for push deployment
+  aws-push-task-defs  Render AWS ECS task definitions and IAM policy for push/Live Activity demo deployment
+  aws-push-deploy-check  Validate AWS push deployment env, rendered JSON, and AWS resources
+  aws-push-image  Build backend Docker image and push it to ECR
+  aws-push-cloudformation  Deploy ALB/EFS/ECS/IAM CloudFormation stack for the push demo
+  aws-push-stack-outputs  Export CloudFormation ApiBaseUrl for release API_BASE_URL
+  aws-push-demo-deploy  Run the secret/image/stack/output/readiness pipeline
+  aws-push-tooling  Check local AWS CLI and Docker daemon availability
+  github-push-secrets  Validate or upload GitHub Actions secrets/variables for push deploy
+  github-push-demo-run  Dispatch the GitHub Actions push demo deploy workflow
   doctor   Check local Flutter/FVM and Python prerequisites
 EOF
 }
@@ -301,6 +325,21 @@ android_java_home() {
   fi
 
   echo ""
+}
+
+configure_android_gradle_launch() {
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    return
+  fi
+
+  local launch_opt="-Djdk.lang.Process.launchMechanism=FORK"
+  case " ${GRADLE_OPTS:-} " in
+    *" $launch_opt "*)
+      ;;
+    *)
+      export GRADLE_OPTS="${GRADLE_OPTS:-} $launch_opt"
+      ;;
+  esac
 }
 
 running_android_serial() {
@@ -568,10 +607,69 @@ run_release_api_health() {
   "$ROOT_DIR/scripts/release-api-health-check.sh" "$(release_api_base_url)"
 }
 
+run_push_readiness() {
+  bash "$ROOT_DIR/scripts/push-readiness-check.sh" "$(release_api_base_url)"
+}
+
+run_push_live_preflight() {
+  bash "$ROOT_DIR/scripts/push-live-preflight.sh" "$@"
+}
+
+run_aws_push_task_definitions() {
+  bash "$ROOT_DIR/scripts/aws-push-task-definitions.sh"
+}
+
+run_aws_push_secrets() {
+  bash "$ROOT_DIR/scripts/aws-push-secrets.sh"
+}
+
+run_aws_push_deploy_check() {
+  bash "$ROOT_DIR/scripts/aws-push-deploy-check.sh" "$@"
+}
+
+run_aws_push_image() {
+  bash "$ROOT_DIR/scripts/aws-push-image.sh" "$@"
+}
+
+run_aws_push_cloudformation() {
+  bash "$ROOT_DIR/scripts/aws-push-cloudformation.sh" "$@"
+}
+
+run_aws_push_stack_outputs() {
+  bash "$ROOT_DIR/scripts/aws-push-stack-outputs.sh" "$@"
+}
+
+run_aws_push_demo_deploy() {
+  bash "$ROOT_DIR/scripts/aws-push-demo-deploy.sh" "$@"
+}
+
+run_aws_push_tooling() {
+  bash "$ROOT_DIR/scripts/aws-push-tooling-check.sh" "$@"
+}
+
+run_github_push_secrets() {
+  bash "$ROOT_DIR/scripts/github-push-secrets.sh" "$@"
+}
+
+run_github_push_demo_run() {
+  bash "$ROOT_DIR/scripts/github-push-demo-run.sh" "$@"
+}
+
+release_direct_api_define() {
+  local app_env="$1"
+  local api_define=" --dart-define=PREFER_DIRECT_SCRAPE=true"
+
+  if [[ "$app_env" == "release" ]]; then
+    api_define="$api_define --dart-define=API_BASE_URL=$(release_api_base_url)"
+  fi
+
+  echo "$api_define"
+}
+
 run_ios() {
   local flutter_mode="${1:-profile}"
   local app_env="${2:-local}"
-  local data_mode="${3:-api}"
+  local data_mode="${3:-direct}"
   local device_id
   local device_name
   local destination_issue
@@ -581,12 +679,12 @@ run_ios() {
   device_id="$(pick_ios_device)"
   device_name="$(pick_ios_device_name)"
 
-  if [[ "$app_env" == "release" ]]; then
+  if [[ "$data_mode" == "api" && "$app_env" == "release" ]]; then
     release_api_url="$(release_api_base_url)"
     run_release_api_health
     api_define=" --dart-define=API_BASE_URL=$release_api_url"
   elif [[ "$data_mode" == "direct" ]]; then
-    api_define=" --dart-define=PREFER_DIRECT_SCRAPE=true"
+    api_define="$(release_direct_api_define "$app_env")"
   fi
 
   if [[ -n "$device_id" && "$device_id" != "ios" && "$device_id" != "iphone" ]]; then
@@ -614,7 +712,7 @@ EOF
     echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
     echo "Using ${flutter_mode} mode for iOS device."
     if [[ "$app_env" != "release" && "$data_mode" == "direct" ]]; then
-      echo "Using temporary direct-primary iOS data mode: direct KBO + bundled snapshots"
+      echo "Using no-backend iOS data mode: direct KBO + bundled snapshots"
     elif [[ "$app_env" != "release" ]]; then
       local_api_url="$(local_backend_api_url_for_lan || true)"
       if [[ -n "$local_api_url" ]]; then
@@ -632,8 +730,11 @@ Or provide an explicit API URL:
 EOF
         exit 1
       fi
-    elif [[ "$app_env" == "release" ]]; then
+    elif [[ "$data_mode" == "api" ]]; then
       echo "Using release API for iOS device: $release_api_url"
+    else
+      echo "Using no-backend iOS release data mode: direct KBO + bundled snapshots"
+      echo "Using release push backend: $(release_api_base_url)"
     fi
     run_flutter run --"$flutter_mode" -d "$device_id" --dart-define=APP_ENV="$app_env"$api_define
     return
@@ -659,7 +760,7 @@ EOF
 
   echo "Running on iOS Simulator"
   if [[ "$app_env" != "release" && "$data_mode" == "direct" ]]; then
-    echo "Using temporary direct-primary iOS simulator data mode: direct KBO + bundled snapshots"
+    echo "Using no-backend iOS simulator data mode: direct KBO + bundled snapshots"
   elif [[ "$app_env" != "release" ]]; then
     local_api_url="$(local_backend_api_url_for_localhost || true)"
     if [[ -n "$local_api_url" ]]; then
@@ -677,8 +778,11 @@ Or provide an explicit API URL:
 EOF
       exit 1
     fi
-  elif [[ "$app_env" == "release" ]]; then
+  elif [[ "$data_mode" == "api" ]]; then
     echo "Using release API for iOS simulator: $release_api_url"
+  else
+    echo "Using no-backend iOS release simulator data mode: direct KBO + bundled snapshots"
+    echo "Using release push backend: $(release_api_base_url)"
   fi
   run_flutter run -d ios --dart-define=APP_ENV="$app_env"$api_define
 }
@@ -688,7 +792,6 @@ run_android() {
   local serial
   local adb_bin
   local api_define=""
-  local local_api_url=""
 
   java_home="$(android_java_home)"
   if [[ -z "$java_home" ]]; then
@@ -716,6 +819,7 @@ EOF
   (
     export JAVA_HOME="$java_home"
     export ANDROID_SDK_ROOT="$(android_sdk_root)"
+    configure_android_gradle_launch
     cd "$APP_DIR"
     local flutter
     flutter="$(flutter_cmd)"
@@ -723,41 +827,8 @@ EOF
       echo "Flutter or FVM is not installed or not on PATH." >&2
       exit 1
     fi
-    if android_serial_is_emulator "$serial" "$adb_bin"; then
-      local_api_url="$(local_backend_api_url_for_android_emulator || true)"
-      if [[ -n "$local_api_url" ]]; then
-        api_define=" --dart-define=API_BASE_URL=$local_api_url"
-        echo "Using local backend for Android emulator: $local_api_url"
-      else
-        cat >&2 <<'EOF'
-No local backend was found for the Android emulator.
-
-Start the backend first:
-  ./scripts/codex-run.sh backend
-
-Or provide an explicit API URL:
-  API_BASE_URL=http://10.0.2.2:8000/api ./scripts/codex-run.sh android
-EOF
-        exit 1
-      fi
-    else
-      local_api_url="$(local_backend_api_url_for_lan || true)"
-      if [[ -n "$local_api_url" ]]; then
-        api_define=" --dart-define=API_BASE_URL=$local_api_url"
-        echo "Using local backend for Android device: $local_api_url"
-      else
-        cat >&2 <<'EOF'
-No LAN-reachable local backend was found for the connected Android device.
-
-Start the backend first:
-  ./scripts/codex-run.sh backend
-
-Or provide an explicit API URL:
-  API_BASE_URL=http://<mac-lan-ip>:8000/api ./scripts/codex-run.sh android
-EOF
-        exit 1
-      fi
-    fi
+    api_define=" --dart-define=PREFER_DIRECT_SCRAPE=true"
+    echo "Using no-backend Android data mode: direct KBO + bundled snapshots"
     echo "Cleaning Flutter build outputs"
     eval "$flutter clean"
     eval "$flutter pub get"
@@ -769,7 +840,6 @@ run_android_release() {
   local java_home
   local serial
   local adb_bin
-  local release_api_url
 
   java_home="$(android_java_home)"
   if [[ -z "$java_home" ]]; then
@@ -785,11 +855,9 @@ EOF
     exit 1
   fi
 
-  release_api_url="$(release_api_base_url)"
-  run_release_api_health
   serial="$(ensure_android_runtime)"
   adb_bin="$(android_adb_bin)"
-  echo "Running Android release against release API: $release_api_url"
+  echo "Running Android release with no-backend direct data"
 
   if [[ -n "$adb_bin" ]]; then
     "$adb_bin" -s "$serial" uninstall "$ANDROID_APPLICATION_ID" >/dev/null 2>&1 || true
@@ -798,6 +866,7 @@ EOF
   (
     export JAVA_HOME="$java_home"
     export ANDROID_SDK_ROOT="$(android_sdk_root)"
+    configure_android_gradle_launch
     cd "$APP_DIR"
     local flutter
     flutter="$(flutter_cmd)"
@@ -807,7 +876,7 @@ EOF
     fi
     eval "$flutter clean"
     eval "$flutter pub get"
-    eval "$flutter run --release --uninstall-first -d $serial --dart-define=APP_ENV=release --dart-define=API_BASE_URL=$release_api_url"
+    eval "$flutter run --release --uninstall-first -d $serial --dart-define=APP_ENV=release$(release_direct_api_define release)"
   )
 }
 
@@ -838,7 +907,6 @@ run_web_static() {
 
 run_web_release_static() {
   local flutter
-  local release_api_url
 
   flutter="$(flutter_cmd)"
 
@@ -848,16 +916,14 @@ run_web_release_static() {
   fi
 
   require_cmd python3
-  release_api_url="$(release_api_base_url)"
-  run_release_api_health
 
   (
     cd "$APP_DIR"
     eval "$flutter pub get"
-    eval "$flutter build web --release --dart-define=APP_ENV=release --dart-define=API_BASE_URL=$release_api_url"
+    eval "$flutter build web --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true"
     cd build/web
     echo "Serving Flutter web release build at http://localhost:7357"
-    echo "Using release API: $release_api_url"
+    echo "Using no-backend web release data mode: direct KBO + bundled snapshots"
     python3 -m http.server 7357
   )
 }
@@ -964,6 +1030,42 @@ main() {
       ;;
     release-api-health)
       run_release_api_health
+      ;;
+    push-live-preflight)
+      run_push_live_preflight "${@:2}"
+      ;;
+    push-readiness)
+      run_push_readiness
+      ;;
+    aws-push-secrets)
+      run_aws_push_secrets
+      ;;
+    aws-push-task-defs)
+      run_aws_push_task_definitions
+      ;;
+    aws-push-deploy-check)
+      run_aws_push_deploy_check "${@:2}"
+      ;;
+    aws-push-image)
+      run_aws_push_image "${@:2}"
+      ;;
+    aws-push-cloudformation)
+      run_aws_push_cloudformation "${@:2}"
+      ;;
+    aws-push-stack-outputs)
+      run_aws_push_stack_outputs "${@:2}"
+      ;;
+    aws-push-demo-deploy)
+      run_aws_push_demo_deploy "${@:2}"
+      ;;
+    aws-push-tooling)
+      run_aws_push_tooling "${@:2}"
+      ;;
+    github-push-secrets)
+      run_github_push_secrets "${@:2}"
+      ;;
+    github-push-demo-run)
+      run_github_push_demo_run "${@:2}"
       ;;
     doctor)
       run_doctor

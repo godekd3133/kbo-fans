@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../models/player.dart';
 import '../models/records_overview.dart';
@@ -12,6 +13,7 @@ import 'player_repository.dart';
 
 class KboDirectPlayerRepository implements PlayerRepository {
   static const _kboBase = 'https://www.koreabaseball.com';
+  static const _corsProxy = 'https://corsproxy.io/?';
   static const _playerSearchUrl =
       'https://eng.koreabaseball.com/Teams/PlayerSearch.aspx';
   static const _registerAllUrl = '$_kboBase/Player/RegisterAll.aspx';
@@ -84,15 +86,18 @@ class KboDirectPlayerRepository implements PlayerRepository {
         BaseOptions(
           connectTimeout: const Duration(seconds: 15),
           receiveTimeout: const Duration(seconds: 15),
-          headers: const {
-            'User-Agent':
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-            'Referer': 'https://www.koreabaseball.com/',
-            'Origin': 'https://www.koreabaseball.com',
+          headers: {
+            if (!kIsWeb)
+              'User-Agent':
+                  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            if (!kIsWeb) 'Referer': 'https://www.koreabaseball.com/',
+            if (!kIsWeb) 'Origin': 'https://www.koreabaseball.com',
           },
         ),
       ) {
-    _dio.interceptors.add(CookieManager(CookieJar()));
+    if (!kIsWeb) {
+      _dio.interceptors.add(CookieManager(CookieJar()));
+    }
   }
 
   @override
@@ -285,7 +290,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
 
   Future<String> _getText(String url) async {
     final response = await _dio.get<String>(
-      url,
+      _resolveUrl(url),
       options: Options(responseType: ResponseType.plain),
     );
     return response.data ?? '';
@@ -296,7 +301,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
     required Map<String, String> data,
   }) async {
     final response = await _dio.post<String>(
-      url,
+      _resolveUrl(url),
       data: data,
       options: Options(
         responseType: ResponseType.plain,
@@ -313,6 +318,13 @@ class KboDirectPlayerRepository implements PlayerRepository {
       return _getText(Uri.parse(url).resolve(location).toString());
     }
     return response.data ?? '';
+  }
+
+  String _resolveUrl(String url) {
+    if (!kIsWeb) {
+      return url;
+    }
+    return '$_corsProxy${Uri.encodeComponent(url)}';
   }
 
   Future<String> _postSeasonPage(String url, String initialHtml, int season) {

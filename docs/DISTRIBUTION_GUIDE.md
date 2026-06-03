@@ -13,9 +13,9 @@
 ## 현재 프로젝트 상태 요약
 
 - 앱: Flutter + Dart
-- 백엔드: FastAPI
-- 웹 실행: 가능 (`./scripts/codex-run-web.sh`, release API health-gated)
-- 웹 UI-only 프리뷰: 가능 (`./scripts/codex-run-web-static.sh`, 데이터 검증용 아님)
+- 백엔드: legacy/reference FastAPI 코드가 남아 있지만 기본 런타임 의존성은 아님
+- 웹 실행: 가능 (`./scripts/codex-run-web.sh`, no-backend direct data mode)
+- 웹 정적 프리뷰: 가능 (`./scripts/codex-run-web-static.sh`, no-backend direct data mode)
 - iOS 실행: Xcode / iOS platform support 상태에 영향 받음
 - Android 실행: 에뮬레이터 또는 실제 기기 준비 필요
 
@@ -31,7 +31,7 @@
   - `platform`: `android`, `ios`, `web`, `all`
   - `app_environment`: `local`, `dev`, `release`, `all`
   - `build_signed_ios_ipa`: iOS 서명용 시크릿 준비 시 `true`
-  - `release_api_base_url`: release 빌드에 주입하고 health-check 할 API base URL
+  - `release_api_base_url`: release push / Live Activity token 등록용 운영 API URL
 
 아티팩트:
 
@@ -44,9 +44,10 @@
 - Android 는 서명 시크릿이 없으면 debug signing fallback 이 적용된 release 빌드가 생성된다.
 - iOS 는 기본값으로 unsigned simulator 빌드만 생성된다.
 - 실제 TestFlight 업로드용 IPA 는 iOS 인증서/프로비저닝 시크릿이 준비된 경우에만 CI에서 뽑는다.
-- `APP_ENV=release` 빌드는 `scripts/release-api-health-check.sh` 로 DNS, TLS, `/api/health`, `/api/scoreboard/home`, `/api/home`, `/api/schedule`, `/api/standings`, `/api/records/overview` 를 먼저 확인한다.
-- release API health gate가 실패하면 빌드 산출물 생성을 중단한다.
-- 운영 API가 기본값 `https://api.kbofans.com/api` 와 다르면 workflow 입력 `release_api_base_url` 또는 `RELEASE_API_BASE_URL` variable/secret으로 실제 API를 지정한다.
+- Android / iOS / Web artifact는 기본적으로 `PREFER_DIRECT_SCRAPE=true` 를 주입해 no-backend direct KBO + snapshot 경로로 빌드한다.
+- `APP_ENV=release` artifact는 데이터 경로는 direct로 유지하되, push / Live Activity token 등록을 위해 `release_api_base_url` 또는 `RELEASE_API_BASE_URL` 값을 `API_BASE_URL`로 함께 주입한다.
+- `APP_ENV=release` 도 backend API health gate를 artifact 생성 blocker로 보지 않는다.
+- backend API 점검이 필요하면 `scripts/release-api-health-check.sh` 를 별도 legacy/reference 확인으로 직접 실행한다.
 
 남은 수작업 TODO:
 
@@ -300,13 +301,13 @@ Play Console에서:
 
 GitHub Actions 의 `web-<env>` 아티팩트를 내려받으면 정적 웹 빌드 결과를 바로 확인할 수 있다.
 
-- `release`: 운영 API 기준 정적 빌드
-- `dev`: dev API 기준 정적 빌드
-- `local`: localhost 기준 정적 빌드
+- `release`: no-backend direct data 기준 정적 빌드
+- `dev`: no-backend direct data 기준 정적 빌드
+- `local`: no-backend direct data 기준 정적 빌드
 
 설치가 아니라 빠른 확인이 목적이면 웹이 가장 쉽다.
 
-release API 기준 실행:
+no-backend release 기준 실행:
 
 ```bash
 ./scripts/codex-run-web.sh
@@ -376,7 +377,7 @@ Codex 앱에서 플랫폼별 실행 경로는 아래 스크립트로 분리되�
 
 메모:
 
-- release 계열은 local API 없이 `scripts/release-api-health-check.sh` 를 먼저 통과해야 실행/빌드가 시작된다.
+- release 계열 실행은 no-backend direct data mode를 유지한다. 단, push / Live Activity token 등록을 위해 운영 `API_BASE_URL`은 주입한다.
 - static preview는 화면 구조 확인용이다. 현재 경기/기록/순위 데이터 검증 경로로 취급하지 않는다.
 
 ## 메모

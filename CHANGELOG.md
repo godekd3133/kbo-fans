@@ -10,6 +10,36 @@
 
 ## [Unreleased]
 
+### Added
+
+- 앱 종료 후 일반 푸시와 iOS Live Activity / Dynamic Island를 갱신할 수 있도록 ActivityKit push token 등록, backend token registry, APNs liveactivity 발송 경로를 추가
+- 운영 백엔드가 scoreboard를 읽어 등록된 Live Activity 세션에는 update/end payload를 보내고, score diff 기반 일반 FCM moment push도 발행할 수 있는 sync trigger를 추가
+- Firebase/APNs/registry/scheduler secret 설정 누락을 확인하는 backend push config diagnostics API/CLI를 추가
+- 배포 후 `/health`와 push readiness를 한 번에 확인하는 `scripts/push-readiness-check.sh`를 추가
+- AWS ECS/Fargate에서 API service와 long-running sync worker를 나눠 배포할 수 있는 템플릿을 추가
+- Firebase Admin JSON, APNs `.p8`, push sync secret을 AWS Secrets Manager에 생성/갱신하는 배포 보조 스크립트를 추가
+- backend Docker image를 ECR에 build/tag/push하고 `CONTAINER_IMAGE_URI` export를 생성하는 배포 보조 스크립트를 추가
+- AWS ECS task definition placeholder를 환경변수 기반으로 렌더링/검증하는 배포 보조 스크립트를 추가
+- AWS push 배포 전 env, rendered JSON, secret, IAM role, ECR, EFS, CloudWatch log group을 점검하는 사전점검 스크립트를 추가
+- ALB, ECS Fargate API service, scoreboard sync worker, EFS registry, IAM, CloudWatch log group을 만드는 CloudFormation stack 템플릿과 배포 스크립트를 추가
+- CloudFormation stack output의 `ApiBaseUrl`을 release build용 `RELEASE_API_BASE_URL` / `API_BASE_URL` env로 추출하는 스크립트를 추가
+- secret upload, ECR image push, CloudFormation deploy, stack output export, readiness를 순서대로 실행하는 AWS push demo 통합 배포 스크립트를 추가
+- 배포 전 Firebase client 파일, APNs/Live Activity capability, backend secret env, AWS env 형태를 확인하는 Push / Live Activity preflight 스크립트를 추가
+- 로컬 AWS CLI credential과 Docker daemon 상태를 확인하는 tooling check 스크립트와, GitHub Actions에서 push demo deploy를 수동 실행하는 workflow를 추가
+- 로컬 env 파일과 Firebase client config 파일을 기준으로 GitHub Actions push deploy secrets/variables를 dry-run 또는 실제 업로드할 수 있는 `gh` CLI 보조 스크립트를 추가
+- GitHub Actions `Push Demo Deploy` workflow를 CLI에서 dispatch하고, 원격 workflow 미등록 상태를 명확히 안내하는 보조 스크립트를 추가
+- AWS Secrets Manager 값을 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8` env로 주입해 FCM/APNs를 설정할 수 있도록 backend secret 입력 방식을 보강
+- 운영 중 scoreboard sync worker 실행 여부를 확인할 수 있도록 push config diagnostics에 scheduler heartbeat를 추가
+
+### Changed
+
+- 앱/웹/릴리즈/CI artifact 기본 데이터 경로를 backend API 없이 direct KBO + 허용된 snapshot 경로로 전환
+- Backend API 사용은 `USE_BACKEND_API=true` 명시 opt-in 경로로 분리
+- Release direct 빌드는 데이터 경로를 no-backend로 유지하면서 push / Live Activity token 등록용 운영 `API_BASE_URL`을 함께 주입하도록 보강
+- 웹 기록실/선수 direct 조회가 KBO source를 CORS proxy 경로로 접근하도록 보강
+- Android `home_widget`의 Glance 동적 의존성이 최신 alpha를 잡아 SDK/AGP 요구사항을 끌어올리지 않도록 Glance 안정 버전 고정
+- Live Activity scoreboard sync 기본 날짜를 AWS UTC가 아닌 KBO 경기일(`Asia/Seoul`) 기준으로 계산하도록 변경
+
 ## [0.0.29] - 2026-06-04
 
 ### Fixed

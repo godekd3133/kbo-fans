@@ -48,6 +48,11 @@ PushNotificationDelivery _deliveryFromStorage(
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    // Firebase may already be initialized in a warm background isolate.
+  }
   DevConsole.instance.info(
     'Push background message: ${message.messageId ?? "-"}',
   );
@@ -221,7 +226,6 @@ class PushNotificationService {
 
   static const _prefsPrefix = 'push_notifications.';
   static const _subscribedTopicsKey = '${_prefsPrefix}subscribed_topics';
-  static const _platform = 'flutter';
   static const _debugLastInitStatusKey =
       '${_prefsPrefix}debug_last_init_status';
   static const _debugLastInitReasonKey =
@@ -269,7 +273,6 @@ class PushNotificationService {
       _notificationsAllowed = await _resolveNotificationsAllowed(
         authorizationStatus: notificationSettings.authorizationStatus,
       );
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       messaging.onTokenRefresh.listen((token) {
         _lastToken = token;
@@ -426,6 +429,7 @@ class PushNotificationService {
     try {
       final settings = await loadSettings();
       final resolvedMyTeam = myTeam ?? await _loadStoredMyTeam();
+      await _waitForAppleApnsTokenIfNeeded();
       final token =
           forceToken ??
           _lastToken ??
@@ -459,7 +463,7 @@ class PushNotificationService {
         '/push/register',
         data: {
           'deviceToken': token,
-          'platform': _platform,
+          'platform': _platformName(),
           'myTeam': resolvedMyTeam,
           'notifications': settings.toJson(),
         },
@@ -562,6 +566,31 @@ class PushNotificationService {
         ?.checkPermissions();
 
     return androidAllowed ?? iosAllowed?.isEnabled ?? authorized;
+  }
+
+  Future<void> _waitForAppleApnsTokenIfNeeded() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS &&
+        defaultTargetPlatform != TargetPlatform.macOS) {
+      return;
+    }
+
+    for (var attempt = 0; attempt < 6; attempt += 1) {
+      final token = await FirebaseMessaging.instance.getAPNSToken();
+      if (token != null && token.isNotEmpty) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+    DevConsole.instance.warn('Push APNs token unavailable before FCM sync');
+  }
+
+  String _platformName() {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.iOS => 'ios',
+      TargetPlatform.android => 'android',
+      TargetPlatform.macOS => 'macos',
+      _ => 'flutter',
+    };
   }
 }
 

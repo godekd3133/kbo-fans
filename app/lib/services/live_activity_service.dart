@@ -6,8 +6,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/config/app_config.dart';
 import '../core/utils/game_status_label.dart';
 import '../core/widgets/dev_console.dart';
+import '../data/api/api_client.dart';
 import '../data/models/game.dart';
 
 @pragma('vm:entry-point')
@@ -21,6 +23,8 @@ class LiveActivityService {
   static final LiveActivityService instance = LiveActivityService._();
   static const MethodChannel _channel = MethodChannel('kbo_fans/live_activity');
   static const _followedGameIdKey = 'live_activity.followed_game_id';
+  static const _activityPushTokenPrefix = 'live_activity.activity_push_token.';
+  static const _activityIdPrefix = 'live_activity.activity_id.';
   static const _androidNotificationId = 4420;
   static const _androidChannelId = 'followed_game_live_surface';
   static const _androidChannelName = '경기 따라가기';
@@ -31,14 +35,20 @@ class LiveActivityService {
       FlutterLocalNotificationsPlugin();
   bool _androidInitialized = false;
   bool _androidNotificationsAllowed = false;
+  bool _channelHandlerInitialized = false;
 
   Future<void> followGame(String gameId) async {
+    _ensureChannelHandler();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_followedGameIdKey, gameId);
   }
 
   Future<void> stopFollowing() async {
     final prefs = await SharedPreferences.getInstance();
+    final gameId = prefs.getString(_followedGameIdKey);
+    if (gameId != null && gameId.isNotEmpty) {
+      await _unregisterLiveActivity(gameId);
+    }
     await prefs.remove(_followedGameIdKey);
     await endCurrentScore();
   }
@@ -142,31 +152,35 @@ class LiveActivityService {
     }
 
     try {
-      await _channel.invokeMethod('syncCurrentScore', {
-        'gameId': targetGame.gameId,
-        'awayTeamId': targetGame.away.teamId,
-        'awayTeam': targetGame.away.shortName,
-        'homeTeamId': targetGame.home.teamId,
-        'homeTeam': targetGame.home.shortName,
-        'awayScore': targetGame.away.score,
-        'homeScore': targetGame.home.score,
-        'inning': targetGame.status == GameStatus.scheduled
-            ? '경기전'
-            : secondaryTextForGameStatus(
-                targetGame.status,
-                inning: targetGame.inning,
-                startTime: targetGame.startTime,
-                statusLabel: targetGame.statusLabel,
-              ),
-        'batter': '',
-        'pitcher': '',
-        'pitchCount': 0,
-        'balls': 0,
-        'strikes': 0,
-        'outs': 0,
-        'stadium': targetGame.stadium,
-        'updatedAt': _updatedAtText(),
-      });
+      _ensureChannelHandler();
+      final response = await _channel
+          .invokeMapMethod<String, dynamic>('syncCurrentScore', {
+            'gameId': targetGame.gameId,
+            'awayTeamId': targetGame.away.teamId,
+            'awayTeam': targetGame.away.shortName,
+            'homeTeamId': targetGame.home.teamId,
+            'homeTeam': targetGame.home.shortName,
+            'awayScore': targetGame.away.score,
+            'homeScore': targetGame.home.score,
+            'inning': targetGame.status == GameStatus.scheduled
+                ? '경기전'
+                : secondaryTextForGameStatus(
+                    targetGame.status,
+                    inning: targetGame.inning,
+                    startTime: targetGame.startTime,
+                    statusLabel: targetGame.statusLabel,
+                  ),
+            'batter': '',
+            'pitcher': '',
+            'pitchCount': 0,
+            'balls': 0,
+            'strikes': 0,
+            'outs': 0,
+            'stadium': targetGame.stadium,
+            'updatedAt': _updatedAtText(),
+            'apiBaseUrl': AppConfig.instance.apiBaseUrl,
+          });
+      await _registerLiveActivityFromNativeResponse(response);
       DevConsole.instance.info(
         'Live Activity sync sent: ${targetGame.gameId} ${targetGame.away.score}:${targetGame.home.score} ${targetGame.inning}',
       );
@@ -202,6 +216,109 @@ class LiveActivityService {
     } on MissingPluginException {
       // Ignore cleanup errors in isolates that do not register the native channel.
       DevConsole.instance.warn('Live Activity end failed: missing plugin');
+    }
+  }
+
+  void _ensureChannelHandler() {
+    if (_channelHandlerInitialized ||
+        defaultTargetPlatform != TargetPlatform.iOS) {
+      return;
+    }
+    _channel.setMethodCallHandler((call) async {
+      if (call.method != 'liveActivityPushToken') {
+        return null;
+      }
+      final args = Map<String, dynamic>.from(call.arguments as Map);
+      await _registerLiveActivityToken(
+        gameId: args['gameId']?.toString() ?? '',
+        activityId: args['activityId']?.toString(),
+        activityPushToken: args['activityPushToken']?.toString() ?? '',
+        previousActivityPushToken: args['previousActivityPushToken']
+            ?.toString(),
+      );
+      return true;
+    });
+    _channelHandlerInitialized = true;
+  }
+
+  Future<void> _registerLiveActivityFromNativeResponse(
+    Map<String, dynamic>? response,
+  ) async {
+    if (response == null) {
+      return;
+    }
+    await _registerLiveActivityToken(
+      gameId: response['gameId']?.toString() ?? '',
+      activityId: response['activityId']?.toString(),
+      activityPushToken: response['activityPushToken']?.toString() ?? '',
+      previousActivityPushToken: response['previousActivityPushToken']
+          ?.toString(),
+    );
+  }
+
+  Future<void> _registerLiveActivityToken({
+    required String gameId,
+    required String activityPushToken,
+    String? activityId,
+    String? previousActivityPushToken,
+  }) async {
+    if (gameId.isEmpty || activityPushToken.isEmpty) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final previousToken =
+        previousActivityPushToken ??
+        prefs.getString('$_activityPushTokenPrefix$gameId');
+
+    try {
+      await ApiClient().post(
+        '/push/live-activity/register',
+        data: {
+          'gameId': gameId,
+          'activityId': activityId,
+          'activityPushToken': activityPushToken,
+          'previousActivityPushToken': previousToken,
+          'platform': 'ios',
+        },
+      );
+      await prefs.setString(
+        '$_activityPushTokenPrefix$gameId',
+        activityPushToken,
+      );
+      if (activityId != null && activityId.isNotEmpty) {
+        await prefs.setString('$_activityIdPrefix$gameId', activityId);
+      }
+      DevConsole.instance.info('Live Activity push token registered: $gameId');
+    } catch (error) {
+      DevConsole.instance.warn(
+        'Live Activity push token registration failed: $error',
+      );
+    }
+  }
+
+  Future<void> _unregisterLiveActivity(String gameId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('$_activityPushTokenPrefix$gameId');
+    final activityId = prefs.getString('$_activityIdPrefix$gameId');
+    if ((token == null || token.isEmpty) &&
+        (activityId == null || activityId.isEmpty)) {
+      return;
+    }
+    try {
+      await ApiClient().post(
+        '/push/live-activity/unregister',
+        data: {
+          'gameId': gameId,
+          'activityPushToken': token,
+          'activityId': activityId,
+        },
+      );
+    } catch (error) {
+      DevConsole.instance.warn('Live Activity unregister failed: $error');
+    } finally {
+      await prefs.remove('$_activityPushTokenPrefix$gameId');
+      await prefs.remove('$_activityIdPrefix$gameId');
     }
   }
 

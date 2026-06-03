@@ -17,8 +17,8 @@ description: Use when preparing commits, pushes, numeric release tags, release n
 - Update `README.md`, `CHANGELOG.md`, and `docs/WORKLOG.md` when user-visible behavior or run/release flow changes.
 - Every version/release change must also update `app/assets/bootstrap/patch_notes.md` for in-app patch notes.
 - Update `docs/APP_SPEC.md` when UX flow or API contract changes.
-- `APP_ENV=release` builds must pass `scripts/release-api-health-check.sh` before artifact creation or device install.
-- If production API is not `https://api.kbofans.com/api`, set `RELEASE_API_BASE_URL` or pass the GitHub Actions `release_api_base_url` input.
+- `APP_ENV=release` builds default to no-backend direct data mode and must not require release API health before artifact creation or device install.
+- Run `scripts/release-api-health-check.sh` only for explicit legacy/backend verification.
 - If default `origin` SSH push fails, use `git@github-personal:godekd3133/kbo-fans.git`.
 - Use plain numeric tags only, e.g. `0.0.11`. Do not create `*-preview*` tags or GitHub prereleases unless the Director explicitly changes the policy.
 - If the Director says "이어서 해", continue autonomously and decide whether to version up or reinforce the current GitHub release notes based on the actual diff.
@@ -29,7 +29,7 @@ description: Use when preparing commits, pushes, numeric release tags, release n
 - App checks when relevant:
   - `cd app && fvm flutter analyze`
   - `cd app && fvm flutter test`
-- Release API checks when relevant:
+- Legacy/backend API checks when explicitly relevant:
   - `scripts/release-api-health-check.sh`
 - Backend checks when relevant:
   - `python3 -m compileall backend/src`

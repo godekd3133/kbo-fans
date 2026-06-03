@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/data/repositories/api_game_repository.dart';
@@ -11,36 +10,38 @@ import 'package:kbo_fans/data/repositories/kbo_direct_repository.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('direct scrape is allowed only for explicit local native builds', () {
+  test('repository routing defaults to no-backend direct data', () {
     AppConfig.initialize();
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    const appEnv = String.fromEnvironment('APP_ENV', defaultValue: 'local');
+    const useBackendApi = bool.fromEnvironment(
+      'USE_BACKEND_API',
+      defaultValue: false,
+    );
     const apiBaseUrlOverride = String.fromEnvironment(
       'API_BASE_URL',
       defaultValue: '',
     );
-    const preferDirectScrape = bool.fromEnvironment(
-      'PREFER_DIRECT_SCRAPE',
-      defaultValue: false,
-    );
-    final shouldUseDirect =
-        appEnv == 'local' &&
-        !kIsWeb &&
-        apiBaseUrlOverride.isEmpty &&
-        preferDirectScrape;
 
-    expect(AppConfig.instance.shouldPreferLocalNativeData, shouldUseDirect);
+    expect(AppConfig.instance.shouldUseBackendApi, useBackendApi);
+    expect(AppConfig.instance.shouldUseDirectData, !useBackendApi);
+    expect(
+      AppConfig.instance.hasApiBaseUrlOverride,
+      apiBaseUrlOverride.isNotEmpty,
+    );
+    if (apiBaseUrlOverride.isNotEmpty) {
+      expect(AppConfig.instance.apiBaseUrl, apiBaseUrlOverride);
+    }
     expect(
       container.read(gameRepositoryProvider),
-      shouldUseDirect ? isA<KboDirectRepository>() : isA<ApiGameRepository>(),
+      useBackendApi ? isA<ApiGameRepository>() : isA<KboDirectRepository>(),
     );
     expect(
       container.read(playerRepositoryProvider),
-      shouldUseDirect
-          ? isA<DeviceSnapshotPlayerRepository>()
-          : isA<ApiPlayerRepository>(),
+      useBackendApi
+          ? isA<ApiPlayerRepository>()
+          : isA<DeviceSnapshotPlayerRepository>(),
     );
   });
 }

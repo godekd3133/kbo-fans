@@ -13,12 +13,14 @@ class AppConfig {
   final String apiBaseUrl;
   final bool hasApiBaseUrlOverride;
   final bool preferDirectScrape;
+  final bool useBackendApi;
 
   AppConfig._({
     required this.environment,
     required this.apiBaseUrl,
     required this.hasApiBaseUrlOverride,
     required this.preferDirectScrape,
+    required this.useBackendApi,
   });
 
   /// `--dart-define=APP_ENV=local|dev|release` 로 빌드 시 환경 결정
@@ -32,6 +34,10 @@ class AppConfig {
       'API_BASE_URL',
       defaultValue: '',
     );
+    const useBackendApiFlag = String.fromEnvironment(
+      'USE_BACKEND_API',
+      defaultValue: '',
+    );
     final env = AppEnvironment.values.firstWhere(
       (e) => e.name == envString,
       orElse: () => AppEnvironment.local,
@@ -39,12 +45,14 @@ class AppConfig {
     final preferDirectScrape = preferDirectScrapeFlag.isNotEmpty
         ? preferDirectScrapeFlag == 'true'
         : false;
+    final useBackendApi = useBackendApiFlag == 'true';
 
     _instance = AppConfig._(
       environment: env,
       apiBaseUrl: _baseUrlFor(env, override: apiBaseUrlOverride),
       hasApiBaseUrlOverride: apiBaseUrlOverride.isNotEmpty,
       preferDirectScrape: preferDirectScrape,
+      useBackendApi: useBackendApi,
     );
   }
 
@@ -55,17 +63,13 @@ class AppConfig {
 
     switch (env) {
       case AppEnvironment.local:
-        // LOCAL:
-        // - 웹은 local backend를 기본값으로 쓰지 않는다.
-        // - Android 에뮬레이터는 10.0.2.2
-        // - iOS Simulator는 localhost
-        // - iOS/Android 실기기는 실행 스크립트에서 Mac LAN IP를 API_BASE_URL로 주입
+        // Legacy backend mode only. Normal app routing is no-backend direct data.
         return defaultLocalApiBaseUrl();
       case AppEnvironment.dev:
-        // DEV: AWS dev 서버
+        // Legacy backend mode only.
         return 'https://dev-api.kbofans.com/api';
       case AppEnvironment.release:
-        // RELEASE: AWS 프로덕션 서버
+        // Legacy backend mode only.
         return 'https://api.kbofans.com/api';
     }
   }
@@ -74,6 +78,7 @@ class AppConfig {
   bool get isDev => environment == AppEnvironment.dev;
   bool get isRelease => environment == AppEnvironment.release;
   bool get isProduction => environment == AppEnvironment.release;
-  bool get shouldPreferLocalNativeData =>
-      isLocal && !kIsWeb && !hasApiBaseUrlOverride && preferDirectScrape;
+  bool get shouldUseBackendApi => useBackendApi;
+  bool get shouldUseDirectData => !useBackendApi;
+  bool get shouldPreferLocalNativeData => shouldUseDirectData && !kIsWeb;
 }

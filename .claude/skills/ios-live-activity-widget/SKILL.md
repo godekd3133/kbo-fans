@@ -30,7 +30,24 @@
   - Widget extension target membership
   - App Group entitlements
   - real device verification
+  - ActivityKit push token backend registration
+  - APNs `liveactivity` production push path
   를 체크한다.
+- 앱 종료 후 Live Activity / Dynamic Island 갱신은 앱 direct data path가 아니라 backend scheduler/worker가 책임진다.
+- release no-backend direct build도 token registration을 위해 운영 `API_BASE_URL`을 주입해야 한다. `USE_BACKEND_API=true`가 없으면 provider routing은 direct data로 유지된다.
+- AWS 운영에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` secret env와 공유 `PUSH_REGISTRY_PATH`를 확인한다.
+- 시연 배포 전에는 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 앱 Firebase 파일, APNs/Live Activity capability, backend secret env, AWS env 형태를 secret 출력 없이 점검한다.
+- AWS push secret은 `./scripts/aws-push-secrets.sh`로 생성/갱신한다.
+- backend ECR image는 `./scripts/aws-push-image.sh`로 build/tag/push하고, 특정 tag 배포 시 `outputs/aws/ecr/image.env`의 `CONTAINER_IMAGE_URI`를 사용한다.
+- ECS task definition과 execution-role secret-read policy는 `./scripts/aws-push-task-definitions.sh` 또는 `./scripts/codex-run.sh aws-push-task-defs`로 렌더링한다.
+- ECS task 등록이나 service 생성 전 `./scripts/aws-push-deploy-check.sh`로 env, rendered JSON, secret, IAM role, ECR, EFS, CloudWatch log group 존재 여부를 점검한다.
+- ALB, ECS service 2개, EFS registry, IAM role, log group을 한 번에 만들 때는 `./scripts/aws-push-cloudformation.sh`를 사용한다.
+- CloudFormation stack output은 `./scripts/aws-push-stack-outputs.sh`로 추출하고, `outputs/aws/cloudformation/stack.env`의 `RELEASE_API_BASE_URL` / `API_BASE_URL`을 release build에 주입한다.
+- 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`를 우선 사용한다. secret 업로드, image push, CloudFormation deploy, output export, readiness를 순서대로 실행한다.
+- 로컬 AWS CLI 또는 Docker daemon이 준비되지 않았으면 GitHub Actions `Push Demo Deploy` workflow를 사용한다.
+- GitHub Actions secrets/vars 준비는 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` dry-run 후 `--apply`로 실행한다. secret 값을 로그에 출력하지 않는다.
+- workflow 파일이 커밋/푸시된 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`로 dry-run을 실행하고, 통과 후 `--dry-run false --watch`로 실제 배포한다.
+- scoreboard sync 기본 날짜는 `Asia/Seoul` KBO 경기일 기준이어야 한다.
 - `GeneratedPluginRegistrant.register(...)` 중복 호출로 duplicate plugin crash 가 나지 않게 한다.
 - widget extension plist 에서는
   - `CFBundleShortVersionString = $(MARKETING_VERSION)`

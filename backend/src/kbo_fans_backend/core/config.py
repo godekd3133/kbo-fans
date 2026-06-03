@@ -46,15 +46,25 @@ class Settings:
     kbo_relay_user_id: str
     kbo_relay_password: str
     firebase_service_account_path: str
+    firebase_service_account_json: str
     firebase_project_id: str
+    push_registry_path: str
+    push_sync_secret: str
+    apns_key_id: str
+    apns_team_id: str
+    apns_bundle_id: str
+    apns_auth_key_path: str
+    apns_auth_key_p8: str
+    apns_use_sandbox: bool
     snapshot_dir: str
 
 
 @lru_cache
 def get_settings() -> Settings:
+    app_env = os.getenv("APP_ENV", "local")
     return Settings(
         app_name=os.getenv("APP_NAME", "KBO Fans API"),
-        app_env=os.getenv("APP_ENV", "local"),
+        app_env=app_env,
         debug=_get_bool("APP_DEBUG", True),
         api_prefix=os.getenv("API_PREFIX", "/api"),
         request_timeout_seconds=_get_int("REQUEST_TIMEOUT_SECONDS", 10),
@@ -66,7 +76,19 @@ def get_settings() -> Settings:
         kbo_relay_user_id=os.getenv("KBO_RELAY_USER_ID", ""),
         kbo_relay_password=os.getenv("KBO_RELAY_PASSWORD", ""),
         firebase_service_account_path=os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", ""),
+        firebase_service_account_json=os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", ""),
         firebase_project_id=os.getenv("FIREBASE_PROJECT_ID", ""),
+        push_registry_path=os.getenv(
+            "PUSH_REGISTRY_PATH",
+            str(Path(__file__).resolve().parents[3] / "data" / "runtime" / "push_registry.json"),
+        ),
+        push_sync_secret=os.getenv("PUSH_SYNC_SECRET", ""),
+        apns_key_id=os.getenv("APNS_KEY_ID", ""),
+        apns_team_id=os.getenv("APNS_TEAM_ID", ""),
+        apns_bundle_id=os.getenv("APNS_BUNDLE_ID", "com.kbofans.kboFans"),
+        apns_auth_key_path=os.getenv("APNS_AUTH_KEY_PATH", ""),
+        apns_auth_key_p8=os.getenv("APNS_AUTH_KEY_P8", ""),
+        apns_use_sandbox=_get_bool("APNS_USE_SANDBOX", app_env != "release"),
         snapshot_dir=os.getenv(
             "SNAPSHOT_DIR",
             str(Path(__file__).resolve().parents[3] / "data" / "snapshots"),

@@ -1,0 +1,138 @@
+name: Push Demo Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate scripts without AWS/Docker deploy calls
+        required: true
+        default: true
+        type: boolean
+      image_tag:
+        description: Backend image tag to build and deploy
+        required: true
+        default: latest
+        type: string
+      skip_readiness:
+        description: Skip readiness check after deploy
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: push-demo-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'ap-northeast-2' }}
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+      AWS_ACCESS_KEY_ID_SECRET: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_SERVICE_ACCOUNT_JSON_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+      APNS_AUTH_KEY_P8_SECRET: ${{ secrets.APNS_AUTH_KEY_P8 }}
+      APNS_KEY_ID: ${{ vars.APNS_KEY_ID || secrets.APNS_KEY_ID }}
+      APNS_TEAM_ID: ${{ vars.APNS_TEAM_ID || secrets.APNS_TEAM_ID }}
+      APNS_BUNDLE_ID: com.kbofans.kboFans
+      APNS_USE_SANDBOX: "false"
+      PUSH_SYNC_SECRET_INPUT: ${{ secrets.PUSH_SYNC_SECRET }}
+      ECR_REPOSITORY_URI: ${{ vars.ECR_REPOSITORY_URI || secrets.ECR_REPOSITORY_URI }}
+      VPC_ID: ${{ vars.VPC_ID || secrets.VPC_ID }}
+      PUBLIC_SUBNET_A_ID: ${{ vars.PUBLIC_SUBNET_A_ID || secrets.PUBLIC_SUBNET_A_ID }}
+      PUBLIC_SUBNET_B_ID: ${{ vars.PUBLIC_SUBNET_B_ID || secrets.PUBLIC_SUBNET_B_ID }}
+      ACM_CERTIFICATE_ARN: ${{ vars.ACM_CERTIFICATE_ARN || secrets.ACM_CERTIFICATE_ARN }}
+      KBO_BACKEND_IMAGE_TAG: ${{ inputs.image_tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Prepare push secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${FIREBASE_SERVICE_ACCOUNT_JSON_SECRET}" ]]; then
+            echo "Missing GitHub secret: FIREBASE_SERVICE_ACCOUNT_JSON" >&2
+            exit 2
+          fi
+          if [[ -z "${APNS_AUTH_KEY_P8_SECRET}" ]]; then
+            echo "Missing GitHub secret: APNS_AUTH_KEY_P8" >&2
+            exit 2
+          fi
+
+          firebase_file="$RUNNER_TEMP/firebase-service-account.json"
+          apns_file="$RUNNER_TEMP/apns-auth-key.p8"
+          printf '%s' "${FIREBASE_SERVICE_ACCOUNT_JSON_SECRET}" > "$firebase_file"
+          printf '%s' "${APNS_AUTH_KEY_P8_SECRET}" > "$apns_file"
+
+          python3 -m json.tool "$firebase_file" >/dev/null
+          grep -q "BEGIN PRIVATE KEY" "$apns_file"
+
+          echo "FIREBASE_SERVICE_ACCOUNT_FILE=$firebase_file" >> "$GITHUB_ENV"
+          echo "APNS_AUTH_KEY_FILE=$apns_file" >> "$GITHUB_ENV"
+
+          if [[ -n "${PUSH_SYNC_SECRET_INPUT}" ]]; then
+            echo "::add-mask::${PUSH_SYNC_SECRET_INPUT}"
+            echo "PUSH_SYNC_SECRET=${PUSH_SYNC_SECRET_INPUT}" >> "$GITHUB_ENV"
+          else
+            generated="$(openssl rand -hex 32)"
+            echo "::add-mask::${generated}"
+            echo "PUSH_SYNC_SECRET=${generated}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Push / Live Activity preflight
+        shell: bash
+        run: ./scripts/push-live-preflight.sh --aws
+
+      - name: Configure AWS credentials with OIDC
+        if: ${{ inputs.dry_run == false && env.AWS_ROLE_TO_ASSUME != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configure AWS credentials with access keys
+        if: ${{ inputs.dry_run == false && env.AWS_ROLE_TO_ASSUME == '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID_SECRET }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY_SECRET }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy push backend stack
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          args=(--tag "${KBO_BACKEND_IMAGE_TAG}")
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+            args=(--dry-run "${args[@]}")
+          fi
+          if [[ "${{ inputs.skip_readiness }}" == "true" ]]; then
+            args=("${args[@]}" --skip-readiness)
+          fi
+
+          ./scripts/aws-push-demo-deploy.sh "${args[@]}"
+
+      - name: Upload deployment outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: push-demo-deploy-outputs
+          path: |
+            outputs/aws/ecr/image.env
+            outputs/aws/ecs-fargate/secrets.env
+            outputs/aws/cloudformation/stack.env
+          if-no-files-found: ignore
+          retention-days: 7

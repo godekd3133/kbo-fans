@@ -18,6 +18,16 @@ subprojects {
 subprojects {
     project.evaluationDependsOn(":app")
 }
+subprojects {
+    configurations.configureEach {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "androidx.glance") {
+                useVersion("1.0.0")
+                because("home_widget 0.9.0 declares glance-appwidget:1.+; newer alpha builds require Android API 37 and AGP 9.1.")
+            }
+        }
+    }
+}
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)

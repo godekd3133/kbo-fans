@@ -1,0 +1,106 @@
+{
+  "family": "kbo-fans-backend-sync-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "executionRoleArn": "<ECS_TASK_EXECUTION_ROLE_ARN>",
+  "taskRoleArn": "<ECS_TASK_ROLE_ARN>",
+  "containerDefinitions": [
+    {
+      "name": "sync-worker",
+      "image": "<ECR_REPOSITORY_URI>:latest",
+      "essential": true,
+      "command": [
+        "python",
+        "-m",
+        "kbo_fans_backend.scheduler.live_activity_sync_loop"
+      ],
+      "environment": [
+        {
+          "name": "APP_ENV",
+          "value": "release"
+        },
+        {
+          "name": "APP_DEBUG",
+          "value": "false"
+        },
+        {
+          "name": "API_PREFIX",
+          "value": "/api"
+        },
+        {
+          "name": "FIREBASE_PROJECT_ID",
+          "value": "<FIREBASE_PROJECT_ID>"
+        },
+        {
+          "name": "APNS_KEY_ID",
+          "value": "<APNS_KEY_ID>"
+        },
+        {
+          "name": "APNS_TEAM_ID",
+          "value": "<APNS_TEAM_ID>"
+        },
+        {
+          "name": "APNS_BUNDLE_ID",
+          "value": "com.kbofans.kboFans"
+        },
+        {
+          "name": "APNS_USE_SANDBOX",
+          "value": "false"
+        },
+        {
+          "name": "PUSH_REGISTRY_PATH",
+          "value": "/var/lib/kbo-fans/push_registry.json"
+        },
+        {
+          "name": "PUSH_SYNC_INTERVAL_SECONDS",
+          "value": "60"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "FIREBASE_SERVICE_ACCOUNT_JSON",
+          "valueFrom": "<SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON>"
+        },
+        {
+          "name": "APNS_AUTH_KEY_P8",
+          "valueFrom": "<SECRET_ARN_APNS_AUTH_KEY_P8>"
+        },
+        {
+          "name": "PUSH_SYNC_SECRET",
+          "valueFrom": "<SECRET_ARN_PUSH_SYNC_SECRET>"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "push-runtime",
+          "containerPath": "/var/lib/kbo-fans",
+          "readOnly": false
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/kbo-fans-backend",
+          "awslogs-region": "<AWS_REGION>",
+          "awslogs-stream-prefix": "sync-worker"
+        }
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "push-runtime",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "<EFS_FILE_SYSTEM_ID>",
+        "rootDirectory": "/",
+        "transitEncryption": "ENABLED"
+      }
+    }
+  ]
+}

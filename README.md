@@ -6,12 +6,12 @@ iOS와 Android를 대상으로 하며, 오늘 경기 스코어보드와 마이�
 ## Overview
 
 - App: Flutter + Dart
-- Backend: Python FastAPI
+- Backend: legacy/reference Python FastAPI code, not a default runtime dependency
 - State management: Riverpod
 - Navigation: go_router
 - HTTP: dio
-- Infra target: AWS
-- Push: Firebase Cloud Messaging
+- Infra target: legacy/reference AWS notes
+- Push: Firebase Cloud Messaging + APNs ActivityKit Live Activity push
 
 ## Current Scope
 
@@ -36,7 +36,7 @@ MVP Phase 1 기준 핵심 범위:
   - 경기 상세에서 예매처 바로가기 / 예매 오픈 알림
 - 순위
 - 푸시 알림
- - 홈/잠금화면 위젯 연동 준비
+- 홈/잠금화면 위젯, iOS Live Activity / Dynamic Island 연동
 
 현재 `app/`은 Flutter 프로젝트로 생성되어 있으며, 주요 화면 구조와 라우팅, 다크 테마, 일정/기록실/경기 상세가 포함되어 있습니다.  
 `backend/`는 FastAPI 골격과 스코어보드/일정/박스스코어/라인업/순위, 팀 선수 기록 API가 준비되어 있습니다.
@@ -104,12 +104,13 @@ flutter run -d android
 참고:
 
 - 현재 저장소에는 `ios/`와 `android/` 프로젝트가 모두 포함되어 있습니다.
-- `web/` 플랫폼은 추가되어 있으며 기본 웹 실행은 release API health gate를 거치는 `./scripts/codex-run-web.sh` 로 실행합니다.
+- `web/` 플랫폼은 추가되어 있으며 기본 웹 실행은 no-backend direct data mode의 `./scripts/codex-run-web.sh` 로 실행합니다.
 - Chrome 디버그 세션이 필요하면 `./scripts/codex-run-web-dev.sh` 또는 `flutter run -d chrome` 을 사용합니다.
 - `macos/` 프로젝트는 아직 생성되지 않았습니다.
-- 데이터 정확성 검증은 release API health gate를 통과한 경로에서만 유효합니다. 백엔드 검증 없이 화면 틀만 확인할 때는 `./scripts/codex-run-web-static.sh` 를 사용합니다.
+- 데이터 정확성 검증은 KBO direct source와 허용된 snapshot 경로 기준으로 수행합니다. 백엔드 API는 기본 실행 전제조건이 아닙니다.
 - 예매 오픈 알림은 앱 로컬 예약 알림으로 동작합니다. 현재 예매처/오픈 시간은 홈팀 기본 정책 기준 추정값입니다.
 - 위젯 갱신은 앱 foreground에서는 라이브 30초 / 예정 5분 기준으로 반영되며, 백그라운드 주기는 OS 정책에 따라 제한됩니다.
+- 앱이 꺼진 뒤에도 일반 푸시와 iOS Live Activity를 갱신하려면 운영 백엔드가 KBO 상태를 polling하고 FCM/APNs로 발송해야 합니다. Firebase는 일반 푸시 전달 채널이고, Dynamic Island 갱신은 ActivityKit 전용 APNs liveactivity push token을 사용합니다. 같은 scoreboard scheduler가 득점/역전/종료 같은 FCM topic push도 발행합니다.
 
 Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했습니다.
 
@@ -122,6 +123,18 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run.sh web-static
 ./scripts/codex-run.sh web-release
 ./scripts/codex-run.sh backend
+./scripts/codex-run.sh push-live-preflight --app-only
+./scripts/codex-run.sh push-readiness
+./scripts/codex-run.sh aws-push-secrets
+./scripts/codex-run.sh aws-push-task-defs
+./scripts/codex-run.sh aws-push-deploy-check --skip-aws
+./scripts/codex-run.sh aws-push-image --dry-run
+./scripts/codex-run.sh aws-push-cloudformation --dry-run
+./scripts/codex-run.sh aws-push-stack-outputs
+./scripts/codex-run.sh aws-push-demo-deploy --dry-run
+./scripts/codex-run.sh aws-push-tooling
+./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env
+./scripts/codex-run.sh github-push-demo-run --dry-run true
 ./scripts/codex-run.sh doctor
 ```
 
@@ -139,6 +152,18 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - Web release 실행 액션: `./scripts/codex-run-web-release.sh`
 - 웹 Chrome 디버그 실행 액션: `./scripts/codex-run-web-dev.sh`
 - Backend 실행 액션: `./scripts/codex-run.sh backend`
+- Push / Live Activity 배포 전 로컬 전제조건 점검 액션: `./scripts/codex-run.sh push-live-preflight --app-only`
+- Push readiness 점검 액션: `./scripts/codex-run.sh push-readiness`
+- AWS push secret 업로드 액션: `./scripts/codex-run.sh aws-push-secrets`
+- AWS push task definition 렌더링 액션: `./scripts/codex-run.sh aws-push-task-defs`
+- AWS push 배포 사전점검 액션: `./scripts/codex-run.sh aws-push-deploy-check`
+- AWS push backend image ECR push 액션: `./scripts/codex-run.sh aws-push-image --dry-run`
+- AWS push CloudFormation dry-run/deploy 액션: `./scripts/codex-run.sh aws-push-cloudformation --dry-run`
+- AWS push stack output env 추출 액션: `./scripts/codex-run.sh aws-push-stack-outputs`
+- AWS push 통합 배포 dry-run/deploy 액션: `./scripts/codex-run.sh aws-push-demo-deploy --dry-run`
+- AWS/Docker 로컬 도구 점검 액션: `./scripts/codex-run.sh aws-push-tooling`
+- GitHub Actions push deploy secrets/variables 점검 또는 업로드 액션: `./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env`
+- GitHub Actions push deploy workflow 실행 액션: `./scripts/codex-run.sh github-push-demo-run --dry-run true`
 - 환경 점검 액션: `./scripts/codex-run.sh doctor`
 
 플랫폼별 실행 환경을 분리한 Codex 액션용 래퍼:
@@ -159,19 +184,20 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 
 참고:
 
-- `./scripts/codex-run-web.sh` 는 local backend 없이 release API health gate를 통과한 URL만 주입해 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
-- `./scripts/codex-run-web-static.sh` 는 release API health gate 없이 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 UI-only 프리뷰 경로입니다.
-- `./scripts/codex-run-web-release.sh` 는 `./scripts/codex-run-web.sh` 와 같은 release API health-gated 웹 실행 래퍼입니다.
+- `./scripts/codex-run-web.sh` 는 backend health gate 없이 no-backend direct data mode로 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
+- `./scripts/codex-run-web-static.sh` 도 backend 없이 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 정적 프리뷰 경로입니다.
+- `./scripts/codex-run-web-release.sh` 는 `./scripts/codex-run-web.sh` 와 같은 no-backend 웹 release 실행 래퍼입니다.
 - `./scripts/codex-run-web-dev.sh` 는 Chrome 디버그 세션을 직접 띄우는 개발용 경로입니다.
-- `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 `--profile --dart-define=APP_ENV=local` 로 실행합니다. local backend가 LAN에서 접근 가능해야 하며, 스크립트가 `API_BASE_URL`을 주입합니다.
+- `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 `--profile --dart-define=APP_ENV=local` 로 no-backend direct data mode를 실행합니다. local backend는 필요하지 않습니다.
 - `./scripts/codex-run-ios-debug.sh` 는 연결된 iPhone 실기기에서 `--debug` 로 실행합니다. 디버거 연결 상태에서 개발할 때만 쓰는 경로입니다.
 - `./scripts/codex-run-ios-profile.sh` 는 위 동작을 명시적으로 호출하는 iPhone local profile 테스트용 래퍼입니다.
-- `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` 로 설치합니다. 아직 API 구현이 비어 있는 영역을 검증하기 위한 임시 direct-primary 경로이며, API 실패 후 fallback으로 전환되는 구조가 아닙니다.
-- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=release` 로 실행합니다. 실행 전 release API health gate가 `DNS / TLS / 핵심 API`를 확인하며, 실패하면 설치/실행을 중단합니다.
-- `./scripts/codex-run.sh android-release`, `./scripts/codex-run.sh web`, `./scripts/codex-run.sh web-release` 는 local backend 없이 release API health gate를 통과한 URL만 앱에 주입합니다.
-- 웹 `APP_ENV=local` 빌드는 명시적 `API_BASE_URL` override가 없으면 local backend 대신 운영 API를 기본값으로 사용합니다.
-- 모바일 local native 모드도 기본은 API 경로입니다. backend가 켜져 있으면 iOS 실기기는 Mac LAN IP, iOS Simulator는 `localhost`, Android Emulator는 `10.0.2.2`, Android 실기기는 Mac LAN IP를 `API_BASE_URL`로 주입합니다.
-- KBO direct scrape는 일반 fallback이 아니며, `APP_ENV=local` 네이티브 빌드에서 `API_BASE_URL` override 없이 `--dart-define=PREFER_DIRECT_SCRAPE=true` 를 명시한 임시 direct-primary 검증 경로에서만 사용합니다.
+- `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` 로 no-backend 경로를 설치합니다.
+- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 no-backend release data mode를 실행하되, push / Live Activity token 등록을 위해 `RELEASE_API_BASE_URL` 또는 기본 `https://api.kbofans.com/api`를 `API_BASE_URL`로 함께 주입합니다.
+- `./scripts/codex-run-android-release.sh` 도 release push 등록을 위해 같은 운영 `API_BASE_URL`을 주입합니다. `API_BASE_URL` 단독 지정은 `USE_BACKEND_API=true`가 아니므로 provider routing을 API mode로 바꾸지 않습니다.
+- `./scripts/codex-run.sh android-release`, `./scripts/codex-run.sh web`, `./scripts/codex-run.sh web-release` 는 backend API 없이 direct KBO + snapshot 경로로 실행합니다.
+- 웹 `APP_ENV=local` / `APP_ENV=release` 빌드는 backend API를 기본값으로 사용하지 않습니다.
+- 모바일 local native 모드도 기본은 no-backend direct 경로입니다. 명시적 backend 검증이 필요할 때만 `USE_BACKEND_API=true` 와 LAN 접근 가능한 `API_BASE_URL` 을 함께 지정합니다.
+- KBO direct scrape는 일반 fallback이 아니라 기본 primary source입니다.
 - `./scripts/codex-run-android.sh` 는 Android Studio JBR(Java 17), Android SDK, AVD 부팅, `APP_ENV=local` 기준까지 포함한 Codex용 안드로이드 실행 경로입니다.
 - 안드로이드 실행 환경 메모는 `docs/CODEX_ANDROID_ENV.md` 를 참고합니다.
 
@@ -185,23 +211,13 @@ GitHub Actions 에서 앱 빌드본을 바로 뽑을 수 있도록 수동 실행
   - `platform`: `android`, `ios`, `web`, `all`
   - `app_environment`: `local`, `dev`, `release`, `all`
   - `build_signed_ios_ipa`: iOS 서명 시크릿이 준비된 경우에만 `true`
-  - `release_api_base_url`: `APP_ENV=release` 빌드에 주입하고 health-check 할 API base URL. 기본값은 `https://api.kbofans.com/api`
 
-Release health gate:
+No-backend artifact mode:
 
-- `APP_ENV=release` 빌드는 빌드 전에 `scripts/release-api-health-check.sh` 를 실행합니다.
-- 확인 항목:
-  - API host DNS lookup
-  - HTTPS TLS certificate validation
-  - `GET /api/health`
-  - `GET /api/scoreboard/home`
-  - `GET /api/home`
-  - `GET /api/schedule`
-  - `GET /api/standings`
-  - `GET /api/records/overview`
-- 하나라도 실패하면 Android / iOS / Web release artifact 빌드를 중단합니다.
-- production 도메인이 `api.kbofans.com` 이 아니면 workflow 입력 `release_api_base_url`, repo variable `RELEASE_API_BASE_URL`, secret `RELEASE_API_BASE_URL`, 또는 로컬 환경변수 `RELEASE_API_BASE_URL` 중 하나로 실제 API base URL을 명시해야 합니다.
-- release API backend 자체 준비 항목은 `docs/RELEASE_API_BACKEND_TODO.md` 에 TODO로 분리했습니다.
+- Android / iOS / Web artifact는 기본적으로 `PREFER_DIRECT_SCRAPE=true` 를 주입해 direct KBO + snapshot 경로로 빌드합니다.
+- `APP_ENV=release` artifact는 push / Live Activity token 등록을 위해 `release_api_base_url` workflow input, `RELEASE_API_BASE_URL` variable/secret, 또는 기본 `https://api.kbofans.com/api`를 `API_BASE_URL`로 함께 주입합니다. 이 값만으로 backend data mode가 켜지지는 않습니다.
+- `APP_ENV=release` 빌드도 backend API health gate를 요구하지 않습니다.
+- backend API 검증은 `scripts/release-api-health-check.sh` 를 직접 실행하는 legacy/reference 점검으로 분리합니다.
 
 생성 아티팩트:
 
@@ -218,7 +234,7 @@ Release health gate:
 
 - Android 는 서명 시크릿이 없으면 현재 Gradle 설정대로 debug signing fallback 으로 release 빌드를 만듭니다.
 - iOS 는 기본으로 simulator용 unsigned 앱만 만들고, 실제 IPA 는 인증서/프로비저닝 시크릿이 있어야 합니다.
-- `local` 환경 빌드는 CI에서 컴파일은 가능하지만, 런타임 API 기준은 실행 환경별 local API 설정을 따릅니다. 웹은 운영 API, 네이티브는 `localhost`, `10.0.2.2`, 또는 LAN IP가 기본입니다. 단, `ios-local-release` / `codex-run-ios-local-release.sh` 는 API 미구현 영역 검증을 위해 `API_BASE_URL` override 없는 local native direct-primary 모드를 명시합니다.
+- `local` / `dev` / `release` 환경 빌드는 CI에서 모두 no-backend direct data mode로 컴파일합니다. backend API는 artifact 생성 blocker가 아닙니다.
 
 권장 시크릿:
 
@@ -239,6 +255,37 @@ uvicorn kbo_fans_backend.main:app --reload
 
 - `GET /api/health`
 
+원격 푸시 / Live Activity 운영 설정:
+
+- `FIREBASE_SERVICE_ACCOUNT_JSON` 또는 `FIREBASE_SERVICE_ACCOUNT_PATH`, `FIREBASE_PROJECT_ID`: FCM 일반 푸시 발송
+- `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_AUTH_KEY_P8` 또는 `APNS_AUTH_KEY_PATH`, `APNS_BUNDLE_ID`: iOS Live Activity APNs 발송
+- `APNS_USE_SANDBOX=false`: TestFlight/운영 배포용 APNs production endpoint 사용
+- `PUSH_SYNC_SECRET`: scoreboard 기반 Live Activity sync trigger 보호용 secret
+- `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`: 배포 전 앱 Firebase 설정, iOS APNs/Live Activity capability, backend secret env, AWS env 형태를 secret 값 노출 없이 점검
+- `GET /api/push/config-status`: Firebase/APNs/registry/scheduler 설정 누락을 secret 값 노출 없이 점검
+- `./scripts/push-readiness-check.sh https://api.kbofans.com/api`: 배포 후 `/health`와 push config readiness를 한 번에 점검
+- `./scripts/aws-push-secrets.sh`: Firebase Admin JSON / APNs `.p8` / sync secret을 AWS Secrets Manager에 생성 또는 갱신하고 `SECRET_ARN_*` export를 생성
+- `./scripts/aws-push-image.sh`: backend Docker image를 ECR에 build/tag/push하고 `CONTAINER_IMAGE_URI` export를 생성
+- `./scripts/aws-push-task-definitions.sh`: AWS secret ARN / role ARN / ECR / EFS 값을 환경변수로 받아 ECS task definition JSON과 execution-role secret-read IAM policy를 `outputs/aws/ecs-fargate/`에 렌더링
+- `./scripts/aws-push-deploy-check.sh`: 렌더링 전후 env/JSON과 AWS credential, secret, IAM role, ECR, EFS, CloudWatch log group 존재 여부를 점검
+- `./scripts/aws-push-cloudformation.sh`: ALB, ECS Fargate API service, sync worker, EFS, IAM, CloudWatch log group을 CloudFormation stack으로 생성
+- `./scripts/aws-push-stack-outputs.sh`: CloudFormation output의 `ApiBaseUrl`을 `RELEASE_API_BASE_URL` / `API_BASE_URL` env로 추출
+- `./scripts/aws-push-demo-deploy.sh`: secret 업로드, ECR image push, CloudFormation deploy, output env 추출, readiness를 순서대로 실행
+- `./scripts/aws-push-tooling-check.sh`: 로컬 AWS CLI credential과 Docker daemon 상태를 확인. 로컬 도구가 없으면 GitHub Actions `Push Demo Deploy` workflow로 같은 배포 파이프라인을 실행할 수 있습니다.
+- `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`: GitHub Actions `Push Demo Deploy`에 필요한 secrets/variables를 dry-run으로 확인. `--apply`를 붙이면 `gh secret set` / `gh variable set`으로 실제 업로드합니다.
+- `./scripts/github-push-demo-run.sh --dry-run true`: GitHub Actions `Push Demo Deploy` workflow를 dispatch합니다. workflow 파일이 아직 원격 default branch에 없으면 커밋/푸시 필요 상태를 안내합니다.
+- `POST /api/push/live-activity/sync-scoreboard`: 운영 scheduler가 30~60초 간격으로 호출하는 scoreboard sync trigger. 등록된 Live Activity에는 APNs update/end를 보내고, scoreboard diff 기반 득점/역전/종료/이닝 변경은 FCM topic push로 발행합니다.
+- AWS ECS/Fargate 시연 배포 템플릿은 `infra/aws/ecs-fargate/`와 `infra/aws/cloudformation/`에 있습니다. 권장 구조는 FastAPI API service 1개와 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` sync worker service 1개입니다.
+
+GitHub Actions 배포:
+
+- Workflow: `.github/workflows/push-demo-deploy.yml` (`Push Demo Deploy`)
+- Required secrets/vars: `AWS_ROLE_TO_ASSUME` 또는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `PUSH_SYNC_SECRET`, `ECR_REPOSITORY_URI`, `VPC_ID`, `PUBLIC_SUBNET_A_ID`, `PUBLIC_SUBNET_B_ID`, `ACM_CERTIFICATE_ARN`
+- `dry_run=true`는 AWS/Docker deploy call 없이 repo script와 secret/env 형태를 검증합니다.
+- `dry_run=false`는 secret 업로드, ECR image push, CloudFormation deploy, stack output export, readiness를 실행합니다.
+- 로컬 env 파일에서 GitHub 입력값을 올릴 때는 먼저 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`로 dry-run을 보고, 이름이 맞으면 `--apply`를 붙입니다.
+- workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`로 dry-run을 실행하고, 통과하면 `./scripts/github-push-demo-run.sh --dry-run false --watch`로 실제 배포를 실행합니다.
+
 ## Operational Notes
 
 - 앱 API cache는 성공 응답 저장과 히스토리 cached-first 조회용입니다. `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜/월/시즌 경로는 API 실패 시 이 cache를 정상 데이터처럼 읽지 않습니다.
@@ -250,21 +297,21 @@ uvicorn kbo_fans_backend.main:app --reload
 - LIVE 요약 스코어보드는 KBO main list의 유효한 득점을 schedule/detail fallback의 0점보다 우선합니다. 진행 중 경기의 최신 score를 fallback 0:0이 덮지 않아야 합니다.
 - 앱은 요약 스코어보드의 미수집 H/E/B `null` 값을 실제 0 기록처럼 표시하지 않습니다.
 - 기록실 팀 데이터와 팀 스탯도 현재 시즌에서는 fresh-first/fail-visible 기준을 따르고, 과거 시즌 조회에서만 cached-first 성격을 유지합니다.
-- 순위와 기록실 요약/리더보드 번들 스냅샷은 exact-season-only 정책을 따릅니다. 일반 API-backed current 경로에서는 현재 시즌 API 실패를 번들 snapshot으로 정상 처리하지 않습니다.
+- 순위와 기록실 요약/리더보드 번들 스냅샷은 exact-season-only 정책을 따릅니다. 명시적 API-backed current 경로에서는 현재 시즌 API 실패를 번들 snapshot으로 정상 처리하지 않습니다.
 - 기록실 요약/리더보드 API cache와 기기 snapshot은 핵심 리더보드가 1위부터 시작하는 payload만 재사용하거나 저장합니다.
 - backend 기록실 요약/리더보드는 KBO 응답 row 순서가 흔들려도 API 응답 전에 rank 오름차순으로 정규화합니다.
 - 현재 시즌 팀 선수/팀 스탯/선수 상세는 원천 조회를 우선하고, 원천 실패 시 backend/app/device snapshot으로 정상 상태를 만들지 않습니다.
 - backend 현재 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot으로 정상 상태를 만들지 않습니다. 과거 날짜/시즌/월은 저장 snapshot 우선 정책을 유지합니다.
 - backend `/home` aggregate는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션으로 숨기지 않습니다. 과거 날짜만 부분 fallback을 허용합니다.
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE 문자중계는 원천 실패를 과거 snapshot이나 요약 payload로 숨기지 않습니다. 박스스코어의 adjacent game id fallback도 과거 경기에서만 허용하고, current/live 경기는 비어 있으면 `officialAvailable=false` 상태로 노출합니다.
-- 일반 API-backed 앱 모드에서는 현재 시즌 순위/기록실 API 실패를 앱 번들 데이터로 대체하지 않습니다. local backend 없이 원격 API가 죽어 있으면 release health gate 또는 화면 오류로 드러나게 둡니다.
-- 현재 날짜/월/시즌 API 요청은 원격 실패 시 TTL 안의 로컬 API cache도 정상 데이터처럼 재사용하지 않습니다. 과거 날짜/시즌/월 조회만 cached-first 또는 snapshot fallback을 유지합니다.
-- 앱 전역 Provider retry는 비활성화되어 API 실패가 반복 재시도 뒤에 숨지 않고 화면 오류 상태와 Dev Console에 드러나야 합니다.
+- 명시적 API-backed 앱 모드에서는 현재 시즌 순위/기록실 API 실패를 앱 번들 데이터로 대체하지 않습니다.
+- 현재 날짜/월/시즌 원천 요청은 실패 시 TTL 안의 로컬 cache도 정상 데이터처럼 재사용하지 않습니다. 과거 날짜/시즌/월 조회만 cached-first 또는 snapshot fallback을 유지합니다.
+- 앱 전역 Provider retry는 비활성화되어 원천 실패가 반복 재시도 뒤에 숨지 않고 화면 오류 상태와 Dev Console에 드러나야 합니다.
 - 지난 경기 결과, 선수 과거 기록, 지난 날짜 순위는 화면 요청 시 원천 크롤링보다 저장된 snapshot/정규화 레코드를 우선 사용합니다.
-- 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장합니다. 앱은 히스토리 데이터만 stale-while-revalidate 로 먼저 보여주고, 현재 날짜/시즌 데이터는 서버 최신 응답을 우선하며 실패 시 로컬 API cache로 정상 상태를 만들지 않습니다.
+- 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장합니다. 앱은 히스토리 데이터만 stale-while-revalidate 로 먼저 보여주고, 현재 날짜/시즌 데이터는 direct source 최신 응답을 우선하며 실패 시 로컬 cache로 정상 상태를 만들지 않습니다.
 - 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.
 - 개발 환경에서는 앱 Dev Console 에 `API`, `HOME loaded`, `RECORDS loaded` 타이밍 로그가 표시됩니다.
-- 백엔드는 `backend/logs/backend.log`, `backend/logs/client_metrics.log` 에 느린 요청과 클라이언트 실측 지표를 저장합니다.
+- legacy backend mode에서는 `backend/logs/backend.log`, `backend/logs/client_metrics.log` 에 느린 요청과 클라이언트 실측 지표를 저장합니다.
 - 웹에서 API 실패 시 앱 내 `진단 보기` 화면으로 `health / scoreboard / schedule` 상태를 함께 확인할 수 있습니다.
 
 ## Design And Product Principles

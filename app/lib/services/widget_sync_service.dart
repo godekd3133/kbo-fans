@@ -65,22 +65,22 @@ class WidgetSyncService {
   }
 
   GameRepository createRepositoryForBackground() {
-    if (AppConfig.instance.shouldPreferLocalNativeData) {
-      return KboDirectRepository();
+    if (AppConfig.instance.shouldUseBackendApi) {
+      return ApiGameRepository(ApiClient());
     }
-    return ApiGameRepository(ApiClient());
+    return KboDirectRepository();
   }
 
   Future<List<Game>> fetchBackgroundScoreboard({
     required String date,
     required String? myTeamId,
   }) {
-    if (AppConfig.instance.shouldPreferLocalNativeData) {
-      return KboDirectRepository().getScoreboard(date);
+    if (AppConfig.instance.shouldUseBackendApi) {
+      return ApiGameRepository(
+        ApiClient(),
+      ).getCompactScoreboard(date, myTeamId: myTeamId);
     }
-    return ApiGameRepository(
-      ApiClient(),
-    ).getCompactScoreboard(date, myTeamId: myTeamId);
+    return KboDirectRepository().getScoreboard(date);
   }
 
   Future<void> syncScoreboard({

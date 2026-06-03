@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/app_config.dart';
@@ -11,7 +10,6 @@ import 'repositories/kbo_direct_repository.dart';
 import 'repositories/player_repository.dart';
 import 'repositories/api_player_repository.dart';
 import 'repositories/device_snapshot_player_repository.dart';
-import 'repositories/fallback_player_repository.dart';
 import 'repositories/kbo_direct_player_repository.dart';
 import 'repositories/local_asset_player_repository.dart';
 import 'models/game.dart';
@@ -30,22 +28,16 @@ import '../services/ticket_alert_service.dart';
 const _kboPersonImageBase =
     'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
 
-/// API 클라이언트 (RELEASE에서만 실제 사용)
+/// API 클라이언트 (USE_BACKEND_API=true 에서만 실제 사용)
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 /// GameRepository — 환경에 따라 자동 전환
 final gameRepositoryProvider = Provider<GameRepository>((ref) {
-  final apiRepository = ApiGameRepository(ref.read(apiClientProvider));
-
-  if (kIsWeb) {
-    return apiRepository;
+  if (AppConfig.instance.shouldUseBackendApi) {
+    return ApiGameRepository(ref.read(apiClientProvider));
   }
 
-  if (AppConfig.instance.shouldPreferLocalNativeData) {
-    return KboDirectRepository();
-  }
-
-  return apiRepository;
+  return KboDirectRepository();
 });
 
 // ── 마이팀 전역 상태 ──
@@ -204,9 +196,7 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
   final date = parts[0];
   final myTeam = parts.length > 1 && parts[1].isNotEmpty ? parts[1] : null;
 
-  final shouldUseApiHome = !AppConfig.instance.shouldPreferLocalNativeData;
-
-  if (shouldUseApiHome) {
+  if (AppConfig.instance.shouldUseBackendApi) {
     try {
       return await ref
           .read(homeRepositoryProvider)
@@ -248,20 +238,14 @@ final homeAggregateProvider = FutureProvider.family<HomeAggregate, String>((
 });
 
 final playerRepositoryProvider = Provider<PlayerRepository>((ref) {
-  final apiRepository = ApiPlayerRepository(ref.read(apiClientProvider));
-  if (kIsWeb) {
-    return apiRepository;
+  if (AppConfig.instance.shouldUseBackendApi) {
+    return ApiPlayerRepository(ref.read(apiClientProvider));
   }
-  if (AppConfig.instance.shouldPreferLocalNativeData) {
-    return DeviceSnapshotPlayerRepository(
-      primary: KboDirectPlayerRepository(),
-      fallback: FallbackPlayerRepository(
-        primary: LocalAssetPlayerRepository(),
-        secondary: apiRepository,
-      ),
-    );
-  }
-  return apiRepository;
+
+  return DeviceSnapshotPlayerRepository(
+    primary: KboDirectPlayerRepository(),
+    fallback: LocalAssetPlayerRepository(),
+  );
 });
 
 final allPlayerImageMapProvider =

@@ -10,13 +10,13 @@ KBO 프로야구 팬을 위한 실시간 경기 정보 모바일 앱 (iOS/Androi
 
 ## 기술 스택
 - **모바일**: Flutter + Dart
-- **백엔드**: Python FastAPI (AWS 배포)
+- **백엔드**: Python FastAPI legacy/reference 코드 (기본 런타임 의존성 아님)
 - **크롤링**: requests + BeautifulSoup (KBO 홈페이지)
 - **상태관리**: Riverpod
 - **네비게이션**: go_router
 - **HTTP**: dio
 - **인프라**: AWS (EC2/ECS + RDS PostgreSQL + ElastiCache Redis)
-- **푸시**: Firebase Cloud Messaging
+- **푸시**: Firebase Cloud Messaging + APNs ActivityKit Live Activity push
 
 ## 프로젝트 구조
 
@@ -74,19 +74,34 @@ kbo_fans/
 - 화면/UX 변경 시 `docs/APP_SPEC.md`와 `docs/FIGMA_PROMPT.md` 반영 여부를 같이 확인한다
 
 ## 런타임 / 운영 메모
-- 웹과 release 빌드는 KBO 원본 직접 호출 대신 백엔드 API 경로를 기본으로 사용한다
-- 로컬 네이티브 실행도 기본은 API 경로다. direct KBO crawler 경로는 `APP_ENV=local`, native runtime, `API_BASE_URL` override 없음, `PREFER_DIRECT_SCRAPE=true` 조건을 모두 만족하는 임시 direct-primary 빌드에서만 쓴다
-- 홈 첫 진입은 경량 payload / 캐시 우선, 이후 background refresh 방식으로 체감 속도를 확보한다
+- 웹/네이티브/local/dev/release 빌드는 no-backend runtime을 기본으로 사용한다. 기본 데이터 경로는 앱 direct KBO source + 허용된 generated/bundled/device snapshot이다
+- 백엔드 API 경로는 legacy/optional이며 `USE_BACKEND_API=true` 를 명시한 경우에만 사용한다. `API_BASE_URL` 단독 지정은 정상 앱 라우팅을 API 모드로 바꾸지 않는다
+- 단, 앱 종료 후 일반 푸시와 iOS Live Activity / Dynamic Island를 계속 갱신하는 기능은 no-backend 앱만으로 성립하지 않는다. 운영 백엔드가 KBO 상태를 polling하고 FCM/APNs로 발송해야 한다
+- release no-backend direct build에도 push / Live Activity token registration용 운영 `API_BASE_URL`은 주입한다. `USE_BACKEND_API=true`가 없으면 이 값만으로 provider routing은 바뀌지 않는다
+- AWS ECS/Fargate 시연 배포는 `infra/aws/ecs-fargate/`의 API service + sync worker service 템플릿을 기준으로 한다. Secrets Manager 값은 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` env로 주입한다
+- 시연 배포 전에는 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 앱 Firebase 파일, APNs/Live Activity capability, backend secret env, AWS env 형태를 secret 출력 없이 점검한다
+- AWS push secret은 `./scripts/aws-push-secrets.sh`로 생성/갱신하고, 출력되는 `SECRET_ARN_*` 값을 task definition 렌더링에 사용한다
+- backend ECR image는 `./scripts/aws-push-image.sh`로 build/tag/push하고, 특정 tag 배포 시 `outputs/aws/ecr/image.env`의 `CONTAINER_IMAGE_URI`를 사용한다
+- ECS task definition과 execution-role secret-read policy는 placeholder JSON을 직접 편집하지 않고 `./scripts/aws-push-task-definitions.sh` 또는 `./scripts/codex-run.sh aws-push-task-defs`로 렌더링한다
+- ECS task 등록이나 service 생성 전 `./scripts/aws-push-deploy-check.sh`로 env, rendered JSON, secret, IAM role, ECR, EFS, CloudWatch log group 존재 여부를 점검한다
+- ALB, ECS service 2개, EFS registry, IAM role, log group을 한 번에 만들 때는 `./scripts/aws-push-cloudformation.sh`를 사용한다
+- CloudFormation stack output은 `./scripts/aws-push-stack-outputs.sh`로 추출하고, `outputs/aws/cloudformation/stack.env`의 `RELEASE_API_BASE_URL` / `API_BASE_URL`을 release build에 주입한다
+- 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`를 우선 사용한다. secret 업로드, image push, CloudFormation deploy, output export, readiness를 순서대로 실행한다
+- 로컬 AWS CLI 또는 Docker daemon이 준비되지 않았으면 GitHub Actions `Push Demo Deploy` workflow를 사용한다. 필요한 AWS/Firebase/APNs secrets/vars는 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`에 맞춘다
+- GitHub Actions push deploy secrets/vars를 준비할 때는 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` dry-run을 먼저 보고, 실제 업로드는 `--apply`를 붙인다. secret 값은 출력하지 않는다
+- workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`로 dry-run을 실행하고, 통과 후 `--dry-run false --watch`로 실제 배포한다
+- Live Activity scoreboard sync 기본 날짜는 KBO 경기일 기준인 `Asia/Seoul`로 계산한다. AWS UTC `date.today()` 기준으로 바꾸지 않는다
+- 홈 첫 진입은 direct scoreboard source를 우선하고, 이후 background refresh 방식으로 체감 속도를 확보한다
 - 지난 경기 결과, 과거 시즌 순위, 기록실 과거 시즌 데이터는 snapshot 우선 전략을 유지한다
 - 앱 번들 standings / records overview fallback 은 exact-season-only 로 제한한다. 현재 시즌은 `generatedAt` 기준 최신 snapshot 만 허용하고, 검증되지 않은 과거 시즌은 다른 시즌 데이터를 빌리지 않는다
-- 일반 API-backed current 경로에서 현재 시즌 팀 선수 / 팀 스탯 / 선수 상세 실패는 backend/app/device snapshot 으로 숨기지 않는다
+- 명시적 API-backed current 경로에서 현재 시즌 팀 선수 / 팀 스탯 / 선수 상세 실패는 backend/app/device snapshot 으로 숨기지 않는다
 - records overview / leaderboard API cache 와 기기 snapshot 은 리더보드가 1위부터 시작할 때만 저장/재사용한다. malformed cache shape 을 무효화할 때는 cache key 또는 device snapshot version 을 올린다
 - backend 현재 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 crawler 실패 시 snapshot fallback 을 쓰지 않는다. 과거 날짜/시즌/월은 저장 snapshot 우선 전략을 유지한다
 - backend records overview / leaderboard 응답은 cache/save/return 전에 rank 오름차순으로 정규화한다
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule / standings / records overview 실패를 빈 섹션이나 placeholder 로 숨기지 않는다. 과거 날짜 홈 조회만 partial fallback 을 허용한다
-- 앱 API cache 는 현재 날짜/월/시즌 데이터의 실패 fallback 으로 쓰지 않는다. `allowCacheOnFailure` 기본값은 false 로 유지하고, historical 경로만 cached-first/snapshot 정책을 명시적으로 허용한다
+- 앱 cache 는 현재 날짜/월/시즌 데이터의 실패 fallback 으로 쓰지 않는다. `allowCacheOnFailure` 기본값은 false 로 유지하고, historical 경로만 cached-first/snapshot 정책을 명시적으로 허용한다
 - 박스스코어 adjacent game id fallback 은 과거 경기 canonical id 보정에만 허용한다. current/live 박스스코어는 전날 같은 팀 경기 선수 기록을 빌리지 않고 official-unavailable 상태로 노출한다
-- 홈 첫 로딩은 오늘 스코어보드 별도 local cache 를 먼저 렌더링하지 않는다. 최신 API 데이터 또는 명시적 loading/error 상태만 보여준다
+- 홈 첫 로딩은 오늘 스코어보드 별도 local cache 를 먼저 렌더링하지 않는다. 최신 direct source 데이터 또는 명시적 loading/error 상태만 보여준다
 - 홈 secondary aggregate provider 는 첫 scoreboard 데이터 프레임 이후에만 구독한다
 - 홈 refresh timer 는 unrelated rebuild 때 cancel/restart 하지 않고 interval 또는 scoreboard signature 변경 시에만 재스케줄한다
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 전용 경로라 경기별 상세 스코어보드 크롤러를 호출하지 않는다. 상세 크롤링은 full scoreboard 와 game detail 로 제한한다
@@ -110,16 +125,16 @@ kbo_fans/
   - 연결된 iOS 실기기 우선 실행 액션, `flutter devices`/`xcodebuild` destination 불일치 점검 가이드
 
 ## 최근 구현 인사이트
-- 실기기 디버그 환경에서 `localhost` 백엔드는 신뢰하지 않는다. 모바일 디버그는 실행 스크립트가 주입하는 Mac LAN IP 기반 API 경로가 현재 원칙이다.
+- 실기기 디버그 환경에서 백엔드는 기본 전제가 아니다. 명시적 backend mode를 검증할 때만 `USE_BACKEND_API=true` 와 LAN 접근 가능한 `API_BASE_URL` 을 함께 주입한다.
 - 데이터 소스 혼선은 실제 장애처럼 보이므로 화면별로 다른 저장소를 보게 두지 않는다.
-- 현재 허용된 direct KBO 범위:
-  - `APP_ENV=local`, native runtime, `API_BASE_URL` override 없음, `PREFER_DIRECT_SCRAPE=true` 를 모두 만족하는 명시적 임시 direct-primary 빌드
-  - 일반 local/dev/release 앱 모드에서는 자동 direct fallback 금지
-- 기록실 선수 상세/엔트리 전체는 API 또는 생성된 snapshot 기준으로 유지한다.
+- 현재 direct KBO 범위:
+  - 일반 local/dev/release/web/native 앱 모드의 기본 primary 경로
+  - provider, widget, CI artifact, Codex run script 모두 no-backend가 기본
+- 기록실 선수 상세/엔트리 전체는 direct source 또는 생성된 snapshot 기준으로 유지한다.
 - 순위/기록실 요약/리더보드는 요청 시즌과 정확히 맞는 검증된 snapshot 만 사용한다. 검증되지 않은 과거 순위는 빈 exact snapshot 으로 둔다.
-- 일반 API-backed 앱 모드에서는 current-season standings / records overview / leaderboard / team players / team stats / player detail API 실패를 앱 번들 bootstrap, 구형/fresh API cache, backend current snapshot 으로 숨기지 않는다.
+- 명시적 API-backed 앱 모드에서는 current-season standings / records overview / leaderboard / team players / team stats / player detail API 실패를 앱 번들 bootstrap, 구형/fresh API cache, backend current snapshot 으로 숨기지 않는다.
 - Dev Console 은 현재 API base URL, API latency, 홈/일정/기록실 로딩 완료 로그, 기록실 진단 로그를 표시하는 운영 도구다.
-- direct-primary 파서는 KBO 마크업 변경에 취약하므로, 수정 시 백엔드 파서와 결과를 반드시 대조한다.
+- direct 파서는 KBO 마크업 변경에 취약하므로, 수정 시 기존 parser/test 결과와 반드시 대조한다.
 - `.claude/skills/`에 이미 같은 작업 패턴이 있으면 먼저 그 스킬을 참고한다
 - 앱 UI 카피에는 이모지를 사용하지 않는다
 - 히스토리 데이터는 원천 재크롤링보다 backend snapshot 우선이 현재 방향이다.
