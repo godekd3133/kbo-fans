@@ -162,6 +162,11 @@
 - [x] mock Firebase client config / Firebase Admin JSON / APNs `.p8` / AWS OIDC role env로 `./scripts/github-push-secrets.sh --env-file ... --repo godekd3133/kbo-fans` dry-run 통과. 출력은 secret/variable 이름만 포함하고 secret 값은 출력하지 않음
 - [x] `bash -n scripts/github-push-demo-run.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh github-push-demo-run --repo godekd3133/kbo-fans --dry-run true` 현재 원격 상태에서 expected failure 확인: `push-demo-deploy.yml`가 default branch에 없어 커밋/푸시 필요 안내
+- [x] `git commit -m "푸시 데모 배포 자동화 추가"` 생성 (`235e931`)
+- [x] 기본 `origin` push는 `Repository not found`로 실패해 AGENTS 규칙의 `git@github-personal:godekd3133/kbo-fans.git` alias로 `main` push 성공
+- [x] GitHub 원격에서 `Push Demo Deploy - push-demo-deploy.yml` workflow 노출 확인 (`workflow id 288871566`)
+- [x] `gh secret list` / `gh variable list` 결과 현재 repo에 Actions secrets/variables가 아직 비어 있음을 확인
+- [x] `./scripts/codex-run.sh github-push-demo-run --repo godekd3133/kbo-fans --dry-run true --watch` dispatch 성공 후 expected failure 확인 (`run 26915430732`): `Prepare push secrets` 단계에서 `Missing GitHub secret: FIREBASE_SERVICE_ACCOUNT_JSON`
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
 - [x] `cd app && fvm flutter test --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://demo-api.kbofans.example/api test/data/providers_routing_test.dart` (`API_BASE_URL` override + direct provider routing 유지 확인)
 - [x] `plutil -lint app/ios/Runner/Info.plist app/ios/KboFansWidget/Info.plist app/ios/Runner/Runner.entitlements app/ios/KboFansWidgetExtension.entitlements`
