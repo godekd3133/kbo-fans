@@ -1,5 +1,5 @@
 {
-  "savedAt": "2026-05-20T07:32:46.000320+00:00",
+  "savedAt": "2026-05-21T04:14:24.565596+00:00",
   "payload": {
     "month": "2026-05",
     "days": [
@@ -18,6 +18,7 @@
             "homeScore": 5,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -31,6 +32,7 @@
             "homeScore": 7,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -44,6 +46,7 @@
             "homeScore": 4,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -57,6 +60,7 @@
             "homeScore": 3,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -70,6 +74,7 @@
             "homeScore": 6,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -89,6 +94,7 @@
             "homeScore": 5,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -102,6 +108,7 @@
             "homeScore": 13,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -115,6 +122,7 @@
             "homeScore": 3,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -128,6 +136,7 @@
             "homeScore": 6,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -141,6 +150,7 @@
             "homeScore": 4,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -160,6 +170,7 @@
             "homeScore": 3,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -173,6 +184,7 @@
             "homeScore": 2,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -186,6 +198,7 @@
             "homeScore": 7,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -199,6 +212,7 @@
             "homeScore": 4,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -212,6 +226,7 @@
             "homeScore": 3,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -231,6 +246,7 @@
             "homeScore": 2,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -244,6 +260,7 @@
             "homeScore": null,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -257,6 +274,7 @@
             "homeScore": 11,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -270,6 +288,7 @@
             "homeScore": 5,
             "stadium": "수원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -283,6 +302,7 @@
             "homeScore": 12,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -302,6 +322,7 @@
             "homeScore": 6,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -315,6 +336,7 @@
             "homeScore": 7,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -328,6 +350,7 @@
             "homeScore": 2,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -341,6 +364,7 @@
             "homeScore": 1,
             "stadium": "수원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -354,6 +378,7 @@
             "homeScore": 2,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -373,6 +398,7 @@
             "homeScore": 2,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -386,6 +412,7 @@
             "homeScore": 5,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -399,6 +426,7 @@
             "homeScore": 6,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -411,15 +439,9 @@
             "homeName": "KT",
             "homeScore": null,
             "stadium": "수원",
-            "status": "SCHEDULED",
-            "ticketInfo": {
-              "vendorKey": "interpark",
-              "vendorName": "인터파크 티켓",
-              "vendorUrl": "https://tickets.interpark.com",
-              "openAt": "2026-04-30T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "status": "CANCELLED",
+            "statusLabel": "우천취소",
+            "ticketInfo": null
           },
           {
             "gameId": "20260507HHHT0",
@@ -432,6 +454,7 @@
             "homeScore": 8,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -451,6 +474,7 @@
             "homeScore": 1,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -464,6 +488,7 @@
             "homeScore": 2,
             "stadium": "사직",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -477,6 +502,7 @@
             "homeScore": 3,
             "stadium": "창원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -490,6 +516,7 @@
             "homeScore": 0,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -503,6 +530,7 @@
             "homeScore": 8,
             "stadium": "대전",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -522,6 +550,7 @@
             "homeScore": 11,
             "stadium": "대전",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -535,6 +564,7 @@
             "homeScore": 9,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -548,6 +578,7 @@
             "homeScore": 1,
             "stadium": "사직",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -561,6 +592,7 @@
             "homeScore": 4,
             "stadium": "창원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -574,6 +606,7 @@
             "homeScore": null,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -593,6 +626,7 @@
             "homeScore": 3,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -606,6 +640,7 @@
             "homeScore": 7,
             "stadium": "사직",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -619,6 +654,7 @@
             "homeScore": 1,
             "stadium": "창원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -632,6 +668,7 @@
             "homeScore": 5,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -645,6 +682,7 @@
             "homeScore": 9,
             "stadium": "대전",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -664,6 +702,7 @@
             "homeScore": 1,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -677,6 +716,7 @@
             "homeScore": 1,
             "stadium": "사직",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -690,6 +730,7 @@
             "homeScore": 1,
             "stadium": "수원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -703,6 +744,7 @@
             "homeScore": 1,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -716,6 +758,7 @@
             "homeScore": 5,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -735,6 +778,7 @@
             "homeScore": 5,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -748,6 +792,7 @@
             "homeScore": 10,
             "stadium": "사직",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -761,6 +806,7 @@
             "homeScore": 18,
             "stadium": "수원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -774,6 +820,7 @@
             "homeScore": 9,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -787,6 +834,7 @@
             "homeScore": 3,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -806,6 +854,7 @@
             "homeScore": 5,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -819,6 +868,7 @@
             "homeScore": 4,
             "stadium": "사직",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -832,6 +882,7 @@
             "homeScore": 10,
             "stadium": "수원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -845,6 +896,7 @@
             "homeScore": 5,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -858,6 +910,7 @@
             "homeScore": 1,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -877,6 +930,7 @@
             "homeScore": 5,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -890,6 +944,7 @@
             "homeScore": 7,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -903,6 +958,7 @@
             "homeScore": 4,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -916,6 +972,7 @@
             "homeScore": 1,
             "stadium": "창원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -929,6 +986,7 @@
             "homeScore": 3,
             "stadium": "수원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -948,6 +1006,7 @@
             "homeScore": 5,
             "stadium": "수원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -961,6 +1020,7 @@
             "homeScore": 10,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -974,6 +1034,7 @@
             "homeScore": 4,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -987,6 +1048,7 @@
             "homeScore": 5,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1000,6 +1062,7 @@
             "homeScore": 9,
             "stadium": "창원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -1019,6 +1082,7 @@
             "homeScore": 8,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1032,6 +1096,7 @@
             "homeScore": 4,
             "stadium": "문학",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1045,6 +1110,7 @@
             "homeScore": 7,
             "stadium": "대구",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1058,6 +1124,7 @@
             "homeScore": 2,
             "stadium": "창원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1071,6 +1138,7 @@
             "homeScore": 8,
             "stadium": "수원",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -1090,6 +1158,7 @@
             "homeScore": 9,
             "stadium": "잠실",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1103,6 +1172,7 @@
             "homeScore": 14,
             "stadium": "광주",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1116,6 +1186,7 @@
             "homeScore": 7,
             "stadium": "고척",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1129,6 +1200,7 @@
             "homeScore": 4,
             "stadium": "대전",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           },
           {
@@ -1142,6 +1214,7 @@
             "homeScore": 10,
             "stadium": "포항",
             "status": "FINAL",
+            "statusLabel": null,
             "ticketInfo": null
           }
         ]
@@ -1161,6 +1234,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "CANCELLED",
+            "statusLabel": "우천취소",
             "ticketInfo": null
           },
           {
@@ -1174,6 +1248,7 @@
             "homeScore": null,
             "stadium": "광주",
             "status": "CANCELLED",
+            "statusLabel": "우천취소",
             "ticketInfo": null
           },
           {
@@ -1181,20 +1256,14 @@
             "time": "18:30",
             "awayId": "SK",
             "awayName": "SSG",
-            "awayScore": null,
+            "awayScore": 5,
             "homeId": "WO",
             "homeName": "키움",
-            "homeScore": null,
+            "homeScore": 6,
             "stadium": "고척",
-            "status": "SCHEDULED",
-            "ticketInfo": {
-              "vendorKey": "ticketlink",
-              "vendorName": "티켓링크",
-              "vendorUrl": "https://www.ticketlink.co.kr",
-              "openAt": "2026-05-13T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "status": "FINAL",
+            "statusLabel": null,
+            "ticketInfo": null
           },
           {
             "gameId": "20260520LTHH0",
@@ -1207,6 +1276,7 @@
             "homeScore": null,
             "stadium": "대전",
             "status": "CANCELLED",
+            "statusLabel": "우천취소",
             "ticketInfo": null
           },
           {
@@ -1220,6 +1290,7 @@
             "homeScore": null,
             "stadium": "포항",
             "status": "CANCELLED",
+            "statusLabel": "우천취소",
             "ticketInfo": null
           }
         ]
@@ -1239,6 +1310,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1259,6 +1331,7 @@
             "homeScore": null,
             "stadium": "광주",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1279,6 +1352,7 @@
             "homeScore": null,
             "stadium": "고척",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1299,6 +1373,7 @@
             "homeScore": null,
             "stadium": "대전",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1319,6 +1394,7 @@
             "homeScore": null,
             "stadium": "포항",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1345,6 +1421,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1365,6 +1442,7 @@
             "homeScore": null,
             "stadium": "사직",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1385,6 +1463,7 @@
             "homeScore": null,
             "stadium": "수원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1405,6 +1484,7 @@
             "homeScore": null,
             "stadium": "광주",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1425,6 +1505,7 @@
             "homeScore": null,
             "stadium": "대전",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1451,6 +1532,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1471,6 +1553,7 @@
             "homeScore": null,
             "stadium": "사직",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1491,6 +1574,7 @@
             "homeScore": null,
             "stadium": "수원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1511,6 +1595,7 @@
             "homeScore": null,
             "stadium": "광주",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1531,6 +1616,7 @@
             "homeScore": null,
             "stadium": "대전",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1557,6 +1643,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1577,6 +1664,7 @@
             "homeScore": null,
             "stadium": "사직",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1597,6 +1685,7 @@
             "homeScore": null,
             "stadium": "수원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1617,6 +1706,7 @@
             "homeScore": null,
             "stadium": "광주",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1637,6 +1727,7 @@
             "homeScore": null,
             "stadium": "대전",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1663,6 +1754,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1683,6 +1775,7 @@
             "homeScore": null,
             "stadium": "문학",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1703,6 +1796,7 @@
             "homeScore": null,
             "stadium": "사직",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1723,6 +1817,7 @@
             "homeScore": null,
             "stadium": "창원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1743,6 +1838,7 @@
             "homeScore": null,
             "stadium": "고척",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1769,6 +1865,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1789,6 +1886,7 @@
             "homeScore": null,
             "stadium": "문학",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1809,6 +1907,7 @@
             "homeScore": null,
             "stadium": "사직",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1829,6 +1928,7 @@
             "homeScore": null,
             "stadium": "창원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1849,6 +1949,7 @@
             "homeScore": null,
             "stadium": "고척",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1875,6 +1976,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1895,6 +1997,7 @@
             "homeScore": null,
             "stadium": "문학",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -1915,6 +2018,7 @@
             "homeScore": null,
             "stadium": "사직",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1935,6 +2039,7 @@
             "homeScore": null,
             "stadium": "창원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1955,6 +2060,7 @@
             "homeScore": null,
             "stadium": "고척",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -1981,6 +2087,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -2001,6 +2108,7 @@
             "homeScore": null,
             "stadium": "대구",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2021,6 +2129,7 @@
             "homeScore": null,
             "stadium": "창원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2041,6 +2150,7 @@
             "homeScore": null,
             "stadium": "고척",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2061,6 +2171,7 @@
             "homeScore": null,
             "stadium": "대전",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2087,6 +2198,7 @@
             "homeScore": null,
             "stadium": "대구",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2107,6 +2219,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -2127,6 +2240,7 @@
             "homeScore": null,
             "stadium": "창원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2147,6 +2261,7 @@
             "homeScore": null,
             "stadium": "고척",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2167,6 +2282,7 @@
             "homeScore": null,
             "stadium": "대전",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2193,6 +2309,7 @@
             "homeScore": null,
             "stadium": "잠실",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
               "vendorName": "인터파크 티켓",
@@ -2213,6 +2330,7 @@
             "homeScore": null,
             "stadium": "대구",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2233,6 +2351,7 @@
             "homeScore": null,
             "stadium": "창원",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2253,6 +2372,7 @@
             "homeScore": null,
             "stadium": "고척",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",
@@ -2273,6 +2393,7 @@
             "homeScore": null,
             "stadium": "대전",
             "status": "SCHEDULED",
+            "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
               "vendorName": "티켓링크",

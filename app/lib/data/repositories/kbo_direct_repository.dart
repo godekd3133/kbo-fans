@@ -385,6 +385,7 @@ class KboDirectRepository implements GameRepository {
     Map<String, dynamic>? view1Detail,
   }) {
     final gameStatus = _resolveGameStatus(data, mainGame: mainGame);
+    final statusLabel = _statusLabelFromMainGame(mainGame);
     final inning = _deriveInningLabel(
       scoreboardData: data,
       mainGame: mainGame,
@@ -411,6 +412,7 @@ class KboDirectRepository implements GameRepository {
       ),
       stadium: _firstNonEmptyString([data['S_NM'] as String?, sg.stadium]),
       startTime: sg.time,
+      statusLabel: statusLabel ?? sg.statusLabel,
       crowd: _parseInt(data['CROWD_CN']),
       ticketInfo:
           sg.ticketInfo ??
@@ -432,6 +434,7 @@ class KboDirectRepository implements GameRepository {
     Map<String, dynamic>? view1Detail,
   }) {
     final status = _resolveGameStatus(const {}, mainGame: mainGame);
+    final statusLabel = _statusLabelFromMainGame(mainGame);
     return Game(
       gameId: sg.gameId,
       status: status,
@@ -456,6 +459,7 @@ class KboDirectRepository implements GameRepository {
       ),
       stadium: sg.stadium,
       startTime: sg.time,
+      statusLabel: statusLabel ?? sg.statusLabel,
       ticketInfo: sg.ticketInfo,
       highlightInfo: HighlightInfo(
         officialUrl: _buildOfficialHighlightUrl(sg.gameId),
@@ -575,11 +579,18 @@ class KboDirectRepository implements GameRepository {
     required Map<String, dynamic>? mainGame,
     required String startTime,
   }) {
-    if ((mainGame?['GAME_STATE_SC'] as String?) == '3') {
+    final mainStatus = _gameStatusFromMainGame(mainGame);
+    if (mainStatus == GameStatus.final_) {
       return '경기종료';
     }
-    if ((mainGame?['GAME_STATE_SC'] as String?) == '1') {
+    if (mainStatus == GameStatus.scheduled) {
       return '$startTime 예정'.trim();
+    }
+    if (mainStatus == GameStatus.cancelled) {
+      return _statusLabelFromMainGame(mainGame) ?? '경기취소';
+    }
+    if (mainStatus == GameStatus.suspended) {
+      return '서스펜디드';
     }
     final inningNo = mainGame?['GAME_INN_NO'];
     final half = mainGame?['GAME_TB_SC_NM'];
@@ -640,6 +651,7 @@ class KboDirectRepository implements GameRepository {
           int? homeScore;
           String stadium;
           String status;
+          String? statusLabel;
 
           try {
             if (cells != null && cells.isNotEmpty) {
@@ -656,6 +668,7 @@ class KboDirectRepository implements GameRepository {
               homeScore = parsed.homeScore;
               stadium = parsed.stadium;
               status = parsed.status;
+              statusLabel = parsed.statusLabel;
             } else {
               final gameDate = r['G_DT'] as String? ?? '';
               if (gameDate.isEmpty) continue;
@@ -679,6 +692,7 @@ class KboDirectRepository implements GameRepository {
               homeScore = _parseInt(r['B_SCORE_CN']);
               stadium = _firstNonEmptyString([r['S_NM'] as String?, '']);
               status = _mapScheduleStatus(r['GAME_STATE_SC'] as String? ?? '');
+              statusLabel = null;
             }
           } catch (error, stackTrace) {
             _log.warn(
@@ -706,6 +720,7 @@ class KboDirectRepository implements GameRepository {
               homeScore: homeScore,
               stadium: stadium,
               status: status,
+              statusLabel: statusLabel,
               ticketInfo: TicketingPolicy.inferredTicketInfo(
                 homeTeamId: homeId,
                 gameId: gameId,
@@ -871,20 +886,30 @@ class KboDirectRepository implements GameRepository {
           main['GAME_STATE_SC']?.toString() ?? '',
         );
         final status = mainStatus == 'UNKNOWN' ? game.status : mainStatus;
+        final shouldShowScore =
+            status == 'LIVE' || status == 'FINAL' || status == 'SUSPENDED';
+        final statusLabel =
+            _statusLabelFromMainGame(main) ??
+            (status == game.status ? game.statusLabel : null);
         return ScheduleGame(
           gameId: game.gameId,
           time: _firstNonEmptyString([main['G_TM'] as String?, game.time]),
           awayId: game.awayId,
           awayName: game.awayName,
-          awayScore: _parseInt(main['T_SCORE_CN']) ?? game.awayScore,
+          awayScore: shouldShowScore
+              ? _parseInt(main['T_SCORE_CN']) ?? game.awayScore
+              : null,
           homeId: game.homeId,
           homeName: game.homeName,
-          homeScore: _parseInt(main['B_SCORE_CN']) ?? game.homeScore,
+          homeScore: shouldShowScore
+              ? _parseInt(main['B_SCORE_CN']) ?? game.homeScore
+              : null,
           stadium: _firstNonEmptyString([
             main['S_NM'] as String?,
             game.stadium,
           ]),
           status: status,
+          statusLabel: statusLabel,
           ticketInfo: game.ticketInfo,
         );
       }).toList();
@@ -993,8 +1018,18 @@ class KboDirectRepository implements GameRepository {
         final filtered = afterSeqNo == null
             ? relayItems
             : relayItems.where((item) => item.seqNo > afterSeqNo).toList();
+        final parsedAtBat = isFinal ? null : _parseCurrentAtBat(html);
         return RelayData(
-          currentAtBat: isFinal ? null : _parseCurrentAtBat(html),
+          currentAtBat: isFinal
+              ? null
+              : _currentAtBatWithMainGameImages(
+                  parsedAtBat ??
+                      _currentAtBatFromMainGame(
+                        mainGame,
+                        fallbackInning: _formatMainGameInning(mainGame),
+                      ),
+                  mainGame,
+                ),
           relayItems: filtered,
         );
       } catch (error) {
@@ -1098,6 +1133,17 @@ class KboDirectRepository implements GameRepository {
         return GameStatus.suspended;
     }
     return null;
+  }
+
+  String? _statusLabelFromMainGame(Map<String, dynamic>? mainGame) {
+    if (_gameStatusFromMainGame(mainGame) != GameStatus.cancelled) {
+      return null;
+    }
+    final label = _normalizeText(mainGame?['CANCEL_SC_NM']?.toString() ?? '');
+    if (label.isEmpty || label == '정상경기') {
+      return null;
+    }
+    return label;
   }
 
   Map<String, String> _relayRequestHeaders(String gameId, int seriesId) {
@@ -1570,6 +1616,32 @@ class KboDirectRepository implements GameRepository {
       return null;
     }
     return text;
+  }
+
+  @visibleForTesting
+  CurrentAtBat? currentAtBatFromMainGameForTesting(
+    Map<String, dynamic>? mainGame, {
+    required String fallbackInning,
+  }) {
+    return _currentAtBatFromMainGame(mainGame, fallbackInning: fallbackInning);
+  }
+
+  @visibleForTesting
+  String deriveScheduleStatusForTesting(
+    String actionHtml, {
+    String statusText = '',
+  }) {
+    return _deriveScheduleStatus(actionHtml, statusText: statusText);
+  }
+
+  @visibleForTesting
+  String? scheduleStatusLabelForTesting(String status, String statusText) {
+    return _scheduleStatusLabel(status, statusText);
+  }
+
+  @visibleForTesting
+  (String, bool) classifyRelayEventForTesting(String text) {
+    return _classifyRelayEvent(text);
   }
 
   Future<(bool, String?)> _currentPitcherContext(
@@ -2134,6 +2206,9 @@ class KboDirectRepository implements GameRepository {
 
   (String, bool) _classifyRelayEvent(String text) {
     if (text.contains('경기종료')) return ('GAME_END', false);
+    if (text.contains('포일')) {
+      return ('PASSED_BALL', text.contains('득점') || text.contains('홈인'));
+    }
     if (text.contains('홈런')) return ('HOMERUN', true);
     if (text.contains('득점') || text.contains('홈인')) return ('RUNS', true);
     if (text.contains('볼넷')) return ('WALK', false);
@@ -2185,7 +2260,7 @@ class KboDirectRepository implements GameRepository {
     final pitchCountMatch = RegExp(r'(\d+)\s*투구').firstMatch(todayText);
     final imageSrc =
         element.querySelector('.player-img img.pic')?.attributes['src'] ?? '';
-    final imageUrl = imageSrc.startsWith('//') ? 'https:$imageSrc' : imageSrc;
+    final imageUrl = _normalizeRelayPlayerImageUrl(imageSrc);
 
     var name = numberText;
     var number = 0;
@@ -2270,6 +2345,9 @@ class KboDirectRepository implements GameRepository {
     final time = _stripHtml(cells[offset]['Text'] as String? ?? '');
     final playHtml = cells[offset + 1]['Text'] as String? ?? '';
     final actionHtml = cells[offset + 2]['Text'] as String? ?? '';
+    final statusText = cells.length > offset + 7
+        ? _stripHtml(cells[offset + 7]['Text'] as String? ?? '')
+        : '';
     final teamNames = _parseTeamsFromPlayHtml(playHtml);
     final scores = _parseScoresFromPlayHtml(playHtml);
     final ids = _deriveTeamIds(
@@ -2284,7 +2362,7 @@ class KboDirectRepository implements GameRepository {
       actionHtml: actionHtml,
     );
     final stadium = _stripHtml(cells[offset + 6]['Text'] as String? ?? '');
-    final status = _deriveScheduleStatus(actionHtml);
+    final status = _deriveScheduleStatus(actionHtml, statusText: statusText);
 
     return _ScheduleRow(
       date: currentDate ?? '',
@@ -2298,6 +2376,7 @@ class KboDirectRepository implements GameRepository {
       homeScore: scores.$2,
       stadium: stadium,
       status: status,
+      statusLabel: _scheduleStatusLabel(status, statusText),
     );
   }
 
@@ -2327,7 +2406,13 @@ class KboDirectRepository implements GameRepository {
     return (null, null);
   }
 
-  String _deriveScheduleStatus(String actionHtml) {
+  String _deriveScheduleStatus(String actionHtml, {String statusText = ''}) {
+    if (statusText.contains('취소')) {
+      return 'CANCELLED';
+    }
+    if (statusText.contains('서스펜디드') || statusText.contains('중단')) {
+      return 'SUSPENDED';
+    }
     if (actionHtml.trim().isEmpty) {
       return 'SCHEDULED';
     }
@@ -2343,6 +2428,17 @@ class KboDirectRepository implements GameRepository {
       return 'LIVE';
     }
     return 'UNKNOWN';
+  }
+
+  String? _scheduleStatusLabel(String status, String statusText) {
+    final label = _normalizeText(statusText);
+    if (label.isEmpty || label == '정상경기') {
+      return null;
+    }
+    if (status == 'CANCELLED' || status == 'SUSPENDED') {
+      return label;
+    }
+    return null;
   }
 
   (String, String) _deriveTeamIds(
@@ -2642,8 +2738,11 @@ class KboDirectRepository implements GameRepository {
     final inningText = _formatMainGameInning(mainGame).isNotEmpty
         ? _formatMainGameInning(mainGame)
         : fallbackInning;
-    final isTop = inningText.contains('회초');
-    final isBottom = inningText.contains('회말');
+    final normalizedInningText = inningText.replaceAll(RegExp(r'\s+'), '');
+    final isTop = _isTopInning(inningText, mainGame);
+    final isBottom =
+        normalizedInningText.contains('회말') ||
+        (!isTop && mainGame['GAME_TB_SC_NM']?.toString() == '말');
 
     final batterName = _cleanPlayerName(
       isTop
@@ -2659,6 +2758,13 @@ class KboDirectRepository implements GameRepository {
           ? mainGame['T_P_NM'] as String?
           : null,
     );
+    final season = _seasonFromMainGame(mainGame);
+    final batterId = _currentMainGameBatterId(mainGame, isTop: isTop);
+    final pitcherId = _currentMainGamePitcherId(
+      mainGame,
+      isTop: isTop,
+      pitcherName: pitcherName,
+    );
 
     final baseOrders = [
       _parseInt(mainGame['B1_BAT_ORDER_NO']) ?? 0,
@@ -2668,12 +2774,12 @@ class KboDirectRepository implements GameRepository {
 
     return CurrentAtBat(
       batterName: batterName ?? '',
-      batterImageUrl: '',
+      batterImageUrl: _playerImageUrl(season, batterId) ?? '',
       batterNumber: 0,
       batterHand: '',
       batterRecent: '',
       pitcherName: pitcherName ?? '',
-      pitcherImageUrl: '',
+      pitcherImageUrl: _playerImageUrl(season, pitcherId) ?? '',
       pitcherNumber: 0,
       pitcherHand: '',
       pitchCount: 0,
@@ -2686,6 +2792,152 @@ class KboDirectRepository implements GameRepository {
       strikes: _parseInt(mainGame['STRIKE_CN']) ?? 0,
       outs: _parseInt(mainGame['OUT_CN']) ?? 0,
     );
+  }
+
+  CurrentAtBat? _currentAtBatWithMainGameImages(
+    CurrentAtBat? atBat,
+    Map<String, dynamic>? mainGame,
+  ) {
+    if (atBat == null || mainGame == null) {
+      return atBat;
+    }
+
+    final season = _seasonFromMainGame(mainGame);
+    final inningText = atBat.inningText.isNotEmpty
+        ? atBat.inningText
+        : _formatMainGameInning(mainGame);
+    final isTop = _isTopInning(inningText, mainGame);
+    final batterId = _currentMainGameBatterId(mainGame, isTop: isTop);
+    final pitcherId = _currentMainGamePitcherId(
+      mainGame,
+      isTop: isTop,
+      pitcherName: atBat.pitcherName,
+    );
+
+    final batterImageUrl = _preferredRelayPlayerImageUrl(
+      atBat.batterImageUrl,
+      season: season,
+      playerId: batterId,
+    );
+    final pitcherImageUrl = _preferredRelayPlayerImageUrl(
+      atBat.pitcherImageUrl,
+      season: season,
+      playerId: pitcherId,
+    );
+
+    if (batterImageUrl == atBat.batterImageUrl &&
+        pitcherImageUrl == atBat.pitcherImageUrl) {
+      return atBat;
+    }
+
+    return CurrentAtBat(
+      batterName: atBat.batterName,
+      batterImageUrl: batterImageUrl,
+      batterNumber: atBat.batterNumber,
+      batterHand: atBat.batterHand,
+      batterRecent: atBat.batterRecent,
+      pitcherName: atBat.pitcherName,
+      pitcherImageUrl: pitcherImageUrl,
+      pitcherNumber: atBat.pitcherNumber,
+      pitcherHand: atBat.pitcherHand,
+      pitchCount: atBat.pitchCount,
+      inningText: atBat.inningText,
+      baseState: atBat.baseState,
+      firstRunnerName: atBat.firstRunnerName,
+      secondRunnerName: atBat.secondRunnerName,
+      thirdRunnerName: atBat.thirdRunnerName,
+      balls: atBat.balls,
+      strikes: atBat.strikes,
+      outs: atBat.outs,
+    );
+  }
+
+  String _preferredRelayPlayerImageUrl(
+    String currentUrl, {
+    required String season,
+    required String? playerId,
+  }) {
+    final normalized = _normalizeRelayPlayerImageUrl(currentUrl);
+    if (_isUsableRelayPlayerImageUrl(normalized)) {
+      return normalized;
+    }
+    return _playerImageUrl(season, playerId) ?? '';
+  }
+
+  String _normalizeRelayPlayerImageUrl(String imageSrc) {
+    final src = imageSrc.trim();
+    if (src.isEmpty) {
+      return '';
+    }
+    if (src.startsWith('//')) {
+      return 'https:$src';
+    }
+    if (src.startsWith('/')) {
+      return '$_kboBase$src';
+    }
+    return src;
+  }
+
+  bool _isUsableRelayPlayerImageUrl(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return false;
+    }
+    final lower = imageUrl.toLowerCase();
+    return !lower.contains('noimage') &&
+        !lower.contains('no_img') &&
+        !lower.contains('noimg') &&
+        !lower.contains('no_photo') &&
+        !lower.contains('player_no') &&
+        !lower.contains('playernone');
+  }
+
+  String _seasonFromMainGame(Map<String, dynamic>? mainGame) {
+    final season = mainGame?['SEASON_ID']?.toString() ?? '';
+    if (RegExp(r'^\d{4}$').hasMatch(season)) {
+      return season;
+    }
+    final gameId = mainGame?['G_ID']?.toString() ?? '';
+    if (gameId.length >= 4) {
+      return gameId.substring(0, 4);
+    }
+    return DateTime.now().year.toString();
+  }
+
+  bool _isTopInning(String inningText, Map<String, dynamic>? mainGame) {
+    final normalized = inningText.replaceAll(RegExp(r'\s+'), '');
+    if (normalized.contains('회초')) {
+      return true;
+    }
+    if (normalized.contains('회말')) {
+      return false;
+    }
+    return mainGame?['GAME_TB_SC_NM']?.toString() == '초';
+  }
+
+  String? _currentMainGameBatterId(
+    Map<String, dynamic>? mainGame, {
+    required bool isTop,
+  }) {
+    return _cleanPlayerId(mainGame?[isTop ? 'T_P_ID' : 'B_P_ID']);
+  }
+
+  String? _currentMainGamePitcherId(
+    Map<String, dynamic>? mainGame, {
+    required bool isTop,
+    required String? pitcherName,
+  }) {
+    final currentId = _cleanPlayerId(mainGame?[isTop ? 'B_P_ID' : 'T_P_ID']);
+    if (currentId != null) {
+      return currentId;
+    }
+
+    final starterName = _cleanPlayerName(
+      mainGame?[isTop ? 'B_PIT_P_NM' : 'T_PIT_P_NM'] as String?,
+    );
+    if (_cleanPlayerName(pitcherName) == starterName) {
+      return _cleanPlayerId(mainGame?[isTop ? 'B_PIT_P_ID' : 'T_PIT_P_ID']);
+    }
+    return null;
   }
 
   String _baseStateFromOrders(List<int> orders) {
@@ -2750,6 +3002,7 @@ class _ScheduleRow {
   final int? homeScore;
   final String stadium;
   final String status;
+  final String? statusLabel;
 
   const _ScheduleRow({
     required this.date,
@@ -2763,5 +3016,6 @@ class _ScheduleRow {
     required this.homeScore,
     required this.stadium,
     required this.status,
+    required this.statusLabel,
   });
 }

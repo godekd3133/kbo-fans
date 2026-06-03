@@ -563,6 +563,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             homeShortName: game.home.shortName,
             stadium: game.stadium,
             status: game.status,
+            statusLabel: game.statusLabel,
             timeLabel: game.inning.isNotEmpty ? game.inning : game.startTime,
             awayScore: game.away.score,
             homeScore: game.home.score,
@@ -1381,6 +1382,7 @@ class _TodayBaseballCard extends StatelessWidget {
                 game.status,
                 inning: game.inning,
                 startTime: game.startTime,
+                statusLabel: game.statusLabel,
               ),
               style: const TextStyle(
                 fontSize: 12,
@@ -1441,6 +1443,7 @@ class _TodayBaseballCard extends StatelessWidget {
   Widget _gameStatusChip(Game game) {
     return GameStatusBadge.forGame(
       game.status,
+      statusLabel: game.statusLabel,
       fontSize: 10,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     );
@@ -1500,7 +1503,7 @@ class _TodayBaseballCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${labelForGameStatus(item.status)} · ${item.timeLabel} · ${item.stadium}',
+                      '${labelForGameStatus(item.status, statusLabel: item.statusLabel)} · ${item.timeLabel} · ${item.stadium}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1515,7 +1518,8 @@ class _TodayBaseballCard extends StatelessWidget {
               Column(
                 children: [
                   Text(
-                    item.status == GameStatus.scheduled
+                    item.status == GameStatus.scheduled ||
+                            item.status == GameStatus.cancelled
                         ? 'vs'
                         : '${item.awayScore} : ${item.homeScore}',
                     style: const TextStyle(
@@ -2335,6 +2339,7 @@ class _TodayGameSummaryData {
   final String homeShortName;
   final String stadium;
   final GameStatus status;
+  final String? statusLabel;
   final String timeLabel;
   final int awayScore;
   final int homeScore;
@@ -2348,6 +2353,7 @@ class _TodayGameSummaryData {
     required this.homeShortName,
     required this.stadium,
     required this.status,
+    required this.statusLabel,
     required this.timeLabel,
     required this.awayScore,
     required this.homeScore,

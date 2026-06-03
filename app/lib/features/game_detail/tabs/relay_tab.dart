@@ -1506,10 +1506,10 @@ class _RelayMomentCard extends StatelessWidget {
                 const _RelayPill(label: '교체', color: AppColors.accent),
               if (moment.isGameEnd)
                 const _RelayPill(label: '경기 종료', color: AppColors.textPrimary),
-              if (!moment.isScoring &&
-                  !moment.isSubstitution &&
+              if (!moment.isSubstitution &&
                   !moment.isGameEnd &&
-                  eventLabel != null)
+                  eventLabel != null &&
+                  eventLabel != '득점')
                 _RelayPill(label: eventLabel, color: accent),
             ],
           ),
@@ -1611,6 +1611,8 @@ class _RelayMomentCard extends StatelessWidget {
         return '아웃';
       case 'RUNS':
         return '득점';
+      case 'PASSED_BALL':
+        return '포일';
       case 'PLAY':
         return '플레이';
       default:

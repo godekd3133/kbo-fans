@@ -23,16 +23,18 @@ class GameStatusBadge extends StatelessWidget {
   factory GameStatusBadge.forGame(
     GameStatus status, {
     Key? key,
+    String? statusLabel,
     EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
       horizontal: 8,
       vertical: 3,
     ),
     double fontSize = 11,
   }) {
-    final colors = _colorsForStatus(labelForGameStatus(status));
+    final label = labelForGameStatus(status, statusLabel: statusLabel);
+    final colors = _colorsForStatus(label);
     return GameStatusBadge(
       key: key,
-      label: labelForGameStatus(status),
+      label: label,
       backgroundColor: colors.$1,
       textColor: colors.$2,
       padding: padding,
@@ -43,13 +45,14 @@ class GameStatusBadge extends StatelessWidget {
   factory GameStatusBadge.forSchedule(
     String status, {
     Key? key,
+    String? statusLabel,
     EdgeInsetsGeometry padding = const EdgeInsets.symmetric(
       horizontal: 8,
       vertical: 3,
     ),
     double fontSize = 11,
   }) {
-    final label = labelForScheduleStatus(status);
+    final label = labelForScheduleStatus(status, statusLabel: statusLabel);
     final colors = _colorsForStatus(label);
     return GameStatusBadge(
       key: key,
@@ -70,12 +73,13 @@ class GameStatusBadge extends StatelessWidget {
           AppColors.ballYellow.withValues(alpha: 0.16),
           AppColors.ballYellow,
         );
-      case '경기 취소':
-        return (
-          AppColors.textDisabled.withValues(alpha: 0.18),
-          AppColors.textDisabled,
-        );
       default:
+        if (label.contains('취소')) {
+          return (
+            AppColors.textDisabled.withValues(alpha: 0.18),
+            AppColors.textDisabled,
+          );
+        }
         return (AppColors.cardSub, AppColors.textSecondary);
     }
   }

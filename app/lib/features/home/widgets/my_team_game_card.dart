@@ -87,7 +87,12 @@ class MyTeamGameCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        isLive ? 'LIVE 경기중' : labelForGameStatus(game.status),
+                        isLive
+                            ? 'LIVE 경기중'
+                            : labelForGameStatus(
+                                game.status,
+                                statusLabel: game.statusLabel,
+                              ),
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
@@ -137,7 +142,11 @@ class MyTeamGameCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        secondary ?? labelForGameStatus(game.status),
+                        secondary ??
+                            labelForGameStatus(
+                              game.status,
+                              statusLabel: game.statusLabel,
+                            ),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
@@ -229,7 +238,8 @@ class MyTeamGameCard extends StatelessWidget {
   String _scoreText(int? score) => score == null ? '-' : '$score';
 
   String _scoreboardText() {
-    if (game.status == GameStatus.scheduled) {
+    if (game.status == GameStatus.scheduled ||
+        game.status == GameStatus.cancelled) {
       return 'vs';
     }
     return '${_scoreText(game.away.score)}:${_scoreText(game.home.score)}';
@@ -289,7 +299,8 @@ class MyTeamGameCard extends StatelessWidget {
       GameStatus.final_ => '최종 기록',
       GameStatus.scheduled =>
         game.startTime.isEmpty ? '경기 예정' : '${game.startTime} 예정',
-      GameStatus.cancelled => '취소',
+      GameStatus.cancelled =>
+        game.statusLabel?.trim().isNotEmpty == true ? game.statusLabel! : '취소',
       GameStatus.suspended => '중단',
     };
   }
@@ -341,8 +352,12 @@ class MyTeamGameCard extends StatelessWidget {
       game.status,
       inning: game.inning,
       startTime: game.startTime,
+      statusLabel: game.statusLabel,
     );
-    final label = labelForGameStatus(game.status);
+    final label = labelForGameStatus(
+      game.status,
+      statusLabel: game.statusLabel,
+    );
     return text == label ? null : text;
   }
 

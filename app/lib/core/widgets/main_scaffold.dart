@@ -43,7 +43,9 @@ class MainScaffold extends StatelessWidget {
                     icon: _tabs[i].icon,
                     label: _tabs[i].label,
                     selected: current == i,
-                    onTap: () => context.go(_tabs[i].path),
+                    onTap: current == i
+                        ? null
+                        : () => context.go(_tabs[i].path),
                   ),
                 ),
             ],
@@ -58,7 +60,7 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _NavItem({
     required this.icon,

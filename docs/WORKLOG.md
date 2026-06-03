@@ -2,6 +2,125 @@
 
 ---
 
+## 2026-06-04: 0.0.29 릴리즈 문서화와 무결성 감사
+
+### 완료
+- [x] 현재 dirty diff가 일정 상태 유지, 우천취소 라벨, 문자중계 포일 분류, 롯데 로고, direct-primary 선수 이미지/한글명 매칭처럼 사용자 동작과 API 계약을 바꾸는 범위임을 확인
+- [x] `0.0.29+29` 새 앱 버전으로 판단하고 `app/pubspec.yaml`, `CHANGELOG.md`, 앱 내 `patch_notes.md`, `README.md`, `docs/VERSIONING.md`를 동기화
+- [x] 전체 Flutter test 실패 원인을 `LocalAssetPlayerRepository`의 clock injection이 내부 `BootstrapRepository`로 전달되지 않던 문제로 확인하고 동일 clock을 공유하도록 보정
+- [x] 변경 backend 파일의 ruff hygiene를 맞춰 현재 변경 범위 lint debt를 제거
+- [x] Director가 앞으로도 API를 사용하지 않는 방향으로 진행한다고 결정했으므로, release API health gate / backend API 배포 준비는 현재 앱 완성 판단의 blocker에서 제외
+
+### 검증
+- [x] `cd app && fvm flutter analyze`
+- [x] `cd app && fvm flutter test`
+- [x] `backend/.venv/bin/pytest -q backend/tests`
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/crawlers/schedule.py backend/src/kbo_fans_backend/crawlers/relay.py backend/src/kbo_fans_backend/services/schedule.py backend/src/kbo_fans_backend/services/scoreboard.py backend/tests/test_schedule.py backend/tests/test_scoreboard_service.py backend/tests/test_relay_crawler.py`
+- [x] `git diff --check`
+
+### 남은 릴리즈 작업
+- [ ] Git commit / tag `0.0.29` / GitHub Release 생성은 아직 수행하지 않았다.
+- [ ] backend 전체 ruff는 기존 `player_stats.py`, `team_stats.py`, `main.py`, `push.py`, `utils/html.py`, `test_push_service.py` lint debt 때문에 아직 전체 통과 상태가 아니다. 이번 변경 파일 ruff는 통과했고, no-API 방향에서는 backend API 완성 blocker가 아니라 별도 cleanup 항목이다.
+
+---
+
+## 2026-05-21: 일정 탭 월 이동 상태 초기화 방지
+
+### 완료
+- [x] 일정 화면에서 다음 달로 이동한 뒤 선택된 하단 `일정` 탭을 다시 누르면 `ScheduleScreen`이 재생성되어 현재 달로 돌아갈 수 있는 경로 확인
+- [x] 월 데이터 로딩/실패 상태에서 전체 일정 본문을 교체하던 구조를 바꿔 캘린더와 월 이동 컨트롤은 유지되도록 수정
+- [x] 월 이동 버튼은 `PageView` 전환 완료 시점에 선택 월을 확정하도록 정리해 기존 페이지가 상태를 되돌리는 경로 차단
+- [x] 이미 선택된 하단 탭은 다시 `context.go()`를 호출하지 않도록 변경
+- [x] no-op이던 헤더 우측 버튼을 오늘 복귀 버튼으로 연결
+
+### 원인
+- 선택된 하단 탭도 매번 `context.go('/schedule')`를 호출해 화면 state가 초기값으로 돌아갈 수 있었다.
+- 일정 데이터가 실패하면 `PageView`가 사라지는 구조라 월 이동 버튼이 캘린더 상태와 분리될 수 있었다.
+
+### 검증
+- [x] `cd app && fvm flutter test test/features/schedule/schedule_screen_test.dart`
+- [x] `bash scripts/codex-run-web-static.sh` 후 Playwright 390x844에서 `MAY 2026 → JUN 2026 → 하단 일정 재탭` 시 `JUN 2026` 유지 확인
+
+---
+
+## 2026-05-21: 우천취소 상태 라벨 표시
+
+### 완료
+- [x] KBO `Main.asmx/GetKboGameList`가 취소 경기에서 `CANCEL_SC_NM: "우천취소"`를 내려주고, `Schedule.asmx/GetScheduleList` 표 마지막 셀도 `우천취소`를 포함하는 것을 확인
+- [x] 백엔드 schedule/scoreboard 경로와 direct-primary schedule/scoreboard 경로에 `statusLabel`을 보존하도록 보강
+- [x] Flutter `Game` / `ScheduleGame` 모델, 상태 배지, 홈/상세/일정/위젯 표시에서 `statusLabel`이 있으면 `우천취소`를 우선 표시하도록 정리
+- [x] 우천취소 경기에서는 direct schedule enrich가 main list의 `0:0`을 점수처럼 주입하지 않도록 차단
+- [x] 기존 `backend/data/snapshots/schedule/2026-05.json`의 2026-05-20 취소 4경기에 `statusLabel: "우천취소"`를 보강해 historical schedule 조회도 같은 라벨을 표시하도록 정리
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_schedule.py backend/tests/test_scoreboard_service.py`
+- [x] `cd app && fvm flutter test test/core/utils/game_status_label_test.dart test/features/schedule/widgets/schedule_game_card_test.dart test/data/kbo_direct_repository_test.dart`
+- [x] `cd app && fvm flutter analyze lib/core/utils/game_status_label.dart lib/core/widgets/game_status_badge.dart lib/data/models/game.dart lib/data/models/schedule.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/api_home_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/home/widgets/game_card.dart lib/features/home/widgets/my_team_game_card.dart lib/features/schedule/widgets/schedule_game_card.dart lib/features/game_detail/game_detail_screen.dart lib/features/home/home_screen.dart lib/services/live_activity_service.dart lib/services/widget_sync_service.dart test/core/utils/game_status_label_test.dart test/features/schedule/widgets/schedule_game_card_test.dart test/data/kbo_direct_repository_test.dart`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/crawlers/schedule.py backend/src/kbo_fans_backend/services/schedule.py backend/src/kbo_fans_backend/services/scoreboard.py`
+- [x] `python3 -m json.tool backend/data/snapshots/schedule/2026-05.json`
+- [x] `PYTHONPATH=backend/src backend/.venv/bin/python - <<'PY' ... ScheduleService().get_month_schedule('2026-05') ... PY`
+- [x] `git diff --check`
+
+---
+
+## 2026-05-21: 문자중계 포일 표기 보정
+
+### 완료
+- [x] backend relay와 direct-primary relay가 `포일` 포함 문구를 별도 이벤트로 분류하지 않아 UI 배지가 `플레이`로 표시되는 경로 확인
+- [x] `포일` 문구를 `PASSED_BALL` 이벤트로 분류하고, `득점` / `홈인` 포함 시 득점 장면 상태를 유지하도록 보정
+- [x] 문자중계 카드가 득점 장면에서도 `포일` 이벤트 배지를 함께 표시하도록 보정
+
+### 검증
+- [x] `cd backend && .venv/bin/python -m pytest tests/test_relay_crawler.py`
+- [x] `cd app && fvm dart format lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/relay_tab.dart test/data/kbo_direct_repository_test.dart`
+- [x] `cd app && fvm flutter analyze lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/relay_tab.dart test/data/kbo_direct_repository_test.dart`
+- [x] `cd app && fvm flutter test test/data/kbo_direct_repository_test.dart`
+
+---
+
+## 2026-05-21: 롯데 팀 로고 흰 배경 제거
+
+### 완료
+- [x] 현재 공통 팀 로고 URL이 `fixed/emblem_${id}_L.png`를 사용하고, 롯데 `emblem_LT_L.png`만 모서리까지 opaque white인 PNG임을 확인
+- [x] 같은 CDN의 `fixed/emblem_LT.png`가 투명 배경 PNG임을 확인
+- [x] 공통 팀 로고 URL을 `fixed/emblem_$id.png`로 변경해 롯데 흰 배경을 제거하고 다른 팀도 같은 transparent fixed emblem 계열을 사용하도록 정리
+- [x] 팀 로고 URL이 `_L.png`로 회귀하지 않도록 테스트 추가
+
+### 검증
+- [x] `file /tmp/kbo-logo-check/emblem_LT_L.png /tmp/kbo-logo-check/initial_LT_s.png app/ios/Runner/Assets.xcassets/TeamLogo_LT.imageset/logo.png`
+- [x] PNG alpha 분석: `emblem_LT_L.png` corners alpha `255`, `emblem_LT.png` corners alpha `0`
+- [x] CDN 확인: `fixed/emblem_{LG,KT,SK,SS,NC,HH,LT,HT,OB,WO}.png` 모두 200 응답
+- [x] `cd app && fvm dart format lib/core/constants/team_data.dart test/core/constants/team_data_test.dart`
+- [x] `cd app && fvm flutter test test/core/constants/team_data_test.dart`
+- [x] `cd app && fvm flutter analyze lib/core/constants/team_data.dart test/core/constants/team_data_test.dart`
+- [x] `git diff --check`
+
+---
+
+## 2026-05-21: direct 문자중계 현재 타석 선수 이미지 보정
+
+### 완료
+- [x] API를 쓰지 않는 direct-primary 빌드 기준으로 문자중계 현재 타석 이미지가 `LiveTextView2` HTML 이미지 또는 양 팀 선수목록 fallback에만 의존하는 경로 확인
+- [x] `Main.asmx/GetKboGameList`의 live current player id(`T_P_ID` / `B_P_ID`)로 현재 타자/상대투수 이미지 URL을 즉시 구성하도록 보강
+- [x] `LiveTextView2` 이미지가 비어 있거나 no-image placeholder일 때 main game player id 기반 이미지로 보정
+- [x] direct relay summary fallback의 `currentAtBat`도 선수 이름뿐 아니라 `person/middle/{season}/{playerId}.jpg` 이미지 URL을 함께 채우도록 보정
+- [x] direct 선수목록이 영문 이름으로 내려와 박스스코어/라인업의 한글 선수명과 매칭되지 않는 경로 확인
+- [x] direct 현재 시즌 팀 선수목록 표시 이름을 KBO 한글 엔트리/기록실 이름으로 보정해 박스스코어/라인업 이미지 맵이 한글 경기 원본과 맞도록 보강
+
+### 원인
+- direct relay fallback `_currentAtBatFromMainGame()`가 current player id를 쓰지 않고 `batterImageUrl` / `pitcherImageUrl`을 빈 문자열로 반환해, 선수목록 로딩 지연/실패 또는 이름 표기 차이가 있으면 글자 fallback으로 보일 수 있었다.
+- direct 팀 선수목록은 `eng.koreabaseball.com` 기반이라 `CHOI Won Jun` 같은 영문명이 key가 됐고, 박스스코어/라인업은 `최원준` 같은 한글명을 key로 찾아 이미지 URL 매칭이 실패했다.
+
+### 검증
+- [x] `python3 - <<'PY' ... Main.asmx/GetKboGameList ... PY`
+- [x] `python3 - <<'PY' ... eng.koreabaseball.com/Teams/PlayerSearch.aspx ... PY`
+- [x] `cd app && fvm dart format lib/data/repositories/kbo_direct_repository.dart lib/data/repositories/kbo_direct_player_repository.dart test/data/kbo_direct_repository_test.dart test/data/kbo_direct_player_repository_test.dart`
+- [x] `cd app && fvm flutter analyze lib/data/repositories/kbo_direct_repository.dart lib/data/repositories/kbo_direct_player_repository.dart test/data/kbo_direct_repository_test.dart test/data/kbo_direct_player_repository_test.dart`
+- [x] `cd app && fvm flutter test test/data/kbo_direct_repository_test.dart test/data/kbo_direct_player_repository_test.dart`
+
+---
+
 ## 2026-05-21: direct KBO source validation and relay fallback guard
 
 ### 완료

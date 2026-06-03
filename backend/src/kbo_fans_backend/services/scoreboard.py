@@ -351,6 +351,7 @@ class ScoreboardService:
         resolved_status = str(game.get("status") or "")
         if main_game:
             resolved_status = self._map_status(main_game.get("GAME_STATE_SC"))
+        status_label = self._status_label_for_game(resolved_status, game, main_game)
 
         used_scheduled_fallback = False
         if not game_id or resolved_status == "SCHEDULED":
@@ -374,6 +375,8 @@ class ScoreboardService:
             **game,
             **detail,
             **self._merge_main_game(main_game),
+            "status": resolved_status,
+            "statusLabel": status_label,
             "ticketInfo": self.ticketing_service.build_ticket_info(
                 home_team_id=game.get("homeId"),
                 game_id=game_id,
@@ -395,6 +398,7 @@ class ScoreboardService:
         resolved_status = str(game.get("status") or "")
         if main_game:
             resolved_status = self._map_status(main_game.get("GAME_STATE_SC"))
+        status_label = self._status_label_for_game(resolved_status, game, main_game)
 
         detail = self._scheduled_fallback_detail(game)
         if resolved_status == "LIVE" and not main_game:
@@ -402,7 +406,7 @@ class ScoreboardService:
         elif resolved_status == "FINAL" and not main_game:
             detail["inning"] = "경기종료"
         elif resolved_status == "CANCELLED":
-            detail["inning"] = "경기취소"
+            detail["inning"] = status_label or "경기취소"
         elif resolved_status == "SUSPENDED":
             detail["inning"] = "서스펜디드"
 
@@ -413,6 +417,7 @@ class ScoreboardService:
             **detail,
             **self._merge_main_game(main_game),
             "status": resolved_status,
+            "statusLabel": status_label,
             "ticketInfo": self.ticketing_service.build_ticket_info(
                 home_team_id=game.get("homeId"),
                 game_id=game_id,
@@ -644,9 +649,11 @@ class ScoreboardService:
     def _merge_main_game(self, main_game: dict[str, Any]) -> dict[str, Any]:
         if not main_game:
             return {}
+        status = self._map_status(main_game.get("GAME_STATE_SC"))
         inning = self._format_inning(main_game)
         return {
-            "status": self._map_status(main_game.get("GAME_STATE_SC")),
+            "status": status,
+            "statusLabel": self._status_label_for_main_game(status, main_game),
             "inning": inning,
             "startTime": main_game.get("G_TM"),
             "current": {
@@ -674,11 +681,42 @@ class ScoreboardService:
             return "경기종료"
         if status == "SCHEDULED":
             return f"{main_game.get('G_TM', '')} 예정".strip()
+        if status == "CANCELLED":
+            return self._status_label_for_main_game(status, main_game) or "경기취소"
+        if status == "SUSPENDED":
+            return "서스펜디드"
         inning_no = main_game.get("GAME_INN_NO")
         half = main_game.get("GAME_TB_SC_NM")
         if inning_no and half:
             return f"{inning_no}회{half}"
         return status
+
+    @classmethod
+    def _status_label_for_game(
+        cls,
+        status: str,
+        game: dict[str, Any],
+        main_game: dict[str, Any],
+    ) -> Optional[str]:
+        main_label = cls._status_label_for_main_game(status, main_game)
+        if main_label is not None:
+            return main_label
+        if status == game.get("status"):
+            label = str(game.get("statusLabel") or "").strip()
+            return label or None
+        return None
+
+    @staticmethod
+    def _status_label_for_main_game(
+        status: str,
+        main_game: dict[str, Any],
+    ) -> Optional[str]:
+        if status != "CANCELLED":
+            return None
+        label = str(main_game.get("CANCEL_SC_NM") or "").strip()
+        if not label or label == "정상경기":
+            return None
+        return label
 
     @staticmethod
     def _build_official_highlight_url(game_id: Optional[str]) -> str:
@@ -726,6 +764,7 @@ class ScoreboardService:
         return {
             "gameId": game.get("gameId"),
             "status": game.get("status"),
+            "statusLabel": game.get("statusLabel"),
             "inning": game.get("inning"),
             "stadium": game.get("stadium"),
             "startTime": game.get("startTime"),

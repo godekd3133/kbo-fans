@@ -16,10 +16,11 @@ class LocalAssetPlayerRepository implements PlayerRepository {
   static List<String>? _assetPathsCache;
 
   final DateTime Function() _now;
-  final BootstrapRepository _bootstrapRepository = BootstrapRepository();
+  final BootstrapRepository _bootstrapRepository;
 
   LocalAssetPlayerRepository({DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+    : _now = now ?? DateTime.now,
+      _bootstrapRepository = BootstrapRepository(now: now);
 
   Future<Map<String, String>> buildPlayerImageMap({required int season}) async {
     final result = <String, String>{};

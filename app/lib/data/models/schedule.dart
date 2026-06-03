@@ -11,6 +11,7 @@ class ScheduleGame {
   final int? homeScore;
   final String stadium;
   final String status;
+  final String? statusLabel;
   final TicketInfo? ticketInfo;
 
   const ScheduleGame({
@@ -24,6 +25,7 @@ class ScheduleGame {
     this.homeScore,
     required this.stadium,
     this.status = 'SCHEDULED',
+    this.statusLabel,
     this.ticketInfo,
   });
 }

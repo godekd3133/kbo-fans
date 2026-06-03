@@ -104,27 +104,31 @@ class KboDirectPlayerRepository implements PlayerRepository {
       return _fetchHistoricalTeamPlayers(teamId, season);
     }
 
-    final entryKeys = await _parseRegisterAllEntries(teamId);
-    final grouped = await Future.wait(
-      _positionGroups.map((group) => _fetchPlayerSearchRows(teamId, group)),
-    );
+    final results = await Future.wait([
+      _parseRegisterAllEntryRows(teamId),
+      _fetchCurrentTeamPlayerNamesById(teamId, season),
+      Future.wait(
+        _positionGroups.map((group) => _fetchPlayerSearchRows(teamId, group)),
+      ),
+    ]);
+    final entryRows = results[0] as List<(String, int)>;
+    final koreanNamesById = results[1] as Map<String, String>;
+    final grouped = results[2] as List<List<PlayerProfile>>;
+    final entryKeys = entryRows.toSet();
+    final entryNamesByNumber = {
+      for (final entry in entryRows)
+        if (entry.$2 > 0) entry.$2: entry.$1,
+    };
     final players = grouped.expand((items) => items).toList();
 
     return [
       for (final player in players)
-        _buildPlayerSummary(
+        _buildCurrentTeamPlayerSummary(
           player: player,
           season: season,
-          seasonStats: const {},
-          rosterGroup: entryKeys.contains((player.name, player.number))
-              ? PlayerRosterGroup.entry
-              : PlayerRosterGroup.reserve,
-          status: entryKeys.contains((player.name, player.number))
-              ? PlayerAvailabilityStatus.available
-              : PlayerAvailabilityStatus.inactive,
-          statusNote: entryKeys.contains((player.name, player.number))
-              ? null
-              : '엔트리 제외',
+          koreanNamesById: koreanNamesById,
+          entryNamesByNumber: entryNamesByNumber,
+          entryKeys: entryKeys,
         ),
     ];
   }
@@ -373,7 +377,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
     return fields;
   }
 
-  Future<Set<(String, int)>> _parseRegisterAllEntries(String teamId) async {
+  Future<List<(String, int)>> _parseRegisterAllEntryRows(String teamId) async {
     final html = await _getText(_registerAllUrl);
     final teamName = _registerTeamNameMap[teamId] ?? teamId;
     final rowMatch = RegExp(
@@ -381,14 +385,14 @@ class KboDirectPlayerRepository implements PlayerRepository {
       dotAll: true,
     ).firstMatch(html);
     if (rowMatch == null) {
-      return {};
+      return [];
     }
 
     final cells = RegExp(r'<td[^>]*>(.*?)</td>', dotAll: true)
         .allMatches(rowMatch.group(1)!)
         .map((match) => match.group(1) ?? '')
         .toList();
-    final result = <(String, int)>{};
+    final result = <(String, int)>[];
     for (final cell in cells.skip(2)) {
       for (final item in RegExp(
         r'<li>(.*?)</li>',
@@ -402,6 +406,90 @@ class KboDirectPlayerRepository implements PlayerRepository {
       }
     }
     return result;
+  }
+
+  Future<Map<String, String>> _fetchCurrentTeamPlayerNamesById(
+    String teamId,
+    int season,
+  ) async {
+    try {
+      final results = await Future.wait([
+        _fetchTeamPlayerRecordRows(
+          _hitterAvgUrl,
+          season,
+          teamId,
+          PlayerType.hitter,
+        ),
+        _fetchTeamPlayerRecordRows(
+          _pitcherEraUrl,
+          season,
+          teamId,
+          PlayerType.pitcher,
+        ),
+      ]);
+      return {
+        for (final row in results.expand((items) => items))
+          if (row.id.isNotEmpty && row.name.isNotEmpty) row.id: row.name,
+      };
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  String _resolveCurrentTeamPlayerDisplayName({
+    required PlayerProfile player,
+    required Map<String, String> koreanNamesById,
+    required Map<int, String> entryNamesByNumber,
+  }) {
+    final nameById = koreanNamesById[player.id];
+    if (nameById != null && nameById.isNotEmpty) {
+      return nameById;
+    }
+    final nameByNumber = entryNamesByNumber[player.number];
+    if (nameByNumber != null && nameByNumber.isNotEmpty) {
+      return nameByNumber;
+    }
+    return player.name;
+  }
+
+  String resolveCurrentTeamPlayerDisplayNameForTesting({
+    required PlayerProfile player,
+    required Map<String, String> koreanNamesById,
+    required Map<int, String> entryNamesByNumber,
+  }) {
+    return _resolveCurrentTeamPlayerDisplayName(
+      player: player,
+      koreanNamesById: koreanNamesById,
+      entryNamesByNumber: entryNamesByNumber,
+    );
+  }
+
+  PlayerProfile _buildCurrentTeamPlayerSummary({
+    required PlayerProfile player,
+    required int season,
+    required Map<String, String> koreanNamesById,
+    required Map<int, String> entryNamesByNumber,
+    required Set<(String, int)> entryKeys,
+  }) {
+    final displayName = _resolveCurrentTeamPlayerDisplayName(
+      player: player,
+      koreanNamesById: koreanNamesById,
+      entryNamesByNumber: entryNamesByNumber,
+    );
+    final isEntry = entryKeys.contains((displayName, player.number));
+    return _buildPlayerSummary(
+      player: player,
+      season: season,
+      displayName: displayName,
+      seasonStats: const {},
+      rosterGroup: isEntry
+          ? PlayerRosterGroup.entry
+          : PlayerRosterGroup.reserve,
+      status: isEntry
+          ? PlayerAvailabilityStatus.available
+          : PlayerAvailabilityStatus.inactive,
+      statusNote: isEntry ? null : '엔트리 제외',
+    );
   }
 
   Future<List<PlayerProfile>> _fetchPlayerSearchRows(
@@ -1031,6 +1119,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
   PlayerProfile _buildPlayerSummary({
     required PlayerProfile player,
     required int season,
+    String? displayName,
     required Map<String, String> seasonStats,
     required PlayerRosterGroup rosterGroup,
     required PlayerAvailabilityStatus status,
@@ -1042,7 +1131,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
       teamId: player.teamId,
       playerType: player.playerType,
       imageUrl: kboPlayerImageUrl(season: season, playerId: player.id),
-      name: player.name,
+      name: displayName ?? player.name,
       number: player.number,
       position: player.position,
       roleLabel: player.roleLabel.isNotEmpty

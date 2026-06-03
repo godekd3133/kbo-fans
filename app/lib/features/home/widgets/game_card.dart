@@ -24,7 +24,10 @@ class GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLive = game.status == GameStatus.live;
     final secondary = _secondaryText();
-    final showScore = game.status != GameStatus.scheduled;
+    final showScore =
+        game.status == GameStatus.live ||
+        game.status == GameStatus.final_ ||
+        game.status == GameStatus.suspended;
 
     return AppPressable(
       onTap: onTap,
@@ -74,6 +77,7 @@ class GameCard extends StatelessWidget {
                 children: [
                   GameStatusBadge.forGame(
                     game.status,
+                    statusLabel: game.statusLabel,
                     fontSize: 10,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,
@@ -136,8 +140,12 @@ class GameCard extends StatelessWidget {
       game.status,
       inning: game.inning,
       startTime: game.startTime,
+      statusLabel: game.statusLabel,
     );
-    final label = labelForGameStatus(game.status);
+    final label = labelForGameStatus(
+      game.status,
+      statusLabel: game.statusLabel,
+    );
     return text == label ? null : text;
   }
 

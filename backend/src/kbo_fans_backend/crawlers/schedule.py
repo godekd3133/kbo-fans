@@ -80,7 +80,8 @@ class ScheduleCrawler(BaseCrawler):
         time_text = strip_tags(cells[offset]["Text"])
         play_html = cells[offset + 1]["Text"]
         action_html = cells[offset + 2]["Text"]
-        status = self._derive_status(action_html)
+        status_text = strip_tags(cells[offset + 7]["Text"]) if len(cells) > offset + 7 else ""
+        status = self._derive_status(action_html, status_text)
         away_name, home_name = self._parse_play_names(play_html)
         away_score, home_score = self._parse_play_score(play_html)
         game_id = extract_game_id(action_html)
@@ -104,6 +105,7 @@ class ScheduleCrawler(BaseCrawler):
             "homeScore": home_score,
             "stadium": strip_tags(cells[offset + 6]["Text"]),
             "status": status,
+            "statusLabel": self._derive_status_label(status, status_text),
         }
 
     @staticmethod
@@ -131,7 +133,9 @@ class ScheduleCrawler(BaseCrawler):
         return None, None
 
     @staticmethod
-    def _derive_team_ids_from_game_id(game_id: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+    def _derive_team_ids_from_game_id(
+        game_id: Optional[str],
+    ) -> Tuple[Optional[str], Optional[str]]:
         if not game_id or len(game_id) < 13:
             return None, None
         return game_id[8:10], game_id[10:12]
@@ -147,11 +151,28 @@ class ScheduleCrawler(BaseCrawler):
         return f"{date.replace('-', '')}{away_id}{home_id}0"
 
     @staticmethod
-    def _derive_status(action_html: str) -> str:
+    def _derive_status(action_html: str, status_text: str = "") -> str:
+        if "취소" in status_text:
+            return "CANCELLED"
+        if "서스펜디드" in status_text or "중단" in status_text:
+            return "SUSPENDED"
         if "section=REVIEW" in action_html:
             return "FINAL"
-        if "section=PREVIEW" in action_html or "section=START_PIT" in action_html or "프리뷰" in action_html:
+        if (
+            "section=PREVIEW" in action_html
+            or "section=START_PIT" in action_html
+            or "프리뷰" in action_html
+        ):
             return "SCHEDULED"
         if "문자중계" in action_html or "중계" in action_html:
             return "LIVE"
         return "UNKNOWN"
+
+    @staticmethod
+    def _derive_status_label(status: str, status_text: str) -> Optional[str]:
+        label = status_text.strip()
+        if not label or label == "-":
+            return None
+        if status in {"CANCELLED", "SUSPENDED"}:
+            return label
+        return None

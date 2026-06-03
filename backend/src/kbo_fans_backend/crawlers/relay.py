@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import re
 import logging
+import re
 from typing import Any, Optional
 
 from bs4 import BeautifulSoup
@@ -250,6 +250,8 @@ class RelayCrawler(BaseCrawler):
     def _classify_event(text: str) -> tuple[str, bool]:
         if "경기종료" in text:
             return "GAME_END", False
+        if "포일" in text:
+            return "PASSED_BALL", "득점" in text or "홈인" in text
         if "득점" in text or "홈인" in text:
             return "RUNS", True
         if "홈런" in text:
@@ -319,7 +321,9 @@ class RelayCrawler(BaseCrawler):
         if who is not None:
             spans = who.select("span")
             if spans:
-                hand_text = RelayCrawler._normalize_text(spans[-1].get_text(" ", strip=True)).strip("()")
+                hand_text = RelayCrawler._normalize_text(
+                    spans[-1].get_text(" ", strip=True)
+                ).strip("()")
 
         today_text = RelayCrawler._player_text(element.select_one(".today span"))
         pitch_count_match = re.search(r"(\d+)투구", today_text)

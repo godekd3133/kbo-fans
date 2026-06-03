@@ -156,6 +156,7 @@ class LiveActivityService {
                 targetGame.status,
                 inning: targetGame.inning,
                 startTime: targetGame.startTime,
+                statusLabel: targetGame.statusLabel,
               ),
         'batter': '',
         'pitcher': '',
@@ -282,6 +283,7 @@ class LiveActivityService {
       targetGame.status,
       inning: targetGame.inning,
       startTime: targetGame.startTime,
+      statusLabel: targetGame.statusLabel,
     );
     final updatedAt = _updatedAtText();
     final stadium = targetGame.stadium.isEmpty ? 'KBO' : targetGame.stadium;

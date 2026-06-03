@@ -78,6 +78,16 @@ def test_parse_current_at_bat_derives_base_state_from_runner_names() -> None:
     assert current_at_bat["baseState"] == "주자1,3루"
 
 
+def test_classify_event_marks_passed_ball_and_preserves_scoring() -> None:
+    crawler = RelayCrawler()
+
+    assert crawler._classify_event("3루주자 박해민 : 포일로 홈인") == (
+        "PASSED_BALL",
+        True,
+    )
+    assert crawler._classify_event("타자 홍창기 : 포일") == ("PASSED_BALL", False)
+
+
 def test_assert_valid_relay_response_rejects_error_page() -> None:
     html = "<html><head><title>에러 | KBO홈페이지</title></head><body></body></html>"
 

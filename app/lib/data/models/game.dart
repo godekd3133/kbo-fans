@@ -35,6 +35,7 @@ class Game {
   final TeamScore home;
   final String stadium;
   final String startTime;
+  final String? statusLabel;
   final int? crowd;
   final TicketInfo? ticketInfo;
   final HighlightInfo? highlightInfo;
@@ -47,6 +48,7 @@ class Game {
     required this.home,
     required this.stadium,
     required this.startTime,
+    this.statusLabel,
     this.crowd,
     this.ticketInfo,
     this.highlightInfo,

@@ -65,7 +65,10 @@ class ScheduleGameCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 if (game.status.isNotEmpty)
-                  GameStatusBadge.forSchedule(game.status),
+                  GameStatusBadge.forSchedule(
+                    game.status,
+                    statusLabel: game.statusLabel,
+                  ),
                 const Spacer(),
                 Text(
                   game.stadium,

@@ -105,7 +105,9 @@ void main() {
   test(
     'records overview uses verified exact current season snapshot',
     () async {
-      final repository = LocalAssetPlayerRepository();
+      final repository = LocalAssetPlayerRepository(
+        now: () => DateTime.utc(2026, 5, 20, 5),
+      );
 
       final overview = await repository.getRecordsOverview(season: 2026);
       final leaderNames = [

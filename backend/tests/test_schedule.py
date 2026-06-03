@@ -57,6 +57,21 @@ class _ScheduledZeroMainCrawler:
         ]
 
 
+class _CancelledMainCrawler:
+    def get_kbo_game_list(self, date: str):
+        return [
+            {
+                "G_ID": f"{date.replace('-', '')}LGOB0",
+                "G_TM": "18:30",
+                "GAME_STATE_SC": "4",
+                "CANCEL_SC_NM": "우천취소",
+                "T_SCORE_CN": "0",
+                "B_SCORE_CN": "0",
+                "S_NM": "잠실",
+            }
+        ]
+
+
 class _FailingScheduleCrawler:
     def get_month_schedule(self, month: str):
         raise RuntimeError("schedule unavailable")
@@ -77,6 +92,14 @@ def test_derive_status_marks_start_pit_as_scheduled() -> None:
     status = ScheduleCrawler._derive_status(html)
 
     assert status == "SCHEDULED"
+
+
+def test_derive_status_marks_rain_cancelled() -> None:
+    status = ScheduleCrawler._derive_status("", "우천취소")
+    label = ScheduleCrawler._derive_status_label(status, "우천취소")
+
+    assert status == "CANCELLED"
+    assert label == "우천취소"
 
 
 def test_parse_play_score_extracts_final_score() -> None:
@@ -134,6 +157,25 @@ def test_current_day_scheduled_game_keeps_scores_empty_even_when_main_has_zero(
     game = payload["days"][0]["games"][0]
 
     assert game["status"] == "SCHEDULED"
+    assert game["awayScore"] is None
+    assert game["homeScore"] is None
+
+
+def test_current_day_cancelled_game_uses_cancel_label_and_keeps_scores_empty(
+    tmp_path,
+) -> None:
+    today = date_type.today().isoformat()
+    service = ScheduleService(
+        schedule_crawler=_StubScheduleCrawler(),
+        main_crawler=_CancelledMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_month_schedule(today[:7])
+    game = payload["days"][0]["games"][0]
+
+    assert game["status"] == "CANCELLED"
+    assert game["statusLabel"] == "우천취소"
     assert game["awayScore"] is None
     assert game["homeScore"] is None
 

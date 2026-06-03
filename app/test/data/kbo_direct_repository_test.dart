@@ -44,6 +44,55 @@ void main() {
     );
     expect(directRelaySummaryInningIndexes(withScores), [0, 1, 2]);
   });
+
+  test(
+    'direct relay main-game fallback builds current player images from ids',
+    () {
+      final atBat = KboDirectRepository().currentAtBatFromMainGameForTesting({
+        'SEASON_ID': 2026,
+        'G_ID': '20260519NCOB0',
+        'GAME_INN_NO': 9,
+        'GAME_TB_SC_NM': '초',
+        'T_P_ID': 66965,
+        'T_P_NM': '도태훈',
+        'B_P_ID': 65639,
+        'B_P_NM': '박정수',
+        'BALL_CN': 1,
+        'STRIKE_CN': 2,
+        'OUT_CN': 1,
+      }, fallbackInning: '');
+
+      expect(atBat, isNotNull);
+      expect(atBat!.batterName, '도태훈');
+      expect(atBat.batterImageUrl, contains('/2026/66965.jpg'));
+      expect(atBat.pitcherName, '박정수');
+      expect(atBat.pitcherImageUrl, contains('/2026/65639.jpg'));
+    },
+  );
+
+  test('direct relay classification marks passed ball events', () {
+    final repository = KboDirectRepository();
+
+    expect(repository.classifyRelayEventForTesting('3루주자 박해민 : 포일로 홈인'), (
+      'PASSED_BALL',
+      true,
+    ));
+    expect(repository.classifyRelayEventForTesting('타자 홍창기 : 포일'), (
+      'PASSED_BALL',
+      false,
+    ));
+  });
+
+  test('direct schedule parser preserves rain-cancel status label', () {
+    final repository = KboDirectRepository();
+    final status = repository.deriveScheduleStatusForTesting(
+      '',
+      statusText: '우천취소',
+    );
+
+    expect(status, 'CANCELLED');
+    expect(repository.scheduleStatusLabelForTesting(status, '우천취소'), '우천취소');
+  });
 }
 
 Game _game({

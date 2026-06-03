@@ -215,6 +215,7 @@ class ApiGameRepository implements GameRepository {
           homeScore: gm['homeScore'] as int?,
           stadium: gm['stadium'] as String? ?? '',
           status: gm['status'] as String? ?? 'SCHEDULED',
+          statusLabel: gm['statusLabel'] as String?,
           ticketInfo: _parseTicketInfo(
             gm['ticketInfo'] as Map<String, dynamic>?,
           ),
@@ -279,6 +280,7 @@ class ApiGameRepository implements GameRepository {
       home: _parseTeamScore(json['home'] as Map<String, dynamic>? ?? {}),
       stadium: json['stadium'] as String? ?? '',
       startTime: json['startTime'] as String? ?? '',
+      statusLabel: json['statusLabel'] as String?,
       crowd: json['crowd'] as int?,
       ticketInfo: _parseTicketInfo(json['ticketInfo'] as Map<String, dynamic>?),
       highlightInfo: _parseHighlightInfo(

@@ -429,7 +429,10 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                               child: Text(
                                 isLive
                                     ? 'LIVE'
-                                    : labelForGameStatus(game.status),
+                                    : labelForGameStatus(
+                                        game.status,
+                                        statusLabel: game.statusLabel,
+                                      ),
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: isLive
@@ -481,6 +484,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                                     game.status,
                                     inning: game.inning,
                                     startTime: game.startTime,
+                                    statusLabel: game.statusLabel,
                                   ),
                                   style: TextStyle(
                                     fontSize: 12,
@@ -1584,6 +1588,7 @@ class _HighlightSectionState extends ConsumerState<_HighlightSection> {
       home: widget.game.home,
       stadium: widget.game.stadium,
       startTime: widget.game.startTime,
+      statusLabel: widget.game.statusLabel,
       crowd: widget.game.crowd,
       ticketInfo: widget.game.ticketInfo,
       highlightInfo: highlightAsync.asData?.value ?? widget.game.highlightInfo,

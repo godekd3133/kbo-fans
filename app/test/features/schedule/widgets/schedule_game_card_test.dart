@@ -130,4 +130,27 @@ void main() {
 
     expect(find.text('서스펜디드'), findsOneWidget);
   });
+
+  testWidgets('우천취소 경기는 우천취소 라벨과 vs를 노출한다', (tester) async {
+    const game = ScheduleGame(
+      gameId: '20260520KTSS0',
+      time: '18:30',
+      awayId: 'KT',
+      awayName: 'KT',
+      homeId: 'SS',
+      homeName: '삼성',
+      stadium: '포항',
+      status: 'CANCELLED',
+      statusLabel: '우천취소',
+    );
+
+    await tester.pumpWidget(
+      wrap(const ScheduleGameCard(game: game, showTeamLogos: false)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('우천취소'), findsOneWidget);
+    expect(find.text('경기 취소'), findsNothing);
+    expect(find.text('vs'), findsOneWidget);
+  });
 }

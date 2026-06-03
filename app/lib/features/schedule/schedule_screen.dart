@@ -46,6 +46,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   final Map<String, GlobalKey> _stadiumSectionKeys = {};
   int? _scheduleLoadStartedAtMicros;
   String? _lastScheduleLoadLogKey;
+  int? _pendingSelectedDay;
 
   @override
   void initState() {
@@ -98,11 +99,73 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   void _changeMonth(int delta) {
-    _calendarPageController.animateToPage(
-      _calendarInitialPage + _monthDeltaFromToday(_currentMonth) + delta,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
+    _goToMonth(
+      DateTime(_currentMonth.year, _currentMonth.month + delta),
+      animateCalendar: true,
     );
+  }
+
+  void _goToToday() {
+    final now = DateTime.now();
+    _goToMonth(
+      DateTime(now.year, now.month),
+      selectedDay: now.day,
+      animateCalendar: true,
+    );
+  }
+
+  void _goToMonth(
+    DateTime month, {
+    int? selectedDay,
+    bool animateCalendar = false,
+  }) {
+    final normalizedMonth = DateTime(month.year, month.month);
+    final targetPage = _pageForMonth(normalizedMonth);
+
+    if (_hasSingleCalendarClient()) {
+      final currentPage = _calendarPageController.page?.round();
+      if (currentPage != targetPage) {
+        _pendingSelectedDay = selectedDay;
+        if (animateCalendar) {
+          unawaited(
+            _calendarPageController.animateToPage(
+              targetPage,
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+            ),
+          );
+        } else {
+          _calendarPageController.jumpToPage(targetPage);
+        }
+        return;
+      }
+    }
+
+    _pendingSelectedDay = null;
+    _applyVisibleMonth(normalizedMonth, selectedDay: selectedDay);
+  }
+
+  void _applyVisibleMonth(DateTime month, {int? selectedDay}) {
+    final lastDay = DateTime(month.year, month.month + 1, 0).day;
+    final nextSelectedDay = selectedDay ?? _selectedDay;
+
+    setState(() {
+      _currentMonth = DateTime(month.year, month.month);
+      _selectedDay = nextSelectedDay?.clamp(1, lastDay);
+    });
+  }
+
+  bool _hasSingleCalendarClient() {
+    return _calendarPageController.hasClients &&
+        _calendarPageController.positions.length == 1;
+  }
+
+  int _pageForMonth(DateTime month) {
+    return _calendarInitialPage + _monthDeltaFromToday(month);
+  }
+
+  void _selectDate(DateTime date) {
+    _goToMonth(DateTime(date.year, date.month), selectedDay: date.day);
   }
 
   @override
@@ -116,64 +179,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           child: Column(
             children: [
               _buildMonthHeader(),
-              Expanded(
-                child: AppMotionSwitcher(
-                  child: scheduleAsync.when(
-                    loading: () => const KeyedSubtree(
-                      key: ValueKey('schedule-loading'),
-                      child: Center(
-                        child: CircularProgressIndicator(color: AppColors.live),
-                      ),
-                    ),
-                    error: (e, _) => KeyedSubtree(
-                      key: ValueKey('schedule-error-$_yearMonth'),
-                      child: RefreshIndicator(
-                        onRefresh: _refreshSchedule,
-                        color: AppColors.live,
-                        child: ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: [
-                            SizedBox(
-                              height: 420,
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text(
-                                      '일정을 불러올 수 없습니다',
-                                      style: TextStyle(
-                                        color: AppColors.textDisabled,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      describeAsyncError(e),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textDisabled,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    TextButton(
-                                      onPressed: _refreshSchedule,
-                                      child: const Text('다시 시도'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    data: (days) => KeyedSubtree(
-                      key: ValueKey('schedule-data-$_yearMonth-${days.length}'),
-                      child: _buildBody(days),
-                    ),
-                  ),
-                ),
-              ),
+              Expanded(child: _buildBody(scheduleAsync)),
             ],
           ),
         ),
@@ -224,13 +230,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             onTap: () => _changeMonth(1),
           ),
           const SizedBox(width: 8),
-          _HeaderIconButton(icon: Icons.tune_rounded, onTap: () {}),
+          _HeaderIconButton(icon: Icons.today_rounded, onTap: _goToToday),
         ],
       ),
     );
   }
 
-  Widget _buildBody(List<ScheduleDay> days) {
+  Widget _buildBody(AsyncValue<List<ScheduleDay>> scheduleAsync) {
+    final days = scheduleAsync.asData?.value ?? const <ScheduleDay>[];
     final myTeamId = ref.watch(myTeamProvider);
     final filteredDays = _filterDays(days, myTeamId);
     final gameDays = <int>{};
@@ -262,7 +269,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         if (_viewMode == ScheduleViewMode.calendar) ...[
           _buildCalendarPager(),
           const Divider(color: AppColors.divider, height: 1),
-          Expanded(child: _buildGameList(selectedSchedule)),
+          Expanded(
+            child: scheduleAsync.when(
+              loading: _buildGameListLoading,
+              error: (e, _) => _buildScheduleError(e),
+              data: (_) => _buildGameList(selectedSchedule),
+            ),
+          ),
         ] else ...[
           const Divider(color: AppColors.divider, height: 1),
           Expanded(child: _buildStadiumPager()),
@@ -519,17 +532,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         controller: _calendarPageController,
         onPageChanged: (page) {
           final nextMonth = _monthForPage(page);
-          setState(() {
-            _currentMonth = nextMonth;
-            if (_selectedDay != null) {
-              final lastDay = DateTime(
-                nextMonth.year,
-                nextMonth.month + 1,
-                0,
-              ).day;
-              _selectedDay = _selectedDay!.clamp(1, lastDay);
-            }
-          });
+          final selectedDay = _pendingSelectedDay;
+          _pendingSelectedDay = null;
+          _applyVisibleMonth(nextMonth, selectedDay: selectedDay);
         },
         itemBuilder: (context, index) {
           final month = _monthForPage(index);
@@ -569,17 +574,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       controller: _calendarPageController,
       onPageChanged: (page) {
         final nextMonth = _monthForPage(page);
-        setState(() {
-          _currentMonth = nextMonth;
-          if (_selectedDay != null) {
-            final lastDay = DateTime(
-              nextMonth.year,
-              nextMonth.month + 1,
-              0,
-            ).day;
-            _selectedDay = _selectedDay!.clamp(1, lastDay);
-          }
-        });
+        final selectedDay = _pendingSelectedDay;
+        _pendingSelectedDay = null;
+        _applyVisibleMonth(nextMonth, selectedDay: selectedDay);
       },
       itemBuilder: (context, index) {
         final month = _monthForPage(index);
@@ -672,18 +669,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
                   return Expanded(
                     child: AppPressable(
-                      onTap: () => setState(() {
-                        _currentMonth = DateTime(date.year, date.month);
-                        _selectedDay = date.day;
-                        final targetPage =
-                            _calendarInitialPage +
-                            _monthDeltaFromToday(_currentMonth);
-                        if (_calendarPageController.hasClients &&
-                            _calendarPageController.page?.round() !=
-                                targetPage) {
-                          _calendarPageController.jumpToPage(targetPage);
-                        }
-                      }),
+                      onTap: () => _selectDate(date),
                       pressedScale: 0.92,
                       child: SizedBox(
                         height: 40,
@@ -865,6 +851,52 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                       ? null
                       : _ticketSummary(entry.value.ticketInfo!),
                 ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGameListLoading() {
+    return const Center(
+      child: CircularProgressIndicator(color: AppColors.live),
+    );
+  }
+
+  Widget _buildScheduleError(Object error) {
+    return RefreshIndicator(
+      onRefresh: _refreshSchedule,
+      color: AppColors.live,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: 320,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '일정을 불러올 수 없습니다',
+                    style: TextStyle(color: AppColors.textDisabled),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    describeAsyncError(error),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textDisabled,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _refreshSchedule,
+                    child: const Text('다시 시도'),
+                  ),
+                ],
               ),
             ),
           ),

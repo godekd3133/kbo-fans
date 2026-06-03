@@ -68,6 +68,7 @@ class ScheduleService:
                     "homeScore": row["homeScore"],
                     "stadium": row["stadium"],
                     "status": row["status"],
+                    "statusLabel": row.get("statusLabel"),
                     "ticketInfo": self.ticketing_service.build_ticket_info(
                         home_team_id=row["homeId"],
                         game_id=row["gameId"],
@@ -154,6 +155,9 @@ class ScheduleService:
         if status == "UNKNOWN":
             status = str(game.get("status") or "UNKNOWN")
         should_show_score = status in {"LIVE", "FINAL", "SUSPENDED"}
+        status_label = self._status_label_for_main_game(status, main_game)
+        if status_label is None and status == game.get("status"):
+            status_label = game.get("statusLabel")
 
         updated = {
             **game,
@@ -170,6 +174,7 @@ class ScheduleService:
             ),
             "stadium": main_game.get("S_NM") or game.get("stadium"),
             "status": status,
+            "statusLabel": status_label,
         }
         updated["ticketInfo"] = self.ticketing_service.build_ticket_info(
             home_team_id=updated.get("homeId"),
@@ -207,6 +212,18 @@ class ScheduleService:
             "4": "CANCELLED",
             "5": "SUSPENDED",
         }.get(str(game_state), "UNKNOWN")
+
+    @staticmethod
+    def _status_label_for_main_game(
+        status: str,
+        main_game: dict[str, Any],
+    ) -> Optional[str]:
+        if status != "CANCELLED":
+            return None
+        label = str(main_game.get("CANCEL_SC_NM") or "").strip()
+        if not label or label == "정상경기":
+            return None
+        return label
 
     @staticmethod
     def _parse_int(value: Any) -> Optional[int]:

@@ -137,6 +137,7 @@ class ApiHomeRepository {
       homeScore: json['homeScore'] as int?,
       stadium: json['stadium'] as String? ?? '',
       status: json['status'] as String? ?? 'SCHEDULED',
+      statusLabel: json['statusLabel'] as String?,
       ticketInfo: _parseTicketInfo(json['ticketInfo'] as Map<String, dynamic>?),
     );
   }

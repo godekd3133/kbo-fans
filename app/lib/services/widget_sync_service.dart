@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../core/config/app_config.dart';
+import '../core/utils/game_status_label.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
 import '../data/models/game.dart';
@@ -145,11 +146,20 @@ class WidgetSyncService {
       HomeWidget.saveWidgetData<String>('widget_subtitle', selected.stadium),
       HomeWidget.saveWidgetData<String>(
         'widget_status',
-        selected.inning.isEmpty ? '${selected.startTime} 예정' : selected.inning,
+        selected.inning.isEmpty
+            ? secondaryTextForGameStatus(
+                selected.status,
+                startTime: selected.startTime,
+                statusLabel: selected.statusLabel,
+              )
+            : selected.inning,
       ),
       HomeWidget.saveWidgetData<String>(
         'widget_score',
-        '${selected.away.score} : ${selected.home.score}',
+        selected.status == GameStatus.scheduled ||
+                selected.status == GameStatus.cancelled
+            ? 'vs'
+            : '${selected.away.score} : ${selected.home.score}',
       ),
       HomeWidget.saveWidgetData<String>(
         'widget_away_team_id',
@@ -280,6 +290,7 @@ class WidgetSyncService {
           (game) => [
             game.gameId,
             game.status.name,
+            game.statusLabel ?? '',
             game.inning,
             game.away.score,
             game.home.score,
