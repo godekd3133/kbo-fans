@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-06-04: no-backend 앱 본체 검증 refresh
+
+### 완료
+- [x] 현재 앱 본체가 backend API를 기본 전제로 하지 않는 no-backend direct data 방향을 유지하는지 재검증
+- [x] `USE_BACKEND_API=true` 명시 opt-in에서도 provider routing 계약이 깨지지 않는지 별도 확인
+- [x] release web artifact가 backend health gate 없이 direct KBO + snapshot 경로로 컴파일되는지 확인
+
+### 검증
+- [x] `cd app && fvm flutter analyze` (`No issues found`)
+- [x] `cd app && fvm flutter test` (76 tests passed)
+- [x] `cd app && fvm flutter test --dart-define=USE_BACKEND_API=true test/data/providers_routing_test.dart` (1 test passed)
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/web`; wasm dry-run warning은 `flutter_timezone_web.dart` JS interop warning으로 일반 web release build는 성공)
+
+---
+
 ## 2026-06-04: Live Activity sync KBO 경기일 기준 보정
 
 ### 완료
