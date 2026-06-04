@@ -10,6 +10,7 @@ SKIP_TOOLING=false
 FAILURES=0
 WARNINGS=0
 CHECKS=0
+NEXT_ACTIONS=""
 
 usage() {
   cat <<'EOF'
@@ -82,6 +83,25 @@ fail() {
   echo "fail: $1" >&2
 }
 
+add_next_action() {
+  local item="$1"
+  local existing
+  while IFS= read -r existing; do
+    if [[ -z "$existing" ]]; then
+      continue
+    fi
+    if [[ "$existing" == "$item" ]]; then
+      return
+    fi
+  done <<<"$NEXT_ACTIONS"
+
+  if [[ -z "$NEXT_ACTIONS" ]]; then
+    NEXT_ACTIONS="$item"
+  else
+    NEXT_ACTIONS="${NEXT_ACTIONS}"$'\n'"$item"
+  fi
+}
+
 section() {
   echo
   echo "== $1 =="
@@ -142,10 +162,14 @@ resolve_repo() {
 check_github_secret() {
   local name="$1"
   local secret_names="$2"
+  local action="${3:-}"
   if name_exists "$name" "$secret_names"; then
     pass "GitHub secret configured: $name"
   else
     fail "GitHub secret missing: $name"
+    if [[ -n "$action" ]]; then
+      add_next_action "$action"
+    fi
   fi
 }
 
@@ -153,10 +177,14 @@ check_github_variable_or_secret() {
   local name="$1"
   local secret_names="$2"
   local variable_names="$3"
+  local action="${4:-}"
   if name_exists "$name" "$variable_names" || name_exists "$name" "$secret_names"; then
     pass "GitHub variable/secret configured: $name"
   else
     fail "GitHub variable/secret missing: $name"
+    if [[ -n "$action" ]]; then
+      add_next_action "$action"
+    fi
   fi
 }
 
@@ -203,13 +231,22 @@ audit_github() {
     return
   fi
 
-  for name in \
+  check_github_secret \
     IOS_GOOGLE_SERVICE_INFO_PLIST \
+    "$secret_names" \
+    "firebase-client: download Firebase iOS GoogleService-Info.plist, set IOS_GOOGLE_SERVICE_INFO_PLIST_FILE in the env file, then run github-push-secrets.sh --apply"
+  check_github_secret \
     ANDROID_GOOGLE_SERVICES_JSON \
+    "$secret_names" \
+    "firebase-client: download Firebase Android google-services.json, set ANDROID_GOOGLE_SERVICES_JSON_FILE in the env file, then run github-push-secrets.sh --apply"
+  check_github_secret \
     FIREBASE_SERVICE_ACCOUNT_JSON \
-    APNS_AUTH_KEY_P8; do
-    check_github_secret "$name" "$secret_names"
-  done
+    "$secret_names" \
+    "firebase-admin: create a Firebase Admin service account JSON, set FIREBASE_SERVICE_ACCOUNT_FILE in the env file, then run github-push-secrets.sh --apply"
+  check_github_secret \
+    APNS_AUTH_KEY_P8 \
+    "$secret_names" \
+    "apple-apns: create/download an Apple APNs .p8 key, set APNS_AUTH_KEY_FILE, APNS_KEY_ID, and APNS_TEAM_ID in the env file, then run github-push-secrets.sh --apply"
 
   if name_exists AWS_ROLE_TO_ASSUME "$secret_names"; then
     pass "GitHub AWS auth configured: AWS_ROLE_TO_ASSUME"
@@ -217,26 +254,61 @@ audit_github() {
     pass "GitHub AWS auth configured: AWS access key pair"
   else
     fail "GitHub AWS auth missing: AWS_ROLE_TO_ASSUME or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY"
+    add_next_action "aws-auth: set AWS_ROLE_TO_ASSUME for GitHub OIDC, or set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, then run github-push-secrets.sh --apply"
   fi
 
   if name_exists PUSH_SYNC_SECRET "$secret_names"; then
     pass "GitHub secret configured: PUSH_SYNC_SECRET"
   else
     warn "GitHub secret PUSH_SYNC_SECRET missing; workflow can generate one, but a stable secret is easier to verify later"
+    add_next_action "push-sync: generate PUSH_SYNC_SECRET with openssl rand -hex 32, put it in the env file, then run github-push-secrets.sh --apply"
   fi
 
-  for name in \
+  check_github_variable_or_secret \
     AWS_REGION \
+    "$secret_names" \
+    "$variable_names" \
+    "aws-region: set AWS_REGION in the env file and re-run github-push-secrets.sh --apply"
+  check_github_variable_or_secret \
     FIREBASE_PROJECT_ID \
+    "$secret_names" \
+    "$variable_names" \
+    "firebase-admin: set FIREBASE_PROJECT_ID from the Firebase project settings and re-run github-push-secrets.sh --apply"
+  check_github_variable_or_secret \
     APNS_KEY_ID \
+    "$secret_names" \
+    "$variable_names" \
+    "apple-apns: set APNS_KEY_ID from the Apple APNs key and re-run github-push-secrets.sh --apply"
+  check_github_variable_or_secret \
     APNS_TEAM_ID \
+    "$secret_names" \
+    "$variable_names" \
+    "apple-apns: set APNS_TEAM_ID from Apple Developer membership and re-run github-push-secrets.sh --apply"
+  check_github_variable_or_secret \
     ECR_REPOSITORY_URI \
+    "$secret_names" \
+    "$variable_names" \
+    "aws-infra: create/select an ECR repository, set ECR_REPOSITORY_URI, then re-run github-push-secrets.sh --apply"
+  check_github_variable_or_secret \
     VPC_ID \
+    "$secret_names" \
+    "$variable_names" \
+    "aws-network: choose the demo VPC, set VPC_ID, then re-run github-push-secrets.sh --apply"
+  check_github_variable_or_secret \
     PUBLIC_SUBNET_A_ID \
+    "$secret_names" \
+    "$variable_names" \
+    "aws-network: choose public subnet A for the ALB/ECS service and set PUBLIC_SUBNET_A_ID"
+  check_github_variable_or_secret \
     PUBLIC_SUBNET_B_ID \
-    ACM_CERTIFICATE_ARN; do
-    check_github_variable_or_secret "$name" "$secret_names" "$variable_names"
-  done
+    "$secret_names" \
+    "$variable_names" \
+    "aws-network: choose public subnet B in a different AZ and set PUBLIC_SUBNET_B_ID"
+  check_github_variable_or_secret \
+    ACM_CERTIFICATE_ARN \
+    "$secret_names" \
+    "$variable_names" \
+    "aws-https: issue or select an ACM certificate in the deploy region and set ACM_CERTIFICATE_ARN"
 
   local latest_run
   latest_run="$(
@@ -279,6 +351,8 @@ if [[ -n "$ENV_FILE" ]]; then
   fi
 else
   warn "env file not supplied; copy infra/aws/ecs-fargate/deploy.env.example to a local untracked env file"
+  add_next_action "prepare-env: cp infra/aws/ecs-fargate/deploy.env.example /tmp/kbo-fans-aws.env"
+  add_next_action "prepare-env: edit /tmp/kbo-fans-aws.env with Firebase, Apple, and AWS values"
 fi
 
 section "Local AWS/Docker Tooling"
@@ -292,14 +366,24 @@ fi
 audit_github
 
 section "Next Actions"
+if [[ -n "$NEXT_ACTIONS" ]]; then
+  index=1
+  while IFS= read -r action; do
+    if [[ -z "$action" ]]; then
+      continue
+    fi
+    echo "next_config[$index]: $action"
+    index=$((index + 1))
+  done <<<"$NEXT_ACTIONS"
+fi
+
 if [[ -z "$ENV_FILE" ]]; then
-  echo "next: cp infra/aws/ecs-fargate/deploy.env.example /tmp/kbo-fans-aws.env"
-  echo "next: edit /tmp/kbo-fans-aws.env with Firebase, Apple, and AWS values"
-  echo "next: ./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo <owner/repo>"
+  echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo <owner/repo>"
 else
-  echo "next: ./scripts/github-push-secrets.sh --env-file $ENV_FILE --apply"
-  echo "next: ./scripts/github-push-demo-run.sh --dry-run true --watch"
-  echo "next: ./scripts/github-push-demo-run.sh --dry-run false --watch"
+  echo "next_command: ./scripts/github-push-secrets.sh --env-file $ENV_FILE --apply"
+  echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file $ENV_FILE --repo <owner/repo>"
+  echo "next_command: ./scripts/github-push-demo-run.sh --dry-run true --watch"
+  echo "next_command: ./scripts/github-push-demo-run.sh --dry-run false --watch"
 fi
 
 if [[ "$FAILURES" -gt 0 ]]; then

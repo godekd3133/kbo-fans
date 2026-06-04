@@ -274,7 +274,7 @@ uvicorn kbo_fans_backend.main:app --reload
 - `./scripts/aws-push-demo-deploy.sh`: secret 업로드, ECR image push, CloudFormation deploy, output env 추출, readiness를 순서대로 실행
 - `./scripts/aws-push-tooling-check.sh`: 로컬 AWS CLI credential과 Docker daemon 상태를 확인. 로컬 도구가 없으면 GitHub Actions `Push Demo Deploy` workflow로 같은 배포 파이프라인을 실행할 수 있습니다.
 - `infra/aws/ecs-fargate/deploy.env.example`: preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드에 같이 쓰는 env checklist입니다. 로컬 untracked 파일로 복사한 뒤 실제 값을 채웁니다.
-- `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env`: 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables 상태를 secret 값 없이 한 번에 점검합니다.
+- `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env`: 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables 상태를 secret 값 없이 한 번에 점검하고, 누락된 Firebase/APNs/AWS/GitHub 설정을 `next_config[...]`로 안내합니다.
 - `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`: GitHub Actions `Push Demo Deploy`에 필요한 secrets/variables를 dry-run으로 확인. `--apply`를 붙이면 `gh secret set` / `gh variable set`으로 실제 업로드합니다. obvious placeholder 값은 업로드 전에 실패합니다.
 - `./scripts/github-push-demo-run.sh --dry-run true`: GitHub Actions `Push Demo Deploy` workflow를 dispatch합니다. workflow 파일이 아직 원격 default branch에 없으면 커밋/푸시 필요 상태를 안내하고, 필수 secrets/variables가 누락되면 workflow run 생성 전에 목록을 출력하고 중단합니다.
 - `POST /api/push/live-activity/sync-scoreboard`: 운영 scheduler가 30~60초 간격으로 호출하는 scoreboard sync trigger. 등록된 Live Activity에는 APNs update/end를 보내고, scoreboard diff 기반 득점/역전/종료/이닝 변경은 FCM topic push로 발행합니다.

@@ -309,6 +309,13 @@ workflow 파일이 GitHub default branch에 올라간 뒤에는 CLI로 dispatch�
 
 현재 GitHub secrets/variables가 비어 있으면 이 audit은 실패해야 한다. 그 상태가 정상적인 다음 액션 신호이며, `github-push-secrets.sh --apply` 이후 다시 audit을 실행한다.
 
+audit 출력은 두 종류로 나뉜다.
+
+- `next_config[...]`: Firebase Console, Apple Developer, AWS, GitHub 중 어디에서 어떤 값을 준비해야 하는지 알려주는 설정 작업
+- `next_command:`: 준비한 env 파일을 기준으로 다음에 실행할 검증/업로드/배포 명령
+
+예를 들어 `IOS_GOOGLE_SERVICE_INFO_PLIST`가 없으면 Firebase iOS 앱 설정 파일을 받아 `IOS_GOOGLE_SERVICE_INFO_PLIST_FILE`에 넣으라고 표시하고, `APNS_AUTH_KEY_P8`가 없으면 Apple APNs `.p8`와 `APNS_KEY_ID` / `APNS_TEAM_ID` 준비를 안내한다. secret 값 자체는 출력하지 않는다.
+
 ## 앱 빌드 설정
 
 iOS release/TestFlight 앱은 아래가 필요하다.
