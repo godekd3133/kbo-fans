@@ -116,18 +116,31 @@ require_env() {
   fi
 }
 
-warn_placeholder_env() {
-  local name="$1"
-  local value="${!name:-}"
-  if [[ "$value" == *"<"* \
+is_placeholder_value() {
+  local value="$1"
+  [[ "$value" == *"<"* \
     || "$value" == *"your-"* \
     || "$value" == *"replace_"* \
     || "$value" == *"replace-with"* \
     || "$value" == *"XXXXXXXXXX"* \
     || "$value" == *"123456789012"* \
     || "$value" == *"000000000000"* \
-    || "$value" == *"111111111111"* ]]; then
+    || "$value" == *"111111111111"* ]]
+}
+
+warn_placeholder_env() {
+  local name="$1"
+  local value="${!name:-}"
+  if is_placeholder_value "$value"; then
     warn "$name still looks like a placeholder"
+  fi
+}
+
+fail_placeholder_env() {
+  local name="$1"
+  local value="${!name:-}"
+  if is_placeholder_value "$value"; then
+    fail "$name still looks like a placeholder"
   fi
 }
 
@@ -170,7 +183,9 @@ PY
 check_ios_firebase() {
   local path="$APP_DIR/ios/Runner/GoogleService-Info.plist"
   require_file "iOS Firebase config" "$path"
-  [[ -f "$path" ]] || return
+  if [[ ! -f "$path" ]]; then
+    return 0
+  fi
 
   local bundle_id
   local project_id
@@ -191,7 +206,9 @@ check_ios_firebase() {
 check_android_firebase() {
   local path="$APP_DIR/android/app/google-services.json"
   require_file "Android Firebase config" "$path"
-  [[ -f "$path" ]] || return
+  if [[ ! -f "$path" ]]; then
+    return 0
+  fi
 
   local package_name
   local project_id
@@ -274,7 +291,9 @@ PY
     return
   fi
   require_file "Firebase Admin service account file" "$path"
-  [[ -f "$path" ]] || return
+  if [[ ! -f "$path" ]]; then
+    return 0
+  fi
   if python3 - "$path" <<'PY'
 import json
 import os
@@ -310,7 +329,9 @@ check_apns_key() {
     return
   fi
   require_file "APNs .p8 key file" "$path"
-  [[ -f "$path" ]] || return
+  if [[ ! -f "$path" ]]; then
+    return 0
+  fi
   if grep -q "BEGIN PRIVATE KEY" "$path"; then
     pass "APNs .p8 key format looks valid"
   else
@@ -348,10 +369,10 @@ check_backend_env() {
     pass "APNS_USE_SANDBOX is production-compatible"
   fi
 
-  warn_placeholder_env FIREBASE_PROJECT_ID
-  warn_placeholder_env APNS_KEY_ID
-  warn_placeholder_env APNS_TEAM_ID
-  warn_placeholder_env PUSH_SYNC_SECRET
+  fail_placeholder_env FIREBASE_PROJECT_ID
+  fail_placeholder_env APNS_KEY_ID
+  fail_placeholder_env APNS_TEAM_ID
+  fail_placeholder_env PUSH_SYNC_SECRET
 }
 
 check_aws_env() {
@@ -386,12 +407,12 @@ check_aws_env() {
     warn "SECRET_ARN_PUSH_SYNC_SECRET not set yet; aws-push-secrets.sh will create outputs/aws/ecs-fargate/secrets.env"
   fi
 
-  warn_placeholder_env AWS_REGION
-  warn_placeholder_env ECR_REPOSITORY_URI
-  warn_placeholder_env VPC_ID
-  warn_placeholder_env PUBLIC_SUBNET_A_ID
-  warn_placeholder_env PUBLIC_SUBNET_B_ID
-  warn_placeholder_env ACM_CERTIFICATE_ARN
+  fail_placeholder_env AWS_REGION
+  fail_placeholder_env ECR_REPOSITORY_URI
+  fail_placeholder_env VPC_ID
+  fail_placeholder_env PUBLIC_SUBNET_A_ID
+  fail_placeholder_env PUBLIC_SUBNET_B_ID
+  fail_placeholder_env ACM_CERTIFICATE_ARN
   warn_placeholder_env AWS_ROLE_TO_ASSUME
 }
 

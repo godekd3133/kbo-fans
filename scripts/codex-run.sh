@@ -35,6 +35,7 @@ Usage:
   ./scripts/codex-run.sh aws-push-stack-outputs
   ./scripts/codex-run.sh aws-push-demo-deploy [--dry-run]
   ./scripts/codex-run.sh aws-push-tooling
+  ./scripts/codex-run.sh push-demo-env-bootstrap [--output /tmp/kbo-fans-aws.env] [--force]
   ./scripts/codex-run.sh push-demo-audit [--env-file /path/to/kbo-fans-aws.env]
   ./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env [--apply]
   ./scripts/codex-run.sh github-push-demo-run [--dry-run true] [--watch]
@@ -64,6 +65,7 @@ Commands:
   aws-push-stack-outputs  Export CloudFormation ApiBaseUrl for release API_BASE_URL
   aws-push-demo-deploy  Run the secret/image/stack/output/readiness pipeline
   aws-push-tooling  Check local AWS CLI and Docker daemon availability
+  push-demo-env-bootstrap  Create a local push demo env starter file
   push-demo-audit  Audit iPhone-only push demo readiness without deploying
   github-push-secrets  Validate or upload GitHub Actions secrets/variables for push deploy
   github-push-demo-run  Dispatch the GitHub Actions push demo deploy workflow
@@ -649,6 +651,10 @@ run_aws_push_tooling() {
   bash "$ROOT_DIR/scripts/aws-push-tooling-check.sh" "$@"
 }
 
+run_push_demo_env_bootstrap() {
+  bash "$ROOT_DIR/scripts/push-demo-env-bootstrap.sh" "$@"
+}
+
 run_push_demo_audit() {
   bash "$ROOT_DIR/scripts/push-demo-readiness-audit.sh" "$@"
 }
@@ -1066,6 +1072,9 @@ main() {
       ;;
     aws-push-tooling)
       run_aws_push_tooling "${@:2}"
+      ;;
+    push-demo-env-bootstrap)
+      run_push_demo_env_bootstrap "${@:2}"
       ;;
     push-demo-audit)
       run_push_demo_audit "${@:2}"

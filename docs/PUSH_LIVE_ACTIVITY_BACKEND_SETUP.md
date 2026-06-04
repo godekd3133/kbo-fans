@@ -177,6 +177,16 @@ $EDITOR /tmp/kbo-fans-aws.env
 ./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws
 ```
 
+처음부터 복사해서 채우기보다 현재 repo의 Firebase client config 경로와 project id를 자동 반영한 초안을 만들 수도 있다.
+
+```bash
+./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force
+$EDITOR /tmp/kbo-fans-aws.env
+./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans
+```
+
+bootstrap은 AWS, GitHub, Firebase, Apple API를 호출하지 않는다. `PUSH_SYNC_SECRET`는 로컬 파일에만 생성하고 출력하지 않으며, Apple APNs key와 AWS role/network/HTTPS 값은 placeholder로 남겨 audit이 잡게 한다. `push-live-preflight.sh --aws`는 필수 배포값이 obvious placeholder로 남아 있으면 실패로 처리한다.
+
 `PUSH_SYNC_SECRET`는 `openssl rand -hex 32`로 만들고, `IOS_GOOGLE_SERVICE_INFO_PLIST_FILE`, `ANDROID_GOOGLE_SERVICES_JSON_FILE`, `FIREBASE_SERVICE_ACCOUNT_FILE`, `APNS_AUTH_KEY_FILE`은 로컬 파일 경로를 넣는다. GitHub Actions 배포를 쓸 때는 `AWS_ROLE_TO_ASSUME` OIDC role을 권장하며, 없으면 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`를 넣는다. `github-push-secrets.sh`는 obvious placeholder 값을 GitHub에 업로드하지 못하게 막는다.
 
 수동 경로의 실행 순서는 아래가 안전하다.
@@ -283,7 +293,7 @@ Actions workflow `Push Demo Deploy`에서 `dry_run=true`를 먼저 실행하면 
 GitHub Actions secrets/variables는 `gh` CLI로도 넣을 수 있다. 기본은 dry-run이고 실제 업로드는 `--apply`를 붙였을 때만 실행된다.
 
 ```bash
-cp infra/aws/ecs-fargate/deploy.env.example /tmp/kbo-fans-aws.env
+./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force
 $EDITOR /tmp/kbo-fans-aws.env
 ./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws
 ./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env

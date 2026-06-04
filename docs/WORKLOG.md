@@ -110,6 +110,8 @@
 - [x] `scripts/github-push-secrets.sh`가 obvious placeholder 값을 GitHub Actions secrets/variables로 업로드하기 전에 실패하도록 보강
 - [x] 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables, 최신 deploy run을 배포 없이 점검하는 `scripts/push-demo-readiness-audit.sh`, `./scripts/codex-run.sh push-demo-audit` entrypoint를 추가
 - [x] `push-demo-readiness-audit.sh`가 누락된 Firebase client config, Firebase Admin, APNs, AWS auth/network/HTTPS 입력값을 `next_config[...]`로 분류해 다음 설정 작업을 바로 안내하도록 보강
+- [x] Firebase client config 경로와 project id를 감지해 `/tmp/kbo-fans-aws.env` 같은 로컬 untracked env 초안을 만드는 `scripts/push-demo-env-bootstrap.sh`, `./scripts/codex-run.sh push-demo-env-bootstrap` entrypoint를 추가
+- [x] `push-live-preflight.sh --aws`가 첫 누락 파일에서 조기 종료되지 않고 Firebase Admin, APNs, AWS placeholder를 한 번에 모으도록 보정하고, 배포 필수값의 obvious placeholder는 failure로 처리하도록 강화
 - [x] backend APNs `liveactivity` payload의 `content-state`가 iOS `KboFansScoreAttributes.ContentState` 계약과 맞는지 고정하는 regression test 추가
 - [x] 수동 ECS 템플릿 경로와 CloudFormation full-stack 경로의 역할 차이를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, `README.md`, `backend/README.md`, `infra/aws/cloudformation/README.md`에 기록
 - [x] release no-backend direct 실행/CI artifact도 push / Live Activity token 등록을 위해 운영 `API_BASE_URL`을 주입하도록 `scripts/codex-run.sh`와 `.github/workflows/app-build-artifacts.yml`을 보강
@@ -185,6 +187,10 @@
 - [x] `bash -n scripts/push-demo-readiness-audit.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh push-demo-audit --repo godekd3133/kbo-fans --skip-tooling` 현재 상태 audit 확인: `next_config[...]`가 Firebase client config, Firebase Admin JSON, APNs `.p8`, AWS auth/region/network/HTTPS 누락 설정을 분류해 출력하고 expected failure 종료
 - [x] mock env와 `--skip-gh --skip-tooling`으로 `./scripts/codex-run.sh push-demo-audit --env-file ... --repo godekd3133/kbo-fans` 실행: app project preflight와 env preflight 통과, 배포/workflow dispatch 없이 `next_command` success path 확인
+- [x] `bash -n scripts/push-demo-env-bootstrap.sh scripts/codex-run.sh`
+- [x] `./scripts/codex-run.sh push-demo-env-bootstrap --output /tmp/kbo-fans-aws-codex.env --force` 실행: 로컬 Firebase client config 감지, `PUSH_SYNC_SECRET` 생성, env file mode `600` 확인
+- [x] bootstrap으로 생성한 env에서 `./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws-codex.env --aws` 실행: 외부에서 채워야 하는 Firebase Admin JSON / APNs key / AWS placeholder 누락을 `failures=9` expected failure로 확인
+- [x] non-placeholder mock env에서 `./scripts/push-live-preflight.sh --env-file ... --aws` 실행: `checks=39`, `warnings=4`, `failures=0` 통과 확인
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (15 passed; APNs Live Activity payload contract test 포함)
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/tests/test_push_service.py backend/src/kbo_fans_backend/services/apns_live_activity.py backend/src/kbo_fans_backend/schemas/push.py`
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
