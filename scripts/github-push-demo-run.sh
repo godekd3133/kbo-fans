@@ -159,10 +159,10 @@ check_github_inputs() {
     for name in "${missing[@]}"; do
       echo "  - $name" >&2
     done
-    cat >&2 <<'EOF'
+    cat >&2 <<EOF
 
 Prepare them with:
-  ./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env --apply
+  ./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env --repo $repo --apply
 EOF
     exit 2
   fi

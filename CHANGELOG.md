@@ -33,6 +33,8 @@
 - 앱 종료 후 push / Live Activity 시연 준비 상태를 앱 파일, env, GitHub Actions, 로컬 tooling 기준으로 감사하는 스크립트를 추가
 - push demo env 초안 생성, GitHub Actions OIDC role dry-run, readiness audit, 다음 명령 안내를 한 번에 실행하는 setup status 스크립트를 추가
 - push demo env 초안 생성 시 repo 인자를 받아 후속 OIDC/audit 명령에 실제 GitHub repo를 표시하도록 개선
+- push demo env 초안과 AWS deploy env example에 Firebase/Admin/APNs/AWS 값의 발급 위치와 GitHub 업로드 대상 주석을 추가
+- GitHub Actions push demo dispatch 사전검사 실패 시 secrets 업로드 복구 명령에 실제 GitHub repo를 표시하도록 개선
 - GitHub Actions가 장기 AWS access key 없이 push demo backend를 배포할 수 있도록 `AWS_ROLE_TO_ASSUME` OIDC role 생성 스크립트와 CloudFormation 템플릿을 추가
 - AWS Secrets Manager 값을 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8` env로 주입해 FCM/APNs를 설정할 수 있도록 backend secret 입력 방식을 보강
 - 운영 중 scoreboard sync worker 실행 여부를 확인할 수 있도록 push config diagnostics에 scheduler heartbeat를 추가

@@ -185,7 +185,7 @@ $EDITOR /tmp/kbo-fans-aws.env
 ./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans
 ```
 
-bootstrap은 AWS, GitHub, Firebase, Apple API를 호출하지 않는다. `PUSH_SYNC_SECRET`는 로컬 파일에만 생성하고 출력하지 않으며, Apple APNs key와 AWS role/network/HTTPS 값은 placeholder로 남겨 audit이 잡게 한다. `push-live-preflight.sh --aws`는 필수 배포값이 obvious placeholder로 남아 있으면 실패로 처리한다.
+bootstrap은 AWS, GitHub, Firebase, Apple API를 호출하지 않는다. `PUSH_SYNC_SECRET`는 로컬 파일에만 생성하고 출력하지 않으며, Apple APNs key와 AWS role/network/HTTPS 값은 placeholder로 남겨 audit이 잡게 한다. 생성된 env 파일에는 각 값의 발급 위치와 GitHub Secrets/Variables 업로드 대상이 주석으로 들어간다. `push-live-preflight.sh --aws`는 필수 배포값이 obvious placeholder로 남아 있으면 실패로 처리한다.
 
 전체 준비 상태를 한 번에 보고 싶으면 setup status를 먼저 실행한다. 이 명령은 env 파일이 없으면 초안을 만들고, GitHub OIDC role dry-run과 readiness audit까지 실행하지만 실제 AWS 배포나 GitHub workflow dispatch는 하지 않는다.
 

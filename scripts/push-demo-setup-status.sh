@@ -193,7 +193,7 @@ fi
 
 section "Next Commands"
 if [[ -f "$ENV_FILE" ]]; then
-  echo "next_command: edit $ENV_FILE and replace Firebase Admin, Apple APNs, and AWS placeholders"
+  echo "next_command: edit $ENV_FILE and replace Firebase Admin, Apple APNs, and AWS placeholders by following the inline comments"
   echo "next_command: ./scripts/aws-github-oidc-role.sh --env-file $ENV_FILE --repo $next_repo --update-env-file"
   echo "next_command: ./scripts/github-push-secrets.sh --env-file $ENV_FILE --apply"
   echo "next_command: ./scripts/github-push-demo-run.sh --dry-run true --watch"
