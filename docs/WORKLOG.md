@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-06-04: Web release artifact 정적 로드 검증
+
+### 완료
+- [x] GitHub Actions `App Build Artifacts` run `26932197693`의 `web-release` artifact를 내려받아 zip을 해제
+- [x] artifact metadata에서 `app_environment=release`, `data_mode=no-backend-direct`, `push_api_base_url=https://api.kbofans.com/api` 확인
+- [x] 정적 서버에서 `index.html`, `flutter_bootstrap.js`, `main.dart.js`가 정상 응답하는지 확인
+- [x] release web bundle 안에 push / Live Activity token-registration용 `https://api.kbofans.com/api`와 `release` 문자열이 포함되어 있는지 확인
+
+### 검증
+- [x] `gh run download 26932197693 --repo godekd3133/kbo-fans -n web-release -D /tmp/kbo-fans-web-release-26932197693/artifact`
+- [x] `unzip -q /tmp/kbo-fans-web-release-26932197693/artifact/kbo-fans-web-release.zip -d /tmp/kbo-fans-web-release-26932197693/site`
+- [x] `python3 -m http.server 7358 --bind 127.0.0.1` under extracted artifact site
+- [x] `curl -fsS -w '%{http_code} %{content_type} %{size_download}\n' http://127.0.0.1:7358/` (`200 text/html 3869`)
+- [x] `curl -fsS -w '%{http_code} %{content_type} %{size_download}\n' http://127.0.0.1:7358/flutter_bootstrap.js` (`200 text/javascript 9975`)
+- [x] `curl -fsS -w '%{http_code} %{content_type} %{size_download}\n' http://127.0.0.1:7358/main.dart.js` (`200 text/javascript 3816842`)
+- [x] `rg -a -n 'https://api\.kbofans\.com/api|release' /tmp/kbo-fans-web-release-26932197693/site/main.dart.js`
+
+---
+
 ## 2026-06-04: Push demo audit next action 정밀화
 
 ### 완료

@@ -164,8 +164,8 @@ base64 -i KboFansWidget.mobileprovision | pbcopy
 
 - [ ] `web-dev` artifact 다운로드
 - [x] `web-release` artifact 다운로드
-- [ ] zip 압축 해제 후 정적 서버에서 열리는지 확인
-- [ ] `release` 빌드가 운영 API 기준으로 뜨는지 확인
+- [x] zip 압축 해제 후 정적 서버에서 열리는지 확인 (`run 26932197693`, `index.html` / `flutter_bootstrap.js` / `main.dart.js` 200 응답)
+- [x] `release` 빌드가 no-backend direct data mode와 운영 push `API_BASE_URL=https://api.kbofans.com/api`를 함께 포함하는지 metadata/bundle 기준으로 확인
 
 ## 권장 검증 순서
 
@@ -187,7 +187,7 @@ base64 -i KboFansWidget.mobileprovision | pbcopy
 - [ ] Android release `apk`, `aab` 가 GitHub Actions 에서 정상 생성됨
 - [ ] iOS simulator app zip 이 정상 생성됨
 - [ ] iOS signed `ipa` 가 정상 생성됨
-- [ ] Web static zip 이 정상 생성됨
+- [x] Web static zip 이 정상 생성되고 정적 서버에서 핵심 파일이 응답함
 - [ ] Play Console internal testing 업로드 가능 확인
 - [ ] TestFlight 업로드 가능 확인
 
