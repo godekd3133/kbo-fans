@@ -6,22 +6,19 @@
 
 ### 완료
 - [x] `CLAUDE.md`, `docs/PLANNING.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `docs/WORKLOG.md`, `README.md`, `CHANGELOG.md` 기준으로 8분 발표 흐름 정리
-- [x] "기획한 기능과 구현한 것이 너무 추상적"이라는 피드백을 반영해 발표 원고를 `docs/presentations/kbo_fans_8min_presentation.md`에 재작성
-- [x] 각 슬라이드를 `기획한 기능` / `구현한 것` / `발표 포인트` 구조로 재정리
-- [x] "어떤 기능 뭐뭐뭐" 식으로 더 직관적인 기능 목록과 기능별 설명이 필요하다는 추가 피드백을 반영
-- [x] 발표 원고를 `어떤 기능인가` / `기획 내용` / `구현 내용` 반복 구조로 확장
-- [x] `핵심 메시지`, `최종 메시지`, `발표 문장`, `Self-Review`처럼 AI 생성물처럼 보이는 메타 표현 제거
-- [x] 발표 원고와 PPTX 문구를 `화면에서 하는 일` / `왜 넣었나` / `구현한 것` 중심의 자연스러운 발표 톤으로 재작성
-- [x] 실제 앱 화면 중심으로 14장 humanized PPTX 구성
-  - 온보딩 / 홈 / 일정 / 순위 / 기록실 / 경기 상세 스코어 / 중계 / 박스 / 라인업 / 설정 알림 화면 반영
-- [x] 기술 설명은 상세 아키텍처보다 UX 신뢰성 관점으로 축소
-- [x] 최종 PPTX 생성: `outputs/019e8edf-f74f-7c13-9da8-b88d32e0a45c/presentations/kbo-fans-8min/output/kbo-fans-8min-humanized-presentation.pptx`
+- [x] 발표 원고를 `기능명` + `기획한 내용` / `개발한 내용` 구조로 재작성
+- [x] 슬라이드 제목을 기능명만 남기는 방식으로 정리
+  - 마이팀 / 홈 / 경기 상세 스코어 / 문자중계 / 박스스코어 / 라인업 / 일정 / 예매 알림 / 순위 / 기록실 / 알림 / 데이터 처리 / 구현 현황
+- [x] 본문은 기능별 기획 의도와 실제 구현 범위만 설명하도록 재구성
+- [x] 실제 앱 화면 중심으로 14장 PPTX 재생성
+- [x] 최종 PPTX 생성: `outputs/019e8edf-f74f-7c13-9da8-b88d32e0a45c/presentations/kbo-fans-8min/output/kbo-fans-8min-plan-dev-presentation.pptx`
 
 ### 검증
 - [x] 기존 Playwright 검증 artifact의 실제 앱 화면을 발표 자료용 화면 근거로 선별
-- [x] artifact-tool PPTX export 성공: 14 slides, 3.8MB
-- [x] rendered contact sheet 시각 검수
+- [x] artifact-tool PPTX export 성공: 14 slides, 3.4MB
+- [x] rendered contact sheet 시각 검수: 기능명 제목과 두 개 본문 블록 구성 확인
 - [x] `check_layout_quality.mjs --layout ... --warn-only`: 14개 layout 파일 기준 error 0개, warning 0개
+- [x] 발표 원고와 PPT source에서 이전 메타식 문구 잔존 여부 검색: match 없음
 
 ---
 
