@@ -46,7 +46,7 @@
 - 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`를 우선 사용한다. secret 업로드, image push, CloudFormation deploy, output export, readiness를 순서대로 실행한다.
 - 로컬 AWS CLI 또는 Docker daemon이 준비되지 않았으면 GitHub Actions `Push Demo Deploy` workflow를 사용한다.
 - GitHub Actions secrets/vars 준비는 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` dry-run 후 `--apply`로 실행한다. secret 값을 로그에 출력하지 않는다.
-- workflow 파일이 커밋/푸시된 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`로 dry-run을 실행하고, 통과 후 `--dry-run false --watch`로 실제 배포한다.
+- workflow 파일이 커밋/푸시된 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`로 dry-run을 실행하고, 통과 후 `--dry-run false --watch`로 실제 배포한다. 이 스크립트는 dispatch 전에 필수 GitHub secrets/variables를 확인하며, 별도 점검을 끝낸 경우에만 `--skip-config-check`로 우회한다.
 - scoreboard sync 기본 날짜는 `Asia/Seoul` KBO 경기일 기준이어야 한다.
 - `GeneratedPluginRegistrant.register(...)` 중복 호출로 duplicate plugin crash 가 나지 않게 한다.
 - widget extension plist 에서는

@@ -105,6 +105,7 @@
 - [x] 로컬 env 파일, Firebase client config, Firebase Admin JSON, APNs 파일을 기준으로 GitHub Actions secrets/variables를 dry-run 또는 `--apply` 업로드할 수 있는 `scripts/github-push-secrets.sh`, `./scripts/codex-run.sh github-push-secrets` entrypoint를 추가
 - [x] GitHub Actions app artifact workflow에서 ignored Firebase client config 파일을 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON` secrets에서 복원하도록 보강
 - [x] GitHub Actions `Push Demo Deploy` workflow를 CLI에서 dispatch하고, 원격 workflow 미등록 시 커밋/푸시 필요 상태를 안내하는 `scripts/github-push-demo-run.sh`, `./scripts/codex-run.sh github-push-demo-run` entrypoint를 추가
+- [x] GitHub Actions `Push Demo Deploy` dispatch 전에 필수 secrets/variables 존재를 확인하고, 누락 상태에서는 workflow run을 만들기 전에 중단하도록 `scripts/github-push-demo-run.sh`를 보강
 - [x] 수동 ECS 템플릿 경로와 CloudFormation full-stack 경로의 역할 차이를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, `README.md`, `backend/README.md`, `infra/aws/cloudformation/README.md`에 기록
 - [x] release no-backend direct 실행/CI artifact도 push / Live Activity token 등록을 위해 운영 `API_BASE_URL`을 주입하도록 `scripts/codex-run.sh`와 `.github/workflows/app-build-artifacts.yml`을 보강
 - [x] `API_BASE_URL` override가 provider routing을 backend mode로 바꾸지 않고 push registration base URL만 바꿀 수 있음을 `providers_routing_test.dart`에 추가 확인
@@ -120,7 +121,7 @@
 - [ ] 전체 시연 배포 전 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`가 failures 0개로 통과해야 한다.
 - [ ] 로컬 배포는 `./scripts/aws-push-tooling-check.sh`가 failures 0개여야 가능하다. 로컬 tooling이 안 되면 GitHub Actions `Push Demo Deploy` workflow를 사용한다.
 - [ ] GitHub Actions 배포 전 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` dry-run으로 업로드 대상 이름을 확인하고, 값이 맞으면 `--apply`로 secrets/variables를 등록해야 한다.
-- [ ] GitHub Actions workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`와 `--dry-run false --watch` 순서로 실행해야 한다.
+- [ ] GitHub Actions workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`와 `--dry-run false --watch` 순서로 실행해야 한다. 이 CLI의 config check는 필수 secrets/variables 누락 시 dispatch 전에 실패해야 한다.
 - [ ] release TestFlight/Android artifact에는 운영 `API_BASE_URL`이 push / Live Activity token registration endpoint로 주입되어야 한다.
 - [ ] API task와 scheduler task가 분리되면 `PUSH_REGISTRY_PATH`는 EFS/EBS/DynamoDB 등 공유 영속 저장소를 바라봐야 한다.
 - [ ] ECS sync worker, EventBridge Scheduler, 또는 cron이 live 경기 중 30~60초 간격으로 scoreboard sync를 실행해야 한다.
@@ -167,6 +168,9 @@
 - [x] GitHub 원격에서 `Push Demo Deploy - push-demo-deploy.yml` workflow 노출 확인 (`workflow id 288871566`)
 - [x] `gh secret list` / `gh variable list` 결과 현재 repo에 Actions secrets/variables가 아직 비어 있음을 확인
 - [x] `./scripts/codex-run.sh github-push-demo-run --repo godekd3133/kbo-fans --dry-run true --watch` dispatch 성공 후 expected failure 확인 (`run 26915430732`): `Prepare push secrets` 단계에서 `Missing GitHub secret: FIREBASE_SERVICE_ACCOUNT_JSON`
+- [x] `bash -n scripts/github-push-demo-run.sh scripts/codex-run.sh`
+- [x] `./scripts/codex-run.sh github-push-demo-run --repo godekd3133/kbo-fans --dry-run true` 현재 원격 상태에서 expected failure 확인: 필수 secrets/variables 누락 목록을 출력하고 workflow dispatch 전 중단
+- [x] 사전검사 실패 후 `gh run list --workflow push-demo-deploy.yml` 최신 run이 기존 `26915430732` 그대로임을 확인해 새 workflow run이 생성되지 않았음을 검증
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
 - [x] `cd app && fvm flutter test --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://demo-api.kbofans.example/api test/data/providers_routing_test.dart` (`API_BASE_URL` override + direct provider routing 유지 확인)
 - [x] `plutil -lint app/ios/Runner/Info.plist app/ios/KboFansWidget/Info.plist app/ios/Runner/Runner.entitlements app/ios/KboFansWidgetExtension.entitlements`

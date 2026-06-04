@@ -286,7 +286,7 @@ workflow 파일이 GitHub default branch에 올라간 뒤에는 CLI로 dispatch�
 ./scripts/github-push-demo-run.sh --dry-run false --watch
 ```
 
-현재 원격에 `.github/workflows/push-demo-deploy.yml`가 없으면 이 스크립트는 실패하면서 커밋/푸시가 필요하다고 안내한다.
+현재 원격에 `.github/workflows/push-demo-deploy.yml`가 없으면 이 스크립트는 실패하면서 커밋/푸시가 필요하다고 안내한다. 필수 GitHub secrets/variables가 없으면 workflow run을 만들기 전에 누락 목록을 출력하고 중단한다. 이미 별도 확인을 끝낸 경우에만 `--skip-config-check`로 우회한다.
 
 ## 앱 빌드 설정
 

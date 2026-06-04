@@ -8,6 +8,7 @@ DRY_RUN=true
 IMAGE_TAG="${KBO_BACKEND_IMAGE_TAG:-latest}"
 SKIP_READINESS=false
 WATCH=false
+SKIP_CONFIG_CHECK=false
 
 usage() {
   cat <<'EOF'
@@ -20,6 +21,7 @@ Options:
   --dry-run <true|false>    Run workflow in dry-run mode. Default: true.
   --tag <tag>               Backend image tag. Default: KBO_BACKEND_IMAGE_TAG or latest.
   --skip-readiness          Skip deployed API readiness after stack deploy.
+  --skip-config-check       Do not check GitHub secrets/variables before dispatch.
   --watch                   Wait for the triggered workflow run.
 
 Purpose:
@@ -67,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       SKIP_READINESS=true
       shift
       ;;
+    --skip-config-check)
+      SKIP_CONFIG_CHECK=true
+      shift
+      ;;
     --watch)
       WATCH=true
       shift
@@ -106,6 +112,62 @@ resolve_ref() {
   git branch --show-current
 }
 
+name_exists() {
+  local name="$1"
+  local names="$2"
+  grep -Fxq "$name" <<<"$names"
+}
+
+check_github_inputs() {
+  local repo="$1"
+  local secret_names
+  local variable_names
+  local missing=()
+  local name
+
+  secret_names="$(gh secret list --repo "$repo" | awk '{print $1}')"
+  variable_names="$(gh variable list --repo "$repo" | awk '{print $1}')"
+
+  for name in FIREBASE_SERVICE_ACCOUNT_JSON APNS_AUTH_KEY_P8; do
+    if ! name_exists "$name" "$secret_names"; then
+      missing+=("secret:$name")
+    fi
+  done
+
+  if ! name_exists AWS_ROLE_TO_ASSUME "$secret_names"; then
+    if ! name_exists AWS_ACCESS_KEY_ID "$secret_names" || ! name_exists AWS_SECRET_ACCESS_KEY "$secret_names"; then
+      missing+=("secret:AWS_ROLE_TO_ASSUME or secret:AWS_ACCESS_KEY_ID+AWS_SECRET_ACCESS_KEY")
+    fi
+  fi
+
+  for name in \
+    FIREBASE_PROJECT_ID \
+    APNS_KEY_ID \
+    APNS_TEAM_ID \
+    ECR_REPOSITORY_URI \
+    VPC_ID \
+    PUBLIC_SUBNET_A_ID \
+    PUBLIC_SUBNET_B_ID \
+    ACM_CERTIFICATE_ARN; do
+    if ! name_exists "$name" "$variable_names" && ! name_exists "$name" "$secret_names"; then
+      missing+=("variable_or_secret:$name")
+    fi
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "Missing GitHub Actions inputs for Push Demo Deploy:" >&2
+    for name in "${missing[@]}"; do
+      echo "  - $name" >&2
+    done
+    cat >&2 <<'EOF'
+
+Prepare them with:
+  ./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env --apply
+EOF
+    exit 2
+  fi
+}
+
 require_cmd gh
 require_cmd git
 gh auth status >/dev/null
@@ -130,6 +192,10 @@ Commit and push the workflow file before dispatching:
   git push
 EOF
   exit 1
+fi
+
+if [[ "$SKIP_CONFIG_CHECK" != "true" ]]; then
+  check_github_inputs "$repo"
 fi
 
 gh workflow run push-demo-deploy.yml \

@@ -58,7 +58,7 @@
 - Prefer `./scripts/aws-push-demo-deploy.sh` for the full demo pipeline because it runs secret upload, image push, CloudFormation deploy, output export, and readiness in order.
 - If local AWS CLI or Docker daemon is unavailable, use the GitHub Actions `Push Demo Deploy` workflow after setting the required AWS/Firebase/APNs secrets.
 - Use `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` before `--apply` when preparing GitHub Actions push deploy secrets; it must not print secret values.
-- Dispatch GitHub Actions push deploy with `./scripts/github-push-demo-run.sh --dry-run true --watch` after the workflow file is committed and pushed.
+- Dispatch GitHub Actions push deploy with `./scripts/github-push-demo-run.sh --dry-run true --watch` after the workflow file is committed and pushed. The script checks required GitHub secrets/variables before dispatch; use `--skip-config-check` only after a separate config check.
 - Live Activity scoreboard sync dates must use KBO game day in `Asia/Seoul`, not the AWS host's UTC date.
 - Home first paint should prefer the direct scoreboard path and avoid rendering a separate current-day local cache before the current scoreboard source resolves.
 - Historical standings, records, and finished-game detail should prefer stored snapshots when available over re-crawling upstream pages.
