@@ -44,6 +44,7 @@
 ### Changed
 
 - 앱/웹/릴리즈/CI artifact 기본 데이터 경로를 backend API 없이 direct KBO + 허용된 snapshot 경로로 전환
+- GitHub Actions `App Build Artifacts` workflow의 signing/config/metadata 파일 생성을 runner 들여쓰기와 무관하게 동작하도록 보강
 - Backend API 사용은 `USE_BACKEND_API=true` 명시 opt-in 경로로 분리
 - Release direct 빌드는 데이터 경로를 no-backend로 유지하면서 push / Live Activity token 등록용 운영 `API_BASE_URL`을 함께 주입하도록 보강
 - 웹 기록실/선수 direct 조회가 KBO source를 CORS proxy 경로로 접근하도록 보강

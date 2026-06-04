@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-06-04: App Build Artifacts workflow heredoc 안정화
+
+### 완료
+- [x] GitHub Actions runner에서 `run: |` 들여쓰기 때문에 bash heredoc 종료 토큰이 깨질 수 있는 Android signing, iOS signing/export, platform metadata 생성 경로를 점검
+- [x] `.github/workflows/app-build-artifacts.yml`의 heredoc 기반 파일 생성을 `python3 -c`와 `printf` 기반 생성으로 교체해 YAML 들여쓰기와 무관하게 동작하도록 보강
+- [x] Android key.properties, Android/Web/iOS metadata, iOS ExportOptions.plist 생성 경로를 임시 디렉터리에서 실행 검증
+- [x] release artifact metadata의 `push_api_base_url` 출력은 유지해, release 빌드가 어떤 token-registration backend URL을 품었는지 artifact에서 확인할 수 있게 유지
+- [x] 실제 GitHub Actions 원격 실행은 Firebase/APNs/AWS/GitHub secrets 준비 이후 남은 수동 검증 항목으로 유지
+
+### 검증
+- [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml"); puts "workflow yaml ok"'`
+- [x] `rg -n "<<|EOF|PY" .github/workflows/app-build-artifacts.yml .github/workflows/push-demo-deploy.yml || true` (match 없음)
+- [x] 임시 디렉터리에서 workflow `Create export options` run script 실행 및 `plistlib` load 확인
+- [x] 임시 디렉터리에서 workflow `Configure Android signing` run script 실행 및 keystore/key.properties/GITHUB_ENV 결과 확인
+- [x] 임시 디렉터리에서 workflow metadata 생성 run script를 `matrix.app_environment=release` 치환 후 실행해 각 metadata 파일 주요 필드 확인
+
+---
+
 ## 2026-06-04: Push preflight release URL handoff 검증 보강
 
 ### 완료

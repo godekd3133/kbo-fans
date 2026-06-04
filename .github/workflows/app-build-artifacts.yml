@@ -150,22 +150,14 @@ jobs:
           set -euo pipefail
 
           if [[ -n "${ANDROID_KEYSTORE_BASE64}" && -n "${ANDROID_KEYSTORE_PASSWORD}" && -n "${ANDROID_KEY_ALIAS}" && -n "${ANDROID_KEY_PASSWORD}" ]]; then
-            python3 - <<'PY'
-            import base64
-            import os
-            from pathlib import Path
+            python3 -c 'import base64, os; from pathlib import Path; Path("android/upload-keystore.jks").write_bytes(base64.b64decode(os.environ["ANDROID_KEYSTORE_BASE64"]))'
 
-            Path("android/upload-keystore.jks").write_bytes(
-                base64.b64decode(os.environ["ANDROID_KEYSTORE_BASE64"])
-            )
-            PY
-
-            cat > android/key.properties <<EOF
-            storePassword=${ANDROID_KEYSTORE_PASSWORD}
-            keyPassword=${ANDROID_KEY_PASSWORD}
-            keyAlias=${ANDROID_KEY_ALIAS}
-            storeFile=../upload-keystore.jks
-            EOF
+            {
+              printf 'storePassword=%s\n' "${ANDROID_KEYSTORE_PASSWORD}"
+              printf 'keyPassword=%s\n' "${ANDROID_KEY_PASSWORD}"
+              printf 'keyAlias=%s\n' "${ANDROID_KEY_ALIAS}"
+              printf 'storeFile=../upload-keystore.jks\n'
+            } > android/key.properties
 
             echo "ANDROID_SIGNING_STATUS=release-keystore" >> "$GITHUB_ENV"
           else
@@ -180,15 +172,15 @@ jobs:
 
       - name: Write Android build metadata
         run: |
-          cat > build/android-build-metadata-${{ matrix.app_environment }}.txt <<EOF
-          platform=android
-          app_environment=${{ matrix.app_environment }}
-          data_mode=${DATA_MODE}
-          push_api_base_url=${PUSH_API_BASE_URL}
-          apk=build/app/outputs/flutter-apk/app-release.apk
-          aab=build/app/outputs/bundle/release/app-release.aab
-          signing=${ANDROID_SIGNING_STATUS}
-          EOF
+          {
+            printf 'platform=android\n'
+            printf 'app_environment=%s\n' "${{ matrix.app_environment }}"
+            printf 'data_mode=%s\n' "${DATA_MODE}"
+            printf 'push_api_base_url=%s\n' "${PUSH_API_BASE_URL}"
+            printf 'apk=build/app/outputs/flutter-apk/app-release.apk\n'
+            printf 'aab=build/app/outputs/bundle/release/app-release.aab\n'
+            printf 'signing=%s\n' "${ANDROID_SIGNING_STATUS}"
+          } > build/android-build-metadata-${{ matrix.app_environment }}.txt
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
@@ -261,13 +253,13 @@ jobs:
 
       - name: Write Web build metadata
         run: |
-          cat > build/web-build-metadata-${{ matrix.app_environment }}.txt <<EOF
-          platform=web
-          app_environment=${{ matrix.app_environment }}
-          data_mode=${DATA_MODE}
-          push_api_base_url=${PUSH_API_BASE_URL}
-          archive=build/kbo-fans-web-${{ matrix.app_environment }}.zip
-          EOF
+          {
+            printf 'platform=web\n'
+            printf 'app_environment=%s\n' "${{ matrix.app_environment }}"
+            printf 'data_mode=%s\n' "${DATA_MODE}"
+            printf 'push_api_base_url=%s\n' "${PUSH_API_BASE_URL}"
+            printf 'archive=build/kbo-fans-web-${{ matrix.app_environment }}.zip\n'
+          } > build/web-build-metadata-${{ matrix.app_environment }}.txt
 
       - name: Upload Web artifact
         uses: actions/upload-artifact@v4
@@ -344,15 +336,15 @@ jobs:
 
       - name: Write iOS simulator metadata
         run: |
-          cat > build/ios-simulator-metadata-${{ matrix.app_environment }}.txt <<EOF
-          platform=ios
-          artifact_type=simulator-app
-          app_environment=${{ matrix.app_environment }}
-          data_mode=${DATA_MODE}
-          push_api_base_url=${PUSH_API_BASE_URL}
-          archive=build/ios-simulator-${{ matrix.app_environment }}.zip
-          signing=no-codesign
-          EOF
+          {
+            printf 'platform=ios\n'
+            printf 'artifact_type=simulator-app\n'
+            printf 'app_environment=%s\n' "${{ matrix.app_environment }}"
+            printf 'data_mode=%s\n' "${DATA_MODE}"
+            printf 'push_api_base_url=%s\n' "${PUSH_API_BASE_URL}"
+            printf 'archive=build/ios-simulator-${{ matrix.app_environment }}.zip\n'
+            printf 'signing=no-codesign\n'
+          } > build/ios-simulator-metadata-${{ matrix.app_environment }}.txt
 
       - name: Upload iOS simulator artifact
         uses: actions/upload-artifact@v4
@@ -432,17 +424,13 @@ jobs:
 
           mkdir -p "$RUNNER_TEMP/ios-signing"
 
-          python3 - <<'PY'
-          import base64
-          import os
-          from pathlib import Path
+          decode_base64_file() {
+            python3 -c 'import base64, os, sys; from pathlib import Path; Path(sys.argv[2]).write_bytes(base64.b64decode(os.environ[sys.argv[1]]))' "$1" "$2"
+          }
 
-          temp = Path(os.environ["RUNNER_TEMP"]) / "ios-signing"
-          temp.mkdir(parents=True, exist_ok=True)
-          (temp / "certificate.p12").write_bytes(base64.b64decode(os.environ["IOS_CERTIFICATE_P12_BASE64"]))
-          (temp / "runner.mobileprovision").write_bytes(base64.b64decode(os.environ["IOS_RUNNER_PROFILE_BASE64"]))
-          (temp / "widget.mobileprovision").write_bytes(base64.b64decode(os.environ["IOS_WIDGET_PROFILE_BASE64"]))
-          PY
+          decode_base64_file IOS_CERTIFICATE_P12_BASE64 "$RUNNER_TEMP/ios-signing/certificate.p12"
+          decode_base64_file IOS_RUNNER_PROFILE_BASE64 "$RUNNER_TEMP/ios-signing/runner.mobileprovision"
+          decode_base64_file IOS_WIDGET_PROFILE_BASE64 "$RUNNER_TEMP/ios-signing/widget.mobileprovision"
 
           KEYCHAIN_PATH="$RUNNER_TEMP/ios-signing/app-signing.keychain-db"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
@@ -464,36 +452,29 @@ jobs:
 
       - name: Create export options
         run: |
-          export_method="${IOS_EXPORT_METHOD:-app-store}"
-          cat > ios/ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>compileBitcode</key>
-            <false/>
-            <key>destination</key>
-            <string>export</string>
-            <key>method</key>
-            <string>${export_method}</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.kbofans.kboFans</key>
-              <string>${IOS_RUNNER_PROFILE_SPECIFIER}</string>
-              <key>com.kbofans.kboFans.KboFansWidget</key>
-              <string>${IOS_WIDGET_PROFILE_SPECIFIER}</string>
-            </dict>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>teamID</key>
-            <string>${IOS_TEAM_ID}</string>
-            <key>thinning</key>
-            <string>&lt;none&gt;</string>
-          </dict>
-          </plist>
-          EOF
+          python3 -c '
+          import os
+          import plistlib
+          from pathlib import Path
+
+          export_method = os.environ.get("IOS_EXPORT_METHOD") or "app-store"
+          export_options = {
+              "compileBitcode": False,
+              "destination": "export",
+              "method": export_method,
+              "provisioningProfiles": {
+                  "com.kbofans.kboFans": os.environ["IOS_RUNNER_PROFILE_SPECIFIER"],
+                  "com.kbofans.kboFans.KboFansWidget": os.environ["IOS_WIDGET_PROFILE_SPECIFIER"],
+              },
+              "signingStyle": "manual",
+              "stripSwiftSymbols": True,
+              "teamID": os.environ["IOS_TEAM_ID"],
+              "thinning": "<none>",
+          }
+          Path("ios/ExportOptions.plist").write_bytes(
+              plistlib.dumps(export_options, sort_keys=False)
+          )
+          '
 
       - name: Restore Firebase iOS config
         env:
@@ -533,16 +514,16 @@ jobs:
 
       - name: Write iOS IPA metadata
         run: |
-          cat > build/ios-ipa-metadata-${{ matrix.app_environment }}.txt <<EOF
-          platform=ios
-          artifact_type=signed-ipa
-          app_environment=${{ matrix.app_environment }}
-          data_mode=${DATA_MODE}
-          push_api_base_url=${PUSH_API_BASE_URL}
-          archive=build/ios/ipa/*.ipa
-          export_method=${IOS_EXPORT_METHOD:-app-store}
-          team_id=${IOS_TEAM_ID}
-          EOF
+          {
+            printf 'platform=ios\n'
+            printf 'artifact_type=signed-ipa\n'
+            printf 'app_environment=%s\n' "${{ matrix.app_environment }}"
+            printf 'data_mode=%s\n' "${DATA_MODE}"
+            printf 'push_api_base_url=%s\n' "${PUSH_API_BASE_URL}"
+            printf 'archive=build/ios/ipa/*.ipa\n'
+            printf 'export_method=%s\n' "${IOS_EXPORT_METHOD:-app-store}"
+            printf 'team_id=%s\n' "${IOS_TEAM_ID}"
+          } > build/ios-ipa-metadata-${{ matrix.app_environment }}.txt
 
       - name: Upload signed iOS IPA
         uses: actions/upload-artifact@v4
