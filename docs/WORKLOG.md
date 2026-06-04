@@ -109,6 +109,7 @@
 - [x] `infra/aws/ecs-fargate/deploy.env.example`를 push preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드에 함께 쓰는 단일 checklist로 보강
 - [x] `scripts/github-push-secrets.sh`가 obvious placeholder 값을 GitHub Actions secrets/variables로 업로드하기 전에 실패하도록 보강
 - [x] 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables, 최신 deploy run을 배포 없이 점검하는 `scripts/push-demo-readiness-audit.sh`, `./scripts/codex-run.sh push-demo-audit` entrypoint를 추가
+- [x] backend APNs `liveactivity` payload의 `content-state`가 iOS `KboFansScoreAttributes.ContentState` 계약과 맞는지 고정하는 regression test 추가
 - [x] 수동 ECS 템플릿 경로와 CloudFormation full-stack 경로의 역할 차이를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, `README.md`, `backend/README.md`, `infra/aws/cloudformation/README.md`에 기록
 - [x] release no-backend direct 실행/CI artifact도 push / Live Activity token 등록을 위해 운영 `API_BASE_URL`을 주입하도록 `scripts/codex-run.sh`와 `.github/workflows/app-build-artifacts.yml`을 보강
 - [x] `API_BASE_URL` override가 provider routing을 backend mode로 바꾸지 않고 push registration base URL만 바꿀 수 있음을 `providers_routing_test.dart`에 추가 확인
@@ -180,6 +181,8 @@
 - [x] `bash -n scripts/push-demo-readiness-audit.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh push-demo-audit --repo godekd3133/kbo-fans --skip-tooling` 현재 상태 audit 확인: app project preflight 통과, env file 미지정 warning, local tooling audit skip, GitHub secrets/variables 14개 누락, 최신 workflow run `26915430732` 확인
 - [x] mock env와 `--skip-gh --skip-tooling`으로 `./scripts/codex-run.sh push-demo-audit --env-file ... --repo godekd3133/kbo-fans` 실행: app project preflight와 env preflight 통과, 배포/workflow dispatch 없이 success path 확인
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (15 passed; APNs Live Activity payload contract test 포함)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/tests/test_push_service.py backend/src/kbo_fans_backend/services/apns_live_activity.py backend/src/kbo_fans_backend/schemas/push.py`
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
 - [x] `cd app && fvm flutter test --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://demo-api.kbofans.example/api test/data/providers_routing_test.dart` (`API_BASE_URL` override + direct provider routing 유지 확인)
 - [x] `plutil -lint app/ios/Runner/Info.plist app/ios/KboFansWidget/Info.plist app/ios/Runner/Runner.entitlements app/ios/KboFansWidgetExtension.entitlements`

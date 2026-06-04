@@ -11,6 +11,7 @@ from kbo_fans_backend.schemas.push import (
     NotificationSettings,
     PushRegisterRequest,
 )
+from kbo_fans_backend.services.apns_live_activity import ApnsLiveActivitySender
 from kbo_fans_backend.services.live_activity_scoreboard import LiveActivityScoreboardSyncService
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.services.push_diagnostics import PushConfigurationDiagnostics
@@ -376,6 +377,71 @@ def test_push_config_status_endpoint_uses_sync_secret(monkeypatch) -> None:
     assert denied.status_code == 401
     assert allowed.status_code == 200
     assert allowed.json()["data"]["ready"] is True
+
+
+def test_apns_live_activity_payload_matches_ios_content_state_contract(tmp_path) -> None:
+    settings = _settings(
+        app_env="release",
+        firebase_service_account_path="",
+        push_registry_path=str(tmp_path / "runtime" / "push_registry.json"),
+        apns_auth_key_path="",
+        apns_use_sandbox=False,
+        push_sync_secret="secret",
+        apns_auth_key_p8="-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----\n",
+    )
+    sender = ApnsLiveActivitySender(settings)
+    state = LiveActivityContentState(
+        awayTeamId="LG",
+        awayTeam="LG",
+        homeTeamId="KT",
+        homeTeam="KT",
+        awayScore=4,
+        homeScore=3,
+        inning="8회초",
+        batter="김현수",
+        pitcher="고영표",
+        pitchCount=84,
+        balls=2,
+        strikes=1,
+        outs=1,
+        stadium="수원",
+        updatedAt="21:20:30",
+    )
+
+    payload = sender._build_payload(
+        state=state,
+        event="update",
+        stale_date=1_780_000_120,
+        dismissal_date=None,
+        relevance_score=100,
+    )
+
+    content_state = payload["aps"]["content-state"]
+    assert set(content_state) == {
+        "awayTeamId",
+        "awayTeam",
+        "homeTeamId",
+        "homeTeam",
+        "awayScore",
+        "homeScore",
+        "inning",
+        "batter",
+        "pitcher",
+        "pitchCount",
+        "balls",
+        "strikes",
+        "outs",
+        "stadium",
+        "updatedAt",
+    }
+    assert content_state["awayScore"] == 4
+    assert content_state["homeScore"] == 3
+    assert content_state["pitchCount"] == 84
+    assert content_state["updatedAt"] == "21:20:30"
+    assert payload["aps"]["event"] == "update"
+    assert payload["aps"]["stale-date"] == 1_780_000_120
+    assert payload["aps"]["relevance-score"] == 100
+    assert "dismissal-date" not in payload["aps"]
 
 
 class FakeLiveActivitySender:
