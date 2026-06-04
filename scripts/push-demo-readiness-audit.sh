@@ -68,6 +68,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+repo_hint="${REPO:-<owner/repo>}"
+
 pass() {
   CHECKS=$((CHECKS + 1))
   echo "ok: $1"
@@ -254,7 +256,7 @@ audit_github() {
     pass "GitHub AWS auth configured: AWS access key pair"
   else
     fail "GitHub AWS auth missing: AWS_ROLE_TO_ASSUME or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY"
-    add_next_action "aws-auth: prefer ./scripts/aws-github-oidc-role.sh --env-file <env> --repo <owner/repo> --update-env-file, then run github-push-secrets.sh --apply"
+    add_next_action "aws-auth: prefer ./scripts/aws-github-oidc-role.sh --env-file <env> --repo $repo_hint --update-env-file, then run github-push-secrets.sh --apply"
   fi
 
   if name_exists PUSH_SYNC_SECRET "$secret_names"; then
@@ -378,10 +380,10 @@ if [[ -n "$NEXT_ACTIONS" ]]; then
 fi
 
 if [[ -z "$ENV_FILE" ]]; then
-  echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo <owner/repo>"
+  echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo $repo_hint"
 else
   echo "next_command: ./scripts/github-push-secrets.sh --env-file $ENV_FILE --apply"
-  echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file $ENV_FILE --repo <owner/repo>"
+  echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file $ENV_FILE --repo $repo_hint"
   echo "next_command: ./scripts/github-push-demo-run.sh --dry-run true --watch"
   echo "next_command: ./scripts/github-push-demo-run.sh --dry-run false --watch"
 fi

@@ -193,8 +193,9 @@
 - [x] `python3 -m json.tool infra/aws/cloudformation/github-actions-oidc-role.json`
 - [x] `bash -n scripts/aws-github-oidc-role.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh aws-github-oidc-role --env-file /tmp/kbo-fans-aws-oidc-check.env --repo godekd3133/kbo-fans --dry-run --update-env-file` 실행: AWS 호출 없이 OIDC provider / role stack 계획 출력 확인
-- [x] `bash -n scripts/push-demo-setup-status.sh scripts/codex-run.sh`
+- [x] `bash -n scripts/push-demo-setup-status.sh scripts/push-demo-readiness-audit.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh push-demo-setup-status --env-file /tmp/kbo-fans-setup-status.env --repo godekd3133/kbo-fans --skip-tooling` 실행: env 생성, OIDC dry-run, readiness audit expected attention, 다음 명령 출력 확인
+- [x] `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-setup-status.env --repo godekd3133/kbo-fans --skip-tooling --skip-gh` 실행: placeholder AWS 값으로 expected attention, 다음 명령 repo hint 확인
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (15 passed; APNs Live Activity payload contract test 포함)
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/tests/test_push_service.py backend/src/kbo_fans_backend/services/apns_live_activity.py backend/src/kbo_fans_backend/schemas/push.py`
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
