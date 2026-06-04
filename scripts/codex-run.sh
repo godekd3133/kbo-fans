@@ -35,6 +35,7 @@ Usage:
   ./scripts/codex-run.sh aws-push-stack-outputs
   ./scripts/codex-run.sh aws-push-demo-deploy [--dry-run]
   ./scripts/codex-run.sh aws-push-tooling
+  ./scripts/codex-run.sh aws-github-oidc-role [--env-file /path/to/kbo-fans-aws.env] [--dry-run]
   ./scripts/codex-run.sh push-demo-env-bootstrap [--output /tmp/kbo-fans-aws.env] [--force]
   ./scripts/codex-run.sh push-demo-audit [--env-file /path/to/kbo-fans-aws.env]
   ./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env [--apply]
@@ -65,6 +66,7 @@ Commands:
   aws-push-stack-outputs  Export CloudFormation ApiBaseUrl for release API_BASE_URL
   aws-push-demo-deploy  Run the secret/image/stack/output/readiness pipeline
   aws-push-tooling  Check local AWS CLI and Docker daemon availability
+  aws-github-oidc-role  Create the GitHub Actions OIDC AWS role for push deploy
   push-demo-env-bootstrap  Create a local push demo env starter file
   push-demo-audit  Audit iPhone-only push demo readiness without deploying
   github-push-secrets  Validate or upload GitHub Actions secrets/variables for push deploy
@@ -651,6 +653,10 @@ run_aws_push_tooling() {
   bash "$ROOT_DIR/scripts/aws-push-tooling-check.sh" "$@"
 }
 
+run_aws_github_oidc_role() {
+  bash "$ROOT_DIR/scripts/aws-github-oidc-role.sh" "$@"
+}
+
 run_push_demo_env_bootstrap() {
   bash "$ROOT_DIR/scripts/push-demo-env-bootstrap.sh" "$@"
 }
@@ -1072,6 +1078,9 @@ main() {
       ;;
     aws-push-tooling)
       run_aws_push_tooling "${@:2}"
+      ;;
+    aws-github-oidc-role)
+      run_aws_github_oidc_role "${@:2}"
       ;;
     push-demo-env-bootstrap)
       run_push_demo_env_bootstrap "${@:2}"

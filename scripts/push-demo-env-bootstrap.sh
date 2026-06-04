@@ -220,4 +220,5 @@ if [[ "$generated_push_sync_secret" == "true" ]]; then
   echo "generated=PUSH_SYNC_SECRET"
 fi
 echo "next_command: edit $OUTPUT_FILE and replace Apple/AWS placeholder values"
+echo "next_command: ./scripts/aws-github-oidc-role.sh --env-file $OUTPUT_FILE --repo <owner/repo> --dry-run"
 echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file $OUTPUT_FILE --repo <owner/repo>"

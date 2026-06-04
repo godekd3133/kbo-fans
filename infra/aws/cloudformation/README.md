@@ -16,6 +16,9 @@ Live Activity / Dynamic Island updates.
 It does not create Firebase, Apple APNs keys, ECR images, Route53 records, or ACM
 certificates. Those remain external prerequisites.
 
+It can also create the separate GitHub Actions OIDC role used by the repository
+workflow to deploy this stack without long-lived AWS access keys.
+
 ## Prerequisites
 
 1. Firebase Admin service account JSON
@@ -23,6 +26,26 @@ certificates. Those remain external prerequisites.
 3. ACM certificate in the target AWS region
 4. ECR repository with the backend image pushed as `:latest`, or set `CONTAINER_IMAGE_URI` to an exact image tag
 5. VPC with two public subnets in different Availability Zones
+
+If GitHub Actions will run the deployment, create the OIDC role first:
+
+```bash
+./scripts/aws-github-oidc-role.sh \
+  --env-file /tmp/kbo-fans-aws.env \
+  --repo godekd3133/kbo-fans \
+  --update-env-file \
+  --dry-run
+
+./scripts/aws-github-oidc-role.sh \
+  --env-file /tmp/kbo-fans-aws.env \
+  --repo godekd3133/kbo-fans \
+  --update-env-file
+```
+
+The role trusts only the GitHub OIDC subject
+`repo:godekd3133/kbo-fans:ref:refs/heads/main`. After deploy,
+`AWS_ROLE_TO_ASSUME` is written back to the env file and can be uploaded with
+`./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env --apply`.
 
 Create the push secrets first:
 

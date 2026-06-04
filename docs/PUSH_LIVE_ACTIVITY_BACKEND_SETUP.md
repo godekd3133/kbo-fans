@@ -189,6 +189,23 @@ bootstrap은 AWS, GitHub, Firebase, Apple API를 호출하지 않는다. `PUSH_S
 
 `PUSH_SYNC_SECRET`는 `openssl rand -hex 32`로 만들고, `IOS_GOOGLE_SERVICE_INFO_PLIST_FILE`, `ANDROID_GOOGLE_SERVICES_JSON_FILE`, `FIREBASE_SERVICE_ACCOUNT_FILE`, `APNS_AUTH_KEY_FILE`은 로컬 파일 경로를 넣는다. GitHub Actions 배포를 쓸 때는 `AWS_ROLE_TO_ASSUME` OIDC role을 권장하며, 없으면 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`를 넣는다. `github-push-secrets.sh`는 obvious placeholder 값을 GitHub에 업로드하지 못하게 막는다.
 
+GitHub Actions용 AWS OIDC role은 아래 스크립트로 만들 수 있다. GitHub 공식 AWS OIDC 설정은 provider URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`를 사용하고, AWS IAM은 `token.actions.githubusercontent.com:sub` 조건으로 repo/branch를 제한하라고 안내한다. 이 repo의 스크립트도 `repo:godekd3133/kbo-fans:ref:refs/heads/main`만 role을 assume할 수 있게 만든다.
+
+```bash
+./scripts/aws-github-oidc-role.sh \
+  --env-file /tmp/kbo-fans-aws.env \
+  --repo godekd3133/kbo-fans \
+  --update-env-file \
+  --dry-run
+
+./scripts/aws-github-oidc-role.sh \
+  --env-file /tmp/kbo-fans-aws.env \
+  --repo godekd3133/kbo-fans \
+  --update-env-file
+```
+
+실행 후 `/tmp/kbo-fans-aws.env`의 `AWS_ROLE_TO_ASSUME`가 실제 role ARN으로 바뀐다. 그 다음 `./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env --apply`를 실행하면 GitHub Actions secret으로 올라간다. OIDC role 생성 자체는 AWS IAM/CloudFormation 권한이 있는 로컬 AWS credential이 필요하다.
+
 수동 경로의 실행 순서는 아래가 안전하다.
 
 1. `./scripts/aws-push-secrets.sh`로 Secrets Manager 값을 만들고 `outputs/aws/ecs-fargate/secrets.env`를 생성한다.
@@ -296,6 +313,8 @@ GitHub Actions secrets/variables는 `gh` CLI로도 넣을 수 있다. 기본은 
 ./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force
 $EDITOR /tmp/kbo-fans-aws.env
 ./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws
+./scripts/aws-github-oidc-role.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file --dry-run
+./scripts/aws-github-oidc-role.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file
 ./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env
 ./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env --apply
 ```

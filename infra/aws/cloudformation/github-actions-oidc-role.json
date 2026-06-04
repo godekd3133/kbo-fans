@@ -1,0 +1,301 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "KBO Fans GitHub Actions OIDC role for push demo deployment.",
+    "Parameters": {
+        "ExistingGitHubOidcProviderArn": {
+            "Type": "String",
+            "Default": "",
+            "Description": "Optional existing IAM OIDC provider ARN for token.actions.githubusercontent.com. Leave empty to create one in this stack."
+        },
+        "GitHubOwner": {
+            "Type": "String",
+            "Default": "godekd3133",
+      "AllowedPattern": "[A-Za-z0-9_.-]+",
+      "Description": "GitHub repository owner or organization."
+    },
+    "GitHubRepo": {
+      "Type": "String",
+      "Default": "kbo-fans",
+      "AllowedPattern": "[A-Za-z0-9_.-]+",
+      "Description": "GitHub repository name."
+    },
+    "GitHubBranchName": {
+      "Type": "String",
+      "Default": "main",
+      "AllowedPattern": "[A-Za-z0-9._/-]+",
+      "Description": "Branch allowed to assume this AWS role."
+    },
+    "RoleName": {
+      "Type": "String",
+      "Default": "kbo-fans-github-actions-push-demo",
+      "AllowedPattern": "[A-Za-z0-9+=,.@_-]+",
+      "Description": "IAM role name to create for GitHub Actions."
+    },
+    "StackNamePrefix": {
+      "Type": "String",
+      "Default": "kbo-fans",
+      "AllowedPattern": "[a-zA-Z0-9-]+",
+      "Description": "Resource name prefix used by the push demo CloudFormation stack."
+    },
+    "AwsSecretPrefix": {
+      "Type": "String",
+      "Default": "/kbo-fans",
+      "AllowedPattern": "/?[A-Za-z0-9/_+=.@-]+",
+            "Description": "Secrets Manager path prefix used by aws-push-secrets.sh."
+        }
+    },
+    "Conditions": {
+        "CreateGitHubOidcProvider": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistingGitHubOidcProviderArn"
+                },
+                ""
+            ]
+        }
+    },
+    "Resources": {
+        "GitHubOidcProvider": {
+            "Type": "AWS::IAM::OIDCProvider",
+            "Condition": "CreateGitHubOidcProvider",
+            "Properties": {
+                "Url": "https://token.actions.githubusercontent.com",
+                "ClientIdList": [
+                    "sts.amazonaws.com"
+                ],
+                "Tags": [
+                    {
+                        "Key": "Project",
+                        "Value": "kbo-fans"
+                    },
+                    {
+                        "Key": "Purpose",
+                        "Value": "github-actions-push-demo"
+                    }
+                ]
+            }
+        },
+        "GitHubActionsRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+        "RoleName": {
+          "Ref": "RoleName"
+        },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Federated": {
+                                    "Fn::If": [
+                                        "CreateGitHubOidcProvider",
+                                        {
+                                            "Ref": "GitHubOidcProvider"
+                                        },
+                                        {
+                                            "Ref": "ExistingGitHubOidcProviderArn"
+                                        }
+                                    ]
+                                }
+                            },
+                            "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+                  "token.actions.githubusercontent.com:sub": {
+                    "Fn::Sub": "repo:${GitHubOwner}/${GitHubRepo}:ref:refs/heads/${GitHubBranchName}"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": {
+              "Fn::Sub": "${RoleName}-push-demo-deploy"
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "CloudFormationDeploy",
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudformation:CreateChangeSet",
+                    "cloudformation:CreateStack",
+                    "cloudformation:DeleteChangeSet",
+                    "cloudformation:DescribeChangeSet",
+                    "cloudformation:DescribeStackEvents",
+                    "cloudformation:DescribeStackResources",
+                    "cloudformation:DescribeStacks",
+                    "cloudformation:ExecuteChangeSet",
+                    "cloudformation:GetTemplate",
+                    "cloudformation:UpdateStack",
+                    "cloudformation:ValidateTemplate"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "PushDemoIamRoles",
+                  "Effect": "Allow",
+                  "Action": [
+                    "iam:AttachRolePolicy",
+                    "iam:CreateRole",
+                    "iam:DeleteRole",
+                    "iam:DeleteRolePolicy",
+                    "iam:DetachRolePolicy",
+                    "iam:GetRole",
+                    "iam:ListAttachedRolePolicies",
+                    "iam:ListRolePolicies",
+                    "iam:PassRole",
+                    "iam:PutRolePolicy",
+                    "iam:TagRole",
+                    "iam:UntagRole",
+                    "iam:UpdateAssumeRolePolicy"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${StackNamePrefix}-*"
+                  }
+                },
+                {
+                  "Sid": "EcrAuth",
+                  "Effect": "Allow",
+                  "Action": "ecr:GetAuthorizationToken",
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "EcrBackendImage",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecr:BatchCheckLayerAvailability",
+                    "ecr:BatchGetImage",
+                    "ecr:CompleteLayerUpload",
+                    "ecr:CreateRepository",
+                    "ecr:DescribeRepositories",
+                    "ecr:InitiateLayerUpload",
+                    "ecr:PutImage",
+                    "ecr:UploadLayerPart"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:ecr:${AWS::Region}:${AWS::AccountId}:repository/${StackNamePrefix}-*"
+                  }
+                },
+                {
+                  "Sid": "PushSecrets",
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:CreateSecret",
+                    "secretsmanager:DescribeSecret",
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:PutSecretValue",
+                    "secretsmanager:TagResource"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AwsSecretPrefix}/*"
+                  }
+                },
+                {
+                  "Sid": "EcsFargateDeploy",
+                  "Effect": "Allow",
+                  "Action": [
+                    "ecs:CreateCluster",
+                    "ecs:CreateService",
+                    "ecs:DeleteCluster",
+                    "ecs:DeleteService",
+                    "ecs:DeregisterTaskDefinition",
+                    "ecs:DescribeClusters",
+                    "ecs:DescribeServices",
+                    "ecs:DescribeTaskDefinition",
+                    "ecs:RegisterTaskDefinition",
+                    "ecs:TagResource",
+                    "ecs:UpdateService"
+                  ],
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "AlbEc2EfsLogs",
+                  "Effect": "Allow",
+                  "Action": [
+                    "acm:DescribeCertificate",
+                    "ec2:AuthorizeSecurityGroupEgress",
+                    "ec2:AuthorizeSecurityGroupIngress",
+                    "ec2:CreateSecurityGroup",
+                    "ec2:CreateTags",
+                    "ec2:DeleteSecurityGroup",
+                    "ec2:DeleteTags",
+                    "ec2:DescribeSecurityGroups",
+                    "ec2:DescribeSubnets",
+                    "ec2:DescribeVpcs",
+                    "ec2:RevokeSecurityGroupEgress",
+                    "ec2:RevokeSecurityGroupIngress",
+                    "efs:CreateFileSystem",
+                    "efs:CreateMountTarget",
+                    "efs:DeleteFileSystem",
+                    "efs:DeleteMountTarget",
+                    "efs:DescribeFileSystems",
+                    "efs:DescribeMountTargets",
+                    "elasticloadbalancing:AddTags",
+                    "elasticloadbalancing:CreateListener",
+                    "elasticloadbalancing:CreateLoadBalancer",
+                    "elasticloadbalancing:CreateTargetGroup",
+                    "elasticloadbalancing:DeleteListener",
+                    "elasticloadbalancing:DeleteLoadBalancer",
+                    "elasticloadbalancing:DeleteTargetGroup",
+                    "elasticloadbalancing:DescribeListeners",
+                    "elasticloadbalancing:DescribeLoadBalancers",
+                    "elasticloadbalancing:DescribeTargetGroups",
+                    "elasticloadbalancing:ModifyListener",
+                    "elasticloadbalancing:ModifyLoadBalancerAttributes",
+                    "elasticloadbalancing:ModifyTargetGroup",
+                    "elasticloadbalancing:RemoveTags",
+                    "elasticloadbalancing:SetSecurityGroups",
+                    "elasticloadbalancing:SetSubnets",
+                    "logs:CreateLogGroup",
+                    "logs:DeleteLogGroup",
+                    "logs:DescribeLogGroups",
+                    "logs:PutRetentionPolicy",
+                    "logs:TagResource"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+    "Outputs": {
+        "OidcProviderArn": {
+            "Description": "GitHub Actions OIDC provider ARN used by this role.",
+            "Value": {
+                "Fn::If": [
+                    "CreateGitHubOidcProvider",
+                    {
+                        "Ref": "GitHubOidcProvider"
+                    },
+                    {
+                        "Ref": "ExistingGitHubOidcProviderArn"
+                    }
+                ]
+            }
+        },
+        "RoleArn": {
+            "Description": "GitHub Actions AWS_ROLE_TO_ASSUME value.",
+            "Value": {
+        "Fn::GetAtt": [
+          "GitHubActionsRole",
+          "Arn"
+        ]
+      }
+    },
+    "TrustedSubject": {
+      "Description": "GitHub OIDC subject allowed by this role.",
+      "Value": {
+        "Fn::Sub": "repo:${GitHubOwner}/${GitHubRepo}:ref:refs/heads/${GitHubBranchName}"
+      }
+    }
+  }
+}

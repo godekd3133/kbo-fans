@@ -133,6 +133,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run.sh aws-push-stack-outputs
 ./scripts/codex-run.sh aws-push-demo-deploy --dry-run
 ./scripts/codex-run.sh aws-push-tooling
+./scripts/codex-run.sh aws-github-oidc-role --dry-run
 ./scripts/codex-run.sh push-demo-env-bootstrap --force
 ./scripts/codex-run.sh push-demo-audit --env-file /path/to/kbo-fans-aws.env
 ./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env
@@ -274,6 +275,7 @@ uvicorn kbo_fans_backend.main:app --reload
 - `./scripts/aws-push-stack-outputs.sh`: CloudFormation output의 `ApiBaseUrl`을 `RELEASE_API_BASE_URL` / `API_BASE_URL` env로 추출
 - `./scripts/aws-push-demo-deploy.sh`: secret 업로드, ECR image push, CloudFormation deploy, output env 추출, readiness를 순서대로 실행
 - `./scripts/aws-push-tooling-check.sh`: 로컬 AWS CLI credential과 Docker daemon 상태를 확인. 로컬 도구가 없으면 GitHub Actions `Push Demo Deploy` workflow로 같은 배포 파이프라인을 실행할 수 있습니다.
+- `./scripts/aws-github-oidc-role.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file`: GitHub Actions가 장기 AWS access key 없이 배포할 수 있도록 `AWS_ROLE_TO_ASSUME` OIDC role을 만들고 env 파일에 반영합니다.
 - `infra/aws/ecs-fargate/deploy.env.example`: preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드에 같이 쓰는 env checklist입니다. 로컬 untracked 파일로 복사한 뒤 실제 값을 채웁니다.
 - `./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force`: 로컬 Firebase client config를 감지해 push demo env 초안을 만들고, Apple/APNs/AWS placeholder를 남깁니다. 생성 파일은 secret이 들어갈 수 있으므로 커밋하지 않습니다.
 - `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env`: 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables 상태를 secret 값 없이 한 번에 점검하고, 누락된 Firebase/APNs/AWS/GitHub 설정을 `next_config[...]`로 안내합니다.
@@ -288,6 +290,7 @@ GitHub Actions 배포:
 - Required secrets/vars: `AWS_ROLE_TO_ASSUME` 또는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `PUSH_SYNC_SECRET`, `ECR_REPOSITORY_URI`, `VPC_ID`, `PUBLIC_SUBNET_A_ID`, `PUBLIC_SUBNET_B_ID`, `ACM_CERTIFICATE_ARN`
 - `dry_run=true`는 AWS/Docker deploy call 없이 repo script와 secret/env 형태를 검증합니다.
 - `dry_run=false`는 secret 업로드, ECR image push, CloudFormation deploy, stack output export, readiness를 실행합니다.
+- AWS 인증은 `AWS_ROLE_TO_ASSUME` OIDC role을 우선 사용합니다. `./scripts/aws-github-oidc-role.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file`는 GitHub OIDC provider와 main branch trust policy를 준비하고 env 파일에 role ARN을 씁니다.
 - 로컬 env 파일에서 GitHub 입력값을 올릴 때는 먼저 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`로 dry-run을 보고, 이름이 맞으면 `--apply`를 붙입니다.
 - 로컬 env 파일을 처음 만들 때는 `./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force`로 Firebase project id와 client config 경로가 채워진 초안을 만든 뒤 Apple/AWS placeholder를 바꿉니다.
 - 전체 준비 상태는 `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans`로 점검합니다. 이 명령은 배포나 workflow dispatch를 실행하지 않습니다.

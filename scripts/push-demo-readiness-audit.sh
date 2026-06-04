@@ -254,7 +254,7 @@ audit_github() {
     pass "GitHub AWS auth configured: AWS access key pair"
   else
     fail "GitHub AWS auth missing: AWS_ROLE_TO_ASSUME or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY"
-    add_next_action "aws-auth: set AWS_ROLE_TO_ASSUME for GitHub OIDC, or set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, then run github-push-secrets.sh --apply"
+    add_next_action "aws-auth: prefer ./scripts/aws-github-oidc-role.sh --env-file <env> --repo <owner/repo> --update-env-file, then run github-push-secrets.sh --apply"
   fi
 
   if name_exists PUSH_SYNC_SECRET "$secret_names"; then

@@ -109,6 +109,7 @@
 - [x] `push-demo-readiness-audit.sh`가 누락된 Firebase client config, Firebase Admin, APNs, AWS auth/network/HTTPS 입력값을 `next_config[...]`로 분류해 다음 설정 작업을 바로 안내하도록 보강
 - [x] Firebase client config 경로와 project id를 감지해 `/tmp/kbo-fans-aws.env` 같은 로컬 untracked env 초안을 만드는 `scripts/push-demo-env-bootstrap.sh`, `./scripts/codex-run.sh push-demo-env-bootstrap` entrypoint를 추가
 - [x] `push-live-preflight.sh --aws`가 첫 누락 파일에서 조기 종료되지 않고 Firebase Admin, APNs, AWS placeholder를 한 번에 모으도록 보정하고, 배포 필수값의 obvious placeholder는 failure로 처리하도록 강화
+- [x] GitHub Actions가 장기 AWS access key 없이 배포할 수 있도록 `AWS_ROLE_TO_ASSUME` OIDC role CloudFormation 템플릿과 `scripts/aws-github-oidc-role.sh`, `./scripts/codex-run.sh aws-github-oidc-role` entrypoint를 추가
 - [x] backend APNs `liveactivity` payload의 `content-state`가 iOS `KboFansScoreAttributes.ContentState` 계약과 맞는지 고정하는 regression test 추가
 - [x] 수동 ECS 템플릿 경로와 CloudFormation full-stack 경로의 역할 차이를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, `README.md`, `backend/README.md`, `infra/aws/cloudformation/README.md`에 기록
 - [x] release no-backend direct 실행/CI artifact도 push / Live Activity token 등록을 위해 운영 `API_BASE_URL`을 주입하도록 `scripts/codex-run.sh`와 `.github/workflows/app-build-artifacts.yml`을 보강
@@ -188,6 +189,9 @@
 - [x] `./scripts/codex-run.sh push-demo-env-bootstrap --output /tmp/kbo-fans-aws-codex.env --force` 실행: 로컬 Firebase client config 감지, `PUSH_SYNC_SECRET` 생성, env file mode `600` 확인
 - [x] bootstrap으로 생성한 env에서 `./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws-codex.env --aws` 실행: 외부에서 채워야 하는 Firebase Admin JSON / APNs key / AWS placeholder 누락을 `failures=9` expected failure로 확인
 - [x] non-placeholder mock env에서 `./scripts/push-live-preflight.sh --env-file ... --aws` 실행: `checks=39`, `warnings=4`, `failures=0` 통과 확인
+- [x] `python3 -m json.tool infra/aws/cloudformation/github-actions-oidc-role.json`
+- [x] `bash -n scripts/aws-github-oidc-role.sh scripts/codex-run.sh`
+- [x] `./scripts/codex-run.sh aws-github-oidc-role --env-file /tmp/kbo-fans-aws-oidc-check.env --repo godekd3133/kbo-fans --dry-run --update-env-file` 실행: AWS 호출 없이 OIDC provider / role stack 계획 출력 확인
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (15 passed; APNs Live Activity payload contract test 포함)
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/tests/test_push_service.py backend/src/kbo_fans_backend/services/apns_live_activity.py backend/src/kbo_fans_backend/schemas/push.py`
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과

@@ -49,6 +49,7 @@
 - CloudFormation stack output은 `./scripts/aws-push-stack-outputs.sh`로 추출하고, `outputs/aws/cloudformation/stack.env`의 `RELEASE_API_BASE_URL` / `API_BASE_URL`을 release build에 주입한다.
 - 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`를 우선 사용한다. secret 업로드, image push, CloudFormation deploy, output export, readiness를 순서대로 실행한다.
 - 로컬 AWS CLI 또는 Docker daemon이 준비되지 않았으면 GitHub Actions `Push Demo Deploy` workflow를 사용한다.
+- GitHub Actions AWS 인증은 access key보다 `AWS_ROLE_TO_ASSUME` OIDC role을 우선한다. `./scripts/aws-github-oidc-role.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file`로 main branch 전용 trust policy를 만든 뒤 GitHub secrets에 업로드한다.
 - GitHub Actions secrets/vars 준비는 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` dry-run 후 `--apply`로 실행한다. secret 값을 로그에 출력하지 않는다.
 - workflow 파일이 커밋/푸시된 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`로 dry-run을 실행하고, 통과 후 `--dry-run false --watch`로 실제 배포한다. 이 스크립트는 dispatch 전에 필수 GitHub secrets/variables를 확인하며, 별도 점검을 끝낸 경우에만 `--skip-config-check`로 우회한다.
 - scoreboard sync 기본 날짜는 `Asia/Seoul` KBO 경기일 기준이어야 한다.
