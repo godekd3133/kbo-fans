@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-06-04: Web dev artifact 정적 로드 검증
+
+### 완료
+- [x] GitHub Actions `App Build Artifacts` run `26932509232`의 `web-dev` artifact를 API로 내려받아 zip을 해제
+- [x] artifact metadata에서 `app_environment=dev`, `data_mode=no-backend-direct`, `push_api_base_url=` 빈 값을 확인
+- [x] dev web bundle 안에 dev 기본 API 문자열 `https://dev-api.kbofans.com/api`가 포함되어 있는지 확인
+- [x] 정적 서버에서 `index.html`, `flutter_bootstrap.js`, `main.dart.js`가 정상 응답하는지 확인
+
+### 검증
+- [x] `gh run view 26932509232 --repo godekd3133/kbo-fans --json databaseId,headSha,conclusion,status,jobs` (`success`, `headSha=fc96d51214b88124f3956fec40ff12d7c6b71d54`)
+- [x] `gh api repos/godekd3133/kbo-fans/actions/artifacts/7403667746/zip > /tmp/kbo-fans-web-dev-26932509232/web-dev-artifact.zip`
+- [x] `unzip -q /tmp/kbo-fans-web-dev-26932509232/artifact/kbo-fans-web-dev.zip -d /tmp/kbo-fans-web-dev-26932509232/site`
+- [x] `grep -qx 'app_environment=dev' /tmp/kbo-fans-web-dev-26932509232/artifact/web-build-metadata-dev.txt`
+- [x] `grep -qx 'data_mode=no-backend-direct' /tmp/kbo-fans-web-dev-26932509232/artifact/web-build-metadata-dev.txt`
+- [x] `grep -qx 'push_api_base_url=' /tmp/kbo-fans-web-dev-26932509232/artifact/web-build-metadata-dev.txt`
+- [x] `python3 -m http.server 7359 --bind 127.0.0.1` under extracted artifact site
+- [x] `curl -fsS -w '%{http_code} %{content_type} %{size_download}\n' http://127.0.0.1:7359/` (`200 text/html 3869`)
+- [x] `curl -fsS -w '%{http_code} %{content_type} %{size_download}\n' http://127.0.0.1:7359/flutter_bootstrap.js` (`200 text/javascript 9975`)
+- [x] `curl -fsS -w '%{http_code} %{content_type} %{size_download}\n' http://127.0.0.1:7359/main.dart.js` (`200 text/javascript 3816811`)
+- [x] `grep -a -q 'https://dev-api.kbofans.com/api' /tmp/kbo-fans-web-dev-26932509232/site/main.dart.js`
+
+---
+
 ## 2026-06-04: Web release artifact 정적 로드 검증
 
 ### 완료

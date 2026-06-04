@@ -18,6 +18,7 @@
 - workflow 내부 signing/config/metadata 파일 생성은 heredoc 없이 동작하도록 정리해 runner 들여쓰기 영향을 받지 않음
 - `actions/checkout` / `actions/setup-python`은 Node.js 24 대응 major인 `@v6` 사용
 - `web/release` 원격 run `26932197693`는 `@v6` action 조합으로 backend tests, web release build, metadata, artifact upload까지 통과함
+- `web/dev` 원격 run `26932509232`는 최신 main `fc96d51`에서 backend tests, web dev build, metadata, artifact upload까지 통과함
 - Android/iOS GitHub Secrets 등록과 실제 원격 실행 검증은 아직 안 끝남
 - release API backend는 아직 없다. 운영 API 준비 항목은 `docs/RELEASE_API_BACKEND_TODO.md` 를 기준으로 추적한다.
 
@@ -153,19 +154,20 @@ base64 -i KboFansWidget.mobileprovision | pbcopy
 
 ### 실행
 
-- [ ] `platform=web`
-- [ ] `app_environment=dev`
-- [ ] workflow 실행
+- [x] `platform=web` (`dev`)
+- [x] `app_environment=dev`
+- [x] workflow 실행 (`26932509232`)
 - [x] `platform=web` (`release`)
 - [x] `app_environment=release`
 - [x] workflow 실행 (`26932197693`)
 
 ### 검증
 
-- [ ] `web-dev` artifact 다운로드
+- [x] `web-dev` artifact 다운로드
 - [x] `web-release` artifact 다운로드
-- [x] zip 압축 해제 후 정적 서버에서 열리는지 확인 (`run 26932197693`, `index.html` / `flutter_bootstrap.js` / `main.dart.js` 200 응답)
+- [x] zip 압축 해제 후 정적 서버에서 열리는지 확인 (`run 26932197693`, `run 26932509232`; `index.html` / `flutter_bootstrap.js` / `main.dart.js` 200 응답)
 - [x] `release` 빌드가 no-backend direct data mode와 운영 push `API_BASE_URL=https://api.kbofans.com/api`를 함께 포함하는지 metadata/bundle 기준으로 확인
+- [x] `dev` 빌드가 no-backend direct data mode, 빈 push `API_BASE_URL`, dev 기본 API 문자열 `https://dev-api.kbofans.com/api`를 metadata/bundle 기준으로 포함하는지 확인
 
 ## 권장 검증 순서
 
