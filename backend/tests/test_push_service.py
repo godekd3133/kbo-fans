@@ -379,6 +379,32 @@ def test_push_config_status_endpoint_uses_sync_secret(monkeypatch) -> None:
     assert allowed.json()["data"]["ready"] is True
 
 
+def test_sync_scoreboard_endpoint_defaults_to_kbo_game_day(monkeypatch) -> None:
+    class SecretSettings:
+        push_sync_secret = "secret"
+
+    captured = {}
+
+    class FakeSyncService:
+        def sync_date(self, target_date: str) -> dict:
+            captured["date"] = target_date
+            return {"date": target_date, "checkedGames": 0}
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: SecretSettings())
+    monkeypatch.setattr(push_routes, "current_kbo_date", lambda: "2026-06-04")
+    monkeypatch.setattr(push_routes, "live_activity_sync_service", FakeSyncService())
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/push/live-activity/sync-scoreboard",
+        headers={"X-Kbo-Push-Sync-Secret": "secret"},
+    )
+
+    assert response.status_code == 200
+    assert captured["date"] == "2026-06-04"
+    assert response.json()["data"]["date"] == "2026-06-04"
+
+
 def test_apns_live_activity_payload_matches_ios_content_state_contract(tmp_path) -> None:
     settings = _settings(
         app_env="release",

@@ -1,10 +1,10 @@
-from datetime import date as date_type
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from kbo_fans_backend.api.runtime_services import scoreboard_service
 from kbo_fans_backend.core.config import get_settings
+from kbo_fans_backend.scheduler.live_activity_sync import current_kbo_date
 from kbo_fans_backend.schemas.common import ApiEnvelope
 from kbo_fans_backend.schemas.push import (
     LiveActivityRegisterRequest,
@@ -65,7 +65,7 @@ def sync_live_activity_scoreboard(
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
     _ensure_sync_allowed(x_kbo_push_sync_secret)
-    target_date = date or date_type.today().isoformat()
+    target_date = date or current_kbo_date()
     return ApiEnvelope.success_response(live_activity_sync_service.sync_date(target_date))
 
 

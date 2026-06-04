@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-06-04: Live Activity sync KBO 경기일 기준 보정
+
+### 완료
+- [x] 앱 종료 후 Live Activity scoreboard sync endpoint의 기본 날짜가 AWS host UTC date를 따르지 않고 KBO 경기일(`Asia/Seoul`)을 사용하도록 보정
+- [x] `date` query가 없을 때 `current_kbo_date()`를 호출하는 regression test 추가
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (16 passed)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/api/routes/push.py backend/tests/test_push_service.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend`
+
+---
+
 ## 2026-06-04: KBO Fans 8분 발표 자료 제작
 
 ### 완료
@@ -83,7 +96,7 @@
 - [x] AWS 배포 시작점을 위해 `backend/Dockerfile`, `backend/.dockerignore`, `python -m kbo_fans_backend.scheduler.live_activity_sync` scheduler CLI를 추가
 - [x] 노트북이 꺼진 시연을 위해 AWS/운영 backend, Firebase, APNs, EventBridge/cron 설정 절차를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`에 문서화
 - [x] AWS ECS/Fargate에서 파일 mount 없이 Secrets Manager env로 Firebase Admin JSON / APNs `.p8`를 주입할 수 있도록 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`를 backend 설정에 추가
-- [x] AWS UTC 기준 날짜 오판을 피하도록 Live Activity scoreboard sync 기본 날짜를 `Asia/Seoul` KBO 경기일로 계산
+- [x] AWS UTC 기준 날짜 오판을 피하도록 Live Activity scoreboard sync worker와 `/push/live-activity/sync-scoreboard` 기본 날짜를 `Asia/Seoul` KBO 경기일로 계산
 - [x] 30~60초 시연용 long-running sync worker CLI `python -m kbo_fans_backend.scheduler.live_activity_sync_loop`를 추가
 - [x] ECS/Fargate API service + sync worker service 템플릿을 `infra/aws/ecs-fargate/`에 추가
 - [x] worker가 실제로 실행됐는지 확인할 수 있도록 scoreboard sync heartbeat를 registry에 기록하고 `GET /api/push/config-status`의 `scheduler.lastSyncAt`으로 노출
@@ -202,7 +215,8 @@
 - [x] `bash -n scripts/push-demo-setup-status.sh scripts/push-demo-readiness-audit.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh push-demo-setup-status --env-file /tmp/kbo-fans-setup-status.env --repo godekd3133/kbo-fans --skip-tooling` 실행: env 생성, OIDC dry-run, readiness audit expected attention, 다음 명령 출력 확인
 - [x] `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-setup-status.env --repo godekd3133/kbo-fans --skip-tooling --skip-gh` 실행: placeholder AWS 값으로 expected attention, 다음 명령 repo hint 확인
-- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (15 passed; APNs Live Activity payload contract test 포함)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (16 passed; APNs Live Activity payload contract test와 KBO 경기일 default test 포함)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/api/routes/push.py backend/tests/test_push_service.py`
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/tests/test_push_service.py backend/src/kbo_fans_backend/services/apns_live_activity.py backend/src/kbo_fans_backend/schemas/push.py`
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
 - [x] `cd app && fvm flutter test --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://demo-api.kbofans.example/api test/data/providers_routing_test.dart` (`API_BASE_URL` override + direct provider routing 유지 확인)

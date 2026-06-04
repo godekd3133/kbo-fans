@@ -80,6 +80,9 @@ curl -X POST http://localhost:8000/api/push/live-activity/sync-scoreboard \
   -H "X-Kbo-Push-Sync-Secret: $PUSH_SYNC_SECRET"
 ```
 
+When `date` is omitted, the backend uses the current KBO game day in
+`Asia/Seoul`, not the host machine's local or UTC date.
+
 Configuration diagnostics endpoint:
 
 ```bash
