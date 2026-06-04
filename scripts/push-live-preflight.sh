@@ -119,7 +119,14 @@ require_env() {
 warn_placeholder_env() {
   local name="$1"
   local value="${!name:-}"
-  if [[ "$value" == *"<"* || "$value" == *"XXXXXXXXXX"* || "$value" == *"123456789012"* ]]; then
+  if [[ "$value" == *"<"* \
+    || "$value" == *"your-"* \
+    || "$value" == *"replace_"* \
+    || "$value" == *"replace-with"* \
+    || "$value" == *"XXXXXXXXXX"* \
+    || "$value" == *"123456789012"* \
+    || "$value" == *"000000000000"* \
+    || "$value" == *"111111111111"* ]]; then
     warn "$name still looks like a placeholder"
   fi
 }
@@ -344,6 +351,7 @@ check_backend_env() {
   warn_placeholder_env FIREBASE_PROJECT_ID
   warn_placeholder_env APNS_KEY_ID
   warn_placeholder_env APNS_TEAM_ID
+  warn_placeholder_env PUSH_SYNC_SECRET
 }
 
 check_aws_env() {
@@ -384,6 +392,7 @@ check_aws_env() {
   warn_placeholder_env PUBLIC_SUBNET_A_ID
   warn_placeholder_env PUBLIC_SUBNET_B_ID
   warn_placeholder_env ACM_CERTIFICATE_ARN
+  warn_placeholder_env AWS_ROLE_TO_ASSUME
 }
 
 echo "push_live_preflight=started"

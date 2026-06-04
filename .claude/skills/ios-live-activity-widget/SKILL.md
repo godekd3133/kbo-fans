@@ -37,6 +37,7 @@
 - release no-backend direct build도 token registration을 위해 운영 `API_BASE_URL`을 주입해야 한다. `USE_BACKEND_API=true`가 없으면 provider routing은 direct data로 유지된다.
 - AWS 운영에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` secret env와 공유 `PUSH_REGISTRY_PATH`를 확인한다.
 - 시연 배포 전에는 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 앱 Firebase 파일, APNs/Live Activity capability, backend secret env, AWS env 형태를 secret 출력 없이 점검한다.
+- `infra/aws/ecs-fargate/deploy.env.example`를 push preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드의 단일 checklist로 사용한다. untracked env 파일로 복사한 뒤 placeholder를 모두 실제 값으로 바꾸고 `--apply`를 실행한다.
 - AWS push secret은 `./scripts/aws-push-secrets.sh`로 생성/갱신한다.
 - backend ECR image는 `./scripts/aws-push-image.sh`로 build/tag/push하고, 특정 tag 배포 시 `outputs/aws/ecr/image.env`의 `CONTAINER_IMAGE_URI`를 사용한다.
 - ECS task definition과 execution-role secret-read policy는 `./scripts/aws-push-task-definitions.sh` 또는 `./scripts/codex-run.sh aws-push-task-defs`로 렌더링한다.

@@ -106,6 +106,8 @@
 - [x] GitHub Actions app artifact workflow에서 ignored Firebase client config 파일을 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON` secrets에서 복원하도록 보강
 - [x] GitHub Actions `Push Demo Deploy` workflow를 CLI에서 dispatch하고, 원격 workflow 미등록 시 커밋/푸시 필요 상태를 안내하는 `scripts/github-push-demo-run.sh`, `./scripts/codex-run.sh github-push-demo-run` entrypoint를 추가
 - [x] GitHub Actions `Push Demo Deploy` dispatch 전에 필수 secrets/variables 존재를 확인하고, 누락 상태에서는 workflow run을 만들기 전에 중단하도록 `scripts/github-push-demo-run.sh`를 보강
+- [x] `infra/aws/ecs-fargate/deploy.env.example`를 push preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드에 함께 쓰는 단일 checklist로 보강
+- [x] `scripts/github-push-secrets.sh`가 obvious placeholder 값을 GitHub Actions secrets/variables로 업로드하기 전에 실패하도록 보강
 - [x] 수동 ECS 템플릿 경로와 CloudFormation full-stack 경로의 역할 차이를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, `README.md`, `backend/README.md`, `infra/aws/cloudformation/README.md`에 기록
 - [x] release no-backend direct 실행/CI artifact도 push / Live Activity token 등록을 위해 운영 `API_BASE_URL`을 주입하도록 `scripts/codex-run.sh`와 `.github/workflows/app-build-artifacts.yml`을 보강
 - [x] `API_BASE_URL` override가 provider routing을 backend mode로 바꾸지 않고 push registration base URL만 바꿀 수 있음을 `providers_routing_test.dart`에 추가 확인
@@ -171,6 +173,9 @@
 - [x] `bash -n scripts/github-push-demo-run.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh github-push-demo-run --repo godekd3133/kbo-fans --dry-run true` 현재 원격 상태에서 expected failure 확인: 필수 secrets/variables 누락 목록을 출력하고 workflow dispatch 전 중단
 - [x] 사전검사 실패 후 `gh run list --workflow push-demo-deploy.yml` 최신 run이 기존 `26915430732` 그대로임을 확인해 새 workflow run이 생성되지 않았음을 검증
+- [x] mock env에서 `./scripts/github-push-secrets.sh --env-file ... --repo godekd3133/kbo-fans` placeholder failure path 확인: `FIREBASE_PROJECT_ID still looks like a placeholder`, `PUSH_SYNC_SECRET still looks like a placeholder`와 exit 2
+- [x] placeholder가 아닌 mock env에서 `./scripts/github-push-secrets.sh --env-file ... --repo godekd3133/kbo-fans` dry-run 통과. secret 값 없이 `would_set_secret` / `would_set_variable` 이름만 출력
+- [x] mock env에서 `./scripts/push-live-preflight.sh --env-file ... --aws` 통과 (`checks=41`, `warnings=4`, `failures=0`; warnings는 배포 후 생성될 stack output/secret ARN)
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
 - [x] `cd app && fvm flutter test --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://demo-api.kbofans.example/api test/data/providers_routing_test.dart` (`API_BASE_URL` override + direct provider routing 유지 확인)
 - [x] `plutil -lint app/ios/Runner/Info.plist app/ios/KboFansWidget/Info.plist app/ios/Runner/Runner.entitlements app/ios/KboFansWidgetExtension.entitlements`

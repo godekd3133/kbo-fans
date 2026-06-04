@@ -46,6 +46,7 @@ Copy the env checklist and fill in real values:
 ```bash
 cp infra/aws/ecs-fargate/deploy.env.example /tmp/kbo-fans-aws.env
 $EDITOR /tmp/kbo-fans-aws.env
+./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws
 source /tmp/kbo-fans-aws.env
 source outputs/aws/ecs-fargate/secrets.env
 source outputs/aws/ecr/image.env

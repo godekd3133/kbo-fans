@@ -93,7 +93,15 @@ Replace placeholders before `aws ecs register-task-definition`:
 
 Use `deploy.env.example` as the checklist for values that must exist before the
 task definitions can be registered. Copy it to a local untracked env file and
-fill in the real AWS / Firebase / Apple values.
+fill in the real AWS / Firebase / Apple values. The same env file can also be
+used by `push-live-preflight.sh`, `aws-push-demo-deploy.sh`, and
+`github-push-secrets.sh`.
+
+```bash
+cp infra/aws/ecs-fargate/deploy.env.example /tmp/kbo-fans-aws.env
+$EDITOR /tmp/kbo-fans-aws.env
+./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws
+```
 
 ## Create IAM Roles
 

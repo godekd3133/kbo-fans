@@ -112,6 +112,29 @@ require_env() {
   fi
 }
 
+reject_placeholder_value() {
+  local name="$1"
+  local value="${!name:-}"
+
+  if [[ -z "$value" ]]; then
+    return
+  fi
+
+  case "$value" in
+    *"<"*|*"your-"*|*"replace_"*|*"replace-with"*|*"XXXXXXXXXX"*|*"123456789012"*|*"000000000000"*|*"111111111111"*)
+      echo "$name still looks like a placeholder. Replace it before uploading GitHub Actions inputs." >&2
+      exit 2
+      ;;
+  esac
+}
+
+reject_placeholder_env() {
+  local name
+  for name in "$@"; do
+    reject_placeholder_value "$name"
+  done
+}
+
 read_secret_value() {
   local env_name="$1"
   local file_env_name="$2"
@@ -262,6 +285,21 @@ require_env \
 if [[ -z "${AWS_ROLE_TO_ASSUME:-}" ]]; then
   require_env AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 fi
+
+reject_placeholder_env \
+  AWS_REGION \
+  FIREBASE_PROJECT_ID \
+  APNS_KEY_ID \
+  APNS_TEAM_ID \
+  ECR_REPOSITORY_URI \
+  VPC_ID \
+  PUBLIC_SUBNET_A_ID \
+  PUBLIC_SUBNET_B_ID \
+  ACM_CERTIFICATE_ARN \
+  PUSH_SYNC_SECRET \
+  AWS_ROLE_TO_ASSUME \
+  AWS_ACCESS_KEY_ID \
+  AWS_SECRET_ACCESS_KEY
 
 ensure_push_sync_secret
 if [[ ${#PUSH_SYNC_SECRET} -lt 32 ]]; then

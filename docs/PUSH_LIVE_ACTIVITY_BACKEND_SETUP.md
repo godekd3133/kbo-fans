@@ -169,7 +169,17 @@ ECS/Fargate 배포는 두 경로가 있다.
 - `infra/aws/ecs-fargate/`: 이미 만든 AWS 리소스에 task definition / IAM policy를 등록하는 수동 경로
 - `infra/aws/cloudformation/`: ALB, ECS API service, sync worker, EFS, IAM, log group을 한 stack으로 만드는 경로
 
-`infra/aws/ecs-fargate/deploy.env.example`를 로컬 env 파일로 복사한 뒤, 실제 AWS / Firebase / Apple 값을 채운다. 수동 경로의 실행 순서는 아래가 안전하다.
+`infra/aws/ecs-fargate/deploy.env.example`를 로컬 env 파일로 복사한 뒤, 실제 AWS / Firebase / Apple 값을 채운다. 이 파일 하나가 preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드에 같이 쓰이는 준비 파일이다.
+
+```bash
+cp infra/aws/ecs-fargate/deploy.env.example /tmp/kbo-fans-aws.env
+$EDITOR /tmp/kbo-fans-aws.env
+./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws
+```
+
+`PUSH_SYNC_SECRET`는 `openssl rand -hex 32`로 만들고, `IOS_GOOGLE_SERVICE_INFO_PLIST_FILE`, `ANDROID_GOOGLE_SERVICES_JSON_FILE`, `FIREBASE_SERVICE_ACCOUNT_FILE`, `APNS_AUTH_KEY_FILE`은 로컬 파일 경로를 넣는다. GitHub Actions 배포를 쓸 때는 `AWS_ROLE_TO_ASSUME` OIDC role을 권장하며, 없으면 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`를 넣는다. `github-push-secrets.sh`는 obvious placeholder 값을 GitHub에 업로드하지 못하게 막는다.
+
+수동 경로의 실행 순서는 아래가 안전하다.
 
 1. `./scripts/aws-push-secrets.sh`로 Secrets Manager 값을 만들고 `outputs/aws/ecs-fargate/secrets.env`를 생성한다.
 2. `./scripts/aws-push-image.sh`로 backend Docker image를 ECR에 push하고 `outputs/aws/ecr/image.env`를 생성한다.
@@ -206,7 +216,7 @@ aws logs create-log-group \
 task definition placeholder는 직접 편집하지 말고, AWS ARN/ID 값을 환경변수로 넣은 뒤 renderer로 생성한다. 이 renderer는 ECS task definition 2개와 task execution role에 붙일 Secrets Manager read policy를 함께 만든다.
 
 ```bash
-source /path/to/kbo-fans-aws.env
+source /tmp/kbo-fans-aws.env
 source outputs/aws/ecs-fargate/secrets.env
 
 ./scripts/aws-push-task-definitions.sh
@@ -273,11 +283,14 @@ Actions workflow `Push Demo Deploy`에서 `dry_run=true`를 먼저 실행하면 
 GitHub Actions secrets/variables는 `gh` CLI로도 넣을 수 있다. 기본은 dry-run이고 실제 업로드는 `--apply`를 붙였을 때만 실행된다.
 
 ```bash
-./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env
-./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env --apply
+cp infra/aws/ecs-fargate/deploy.env.example /tmp/kbo-fans-aws.env
+$EDITOR /tmp/kbo-fans-aws.env
+./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws
+./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env
+./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env --apply
 ```
 
-이 스크립트는 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET`, `AWS_ROLE_TO_ASSUME` 또는 AWS access key를 GitHub Secrets로 넣고, `AWS_REGION`, `FIREBASE_PROJECT_ID`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `ECR_REPOSITORY_URI`, `VPC_ID`, subnet, ACM ARN은 GitHub Variables로 넣는다. secret 값은 로그에 출력하지 않는다.
+이 스크립트는 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET`, `AWS_ROLE_TO_ASSUME` 또는 AWS access key를 GitHub Secrets로 넣고, `AWS_REGION`, `FIREBASE_PROJECT_ID`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `ECR_REPOSITORY_URI`, `VPC_ID`, subnet, ACM ARN은 GitHub Variables로 넣는다. secret 값은 로그에 출력하지 않고, obvious placeholder 값은 업로드 전에 실패시킨다.
 
 workflow 파일이 GitHub default branch에 올라간 뒤에는 CLI로 dispatch할 수 있다.
 
