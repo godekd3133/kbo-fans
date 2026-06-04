@@ -100,7 +100,7 @@ require_text() {
   local label="$1"
   local pattern="$2"
   local path="$3"
-  if grep -Fq "$pattern" "$path" 2>/dev/null; then
+  if grep -Fq -- "$pattern" "$path" 2>/dev/null; then
     pass "$label configured"
   else
     fail "$label missing in $path"
@@ -259,6 +259,10 @@ check_flutter_push_code() {
   require_text "FCM dependency" "firebase_messaging:" "$APP_DIR/pubspec.yaml"
   require_text "Firebase Core dependency" "firebase_core:" "$APP_DIR/pubspec.yaml"
   require_text "Live Activity API base URL handoff" "'apiBaseUrl': AppConfig.instance.apiBaseUrl" "$APP_DIR/lib/services/live_activity_service.dart"
+  require_text "Codex release push backend URL define" '--dart-define=API_BASE_URL=$(release_api_base_url)' "$ROOT_DIR/scripts/codex-run.sh"
+  require_text "CI release push backend URL input" "release_api_base_url:" "$ROOT_DIR/.github/workflows/app-build-artifacts.yml"
+  require_text "CI release API_BASE_URL dart define" '--dart-define=API_BASE_URL=${push_api_base_url}' "$ROOT_DIR/.github/workflows/app-build-artifacts.yml"
+  require_text "CI push API base URL artifact metadata" "PUSH_API_BASE_URL" "$ROOT_DIR/.github/workflows/app-build-artifacts.yml"
 }
 
 check_service_account_file() {

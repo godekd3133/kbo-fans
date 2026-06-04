@@ -138,7 +138,7 @@ KBO live 경기는 30~60초, 예정 경기는 5분, 종료 경기는 sync 중단
 ./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws
 ```
 
-`--app-only`는 Firebase client 파일, APNs entitlement, Live Activity plist, Android google-services plugin, Flutter push registration 연결만 확인한다. `--env-file ... --aws`는 Firebase Admin JSON, APNs `.p8`, `PUSH_SYNC_SECRET`, ECR/VPC/subnet/ACM env 형태까지 같이 확인한다.
+`--app-only`는 Firebase client 파일, APNs entitlement, Live Activity plist, Android google-services plugin, Flutter push registration 연결, release `API_BASE_URL` token-registration handoff를 확인한다. `--env-file ... --aws`는 Firebase Admin JSON, APNs `.p8`, `PUSH_SYNC_SECRET`, ECR/VPC/subnet/ACM env 형태까지 같이 확인한다.
 
 ## Backend Docker 이미지
 

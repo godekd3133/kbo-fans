@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-06-04: Push preflight release URL handoff 검증 보강
+
+### 완료
+- [x] `push-live-preflight.sh --app-only`가 앱 Firebase/APNs/Live Activity 파일뿐 아니라 release no-backend build의 push / Live Activity token registration용 `API_BASE_URL` handoff도 확인하도록 보강
+- [x] preflight가 `scripts/codex-run.sh`의 release `API_BASE_URL` dart define, `.github/workflows/app-build-artifacts.yml`의 `release_api_base_url` input, CI `API_BASE_URL` dart define, `PUSH_API_BASE_URL` artifact metadata를 구조적으로 점검하도록 추가
+- [x] README, Push / Live Activity setup 문서, AGENTS, CLAUDE, repo skill, changelog에 preflight의 release URL handoff 검증 범위 반영
+
+### 검증
+- [x] `bash -n scripts/push-live-preflight.sh scripts/codex-run.sh`
+- [x] `./scripts/push-live-preflight.sh --app-only` (`checks=29`, `warnings=1`, `failures=0`; warning은 backend secret check skip)
+
+---
+
 ## 2026-06-04: backend 전체 ruff debt 정리
 
 ### 완료
