@@ -4,7 +4,6 @@ import re
 from html import unescape
 from typing import Optional
 
-
 TAG_RE = re.compile(r"<[^>]+>")
 
 

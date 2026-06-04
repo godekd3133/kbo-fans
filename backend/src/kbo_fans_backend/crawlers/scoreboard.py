@@ -179,7 +179,9 @@ class ScoreboardCrawler(BaseCrawler):
             cells = row.select("td") if row is not None else []
             return {
                 "hits": self._parse_int(cells[1].get_text(strip=True)) if len(cells) > 1 else None,
-                "errors": self._parse_int(cells[2].get_text(strip=True)) if len(cells) > 2 else None,
+                "errors": (
+                    self._parse_int(cells[2].get_text(strip=True)) if len(cells) > 2 else None
+                ),
                 "balls": self._parse_int(cells[3].get_text(strip=True)) if len(cells) > 3 else None,
             }
 

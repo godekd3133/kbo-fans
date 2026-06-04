@@ -3,8 +3,7 @@ import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi import Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from kbo_fans_backend.api.router import api_router

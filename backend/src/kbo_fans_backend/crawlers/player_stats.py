@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import re
-from html import unescape
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
@@ -172,15 +171,18 @@ class PlayerStatsCrawler(BaseCrawler):
         response.raise_for_status()
         html = response.text
 
+        search_date_field = (
+            "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$hfSearchDate"
+        )
         payload = {
             "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
             "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
             "__EVENTVALIDATION": self._extract_hidden(html, "__EVENTVALIDATION"),
             "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$hfSearchTeam": team_id,
-            "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$hfSearchDate": self._extract_hidden(
-                html, "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$hfSearchDate"
+            search_date_field: self._extract_hidden(html, search_date_field),
+            "__EVENTTARGET": (
+                "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$btnCalendarSelect"
             ),
-            "__EVENTTARGET": "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$btnCalendarSelect",
             "__EVENTARGUMENT": "",
         }
 
@@ -197,15 +199,22 @@ class PlayerStatsCrawler(BaseCrawler):
         response.raise_for_status()
         html = response.text
 
+        team_field = (
+            "ctl00$ctl00$ctl00$ctl00$cphContainer$cphContainer$cphContent$cphContent$hfTeam"
+        )
+        position_field = (
+            "ctl00$ctl00$ctl00$ctl00$cphContainer$cphContainer$cphContent$cphContent$hfPosition"
+        )
         payload = {
             "__VIEWSTATE": self._extract_hidden(html, "__VIEWSTATE"),
             "__VIEWSTATEGENERATOR": self._extract_hidden(html, "__VIEWSTATEGENERATOR"),
             "__EVENTVALIDATION": self._extract_hidden(html, "__EVENTVALIDATION"),
-            "ctl00$ctl00$ctl00$ctl00$cphContainer$cphContainer$cphContent$cphContent$hfTeam": self._TEAM_SEARCH_CODE_MAP.get(
-                team_id, team_id.lower()
+            team_field: self._TEAM_SEARCH_CODE_MAP.get(team_id, team_id.lower()),
+            position_field: position_value,
+            "__EVENTTARGET": (
+                "ctl00$ctl00$ctl00$ctl00$cphContainer$cphContainer$cphContent"
+                "$cphContent$lbtnSearch"
             ),
-            "ctl00$ctl00$ctl00$ctl00$cphContainer$cphContainer$cphContent$cphContent$hfPosition": position_value,
-            "__EVENTTARGET": "ctl00$ctl00$ctl00$ctl00$cphContainer$cphContainer$cphContent$cphContent$lbtnSearch",
             "__EVENTARGUMENT": "",
         }
         html = self.session.post(self._PLAYER_SEARCH_URL, data=payload, timeout=self.timeout).text
@@ -324,7 +333,8 @@ class PlayerStatsCrawler(BaseCrawler):
 
     def _parse_season_stats(self, html: str, season: int) -> Dict[str, str]:
         match = re.search(
-            r"<table[^>]*class=\"tbl tt[^\"]*\"[^>]*>.*?<thead>(.*?)</thead>.*?<tbody>(.*?)</tbody>.*?</table>",
+            r"<table[^>]*class=\"tbl tt[^\"]*\"[^>]*>.*?<thead>(.*?)</thead>"
+            r".*?<tbody>(.*?)</tbody>.*?</table>",
             html,
             re.S,
         )

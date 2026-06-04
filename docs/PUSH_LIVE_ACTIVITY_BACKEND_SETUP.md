@@ -197,6 +197,8 @@ bootstrap은 AWS, GitHub, Firebase, Apple API를 호출하지 않는다. `PUSH_S
   --repo godekd3133/kbo-fans
 ```
 
+출력의 `Required Values` 섹션은 사장님이 직접 준비해야 하는 값을 한 번에 보여준다. 각 항목은 `get_from`, `put_in_env`, `github_target`, `aws_runtime_target`로 나뉘며, Firebase client 파일, Firebase Admin JSON, Apple APNs `.p8`, AWS ECR/VPC/Subnet/ACM, GitHub OIDC role, release `API_BASE_URL`을 어디서 가져와 어디에 넣는지 확인하는 기준이다.
+
 `PUSH_SYNC_SECRET`는 `openssl rand -hex 32`로 만들고, `IOS_GOOGLE_SERVICE_INFO_PLIST_FILE`, `ANDROID_GOOGLE_SERVICES_JSON_FILE`, `FIREBASE_SERVICE_ACCOUNT_FILE`, `APNS_AUTH_KEY_FILE`은 로컬 파일 경로를 넣는다. GitHub Actions 배포를 쓸 때는 `AWS_ROLE_TO_ASSUME` OIDC role을 권장하며, 없으면 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`를 넣는다. `github-push-secrets.sh`는 obvious placeholder 값을 GitHub에 업로드하지 못하게 막는다.
 
 GitHub Actions용 AWS OIDC role은 아래 스크립트로 만들 수 있다. GitHub 공식 AWS OIDC 설정은 provider URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`를 사용하고, AWS IAM은 `token.actions.githubusercontent.com:sub` 조건으로 repo/branch를 제한하라고 안내한다. 이 repo의 스크립트도 `repo:godekd3133/kbo-fans:ref:refs/heads/main`만 role을 assume할 수 있게 만든다.

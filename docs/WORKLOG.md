@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-06-04: backend 전체 ruff debt 정리
+
+### 완료
+- [x] backend 전체 ruff check를 막던 crawler/main/html import 정리와 line-length debt 제거
+- [x] `player_stats.py`, `team_stats.py`, `scoreboard.py`의 긴 KBO form field / parser 표현을 동작 변경 없이 줄바꿈 또는 local field 변수로 정리
+- [x] `main.py`, `utils/html.py` import formatting을 ruff 기준에 맞춤
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q` (117 passed)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src backend/tests` (`All checks passed`)
+- [x] `python3 -m compileall backend/src`
+
+---
+
 ## 2026-06-04: no-backend 앱 본체 검증 refresh
 
 ### 완료
@@ -16,6 +30,19 @@
 - [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/web`; wasm dry-run warning은 `flutter_timezone_web.dart` JS interop warning으로 일반 web release build는 성공)
 - [x] `cd app && GRADLE_OPTS='-Djdk.lang.Process.launchMechanism=FORK' fvm flutter build apk --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/app/outputs/flutter-apk/app-release.apk`, 62.1MB)
 - [x] `cd app && fvm flutter build ios --debug --no-codesign --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/ios/iphoneos/Runner.app`)
+
+---
+
+## 2026-06-04: Push demo 설정값 안내 보강
+
+### 완료
+- [x] 앱 종료 후 push / Dynamic Island 시연을 위해 사장님이 직접 준비해야 하는 Firebase client config, Firebase Admin JSON, Apple APNs key, AWS deploy target, GitHub OIDC role, release API base URL의 출처와 입력 위치를 `push-demo-setup-status.sh` 출력에 `Required Values` 섹션으로 추가
+- [x] Required Values는 secret 값을 출력하지 않고 `get_from`, `put_in_env`, `github_target`, `aws_runtime_target` 형태로만 안내하도록 구성
+- [x] README, Push / Live Activity setup 문서, repo skill, changelog에 setup status의 Required Values 기준 기록
+
+### 검증
+- [x] `bash -n scripts/push-demo-setup-status.sh scripts/codex-run.sh`
+- [x] `./scripts/codex-run.sh push-demo-setup-status --env-file /tmp/kbo-fans-required-values.env --repo godekd3133/kbo-fans --skip-tooling` 실행: expected attention, `Required Values` 섹션이 secret 값 없이 Firebase / APNs / AWS / GitHub / release API base URL 입력 위치를 출력
 
 ---
 
@@ -305,7 +332,7 @@
 
 ### 남은 릴리즈 작업
 - [ ] Git commit / tag `0.0.29` / GitHub Release 생성은 아직 수행하지 않았다.
-- [ ] backend 전체 ruff는 기존 `player_stats.py`, `team_stats.py`, `main.py`, `push.py`, `utils/html.py`, `test_push_service.py` lint debt 때문에 아직 전체 통과 상태가 아니다. 이번 변경 파일 ruff는 통과했고, no-API 방향에서는 backend API 완성 blocker가 아니라 별도 cleanup 항목이다.
+- [x] backend 전체 ruff debt는 2026-06-04 `backend 전체 ruff debt 정리`에서 해소되어 `backend/.venv/bin/ruff check --select E,F,I,B backend/src backend/tests` 통과 상태로 갱신됨.
 
 ---
 
@@ -477,7 +504,7 @@
 
 ### 릴리즈 주의
 - [ ] `RELEASE_API_HEALTH_TIMEOUT_SECONDS=3 ./scripts/codex-run.sh release-api-health` 실패: 현재 로컬 DNS가 `api.kbofans.com`을 해석하지 못함
-- [ ] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services backend/tests`는 기존 `push.py` / `test_push_service.py` import sort 이슈로 실패. 이번 변경 파일 ruff는 통과.
+- [x] 기존 `push.py` / `test_push_service.py` import sort 이슈 포함 backend ruff debt는 2026-06-04 `backend 전체 ruff debt 정리`에서 해소됨.
 
 ---
 

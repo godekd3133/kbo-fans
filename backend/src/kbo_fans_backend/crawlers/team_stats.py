@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
@@ -65,10 +65,16 @@ class TeamStatsCrawler(BaseCrawler):
         if not header_match or not body_match:
             return {}
 
-        headers = [strip_tags(item) for item in re.findall(r"<th[^>]*>(.*?)</th>", header_match.group(1), re.S)]
+        headers = [
+            strip_tags(item)
+            for item in re.findall(r"<th[^>]*>(.*?)</th>", header_match.group(1), re.S)
+        ]
         rows = re.findall(r"<tr>(.*?)</tr>", body_match.group(1), re.S)
         for row in rows:
-            cells = [strip_tags(item) for item in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)]
+            cells = [
+                strip_tags(item)
+                for item in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.S)
+            ]
             if len(cells) != len(headers):
                 continue
             if cells[1] == team_name:
