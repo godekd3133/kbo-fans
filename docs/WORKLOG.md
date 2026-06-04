@@ -26,7 +26,9 @@
 ### 검증
 - [x] `gh api repos/actions/checkout/releases/latest --jq '.tag_name + " " + .html_url'` (`v6.0.3`)
 - [x] `gh api repos/actions/setup-python/releases/latest --jq '.tag_name + " " + .html_url'` (`v6.2.0`)
-- [ ] 갱신 후 GitHub Actions `App Build Artifacts` `web/release` 원격 run 재검증
+- [x] 갱신 후 GitHub Actions `App Build Artifacts` run `26932197693` (`headSha=fe3e54d`, `platform=web`, `app_environment=release`) success: `backend_tests`, `prepare`, `web (release)` 통과
+- [x] `gh run download 26932197693 --repo godekd3133/kbo-fans -n web-release` 후 `web-build-metadata-release.txt`의 `data_mode=no-backend-direct`, `push_api_base_url=https://api.kbofans.com/api` 확인
+- [x] 다운로드한 `kbo-fans-web-release.zip` 내부 `index.html`, `flutter_bootstrap.js`, `main.dart.js` 존재 확인
 
 ---
 
