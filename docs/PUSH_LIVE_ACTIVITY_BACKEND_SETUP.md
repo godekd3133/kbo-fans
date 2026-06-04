@@ -180,7 +180,7 @@ $EDITOR /tmp/kbo-fans-aws.env
 처음부터 복사해서 채우기보다 현재 repo의 Firebase client config 경로와 project id를 자동 반영한 초안을 만들 수도 있다.
 
 ```bash
-./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force
+./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --force
 $EDITOR /tmp/kbo-fans-aws.env
 ./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans
 ```
@@ -318,7 +318,7 @@ Actions workflow `Push Demo Deploy`에서 `dry_run=true`를 먼저 실행하면 
 GitHub Actions secrets/variables는 `gh` CLI로도 넣을 수 있다. 기본은 dry-run이고 실제 업로드는 `--apply`를 붙였을 때만 실행된다.
 
 ```bash
-./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force
+./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --force
 $EDITOR /tmp/kbo-fans-aws.env
 ./scripts/push-demo-setup-status.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans
 ./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws

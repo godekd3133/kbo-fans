@@ -136,6 +136,9 @@ section "Env File"
 if [[ "$FORCE_BOOTSTRAP" == "true" || ! -f "$ENV_FILE" ]]; then
   if [[ "$CREATE_ENV" == "true" ]]; then
     bootstrap_args=(--output "$ENV_FILE")
+    if [[ -n "$REPO" ]]; then
+      bootstrap_args+=(--repo "$REPO")
+    fi
     if [[ "$FORCE_BOOTSTRAP" == "true" ]]; then
       bootstrap_args+=(--force)
     fi

@@ -7,15 +7,17 @@ APP_DIR="$ROOT_DIR/app"
 OUTPUT_FILE="/tmp/kbo-fans-aws.env"
 FORCE=false
 GENERATE_PUSH_SYNC_SECRET=true
+REPO="<owner/repo>"
 
 usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/push-demo-env-bootstrap.sh [--output /tmp/kbo-fans-aws.env] [--force]
+  ./scripts/push-demo-env-bootstrap.sh [--output /tmp/kbo-fans-aws.env] [--repo owner/repo] [--force]
 
 Options:
   --output <path>                  Write the local untracked env file here.
                                    Default: /tmp/kbo-fans-aws.env
+  --repo <owner/repo>              GitHub repository to show in next commands.
   --force                          Overwrite an existing output file.
   --no-generate-push-sync-secret   Leave PUSH_SYNC_SECRET as a placeholder.
 
@@ -34,6 +36,14 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       OUTPUT_FILE="$2"
+      shift 2
+      ;;
+    --repo)
+      if [[ -z "${2:-}" ]]; then
+        echo "--repo requires owner/repo." >&2
+        exit 2
+      fi
+      REPO="$2"
       shift 2
       ;;
     --force)
@@ -220,5 +230,5 @@ if [[ "$generated_push_sync_secret" == "true" ]]; then
   echo "generated=PUSH_SYNC_SECRET"
 fi
 echo "next_command: edit $OUTPUT_FILE and replace Apple/AWS placeholder values"
-echo "next_command: ./scripts/aws-github-oidc-role.sh --env-file $OUTPUT_FILE --repo <owner/repo> --dry-run"
-echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file $OUTPUT_FILE --repo <owner/repo>"
+echo "next_command: ./scripts/aws-github-oidc-role.sh --env-file $OUTPUT_FILE --repo $REPO --dry-run"
+echo "next_command: ./scripts/push-demo-readiness-audit.sh --env-file $OUTPUT_FILE --repo $REPO"

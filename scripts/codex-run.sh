@@ -36,7 +36,7 @@ Usage:
   ./scripts/codex-run.sh aws-push-demo-deploy [--dry-run]
   ./scripts/codex-run.sh aws-push-tooling
   ./scripts/codex-run.sh aws-github-oidc-role [--env-file /path/to/kbo-fans-aws.env] [--dry-run]
-  ./scripts/codex-run.sh push-demo-env-bootstrap [--output /tmp/kbo-fans-aws.env] [--force]
+  ./scripts/codex-run.sh push-demo-env-bootstrap [--output /tmp/kbo-fans-aws.env] [--repo owner/repo] [--force]
   ./scripts/codex-run.sh push-demo-setup-status [--env-file /tmp/kbo-fans-aws.env] [--repo owner/repo]
   ./scripts/codex-run.sh push-demo-audit [--env-file /path/to/kbo-fans-aws.env]
   ./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env [--apply]
