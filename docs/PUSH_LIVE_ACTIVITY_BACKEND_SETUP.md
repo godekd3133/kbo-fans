@@ -118,7 +118,7 @@ repo에서 한 번에 확인:
 PUSH_SYNC_SECRET=<long-random-secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api
 ```
 
-`PUSH_READINESS_RUN_SYNC=true`를 붙이면 readiness check 중 `/push/live-activity/sync-scoreboard`를 한 번 호출한다. `PUSH_READINESS_DATE`를 생략하면 date query를 보내지 않고 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용한다. 특정 날짜 재현이 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정한다.
+readiness check는 기본적으로 `scheduler.lastSyncAt`이 180초 이내인지 확인한다. 이 값이 없거나 오래됐으면 API secret이 맞아도 sync worker가 멈춘 상태일 수 있으므로 실패해야 한다. 설정값만 먼저 확인할 때만 `PUSH_READINESS_REQUIRE_SCHEDULER=false`를 붙인다. `PUSH_READINESS_RUN_SYNC=true`를 붙이면 readiness check 중 `/push/live-activity/sync-scoreboard`를 한 번 호출한 뒤 config-status를 다시 읽어 heartbeat를 확인한다. `PUSH_READINESS_DATE`를 생략하면 date query를 보내지 않고 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용한다. 특정 날짜 재현이 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정한다.
 
 또는 서버/ECS task 안에서:
 

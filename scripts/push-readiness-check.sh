@@ -9,6 +9,8 @@ TIMEOUT_SECONDS="${PUSH_READINESS_TIMEOUT_SECONDS:-20}"
 ALLOW_INSECURE="${ALLOW_INSECURE_PUSH_READINESS:-false}"
 RUN_SYNC="${PUSH_READINESS_RUN_SYNC:-false}"
 SYNC_DATE="${PUSH_READINESS_DATE:-}"
+REQUIRE_SCHEDULER="${PUSH_READINESS_REQUIRE_SCHEDULER:-true}"
+MAX_SCHEDULER_AGE_SECONDS="${PUSH_READINESS_MAX_SCHEDULER_AGE_SECONDS:-180}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -19,6 +21,17 @@ require_cmd() {
 
 require_cmd curl
 require_cmd python3
+
+is_truthy() {
+  case "$1" in
+    1 | true | TRUE | True | yes | YES | Yes)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
 
 if [[ -z "$BASE_URL" ]]; then
   echo "Push API base URL is empty." >&2
@@ -69,6 +82,8 @@ fi
 echo "Push readiness check"
 echo "base_url=$BASE_URL"
 echo "sync_date=${SYNC_DATE:-backend-default-kbo-date}"
+echo "require_scheduler=$REQUIRE_SCHEDULER"
+echo "max_scheduler_age_seconds=$MAX_SCHEDULER_AGE_SECONDS"
 
 DNS_ADDRESSES="$(
   python3 - "$URL_HOST" "$URL_PORT" <<'PY'
@@ -163,19 +178,14 @@ PY
   echo "endpoint=$label status=ok http=$http_code"
 }
 
-HEALTH_RESPONSE="$(mktemp)"
-CONFIG_RESPONSE="$(mktemp)"
-SYNC_RESPONSE="$(mktemp)"
-trap 'rm -f "$HEALTH_RESPONSE" "$CONFIG_RESPONSE" "$SYNC_RESPONSE"' EXIT
-
-request_json GET "/api/health" "/health" "$HEALTH_RESPONSE"
-request_json GET "/api/push/config-status" "/push/config-status" "$CONFIG_RESPONSE"
-
-python3 - "$CONFIG_RESPONSE" <<'PY'
+check_push_config() {
+  local scheduler_mode="$1"
+  python3 - "$CONFIG_RESPONSE" "$scheduler_mode" "$MAX_SCHEDULER_AGE_SECONDS" <<'PY'
+from datetime import datetime, timezone
 import json
 import sys
 
-path = sys.argv[1]
+path, scheduler_mode, max_age_raw = sys.argv[1:4]
 payload = json.load(open(path, "r", encoding="utf-8"))
 data = payload.get("data") if isinstance(payload, dict) else None
 if not isinstance(data, dict):
@@ -188,9 +198,77 @@ if data.get("readyForIphoneOnlyDemo") is not True:
     raise SystemExit(1)
 
 print("push_config=status=ok readyForIphoneOnlyDemo=true")
-PY
 
-if [[ "$RUN_SYNC" == "true" ]]; then
+if scheduler_mode == "skip":
+    print("scheduler=status=skipped reason=PUSH_READINESS_REQUIRE_SCHEDULER=false")
+    raise SystemExit(0)
+if scheduler_mode == "defer":
+    print("scheduler=status=deferred reason=PUSH_READINESS_RUN_SYNC=true")
+    raise SystemExit(0)
+
+scheduler = data.get("scheduler") if isinstance(data.get("scheduler"), dict) else {}
+last_sync_at = scheduler.get("lastSyncAt")
+if not last_sync_at:
+    print("scheduler=status=fail reason=missing-lastSyncAt", file=sys.stderr)
+    raise SystemExit(1)
+
+try:
+    max_age_seconds = int(max_age_raw)
+except ValueError:
+    print(
+        f"scheduler=status=fail reason=invalid-max-age value={max_age_raw}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+try:
+    normalized = str(last_sync_at).replace("Z", "+00:00")
+    last_sync = datetime.fromisoformat(normalized)
+except ValueError:
+    print(
+        f"scheduler=status=fail reason=invalid-lastSyncAt value={last_sync_at}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+if last_sync.tzinfo is None:
+    last_sync = last_sync.replace(tzinfo=timezone.utc)
+
+age_seconds = max(0, int((datetime.now(timezone.utc) - last_sync).total_seconds()))
+if age_seconds > max_age_seconds:
+    print(
+        f"scheduler=status=fail reason=stale ageSeconds={age_seconds} "
+        f"maxAgeSeconds={max_age_seconds}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+print(
+    "scheduler=status=ok "
+    f"lastSyncAt={last_sync_at} "
+    f"ageSeconds={age_seconds} "
+    f"maxAgeSeconds={max_age_seconds}"
+)
+PY
+}
+
+HEALTH_RESPONSE="$(mktemp)"
+CONFIG_RESPONSE="$(mktemp)"
+SYNC_RESPONSE="$(mktemp)"
+trap 'rm -f "$HEALTH_RESPONSE" "$CONFIG_RESPONSE" "$SYNC_RESPONSE"' EXIT
+
+request_json GET "/api/health" "/health" "$HEALTH_RESPONSE"
+request_json GET "/api/push/config-status" "/push/config-status" "$CONFIG_RESPONSE"
+
+scheduler_mode="check"
+if ! is_truthy "$REQUIRE_SCHEDULER"; then
+  scheduler_mode="skip"
+elif is_truthy "$RUN_SYNC"; then
+  scheduler_mode="defer"
+fi
+check_push_config "$scheduler_mode"
+
+if is_truthy "$RUN_SYNC"; then
   sync_path="/push/live-activity/sync-scoreboard"
   if [[ -n "$SYNC_DATE" ]]; then
     sync_path="$sync_path?date=$SYNC_DATE"
@@ -215,6 +293,10 @@ print(
     f"pushedMoments={len(data.get('pushedMoments') or [])}"
 )
 PY
+  if is_truthy "$REQUIRE_SCHEDULER"; then
+    request_json GET "/api/push/config-status" "/push/config-status" "$CONFIG_RESPONSE"
+    check_push_config "check"
+  fi
 else
   echo "sync_scoreboard=skipped set PUSH_READINESS_RUN_SYNC=true to trigger one scoreboard sync"
 fi

@@ -267,7 +267,7 @@ uvicorn kbo_fans_backend.main:app --reload
 - `PUSH_SYNC_SECRET`: scoreboard 기반 Live Activity sync trigger 보호용 secret
 - `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`: 배포 전 앱 Firebase 설정, iOS APNs/Live Activity capability, backend secret env, AWS env 형태를 secret 값 노출 없이 점검. 필수 배포값이 obvious placeholder로 남아 있으면 실패합니다.
 - `GET /api/push/config-status`: Firebase/APNs/registry/scheduler 설정 누락을 secret 값 노출 없이 점검
-- `./scripts/push-readiness-check.sh https://api.kbofans.com/api`: 배포 후 `/health`와 push config readiness를 한 번에 점검. `PUSH_READINESS_RUN_SYNC=true`로 one-shot sync를 실행할 때 날짜를 생략하면 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용하고, 재현용 날짜가 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정합니다.
+- `./scripts/push-readiness-check.sh https://api.kbofans.com/api`: 배포 후 `/health`, push config readiness, scheduler heartbeat 최신성을 한 번에 점검. 기본적으로 `scheduler.lastSyncAt`이 180초 이내여야 통과하며, 설정값만 확인할 때는 `PUSH_READINESS_REQUIRE_SCHEDULER=false`로 우회합니다. `PUSH_READINESS_RUN_SYNC=true`로 one-shot sync를 실행하면 sync 후 config-status를 다시 읽어 heartbeat를 확인합니다. 날짜를 생략하면 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용하고, 재현용 날짜가 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정합니다.
 - `./scripts/aws-push-secrets.sh`: Firebase Admin JSON / APNs `.p8` / sync secret을 AWS Secrets Manager에 생성 또는 갱신하고 `SECRET_ARN_*` export를 생성
 - `./scripts/aws-push-image.sh`: backend Docker image를 ECR에 build/tag/push하고 `CONTAINER_IMAGE_URI` export를 생성
 - `./scripts/aws-push-task-definitions.sh`: AWS secret ARN / role ARN / ECR / EFS 값을 환경변수로 받아 ECS task definition JSON과 execution-role secret-read IAM policy를 `outputs/aws/ecs-fargate/`에 렌더링

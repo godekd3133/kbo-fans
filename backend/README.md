@@ -107,7 +107,12 @@ PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.
 
 Set `PUSH_READINESS_RUN_SYNC=true` to trigger one scoreboard sync during the
 check. If `PUSH_READINESS_DATE` is omitted, the request omits the date query and
-the backend uses the current KBO game day in `Asia/Seoul`.
+the backend uses the current KBO game day in `Asia/Seoul`. After the one-shot
+sync, the script reads config-status again and checks the new heartbeat.
+By default the script also requires `scheduler.lastSyncAt` to be within 180
+seconds so a stopped sync worker cannot look ready. Use
+`PUSH_READINESS_REQUIRE_SCHEDULER=false` only when checking configuration before
+the worker has produced its first heartbeat.
 
 Render AWS ECS/Fargate task definitions and the execution-role secret-read
 policy from environment values:

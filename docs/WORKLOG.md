@@ -9,14 +9,24 @@
 - [x] `date` query가 없을 때 `current_kbo_date()`를 호출하는 regression test 추가
 - [x] `scripts/push-readiness-check.sh`의 one-shot sync 기본 날짜도 shell `date` 대신 backend KBO 경기일 기본값에 위임하도록 보정
 - [x] 특정 날짜 재현이 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 사용하도록 README/backend setup 문서에 기록
+- [x] `scripts/push-readiness-check.sh`가 기본적으로 `scheduler.lastSyncAt` 180초 이내 heartbeat를 요구하도록 보강해 sync worker가 멈춘 배포를 통과시키지 않도록 변경
+- [x] 설정값만 확인하는 초기 점검을 위해 `PUSH_READINESS_REQUIRE_SCHEDULER=false` 우회 옵션을 문서화
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (16 passed)
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/api/routes/push.py backend/tests/test_push_service.py`
 - [x] `python3 -m compileall backend/src/kbo_fans_backend`
 - [x] `bash -n scripts/push-readiness-check.sh scripts/codex-run.sh`
-- [x] ephemeral localhost mock server + `ALLOW_INSECURE_PUSH_READINESS=true PUSH_SYNC_SECRET=secret PUSH_READINESS_RUN_SYNC=true ./scripts/push-readiness-check.sh ...` 실행: sync endpoint가 query 없이 `/api/push/live-activity/sync-scoreboard`로 호출됨 확인
-- [x] mock server + `PUSH_READINESS_DATE=2026-06-04` 실행: 재현용 날짜는 `/api/push/live-activity/sync-scoreboard?date=2026-06-04`로 호출됨 확인
+- [x] ephemeral localhost mock server로 scheduler heartbeat 없음 실패, `PUSH_READINESS_REQUIRE_SCHEDULER=false` 우회, `PUSH_READINESS_RUN_SYNC=true` one-shot sync 후 heartbeat 재조회 통과 확인
+- [x] one-shot sync 기본 요청은 query 없이 `/api/push/live-activity/sync-scoreboard`, `PUSH_READINESS_DATE=2026-06-04` 지정 시에만 `/api/push/live-activity/sync-scoreboard?date=2026-06-04` 확인
+- [x] fresh scheduler heartbeat mock에서 `scheduler=status=ok` 통과 확인
+- [x] stale scheduler heartbeat mock에서 `scheduler=status=fail reason=stale` 실패 확인
+- [x] `PUSH_READINESS_REQUIRE_SCHEDULER=false` mock에서 heartbeat 없이도 설정-only 점검 통과 확인
+- [x] `PUSH_READINESS_RUN_SYNC=true` mock에서 health → config defer → sync → config heartbeat 재확인 4단계 통과 확인
+- [x] `PUSH_READINESS_RUN_SYNC=true PUSH_READINESS_DATE=2026-06-04` mock에서 명시 날짜 query와 sync 후 heartbeat 재확인 통과 확인
+- [x] `./scripts/codex-run.sh push-demo-setup-status --env-file /tmp/kbo-fans-goal-status.env --repo godekd3133/kbo-fans --skip-tooling` 실행: env bootstrap/OIDC dry-run은 통과, readiness audit은 Firebase Admin JSON, APNs `.p8`, AWS OIDC/ECR/VPC/Subnet/ACM 등 외부 설정 누락으로 expected attention
+- [x] `./scripts/codex-run.sh github-push-demo-run --repo godekd3133/kbo-fans --dry-run true` 실행: 필수 GitHub Actions secret/variable 누락을 dispatch 전에 차단
+- [x] `gh run list --repo godekd3133/kbo-fans --workflow push-demo-deploy.yml --limit 1 --json databaseId,status,conclusion,url` 확인: 최신 run은 기존 `26915430732` 그대로이며 새 workflow dispatch 없음
 
 ---
 
