@@ -30,6 +30,7 @@
 - GitHub Actions `Push Demo Deploy` workflow를 CLI에서 dispatch하고, 원격 workflow 미등록 상태를 명확히 안내하는 보조 스크립트를 추가
 - GitHub Actions `Push Demo Deploy` dispatch 전에 필수 secrets/variables 누락을 로컬에서 확인하는 사전검사를 추가
 - push demo env checklist를 GitHub Actions secrets/variables 업로드까지 포함하도록 보강하고, obvious placeholder 값 업로드를 차단
+- 앱 종료 후 push / Live Activity 시연 준비 상태를 앱 파일, env, GitHub Actions, 로컬 tooling 기준으로 감사하는 스크립트를 추가
 - AWS Secrets Manager 값을 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8` env로 주입해 FCM/APNs를 설정할 수 있도록 backend secret 입력 방식을 보강
 - 운영 중 scoreboard sync worker 실행 여부를 확인할 수 있도록 push config diagnostics에 scheduler heartbeat를 추가
 

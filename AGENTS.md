@@ -50,6 +50,7 @@
 - AWS ECS/Fargate push secrets should be injected through Secrets Manager as `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, and `PUSH_SYNC_SECRET`. Local/EC2 file deployments may use `FIREBASE_SERVICE_ACCOUNT_PATH` and `APNS_AUTH_KEY_PATH`.
 - Before demo deployment, run `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws` to check app Firebase files, APNs/Live Activity capability, backend secret env, and AWS env shape without printing secrets.
 - Use `infra/aws/ecs-fargate/deploy.env.example` as the single local checklist for push preflight, local AWS deploy, and GitHub Actions secret/variable upload. Copy it to an untracked env file and replace every placeholder before `--apply`.
+- Use `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans` to inspect app files, env checklist, local tooling, GitHub Actions inputs, and latest deploy run without deploying or printing secrets.
 - Create/update AWS push secrets with `./scripts/aws-push-secrets.sh` before rendering task definitions.
 - Build and push the backend ECR image with `./scripts/aws-push-image.sh`; source `outputs/aws/ecr/image.env` when deploying CloudFormation with a specific image tag.
 - Render AWS ECS task definitions and execution-role secret-read policy with `./scripts/aws-push-task-definitions.sh` or `./scripts/codex-run.sh aws-push-task-defs` instead of manually editing placeholder JSON.

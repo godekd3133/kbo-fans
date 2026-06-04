@@ -133,6 +133,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run.sh aws-push-stack-outputs
 ./scripts/codex-run.sh aws-push-demo-deploy --dry-run
 ./scripts/codex-run.sh aws-push-tooling
+./scripts/codex-run.sh push-demo-audit --env-file /path/to/kbo-fans-aws.env
 ./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env
 ./scripts/codex-run.sh github-push-demo-run --dry-run true
 ./scripts/codex-run.sh doctor
@@ -273,6 +274,7 @@ uvicorn kbo_fans_backend.main:app --reload
 - `./scripts/aws-push-demo-deploy.sh`: secret 업로드, ECR image push, CloudFormation deploy, output env 추출, readiness를 순서대로 실행
 - `./scripts/aws-push-tooling-check.sh`: 로컬 AWS CLI credential과 Docker daemon 상태를 확인. 로컬 도구가 없으면 GitHub Actions `Push Demo Deploy` workflow로 같은 배포 파이프라인을 실행할 수 있습니다.
 - `infra/aws/ecs-fargate/deploy.env.example`: preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드에 같이 쓰는 env checklist입니다. 로컬 untracked 파일로 복사한 뒤 실제 값을 채웁니다.
+- `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env`: 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables 상태를 secret 값 없이 한 번에 점검합니다.
 - `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`: GitHub Actions `Push Demo Deploy`에 필요한 secrets/variables를 dry-run으로 확인. `--apply`를 붙이면 `gh secret set` / `gh variable set`으로 실제 업로드합니다. obvious placeholder 값은 업로드 전에 실패합니다.
 - `./scripts/github-push-demo-run.sh --dry-run true`: GitHub Actions `Push Demo Deploy` workflow를 dispatch합니다. workflow 파일이 아직 원격 default branch에 없으면 커밋/푸시 필요 상태를 안내하고, 필수 secrets/variables가 누락되면 workflow run 생성 전에 목록을 출력하고 중단합니다.
 - `POST /api/push/live-activity/sync-scoreboard`: 운영 scheduler가 30~60초 간격으로 호출하는 scoreboard sync trigger. 등록된 Live Activity에는 APNs update/end를 보내고, scoreboard diff 기반 득점/역전/종료/이닝 변경은 FCM topic push로 발행합니다.
@@ -285,6 +287,7 @@ GitHub Actions 배포:
 - `dry_run=true`는 AWS/Docker deploy call 없이 repo script와 secret/env 형태를 검증합니다.
 - `dry_run=false`는 secret 업로드, ECR image push, CloudFormation deploy, stack output export, readiness를 실행합니다.
 - 로컬 env 파일에서 GitHub 입력값을 올릴 때는 먼저 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`로 dry-run을 보고, 이름이 맞으면 `--apply`를 붙입니다.
+- 전체 준비 상태는 `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans`로 점검합니다. 이 명령은 배포나 workflow dispatch를 실행하지 않습니다.
 - workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`로 dry-run을 실행하고, 통과하면 `./scripts/github-push-demo-run.sh --dry-run false --watch`로 실제 배포를 실행합니다. 이 CLI는 dispatch 전 GitHub secrets/variables 존재를 확인합니다. 이미 별도 확인을 끝낸 경우에만 `--skip-config-check`로 우회합니다.
 
 ## Operational Notes

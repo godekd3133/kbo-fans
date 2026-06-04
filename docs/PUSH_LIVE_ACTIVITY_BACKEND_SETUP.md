@@ -301,6 +301,14 @@ workflow 파일이 GitHub default branch에 올라간 뒤에는 CLI로 dispatch�
 
 현재 원격에 `.github/workflows/push-demo-deploy.yml`가 없으면 이 스크립트는 실패하면서 커밋/푸시가 필요하다고 안내한다. 필수 GitHub secrets/variables가 없으면 workflow run을 만들기 전에 누락 목록을 출력하고 중단한다. 이미 별도 확인을 끝낸 경우에만 `--skip-config-check`로 우회한다.
 
+전체 준비 상태를 한 번에 볼 때는 audit 스크립트를 쓴다. 이 명령은 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables, 최신 workflow run을 확인하지만 배포나 workflow dispatch는 하지 않는다.
+
+```bash
+./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans
+```
+
+현재 GitHub secrets/variables가 비어 있으면 이 audit은 실패해야 한다. 그 상태가 정상적인 다음 액션 신호이며, `github-push-secrets.sh --apply` 이후 다시 audit을 실행한다.
+
 ## 앱 빌드 설정
 
 iOS release/TestFlight 앱은 아래가 필요하다.
