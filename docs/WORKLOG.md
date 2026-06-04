@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-06-04: Push demo audit next action 정밀화
+
+### 완료
+- [x] `push-demo-readiness-audit.sh`가 GitHub secret/variable 누락 시 로컬 파일/env 값이 이미 준비된 항목과 아직 발급/설정이 필요한 항목을 구분하도록 보강
+- [x] iOS/Android Firebase client config는 repo 기본 파일이 있으면 재다운로드가 아니라 `github-push-secrets.sh --apply` 업로드로 안내
+- [x] `AWS_REGION`, `PUSH_SYNC_SECRET`처럼 env 값이 준비된 항목도 GitHub Actions 업로드 액션으로 안내
+- [x] Push / Live Activity setup 문서와 repo skill에 audit next action 기준 반영
+
+### 검증
+- [x] `bash -n scripts/push-demo-readiness-audit.sh`
+- [x] `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans` expected attention: local-ready 항목은 upload 안내, placeholder/missing 항목은 발급/설정 안내
+
+---
+
 ## 2026-06-04: GitHub Actions Node.js 24 action runtime 준비
 
 ### 완료

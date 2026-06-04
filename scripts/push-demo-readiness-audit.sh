@@ -70,6 +70,11 @@ done
 
 repo_hint="${REPO:-<owner/repo>}"
 
+if [[ -n "$ENV_FILE" && -f "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+fi
+
 pass() {
   CHECKS=$((CHECKS + 1))
   echo "ok: $1"
@@ -190,6 +195,88 @@ check_github_variable_or_secret() {
   fi
 }
 
+looks_like_placeholder_value() {
+  local value="$1"
+
+  if [[ -z "$value" ]]; then
+    return 1
+  fi
+
+  case "$value" in
+    *"<"*|*"your-"*|*"replace_"*|*"replace-with"*|*"XXXXXXXXXX"*|*"123456789012"*|*"000000000000"*|*"111111111111"*)
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
+env_value_ready() {
+  local name="$1"
+  local value="${!name:-}"
+
+  [[ -n "$value" ]] || return 1
+  ! looks_like_placeholder_value "$value"
+}
+
+secret_file_ready() {
+  local value_name="$1"
+  local file_name="$2"
+  local default_path="${3:-}"
+  local value="${!value_name:-}"
+  local path="${!file_name:-}"
+
+  if [[ -n "$value" ]] && ! looks_like_placeholder_value "$value"; then
+    return 0
+  fi
+  if [[ -n "$path" && -f "$path" ]] && ! looks_like_placeholder_value "$path"; then
+    return 0
+  fi
+  if [[ -n "$default_path" && -f "$default_path" ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
+github_upload_command_hint() {
+  if [[ -n "$ENV_FILE" ]]; then
+    echo "./scripts/github-push-secrets.sh --env-file $ENV_FILE --apply"
+  else
+    echo "./scripts/github-push-secrets.sh --env-file <env> --apply"
+  fi
+}
+
+github_secret_action() {
+  local label="$1"
+  local value_name="$2"
+  local file_name="$3"
+  local default_path="${4:-}"
+  local setup_action="$5"
+  local upload_cmd
+  upload_cmd="$(github_upload_command_hint)"
+
+  if secret_file_ready "$value_name" "$file_name" "$default_path"; then
+    echo "$label: local value/file is available; upload it to GitHub Actions with $upload_cmd"
+  else
+    echo "$setup_action"
+  fi
+}
+
+github_variable_action() {
+  local label="$1"
+  local env_name="$2"
+  local setup_action="$3"
+  local upload_cmd
+  upload_cmd="$(github_upload_command_hint)"
+
+  if env_value_ready "$env_name"; then
+    echo "$label: env value is available; upload it to GitHub Actions with $upload_cmd"
+  else
+    echo "$setup_action"
+  fi
+}
+
 audit_github() {
   section "GitHub Actions"
 
@@ -236,19 +323,39 @@ audit_github() {
   check_github_secret \
     IOS_GOOGLE_SERVICE_INFO_PLIST \
     "$secret_names" \
-    "firebase-client: download Firebase iOS GoogleService-Info.plist, set IOS_GOOGLE_SERVICE_INFO_PLIST_FILE in the env file, then run github-push-secrets.sh --apply"
+    "$(github_secret_action \
+      "firebase-client-ios" \
+      IOS_GOOGLE_SERVICE_INFO_PLIST \
+      IOS_GOOGLE_SERVICE_INFO_PLIST_FILE \
+      "$ROOT_DIR/app/ios/Runner/GoogleService-Info.plist" \
+      "firebase-client-ios: download Firebase iOS GoogleService-Info.plist, set IOS_GOOGLE_SERVICE_INFO_PLIST_FILE in the env file, then run github-push-secrets.sh --apply")"
   check_github_secret \
     ANDROID_GOOGLE_SERVICES_JSON \
     "$secret_names" \
-    "firebase-client: download Firebase Android google-services.json, set ANDROID_GOOGLE_SERVICES_JSON_FILE in the env file, then run github-push-secrets.sh --apply"
+    "$(github_secret_action \
+      "firebase-client-android" \
+      ANDROID_GOOGLE_SERVICES_JSON \
+      ANDROID_GOOGLE_SERVICES_JSON_FILE \
+      "$ROOT_DIR/app/android/app/google-services.json" \
+      "firebase-client-android: download Firebase Android google-services.json, set ANDROID_GOOGLE_SERVICES_JSON_FILE in the env file, then run github-push-secrets.sh --apply")"
   check_github_secret \
     FIREBASE_SERVICE_ACCOUNT_JSON \
     "$secret_names" \
-    "firebase-admin: create a Firebase Admin service account JSON, set FIREBASE_SERVICE_ACCOUNT_FILE in the env file, then run github-push-secrets.sh --apply"
+    "$(github_secret_action \
+      "firebase-admin" \
+      FIREBASE_SERVICE_ACCOUNT_JSON \
+      FIREBASE_SERVICE_ACCOUNT_FILE \
+      "" \
+      "firebase-admin: create a Firebase Admin service account JSON, set FIREBASE_SERVICE_ACCOUNT_FILE in the env file, then run github-push-secrets.sh --apply")"
   check_github_secret \
     APNS_AUTH_KEY_P8 \
     "$secret_names" \
-    "apple-apns: create/download an Apple APNs .p8 key, set APNS_AUTH_KEY_FILE, APNS_KEY_ID, and APNS_TEAM_ID in the env file, then run github-push-secrets.sh --apply"
+    "$(github_secret_action \
+      "apple-apns-key" \
+      APNS_AUTH_KEY_P8 \
+      APNS_AUTH_KEY_FILE \
+      "" \
+      "apple-apns-key: create/download an Apple APNs .p8 key, set APNS_AUTH_KEY_FILE, APNS_KEY_ID, and APNS_TEAM_ID in the env file, then run github-push-secrets.sh --apply")"
 
   if name_exists AWS_ROLE_TO_ASSUME "$secret_names"; then
     pass "GitHub AWS auth configured: AWS_ROLE_TO_ASSUME"
@@ -256,61 +363,97 @@ audit_github() {
     pass "GitHub AWS auth configured: AWS access key pair"
   else
     fail "GitHub AWS auth missing: AWS_ROLE_TO_ASSUME or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY"
-    add_next_action "aws-auth: prefer ./scripts/aws-github-oidc-role.sh --env-file <env> --repo $repo_hint --update-env-file, then run github-push-secrets.sh --apply"
+    if env_value_ready AWS_ROLE_TO_ASSUME; then
+      add_next_action "aws-auth: AWS_ROLE_TO_ASSUME is available in env; upload it to GitHub Actions with $(github_upload_command_hint)"
+    elif env_value_ready AWS_ACCESS_KEY_ID && env_value_ready AWS_SECRET_ACCESS_KEY; then
+      add_next_action "aws-auth: AWS access key pair is available in env; upload it to GitHub Actions with $(github_upload_command_hint)"
+    else
+      add_next_action "aws-auth: prefer ./scripts/aws-github-oidc-role.sh --env-file <env> --repo $repo_hint --update-env-file, then run github-push-secrets.sh --apply"
+    fi
   fi
 
   if name_exists PUSH_SYNC_SECRET "$secret_names"; then
     pass "GitHub secret configured: PUSH_SYNC_SECRET"
   else
     warn "GitHub secret PUSH_SYNC_SECRET missing; workflow can generate one, but a stable secret is easier to verify later"
-    add_next_action "push-sync: generate PUSH_SYNC_SECRET with openssl rand -hex 32, put it in the env file, then run github-push-secrets.sh --apply"
+    add_next_action "$(github_variable_action \
+      "push-sync" \
+      PUSH_SYNC_SECRET \
+      "push-sync: generate PUSH_SYNC_SECRET with openssl rand -hex 32, put it in the env file, then run github-push-secrets.sh --apply")"
   fi
 
   check_github_variable_or_secret \
     AWS_REGION \
     "$secret_names" \
     "$variable_names" \
-    "aws-region: set AWS_REGION in the env file and re-run github-push-secrets.sh --apply"
+    "$(github_variable_action \
+      "aws-region" \
+      AWS_REGION \
+      "aws-region: set AWS_REGION in the env file and re-run github-push-secrets.sh --apply")"
   check_github_variable_or_secret \
     FIREBASE_PROJECT_ID \
     "$secret_names" \
     "$variable_names" \
-    "firebase-admin: set FIREBASE_PROJECT_ID from the Firebase project settings and re-run github-push-secrets.sh --apply"
+    "$(github_variable_action \
+      "firebase-project" \
+      FIREBASE_PROJECT_ID \
+      "firebase-project: set FIREBASE_PROJECT_ID from the Firebase project settings and re-run github-push-secrets.sh --apply")"
   check_github_variable_or_secret \
     APNS_KEY_ID \
     "$secret_names" \
     "$variable_names" \
-    "apple-apns: set APNS_KEY_ID from the Apple APNs key and re-run github-push-secrets.sh --apply"
+    "$(github_variable_action \
+      "apple-apns-key-id" \
+      APNS_KEY_ID \
+      "apple-apns-key-id: set APNS_KEY_ID from the Apple APNs key and re-run github-push-secrets.sh --apply")"
   check_github_variable_or_secret \
     APNS_TEAM_ID \
     "$secret_names" \
     "$variable_names" \
-    "apple-apns: set APNS_TEAM_ID from Apple Developer membership and re-run github-push-secrets.sh --apply"
+    "$(github_variable_action \
+      "apple-apns-team-id" \
+      APNS_TEAM_ID \
+      "apple-apns-team-id: set APNS_TEAM_ID from Apple Developer membership and re-run github-push-secrets.sh --apply")"
   check_github_variable_or_secret \
     ECR_REPOSITORY_URI \
     "$secret_names" \
     "$variable_names" \
-    "aws-infra: create/select an ECR repository, set ECR_REPOSITORY_URI, then re-run github-push-secrets.sh --apply"
+    "$(github_variable_action \
+      "aws-ecr" \
+      ECR_REPOSITORY_URI \
+      "aws-ecr: create/select an ECR repository, set ECR_REPOSITORY_URI, then re-run github-push-secrets.sh --apply")"
   check_github_variable_or_secret \
     VPC_ID \
     "$secret_names" \
     "$variable_names" \
-    "aws-network: choose the demo VPC, set VPC_ID, then re-run github-push-secrets.sh --apply"
+    "$(github_variable_action \
+      "aws-network-vpc" \
+      VPC_ID \
+      "aws-network-vpc: choose the demo VPC, set VPC_ID, then re-run github-push-secrets.sh --apply")"
   check_github_variable_or_secret \
     PUBLIC_SUBNET_A_ID \
     "$secret_names" \
     "$variable_names" \
-    "aws-network: choose public subnet A for the ALB/ECS service and set PUBLIC_SUBNET_A_ID"
+    "$(github_variable_action \
+      "aws-network-subnet-a" \
+      PUBLIC_SUBNET_A_ID \
+      "aws-network-subnet-a: choose public subnet A for the ALB/ECS service and set PUBLIC_SUBNET_A_ID")"
   check_github_variable_or_secret \
     PUBLIC_SUBNET_B_ID \
     "$secret_names" \
     "$variable_names" \
-    "aws-network: choose public subnet B in a different AZ and set PUBLIC_SUBNET_B_ID"
+    "$(github_variable_action \
+      "aws-network-subnet-b" \
+      PUBLIC_SUBNET_B_ID \
+      "aws-network-subnet-b: choose public subnet B in a different AZ and set PUBLIC_SUBNET_B_ID")"
   check_github_variable_or_secret \
     ACM_CERTIFICATE_ARN \
     "$secret_names" \
     "$variable_names" \
-    "aws-https: issue or select an ACM certificate in the deploy region and set ACM_CERTIFICATE_ARN"
+    "$(github_variable_action \
+      "aws-https" \
+      ACM_CERTIFICATE_ARN \
+      "aws-https: issue or select an ACM certificate in the deploy region and set ACM_CERTIFICATE_ARN")"
 
   local latest_run
   latest_run="$(

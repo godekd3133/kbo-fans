@@ -31,6 +31,7 @@
 - GitHub Actions `Push Demo Deploy` dispatch 전에 필수 secrets/variables 누락을 로컬에서 확인하는 사전검사를 추가
 - push demo env checklist를 GitHub Actions secrets/variables 업로드까지 포함하도록 보강하고, obvious placeholder 값 업로드를 차단
 - 앱 종료 후 push / Live Activity 시연 준비 상태를 앱 파일, env, GitHub Actions, 로컬 tooling 기준으로 감사하는 스크립트를 추가
+- Push demo readiness audit이 로컬 파일/env 값이 이미 준비된 항목은 새 발급이 아니라 GitHub Actions 업로드 액션으로 안내하도록 보강
 - push demo env 초안 생성, GitHub Actions OIDC role dry-run, readiness audit, 다음 명령 안내를 한 번에 실행하는 setup status 스크립트를 추가
 - push demo env 초안 생성 시 repo 인자를 받아 후속 OIDC/audit 명령에 실제 GitHub repo를 표시하도록 개선
 - push demo env 초안과 AWS deploy env example에 Firebase/Admin/APNs/AWS 값의 발급 위치와 GitHub 업로드 대상 주석을 추가

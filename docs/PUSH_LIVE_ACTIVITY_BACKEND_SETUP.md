@@ -357,6 +357,7 @@ audit 출력은 두 종류로 나뉜다.
 - `next_command:`: 준비한 env 파일을 기준으로 다음에 실행할 검증/업로드/배포 명령
 
 예를 들어 `IOS_GOOGLE_SERVICE_INFO_PLIST`가 없으면 Firebase iOS 앱 설정 파일을 받아 `IOS_GOOGLE_SERVICE_INFO_PLIST_FILE`에 넣으라고 표시하고, `APNS_AUTH_KEY_P8`가 없으면 Apple APNs `.p8`와 `APNS_KEY_ID` / `APNS_TEAM_ID` 준비를 안내한다. secret 값 자체는 출력하지 않는다.
+로컬 파일이나 env 값이 이미 준비되어 있는데 GitHub Actions secret/variable만 비어 있으면, audit은 새로 발급하라고 하지 않고 `github-push-secrets.sh --apply`로 업로드하라고 안내한다.
 
 ## 앱 빌드 설정
 
