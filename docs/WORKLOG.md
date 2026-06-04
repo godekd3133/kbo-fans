@@ -110,6 +110,7 @@
 - [x] Firebase client config 경로와 project id를 감지해 `/tmp/kbo-fans-aws.env` 같은 로컬 untracked env 초안을 만드는 `scripts/push-demo-env-bootstrap.sh`, `./scripts/codex-run.sh push-demo-env-bootstrap` entrypoint를 추가
 - [x] `push-live-preflight.sh --aws`가 첫 누락 파일에서 조기 종료되지 않고 Firebase Admin, APNs, AWS placeholder를 한 번에 모으도록 보정하고, 배포 필수값의 obvious placeholder는 failure로 처리하도록 강화
 - [x] GitHub Actions가 장기 AWS access key 없이 배포할 수 있도록 `AWS_ROLE_TO_ASSUME` OIDC role CloudFormation 템플릿과 `scripts/aws-github-oidc-role.sh`, `./scripts/codex-run.sh aws-github-oidc-role` entrypoint를 추가
+- [x] env 초안 생성, OIDC role dry-run, readiness audit, 다음 명령 안내를 하나로 묶는 `scripts/push-demo-setup-status.sh`, `./scripts/codex-run.sh push-demo-setup-status` entrypoint를 추가
 - [x] backend APNs `liveactivity` payload의 `content-state`가 iOS `KboFansScoreAttributes.ContentState` 계약과 맞는지 고정하는 regression test 추가
 - [x] 수동 ECS 템플릿 경로와 CloudFormation full-stack 경로의 역할 차이를 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, `README.md`, `backend/README.md`, `infra/aws/cloudformation/README.md`에 기록
 - [x] release no-backend direct 실행/CI artifact도 push / Live Activity token 등록을 위해 운영 `API_BASE_URL`을 주입하도록 `scripts/codex-run.sh`와 `.github/workflows/app-build-artifacts.yml`을 보강
@@ -192,6 +193,8 @@
 - [x] `python3 -m json.tool infra/aws/cloudformation/github-actions-oidc-role.json`
 - [x] `bash -n scripts/aws-github-oidc-role.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh aws-github-oidc-role --env-file /tmp/kbo-fans-aws-oidc-check.env --repo godekd3133/kbo-fans --dry-run --update-env-file` 실행: AWS 호출 없이 OIDC provider / role stack 계획 출력 확인
+- [x] `bash -n scripts/push-demo-setup-status.sh scripts/codex-run.sh`
+- [x] `./scripts/codex-run.sh push-demo-setup-status --env-file /tmp/kbo-fans-setup-status.env --repo godekd3133/kbo-fans --skip-tooling` 실행: env 생성, OIDC dry-run, readiness audit expected attention, 다음 명령 출력 확인
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (15 passed; APNs Live Activity payload contract test 포함)
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/tests/test_push_service.py backend/src/kbo_fans_backend/services/apns_live_activity.py backend/src/kbo_fans_backend/schemas/push.py`
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과

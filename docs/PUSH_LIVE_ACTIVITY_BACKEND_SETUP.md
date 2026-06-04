@@ -187,6 +187,14 @@ $EDITOR /tmp/kbo-fans-aws.env
 
 bootstrap은 AWS, GitHub, Firebase, Apple API를 호출하지 않는다. `PUSH_SYNC_SECRET`는 로컬 파일에만 생성하고 출력하지 않으며, Apple APNs key와 AWS role/network/HTTPS 값은 placeholder로 남겨 audit이 잡게 한다. `push-live-preflight.sh --aws`는 필수 배포값이 obvious placeholder로 남아 있으면 실패로 처리한다.
 
+전체 준비 상태를 한 번에 보고 싶으면 setup status를 먼저 실행한다. 이 명령은 env 파일이 없으면 초안을 만들고, GitHub OIDC role dry-run과 readiness audit까지 실행하지만 실제 AWS 배포나 GitHub workflow dispatch는 하지 않는다.
+
+```bash
+./scripts/push-demo-setup-status.sh \
+  --env-file /tmp/kbo-fans-aws.env \
+  --repo godekd3133/kbo-fans
+```
+
 `PUSH_SYNC_SECRET`는 `openssl rand -hex 32`로 만들고, `IOS_GOOGLE_SERVICE_INFO_PLIST_FILE`, `ANDROID_GOOGLE_SERVICES_JSON_FILE`, `FIREBASE_SERVICE_ACCOUNT_FILE`, `APNS_AUTH_KEY_FILE`은 로컬 파일 경로를 넣는다. GitHub Actions 배포를 쓸 때는 `AWS_ROLE_TO_ASSUME` OIDC role을 권장하며, 없으면 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`를 넣는다. `github-push-secrets.sh`는 obvious placeholder 값을 GitHub에 업로드하지 못하게 막는다.
 
 GitHub Actions용 AWS OIDC role은 아래 스크립트로 만들 수 있다. GitHub 공식 AWS OIDC 설정은 provider URL `https://token.actions.githubusercontent.com`, audience `sts.amazonaws.com`를 사용하고, AWS IAM은 `token.actions.githubusercontent.com:sub` 조건으로 repo/branch를 제한하라고 안내한다. 이 repo의 스크립트도 `repo:godekd3133/kbo-fans:ref:refs/heads/main`만 role을 assume할 수 있게 만든다.
@@ -312,6 +320,7 @@ GitHub Actions secrets/variables는 `gh` CLI로도 넣을 수 있다. 기본은 
 ```bash
 ./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force
 $EDITOR /tmp/kbo-fans-aws.env
+./scripts/push-demo-setup-status.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans
 ./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws
 ./scripts/aws-github-oidc-role.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file --dry-run
 ./scripts/aws-github-oidc-role.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file

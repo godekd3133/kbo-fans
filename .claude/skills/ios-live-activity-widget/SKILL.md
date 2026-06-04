@@ -39,6 +39,7 @@
 - 시연 배포 전에는 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 앱 Firebase 파일, APNs/Live Activity capability, backend secret env, AWS env 형태를 secret 출력 없이 점검한다.
 - `infra/aws/ecs-fargate/deploy.env.example`를 push preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드의 단일 checklist로 사용한다. untracked env 파일로 복사한 뒤 placeholder를 모두 실제 값으로 바꾸고 `--apply`를 실행한다.
 - 처음 env 파일을 만들 때는 `./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --force`로 로컬 Firebase client config 경로와 project id가 반영된 초안을 만들 수 있다. Apple/APNs/AWS placeholder는 그대로 audit에서 잡히게 둔다.
+- 전체 setup 흐름이 헷갈리면 `./scripts/push-demo-setup-status.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans`를 먼저 실행한다. 이 명령은 env 생성, OIDC dry-run, readiness audit, 다음 명령 안내를 묶고 배포/dispatch는 하지 않는다.
 - `push-live-preflight.sh --aws`는 배포 필수값의 obvious placeholder를 실패로 처리해야 한다. 첫 누락 파일에서 멈추지 말고 Firebase Admin, APNs, AWS 값들을 한 번에 모아 보여줘야 한다.
 - `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans`로 앱 파일, env checklist, 로컬 tooling, GitHub Actions 입력값, 최신 deploy run을 배포 없이 점검한다. secret 값은 출력하지 않는다.
 - AWS push secret은 `./scripts/aws-push-secrets.sh`로 생성/갱신한다.
