@@ -16,6 +16,7 @@
 - GitHub Actions 수동 워크플로우는 이미 저장소에 추가됨
 - 플랫폼/환경별 아티팩트 업로드 경로도 정의됨
 - workflow 내부 signing/config/metadata 파일 생성은 heredoc 없이 동작하도록 정리해 runner 들여쓰기 영향을 받지 않음
+- `actions/checkout` / `actions/setup-python`은 Node.js 24 대응 major인 `@v6` 사용
 - `web/release` 원격 run `26931917852`는 backend tests, web release build, metadata, artifact upload까지 통과함
 - Android/iOS GitHub Secrets 등록과 실제 원격 실행 검증은 아직 안 끝남
 - release API backend는 아직 없다. 운영 API 준비 항목은 `docs/RELEASE_API_BACKEND_TODO.md` 를 기준으로 추적한다.

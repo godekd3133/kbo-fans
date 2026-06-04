@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-06-04: GitHub Actions Node.js 24 action runtime 준비
+
+### 완료
+- [x] 원격 `App Build Artifacts` run `26931917852`에서 `actions/checkout@v4`, `actions/setup-python@v5`의 Node.js 20 deprecation warning 확인
+- [x] GitHub 공식 릴리스 기준 `actions/checkout` 최신 `v6.0.3`, `actions/setup-python` 최신 `v6.2.0` 확인
+- [x] `.github/workflows/app-build-artifacts.yml`, `.github/workflows/push-demo-deploy.yml`의 `actions/checkout` / `actions/setup-python`을 `@v6`으로 갱신
+
+### 검증
+- [x] `gh api repos/actions/checkout/releases/latest --jq '.tag_name + " " + .html_url'` (`v6.0.3`)
+- [x] `gh api repos/actions/setup-python/releases/latest --jq '.tag_name + " " + .html_url'` (`v6.2.0`)
+- [ ] 갱신 후 GitHub Actions `App Build Artifacts` `web/release` 원격 run 재검증
+
+---
+
 ## 2026-06-04: Push setup 보관 메모 현재성 보정
 
 ### 완료
