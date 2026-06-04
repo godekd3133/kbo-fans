@@ -1,8 +1,23 @@
 # 원격 푸시 작업 보관 메모
 
-최종 업데이트: 2026-03-31
+최종 업데이트: 2026-06-04
+
+## 현재 사용 기준
+
+이 문서는 2026-03-31 기준 원격 푸시 재개 메모를 보관하기 위한 문서다. 현재 작업 기준은 아래 문서를 우선한다.
+
+- `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`
+- `./scripts/push-demo-setup-status.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans`
+- `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans`
+- `./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws`
+
+2026-06-04 검증 기준으로 앱 쪽 Firebase/APNs/Live Activity 프로젝트 파일은 `./scripts/push-live-preflight.sh --app-only`에서 통과했다. 현재 시연을 막는 항목은 코드 연결 부재가 아니라 Firebase Admin JSON, Apple APNs `.p8`, AWS deploy target, GitHub Actions secrets/variables 같은 운영 입력값 미설정이다.
+
+앱 종료 후에도 Dynamic Island / Live Activity가 갱신되려면 앱의 direct KBO data path만으로는 부족하다. 운영 backend가 KBO 상태를 polling하고 저장된 FCM / ActivityKit token으로 FCM/APNs push를 보내야 한다.
 
 ## 현재 상태
+
+아래 내용은 2026-03-31 기준 보관 내용이다. 최신 상태를 판단할 때는 위의 현재 사용 기준을 우선한다.
 
 원격 푸시가 "코드 경로상으로는" 연결되어 있음.
 
@@ -19,7 +34,7 @@
   - Firebase Admin 기반 발송 서비스 추가
   - `FIREBASE_SERVICE_ACCOUNT_PATH`, `FIREBASE_PROJECT_ID` 설정값 추가
 
-## 아직 막힌 이유
+## 2026-03-31 기준 막힌 이유
 
 실제 Firebase 설정 파일이 없음.
 
