@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-06-04: Push setup 보관 메모 현재성 보정
+
+### 완료
+- [x] `docs/PUSH_SETUP_TODO.md`가 2026-03-31 기준 Firebase 파일 부재 상태를 현재 blocker처럼 보이게 하던 문서 충돌을 정리
+- [x] 최신 기준은 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, setup status, readiness audit, push/live preflight라고 명시
+- [x] 2026-06-04 기준 앱 Firebase/APNs/Live Activity 파일은 app-only preflight를 통과했고, 남은 blocker는 Firebase Admin JSON, Apple APNs `.p8`, AWS deploy target, GitHub Actions secrets/variables 같은 운영 입력값이라고 분리
+
+### 검증
+- [x] `./scripts/push-live-preflight.sh --app-only` (`checks=29`, `warnings=1`, `failures=0`; warning은 backend secret check skip)
+- [x] `./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws` (`failures=9`; Firebase Admin/APNs/AWS placeholder 운영값 미설정 확인)
+- [x] `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans` (`failures=16`; GitHub Actions secrets/variables 미설정 확인)
+
+---
+
 ## 2026-06-04: App Build Artifacts workflow heredoc 안정화
 
 ### 완료
@@ -9,7 +23,8 @@
 - [x] `.github/workflows/app-build-artifacts.yml`의 heredoc 기반 파일 생성을 `python3 -c`와 `printf` 기반 생성으로 교체해 YAML 들여쓰기와 무관하게 동작하도록 보강
 - [x] Android key.properties, Android/Web/iOS metadata, iOS ExportOptions.plist 생성 경로를 임시 디렉터리에서 실행 검증
 - [x] release artifact metadata의 `push_api_base_url` 출력은 유지해, release 빌드가 어떤 token-registration backend URL을 품었는지 artifact에서 확인할 수 있게 유지
-- [x] 실제 GitHub Actions 원격 실행은 Firebase/APNs/AWS/GitHub secrets 준비 이후 남은 수동 검증 항목으로 유지
+- [x] GitHub Actions 원격 `web/release` artifact run을 성공시켜 backend test, release web build, metadata, artifact upload 경로까지 확인
+- [x] Android release signing, iOS simulator, signed IPA 원격 실행은 Firebase/APNs/AWS/GitHub secrets 준비 이후 남은 수동 검증 항목으로 유지
 
 ### 검증
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml"); puts "workflow yaml ok"'`
@@ -17,6 +32,9 @@
 - [x] 임시 디렉터리에서 workflow `Create export options` run script 실행 및 `plistlib` load 확인
 - [x] 임시 디렉터리에서 workflow `Configure Android signing` run script 실행 및 keystore/key.properties/GITHUB_ENV 결과 확인
 - [x] 임시 디렉터리에서 workflow metadata 생성 run script를 `matrix.app_environment=release` 치환 후 실행해 각 metadata 파일 주요 필드 확인
+- [x] GitHub Actions `App Build Artifacts` run `26931917852` (`headSha=bf343a9`, `platform=web`, `app_environment=release`) success: `backend_tests`, `prepare`, `web (release)` 통과
+- [x] `gh run download 26931917852 --repo godekd3133/kbo-fans -n web-release` 후 `web-build-metadata-release.txt`의 `data_mode=no-backend-direct`, `push_api_base_url=https://api.kbofans.com/api`, `archive=build/kbo-fans-web-release.zip` 확인
+- [x] 다운로드한 `kbo-fans-web-release.zip` 내부 `index.html`, `flutter_bootstrap.js`, `main.dart.js` 존재 확인
 
 ---
 
