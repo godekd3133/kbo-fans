@@ -173,7 +173,7 @@
 - [x] `bash -n scripts/github-push-demo-run.sh scripts/codex-run.sh`
 - [x] `./scripts/codex-run.sh github-push-demo-run --repo godekd3133/kbo-fans --dry-run true` 현재 원격 상태에서 expected failure 확인: 필수 secrets/variables 누락 목록을 출력하고 workflow dispatch 전 중단
 - [x] 사전검사 실패 후 `gh run list --workflow push-demo-deploy.yml` 최신 run이 기존 `26915430732` 그대로임을 확인해 새 workflow run이 생성되지 않았음을 검증
-- [x] mock env에서 `./scripts/github-push-secrets.sh --env-file ... --repo godekd3133/kbo-fans` placeholder failure path 확인: `FIREBASE_PROJECT_ID still looks like a placeholder`, `PUSH_SYNC_SECRET still looks like a placeholder`와 exit 2
+- [x] mock env에서 `./scripts/github-push-secrets.sh --env-file ... --repo godekd3133/kbo-fans` placeholder failure path 확인: `FIREBASE_PROJECT_ID still looks like a placeholder`와 exit 2
 - [x] placeholder가 아닌 mock env에서 `./scripts/github-push-secrets.sh --env-file ... --repo godekd3133/kbo-fans` dry-run 통과. secret 값 없이 `would_set_secret` / `would_set_variable` 이름만 출력
 - [x] mock env에서 `./scripts/push-live-preflight.sh --env-file ... --aws` 통과 (`checks=41`, `warnings=4`, `failures=0`; warnings는 배포 후 생성될 stack output/secret ARN)
 - [x] `ruby -e 'require "yaml"; YAML.load_file(".github/workflows/app-build-artifacts.yml")'` workflow YAML parse 통과
