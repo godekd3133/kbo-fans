@@ -187,5 +187,5 @@ For AWS ECS/Fargate:
   - `-m`
   - `kbo_fans_backend.scheduler.live_activity_sync`
 - Store Firebase service account JSON and APNs `.p8` in AWS Secrets Manager and inject them as `FIREBASE_SERVICE_ACCOUNT_JSON` / `APNS_AUTH_KEY_P8`, or mount files and use the path variables.
-- `PUSH_REGISTRY_PATH` must point to shared persistent storage if API and scheduler run as separate tasks.
+- `PUSH_REGISTRY_PATH` must point to shared persistent storage if API and scheduler run as separate tasks. The JSON registry uses a sibling lock file plus atomic replace so the API service and sync worker do not overwrite each other's token or heartbeat updates.
 - ECS/Fargate templates and renderer live in `infra/aws/ecs-fargate/`.

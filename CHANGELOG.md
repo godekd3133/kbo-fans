@@ -48,6 +48,7 @@
 - Android `home_widget`의 Glance 동적 의존성이 최신 alpha를 잡아 SDK/AGP 요구사항을 끌어올리지 않도록 Glance 안정 버전 고정
 - Live Activity scoreboard sync와 push readiness one-shot sync 기본 날짜를 AWS UTC가 아닌 KBO 경기일(`Asia/Seoul`) 기준으로 계산하도록 변경
 - Push readiness check가 scheduler heartbeat 최신성을 확인해 sync worker가 멈춘 배포를 통과시키지 않도록 변경
+- Push token registry가 파일락과 atomic write를 사용해 API service와 sync worker의 동시 저장 중 token / heartbeat 갱신을 잃지 않도록 변경
 
 ## [0.0.29] - 2026-06-04
 

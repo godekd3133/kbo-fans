@@ -14,6 +14,24 @@
 - [x] `cd app && fvm flutter test` (76 tests passed)
 - [x] `cd app && fvm flutter test --dart-define=USE_BACKEND_API=true test/data/providers_routing_test.dart` (1 test passed)
 - [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/web`; wasm dry-run warning은 `flutter_timezone_web.dart` JS interop warning으로 일반 web release build는 성공)
+- [x] `cd app && GRADLE_OPTS='-Djdk.lang.Process.launchMechanism=FORK' fvm flutter build apk --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/app/outputs/flutter-apk/app-release.apk`, 62.1MB)
+- [x] `cd app && fvm flutter build ios --debug --no-codesign --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/ios/iphoneos/Runner.app`)
+
+---
+
+## 2026-06-04: Push registry 공유 저장 안정화
+
+### 완료
+- [x] 앱 종료 후 push / Dynamic Island 갱신을 위해 API service가 저장한 FCM / ActivityKit token과 sync worker heartbeat / scoreboard state가 같은 registry 파일에서 보존되도록 `PushRegistry` 저장 경로 보강
+- [x] `PUSH_REGISTRY_PATH` JSON registry에 sibling lock file과 atomic replace를 적용해 별도 프로세스의 API task / scheduler task 동시 쓰기 중 token, heartbeat, scoreboard state가 유실될 수 있는 경로 차단
+- [x] 여러 프로세스와 같은 프로세스의 여러 registry 인스턴스가 같은 registry 파일에 device token을 동시에 저장해도 최종 token 수가 보존되는 regression test 추가
+- [x] backend README, Push / Live Activity setup 문서, repo skill, changelog에 공유 registry 파일락/atomic write 기준 기록
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_push_registry_serializes_writes_across_processes` (1 passed)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (18 passed)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/push_registry.py backend/tests/test_push_service.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend`
 
 ---
 

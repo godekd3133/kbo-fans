@@ -35,7 +35,7 @@
   를 체크한다.
 - 앱 종료 후 Live Activity / Dynamic Island 갱신은 앱 direct data path가 아니라 backend scheduler/worker가 책임진다.
 - release no-backend direct build도 token registration을 위해 운영 `API_BASE_URL`을 주입해야 한다. `USE_BACKEND_API=true`가 없으면 provider routing은 direct data로 유지된다.
-- AWS 운영에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` secret env와 공유 `PUSH_REGISTRY_PATH`를 확인한다.
+- AWS 운영에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` secret env와 공유 `PUSH_REGISTRY_PATH`를 확인한다. JSON registry는 sibling lock file과 atomic replace를 쓰므로 API service와 sync worker가 같은 EFS/EBS 경로를 봐야 한다.
 - 시연 배포 전에는 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 앱 Firebase 파일, APNs/Live Activity capability, backend secret env, AWS env 형태를 secret 출력 없이 점검한다.
 - `infra/aws/ecs-fargate/deploy.env.example`를 push preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드의 단일 checklist로 사용한다. untracked env 파일로 복사한 뒤 placeholder를 모두 실제 값으로 바꾸고 `--apply`를 실행한다.
 - 처음 env 파일을 만들 때는 `./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --force`로 로컬 Firebase client config 경로와 project id가 반영된 초안을 만들 수 있다. Apple/APNs/AWS placeholder는 그대로 audit에서 잡히게 두고, 파일 안 주석을 각 값의 발급 위치와 업로드 대상 checklist로 사용한다.

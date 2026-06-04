@@ -162,7 +162,7 @@ ECS/Fargate에서는 같은 이미지를 두 방식으로 쓴다.
   - `-m`
   - `kbo_fans_backend.scheduler.live_activity_sync`
 
-API service와 Scheduler task가 같은 ActivityKit token registry를 봐야 하므로, `PUSH_REGISTRY_PATH`는 EFS/EBS 같은 공유 영속 경로를 사용한다. 다중 인스턴스 운영으로 커지면 DynamoDB/RDS로 바꾸는 것이 맞다.
+API service와 Scheduler task가 같은 ActivityKit token registry를 봐야 하므로, `PUSH_REGISTRY_PATH`는 EFS/EBS 같은 공유 영속 경로를 사용한다. 현재 JSON registry는 같은 디렉터리의 lock file과 atomic replace로 API service / sync worker 동시 쓰기를 보호한다. 다중 인스턴스 운영으로 커지면 DynamoDB/RDS로 바꾸는 것이 맞다.
 
 ECS/Fargate용 템플릿은 `infra/aws/ecs-fargate/`에 있다.
 
@@ -387,5 +387,5 @@ iOS release/TestFlight 앱은 아래가 필요하다.
 ## 현재 코드 기준 주의
 
 - `backend/data/runtime/`은 gitignore되어 실제 토큰이 커밋되지 않는다.
-- 지금 token registry는 JSON 파일 기반이다. 시연에는 충분하지만, 다중 서버 운영으로 가면 DynamoDB/RDS 같은 영속 저장소로 바꿔야 한다.
+- 지금 token registry는 JSON 파일 기반이다. 시연에는 충분하고 파일락/atomic write로 API service와 sync worker의 동시 쓰기를 보호하지만, 다중 서버 운영으로 가면 DynamoDB/RDS 같은 영속 저장소로 바꿔야 한다.
 - 앱 화면 데이터는 no-backend direct KBO 경로를 유지할 수 있지만, 앱 종료 후 push/Dynamic Island 실시간 갱신은 backend 없이는 불가능하다.

@@ -1,3 +1,5 @@
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+
 from fastapi.testclient import TestClient
 
 from kbo_fans_backend.api.routes import push as push_routes
@@ -89,6 +91,54 @@ def test_register_persists_device_token(tmp_path) -> None:
 
     assert response["registered"] is True
     assert "scoring_LG" in response["subscribedTopics"]
+
+
+def test_push_registry_serializes_writes_across_processes(tmp_path) -> None:
+    registry_path = str(tmp_path / "push_registry.json")
+    worker_count = 4
+    registrations_per_worker = 12
+
+    with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        futures = [
+            executor.submit(
+                _register_device_token_batch,
+                registry_path,
+                f"worker-{worker_index}",
+                registrations_per_worker,
+            )
+            for worker_index in range(worker_count)
+        ]
+
+        total_registrations = sum(future.result(timeout=20) for future in futures)
+
+    registry_data = PushRegistry(registry_path)._load()
+
+    assert total_registrations == worker_count * registrations_per_worker
+    assert len(registry_data["devices"]) == total_registrations
+
+
+def test_push_registry_serializes_writes_across_instances_in_process(tmp_path) -> None:
+    registry_path = str(tmp_path / "push_registry.json")
+    worker_count = 4
+    registrations_per_worker = 12
+
+    with ThreadPoolExecutor(max_workers=worker_count) as executor:
+        futures = [
+            executor.submit(
+                _register_device_token_batch,
+                registry_path,
+                f"thread-{worker_index}",
+                registrations_per_worker,
+            )
+            for worker_index in range(worker_count)
+        ]
+
+        total_registrations = sum(future.result(timeout=20) for future in futures)
+
+    registry_data = PushRegistry(registry_path)._load()
+
+    assert total_registrations == worker_count * registrations_per_worker
+    assert len(registry_data["devices"]) == total_registrations
 
 
 def test_register_live_activity_replaces_previous_token(tmp_path) -> None:
@@ -514,6 +564,34 @@ class FakeScoreboardSequenceService:
         game = self.games[min(self.index, len(self.games) - 1)]
         self.index += 1
         return {"date": date, "games": [game]}
+
+
+def _register_device_token_batch(
+    registry_path: str,
+    token_prefix: str,
+    count: int,
+) -> int:
+    registry = PushRegistry(registry_path)
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    for index in range(count):
+        service.register(
+            PushRegisterRequest(
+                deviceToken=f"{token_prefix}-{index}",
+                platform="ios",
+                myTeam="LG",
+                notifications=NotificationSettings(
+                    gameStart=True,
+                    scoring=True,
+                    homerun=True,
+                    reversal=True,
+                    gameEnd=True,
+                    lineupOpened=True,
+                    inningChange=False,
+                    allGames=False,
+                ),
+            )
+        )
+    return count
 
 
 def _scoreboard_game(*, away_score: int, home_score: int, inning: str) -> dict:
