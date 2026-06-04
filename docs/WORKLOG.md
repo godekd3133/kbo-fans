@@ -7,11 +7,16 @@
 ### 완료
 - [x] 앱 종료 후 Live Activity scoreboard sync endpoint의 기본 날짜가 AWS host UTC date를 따르지 않고 KBO 경기일(`Asia/Seoul`)을 사용하도록 보정
 - [x] `date` query가 없을 때 `current_kbo_date()`를 호출하는 regression test 추가
+- [x] `scripts/push-readiness-check.sh`의 one-shot sync 기본 날짜도 shell `date` 대신 backend KBO 경기일 기본값에 위임하도록 보정
+- [x] 특정 날짜 재현이 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 사용하도록 README/backend setup 문서에 기록
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (16 passed)
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/api/routes/push.py backend/tests/test_push_service.py`
 - [x] `python3 -m compileall backend/src/kbo_fans_backend`
+- [x] `bash -n scripts/push-readiness-check.sh scripts/codex-run.sh`
+- [x] ephemeral localhost mock server + `ALLOW_INSECURE_PUSH_READINESS=true PUSH_SYNC_SECRET=secret PUSH_READINESS_RUN_SYNC=true ./scripts/push-readiness-check.sh ...` 실행: sync endpoint가 query 없이 `/api/push/live-activity/sync-scoreboard`로 호출됨 확인
+- [x] mock server + `PUSH_READINESS_DATE=2026-06-04` 실행: 재현용 날짜는 `/api/push/live-activity/sync-scoreboard?date=2026-06-04`로 호출됨 확인
 
 ---
 

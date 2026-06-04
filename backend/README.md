@@ -105,6 +105,10 @@ Repository readiness check after deployment:
 PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api
 ```
 
+Set `PUSH_READINESS_RUN_SYNC=true` to trigger one scoreboard sync during the
+check. If `PUSH_READINESS_DATE` is omitted, the request omits the date query and
+the backend uses the current KBO game day in `Asia/Seoul`.
+
 Render AWS ECS/Fargate task definitions and the execution-role secret-read
 policy from environment values:
 

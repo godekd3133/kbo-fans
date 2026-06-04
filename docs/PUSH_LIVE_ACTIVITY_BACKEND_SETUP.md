@@ -118,6 +118,8 @@ repo에서 한 번에 확인:
 PUSH_SYNC_SECRET=<long-random-secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api
 ```
 
+`PUSH_READINESS_RUN_SYNC=true`를 붙이면 readiness check 중 `/push/live-activity/sync-scoreboard`를 한 번 호출한다. `PUSH_READINESS_DATE`를 생략하면 date query를 보내지 않고 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용한다. 특정 날짜 재현이 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정한다.
+
 또는 서버/ECS task 안에서:
 
 ```bash

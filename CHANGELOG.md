@@ -46,7 +46,7 @@
 - Release direct 빌드는 데이터 경로를 no-backend로 유지하면서 push / Live Activity token 등록용 운영 `API_BASE_URL`을 함께 주입하도록 보강
 - 웹 기록실/선수 direct 조회가 KBO source를 CORS proxy 경로로 접근하도록 보강
 - Android `home_widget`의 Glance 동적 의존성이 최신 alpha를 잡아 SDK/AGP 요구사항을 끌어올리지 않도록 Glance 안정 버전 고정
-- Live Activity scoreboard sync 기본 날짜를 AWS UTC가 아닌 KBO 경기일(`Asia/Seoul`) 기준으로 계산하도록 변경
+- Live Activity scoreboard sync와 push readiness one-shot sync 기본 날짜를 AWS UTC가 아닌 KBO 경기일(`Asia/Seoul`) 기준으로 계산하도록 변경
 
 ## [0.0.29] - 2026-06-04
 

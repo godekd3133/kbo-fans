@@ -8,7 +8,7 @@ SYNC_SECRET="${2:-${PUSH_SYNC_SECRET:-}}"
 TIMEOUT_SECONDS="${PUSH_READINESS_TIMEOUT_SECONDS:-20}"
 ALLOW_INSECURE="${ALLOW_INSECURE_PUSH_READINESS:-false}"
 RUN_SYNC="${PUSH_READINESS_RUN_SYNC:-false}"
-SYNC_DATE="${PUSH_READINESS_DATE:-$(date +%Y-%m-%d)}"
+SYNC_DATE="${PUSH_READINESS_DATE:-}"
 
 require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -68,7 +68,7 @@ fi
 
 echo "Push readiness check"
 echo "base_url=$BASE_URL"
-echo "sync_date=$SYNC_DATE"
+echo "sync_date=${SYNC_DATE:-backend-default-kbo-date}"
 
 DNS_ADDRESSES="$(
   python3 - "$URL_HOST" "$URL_PORT" <<'PY'
@@ -191,9 +191,13 @@ print("push_config=status=ok readyForIphoneOnlyDemo=true")
 PY
 
 if [[ "$RUN_SYNC" == "true" ]]; then
+  sync_path="/push/live-activity/sync-scoreboard"
+  if [[ -n "$SYNC_DATE" ]]; then
+    sync_path="$sync_path?date=$SYNC_DATE"
+  fi
   request_json POST \
     "/api/push/live-activity/sync-scoreboard" \
-    "/push/live-activity/sync-scoreboard?date=$SYNC_DATE" \
+    "$sync_path" \
     "$SYNC_RESPONSE"
   python3 - "$SYNC_RESPONSE" <<'PY'
 import json
