@@ -57,6 +57,7 @@
 - Render AWS ECS task definitions and execution-role secret-read policy with `./scripts/aws-push-task-definitions.sh` or `./scripts/codex-run.sh aws-push-task-defs` instead of manually editing placeholder JSON.
 - Validate AWS push deployment inputs and resources with `./scripts/aws-push-deploy-check.sh` before registering ECS task definitions or starting services.
 - Use `./scripts/aws-push-cloudformation.sh` when the ALB, ECS services, EFS registry, IAM roles, and log group should be provisioned as one stack instead of manually assembled.
+- If no domain/ACM certificate is ready yet, set `ENABLE_HTTPS=false` only for a temporary AWS backend HTTP smoke deploy. Real iPhone release token registration should return to `ENABLE_HTTPS=true` with `API_DOMAIN_NAME` and `ACM_CERTIFICATE_ARN`.
 - Export stack `ApiBaseUrl` for release builds with `./scripts/aws-push-stack-outputs.sh`; this writes `RELEASE_API_BASE_URL` / `API_BASE_URL`.
 - Prefer `./scripts/aws-push-demo-deploy.sh` for the full demo pipeline because it runs secret upload, image push, CloudFormation deploy, output export, and readiness in order.
 - If local AWS CLI or Docker daemon is unavailable, use the GitHub Actions `Push Demo Deploy` workflow after setting the required AWS/Firebase/APNs secrets.

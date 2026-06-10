@@ -144,6 +144,17 @@ fail_placeholder_env() {
   fi
 }
 
+is_truthy() {
+  case "${1:-}" in
+    1 | true | TRUE | True | yes | YES | Yes)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 plist_value() {
   python3 - "$1" "$2" <<'PY'
 import plistlib
@@ -380,22 +391,41 @@ check_backend_env() {
 }
 
 check_aws_env() {
+  local enable_https="${ENABLE_HTTPS:-true}"
+  case "$enable_https" in
+    true | false | TRUE | FALSE | True | False)
+      ;;
+    *)
+      fail "ENABLE_HTTPS must be true or false"
+      ;;
+  esac
+
   require_env AWS_REGION
   require_env ECR_REPOSITORY_URI
   require_env VPC_ID
   require_env PUBLIC_SUBNET_A_ID
   require_env PUBLIC_SUBNET_B_ID
-  require_env ACM_CERTIFICATE_ARN
 
-  if [[ -n "${ACM_CERTIFICATE_ARN:-}" && "$ACM_CERTIFICATE_ARN" != arn:aws:acm:* ]]; then
-    fail "ACM_CERTIFICATE_ARN must be an ACM certificate ARN"
+  if is_truthy "$enable_https"; then
+    require_env ACM_CERTIFICATE_ARN
+    if [[ -n "${ACM_CERTIFICATE_ARN:-}" && "$ACM_CERTIFICATE_ARN" != arn:aws:acm:* ]]; then
+      fail "ACM_CERTIFICATE_ARN must be an ACM certificate ARN"
+    fi
+  else
+    warn "ENABLE_HTTPS=false; AWS backend can be smoke-tested over HTTP, but iPhone release token registration still needs HTTPS later"
   fi
 
   if [[ -n "${RELEASE_API_BASE_URL:-}" ]]; then
-    if [[ "$RELEASE_API_BASE_URL" == https://*/api ]]; then
-      pass "RELEASE_API_BASE_URL is HTTPS and ends with /api"
+    if is_truthy "$enable_https"; then
+      if [[ "$RELEASE_API_BASE_URL" == https://*/api ]]; then
+        pass "RELEASE_API_BASE_URL is HTTPS and ends with /api"
+      else
+        fail "RELEASE_API_BASE_URL should look like https://<host>/api"
+      fi
+    elif [[ "$RELEASE_API_BASE_URL" == http://*/api || "$RELEASE_API_BASE_URL" == https://*/api ]]; then
+      pass "RELEASE_API_BASE_URL uses HTTP/HTTPS and ends with /api"
     else
-      fail "RELEASE_API_BASE_URL should look like https://<host>/api"
+      fail "RELEASE_API_BASE_URL should look like http(s)://<host>/api"
     fi
   else
     warn "RELEASE_API_BASE_URL is not set yet; CloudFormation outputs will generate it after deploy"
@@ -416,7 +446,9 @@ check_aws_env() {
   fail_placeholder_env VPC_ID
   fail_placeholder_env PUBLIC_SUBNET_A_ID
   fail_placeholder_env PUBLIC_SUBNET_B_ID
-  fail_placeholder_env ACM_CERTIFICATE_ARN
+  if is_truthy "$enable_https"; then
+    fail_placeholder_env ACM_CERTIFICATE_ARN
+  fi
   warn_placeholder_env AWS_ROLE_TO_ASSUME
 }
 

@@ -94,6 +94,19 @@ require_env() {
   fi
 }
 
+normalize_enable_https() {
+  local value="${ENABLE_HTTPS:-true}"
+  case "$value" in
+    true | false)
+      echo "$value"
+      ;;
+    *)
+      echo "ENABLE_HTTPS must be true or false." >&2
+      exit 2
+      ;;
+  esac
+}
+
 ensure_push_sync_secret() {
   if [[ -n "${PUSH_SYNC_SECRET:-}" ]]; then
     return
@@ -165,6 +178,7 @@ JSON
 }
 
 require_env AWS_REGION ECR_REPOSITORY_URI
+enable_https="$(normalize_enable_https)"
 ensure_push_sync_secret
 
 if [[ "$SKIP_SECRETS" != "true" ]]; then
@@ -189,13 +203,16 @@ require_env \
   VPC_ID \
   PUBLIC_SUBNET_A_ID \
   PUBLIC_SUBNET_B_ID \
-  ACM_CERTIFICATE_ARN \
   FIREBASE_PROJECT_ID \
   APNS_KEY_ID \
   APNS_TEAM_ID \
   SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON \
   SECRET_ARN_APNS_AUTH_KEY_P8 \
   SECRET_ARN_PUSH_SYNC_SECRET
+
+if [[ "$enable_https" == "true" ]]; then
+  require_env ACM_CERTIFICATE_ARN
+fi
 
 if [[ "$SKIP_STACK" != "true" ]]; then
   if [[ "$DRY_RUN" == "true" ]]; then
@@ -222,7 +239,12 @@ if [[ "$SKIP_READINESS" != "true" ]]; then
     echo "push_readiness=skipped mode=dry-run"
   else
     require_env RELEASE_API_BASE_URL PUSH_SYNC_SECRET
-    "$ROOT_DIR/scripts/push-readiness-check.sh" "$RELEASE_API_BASE_URL"
+    if [[ "$enable_https" == "false" && -z "${ALLOW_INSECURE_PUSH_READINESS:-}" ]]; then
+      ALLOW_INSECURE_PUSH_READINESS=true \
+        "$ROOT_DIR/scripts/push-readiness-check.sh" "$RELEASE_API_BASE_URL"
+    else
+      "$ROOT_DIR/scripts/push-readiness-check.sh" "$RELEASE_API_BASE_URL"
+    fi
   fi
 fi
 

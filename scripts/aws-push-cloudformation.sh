@@ -23,7 +23,6 @@ Required env:
   VPC_ID
   PUBLIC_SUBNET_A_ID
   PUBLIC_SUBNET_B_ID
-  ACM_CERTIFICATE_ARN
   ECR_REPOSITORY_URI
   FIREBASE_PROJECT_ID
   APNS_KEY_ID
@@ -35,6 +34,9 @@ Required env:
 Optional env:
   KBO_PUSH_STACK_NAME
   KBO_STACK_NAME_PREFIX
+  ENABLE_HTTPS        Default true. Set false for temporary HTTP-only AWS smoke deploys.
+  API_DOMAIN_NAME     Optional custom API domain that matches ACM_CERTIFICATE_ARN.
+  ACM_CERTIFICATE_ARN Required when ENABLE_HTTPS=true.
   CONTAINER_IMAGE_URI
   API_DESIRED_COUNT
   SYNC_WORKER_DESIRED_COUNT
@@ -99,7 +101,6 @@ require_env \
   VPC_ID \
   PUBLIC_SUBNET_A_ID \
   PUBLIC_SUBNET_B_ID \
-  ACM_CERTIFICATE_ARN \
   ECR_REPOSITORY_URI \
   FIREBASE_PROJECT_ID \
   APNS_KEY_ID \
@@ -107,6 +108,20 @@ require_env \
   SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON \
   SECRET_ARN_APNS_AUTH_KEY_P8 \
   SECRET_ARN_PUSH_SYNC_SECRET
+
+enable_https="${ENABLE_HTTPS:-true}"
+case "$enable_https" in
+  true | false)
+    ;;
+  *)
+    echo "ENABLE_HTTPS must be true or false." >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$enable_https" == "true" ]]; then
+  require_env ACM_CERTIFICATE_ARN
+fi
 
 container_image_uri="${CONTAINER_IMAGE_URI:-$ECR_REPOSITORY_URI:latest}"
 
@@ -134,7 +149,9 @@ aws cloudformation deploy \
     VpcId="$VPC_ID" \
     PublicSubnetAId="$PUBLIC_SUBNET_A_ID" \
     PublicSubnetBId="$PUBLIC_SUBNET_B_ID" \
-    AcmCertificateArn="$ACM_CERTIFICATE_ARN" \
+    EnableHttps="$enable_https" \
+    ApiDomainName="${API_DOMAIN_NAME:-}" \
+    AcmCertificateArn="${ACM_CERTIFICATE_ARN:-}" \
     ContainerImageUri="$container_image_uri" \
     FirebaseProjectId="$FIREBASE_PROJECT_ID" \
     ApnsKeyId="$APNS_KEY_ID" \

@@ -88,6 +88,7 @@ kbo_fans/
 - ECS task definition과 execution-role secret-read policy는 placeholder JSON을 직접 편집하지 않고 `./scripts/aws-push-task-definitions.sh` 또는 `./scripts/codex-run.sh aws-push-task-defs`로 렌더링한다
 - ECS task 등록이나 service 생성 전 `./scripts/aws-push-deploy-check.sh`로 env, rendered JSON, secret, IAM role, ECR, EFS, CloudWatch log group 존재 여부를 점검한다
 - ALB, ECS service 2개, EFS registry, IAM role, log group을 한 번에 만들 때는 `./scripts/aws-push-cloudformation.sh`를 사용한다
+- 도메인/ACM certificate가 아직 없으면 임시 AWS backend smoke에만 `ENABLE_HTTPS=false`를 쓴다. iPhone release token registration은 `ENABLE_HTTPS=true`와 `API_DOMAIN_NAME`, `ACM_CERTIFICATE_ARN` 기준으로 되돌린다
 - CloudFormation stack output은 `./scripts/aws-push-stack-outputs.sh`로 추출하고, `outputs/aws/cloudformation/stack.env`의 `RELEASE_API_BASE_URL` / `API_BASE_URL`을 release build에 주입한다
 - 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`를 우선 사용한다. secret 업로드, image push, CloudFormation deploy, output export, readiness를 순서대로 실행한다
 - 로컬 AWS CLI 또는 Docker daemon이 준비되지 않았으면 GitHub Actions `Push Demo Deploy` workflow를 사용한다. 필요한 AWS/Firebase/APNs secrets/vars는 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`에 맞춘다

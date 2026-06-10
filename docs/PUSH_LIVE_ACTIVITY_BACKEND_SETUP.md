@@ -138,7 +138,7 @@ KBO live 경기는 30~60초, 예정 경기는 5분, 종료 경기는 sync 중단
 ./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws
 ```
 
-`--app-only`는 Firebase client 파일, APNs entitlement, Live Activity plist, Android google-services plugin, Flutter push registration 연결, release `API_BASE_URL` token-registration handoff를 확인한다. `--env-file ... --aws`는 Firebase Admin JSON, APNs `.p8`, `PUSH_SYNC_SECRET`, ECR/VPC/subnet/ACM env 형태까지 같이 확인한다.
+`--app-only`는 Firebase client 파일, APNs entitlement, Live Activity plist, Android google-services plugin, Flutter push registration 연결, release `API_BASE_URL` token-registration handoff를 확인한다. `--env-file ... --aws`는 Firebase Admin JSON, APNs `.p8`, `PUSH_SYNC_SECRET`, ECR/VPC/subnet/HTTPS mode env 형태까지 같이 확인한다. `ENABLE_HTTPS=false`는 도메인/ACM 전 임시 AWS backend smoke에만 사용하고, iPhone release token registration은 `ENABLE_HTTPS=true`와 `API_DOMAIN_NAME` / `ACM_CERTIFICATE_ARN`으로 되돌린다.
 
 ## Backend Docker 이미지
 
@@ -197,7 +197,7 @@ bootstrap은 AWS, GitHub, Firebase, Apple API를 호출하지 않는다. `PUSH_S
   --repo godekd3133/kbo-fans
 ```
 
-출력의 `Required Values` 섹션은 사장님이 직접 준비해야 하는 값을 한 번에 보여준다. 각 항목은 `get_from`, `put_in_env`, `github_target`, `aws_runtime_target`로 나뉘며, Firebase client 파일, Firebase Admin JSON, Apple APNs `.p8`, AWS ECR/VPC/Subnet/ACM, GitHub OIDC role, release `API_BASE_URL`을 어디서 가져와 어디에 넣는지 확인하는 기준이다.
+출력의 `Required Values` 섹션은 사장님이 직접 준비해야 하는 값을 한 번에 보여준다. 각 항목은 `get_from`, `put_in_env`, `github_target`, `aws_runtime_target`로 나뉘며, Firebase client 파일, Firebase Admin JSON, Apple APNs `.p8`, AWS ECR/VPC/Subnet/HTTPS mode, GitHub OIDC role, release `API_BASE_URL`을 어디서 가져와 어디에 넣는지 확인하는 기준이다.
 
 `PUSH_SYNC_SECRET`는 `openssl rand -hex 32`로 만들고, `IOS_GOOGLE_SERVICE_INFO_PLIST_FILE`, `ANDROID_GOOGLE_SERVICES_JSON_FILE`, `FIREBASE_SERVICE_ACCOUNT_FILE`, `APNS_AUTH_KEY_FILE`은 로컬 파일 경로를 넣는다. GitHub Actions 배포를 쓸 때는 `AWS_ROLE_TO_ASSUME` OIDC role을 권장하며, 없으면 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`를 넣는다. `github-push-secrets.sh`는 obvious placeholder 값을 GitHub에 업로드하지 못하게 막는다.
 
@@ -279,7 +279,7 @@ AWS 리소스까지 실제로 보이는지 사전점검한다.
 
 렌더링 결과는 `outputs/aws/ecs-fargate/`에 생성되며 gitignore 대상이다. `AmazonECSTaskExecutionRolePolicy`는 ECR image pull과 CloudWatch Logs 기록에 필요하고, `kbo-fans-read-push-secrets` inline policy는 Firebase Admin JSON / APNs `.p8` / sync secret 주입에 필요하다. Secrets Manager 값이 customer-managed KMS key로 암호화되어 있으면 execution role에 해당 key의 `kms:Decrypt`도 추가한다.
 
-CloudFormation 경로는 ECR image, ACM certificate, VPC/subnet, Firebase/APNs secret ARN이 준비된 뒤 실행한다. 기본 image는 `$ECR_REPOSITORY_URI:latest`이고, 특정 tag를 쓰려면 `CONTAINER_IMAGE_URI`를 지정한다.
+CloudFormation 경로는 ECR image, VPC/subnet, Firebase/APNs secret ARN이 준비된 뒤 실행한다. 기본 image는 `$ECR_REPOSITORY_URI:latest`이고, 특정 tag를 쓰려면 `CONTAINER_IMAGE_URI`를 지정한다. 도메인/ACM certificate가 준비되지 않았으면 `ENABLE_HTTPS=false`로 HTTP-only AWS smoke deploy를 먼저 실행할 수 있다. 이 경우 stack output `ApiBaseUrl`은 `http://<alb-dns>/api`이며, 실제 iPhone release token registration에는 HTTPS 도메인이 필요하다.
 
 ```bash
 source /path/to/kbo-fans-aws.env
@@ -315,7 +315,9 @@ GitHub Actions에 넣을 값:
 - `VPC_ID`
 - `PUBLIC_SUBNET_A_ID`
 - `PUBLIC_SUBNET_B_ID`
-- `ACM_CERTIFICATE_ARN`
+- `ENABLE_HTTPS` (`true` 기본값, 도메인 전 HTTP-only smoke는 `false`)
+- `API_DOMAIN_NAME` (선택, ACM certificate와 일치하는 커스텀 도메인)
+- `ACM_CERTIFICATE_ARN` (`ENABLE_HTTPS=true`일 때 필수)
 
 Actions workflow `Push Demo Deploy`에서 `dry_run=true`를 먼저 실행하면 secret/env 형태와 repo script path를 검증한다. `dry_run=false`는 실제 secret upload, ECR image push, CloudFormation deploy, stack output export, readiness를 실행한다.
 
@@ -332,7 +334,7 @@ $EDITOR /tmp/kbo-fans-aws.env
 ./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env --apply
 ```
 
-이 스크립트는 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET`, `AWS_ROLE_TO_ASSUME` 또는 AWS access key를 GitHub Secrets로 넣고, `AWS_REGION`, `FIREBASE_PROJECT_ID`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `ECR_REPOSITORY_URI`, `VPC_ID`, subnet, ACM ARN은 GitHub Variables로 넣는다. secret 값은 로그에 출력하지 않고, obvious placeholder 값은 업로드 전에 실패시킨다.
+이 스크립트는 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET`, `AWS_ROLE_TO_ASSUME` 또는 AWS access key를 GitHub Secrets로 넣고, `AWS_REGION`, `FIREBASE_PROJECT_ID`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `ECR_REPOSITORY_URI`, `VPC_ID`, subnet, `ENABLE_HTTPS`, 선택 `API_DOMAIN_NAME`, 조건부 ACM ARN은 GitHub Variables로 넣는다. secret 값은 로그에 출력하지 않고, obvious placeholder 값은 업로드 전에 실패시킨다.
 
 workflow 파일이 GitHub default branch에 올라간 뒤에는 CLI로 dispatch할 수 있다.
 

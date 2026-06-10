@@ -40,7 +40,11 @@ Required variable inputs:
   - VPC_ID
   - PUBLIC_SUBNET_A_ID
   - PUBLIC_SUBNET_B_ID
-  - ACM_CERTIFICATE_ARN
+  - ACM_CERTIFICATE_ARN (when ENABLE_HTTPS=true)
+
+Optional variable inputs:
+  - ENABLE_HTTPS (default true; set false for temporary HTTP-only AWS smoke deploys)
+  - API_DOMAIN_NAME (custom API domain matching ACM_CERTIFICATE_ARN)
 EOF
 }
 
@@ -279,8 +283,21 @@ require_env \
   ECR_REPOSITORY_URI \
   VPC_ID \
   PUBLIC_SUBNET_A_ID \
-  PUBLIC_SUBNET_B_ID \
-  ACM_CERTIFICATE_ARN
+  PUBLIC_SUBNET_B_ID
+
+ENABLE_HTTPS="${ENABLE_HTTPS:-true}"
+case "$ENABLE_HTTPS" in
+  true | false)
+    ;;
+  *)
+    echo "ENABLE_HTTPS must be true or false." >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$ENABLE_HTTPS" == "true" ]]; then
+  require_env ACM_CERTIFICATE_ARN
+fi
 
 if [[ -z "${AWS_ROLE_TO_ASSUME:-}" ]]; then
   require_env AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
@@ -295,11 +312,17 @@ reject_placeholder_env \
   VPC_ID \
   PUBLIC_SUBNET_A_ID \
   PUBLIC_SUBNET_B_ID \
-  ACM_CERTIFICATE_ARN \
   PUSH_SYNC_SECRET \
   AWS_ROLE_TO_ASSUME \
   AWS_ACCESS_KEY_ID \
   AWS_SECRET_ACCESS_KEY
+
+if [[ "$ENABLE_HTTPS" == "true" ]]; then
+  reject_placeholder_env ACM_CERTIFICATE_ARN
+fi
+if [[ -n "${API_DOMAIN_NAME:-}" ]]; then
+  reject_placeholder_env API_DOMAIN_NAME
+fi
 
 ensure_push_sync_secret
 if [[ ${#PUSH_SYNC_SECRET} -lt 32 ]]; then
@@ -317,7 +340,21 @@ set_variable ECR_REPOSITORY_URI "$ECR_REPOSITORY_URI" "$repo"
 set_variable VPC_ID "$VPC_ID" "$repo"
 set_variable PUBLIC_SUBNET_A_ID "$PUBLIC_SUBNET_A_ID" "$repo"
 set_variable PUBLIC_SUBNET_B_ID "$PUBLIC_SUBNET_B_ID" "$repo"
-set_variable ACM_CERTIFICATE_ARN "$ACM_CERTIFICATE_ARN" "$repo"
+set_variable ENABLE_HTTPS "$ENABLE_HTTPS" "$repo"
+if [[ -n "${API_DOMAIN_NAME:-}" ]]; then
+  set_variable API_DOMAIN_NAME "$API_DOMAIN_NAME" "$repo"
+fi
+if [[ "$ENABLE_HTTPS" == "true" ]]; then
+  set_variable ACM_CERTIFICATE_ARN "$ACM_CERTIFICATE_ARN" "$repo"
+elif [[ -n "${ACM_CERTIFICATE_ARN:-}" ]]; then
+  case "$ACM_CERTIFICATE_ARN" in
+    *"<"*|*"your-"*|*"replace_"*|*"replace-with"*|*"XXXXXXXXXX"*|*"123456789012"*|*"000000000000"*|*"111111111111"*)
+      ;;
+    *)
+      set_variable ACM_CERTIFICATE_ARN "$ACM_CERTIFICATE_ARN" "$repo"
+      ;;
+  esac
+fi
 
 set_secret IOS_GOOGLE_SERVICE_INFO_PLIST "$ios_google_plist" "$repo"
 set_secret ANDROID_GOOGLE_SERVICES_JSON "$android_google_services_json" "$repo"

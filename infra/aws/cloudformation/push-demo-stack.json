@@ -21,9 +21,24 @@
       "Type": "AWS::EC2::Subnet::Id",
       "Description": "Second public subnet in another AZ."
     },
+    "EnableHttps": {
+      "Type": "String",
+      "Default": "true",
+      "AllowedValues": [
+        "true",
+        "false"
+      ],
+      "Description": "Set false for a temporary HTTP-only AWS smoke deploy before a domain and ACM certificate are ready."
+    },
+    "ApiDomainName": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Optional custom API domain that matches the ACM certificate, for example api.kbofans.com."
+    },
     "AcmCertificateArn": {
       "Type": "String",
-      "Description": "ACM certificate ARN in the same region as the ALB."
+      "Default": "",
+      "Description": "ACM certificate ARN in the same region as the ALB. Required when EnableHttps=true."
     },
     "ContainerImageUri": {
       "Type": "String",
@@ -77,6 +92,28 @@
       "Description": "ALB target group health check path."
     }
   },
+  "Conditions": {
+    "UseHttps": {
+      "Fn::Equals": [
+        {
+          "Ref": "EnableHttps"
+        },
+        "true"
+      ]
+    },
+    "HasApiDomainName": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "ApiDomainName"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
   "Resources": {
     "LogGroup": {
       "Type": "AWS::Logs::LogGroup",
@@ -98,11 +135,17 @@
     "LoadBalancerSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "GroupDescription": "Allow public HTTPS traffic to KBO Fans API ALB.",
+        "GroupDescription": "Allow public HTTP/HTTPS traffic to KBO Fans API ALB.",
         "VpcId": {
           "Ref": "VpcId"
         },
         "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 80,
+            "ToPort": 80,
+            "CidrIp": "0.0.0.0/0"
+          },
           {
             "IpProtocol": "tcp",
             "FromPort": 443,
@@ -327,8 +370,27 @@
         }
       }
     },
+    "HttpListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "LoadBalancerArn": {
+          "Ref": "LoadBalancer"
+        },
+        "Port": 80,
+        "Protocol": "HTTP",
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "ApiTargetGroup"
+            }
+          }
+        ]
+      }
+    },
     "HttpsListener": {
       "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Condition": "UseHttps",
       "Properties": {
         "LoadBalancerArn": {
           "Ref": "LoadBalancer"
@@ -637,7 +699,7 @@
     "ApiService": {
       "Type": "AWS::ECS::Service",
       "DependsOn": [
-        "HttpsListener",
+        "HttpListener",
         "PushRegistryMountTargetA",
         "PushRegistryMountTargetB"
       ],
@@ -731,7 +793,23 @@
     "ApiBaseUrl": {
       "Description": "Use this as API_BASE_URL for release push / Live Activity token registration.",
       "Value": {
-        "Fn::Sub": "https://${LoadBalancer.DNSName}/api"
+        "Fn::If": [
+          "UseHttps",
+          {
+            "Fn::If": [
+              "HasApiDomainName",
+              {
+                "Fn::Sub": "https://${ApiDomainName}/api"
+              },
+              {
+                "Fn::Sub": "https://${LoadBalancer.DNSName}/api"
+              }
+            ]
+          },
+          {
+            "Fn::Sub": "http://${LoadBalancer.DNSName}/api"
+          }
+        ]
       }
     },
     "LoadBalancerDnsName": {

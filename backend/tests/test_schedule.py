@@ -2,7 +2,6 @@ import json
 from datetime import date as date_type
 
 import pytest
-
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.services.ticketing import TicketingService

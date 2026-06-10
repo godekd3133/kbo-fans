@@ -43,6 +43,7 @@
 - `push-live-preflight.sh --aws`는 배포 필수값의 obvious placeholder를 실패로 처리해야 한다. 첫 누락 파일에서 멈추지 말고 Firebase Admin, APNs, AWS 값들을 한 번에 모아 보여줘야 한다.
 - `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans`로 앱 파일, env checklist, 로컬 tooling, GitHub Actions 입력값, 최신 deploy run을 배포 없이 점검한다. secret 값은 출력하지 않는다.
 - readiness audit의 `next_config[...]`는 로컬 파일/env 값이 이미 준비된 경우에는 새 발급/다운로드가 아니라 `github-push-secrets.sh --apply` 업로드를 안내해야 한다.
+- 도메인/ACM certificate가 없으면 `ENABLE_HTTPS=false`를 임시 AWS backend HTTP smoke에만 사용한다. 실제 iPhone release token registration은 `ENABLE_HTTPS=true`, `API_DOMAIN_NAME`, `ACM_CERTIFICATE_ARN` 기준으로 되돌린다.
 - AWS push secret은 `./scripts/aws-push-secrets.sh`로 생성/갱신한다.
 - backend ECR image는 `./scripts/aws-push-image.sh`로 build/tag/push하고, 특정 tag 배포 시 `outputs/aws/ecr/image.env`의 `CONTAINER_IMAGE_URI`를 사용한다.
 - ECS task definition과 execution-role secret-read policy는 `./scripts/aws-push-task-definitions.sh` 또는 `./scripts/codex-run.sh aws-push-task-defs`로 렌더링한다.

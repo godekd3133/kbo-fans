@@ -118,15 +118,29 @@ name_exists() {
   grep -Fxq "$name" <<<"$names"
 }
 
+github_variable_value() {
+  local repo="$1"
+  local name="$2"
+  gh variable list \
+    --repo "$repo" \
+    --json name,value \
+    --jq ".[] | select(.name == \"$name\") | .value" 2>/dev/null || true
+}
+
 check_github_inputs() {
   local repo="$1"
   local secret_names
   local variable_names
+  local enable_https
   local missing=()
   local name
 
   secret_names="$(gh secret list --repo "$repo" | awk '{print $1}')"
   variable_names="$(gh variable list --repo "$repo" | awk '{print $1}')"
+  enable_https="$(github_variable_value "$repo" ENABLE_HTTPS)"
+  if [[ -z "$enable_https" ]]; then
+    enable_https="true"
+  fi
 
   for name in FIREBASE_SERVICE_ACCOUNT_JSON APNS_AUTH_KEY_P8; do
     if ! name_exists "$name" "$secret_names"; then
@@ -147,12 +161,17 @@ check_github_inputs() {
     ECR_REPOSITORY_URI \
     VPC_ID \
     PUBLIC_SUBNET_A_ID \
-    PUBLIC_SUBNET_B_ID \
-    ACM_CERTIFICATE_ARN; do
+    PUBLIC_SUBNET_B_ID; do
     if ! name_exists "$name" "$variable_names" && ! name_exists "$name" "$secret_names"; then
       missing+=("variable_or_secret:$name")
     fi
   done
+
+  if [[ "$enable_https" != "false" ]]; then
+    if ! name_exists ACM_CERTIFICATE_ARN "$variable_names" && ! name_exists ACM_CERTIFICATE_ARN "$secret_names"; then
+      missing+=("variable_or_secret:ACM_CERTIFICATE_ARN")
+    fi
+  fi
 
   if [[ ${#missing[@]} -gt 0 ]]; then
     echo "Missing GitHub Actions inputs for Push Demo Deploy:" >&2

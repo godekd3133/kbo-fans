@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-
 from kbo_fans_backend.crawlers.records_overview import RecordsOverviewCrawler
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.storage import JsonSnapshotStore

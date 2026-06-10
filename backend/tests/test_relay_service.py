@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from kbo_fans_backend.services.relay import RelayService
 from kbo_fans_backend.storage import JsonSnapshotStore
 

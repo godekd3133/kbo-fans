@@ -6,7 +6,7 @@ Live Activity / Dynamic Island updates.
 ## What It Creates
 
 - ECS Fargate cluster
-- API service behind an HTTPS Application Load Balancer
+- API service behind an Application Load Balancer
 - long-running scoreboard sync worker service
 - EFS file system and mount targets for push / ActivityKit token registry
 - ECS task execution role and task role
@@ -14,7 +14,7 @@ Live Activity / Dynamic Island updates.
 - security groups for ALB, ECS tasks, and EFS
 
 It does not create Firebase, Apple APNs keys, ECR images, Route53 records, or ACM
-certificates. Those remain external prerequisites.
+certificates. Those remain external prerequisites for the real HTTPS/release path.
 
 It can also create the separate GitHub Actions OIDC role used by the repository
 workflow to deploy this stack without long-lived AWS access keys.
@@ -23,7 +23,7 @@ workflow to deploy this stack without long-lived AWS access keys.
 
 1. Firebase Admin service account JSON
 2. Apple APNs Auth Key `.p8`
-3. ACM certificate in the target AWS region
+3. ACM certificate in the target AWS region when `ENABLE_HTTPS=true`
 4. ECR repository with the backend image pushed as `:latest`, or set `CONTAINER_IMAGE_URI` to an exact image tag
 5. VPC with two public subnets in different Availability Zones
 
@@ -89,7 +89,9 @@ source outputs/aws/cloudformation/stack.env
 ```
 
 The full pipeline runs secret upload, backend image push, CloudFormation deploy,
-stack output export, and push readiness. To run stages manually, use:
+stack output export, and push readiness. Set `ENABLE_HTTPS=false` only for a
+temporary HTTP-only AWS smoke deploy before a domain and ACM certificate are
+ready. To run stages manually, use:
 
 ```bash
 ./scripts/aws-push-image.sh --tag latest
@@ -98,11 +100,13 @@ stack output export, and push readiness. To run stages manually, use:
 ```
 
 After deployment, use the stack output `ApiBaseUrl` as release `API_BASE_URL`
-for push / Live Activity token registration. `aws-push-cloudformation.sh` writes
+only when it is HTTPS and certificate-valid. `aws-push-cloudformation.sh` writes
 that value to `outputs/aws/cloudformation/stack.env` as `RELEASE_API_BASE_URL`
-and `API_BASE_URL`. If using a custom domain such as
-`api.kbofans.com`, create a Route53 alias/CNAME to the stack output
-`LoadBalancerDnsName`, then use `https://api.kbofans.com/api`.
+and `API_BASE_URL`. In HTTP-only smoke mode, `ApiBaseUrl` is
+`http://<alb-dns>/api` and should be used only for backend reachability checks.
+If using a custom domain such as `api.kbofans.com`, create a Route53 alias/CNAME
+to the stack output `LoadBalancerDnsName`, set `API_DOMAIN_NAME=api.kbofans.com`,
+and use `https://api.kbofans.com/api`.
 
 Verify:
 

@@ -47,6 +47,8 @@ jobs:
       VPC_ID: ${{ vars.VPC_ID || secrets.VPC_ID }}
       PUBLIC_SUBNET_A_ID: ${{ vars.PUBLIC_SUBNET_A_ID || secrets.PUBLIC_SUBNET_A_ID }}
       PUBLIC_SUBNET_B_ID: ${{ vars.PUBLIC_SUBNET_B_ID || secrets.PUBLIC_SUBNET_B_ID }}
+      ENABLE_HTTPS: ${{ vars.ENABLE_HTTPS || secrets.ENABLE_HTTPS || 'true' }}
+      API_DOMAIN_NAME: ${{ vars.API_DOMAIN_NAME || secrets.API_DOMAIN_NAME }}
       ACM_CERTIFICATE_ARN: ${{ vars.ACM_CERTIFICATE_ARN || secrets.ACM_CERTIFICATE_ARN }}
       KBO_BACKEND_IMAGE_TAG: ${{ inputs.image_tag }}
 

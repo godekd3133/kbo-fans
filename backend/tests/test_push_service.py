@@ -1,7 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
-
 from kbo_fans_backend.api.routes import push as push_routes
 from kbo_fans_backend.core.config import Settings
 from kbo_fans_backend.main import app

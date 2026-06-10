@@ -38,13 +38,18 @@
   - AWS ECS/Fargate에서는 Firebase Admin JSON과 APNs `.p8`를 Secrets Manager에서 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8` env로 주입하는 것이 파일 mount보다 단순하다. 로컬/EC2 파일 배포는 `*_PATH`를 계속 쓸 수 있다.
   - ECS task definition의 `secrets` env 주입은 task execution role 권한에 의존한다. `./scripts/aws-push-task-definitions.sh`가 생성한 `iam-task-execution-secrets-policy.rendered.json`를 execution role inline policy로 붙이고, AWS managed `AmazonECSTaskExecutionRolePolicy`도 함께 붙인다.
   - ECS task 등록이나 service 생성 전 `./scripts/aws-push-deploy-check.sh`로 env, rendered JSON, secret, IAM role, ECR, EFS, CloudWatch log group을 한 번에 확인한다.
-  - 수동 ECS 조립 대신 `./scripts/aws-push-cloudformation.sh`를 쓰면 ALB, API service, sync worker, EFS token registry, IAM role, log group을 한 stack으로 만든다. ECR image, ACM certificate, VPC/subnet, Firebase/APNs secret ARN은 여전히 사전 준비가 필요하다.
+  - 수동 ECS 조립 대신 `./scripts/aws-push-cloudformation.sh`를 쓰면 ALB, API service, sync worker, EFS token registry, IAM role, log group을 한 stack으로 만든다. ECR image, VPC/subnet, Firebase/APNs secret ARN은 여전히 사전 준비가 필요하다. 도메인/ACM 전 임시 backend smoke는 `ENABLE_HTTPS=false`로 가능하지만, iPhone release token registration은 HTTPS로 되돌려야 한다.
   - CloudFormation deploy 후 `./scripts/aws-push-stack-outputs.sh`가 stack output `ApiBaseUrl`을 `RELEASE_API_BASE_URL` / `API_BASE_URL`로 저장한다.
   - 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`를 우선 사용한다. 이 스크립트는 secret upload, ECR image push, CloudFormation deploy, stack output export, push readiness 순서로 실행한다.
   - scoreboard sync 기본 날짜는 AWS UTC가 아니라 KBO 경기일 기준인 `Asia/Seoul`로 계산해야 한다.
   - 30~60초 시연에는 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` long-running worker가 EventBridge 1분 one-shot보다 예측 가능하다.
   - `config-status.scheduler.lastSyncAt`은 sync worker가 실제로 registry에 heartbeat를 남겼는지 보는 운영 신호다. secret readiness와 worker activity를 구분해서 판단한다.
 - 홈 scoreboard 자동 refresh cadence는 live 30초, scheduled 5분, terminal 정지로 둔다.
+
+## Backend Lint / Compatibility
+
+- Backend는 `backend/pyproject.toml` 기준 Python `>=3.9`를 지원하므로, 기본 ruff gate는 `E,F,I,B`로 둔다.
+- Python 3.9 정책이 유지되는 동안 pyupgrade(`UP`)를 기본 lint gate에 넣지 않는다. `Optional[...]` / `Union[...]`, `typing.Dict` / `typing.List` 같은 호환 표기를 강제로 바꾸면 repo 규칙과 충돌한다.
 
 ## Widget / Live Activity
 

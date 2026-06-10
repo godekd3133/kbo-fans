@@ -7,7 +7,7 @@
 - ECS Fargate service 1: FastAPI backend HTTP API
 - ECS Fargate service 2: scoreboard sync worker
 - ECR: Docker image repository
-- ALB + ACM: HTTPS endpoint such as `https://api.kbofans.com/api`
+- ALB: HTTP endpoint for temporary AWS smoke deploys, and ACM-backed HTTPS endpoint such as `https://api.kbofans.com/api` for real iPhone/release use
 - EFS: shared runtime registry for FCM device tokens and ActivityKit push tokens
 - Secrets Manager: Firebase Admin JSON, APNs `.p8`, sync secret
 - IAM: ECS task execution role with ECR/log permissions plus push secret read access
@@ -194,8 +194,9 @@ aws ecs register-task-definition \
 
 ## Create Services
 
-Create an ECS cluster, VPC subnets, security groups, ALB, target group, ACM
-certificate, and EFS access point first. Then create two ECS services:
+Create an ECS cluster, VPC subnets, security groups, ALB, target group, EFS
+access point, and an ACM certificate when using HTTPS. Then create two ECS
+services:
 
 ```bash
 aws ecs create-service \
@@ -227,6 +228,11 @@ After DNS and HTTPS are ready:
 ```bash
 PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api
 ```
+
+Before a domain/ACM certificate exists, HTTP-only ALB smoke checks are acceptable
+for backend reachability only. Set `ALLOW_INSECURE_PUSH_READINESS=true` when
+checking an `http://<alb-dns>/api` URL, and do not use that HTTP URL as the
+release iPhone token-registration backend.
 
 Expected:
 

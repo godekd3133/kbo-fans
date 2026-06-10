@@ -272,7 +272,7 @@ uvicorn kbo_fans_backend.main:app --reload
 - `./scripts/aws-push-image.sh`: backend Docker image를 ECR에 build/tag/push하고 `CONTAINER_IMAGE_URI` export를 생성
 - `./scripts/aws-push-task-definitions.sh`: AWS secret ARN / role ARN / ECR / EFS 값을 환경변수로 받아 ECS task definition JSON과 execution-role secret-read IAM policy를 `outputs/aws/ecs-fargate/`에 렌더링
 - `./scripts/aws-push-deploy-check.sh`: 렌더링 전후 env/JSON과 AWS credential, secret, IAM role, ECR, EFS, CloudWatch log group 존재 여부를 점검
-- `./scripts/aws-push-cloudformation.sh`: ALB, ECS Fargate API service, sync worker, EFS, IAM, CloudWatch log group을 CloudFormation stack으로 생성
+- `./scripts/aws-push-cloudformation.sh`: ALB, ECS Fargate API service, sync worker, EFS, IAM, CloudWatch log group을 CloudFormation stack으로 생성. 도메인/ACM 전 임시 backend smoke는 `ENABLE_HTTPS=false`로 HTTP ALB URL을 출력할 수 있지만, iPhone release token registration은 `ENABLE_HTTPS=true`와 `API_DOMAIN_NAME` / `ACM_CERTIFICATE_ARN` 기준으로 되돌립니다.
 - `./scripts/aws-push-stack-outputs.sh`: CloudFormation output의 `ApiBaseUrl`을 `RELEASE_API_BASE_URL` / `API_BASE_URL` env로 추출
 - `./scripts/aws-push-demo-deploy.sh`: secret 업로드, ECR image push, CloudFormation deploy, output env 추출, readiness를 순서대로 실행
 - `./scripts/aws-push-tooling-check.sh`: 로컬 AWS CLI credential과 Docker daemon 상태를 확인. 로컬 도구가 없으면 GitHub Actions `Push Demo Deploy` workflow로 같은 배포 파이프라인을 실행할 수 있습니다.
@@ -290,12 +290,12 @@ uvicorn kbo_fans_backend.main:app --reload
 GitHub Actions 배포:
 
 - Workflow: `.github/workflows/push-demo-deploy.yml` (`Push Demo Deploy`)
-- Required secrets/vars: `AWS_ROLE_TO_ASSUME` 또는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `PUSH_SYNC_SECRET`, `ECR_REPOSITORY_URI`, `VPC_ID`, `PUBLIC_SUBNET_A_ID`, `PUBLIC_SUBNET_B_ID`, `ACM_CERTIFICATE_ARN`
+- Required secrets/vars: `AWS_ROLE_TO_ASSUME` 또는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `PUSH_SYNC_SECRET`, `ECR_REPOSITORY_URI`, `VPC_ID`, `PUBLIC_SUBNET_A_ID`, `PUBLIC_SUBNET_B_ID`. `ENABLE_HTTPS`는 기본 `true`이며, `ACM_CERTIFICATE_ARN`은 `ENABLE_HTTPS=true`일 때 필수입니다. `API_DOMAIN_NAME`은 ACM 인증서와 일치하는 커스텀 도메인이 있을 때 설정합니다.
 - `dry_run=true`는 AWS/Docker deploy call 없이 repo script와 secret/env 형태를 검증합니다.
 - `dry_run=false`는 secret 업로드, ECR image push, CloudFormation deploy, stack output export, readiness를 실행합니다.
 - AWS 인증은 `AWS_ROLE_TO_ASSUME` OIDC role을 우선 사용합니다. `./scripts/aws-github-oidc-role.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file`는 GitHub OIDC provider와 main branch trust policy를 준비하고 env 파일에 role ARN을 씁니다.
 - 전체 흐름이 헷갈릴 때는 먼저 `./scripts/push-demo-setup-status.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans`를 실행합니다. 이 명령은 배포하지 않고 현재 막힌 설정 항목과 다음 명령만 보여줍니다.
-- 같은 출력의 `Required Values` 섹션에서 Firebase client 파일, Firebase Admin JSON, Apple APNs `.p8`, AWS ECR/VPC/Subnet/ACM, GitHub OIDC role, release `API_BASE_URL`을 어디서 가져와 어디에 넣는지 확인합니다.
+- 같은 출력의 `Required Values` 섹션에서 Firebase client 파일, Firebase Admin JSON, Apple APNs `.p8`, AWS ECR/VPC/Subnet/HTTPS mode, GitHub OIDC role, release `API_BASE_URL`을 어디서 가져와 어디에 넣는지 확인합니다.
 - 로컬 env 파일에서 GitHub 입력값을 올릴 때는 먼저 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`로 dry-run을 보고, 이름이 맞으면 `--apply`를 붙입니다.
 - 로컬 env 파일을 처음 만들 때는 `./scripts/push-demo-env-bootstrap.sh --output /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --force`로 Firebase project id와 client config 경로가 채워진 초안을 만든 뒤, 파일 안 주석을 따라 Apple/AWS placeholder를 바꿉니다.
 - 전체 준비 상태는 `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans`로 점검합니다. 이 명령은 배포나 workflow dispatch를 실행하지 않습니다.

@@ -277,6 +277,15 @@ github_variable_action() {
   fi
 }
 
+github_variable_value() {
+  local repo="$1"
+  local name="$2"
+  gh variable list \
+    --repo "$repo" \
+    --json name,value \
+    --jq ".[] | select(.name == \"$name\") | .value" 2>/dev/null || true
+}
+
 audit_github() {
   section "GitHub Actions"
 
@@ -318,6 +327,12 @@ audit_github() {
   if ! variable_names="$(gh variable list --repo "$repo" | awk '{print $1}')"; then
     fail "Could not list GitHub Actions variables"
     return
+  fi
+
+  local github_enable_https
+  github_enable_https="$(github_variable_value "$repo" ENABLE_HTTPS)"
+  if [[ -z "$github_enable_https" ]]; then
+    github_enable_https="${ENABLE_HTTPS:-true}"
   fi
 
   check_github_secret \
@@ -446,14 +461,23 @@ audit_github() {
       "aws-network-subnet-b" \
       PUBLIC_SUBNET_B_ID \
       "aws-network-subnet-b: choose public subnet B in a different AZ and set PUBLIC_SUBNET_B_ID")"
-  check_github_variable_or_secret \
-    ACM_CERTIFICATE_ARN \
-    "$secret_names" \
-    "$variable_names" \
-    "$(github_variable_action \
-      "aws-https" \
+  if [[ "${ENABLE_HTTPS:-}" == "false" ]] \
+    && ! name_exists ENABLE_HTTPS "$variable_names" \
+    && ! name_exists ENABLE_HTTPS "$secret_names"; then
+    fail "GitHub variable/secret missing: ENABLE_HTTPS=false for HTTP-only demo mode"
+    add_next_action "aws-http-only: env has ENABLE_HTTPS=false; upload it to GitHub Actions with $(github_upload_command_hint)"
+  elif [[ "$github_enable_https" == "false" ]]; then
+    pass "GitHub HTTPS mode disabled for HTTP-only AWS smoke deploy"
+  else
+    check_github_variable_or_secret \
       ACM_CERTIFICATE_ARN \
-      "aws-https: issue or select an ACM certificate in the deploy region and set ACM_CERTIFICATE_ARN")"
+      "$secret_names" \
+      "$variable_names" \
+      "$(github_variable_action \
+        "aws-https" \
+        ACM_CERTIFICATE_ARN \
+        "aws-https: issue or select an ACM certificate in the deploy region and set ACM_CERTIFICATE_ARN")"
+  fi
 
   local latest_run
   latest_run="$(

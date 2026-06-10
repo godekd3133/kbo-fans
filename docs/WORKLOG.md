@@ -2,6 +2,42 @@
 
 ---
 
+## 2026-06-10: AWS push backend 배포 준비 refresh
+
+### 완료
+- [x] 앱이 완전히 꺼진 뒤에도 push / Live Activity / Dynamic Island를 갱신하려면 no-backend 앱 경로가 아니라 상시 실행 FastAPI backend + scheduler가 필요하다는 운영 경계를 재확인
+- [x] `/tmp/kbo-fans-aws.env`를 bootstrap으로 복구하고, 기존 AWS/GitHub/Firebase 입력값 기준으로 ECR, VPC, subnet, GitHub OIDC role 값을 다시 반영
+- [x] GitHub Actions secrets/variables 현재 상태를 재확인: Firebase client/Admin, AWS OIDC role, ECR/VPC/subnet, `PUSH_SYNC_SECRET`은 준비됨
+- [x] AWS ECS/Fargate CloudFormation 배포 템플릿이 현재 env shape에서 렌더 가능한지 dry-run으로 확인
+- [x] 도메인/ACM 전에도 AWS backend API와 sync worker를 먼저 smoke deploy할 수 있도록 CloudFormation과 배포 스크립트에 `ENABLE_HTTPS=false` HTTP-only 모드를 추가
+- [x] GitHub Actions `Push Demo Deploy`가 `ENABLE_HTTPS=false`일 때 `ACM_CERTIFICATE_ARN` 없이도 config gate를 통과할 수 있도록 입력 검사와 workflow env를 보강
+- [x] 현재 GitHub repository variable `ENABLE_HTTPS=false`를 설정해 도메인 없는 현재 단계의 AWS smoke 배포 모드와 맞춤
+- [x] backend ruff 기본 게이트를 문서화된 Python 3.9 호환 정책에 맞춰 `E,F,I,B`로 정리하고, pyupgrade는 기본 lint gate에서 제외
+- [x] backend test import block을 현재 ruff/isort 기준으로 정리
+
+### 남은 외부 입력
+- [ ] Apple Developer 처리가 끝난 뒤 APNs Auth Key `.p8`, `APNS_KEY_ID`, `APNS_TEAM_ID` 발급 및 GitHub/AWS secret 반영
+- [ ] 운영 iPhone release URL로 전환할 때 도메인 확보 후 us-east-1 ACM certificate 발급 또는 기존 certificate 선택, `ENABLE_HTTPS=true`, `API_DOMAIN_NAME`, `ACM_CERTIFICATE_ARN` 반영
+- [ ] APNs 값 반영 후 `github-push-secrets.sh --apply`와 `github-push-demo-run.sh --dry-run false --watch`로 AWS backend smoke 배포 실행
+
+### 검증
+- [x] `ruff check --config backend/pyproject.toml backend/src backend/tests` (`All checks passed`)
+- [x] `pytest backend/tests -q` (`117 passed`, FastAPI/Starlette deprecation warning 1개)
+- [x] `python3 -m compileall -q backend/src`
+- [x] `./scripts/push-live-preflight.sh --app-only` (`checks=29`, `warnings=1`, `failures=0`; backend secret check skip warning)
+- [x] `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --skip-tooling` expected attention: APNs key/id/team 미준비, GitHub `ENABLE_HTTPS=false` 반영 전에는 해당 variable 업로드 필요
+- [x] `gh variable list --repo godekd3133/kbo-fans`에서 `AWS_REGION`, `ECR_REPOSITORY_URI`, `FIREBASE_PROJECT_ID`, `VPC_ID`, `PUBLIC_SUBNET_A_ID`, `PUBLIC_SUBNET_B_ID` 확인
+- [x] `gh variable set ENABLE_HTTPS --repo godekd3133/kbo-fans --body false` 후 `gh variable list`에서 `ENABLE_HTTPS=false` 확인
+- [x] `gh secret list --repo godekd3133/kbo-fans`에서 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `AWS_ROLE_TO_ASSUME`, `PUSH_SYNC_SECRET` 확인
+- [x] `./scripts/aws-push-cloudformation.sh --dry-run` (`aws_push_cloudformation=status=ok mode=dry-run stack=kbo-fans-push-demo`)
+- [x] `ENABLE_HTTPS=false` + dummy APNs 형식값으로 `./scripts/push-live-preflight.sh --aws` (`checks=43`, `warnings=5`, `failures=0`; HTTP-only smoke warning 포함)
+- [x] `ENABLE_HTTPS=false` + dummy APNs ID/secret ARN으로 `./scripts/aws-push-cloudformation.sh --dry-run` (`aws_push_cloudformation=status=ok mode=dry-run stack=kbo-fans-push-demo`)
+- [x] `ENABLE_HTTPS=false` + dummy APNs file로 `./scripts/aws-push-demo-deploy.sh --dry-run` 통합 pipeline 검증 (`aws_push_demo_deploy=status=ok dry_run=true`)
+- [x] GitHub `ENABLE_HTTPS=false` 반영 후 `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --skip-tooling` 확인: ACM 누락은 더 이상 blocker가 아니고 남은 GitHub 누락은 APNs 세 값
+- [x] `ENABLE_HTTPS=false` + dummy APNs 형식값으로 `./scripts/github-push-secrets.sh --repo godekd3133/kbo-fans` dry-run 확인: 업로드 대상에 placeholder `ACM_CERTIFICATE_ARN`이 포함되지 않음
+- [x] `./scripts/github-push-demo-run.sh --repo godekd3133/kbo-fans --dry-run true` dispatch 전 config gate 확인: 남은 누락은 `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`
+
+---
 ## 2026-06-04: Web dev artifact 정적 로드 검증
 
 ### 완료
