@@ -19,6 +19,7 @@
                 "ec2:DescribeInternetGateways",
                 "ec2:DescribeNetworkInterfaces",
                 "ec2:DescribeSecurityGroupRules",
+                "ec2:GetSecurityGroupsForVpc",
                 "elasticfilesystem:CreateFileSystem",
                 "elasticfilesystem:CreateMountTarget",
                 "elasticfilesystem:DeleteFileSystem",

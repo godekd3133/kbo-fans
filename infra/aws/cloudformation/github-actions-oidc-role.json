@@ -257,6 +257,7 @@
                                         "ec2:DescribeSecurityGroups",
                                         "ec2:DescribeSubnets",
                                         "ec2:DescribeVpcs",
+                                        "ec2:GetSecurityGroupsForVpc",
                                         "ec2:RevokeSecurityGroupEgress",
                                         "ec2:RevokeSecurityGroupIngress",
                                         "elasticfilesystem:CreateFileSystem",
