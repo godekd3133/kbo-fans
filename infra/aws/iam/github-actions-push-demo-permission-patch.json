@@ -51,6 +51,12 @@
             "Effect": "Allow",
             "Action": "iam:GetRole",
             "Resource": "arn:aws:iam::*:role/aws-service-role/*"
+        },
+        {
+            "Sid": "ReadPushDemoRolePolicies",
+            "Effect": "Allow",
+            "Action": "iam:GetRolePolicy",
+            "Resource": "arn:aws:iam::*:role/kbo-fans-*"
         }
     ]
 }
