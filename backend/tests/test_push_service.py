@@ -391,6 +391,30 @@ def test_push_config_status_accepts_aws_secret_env_content(tmp_path) -> None:
     assert status["scheduler"]["lastCheckedGames"] == 1
 
 
+def test_push_config_status_reports_registry_read_error(monkeypatch, tmp_path) -> None:
+    def raise_permission_error(self) -> dict:
+        raise PermissionError("registry unavailable")
+
+    monkeypatch.setattr(PushRegistry, "sync_heartbeat", raise_permission_error)
+    settings = _settings(
+        app_env="release",
+        firebase_service_account_path="",
+        firebase_service_account_json='{"project_id":"kbo-fans"}',
+        push_registry_path=str(tmp_path / "runtime" / "push_registry.json"),
+        apns_auth_key_path="",
+        apns_auth_key_p8="-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----\n",
+        apns_use_sandbox=False,
+        push_sync_secret="secret",
+    )
+
+    status = PushConfigurationDiagnostics(settings).status()
+
+    assert status["ready"] is False
+    assert "PUSH_REGISTRY_PATH:readable" in status["missing"]
+    assert status["scheduler"]["registryReadable"] is False
+    assert status["scheduler"]["registryError"] == "PermissionError"
+
+
 def test_push_config_status_rejects_invalid_firebase_json(tmp_path) -> None:
     settings = _settings(
         app_env="release",

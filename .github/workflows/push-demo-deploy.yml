@@ -162,6 +162,44 @@ jobs:
 
           ./scripts/aws-push-demo-deploy.sh "${args[@]}"
 
+      - name: Print push backend diagnostics
+        if: ${{ failure() && inputs.dry_run == false }}
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          if [[ -f outputs/aws/cloudformation/stack.env ]]; then
+            # shellcheck disable=SC1091
+            source outputs/aws/cloudformation/stack.env
+          fi
+
+          cluster="${KBO_PUSH_STACK_CLUSTER_NAME:-kbo-fans}"
+          api_service="${KBO_PUSH_STACK_API_SERVICE_NAME:-kbo-fans-api}"
+          sync_service="${KBO_PUSH_STACK_SYNC_WORKER_SERVICE_NAME:-kbo-fans-sync-worker}"
+          log_group="${KBO_PUSH_STACK_LOG_GROUP_NAME:-/ecs/kbo-fans-backend}"
+
+          echo "::group::ECS service status"
+          aws ecs describe-services \
+            --cluster "$cluster" \
+            --services "$api_service" "$sync_service" \
+            --query 'services[].{serviceName:serviceName,status:status,runningCount:runningCount,pendingCount:pendingCount,desiredCount:desiredCount,events:events[0:5].message}' \
+            --output json || true
+          echo "::endgroup::"
+
+          echo "::group::CloudWatch log streams"
+          aws logs describe-log-streams \
+            --log-group-name "$log_group" \
+            --order-by LastEventTime \
+            --descending \
+            --max-items 10 \
+            --query 'logStreams[].logStreamName' \
+            --output text || true
+          echo "::endgroup::"
+
+          echo "::group::CloudWatch recent logs"
+          aws logs tail "$log_group" --since 30m --format short || true
+          echo "::endgroup::"
+
       - name: Upload deployment outputs
         if: always()
         uses: actions/upload-artifact@v4

@@ -59,6 +59,17 @@
             "Effect": "Allow",
             "Action": "iam:GetRolePolicy",
             "Resource": "arn:aws:iam::*:role/kbo-fans-*"
+        },
+        {
+            "Sid": "ReadPushDemoLogs",
+            "Effect": "Allow",
+            "Action": [
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:FilterLogEvents",
+                "logs:GetLogEvents"
+            ],
+            "Resource": "*"
         }
     ]
 }

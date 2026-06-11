@@ -110,11 +110,19 @@ class PushConfigurationDiagnostics:
         missing = []
         if not self.settings.push_sync_secret:
             missing.append("PUSH_SYNC_SECRET")
-        heartbeat = PushRegistry(self.settings.push_registry_path).sync_heartbeat()
+        registry_error = ""
+        try:
+            heartbeat = PushRegistry(self.settings.push_registry_path).sync_heartbeat()
+        except Exception as exc:
+            heartbeat = {}
+            registry_error = exc.__class__.__name__
+            missing.append("PUSH_REGISTRY_PATH:readable")
 
         return {
             "syncSecretConfigured": bool(self.settings.push_sync_secret),
             "syncEndpointProtected": bool(self.settings.push_sync_secret),
+            "registryReadable": not registry_error,
+            "registryError": registry_error,
             "lastSyncAt": heartbeat.get("updatedAt"),
             "lastSyncDate": heartbeat.get("date"),
             "lastCheckedGames": heartbeat.get("checkedGames"),
