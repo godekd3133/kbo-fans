@@ -144,7 +144,7 @@ show_stack_events() {
   aws cloudformation describe-stack-events \
     --region "$AWS_REGION" \
     --stack-name "$STACK_NAME" \
-    --max-items 25 \
+    --max-items 80 \
     --query 'StackEvents[].{Time:Timestamp,Status:ResourceStatus,Type:ResourceType,LogicalId:LogicalResourceId,Reason:ResourceStatusReason}' \
     --output table >&2 || true
 }
