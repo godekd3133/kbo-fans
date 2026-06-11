@@ -149,6 +149,26 @@ show_stack_events() {
     --output table >&2 || true
 }
 
+existing_stack_status="$(
+  aws cloudformation describe-stacks \
+    --region "$AWS_REGION" \
+    --stack-name "$STACK_NAME" \
+    --query "Stacks[0].StackStatus" \
+    --output text 2>/dev/null || true
+)"
+
+case "$existing_stack_status" in
+  ROLLBACK_COMPLETE)
+    echo "aws_push_cloudformation=delete_stack_before_recreate stack=$STACK_NAME status=$existing_stack_status"
+    aws cloudformation delete-stack \
+      --region "$AWS_REGION" \
+      --stack-name "$STACK_NAME"
+    aws cloudformation wait stack-delete-complete \
+      --region "$AWS_REGION" \
+      --stack-name "$STACK_NAME"
+    ;;
+esac
+
 set +e
 aws cloudformation deploy \
   --region "$AWS_REGION" \

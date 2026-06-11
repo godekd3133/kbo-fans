@@ -1,0 +1,35 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "CloudFormationDeployPatch",
+            "Effect": "Allow",
+            "Action": [
+                "cloudformation:DeleteStack",
+                "cloudformation:GetTemplateSummary"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "AlbEc2EfsPatch",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeAccountAttributes",
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeInternetGateways",
+                "ec2:DescribeNetworkInterfaces",
+                "ec2:DescribeSecurityGroupRules",
+                "elasticfilesystem:CreateFileSystem",
+                "elasticfilesystem:CreateMountTarget",
+                "elasticfilesystem:DeleteFileSystem",
+                "elasticfilesystem:DeleteMountTarget",
+                "elasticfilesystem:DescribeFileSystems",
+                "elasticfilesystem:DescribeMountTargets",
+                "elasticfilesystem:TagResource",
+                "elasticfilesystem:UntagResource",
+                "elasticloadbalancing:DescribeTags"
+            ],
+            "Resource": "*"
+        }
+    ]
+}

@@ -134,6 +134,19 @@ jobs:
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY_SECRET }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Refresh push deploy role permissions
+        if: ${{ inputs.dry_run == false && env.AWS_ROLE_TO_ASSUME != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          role_name="${AWS_ROLE_TO_ASSUME##*/}"
+          patch_policy_name="${role_name}-push-demo-deploy-patch"
+          aws iam put-role-policy \
+            --role-name "$role_name" \
+            --policy-name "$patch_policy_name" \
+            --policy-document file://infra/aws/iam/github-actions-push-demo-permission-patch.json
+
       - name: Deploy push backend stack
         shell: bash
         run: |
