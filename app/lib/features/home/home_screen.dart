@@ -19,9 +19,28 @@ import '../../data/models/schedule.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
 import '../../services/game_event_alert_service.dart';
+import '../../services/live_activity_service.dart';
+import '../../services/push_notification_service.dart';
 import '../../services/widget_sync_service.dart';
 import 'widgets/game_card.dart';
 import 'widgets/my_team_game_card.dart';
+
+String gameDetailLocationFor(
+  Game game, {
+  String? tab,
+  bool focusRelay = false,
+}) {
+  final resolvedTab = tab ?? (game.status == GameStatus.live ? 'relay' : null);
+  final queryParameters = <String, String>{
+    'tab': ?resolvedTab,
+    if (focusRelay && resolvedTab == 'relay') 'focus': 'relay',
+  };
+
+  return Uri(
+    path: '/game/${game.gameId}',
+    queryParameters: queryParameters.isEmpty ? null : queryParameters,
+  ).toString();
+}
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -42,11 +61,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _secondarySectionsEnabled = false;
   int? _secondarySectionsStartedAtMicros;
   String? _lastSecondarySectionsLogKey;
+  String? _followedGameId;
+  bool _followStateLoaded = false;
+  bool _followActionInFlight = false;
+  String? _lastAutoMyTeamFollowKey;
 
   @override
   void initState() {
     super.initState();
     _homeLoadStartedAtMicros = DateTime.now().microsecondsSinceEpoch;
+    unawaited(_loadFollowState());
   }
 
   @override
@@ -109,6 +133,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               _scheduleRefresh(games, myTeamId);
               _syncWidget(games, myTeamId);
               _processGameEventAlerts(games, myTeamId);
+              _ensureMyTeamAutoFollow(games, myTeamId);
               _enableSecondarySections();
               return KeyedSubtree(
                 key: ValueKey('home-data-$today-${games.length}'),
@@ -327,9 +352,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: MyTeamGameCard(
                     game: selectedMyGame,
+                    isFollowing: _followedGameId == selectedMyGame.gameId,
+                    isFollowLoading:
+                        !_followStateLoaded || _followActionInFlight,
                     onOpenDetail: () => _openGameDetail(selectedMyGame),
-                    onOpenRelay: () =>
-                        _openGameDetail(selectedMyGame, tab: 'relay'),
+                    onOpenRelay: () => _openGameDetail(
+                      selectedMyGame,
+                      tab: 'relay',
+                      focusRelay: true,
+                    ),
+                    onFollowGame: () =>
+                        unawaited(_followGameFromHome(selectedMyGame)),
                     onOpenAlert: () {
                       if (selectedMyGame.status == GameStatus.scheduled) {
                         context.go('/settings');
@@ -506,11 +539,150 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _openGameDetail(Game game, {String? tab}) {
-    final location = tab == null
-        ? '/game/${game.gameId}'
-        : '/game/${game.gameId}?tab=$tab';
-    context.push(location, extra: game);
+  void _openGameDetail(Game game, {String? tab, bool focusRelay = false}) {
+    context.push(
+      gameDetailLocationFor(game, tab: tab, focusRelay: focusRelay),
+      extra: game,
+    );
+  }
+
+  Future<void> _loadFollowState() async {
+    try {
+      final followedGameId = await LiveActivityService.instance
+          .followedGameId();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _followedGameId ??= followedGameId;
+        _followStateLoaded = true;
+      });
+    } catch (error) {
+      DevConsole.instance.warn('HOME follow state load failed: $error');
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _followStateLoaded = true;
+      });
+    }
+  }
+
+  Future<void> _followGameFromHome(Game game) async {
+    if (_followActionInFlight || game.status != GameStatus.live) {
+      return;
+    }
+
+    setState(() {
+      _followActionInFlight = true;
+    });
+
+    try {
+      await LiveActivityService.instance.followGame(game.gameId);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _followedGameId = game.gameId;
+        _followStateLoaded = true;
+      });
+
+      try {
+        await LiveActivityService.instance.requestPermissions();
+        await GameEventAlertService.instance.requestPermissions();
+        await PushNotificationService.instance.requestPermissionAndSync(
+          myTeam: ref.read(myTeamProvider),
+        );
+        await LiveActivityService.instance.syncFollowedGame(game);
+      } catch (error) {
+        DevConsole.instance.warn('HOME follow surface sync skipped: $error');
+      }
+
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _followActionInFlight = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('마이팀 경기를 따라가는 중입니다')));
+    } catch (error) {
+      DevConsole.instance.warn('HOME follow game failed: $error');
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _followStateLoaded = true;
+        _followActionInFlight = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('경기 따라가기 설정에 실패했습니다')));
+    }
+  }
+
+  void _ensureMyTeamAutoFollow(List<Game> games, String? myTeamId) {
+    if (myTeamId == null || myTeamId.isEmpty) {
+      return;
+    }
+
+    final myTeamGame = games
+        .where(
+          (game) =>
+              game.status == GameStatus.live && _isMyTeamGame(game, myTeamId),
+        )
+        .cast<Game?>()
+        .firstOrNull;
+    if (myTeamGame == null || _followedGameId == myTeamGame.gameId) {
+      return;
+    }
+
+    final key = '$myTeamId|${myTeamGame.gameId}|${_followedGameId ?? ''}';
+    if (_lastAutoMyTeamFollowKey == key) {
+      return;
+    }
+    _lastAutoMyTeamFollowKey = key;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(_autoFollowMyTeamGame(myTeamGame));
+    });
+  }
+
+  Future<void> _autoFollowMyTeamGame(Game game) async {
+    try {
+      await LiveActivityService.instance.followGame(game.gameId);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _followedGameId = game.gameId;
+        _followStateLoaded = true;
+      });
+      try {
+        await LiveActivityService.instance.syncFollowedGame(game);
+      } catch (error) {
+        DevConsole.instance.warn(
+          'HOME my team auto-follow sync skipped: $error',
+        );
+      }
+      DevConsole.instance.info('HOME my team auto-follow: ${game.gameId}');
+    } catch (error) {
+      DevConsole.instance.warn('HOME my team auto-follow failed: $error');
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _followStateLoaded = true;
+      });
+    }
+  }
+
+  bool _isMyTeamGame(Game game, String myTeamId) {
+    return game.away.teamId == myTeamId || game.home.teamId == myTeamId;
   }
 
   _TodayBaseballBriefData _buildTodayBrief({

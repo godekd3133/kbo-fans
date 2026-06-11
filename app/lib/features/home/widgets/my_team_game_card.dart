@@ -18,6 +18,9 @@ class MyTeamGameCard extends StatelessWidget {
   final VoidCallback? onOpenDetail;
   final VoidCallback? onOpenRelay;
   final VoidCallback? onOpenAlert;
+  final VoidCallback? onFollowGame;
+  final bool isFollowing;
+  final bool isFollowLoading;
 
   const MyTeamGameCard({
     super.key,
@@ -25,6 +28,9 @@ class MyTeamGameCard extends StatelessWidget {
     this.onOpenDetail,
     this.onOpenRelay,
     this.onOpenAlert,
+    this.onFollowGame,
+    this.isFollowing = false,
+    this.isFollowLoading = false,
   });
 
   @override
@@ -217,8 +223,17 @@ class MyTeamGameCard extends StatelessWidget {
                       icon: Icon(secondaryAction.icon, size: 17),
                       label: Text(secondaryAction.label),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textPrimary,
-                        side: const BorderSide(color: AppColors.divider),
+                        foregroundColor: secondaryAction.isActive
+                            ? AppColors.positive
+                            : AppColors.textPrimary,
+                        side: BorderSide(
+                          color: secondaryAction.isActive
+                              ? AppColors.positive
+                              : AppColors.divider,
+                        ),
+                        backgroundColor: secondaryAction.isActive
+                            ? AppColors.positive.withValues(alpha: 0.12)
+                            : null,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -275,9 +290,14 @@ class MyTeamGameCard extends StatelessWidget {
     final detail = onOpenDetail;
     return switch (game.status) {
       GameStatus.live => _CardAction(
-        label: '따라가기',
-        icon: Icons.notifications_active_outlined,
-        onPressed: onOpenAlert ?? detail,
+        label: isFollowing ? '따라가는 중' : '따라가기',
+        icon: isFollowing
+            ? Icons.check_circle_rounded
+            : Icons.notifications_active_outlined,
+        onPressed: isFollowLoading
+            ? null
+            : onFollowGame ?? onOpenAlert ?? detail,
+        isActive: isFollowing,
       ),
       GameStatus.final_ => _CardAction(
         label: '하이라이트',
@@ -413,10 +433,12 @@ class _CardAction {
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
+  final bool isActive;
 
   const _CardAction({
     required this.label,
     required this.icon,
     required this.onPressed,
+    this.isActive = false,
   });
 }

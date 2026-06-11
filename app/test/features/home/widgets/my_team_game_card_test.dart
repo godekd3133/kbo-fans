@@ -84,6 +84,41 @@ void main() {
     expect(find.text('볼넷'), findsOneWidget);
     expect(find.text('3-2'), findsOneWidget);
   });
+
+  testWidgets('marks live follow action when the game is already followed', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Scaffold(
+          body: MyTeamGameCard(
+            game: _game(
+              away: const TeamScore(
+                teamId: 'XX',
+                teamName: '원정',
+                shortName: '원정',
+                score: 2,
+                innings: [],
+              ),
+              home: const TeamScore(
+                teamId: 'YY',
+                teamName: '홈',
+                shortName: '홈',
+                score: 1,
+                innings: [],
+              ),
+            ),
+            isFollowing: true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('따라가는 중'), findsOneWidget);
+    expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+    expect(find.text('따라가기'), findsNothing);
+  });
 }
 
 Game _game({required TeamScore away, required TeamScore home}) {

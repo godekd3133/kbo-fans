@@ -18,7 +18,7 @@ void main() {
     expect(topics, contains('scoring_LG'));
     expect(topics, contains('homerun_LG'));
     expect(topics, contains('reversal_LG'));
-    expect(topics, isNot(contains('game_start_LG')));
+    expect(topics, contains('game_start_LG'));
     expect(topics, isNot(contains('game_end_LG')));
     expect(topics, isNot(contains('game_start_ALL')));
     expect(topics, isNot(contains('all_games_enabled')));
@@ -34,8 +34,8 @@ void main() {
     expect(topics, contains('scoring_ALL'));
     expect(topics, contains('homerun_ALL'));
     expect(topics, contains('reversal_ALL'));
+    expect(topics, contains('game_start_ALL'));
     expect(topics, contains('all_games_enabled'));
-    expect(topics, isNot(contains('game_start_ALL')));
     expect(topics, isNot(contains('scoring_LG')));
   });
 

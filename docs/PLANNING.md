@@ -1,7 +1,7 @@
 # KBO Fans 서비스 기획서
 
-> 최종 수정: 2026-05-19
-> 상태: Draft v1
+> 최종 수정: 2026-06-10
+> 상태: Draft v1.1
 
 ---
 
@@ -125,6 +125,17 @@ KBO Fans의 핵심 반복 사용 이유는 “오늘 내 팀이 어떻게 되고
 | 통계 대시보드 | 리그 전체 통계 시각화 |
 | **선수 비교** | **선수 vs 선수 스탯 비교 시각화** |
 
+### 현재 구현 / 발표 기준 (2026-06-10)
+
+현재 발표 가능한 구현 범위는 실제 앱 화면 기준으로 구분한다.
+
+| 구분 | 상태 | 기준 |
+|------|------|------|
+| 화면 구현 | 온보딩/마이팀, 홈, 경기 상세 4탭, 일정, 순위, 기록실, 설정 화면을 발표 화면으로 사용 가능 | `docs/presentations/kbo_fans_8min_presentation.md` |
+| 서비스 준비 | 예매 오픈 local reminder, push moment, widget sync, Live Activity service는 코드/정책 단위로 준비 | 실제 기기와 운영 push backend 검증은 별도 |
+| 데이터 기본 경로 | 앱 기본 런타임은 backend API 없이 direct KBO source + 허용된 generated/bundled/device snapshot 사용 | `USE_BACKEND_API=true`일 때만 API-backed 검증 |
+| 앱 밖 갱신 | 앱 종료 후 push / Live Activity / Dynamic Island 갱신은 no-backend 앱만으로 완료되지 않음 | FastAPI backend + scheduler + FCM/APNs 필요 |
+
 ---
 
 ## 3. 화면 구성 (Information Architecture)
@@ -222,20 +233,30 @@ KBO Fans의 핵심 반복 사용 이유는 “오늘 내 팀이 어떻게 되고
 
 ### 데이터 흐름
 
+기본 앱 실행은 backend API를 전제로 하지 않는다.
+
 ```
 KBO 홈페이지 (koreabaseball.com)
         │
-        │  크롤링 (requests + BeautifulSoup / POST API)
+        │  앱 direct loading / generated snapshot
         ▼
-   [Backend Server]
+   [Flutter App Provider]
         │
-        │  REST API (JSON)
-        ▼
-   [Mobile App]
-        │
-        │  로컬 캐시 (SharedPreferences/SQLite)
+        │  SharedPreferences / device cache / bundled asset
         ▼
    [화면 렌더링]
+```
+
+앱이 꺼진 뒤에도 일반 push와 iOS Live Activity / Dynamic Island를 갱신해야 하는 경우만 운영 backend가 필요하다.
+
+```
+KBO source
+   │
+   ▼
+[FastAPI backend + scheduler]
+   │
+   ├── FCM moment push
+   └── APNs liveactivity update/end
 ```
 
 ### 데이터 수집 전략 (Adaptive Polling)
@@ -278,24 +299,24 @@ KBO 홈페이지 (koreabaseball.com)
 | **상태 관리** | Riverpod | 컴파일 타임 안전성, 비동기 상태(AsyncValue) 기본 지원 |
 | **네비게이션** | go_router | 선언적 라우팅, 딥링크 지원 |
 | **HTTP** | dio | 인터셉터, 캐시, 에러 핸들링 편리 |
-| **백엔드 API** | Python FastAPI | 크롤링(Python) + API 서빙 한 곳에서 |
+| **백엔드 API** | Python FastAPI | 기본 앱 런타임이 아닌 legacy/reference 및 앱 종료 후 push/Live Activity 운영 예외 |
 | **크롤링** | requests + BeautifulSoup | SSR 페이지에 충분, 가볍고 빠름 |
-| **DB** | AWS RDS (PostgreSQL) | 정형 데이터에 적합, 관리형 서비스 |
-| **캐시** | AWS ElastiCache (Redis) | 실시간 스코어 캐시, pub/sub |
+| **DB** | AWS RDS (PostgreSQL) | 운영 backend를 확장할 때의 정형 데이터 후보 |
+| **캐시** | AWS ElastiCache (Redis) | 운영 backend를 확장할 때의 실시간 캐시 후보 |
 | **푸시** | Firebase Cloud Messaging (FCM) | iOS/Android 통합 푸시 |
-| **배포** | AWS (EC2 또는 ECS) | 백엔드 서버 배포 |
+| **배포** | AWS ECS/Fargate | 앱 종료 후 push / Live Activity 시연 backend 배포 후보 |
 
 ---
 
 ## 8. MVP 마일스톤
 
-| 단계 | 내용 | 산출물 |
-|------|------|--------|
-| **M1: 기획 완료** | 서비스 범위, UX 설계, 화면 와이어프레임 | 이 문서 + 와이어프레임 |
-| **M2: 백엔드 기반** | 크롤링 파이프라인 + REST API 구축 | 작동하는 API 서버 |
-| **M3: 앱 코어** | 스코어보드 + 경기 상세(문자중계/박스스코어) | 작동하는 앱 |
-| **M4: 알림 + 설정** | 푸시 알림 + 마이팀 + 일정/순위 | 기능 완성 |
-| **M5: 출시 준비** | 디자인 다듬기 + 테스트 + 스토어 등록 | 앱스토어 출시 |
+| 단계 | 내용 | 현재 상태 |
+|------|------|-----------|
+| **M1: 기획 완료** | 서비스 범위, UX 설계, 화면 구성 | 진행 중 문서로 유지 |
+| **M2: 앱 코어 화면** | 온보딩, 홈, 경기 상세 4탭, 일정, 순위, 기록실, 설정 | 발표 자료 기준 화면 캡쳐 가능 |
+| **M3: 데이터 경로** | direct KBO source, provider routing, snapshot 정책 | no-backend 기본 방향으로 정리됨 |
+| **M4: 알림 + 앱 밖 표면** | push moment, 예매 reminder, widget sync, Live Activity | service 준비, 실제 기기/운영 backend 검증 남음 |
+| **M5: 배포 준비** | TestFlight, Android internal testing, release build 검증 | 외부 계정/서명/APNs 입력값에 의존 |
 
 ---
 
@@ -313,8 +334,8 @@ KBO 홈페이지 (koreabaseball.com)
 
 ## 10. 다음 단계
 
-- [ ] 와이어프레임 작성 (주요 화면 5개)
-- [ ] 백엔드 프로젝트 구조 셋업
-- [ ] 크롤링 프로토타입 (스코어보드 + 문자중계)
-- [ ] Flutter 프로젝트 셋업 + 네비게이션 구조
-- [ ] 스코어보드 화면 구현
+- [ ] 실제 iPhone 기준 push / WidgetKit / Live Activity 동작 검증
+- [ ] APNs Auth Key, Team ID, Key ID 준비 후 AWS/GitHub push demo secret 반영
+- [ ] TestFlight / Android internal testing 배포 경로 확정
+- [ ] 발표 자료와 Figma/기획 문서가 실제 앱 화면을 계속 기준으로 삼도록 동기화
+- [ ] release 전 direct KBO parser와 snapshot fallback 경계 회귀 검증

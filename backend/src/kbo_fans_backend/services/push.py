@@ -190,15 +190,37 @@ class PushService:
     def _build_topics(self, payload: PushRegisterRequest) -> list[str]:
         has_my_team = payload.myTeam is not None and payload.myTeam != ""
         topics: list[str] = []
+        delivery_modes = payload.notifications.deliveryModes
 
         topic_flags = {
-            "game_start": payload.notifications.gameStart,
-            "scoring": payload.notifications.scoring,
-            "homerun": payload.notifications.homerun,
-            "reversal": payload.notifications.reversal,
-            "game_end": payload.notifications.gameEnd,
-            "lineup_opened": payload.notifications.lineupOpened,
-            "inning_change": payload.notifications.inningChange,
+            "game_start": _sends_immediately(
+                payload.notifications.gameStart,
+                delivery_modes.gameStart if delivery_modes else None,
+            ),
+            "scoring": _sends_immediately(
+                payload.notifications.scoring,
+                delivery_modes.scoring if delivery_modes else None,
+            ),
+            "homerun": _sends_immediately(
+                payload.notifications.homerun,
+                delivery_modes.homerun if delivery_modes else None,
+            ),
+            "reversal": _sends_immediately(
+                payload.notifications.reversal,
+                delivery_modes.reversal if delivery_modes else None,
+            ),
+            "game_end": _sends_immediately(
+                payload.notifications.gameEnd,
+                delivery_modes.gameEnd if delivery_modes else None,
+            ),
+            "lineup_opened": _sends_immediately(
+                payload.notifications.lineupOpened,
+                delivery_modes.lineupOpened if delivery_modes else None,
+            ),
+            "inning_change": _sends_immediately(
+                payload.notifications.inningChange,
+                delivery_modes.inningChange if delivery_modes else None,
+            ),
         }
 
         for topic_name, enabled in topic_flags.items():
@@ -284,3 +306,11 @@ def _firebase_certificate_source(
         return str(Path(service_account_path).expanduser())
 
     raise ValueError("FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_PATH is required")
+
+
+def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
+    if not enabled:
+        return False
+    if delivery is None:
+        return True
+    return delivery == "immediate"

@@ -1662,6 +1662,12 @@ class _LineupRow extends StatelessWidget {
     final positionLabel = entry.positionKo.isNotEmpty
         ? entry.positionKo
         : entry.position;
+    final detailParts = [
+      positionLabel,
+      if (entry.position.isNotEmpty && entry.position != positionLabel)
+        entry.position,
+      if ((entry.statValue ?? '').isNotEmpty) '지표 ${entry.statValue}',
+    ];
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1724,7 +1730,7 @@ class _LineupRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '$positionLabel · ${entry.position}',
+                detailParts.join(' · '),
                 style: const TextStyle(
                   fontSize: 11,
                   color: AppColors.textSecondary,

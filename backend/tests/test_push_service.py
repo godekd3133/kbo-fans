@@ -3,6 +3,7 @@ import os
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
+
 from kbo_fans_backend.api.routes import push as push_routes
 from kbo_fans_backend.core.config import Settings
 from kbo_fans_backend.main import app
@@ -11,6 +12,7 @@ from kbo_fans_backend.schemas.push import (
     LiveActivityRegisterRequest,
     LiveActivityUnregisterRequest,
     LiveActivityUpdateRequest,
+    NotificationDeliveryModes,
     NotificationSettings,
     PushRegisterRequest,
 )
@@ -67,6 +69,38 @@ def test_build_topics_returns_all_topics_when_all_games_enabled() -> None:
     assert "game_start_ALL" in topics
     assert "all_games_enabled" in topics
     assert "game_start_LG" not in topics
+
+
+def test_build_topics_respects_delivery_modes() -> None:
+    service = PushService()
+    payload = PushRegisterRequest(
+        deviceToken="token",
+        platform="flutter",
+        myTeam="LG",
+        notifications=NotificationSettings(
+            gameStart=True,
+            scoring=True,
+            homerun=True,
+            reversal=True,
+            gameEnd=True,
+            lineupOpened=True,
+            inningChange=True,
+            allGames=False,
+            deliveryModes=NotificationDeliveryModes(
+                gameStart="immediate",
+                scoring="summary",
+                homerun="live_only",
+                reversal="off",
+                gameEnd="immediate",
+                lineupOpened="summary",
+                inningChange="live_only",
+            ),
+        ),
+    )
+
+    topics = service._build_topics(payload)
+
+    assert topics == ["game_start_LG", "game_end_LG"]
 
 
 def test_register_persists_device_token(tmp_path) -> None:

@@ -1,6 +1,6 @@
 # KBO Fans 앱 기획서 (App Specification)
 
-> 최종 수정: 2026-05-20
+> 최종 수정: 2026-06-12
 > 상태: Draft v1
 
 ---
@@ -215,9 +215,14 @@
 | 마이팀 미선택 | 팀 선택 시 달라지는 점, 팀 선택 버튼 | `마이팀 선택` |
 | 경기 없음 | 다음 경기, 현재 순위, 최근 3경기 흐름 | `일정 보기` |
 | 경기 전 | 상대, 구장, 시작 시간, 선발, 라인업 공개 여부 | `경기 정보`, `알림 설정` |
-| 경기 중 | 스코어, 이닝, 주자/아웃/카운트, 직전 주요 플레이 | `중계 보기`, `따라가기` |
+| 경기 중 | 스코어, 이닝, 주자/아웃/카운트, 직전 주요 플레이 | `중계 보기`, `따라가는 중` 또는 `따라가기` |
 | 경기 종료 | 최종 스코어, 승패 요약, 핵심 선수 1~2명 | `경기 기록`, `하이라이트` |
 | 취소/지연 | 취소/지연 사유, 다음 일정 | `일정 보기` |
+
+- 마이팀이 선택되어 있고 오늘 마이팀 경기가 live 상태이면 홈 진입 시 해당 경기를 기본 follow session target 으로 맞춘다. 별도 설정을 열지 않아도 홈 마이팀 경기 카드의 follow CTA는 같은 자리에서 `따라가는 중` 체크 상태로 바뀐다.
+- 홈의 `따라가기` CTA를 명시적으로 누르면 같은 follow session 을 시작하고, 필요한 OS permission / push sync 요청은 이 사용자 action 경로에서만 수행한다.
+- 홈에서 진행 중인 경기 카드를 열면 경기 상세는 기본으로 `문자중계` 탭에서 시작한다.
+- 마이팀 경기 카드의 `중계 보기` CTA는 `문자중계` 탭으로 이동하면서 상세 상단 요약을 접어 문자중계 본문이 먼저 보이도록 focus 진입을 사용한다.
 
 **KBO 브리프 상태별 규칙**:
 | 상태 | 우선 노출 | 예시 |
@@ -356,9 +361,9 @@ GET /api/player/{playerId}?season=2026
 - 뒤로 버튼 + 경기장명 + 관중수
 - 양팀 로고 + 팀명 + 현재 스코어 (큰 폰트)
 - 현재 이닝/경기 상태
-- 예매 정보 카드: 예정/진행 경기에서만 노출. 예매처 / 예매 시작시간 / 예매처 바로가기 / 예매 오픈 알림 토글
+- 예매 정보 카드: 경기 전 상태에서만 노출. 예매처 / 예매 시작시간 / 예매처 바로가기 / 예매 오픈 알림 토글
 - 하이라이트 카드: 유튜브 썸네일 / 영상 제목 / `KBO 하이라이트` / `유튜브 보기` 버튼
-- 종료 경기에서는 예매 정보 대신 최종 결과, 승패 요약, 핵심 선수, 주요 이벤트 요약을 우선 노출
+- 진행/종료/취소/서스펜디드 경기에서는 예매 정보 대신 현재 경기 상태, 최종 결과, 승패 요약, 핵심 선수, 주요 이벤트 요약을 우선 노출
 
 **탭 간 맥락 연결 원칙**:
 - 상단 경기 상태는 모든 탭에서 sticky 유지한다.
@@ -436,7 +441,7 @@ GET /api/player/{playerId}?season=2026
 **UI 요소**:
 | 요소 | 설명 |
 |------|------|
-| 현재 타석 카드 | 상단 고정. 이닝/주자/타자/투수/투구수/볼카운트(B/S/O) 실시간 표시, 타자/투수 프로필 이미지와 색상별 B/S/O 요약 포함 |
+| 현재 타석 카드 | 상단 고정. 이닝/주자/타자/투수/투구수/볼카운트(B/S/O) 실시간 표시, 타자는 라인업 기준 `타순 이름 포지션` 형식으로 노출, 타자/투수 프로필 이미지와 색상별 B/S/O 요약 포함 |
 | 최근 상태 요약 | 현재 타석 카드 하단에 직전 플레이와 최근 교체(대타/대주자/투수교체 포함) 노출 |
 | 이닝 구분선 | `─── N회 초/말 ───` 형태 |
 | 중계 아이템 | 타석 결과 카드. 역순 정렬 (최신이 위), 주체 선수 아바타를 같이 표시 |
@@ -555,13 +560,13 @@ GET /api/game/{gameId}/boxscore
 |------|------|
 | 팀 토글 | 어웨이/홈 전환 |
 | 선발 투수 | 상단에 별도 강조 표시 |
-| 라인업 리스트 | 타순 + 포지션 + 이름 |
+| 라인업 리스트 | 타순 + 포지션 + 이름 + 원천이 제공하는 라인업 지표 |
 | 포지션 다이어그램 | 야구장 그래픽 위에 선수 배치 (선택적, Phase 1.5) |
 
 **데이터 바인딩**:
 ```
 GET /api/game/{gameId}/lineup
-→ {away: {starter, lineup: [{order, position, name}]}, home: {...}}
+→ {away: {starter, lineup: [{order, position, positionKo, name, statValue}]}, home: {...}}
 ```
 
 ---
@@ -605,7 +610,7 @@ GET /api/game/{gameId}/lineup
 | 마이팀 필터 | 상단 주요 제어로 배치. 전체 / 마이팀 / 마이팀 제외 |
 | 구장별 퀵링크 | 구장별 보기 상단에 구장명 + 경기 수 칩을 표시. 탭하면 해당 구장 섹션으로 즉시 스크롤 |
 | 예매 정보 | 예정 경기 카드에 예매처 + 예매 시작시간 + 알림 상태 배지 표시 |
-| 종료 경기 | 예매 정보는 숨기고 결과/다음 경기 연결을 표시 |
+| 진행/종료 경기 | 예매 정보는 숨기고 경기 상태/결과/다음 경기 연결을 표시 |
 
 **인터랙션**:
 - 날짜 탭 → 하단 경기 목록 갱신
@@ -697,7 +702,7 @@ GET /api/standings?season=2026
 │  장면별 알림                         │
 │  ┌─────────────────────────────┐    │
 │  │  내 팀 핵심 장면            │    │
-│  │  경기 시작       묶음 요약  │    │
+│  │  경기 시작       바로 알림  │    │
 │  │  득점            바로 알림  │    │
 │  │  홈런            바로 알림  │    │
 │  │  역전            바로 알림  │    │
@@ -738,7 +743,7 @@ GET /api/standings?season=2026
 **기본 플레이북**:
 | Moment | 기본 전달 방식 | 범위 | UX 원칙 |
 |--------|----------------|------|---------|
-| 경기 시작 | 묶음 요약 | 마이팀 | 경기 시작은 중요하지만 첫 실행 권한 요청이나 과도한 즉시 알림으로 쓰지 않음 |
+| 경기 시작 | 바로 알림 | 마이팀 | 마이팀 플레이볼은 핵심 신호로 보고 즉시 알림과 자동 Live Activity 시작 대상에 포함 |
 | 득점 | 바로 알림 | 마이팀 | 점수 변화는 가장 강한 moment 로 취급 |
 | 홈런 | 바로 알림 | 마이팀 | relay 기반으로 확인되는 큰 장면은 득점과 별도 신호로 분리 |
 | 역전 | 바로 알림 | 마이팀 | 승부 흐름이 바뀐 경우에만 발송 |
@@ -784,7 +789,7 @@ GET /api/standings?season=2026
 |------|------|-----------|-----------|
 | 바로 알림 | 즉시 알아야 하는 Moment | 사용자가 허용한 Moment | 득점/실점, 홈런, 동점/역전 |
 | 묶음 요약 | 덜 긴급한 묶음 | 사용자가 summary 전달을 선택 | 경기 시작/종료, 라인업, 기록/예매성 정보 |
-| 따라가기 화면 | 사용자가 따라가는 현재 경기 | 경기 상세에서 "경기 따라가기" 선택 | 스코어, 이닝, 주자, B/S/O, 최근 변화 |
+| 따라가기 화면 | 사용자가 따라가는 현재 경기 | 마이팀 live 경기 자동 선택 또는 사용자의 "경기 따라가기" 선택 | 스코어, 이닝, 주자, B/S/O, 최근 변화 |
 | 홈 위젯 | 주기적으로 보는 마이팀 상태판 | 위젯 설치 / 앱 데이터 sync | 다음 경기, 현재 경기, 경기 없음, stale 상태 |
 
 #### iOS Live Activity / Android Live Update
@@ -814,8 +819,9 @@ GET /api/standings?season=2026
 - FCM은 일반 push notification과 topic subscription에 사용한다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
 
 **따라가기 화면 원칙**:
-- 사용자가 직접 "경기 따라가기"를 누른 경기만 시작한다.
-- 앱이 임의로 모든 마이팀 경기를 Live Activity / Live Update 로 시작하지 않는다.
+- 마이팀 live 경기는 홈에서 기본 follow target 으로 자동 선택한다.
+- 마이팀 외 경기는 사용자가 직접 "경기 따라가기"를 누른 경우에만 시작한다.
+- 자동 선택은 follow session 저장과 가능한 live surface 동기화까지만 수행하며, OS permission prompt 는 홈/상세의 명시적 `따라가기` action 에서 요청한다.
 - 표시 데이터는 스코어, 이닝, 공격/수비, 주자, B/S/O, 마지막 변화, 마지막 갱신 시각, "그만 보기" action 까지로 제한한다.
 - 현재 타석/투구 데이터가 없는 경우 B/S/O를 `0`으로 대체 표시하지 않고 숨긴다. 모르는 값과 실제 0카운트를 구분해야 한다.
 - 경기 종료 후 최종 결과를 짧게 보여주고 종료한다.
@@ -981,6 +987,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - backend current data routes 는 공용 runtime service singleton 을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache 를 재사용한다.
 - LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다.
 - 앱은 scoreboard payload의 팀 합계 H/E/B가 `null`이면 미수집 값으로 처리하고, 이를 `0` 기록처럼 렌더링하지 않는다.
+- no-backend direct 앱 라인업은 박스스코어 파생보다 KBO `GetLineUpAnalysis`를 우선 사용해 경기 전/진행 중 공개 라인업과 원천 제공 지표를 표시한다. `LINEUP_CK=false`이거나 응답이 비어 있으면 라인업 미공개 상태로 둔다.
 - 앱 전역 Provider retry 는 비활성화한다. 화면은 API 실패를 자동 retry 뒤에 숨기지 않고 오류 카드, 빈 상태, 또는 Dev Console 로그로 명시한다.
 - `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록/팀 선수/팀 스탯/선수 상세는 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.
@@ -1167,8 +1174,8 @@ GET /api/game/{gameId}/lineup
       "teamId": "KT",
       "starter": {"name": "사우어", "hand": "우투"},
       "lineup": [
-        {"order": 1, "position": "CF", "positionKo": "중견수", "name": "최원준"},
-        {"order": 2, "position": "1B", "positionKo": "1루수", "name": "김현수"}
+        {"order": 1, "position": "CF", "positionKo": "중견수", "name": "최원준", "statValue": "0.82"},
+        {"order": 2, "position": "1B", "positionKo": "1루수", "name": "김현수", "statValue": "1.24"}
       ]
     },
     "home": { ... }
@@ -1380,7 +1387,7 @@ GET /api/push/config-status
 **마이그레이션 메모**:
 - 기존 boolean 기반 `notifications` body 는 앱 업데이트 전환 기간 동안만 호환 입력으로 유지할 수 있다.
 - 신규 UI/UX 기준은 `momentPreferences` 를 source of truth 로 삼는다.
-- `followedGameIds` 는 알림 설정이 아니라 사용자가 직접 시작한 "경기 따라가기" Live surface session 을 표현한다.
+- `followedGameIds` 는 알림 설정이 아니라 현재 "경기 따라가기" Live surface session 을 표현한다. 홈의 마이팀 live 경기 자동 follow target 과 사용자가 직접 시작한 selected-game follow 를 모두 포함한다.
 
 ### 5.8 경기 단건 조회
 

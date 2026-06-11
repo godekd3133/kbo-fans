@@ -27,7 +27,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   static const _supportEmail = 'support@kbofans.com';
 
   PushNotificationDelivery _gameStartDelivery =
-      PushNotificationDelivery.summary;
+      PushNotificationDelivery.immediate;
   PushNotificationDelivery _scoringDelivery =
       PushNotificationDelivery.immediate;
   PushNotificationDelivery _homerunDelivery =
@@ -131,7 +131,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _applyCorePlaybook() async {
     setState(() {
-      _gameStartDelivery = PushNotificationDelivery.summary;
+      _gameStartDelivery = PushNotificationDelivery.immediate;
       _scoringDelivery = PushNotificationDelivery.immediate;
       _homerunDelivery = PushNotificationDelivery.immediate;
       _reversalDelivery = PushNotificationDelivery.immediate;
@@ -290,7 +290,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     _momentRow(
                       label: '경기 시작',
-                      description: '플레이볼 직후는 묶음 요약으로 두는 것을 권장합니다',
+                      description: '마이팀 플레이볼은 바로 알림으로 받습니다',
                       delivery: _gameStartDelivery,
                       teamColor: teamColor,
                       onTap: () => _showDeliveryPicker(

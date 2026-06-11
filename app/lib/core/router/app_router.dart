@@ -187,6 +187,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             gameId: state.pathParameters['gameId']!,
             game: state.extra as Game?,
             initialTab: state.uri.queryParameters['tab'],
+            focusRelay: state.uri.queryParameters['focus'] == 'relay',
           ),
         ),
       ),

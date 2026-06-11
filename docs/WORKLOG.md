@@ -2,6 +2,212 @@
 
 ---
 
+## 2026-06-12: 진행 중 경기 중계 탭/focus 진입 보정
+
+### 완료
+- [x] 홈에서 진행 중인 경기 카드를 열면 경기 상세 route가 기본 `tab=relay`를 포함하도록 보정
+- [x] 마이팀 경기 카드의 `중계 보기` CTA는 `focus=relay`를 함께 전달해 상세 상단 요약을 접고 문자중계 본문을 먼저 보도록 변경
+- [x] 경기 상세의 `중계만 보기` 버튼도 같은 relay focus 스크롤 로직을 사용하도록 정리
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 진행 중 경기 중계 진입 UX 반영
+
+### 검증
+- [x] `fvm dart format lib/features/home/home_screen.dart lib/core/router/app_router.dart lib/features/game_detail/game_detail_screen.dart test/features/home/home_screen_test.dart`
+- [x] `fvm flutter test test/features/home/home_screen_test.dart --no-pub`
+- [x] `fvm flutter test test/features/game_detail/game_detail_navigation_test.dart --no-pub`
+- [x] `fvm flutter analyze lib/features/home/home_screen.dart lib/core/router/app_router.dart lib/features/game_detail/game_detail_screen.dart test/features/home/home_screen_test.dart test/features/game_detail/game_detail_navigation_test.dart --no-pub`
+- [x] `fvm flutter test test/features/home/home_screen_test.dart test/features/game_detail/game_detail_navigation_test.dart --no-pub`
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/lib/core/router/app_router.dart app/lib/features/game_detail/game_detail_screen.dart app/test/features/home/home_screen_test.dart`
+
+---
+
+## 2026-06-12: 문자중계 타자 표기 타순/포지션 보정
+
+### 완료
+- [x] 문자중계 현재 타석 카드의 타자 라벨이 `CurrentAtBat.batterNumber` 등번호를 타순처럼 보여주던 경로 확인
+- [x] relay 탭에서 라인업 데이터를 함께 참조해 현재 타자/타석 카드 주체 선수를 `타순 이름 포지션` 형식으로 표시하도록 보정
+- [x] 라인업 매칭 실패 시에는 등번호를 다시 노출하지 않고 선수명/손잡이 정보로 fallback 하도록 정리
+- [x] 390px 모바일 폭에서 현재 타석 B/S/O 요약 카드의 긴 라벨이 overflow 나지 않도록 보정
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 문자중계 타자 표기 규칙 반영
+
+### 검증
+- [x] `fvm dart format lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart`
+- [x] `fvm flutter test test/features/game_detail/relay_tab_test.dart`
+- [x] `fvm flutter analyze lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart`
+
+---
+
+## 2026-06-12: 마이팀 경기 시작 Live Activity 자동화 및 push topic 계약 보정
+
+### 완료
+- [x] `LiveActivityService.syncCurrentScore()`가 기존 followed game 없으면 종료만 하던 흐름을 보정해, live 마이팀 경기를 자동 follow target 으로 저장하고 바로 sync 하도록 변경
+- [x] 홈 foreground 자동 follow 외에도 widget/background/resume sync 경로가 같은 Live Activity 자동 선택 규칙을 쓰도록 서비스 계층에 `selectAutoLiveActivityGame` 계약 추가
+- [x] 신규/기본 알림 설정에서 마이팀 `game_start_<팀>` topic을 구독하도록 경기 시작 기본 전달 방식을 `바로 알림`으로 변경
+- [x] backend push registration이 앱의 `deliveryModes`를 반영해 `summary`, `live_only`, `off` moment를 registry topic에서 제외하도록 보정
+- [x] 운영 상태 확인 중 기본 release API host `https://api.kbofans.com/api` DNS lookup 실패를 확인. 이 URL로 빌드된 TestFlight 앱은 push / Live Activity token registration이 실패하므로 다음 release build에는 실제 `RELEASE_API_BASE_URL` 주입 필요
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 마이팀 경기 시작 즉시 알림 및 자동 Live Activity 정책 반영
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_build_topics_respects_delivery_modes backend/tests/test_push_service.py::test_register_persists_device_token backend/tests/test_push_service.py::test_scoreboard_sync_pushes_score_moments_after_baseline`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`21 passed`)
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/services/push.py`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py`
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/dart format app/lib/services/live_activity_service.dart app/test/services/live_activity_service_test.dart app/lib/services/push_notification_service.dart app/lib/features/settings/settings_screen.dart app/test/services/push_notification_service_test.dart`
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze`
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test` (`91 passed`)
+- [x] `git diff --check`
+- [x] `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --skip-tooling` expected attention: `/tmp/kbo-fans-aws.env` 없음, `gh` CLI 없음
+- [x] `curl -fsS --max-time 10 https://api.kbofans.com/api/health` 실패: `Could not resolve host: api.kbofans.com`
+
+### 남은 작업
+- [ ] 실제 push backend URL을 `RELEASE_API_BASE_URL`로 확정하고 release/TestFlight build에 주입
+- [ ] 운영 backend 배포 후 `/api/push/config-status`, `/api/push/live-activity/sync-scoreboard`, 실기기 TestFlight push / Dynamic Island 수신 검증
+
+## 2026-06-11: TestFlight 라인업 direct 원천 보정
+
+### 완료
+- [x] TestFlight 증상 기준으로 현재 no-backend direct 경기 상세 데이터 경로 확인
+- [x] 2026-06-11 live 경기에서 `GetBoxScoreScroll` / `GetScoreBoardScroll`이 `입력 문자열의 형식이 잘못되었습니다`를 반환하지만 `GetLineUpAnalysis`는 타자 라인업 9명과 지표 값을 정상 반환하는 것을 확인
+- [x] 앱 direct 라인업 경로가 박스스코어 파생보다 `GetLineUpAnalysis`를 먼저 사용하도록 보정
+- [x] `LineupEntry.statValue`를 추가해 KBO 라인업 지표를 모델과 UI 행에 보존
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 라인업 지표/원천 변경 반영
+
+### 검증
+- [x] `fvm flutter test test/data/kbo_direct_repository_test.dart`
+- [x] `fvm flutter analyze`
+- [x] `fvm dart format lib/data/models/boxscore.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/lineup_tab.dart test/data/kbo_direct_repository_test.dart`
+- [x] `fvm flutter test`
+
+---
+
+## 2026-06-11: 마이팀 자동 따라가기 UX
+
+### 완료
+- [x] live 마이팀 경기가 홈에 노출되면 별도 설정 없이 해당 경기를 기본 follow session target 으로 저장
+- [x] 홈 마이팀 경기 카드의 follow CTA가 `따라가기`에서 `따라가는 중` 체크 상태로 같은 자리에서 바뀌도록 보정
+- [x] 홈 카드의 `따라가기` 버튼을 누르면 상세 화면 이동 없이 같은 화면에서 follow session 을 시작하고, 사용자 action 경로에서만 OS permission / push sync 요청
+- [x] `docs/APP_SPEC.md`의 마이팀 브리프/따라가기 화면 원칙과 `CHANGELOG.md`의 사용자 체감 변경 갱신
+
+### 검증
+- [x] `fvm dart format lib/features/home/home_screen.dart lib/features/home/widgets/my_team_game_card.dart test/features/home/home_screen_test.dart test/features/home/widgets/my_team_game_card_test.dart`
+- [x] `fvm flutter analyze lib/features/home/home_screen.dart lib/features/home/widgets/my_team_game_card.dart test/features/home/home_screen_test.dart test/features/home/widgets/my_team_game_card_test.dart`
+- [x] `fvm flutter test test/features/home/home_screen_test.dart test/features/home/widgets/my_team_game_card_test.dart`
+- [x] `fvm flutter test`
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/lib/features/home/widgets/my_team_game_card.dart app/test/features/home/home_screen_test.dart app/test/features/home/widgets/my_team_game_card_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-11: 경기 시작 후 예매 정보 비노출
+
+### 완료
+- [x] 예매 정보 노출 정책을 경기 전 상태 전용으로 분리
+- [x] 경기 상세 화면에서 `GameStatus.live` 상태이면 예매 정보 카드를 숨기도록 수정
+- [x] 일정 카드와 일정 목록에서 `LIVE` 상태이면 예매 요약을 숨기도록 수정
+- [x] 진행 중 경기 예매 요약 비노출 테스트와 공용 상태 유틸 테스트 추가
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 진행 중 경기 예매 비노출 정책 반영
+
+### 검증
+- [x] `fvm dart format lib/core/utils/game_status_label.dart lib/features/schedule/widgets/schedule_game_card.dart lib/features/game_detail/game_detail_screen.dart lib/features/schedule/schedule_screen.dart test/core/utils/game_status_label_test.dart test/features/schedule/widgets/schedule_game_card_test.dart`
+- [x] `fvm flutter test test/core/utils/game_status_label_test.dart test/features/schedule/widgets/schedule_game_card_test.dart`
+- [x] `fvm flutter analyze lib/core/utils/game_status_label.dart lib/features/schedule/widgets/schedule_game_card.dart lib/features/game_detail/game_detail_screen.dart lib/features/schedule/schedule_screen.dart test/core/utils/game_status_label_test.dart test/features/schedule/widgets/schedule_game_card_test.dart`
+- [x] `git diff --check -- app/lib/core/utils/game_status_label.dart app/lib/features/schedule/widgets/schedule_game_card.dart app/lib/features/game_detail/game_detail_screen.dart app/lib/features/schedule/schedule_screen.dart app/test/core/utils/game_status_label_test.dart app/test/features/schedule/widgets/schedule_game_card_test.dart docs/APP_SPEC.md CHANGELOG.md`
+
+---
+
+## 2026-06-11: TestFlight 첫 실행 종료 원인 확인 및 위젯 저장값 보정
+
+### 완료
+- [x] 연결된 iPhone의 TestFlight `Kbo Fans` 0.0.29(29)를 `xcrun devicectl device process launch --console`로 실행해 실제 종료 원인을 확인
+- [x] iOS 네이티브 예외 `Attempt to insert non-property list object null for key widget_my_team`가 앱 종료 원인임을 확인
+- [x] 마이팀 미선택 상태를 HomeWidget/App Group 저장소에 쓸 때 `null` 대신 빈 문자열로 encode하고, 백그라운드에서 읽을 때 빈 문자열을 다시 `null`로 decode하도록 보정
+- [x] iOS widget background refresh와 push background path에 필요한 `BGTaskSchedulerPermittedIdentifiers`, `UIBackgroundModes` plist 선언을 추가
+- [x] TestFlight 체크리스트와 changelog에 첫 실행 종료 회귀 방지 항목 반영
+- [x] 앱 버전을 `0.0.30+30`으로 올리고 README, VERSIONING, CHANGELOG, 앱 내 patch notes를 동기화
+- [x] `0.0.30 (30)` App Store IPA를 빌드하고 App Store Connect 업로드 성공 및 processing 시작 확인
+- [x] App Store Connect에서 `0.0.30 (30)` export compliance를 저장하고, 내부 테스트 그룹 `Tester`가 `0.0.29 (29)`와 `0.0.30 (30)` 두 빌드를 포함하는 것을 확인
+- [x] 이후 TestFlight 업로드에서 앱 암호화 문서 prompt가 반복되지 않도록 Runner/widget `Info.plist`에 `ITSAppUsesNonExemptEncryption=false` 선언 추가
+- [x] 연결된 iPhone의 TestFlight `Kbo Fans` 0.0.30(30)를 `xcrun devicectl device process launch --console`로 재실행해 두 번째 종료 원인을 확인
+- [x] iOS 네이티브 예외 `No launch handler registered for task with identifier kbo-widget-periodic`가 앱 종료 원인임을 확인
+- [x] `AppDelegate`에서 `workmanager_apple` periodic task launch handler를 앱 시작 시 등록하도록 보정
+- [x] 앱 버전을 `0.0.31+31`로 올리고 README, VERSIONING, CHANGELOG, 앱 내 patch notes를 동기화
+- [x] `0.0.31 (31)` App Store IPA를 빌드하고 App Store Connect 업로드 성공 및 processing 시작 확인
+
+### 검증
+- [x] `plutil -lint ios/Runner/Info.plist`
+- [x] `fvm dart format lib/services/widget_sync_service.dart test/services/widget_sync_service_test.dart`
+- [x] `fvm flutter analyze lib/services/widget_sync_service.dart test/services/widget_sync_service_test.dart`
+- [x] `fvm flutter test test/services/widget_sync_service_test.dart`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer fvm flutter build ios --release --no-codesign --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://api.kbofans.com/api`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer fvm flutter build ipa --release --export-method app-store --build-name=0.0.30 --build-number=30 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://api.kbofans.com/api`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+- [x] App Store Connect `Tester` group build list에서 `0.0.30 (30)` 상태 `테스트 중` 확인
+- [x] `plutil -lint app/ios/Runner/Info.plist app/ios/KboFansWidget/Info.plist`
+- [x] `/usr/libexec/PlistBuddy -c 'Print :ITSAppUsesNonExemptEncryption' app/ios/Runner/Info.plist` 및 widget plist 값 `false` 확인
+- [x] `fvm flutter analyze lib/services/widget_sync_service.dart test/services/widget_sync_service_test.dart`
+- [x] `fvm flutter test test/services/widget_sync_service_test.dart`
+- [x] `git diff --check`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer fvm flutter build ipa --release --export-method app-store --build-name=0.0.31 --build-number=31 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://api.kbofans.com/api`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+
+### 남은 작업
+- [ ] TestFlight에서 `0.0.31 (31)` processing 완료 후 설치 및 첫 실행 재확인
+
+---
+
+## 2026-06-11: APNs 키 반영 및 GitHub Actions push dry-run 복구
+
+### 완료
+- [x] Apple APNs Auth Key `.p8`를 Git repo 밖의 로컬 secret 경로로 이동하고 파일 권한을 owner-only로 제한
+- [x] `/tmp/kbo-fans-aws.env`에 실제 `APNS_AUTH_KEY_FILE`, `APNS_KEY_ID`, `APNS_TEAM_ID` 값을 반영
+- [x] GitHub Actions secrets/variables에 Firebase client/Admin, APNs, AWS OIDC, push sync 값을 업로드
+- [x] `Push Demo Deploy` dry-run에서 GitHub runner가 gitignored Firebase client config 파일을 복원하지 못해 preflight가 실패하는 원인을 확인
+- [x] workflow의 `Prepare push secrets` 단계가 iOS `GoogleService-Info.plist`와 Android `google-services.json`을 GitHub secrets에서 checkout workspace로 복원하도록 수정
+
+### 검증
+- [x] `./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans` dry-run 통과
+- [x] `./scripts/push-live-preflight.sh --env-file /tmp/kbo-fans-aws.env --aws` (`checks=44`, `warnings=5`, `failures=0`)
+- [x] `./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --apply` 완료
+- [x] `./scripts/github-push-demo-run.sh --repo godekd3133/kbo-fans --dry-run true --watch` run `27324167195`에서 APNs/Firebase Admin은 통과하고 Firebase client config 파일 복원 누락으로 실패 확인
+- [x] `.github/workflows/push-demo-deploy.yml` YAML parse 및 `git diff --check` 통과
+
+### 남은 작업
+- [ ] workflow 수정 커밋/푸시 후 `github-push-demo-run.sh --dry-run true --watch` 재실행
+- [ ] dry-run 통과 후 `github-push-demo-run.sh --dry-run false --watch`로 AWS backend HTTP smoke 배포 실행
+- [ ] 실제 iPhone release token registration 전 도메인/ACM을 준비해 `ENABLE_HTTPS=true`로 전환
+
+---
+
+## 2026-06-10: 문서 기준 정리 및 기획서 업데이트
+
+### 완료
+- [x] 8분 발표 자료 보강 후 문서 동기화 필요 범위를 점검
+- [x] `docs/PLANNING.md`의 수정일, 현재 구현/발표 기준, 데이터 흐름, 기술 스택, MVP 마일스톤, 다음 단계를 최신 no-backend 방향과 실제 화면 기준으로 정리
+- [x] `CLAUDE.md`의 오래된 `app/backend 예정` 설명과 다음 기본 우선순위를 현재 구현/검증 단계 기준으로 갱신
+- [x] `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `README.md`, `CHANGELOG.md`는 현재 작업 성격상 추가 수정하지 않는 것으로 확인
+
+### 검증
+- [x] `kbo-doc-sync` 기준으로 architecture/API/UX 변경 여부와 문서 반영 범위를 대조
+- [x] `git diff --check`
+- [x] `git diff -- docs/PLANNING.md CLAUDE.md docs/WORKLOG.md`
+
+---
+
+## 2026-06-10: KBO Fans 8분 발표 자료 화면 캡쳐 중심 보강
+
+### 완료
+- [x] 발표 원고를 화면 캡쳐 중심 구조로 재작성
+- [x] 각 슬라이드를 `주요 캡쳐` / `기능 설명` / `기획한 내용` / `개발한 내용` 흐름으로 정리
+- [x] 실제 앱 검증 artifact에서 홈, 마이팀, 경기 상세 4탭, 일정, 순위, 기록실, 알림 설정 캡쳐를 선별
+- [x] 캡쳐가 슬라이드의 주 시각 요소가 되도록 PPTX 레이아웃 재구성
+- [x] 최종 PPTX 생성: `outputs/019e8edf-f74f-7c13-9da8-b88d32e0a45c/presentations/kbo-fans-8min-screens/output/kbo-fans-8min-feature-screenshots-presentation.pptx`
+
+### 검증
+- [x] artifact-tool PPTX export 성공: 14 slides, 4.0MB
+- [x] rendered contact sheet 시각 검수: 캡쳐 중심 구성과 기능 설명 가독성 확인
+- [x] `check_layout_quality.mjs --layout ... --warn-only`: 14개 layout 파일 기준 error 0개, warning 0개
+- [x] 발표 원고와 PPT source에서 이전 메타식 문구 잔존 여부 검색: match 없음
+
+---
+
 ## 2026-06-10: AWS push backend 배포 준비 refresh
 
 ### 완료
@@ -38,6 +244,7 @@
 - [x] `./scripts/github-push-demo-run.sh --repo godekd3133/kbo-fans --dry-run true` dispatch 전 config gate 확인: 남은 누락은 `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`
 
 ---
+
 ## 2026-06-04: Web dev artifact 정적 로드 검증
 
 ### 완료
@@ -2635,3 +2842,23 @@ kbo_fans/
 - 이미지 디코딩 상한 보정 후 `fvm dart format app/lib/features/home/home_screen.dart app/lib/features/home/widgets/game_card.dart app/lib/features/home/widgets/my_team_game_card.dart app/lib/features/game_detail/game_detail_screen.dart app/lib/features/game_detail/tabs/boxscore_tab.dart app/lib/features/game_detail/tabs/relay_tab.dart app/lib/features/game_detail/tabs/lineup_tab.dart app/lib/features/records/leaderboard_screen.dart app/lib/features/records/records_screen.dart app/lib/features/standings/standings_screen.dart app/lib/features/schedule/widgets/schedule_game_card.dart`, `fvm flutter analyze app/lib/features/home/home_screen.dart app/lib/features/home/widgets/game_card.dart app/lib/features/home/widgets/my_team_game_card.dart app/lib/features/game_detail/game_detail_screen.dart app/lib/features/game_detail/tabs/boxscore_tab.dart app/lib/features/game_detail/tabs/relay_tab.dart app/lib/features/game_detail/tabs/lineup_tab.dart app/lib/features/records/leaderboard_screen.dart app/lib/features/records/records_screen.dart app/lib/features/standings/standings_screen.dart app/lib/features/schedule/widgets/schedule_game_card.dart`, `fvm flutter test test/widget_test.dart test/services/push_notification_service_test.dart` 통과
 - 터치 피드백/점수 전환 모션 보강 후 `fvm dart format`, `fvm flutter analyze`, 기존 Flutter 테스트 3종, `fvm flutter build web --release --dart-define=APP_ENV=local` 통과. `http://127.0.0.1:7357` Puppeteer smoke로 home, schedule, standings, records, game detail 렌더 확인
 - 추가 micro motion 확장 후 `fvm dart format`, `fvm flutter analyze`, 기존 Flutter 테스트 3종, `fvm flutter build web --release --dart-define=APP_ENV=local` 통과. local FastAPI + `http://127.0.0.1:7357` Puppeteer smoke로 home/schedule/standings/records/settings/game detail 및 score/relay/boxscore/lineup 탭 렌더 확인. 기존 dirty worktree의 backend/release 문서 변경은 건드리지 않고 Flutter UI 범위만 좁게 수정
+
+## 2026-06-11 TestFlight 초기 업로드
+
+- App Store Connect에 `KBO Fans` iOS 앱 레코드를 생성함.
+- iOS AppIcon PNG의 alpha channel 때문에 App Store Connect 업로드가 거절되어, `AppIcon.appiconset` PNG 15개를 `#0F0F0F` 배경의 불투명 RGB PNG로 재인코딩함.
+- `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer fvm flutter build ipa --release --export-method app-store --build-name=0.0.29 --build-number=29 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://api.kbofans.com/api`로 IPA를 재빌드함.
+- App Store Connect 업로드 성공을 확인했고, TestFlight iOS 빌드 목록에서 `0.0.29 (29)`가 `처리 중` 상태로 표시됨.
+- App Store Connect의 내부 테스트 그룹 `Tester`에 빌드 29와 내부 테스터 `godekd3133@naver.com`이 연결됐고, 그룹 설정의 `빌드 배포`가 `자동 - Xcode 빌드`로 켜져 있음을 확인함.
+
+## 2026-06-11 경기 상세 뒤로가기 검은 화면 보정
+
+- 경기 상세가 홈/일정에서 `push`된 화면이 아니라 위젯, 알림, 딥링크처럼 첫 route로 열리면 기존 `Navigator.pop()`이 빈 root stack으로 빠질 수 있던 경로를 확인함.
+- `GameDetailScreen` 뒤로가기를 `go_router` 기준으로 보정해 pop 가능한 경우에는 기존 stack으로 돌아가고, pop 불가 첫 route인 경우에는 `/home`으로 명시 이동하도록 변경함.
+- 시스템 back도 같은 정책을 타도록 `PopScope`를 적용함.
+- 상세 탭 pinned header가 실제 padding 6px보다 1px 큰 extent를 선언해 debug 렌더 assert가 날 수 있던 값을 함께 보정함.
+- 회귀 테스트 `test/features/game_detail/game_detail_navigation_test.dart`를 추가해 상세 첫 route에서 뒤로가기 시 `/home`으로 이동하는지 검증함.
+- 검증: `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/features/game_detail/game_detail_navigation_test.dart --no-pub`
+- 검증: `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart --no-pub`
+- 검증: `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub`
+- 검증: `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub`

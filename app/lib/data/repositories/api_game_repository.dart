@@ -417,6 +417,8 @@ class ApiGameRepository implements GameRepository {
       position: json['position'] as String? ?? '',
       positionKo: json['positionKo'] as String? ?? '',
       name: json['name'] as String? ?? '',
+      statValue: (json['statValue'] ?? json['stat'] ?? json['metric'])
+          ?.toString(),
     );
   }
 

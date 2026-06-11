@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-06-04
+> Updated: 2026-06-11
 
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.29+29`
-- Current release tag: `0.0.29`
+- Flutter app version: `0.0.31+31`
+- Current release tag: `0.0.31`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -77,6 +77,8 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.27`: LIVE home/widget summary scoreboard paths now prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0, with regression coverage and current app build `0.0.27+27`.
 - `0.0.28`: current/live boxscore no longer borrows same-team adjacent game rows when the official payload is empty, historical adjacent canonical-id correction keeps requested `gameId` and records `sourceGameId`, records overview/leaderboards are rank-normalized before API response, with regression coverage and current app build `0.0.28+28`.
 - `0.0.29`: schedule month navigation keeps selected state across selected-tab retaps and load failures, cancelled games preserve KBO status labels such as rain cancellation across app/backend/widget surfaces, direct-primary relay/boxscore player imagery and Korean name matching are tightened, relay passed-ball classification is explicit, Lotte logo uses the transparent emblem asset, and current app build `0.0.29+29`.
+- `0.0.30`: TestFlight first-run crash fix for missing my-team widget storage values, iOS background refresh plist declarations for widget/push surfaces, uploaded as build `0.0.30+30` and superseded by `0.0.31`.
+- `0.0.31`: push / Live Activity backend deployment preparation, immediate game-start notification defaults, iOS Workmanager BGTask launch handler registration for `kbo-widget-periodic`, direct lineup recovery through `GetLineUpAnalysis`, relay lineup labels, live my-team follow state polish, live-game ticket-info hiding, game-detail back fallback, and current app build `0.0.31+31`.
 
 ## GitHub Release Note Template
 

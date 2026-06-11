@@ -4,6 +4,18 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
+NotificationDelivery = Literal["immediate", "summary", "live_only", "off"]
+
+
+class NotificationDeliveryModes(BaseModel):
+    gameStart: Optional[NotificationDelivery] = None
+    scoring: Optional[NotificationDelivery] = None
+    homerun: Optional[NotificationDelivery] = None
+    reversal: Optional[NotificationDelivery] = None
+    gameEnd: Optional[NotificationDelivery] = None
+    lineupOpened: Optional[NotificationDelivery] = None
+    inningChange: Optional[NotificationDelivery] = None
+
 
 class NotificationSettings(BaseModel):
     gameStart: bool
@@ -14,6 +26,7 @@ class NotificationSettings(BaseModel):
     lineupOpened: bool = True
     inningChange: bool = False
     allGames: bool
+    deliveryModes: Optional[NotificationDeliveryModes] = None
 
 
 class PushRegisterRequest(BaseModel):

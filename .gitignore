@@ -47,6 +47,7 @@ app/test/features/schedule/widgets/failures/
 # MCP (토큰 포함)
 .mcp.json
 .playwright-mcp/
+.playwright-cli/
 
 # Codacy
 .github/instructions/codacy.instructions.md
@@ -58,3 +59,4 @@ app/test/features/schedule/widgets/failures/
 artifacts/current-data-cache-guard/
 artifacts/emulator-records-check/
 outputs/aws/
+outputs/*/presentations/**/*.pptx

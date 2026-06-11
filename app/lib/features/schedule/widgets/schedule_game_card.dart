@@ -107,7 +107,7 @@ class ScheduleGameCard extends StatelessWidget {
               ],
             ),
             if (ticketSummary != null &&
-                !isTerminalScheduleStatus(game.status)) ...[
+                shouldShowTicketInfoForScheduleStatus(game.status)) ...[
               const SizedBox(height: 12),
               Row(
                 children: [

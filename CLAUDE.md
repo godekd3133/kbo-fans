@@ -32,8 +32,8 @@ kbo_fans/
 │   ├── FIGMA_PROMPT.md    # Figma 와이어프레임/디자인 생성 기준
 │   └── WORKLOG.md         # 작업 이력
 ├── design_docs.docx       # 수업 제출용 기획서
-├── backend/               # Python FastAPI 서버 (예정)
-└── app/                   # Flutter 앱 (예정)
+├── backend/               # Python FastAPI legacy/reference 및 push backend
+└── app/                   # Flutter 앱 구현체
 ```
 
 ## 문서 우선순위
@@ -215,11 +215,11 @@ kbo_fans/
 6. 경기 일정 / 팀 순위
 
 ## 다음 기본 우선순위
-1. Figma 와이어프레임/주요 화면 구조 정리
-2. Flutter 프로젝트 셋업
-3. FastAPI 백엔드 구조 셋업
-4. 크롤링 프로토타입 구축
-5. 홈 스코어보드와 경기 상세 핵심 화면 구현
+1. APNs Auth Key / Key ID / Team ID 준비 후 push demo backend secret 반영
+2. iPhone 실기기에서 push, WidgetKit, Live Activity / Dynamic Island 동작 검증
+3. TestFlight와 Android internal testing 배포 경로 확정
+4. 발표 자료, Figma 기준, 기획 문서를 실제 앱 화면 캡쳐 기준으로 계속 동기화
+5. release 전 direct KBO parser와 snapshot fallback 경계 회귀 검증
 
 ## Claude Skills
 - `.claude/skills/bootstrap-fallback-data/SKILL.md`

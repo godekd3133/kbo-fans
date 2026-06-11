@@ -10,6 +10,19 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 마이팀 경기 시작 알림을 기본 `바로 알림` 대상으로 변경해 신규/기본 설정 사용자가 `game_start_<팀>` FCM topic을 구독하도록 보강
+- Push 등록 backend가 앱의 `deliveryModes`를 반영해 `summary`, `live_only`, `off` moment를 즉시 push topic에서 제외하도록 정렬
+- 홈에서 진행 중인 경기 카드를 열면 경기 상세가 `문자중계` 탭으로 바로 시작하고, 마이팀 `중계 보기` CTA는 문자중계 본문이 먼저 보이도록 상세 상단을 접는 focus 진입을 사용하도록 변경
+
+### Fixed
+
+- 문자중계 현재 타석/타석 카드의 타자 표기가 등번호 대신 라인업 기준 타순, 이름, 포지션으로 보이도록 보정
+- Live Activity / Dynamic Island 동기화가 사용자가 먼저 `따라가기`를 누른 경기만 처리하던 경로를 보정해, 마이팀 live 경기가 감지되면 widget/resume sync에서도 자동 follow target으로 잡히도록 변경
+
+## [0.0.31] - 2026-06-12
+
 ### Added
 
 - 앱 종료 후 일반 푸시와 iOS Live Activity / Dynamic Island를 갱신할 수 있도록 ActivityKit push token 등록, backend token registry, APNs liveactivity 발송 경로를 추가
@@ -45,6 +58,7 @@
 ### Changed
 
 - 앱/웹/릴리즈/CI artifact 기본 데이터 경로를 backend API 없이 direct KBO + 허용된 snapshot 경로로 전환
+- 진행 중 경기에서는 일정 카드와 경기 상세의 예매 정보를 숨기도록 예매 노출 정책을 경기 전 전용으로 정리
 - GitHub Actions `App Build Artifacts` workflow의 signing/config/metadata 파일 생성을 runner 들여쓰기와 무관하게 동작하도록 보강
 - GitHub Actions `checkout` / `setup-python`을 Node.js 24 대응 major로 올려 runner Node.js 20 deprecation 리스크를 줄임
 - 오래된 원격 푸시 보관 메모가 현재 Firebase/Admin/APNs/AWS 설정 상태와 충돌하지 않도록 최신 Push / Live Activity backend setup 기준으로 안내를 보정
@@ -55,6 +69,26 @@
 - Live Activity scoreboard sync와 push readiness one-shot sync 기본 날짜를 AWS UTC가 아닌 KBO 경기일(`Asia/Seoul`) 기준으로 계산하도록 변경
 - Push readiness check가 scheduler heartbeat 최신성을 확인해 sync worker가 멈춘 배포를 통과시키지 않도록 변경
 - Push token registry가 파일락과 atomic write를 사용해 API service와 sync worker의 동시 저장 중 token / heartbeat 갱신을 잃지 않도록 변경
+- iOS TestFlight 업로드 후 앱 암호화 문서 prompt가 반복되지 않도록 App Store export compliance 선언을 Info.plist에 고정
+- 홈에서 live 마이팀 경기를 자동으로 따라가는 상태로 표시하고, 홈 `따라가기` 버튼을 누르면 같은 자리에서 `따라가는 중` 체크 상태가 되도록 변경
+- 마이팀 경기 시작 알림 기본값을 묶음 요약에서 바로 알림으로 바꾸고, backend topic 구독은 immediate delivery moment만 대상으로 보정
+- 경기 상세가 첫 route로 열린 경우 뒤로가기가 빈 화면으로 빠지지 않고 홈으로 복귀하도록 변경
+
+### Fixed
+
+- TestFlight direct 라인업 탭이 박스스코어 원천 실패에 막혀 타자 라인업과 KBO 라인업 지표를 비워두던 경로를 `GetLineUpAnalysis` 우선 조회로 보정
+- 문자중계 현재 타석과 주요 장면 선수 라벨이 라인업 타순/포지션 정보를 우선 사용하도록 보정
+- iOS TestFlight에서 위젯 백그라운드 갱신 task id가 허용됐지만 launch handler가 등록되지 않아 앱 시작 직후 종료되던 경로 차단
+
+## [0.0.30] - 2026-06-11
+
+### Fixed
+
+- iOS TestFlight에서 마이팀 미선택 상태로 위젯 데이터를 동기화할 때 `null`이 App Group 저장소로 전달되어 앱이 종료되던 경로 차단
+
+### Changed
+
+- iOS 위젯 백그라운드 갱신과 push background 처리를 위해 release plist 선언을 보강
 
 ## [0.0.29] - 2026-06-04
 

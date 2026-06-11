@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/repositories/kbo_direct_repository.dart';
@@ -93,6 +95,73 @@ void main() {
     expect(status, 'CANCELLED');
     expect(repository.scheduleStatusLabelForTesting(status, '우천취소'), '우천취소');
   });
+
+  test('direct lineup analysis parser preserves live lineup stats', () {
+    final repository = KboDirectRepository();
+    final lineup = repository.parseLineupAnalysisForTesting(
+      '20260611SKLG0',
+      [
+        [
+          {'LINEUP_CK': true},
+        ],
+        [
+          {'T_ID': 'LG'},
+        ],
+        [
+          {'T_ID': 'SK'},
+        ],
+        [
+          _lineupTableJson([
+            ['1', '우익수', '홍창기', '0.82'],
+            ['2', '중견수', '박해민', '1.02'],
+          ]),
+        ],
+        [
+          _lineupTableJson([
+            ['1', '유격수', '박성한', '3.62'],
+            ['2', '2루수', '정준재', '1.37'],
+          ]),
+        ],
+      ],
+      mainGame: {
+        'T_PIT_P_ID': 51867,
+        'T_PIT_P_NM': '김건우 ',
+        'B_PIT_P_ID': 50157,
+        'B_PIT_P_NM': '김윤식 ',
+      },
+    );
+
+    expect(lineup, isNotNull);
+    expect(lineup!.away.teamId, 'SK');
+    expect(lineup.away.starterId, '51867');
+    expect(lineup.away.starterName, '김건우');
+    expect(lineup.away.lineup.first.name, '박성한');
+    expect(lineup.away.lineup.first.position, 'SS');
+    expect(lineup.away.lineup.first.positionKo, '유격수');
+    expect(lineup.away.lineup.first.statValue, '3.62');
+    expect(lineup.home.teamId, 'LG');
+    expect(lineup.home.starterId, '50157');
+    expect(lineup.home.starterName, '김윤식');
+    expect(lineup.home.lineup.first.name, '홍창기');
+    expect(lineup.home.lineup.first.position, 'RF');
+    expect(lineup.home.lineup.first.statValue, '0.82');
+  });
+
+  test('direct lineup analysis parser returns null before lineup opens', () {
+    final repository = KboDirectRepository();
+
+    final lineup = repository.parseLineupAnalysisForTesting('20260612LTLG0', [
+      [
+        {'LINEUP_CK': false},
+      ],
+      const [],
+      const [],
+      const [],
+      const [],
+    ]);
+
+    expect(lineup, isNull);
+  });
 }
 
 Game _game({
@@ -121,4 +190,17 @@ Game _game({
     stadium: '대구',
     startTime: '18:30',
   );
+}
+
+String _lineupTableJson(List<List<String>> rows) {
+  final tableRows = rows
+      .map(
+        (row) => {
+          'row': [
+            for (final value in row) {'Text': value},
+          ],
+        },
+      )
+      .toList();
+  return jsonEncode({'rows': tableRows});
 }

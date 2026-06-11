@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
@@ -53,12 +54,14 @@ class GameDetailScreen extends ConsumerWidget {
   final String gameId;
   final Game? game;
   final String? initialTab;
+  final bool focusRelay;
 
   const GameDetailScreen({
     super.key,
     required this.gameId,
     this.game,
     this.initialTab,
+    this.focusRelay = false,
   });
 
   @override
@@ -75,6 +78,7 @@ class GameDetailScreen extends ConsumerWidget {
                 game: game!,
                 gameId: gameId,
                 initialTabIndex: _tabIndexFromName(initialTab),
+                focusInitialRelay: focusRelay,
               ),
             );
           }
@@ -118,6 +122,7 @@ class GameDetailScreen extends ConsumerWidget {
               game: resolvedGame,
               gameId: gameId,
               initialTabIndex: _tabIndexFromName(initialTab),
+              focusInitialRelay: focusRelay,
             ),
           );
         },
@@ -130,11 +135,13 @@ class _GameDetailBody extends ConsumerStatefulWidget {
   final String gameId;
   final Game game;
   final int initialTabIndex;
+  final bool focusInitialRelay;
 
   const _GameDetailBody({
     required this.gameId,
     required this.game,
     this.initialTabIndex = 0,
+    this.focusInitialRelay = false,
   });
 
   @override
@@ -148,6 +155,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   bool _followStateLoaded = false;
   bool _isFollowingGame = false;
   late final TabController _tabController;
+  final ScrollController _outerScrollController = ScrollController();
 
   @override
   void initState() {
@@ -158,6 +166,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       initialIndex: widget.initialTabIndex.clamp(0, 3),
       vsync: this,
     );
+    if (widget.focusInitialRelay && _tabController.index == 1) {
+      _scheduleRelayFocusScroll();
+    }
     unawaited(_loadFollowState());
     _startRefreshTimer();
   }
@@ -322,6 +333,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
+    _outerScrollController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -332,7 +344,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     final gameId = widget.gameId;
     final isLive = game.status == GameStatus.live;
     final showTicketInfo =
-        game.ticketInfo != null && !isTerminalGameStatus(game.status);
+        game.ticketInfo != null &&
+        shouldShowTicketInfoForGameStatus(game.status);
     final tabBar = TabBar(
       controller: _tabController,
       indicatorSize: TabBarIndicatorSize.tab,
@@ -357,226 +370,271 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       ],
     );
 
-    return Scaffold(
-      body: SafeArea(
-        child: AppPageFrame(
-          child: NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) => [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, size: 24),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      Expanded(
-                        child: Text(
-                          _displayStadiumName(game.stadium),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.divider),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.live.withValues(
-                            alpha: isLive ? 0.22 : 0.08,
-                          ),
-                          AppColors.card,
-                        ],
-                      ),
-                    ),
-                    child: Column(
+    return PopScope(
+      canPop: GoRouter.of(context).canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) {
+          return;
+        }
+        context.go('/home');
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: AppPageFrame(
+            child: NestedScrollView(
+              controller: _outerScrollController,
+              headerSliverBuilder: (context, innerBoxIsScrolled) => [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
+                    child: Row(
                       children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.live.withValues(
-                                  alpha: isLive ? 0.18 : 0.08,
-                                ),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: AppColors.live.withValues(
-                                    alpha: isLive ? 0.45 : 0.18,
-                                  ),
-                                ),
-                              ),
-                              child: Text(
-                                isLive
-                                    ? 'LIVE'
-                                    : labelForGameStatus(
-                                        game.status,
-                                        statusLabel: game.statusLabel,
-                                      ),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: isLive
-                                      ? AppColors.live
-                                      : AppColors.textSecondary,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              _stateMetaText(game),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, size: 24),
+                          onPressed: _goBackOrHome,
                         ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _teamSection(
-                                game.away.teamId,
-                                game.away.shortName,
-                              ),
+                        Expanded(
+                          child: Text(
+                            _displayStadiumName(game.stadium),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
                             ),
-                            const SizedBox(width: 12),
-                            Column(
-                              children: [
-                                AppMotionValue(
-                                  value:
-                                      '${game.away.score}:${game.home.score}',
-                                  child: Text(
-                                    '${game.away.score}:${game.home.score}',
-                                    style: const TextStyle(
-                                      fontSize: 38,
-                                      height: 1,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 7),
-                                Text(
-                                  secondaryTextForGameStatus(
-                                    game.status,
-                                    inning: game.inning,
-                                    startTime: game.startTime,
-                                    statusLabel: game.statusLabel,
-                                  ),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isLive
-                                        ? AppColors.textPrimary
-                                        : AppColors.textSecondary,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _teamSection(
-                                game.home.teamId,
-                                game.home.shortName,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
+                        const SizedBox(width: 48),
                       ],
                     ),
                   ),
                 ),
-              ),
-              if (isLive)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
-                    child: _FollowGameCard(
-                      game: game,
-                      isFollowing: _isFollowingGame,
-                      isLoading: !_followStateLoaded,
-                      onPressed: () => unawaited(_toggleFollowGame(game)),
-                      onSecondaryPressed: () => _tabController.animateTo(1),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.divider),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.live.withValues(
+                              alpha: isLive ? 0.22 : 0.08,
+                            ),
+                            AppColors.card,
+                          ],
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 9,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.live.withValues(
+                                    alpha: isLive ? 0.18 : 0.08,
+                                  ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: AppColors.live.withValues(
+                                      alpha: isLive ? 0.45 : 0.18,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  isLive
+                                      ? 'LIVE'
+                                      : labelForGameStatus(
+                                          game.status,
+                                          statusLabel: game.statusLabel,
+                                        ),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isLive
+                                        ? AppColors.live
+                                        : AppColors.textSecondary,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                _stateMetaText(game),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _teamSection(
+                                  game.away.teamId,
+                                  game.away.shortName,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                children: [
+                                  AppMotionValue(
+                                    value:
+                                        '${game.away.score}:${game.home.score}',
+                                    child: Text(
+                                      '${game.away.score}:${game.home.score}',
+                                      style: const TextStyle(
+                                        fontSize: 38,
+                                        height: 1,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Text(
+                                    secondaryTextForGameStatus(
+                                      game.status,
+                                      inning: game.inning,
+                                      startTime: game.startTime,
+                                      statusLabel: game.statusLabel,
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isLive
+                                          ? AppColors.textPrimary
+                                          : AppColors.textSecondary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _teamSection(
+                                  game.home.teamId,
+                                  game.home.shortName,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              if (showTicketInfo)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: _TicketInfoCard(game: game),
+                if (isLive)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+                      child: _FollowGameCard(
+                        game: game,
+                        isFollowing: _isFollowingGame,
+                        isLoading: !_followStateLoaded,
+                        onPressed: () => unawaited(_toggleFollowGame(game)),
+                        onSecondaryPressed: _showRelayOnly,
+                      ),
+                    ),
                   ),
-                ),
-              SliverPersistentHeader(
-                pinned: true,
-                delegate: _TabBarHeaderDelegate(tabBar),
-              ),
-            ],
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                ScoreTab(
-                  gameId: gameId,
-                  game: game,
-                  onRefresh: _refreshGameDetail,
-                  footer: game.status == GameStatus.final_
-                      ? _HighlightSection(game: game, gameId: gameId)
-                      : null,
-                ),
-                RelayTab(
-                  gameId: gameId,
-                  gameStatus: game.status,
-                  game: game,
-                  onRefresh: _refreshGameDetail,
-                ),
-                BoxscoreTab(
-                  gameId: gameId,
-                  game: game,
-                  gameStatus: game.status,
-                  awayName: game.away.shortName,
-                  homeName: game.home.shortName,
-                  awayTeamId: game.away.teamId,
-                  homeTeamId: game.home.teamId,
-                  onRefresh: _refreshGameDetail,
-                ),
-                LineupTab(
-                  gameId: gameId,
-                  gameStatus: game.status,
-                  awayName: game.away.shortName,
-                  homeName: game.home.shortName,
-                  awayTeamId: game.away.teamId,
-                  homeTeamId: game.home.teamId,
-                  onRefresh: _refreshGameDetail,
+                if (showTicketInfo)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: _TicketInfoCard(game: game),
+                    ),
+                  ),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _TabBarHeaderDelegate(tabBar),
                 ),
               ],
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  ScoreTab(
+                    gameId: gameId,
+                    game: game,
+                    onRefresh: _refreshGameDetail,
+                    footer: game.status == GameStatus.final_
+                        ? _HighlightSection(game: game, gameId: gameId)
+                        : null,
+                  ),
+                  RelayTab(
+                    gameId: gameId,
+                    gameStatus: game.status,
+                    game: game,
+                    onRefresh: _refreshGameDetail,
+                  ),
+                  BoxscoreTab(
+                    gameId: gameId,
+                    game: game,
+                    gameStatus: game.status,
+                    awayName: game.away.shortName,
+                    homeName: game.home.shortName,
+                    awayTeamId: game.away.teamId,
+                    homeTeamId: game.home.teamId,
+                    onRefresh: _refreshGameDetail,
+                  ),
+                  LineupTab(
+                    gameId: gameId,
+                    gameStatus: game.status,
+                    awayName: game.away.shortName,
+                    homeName: game.home.shortName,
+                    awayTeamId: game.away.teamId,
+                    homeTeamId: game.home.teamId,
+                    onRefresh: _refreshGameDetail,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _goBackOrHome() {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    context.go('/home');
+  }
+
+  void _showRelayOnly() {
+    if (_tabController.index != 1) {
+      _tabController.animateTo(1);
+    }
+    _scheduleRelayFocusScroll();
+  }
+
+  void _scheduleRelayFocusScroll() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_outerScrollController.hasClients) {
+        return;
+      }
+      final target = _outerScrollController.position.maxScrollExtent;
+      if (target <= 0) {
+        return;
+      }
+      unawaited(
+        _outerScrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        ),
+      );
+    });
   }
 
   Widget _teamSection(String teamId, String shortName) {
@@ -1678,10 +1736,10 @@ class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
   const _TabBarHeaderDelegate(this.tabBar);
 
   @override
-  double get minExtent => tabBar.preferredSize.height + 7;
+  double get minExtent => tabBar.preferredSize.height + 6;
 
   @override
-  double get maxExtent => tabBar.preferredSize.height + 7;
+  double get maxExtent => tabBar.preferredSize.height + 6;
 
   @override
   Widget build(

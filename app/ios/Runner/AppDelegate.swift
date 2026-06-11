@@ -7,6 +7,8 @@ private struct LiveActivityBackendContext {
   let apiBaseUrl: String
 }
 
+private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
+
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let startupBeganAt = CFAbsoluteTimeGetCurrent()
@@ -24,6 +26,10 @@ private struct LiveActivityBackendContext {
     WorkmanagerPlugin.setPluginRegistrantCallback { registry in
       GeneratedPluginRegistrant.register(with: registry)
     }
+    WorkmanagerPlugin.registerPeriodicTask(
+      withIdentifier: widgetRefreshTaskIdentifier,
+      frequency: NSNumber(value: 15 * 60)
+    )
 
     let superStartedAt = CFAbsoluteTimeGetCurrent()
     let result = super.application(application, didFinishLaunchingWithOptions: launchOptions)

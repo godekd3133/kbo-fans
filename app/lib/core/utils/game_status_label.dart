@@ -12,6 +12,10 @@ bool isTerminalGameStatus(GameStatus status) {
   }
 }
 
+bool shouldShowTicketInfoForGameStatus(GameStatus status) {
+  return status == GameStatus.scheduled;
+}
+
 bool isTerminalScheduleStatus(String status) {
   switch (status.toUpperCase()) {
     case 'FINAL':
@@ -20,6 +24,18 @@ bool isTerminalScheduleStatus(String status) {
       return true;
     default:
       return false;
+  }
+}
+
+bool shouldShowTicketInfoForScheduleStatus(String status) {
+  switch (status.toUpperCase()) {
+    case 'LIVE':
+    case 'FINAL':
+    case 'CANCELLED':
+    case 'SUSPENDED':
+      return false;
+    default:
+      return true;
   }
 }
 

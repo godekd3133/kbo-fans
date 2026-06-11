@@ -66,6 +66,36 @@ void main() {
     expect(find.textContaining('인터파크 티켓'), findsNothing);
   });
 
+  testWidgets('진행 중 경기는 예매 요약을 숨긴다', (tester) async {
+    const game = ScheduleGame(
+      gameId: '20260328KTLG0',
+      time: '14:00',
+      awayId: 'KT',
+      awayName: 'KT',
+      awayScore: 1,
+      homeId: 'LG',
+      homeName: 'LG',
+      homeScore: 0,
+      stadium: '잠실',
+      status: 'LIVE',
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        const ScheduleGameCard(
+          game: game,
+          ticketSummary: '인터파크 티켓 · 03.21 11:00 오픈',
+          showTeamLogos: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('경기 중'), findsOneWidget);
+    expect(find.byIcon(Icons.confirmation_num_outlined), findsNothing);
+    expect(find.textContaining('인터파크 티켓'), findsNothing);
+  });
+
   testWidgets('예정 경기는 경기 전 라벨과 vs를 노출한다', (tester) async {
     const game = ScheduleGame(
       gameId: '20260331KTLG0',

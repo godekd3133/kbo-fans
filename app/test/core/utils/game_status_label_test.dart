@@ -23,4 +23,19 @@ void main() {
     expect(labelForGameStatus(GameStatus.cancelled), '경기 취소');
     expect(labelForScheduleStatus('CANCELLED'), '경기 취소');
   });
+
+  test('ticket info is visible only before the game starts', () {
+    expect(shouldShowTicketInfoForGameStatus(GameStatus.scheduled), isTrue);
+    expect(shouldShowTicketInfoForGameStatus(GameStatus.live), isFalse);
+    expect(shouldShowTicketInfoForGameStatus(GameStatus.final_), isFalse);
+    expect(shouldShowTicketInfoForGameStatus(GameStatus.cancelled), isFalse);
+    expect(shouldShowTicketInfoForGameStatus(GameStatus.suspended), isFalse);
+
+    expect(shouldShowTicketInfoForScheduleStatus('SCHEDULED'), isTrue);
+    expect(shouldShowTicketInfoForScheduleStatus(''), isTrue);
+    expect(shouldShowTicketInfoForScheduleStatus('LIVE'), isFalse);
+    expect(shouldShowTicketInfoForScheduleStatus('FINAL'), isFalse);
+    expect(shouldShowTicketInfoForScheduleStatus('CANCELLED'), isFalse);
+    expect(shouldShowTicketInfoForScheduleStatus('SUSPENDED'), isFalse);
+  });
 }

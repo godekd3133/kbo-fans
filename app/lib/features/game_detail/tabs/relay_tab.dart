@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_motion.dart';
+import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
 import '../../../data/models/relay.dart';
@@ -69,6 +70,10 @@ class _RelayTabState extends ConsumerState<RelayTab> {
       ])
         if (player.name.isNotEmpty) player.name: player,
     };
+    final lineupData = ref
+        .watch(gameLineupProvider(widget.gameId))
+        .asData
+        ?.value;
     return RefreshIndicator(
       onRefresh: widget.onRefresh ?? () async {},
       color: AppColors.live,
@@ -87,6 +92,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             relayData.currentAtBat,
             imageMap,
             playersByName,
+            lineupData,
           );
         },
       ),
@@ -127,6 +133,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     CurrentAtBat? atBat,
     Map<String, String> imageMap,
     Map<String, PlayerProfile> playersByName,
+    GameLineupData? lineupData,
   ) {
     final sortedItems = List<RelayItem>.from(items)
       ..sort((a, b) => b.seqNo.compareTo(a.seqNo));
@@ -157,9 +164,11 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
               child: _CurrentAtBatHero(
+                game: game,
                 atBat: atBat,
                 items: sortedItems,
                 imageMap: imageMap,
+                lineupData: lineupData,
               ),
             ),
           ),
@@ -202,6 +211,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                       imageMap: imageMap,
                       playersByName: playersByName,
                       currentAtBat: atBat,
+                      lineupData: lineupData,
                     ),
                   ),
                   if (index != filteredMoments.length - 1)
@@ -368,6 +378,92 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     }
     return label.replaceAll(' 공격 ---------------------------------------', '');
   }
+}
+
+String _formatLineupEntryLabel(LineupEntry entry) {
+  final position = entry.position.trim().isNotEmpty
+      ? entry.position.trim()
+      : entry.positionKo.trim();
+  return [
+    if (entry.order > 0) '${entry.order}',
+    entry.name.trim(),
+    if (position.isNotEmpty) position,
+  ].where((part) => part.isNotEmpty).join(' ');
+}
+
+LineupEntry? _lineupEntryForCurrentAtBat(
+  Game game,
+  CurrentAtBat atBat,
+  GameLineupData? lineupData,
+) {
+  if (lineupData == null || atBat.batterName.isEmpty) {
+    return null;
+  }
+
+  final isTop = _isTopHalfText(atBat.inningText);
+  if (isTop == true) {
+    return _lineupEntryForName(lineupData.away.lineup, atBat.batterName);
+  }
+  if (isTop == false) {
+    return _lineupEntryForName(lineupData.home.lineup, atBat.batterName);
+  }
+
+  final gameHalf = _isTopHalfText(game.inning);
+  if (gameHalf == true) {
+    return _lineupEntryForName(lineupData.away.lineup, atBat.batterName);
+  }
+  if (gameHalf == false) {
+    return _lineupEntryForName(lineupData.home.lineup, atBat.batterName);
+  }
+
+  return _lineupEntryForName(lineupData.away.lineup, atBat.batterName) ??
+      _lineupEntryForName(lineupData.home.lineup, atBat.batterName);
+}
+
+LineupEntry? _lineupEntryForName(List<LineupEntry> entries, String rawName) {
+  final target = _normalizeRelayPlayerName(rawName);
+  if (target.isEmpty) {
+    return null;
+  }
+
+  for (final entry in entries) {
+    if (_normalizeRelayPlayerName(entry.name) == target) {
+      return entry;
+    }
+  }
+
+  for (final entry in entries) {
+    final normalizedName = _normalizeRelayPlayerName(entry.name);
+    if (normalizedName.isEmpty) {
+      continue;
+    }
+    if (normalizedName.contains(target) || target.contains(normalizedName)) {
+      return entry;
+    }
+  }
+
+  return null;
+}
+
+bool? _isTopHalfText(String value) {
+  final normalized = value.replaceAll(RegExp(r'\s+'), '');
+  if (normalized.contains('회초')) {
+    return true;
+  }
+  if (normalized.contains('회말')) {
+    return false;
+  }
+  return null;
+}
+
+String _normalizeRelayPlayerName(String value) {
+  return value
+      .replaceFirst(RegExp(r'^\d+\s*번?\s*타자\s*'), '')
+      .replaceFirst(RegExp(r'^\d+번\s*'), '')
+      .replaceFirst(RegExp(r'^(대타|대주자|투수|타자)\s+'), '')
+      .replaceAll(RegExp(r'\s+'), '')
+      .replaceAll(RegExp(r'[·ㆍ.]'), '')
+      .trim();
 }
 
 class _RelayGameSummary extends StatelessWidget {
@@ -688,14 +784,18 @@ class _SelectedInningHeader extends StatelessWidget {
 }
 
 class _CurrentAtBatHero extends StatelessWidget {
+  final Game game;
   final CurrentAtBat atBat;
   final List<RelayItem> items;
   final Map<String, String> imageMap;
+  final GameLineupData? lineupData;
 
   const _CurrentAtBatHero({
+    required this.game,
     required this.atBat,
     required this.items,
     required this.imageMap,
+    required this.lineupData,
   });
 
   @override
@@ -892,9 +992,12 @@ class _CurrentAtBatHero extends StatelessWidget {
   }
 
   String _formatBatterLabel(CurrentAtBat ab) {
-    final number = ab.batterNumber > 0 ? '${ab.batterNumber}번 ' : '';
+    final lineupEntry = _lineupEntryForCurrentAtBat(game, ab, lineupData);
+    if (lineupEntry != null) {
+      return _formatLineupEntryLabel(lineupEntry);
+    }
     final hand = ab.batterHand.isNotEmpty ? ' · ${ab.batterHand}' : '';
-    return '$number${ab.batterName}$hand';
+    return '${ab.batterName}$hand';
   }
 
   String _formatPitcherLabel(CurrentAtBat ab) {
@@ -1383,15 +1486,19 @@ class _CountSummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: activeColor,
-                  fontWeight: FontWeight.w800,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: activeColor,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 4),
               Text(
                 '$filled',
                 style: const TextStyle(
@@ -1441,6 +1548,7 @@ class _RelayMomentCard extends StatelessWidget {
   final Map<String, String> imageMap;
   final Map<String, PlayerProfile> playersByName;
   final CurrentAtBat? currentAtBat;
+  final GameLineupData? lineupData;
 
   const _RelayMomentCard({
     required this.moment,
@@ -1448,6 +1556,7 @@ class _RelayMomentCard extends StatelessWidget {
     required this.imageMap,
     required this.playersByName,
     required this.currentAtBat,
+    required this.lineupData,
   });
 
   @override
@@ -1467,6 +1576,9 @@ class _RelayMomentCard extends StatelessWidget {
         : (actorProfile?.imageUrl ?? _resolveImageUrl(imageMap, actorLabel));
     final offenseTeam = _offenseTeam();
     final defenseTeam = _defenseTeam();
+    final actorLineupEntry = actorLabel == null
+        ? null
+        : _lineupEntryForName(_offenseLineup(), actorLabel);
     final pitcherName = _pitcherNameForMoment();
     final pitchLogs = _buildPitchLogs(moment.pitchItems);
 
@@ -1519,6 +1631,7 @@ class _RelayMomentCard extends StatelessWidget {
               playerName: actorLabel,
               imageUrl: actorImageUrl,
               playerProfile: actorProfile,
+              lineupEntry: actorLineupEntry,
               offenseTeam: offenseTeam,
               defenseTeam: defenseTeam,
               pitcherName: pitcherName,
@@ -1577,6 +1690,14 @@ class _RelayMomentCard extends StatelessWidget {
   KboTeam? _defenseTeam() {
     final isTop = moment.lead.half == 'top';
     return KboTeams.byId(isTop ? game.home.teamId : game.away.teamId);
+  }
+
+  List<LineupEntry> _offenseLineup() {
+    final data = lineupData;
+    if (data == null) {
+      return const [];
+    }
+    return moment.lead.half == 'top' ? data.away.lineup : data.home.lineup;
   }
 
   String? _pitcherNameForMoment() {
@@ -1853,12 +1974,7 @@ class _RelayMomentCard extends StatelessWidget {
   }
 
   String _normalizeName(String value) {
-    return value
-        .replaceFirst(RegExp(r'^\d+번\s*'), '')
-        .replaceFirst(RegExp(r'^(대타|대주자|투수|타자)\s+'), '')
-        .replaceAll(RegExp(r'\s+'), '')
-        .replaceAll(RegExp(r'[·ㆍ.]'), '')
-        .trim();
+    return _normalizeRelayPlayerName(value);
   }
 }
 
@@ -1866,6 +1982,7 @@ class _MomentPlayerSummary extends StatelessWidget {
   final String playerName;
   final String? imageUrl;
   final PlayerProfile? playerProfile;
+  final LineupEntry? lineupEntry;
   final KboTeam? offenseTeam;
   final KboTeam? defenseTeam;
   final String? pitcherName;
@@ -1874,6 +1991,7 @@ class _MomentPlayerSummary extends StatelessWidget {
     required this.playerName,
     required this.imageUrl,
     required this.playerProfile,
+    required this.lineupEntry,
     required this.offenseTeam,
     required this.defenseTeam,
     required this.pitcherName,
@@ -1968,11 +2086,14 @@ class _MomentPlayerSummary extends StatelessWidget {
   }
 
   String _nameLine() {
-    final number = (playerProfile?.number ?? 0) > 0
-        ? '${playerProfile!.number}번 '
-        : '';
+    final lineupLabel = lineupEntry == null
+        ? null
+        : _formatLineupEntryLabel(lineupEntry!);
+    if (lineupLabel != null && lineupLabel.isNotEmpty) {
+      return lineupLabel;
+    }
     final metric = _primaryMetric();
-    return '$number$playerName${metric == null ? '' : '  $metric'}';
+    return '$playerName${metric == null ? '' : '  $metric'}';
   }
 
   String _statLine() {

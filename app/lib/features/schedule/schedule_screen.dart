@@ -847,7 +847,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   onTap: () => _openGameDetail(entry.value.gameId),
                   ticketSummary:
                       entry.value.ticketInfo == null ||
-                          isTerminalScheduleStatus(entry.value.status)
+                          !shouldShowTicketInfoForScheduleStatus(
+                            entry.value.status,
+                          )
                       ? null
                       : _ticketSummary(entry.value.ticketInfo!),
                 ),
@@ -982,7 +984,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     onTap: () => _openGameDetail(entry.value.game.gameId),
                     ticketSummary:
                         entry.value.game.ticketInfo == null ||
-                            isTerminalScheduleStatus(entry.value.game.status)
+                            !shouldShowTicketInfoForScheduleStatus(
+                              entry.value.game.status,
+                            )
                         ? null
                         : _ticketSummary(entry.value.game.ticketInfo!),
                   ),

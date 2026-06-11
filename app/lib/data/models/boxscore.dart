@@ -69,6 +69,7 @@ class LineupEntry {
   final String position;
   final String positionKo;
   final String name;
+  final String? statValue;
   final String? changeLabel;
 
   const LineupEntry({
@@ -76,6 +77,7 @@ class LineupEntry {
     required this.position,
     required this.positionKo,
     required this.name,
+    this.statValue,
     this.changeLabel,
   });
 }

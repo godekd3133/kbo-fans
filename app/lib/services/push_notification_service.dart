@@ -136,7 +136,7 @@ class PushNotificationSettings {
       lineupOpened = true,
       inningChange = true,
       allGames = false,
-      gameStartDelivery = PushNotificationDelivery.summary,
+      gameStartDelivery = PushNotificationDelivery.immediate,
       scoringDelivery = PushNotificationDelivery.immediate,
       homerunDelivery = PushNotificationDelivery.immediate,
       reversalDelivery = PushNotificationDelivery.immediate,
@@ -324,7 +324,6 @@ class PushNotificationService {
       gameStartDelivery: _deliveryFromStorage(
         prefs.getString('${_prefsPrefix}game_start$_deliverySuffix'),
         legacyEnabled: gameStart,
-        enabledFallback: PushNotificationDelivery.summary,
       ),
       scoringDelivery: _deliveryFromStorage(
         prefs.getString('${_prefsPrefix}scoring$_deliverySuffix'),

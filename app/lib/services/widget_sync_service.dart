@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
 import 'package:home_widget/home_widget.dart';
 import 'package:intl/intl.dart';
 import 'package:workmanager/workmanager.dart';
@@ -29,7 +29,9 @@ void widgetCallbackDispatcher() {
       AppConfig.initialize();
       await WidgetSyncService.instance.initialize();
       final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final myTeamId = await HomeWidget.getWidgetData<String>('widget_my_team');
+      final myTeamId = decodeWidgetMyTeamIdFromStorage(
+        await HomeWidget.getWidgetData<String>('widget_my_team'),
+      );
       final games = await WidgetSyncService.instance.fetchBackgroundScoreboard(
         date: date,
         myTeamId: myTeamId,
@@ -104,7 +106,10 @@ class WidgetSyncService {
     DevConsole.instance.info(
       'Widget sync begin: game=${selected?.gameId ?? '-'} myTeam=${myTeamId ?? '-'}',
     );
-    await HomeWidget.saveWidgetData<String>('widget_my_team', myTeamId);
+    await HomeWidget.saveWidgetData<String>(
+      'widget_my_team',
+      encodeWidgetMyTeamIdForStorage(myTeamId),
+    );
     final updatedAt = DateTime.now();
     final updatedAtText = _updatedAtText(updatedAt);
     final updatedAtEpoch = updatedAt.millisecondsSinceEpoch.toString();
@@ -299,4 +304,17 @@ class WidgetSyncService {
         .join(',');
     return '${myTeamId ?? '-'}|$payload|$refreshBucket';
   }
+}
+
+@visibleForTesting
+String encodeWidgetMyTeamIdForStorage(String? myTeamId) {
+  return myTeamId ?? '';
+}
+
+@visibleForTesting
+String? decodeWidgetMyTeamIdFromStorage(String? storedMyTeamId) {
+  if (storedMyTeamId == null || storedMyTeamId.isEmpty) {
+    return null;
+  }
+  return storedMyTeamId;
 }

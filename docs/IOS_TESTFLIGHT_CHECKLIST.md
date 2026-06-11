@@ -43,6 +43,8 @@ Firebase를 실제로 사용할 계획이면:
 - [ ] TestFlight release build에 운영 `API_BASE_URL`이 주입됐는지 확인
   - CI: `release_api_base_url` input 또는 `RELEASE_API_BASE_URL` variable/secret
   - 로컬: `RELEASE_API_BASE_URL=https://... ./scripts/codex-run-ios-release.sh`
+- [ ] 첫 실행에서 마이팀 미선택 상태로 홈/위젯 동기화가 돌아도 앱이 종료되지 않는지 실기기 로그로 확인
+- [ ] `kbo-widget-periodic` 같은 `BGTaskSchedulerPermittedIdentifiers` 항목은 AppDelegate launch handler 등록까지 함께 되어 있는지 확인
 
 주의:
 
@@ -53,6 +55,7 @@ Firebase를 실제로 사용할 계획이면:
 - [ ] 앱 이름 확인
 - [ ] 앱 아이콘 확인
 - [ ] 버전(`versionName`) / 빌드번호 증가 정책 정리
+- [ ] `Runner` / widget extension `Info.plist`에 `ITSAppUsesNonExemptEncryption=false` 선언
 - [ ] 개인정보 처리 / 테스트 설명 필요 시 준비
 
 ## 5. Flutter / Pod 정리
@@ -93,6 +96,7 @@ Organizer 에서:
 
 - [ ] App Store Connect > TestFlight 에 빌드 표시
 - [ ] processing 완료
+- [ ] App Store Connect 암호화 문서 prompt 없이 내부 테스트 그룹에 연결
 
 ## GitHub Actions 서명 빌드 시크릿
 
@@ -134,6 +138,7 @@ GitHub Actions 에서 signed IPA 까지 생성하려면 아래 시크릿이 필�
 - [ ] Bundle ID 일치
 - [ ] Signing Team 설정 완료
 - [ ] Firebase plist 점검
+- [ ] 앱 암호화 문서 설정 점검
 - [ ] Pod install 성공
 - [ ] Archive 성공
 - [ ] TestFlight 업로드 성공

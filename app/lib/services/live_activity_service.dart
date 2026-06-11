@@ -106,7 +106,20 @@ class LiveActivityService {
 
     final followedId = await followedGameId();
     if (followedId == null) {
-      await endCurrentScore();
+      final autoTarget = selectAutoLiveActivityGame(
+        games: games,
+        myTeamId: myTeamId,
+      );
+      if (autoTarget == null) {
+        await endCurrentScore();
+        return;
+      }
+
+      await followGame(autoTarget.gameId);
+      DevConsole.instance.info(
+        'Live Activity auto-follow my team game: ${autoTarget.gameId}',
+      );
+      await syncFollowedGame(autoTarget);
       return;
     }
 
@@ -470,4 +483,24 @@ class LiveActivityService {
       );
     }
   }
+}
+
+@visibleForTesting
+Game? selectAutoLiveActivityGame({
+  required List<Game> games,
+  required String? myTeamId,
+}) {
+  if (myTeamId == null || myTeamId.isEmpty) {
+    return null;
+  }
+
+  for (final game in games) {
+    if (game.status != GameStatus.live) {
+      continue;
+    }
+    if (game.away.teamId == myTeamId || game.home.teamId == myTeamId) {
+      return game;
+    }
+  }
+  return null;
 }

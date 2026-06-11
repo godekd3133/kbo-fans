@@ -1258,7 +1258,7 @@ class KboDirectRepository implements GameRepository {
   @override
   Future<GameLineupData> getLineupData(String gameId) async {
     final game = await getGame(gameId);
-    if (!_shouldRequestLineup(game)) {
+    if (game?.status == GameStatus.cancelled) {
       return GameLineupData(
         gameId: gameId,
         away: TeamLineupData(teamId: gameId.substring(8, 10), lineup: const []),
@@ -1270,7 +1270,7 @@ class KboDirectRepository implements GameRepository {
     }
     return _lineupRequests.putIfAbsent(gameId, () async {
       try {
-        return await _buildFallbackLineupData(gameId);
+        return await _buildLineupData(gameId, game: game);
       } finally {
         _lineupRequests.remove(gameId);
       }
@@ -1286,10 +1286,146 @@ class KboDirectRepository implements GameRepository {
     return (isAway ? data.away : data.home).lineup;
   }
 
-  Future<GameLineupData> _buildFallbackLineupData(String gameId) async {
+  Future<GameLineupData> _buildLineupData(String gameId, {Game? game}) async {
+    final mainGame = await _getMainGameForGame(gameId);
+    GameLineupData? lineup;
+    try {
+      lineup = await _fetchLineupAnalysisData(gameId, mainGame: mainGame);
+    } catch (error) {
+      _log.warn('LINEUP_ANALYSIS_FAIL $gameId: $error');
+    }
+    if (lineup != null) {
+      return lineup;
+    }
+    if (!_shouldRequestLineup(game)) {
+      return _emptyLineupData(gameId, mainGame: mainGame);
+    }
+    return _buildFallbackLineupData(gameId, mainGame: mainGame);
+  }
+
+  Future<GameLineupData?> _fetchLineupAnalysisData(
+    String gameId, {
+    required Map<String, dynamic>? mainGame,
+  }) async {
+    final data = await _postAsmx('/ws/Schedule.asmx/GetLineUpAnalysis', {
+      'leId': 1,
+      'srId': _seriesIdFromMainGame(mainGame),
+      'seasonId': gameId.substring(0, 4),
+      'gameId': gameId,
+    });
+    return _parseLineupAnalysisPayload(gameId, data, mainGame: mainGame);
+  }
+
+  GameLineupData? _parseLineupAnalysisPayload(
+    String gameId,
+    Object? payload, {
+    Map<String, dynamic>? mainGame,
+  }) {
+    if (payload is! List || payload.length < 5 || !_lineupIsOpen(payload[0])) {
+      return null;
+    }
+
+    final homeMeta = _firstMap(payload[1]);
+    final awayMeta = _firstMap(payload[2]);
+    final homeLineup = _parseLineupAnalysisTable(_firstString(payload[3]));
+    final awayLineup = _parseLineupAnalysisTable(_firstString(payload[4]));
+    if (awayLineup.isEmpty && homeLineup.isEmpty) {
+      return null;
+    }
+
+    final starterNames = _starterNamesFromMainGame(mainGame);
+    final starterIds = _starterIdsFromMainGame(mainGame);
+    final season =
+        _gameDateFromId(gameId)?.substring(0, 4) ??
+        DateTime.now().year.toString();
+    return GameLineupData(
+      gameId: gameId,
+      away: TeamLineupData(
+        teamId: awayMeta['T_ID']?.toString() ?? gameId.substring(8, 10),
+        lineup: awayLineup,
+        starterId: starterIds.$1,
+        starterName: starterNames.$1,
+        starterImageUrl: _playerImageUrl(season, starterIds.$1),
+      ),
+      home: TeamLineupData(
+        teamId: homeMeta['T_ID']?.toString() ?? gameId.substring(10, 12),
+        lineup: homeLineup,
+        starterId: starterIds.$2,
+        starterName: starterNames.$2,
+        starterImageUrl: _playerImageUrl(season, starterIds.$2),
+      ),
+    );
+  }
+
+  bool _lineupIsOpen(Object? payload) {
+    final flag = _firstMap(payload)['LINEUP_CK'];
+    return flag == true || flag?.toString().toLowerCase() == 'true';
+  }
+
+  Map<String, dynamic> _firstMap(Object? payload) {
+    if (payload is List && payload.isNotEmpty) {
+      final first = payload.first;
+      if (first is Map<String, dynamic>) {
+        return first;
+      }
+      if (first is Map) {
+        return first.map((key, value) => MapEntry(key.toString(), value));
+      }
+    }
+    return const {};
+  }
+
+  String? _firstString(Object? payload) {
+    if (payload is List && payload.isNotEmpty) {
+      return payload.first?.toString();
+    }
+    return null;
+  }
+
+  List<LineupEntry> _parseLineupAnalysisTable(String? rawTable) {
+    if (rawTable == null || rawTable.isEmpty) {
+      return const [];
+    }
+    final table = jsonDecode(rawTable) as Map<String, dynamic>;
+    final rows = table['rows'] as List<dynamic>? ?? const [];
+    final lineup = <LineupEntry>[];
+    for (final row in rows) {
+      final cells =
+          ((row as Map<String, dynamic>)['row'] as List<dynamic>? ?? const [])
+              .map(
+                (cell) => _stripHtml(
+                  (cell as Map<String, dynamic>)['Text'] as String? ?? '',
+                ).replaceAll('\u00a0', '').trim(),
+              )
+              .toList();
+      if (cells.length < 3) {
+        continue;
+      }
+      final name = cells[2];
+      if (name.isEmpty) {
+        continue;
+      }
+      final positionKo = cells.length > 1 ? cells[1] : '';
+      final statValue = cells.length > 3 ? cells[3] : '';
+      lineup.add(
+        LineupEntry(
+          order: _parseInt(cells[0]) ?? 0,
+          position: _positionToCode(positionKo),
+          positionKo: positionKo,
+          name: name,
+          statValue: statValue.isEmpty ? null : statValue,
+        ),
+      );
+    }
+    return lineup;
+  }
+
+  Future<GameLineupData> _buildFallbackLineupData(
+    String gameId, {
+    required Map<String, dynamic>? mainGame,
+  }) async {
     try {
       final boxscore = await getBoxscoreData(gameId);
-      final mainGame = await _getMainGameForGame(gameId);
       final starterNames = _starterNamesFromMainGame(mainGame);
       final starterIds = _starterIdsFromMainGame(mainGame);
       final season =
@@ -1315,15 +1451,36 @@ class KboDirectRepository implements GameRepository {
         ),
       );
     } catch (_) {
-      return GameLineupData(
-        gameId: gameId,
-        away: TeamLineupData(teamId: gameId.substring(8, 10), lineup: const []),
-        home: TeamLineupData(
-          teamId: gameId.substring(10, 12),
-          lineup: const [],
-        ),
-      );
+      return _emptyLineupData(gameId, mainGame: mainGame);
     }
+  }
+
+  GameLineupData _emptyLineupData(
+    String gameId, {
+    Map<String, dynamic>? mainGame,
+  }) {
+    final starterNames = _starterNamesFromMainGame(mainGame);
+    final starterIds = _starterIdsFromMainGame(mainGame);
+    final season =
+        _gameDateFromId(gameId)?.substring(0, 4) ??
+        DateTime.now().year.toString();
+    return GameLineupData(
+      gameId: gameId,
+      away: TeamLineupData(
+        teamId: gameId.substring(8, 10),
+        lineup: const [],
+        starterId: starterIds.$1,
+        starterName: starterNames.$1,
+        starterImageUrl: _playerImageUrl(season, starterIds.$1),
+      ),
+      home: TeamLineupData(
+        teamId: gameId.substring(10, 12),
+        lineup: const [],
+        starterId: starterIds.$2,
+        starterName: starterNames.$2,
+        starterImageUrl: _playerImageUrl(season, starterIds.$2),
+      ),
+    );
   }
 
   List<LineupEntry> _lineupFromBatters(List<BatterRecord> batters) {
@@ -1624,6 +1781,15 @@ class KboDirectRepository implements GameRepository {
     required String fallbackInning,
   }) {
     return _currentAtBatFromMainGame(mainGame, fallbackInning: fallbackInning);
+  }
+
+  @visibleForTesting
+  GameLineupData? parseLineupAnalysisForTesting(
+    String gameId,
+    Object? payload, {
+    Map<String, dynamic>? mainGame,
+  }) {
+    return _parseLineupAnalysisPayload(gameId, payload, mainGame: mainGame);
   }
 
   @visibleForTesting
