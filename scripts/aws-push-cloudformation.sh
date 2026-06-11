@@ -139,6 +139,17 @@ fi
 
 require_cmd aws
 
+show_stack_events() {
+  echo "aws_push_cloudformation=stack_events stack=$STACK_NAME" >&2
+  aws cloudformation describe-stack-events \
+    --region "$AWS_REGION" \
+    --stack-name "$STACK_NAME" \
+    --max-items 25 \
+    --query 'StackEvents[].{Time:Timestamp,Status:ResourceStatus,Type:ResourceType,LogicalId:LogicalResourceId,Reason:ResourceStatusReason}' \
+    --output table >&2 || true
+}
+
+set +e
 aws cloudformation deploy \
   --region "$AWS_REGION" \
   --stack-name "$STACK_NAME" \
@@ -162,6 +173,13 @@ aws cloudformation deploy \
     ApiDesiredCount="${API_DESIRED_COUNT:-1}" \
     SyncWorkerDesiredCount="${SYNC_WORKER_DESIRED_COUNT:-1}" \
     PushSyncIntervalSeconds="${PUSH_SYNC_INTERVAL_SECONDS:-60}"
+deploy_status=$?
+set -e
+
+if [[ $deploy_status -ne 0 ]]; then
+  show_stack_events
+  exit "$deploy_status"
+fi
 
 "$ROOT_DIR/scripts/aws-push-stack-outputs.sh" --stack-name "$STACK_NAME"
 
