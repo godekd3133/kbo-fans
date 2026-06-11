@@ -46,6 +46,9 @@
 - [x] 운영 상태 확인 중 기본 release API host `https://api.kbofans.com/api` DNS lookup 실패를 확인. 이 URL로 빌드된 TestFlight 앱은 push / Live Activity token registration이 실패하므로 다음 release build에는 실제 `RELEASE_API_BASE_URL` 주입 필요
 - [x] 앱 동작 / push 계약 / in-app patch note 변경이므로 다음 tester-facing release를 `0.0.32+32`로 결정하고 `pubspec`, README, VERSIONING, CHANGELOG, in-app patch notes를 동기화
 - [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 마이팀 경기 시작 즉시 알림 및 자동 Live Activity 정책 반영
+- [x] `0.0.32` 릴리즈 커밋을 `main`에 push하고 lightweight tag `0.0.32`를 원격에 push
+- [x] `0.0.32 (32)` App Store IPA를 빌드하고 App Store Connect 업로드 성공 및 processing 시작 확인
+- [x] `0.0.32` upload export 중 `objective_c.framework` dSYM 누락 warning이 있었으나 `Upload succeeded` / `EXPORT SUCCEEDED`로 완료됨
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_build_topics_respects_delivery_modes backend/tests/test_push_service.py::test_register_persists_device_token backend/tests/test_push_service.py::test_scoreboard_sync_pushes_score_moments_after_baseline`
@@ -58,10 +61,13 @@
 - [x] `git diff --check`
 - [x] `./scripts/push-demo-readiness-audit.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans --skip-tooling` expected attention: `/tmp/kbo-fans-aws.env` 없음, `gh` CLI 없음
 - [x] `curl -fsS --max-time 10 https://api.kbofans.com/api/health` 실패: `Could not resolve host: api.kbofans.com`
+- [x] `git ls-remote origin refs/heads/main refs/tags/0.0.32`로 remote `main` / `0.0.32` tag 확인
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" fvm flutter build ipa --release --export-method app-store --build-name=0.0.32 --build-number=32 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=https://api.kbofans.com/api`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
 
 ### 남은 작업
 - [ ] 실제 push backend URL을 `RELEASE_API_BASE_URL`로 확정하고 release/TestFlight build에 주입
-- [ ] `0.0.32+32` TestFlight IPA 빌드/업로드
+- [ ] TestFlight에서 `0.0.32 (32)` processing 완료 후 내부 테스트 그룹 연결 및 설치 확인
 - [ ] 운영 backend 배포 후 `/api/push/config-status`, `/api/push/live-activity/sync-scoreboard`, 실기기 TestFlight push / Dynamic Island 수신 검증
 
 ## 2026-06-11: TestFlight 라인업 direct 원천 보정
