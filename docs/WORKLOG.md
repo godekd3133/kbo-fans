@@ -46,6 +46,7 @@
 - [x] HTTPS 도메인/ACM 연결 전 smoke 검증을 위해 iOS ATS exception을 현재 AWS ALB host 하나로 제한해 임시 추가
 - [x] `0.0.33 (33)` IPA를 smoke backend `API_BASE_URL`로 빌드하고 App Store Connect 업로드 성공 및 processing 시작 확인
 - [x] archive 기준 `CFBundleShortVersionString=0.0.33`, `CFBundleVersion=33`, ALB ATS exception, embedded `API_BASE_URL` 문자열 확인
+- [x] GitHub Actions repository variable `RELEASE_API_BASE_URL`을 smoke backend URL로 생성해 이후 CI release build도 같은 token registration endpoint를 사용하도록 정렬
 
 ### 검증
 - [x] `plutil -lint app/ios/Runner/Info.plist`
