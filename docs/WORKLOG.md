@@ -47,6 +47,7 @@
 - [x] `0.0.33 (33)` IPA를 smoke backend `API_BASE_URL`로 빌드하고 App Store Connect 업로드 성공 및 processing 시작 확인
 - [x] archive 기준 `CFBundleShortVersionString=0.0.33`, `CFBundleVersion=33`, ALB ATS exception, embedded `API_BASE_URL` 문자열 확인
 - [x] GitHub Actions repository variable `RELEASE_API_BASE_URL`을 smoke backend URL로 생성해 이후 CI release build도 같은 token registration endpoint를 사용하도록 정렬
+- [x] remote smoke backend의 Live Activity register/unregister endpoint를 reversible dummy token으로 확인하고 unregister `removed=1`로 cleanup 확인
 
 ### 검증
 - [x] `plutil -lint app/ios/Runner/Info.plist`
@@ -57,9 +58,15 @@
 - [x] `curl -fsS --max-time 15 http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health`
 - [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build ipa --release --export-method app-store --build-name=0.0.33 --build-number=33 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`
 - [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+- [x] `PATH="/opt/homebrew/bin:$PATH" gh variable get RELEASE_API_BASE_URL --repo godekd3133/kbo-fans`
+- [x] `curl -fsS -X POST http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/push/live-activity/register` + `/unregister` smoke (`registered=true`, `removed=1`)
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun altool --build-status ...` 현재 로컬에는 App Store Connect JWT/app-password 인증이 없어 processing status 조회 불가 확인
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun devicectl list devices`: iPhone 15 Pro Max paired / Developer Mode enabled but currently `unavailable`; iPad paired/available but locked
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter devices --machine`: Flutter는 iPad만 iOS physical target으로 감지
 
 ### 남은 작업
 - [ ] TestFlight 설치 후 알림 권한 허용, 마이팀 선택, `/push/config-status`와 실기기 push / Dynamic Island token registration 확인
+- [ ] iPhone 15 Pro Max를 unlock/connect 상태로 되돌린 뒤 Dynamic Island 자동 시작을 실제 기기에서 확인
 - [ ] 최종 운영 전 `api.kbofans.com` HTTPS/ACM 연결 후 ALB HTTP ATS exception 제거
 
 ## 2026-06-12: 마이팀 경기 시작 Live Activity 자동화 및 push topic 계약 보정
