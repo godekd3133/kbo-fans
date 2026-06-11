@@ -36,6 +36,8 @@ jobs:
       AWS_ACCESS_KEY_ID_SECRET: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY_SECRET: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID || secrets.FIREBASE_PROJECT_ID }}
+      IOS_GOOGLE_SERVICE_INFO_PLIST_SECRET: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST }}
+      ANDROID_GOOGLE_SERVICES_JSON_SECRET: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
       FIREBASE_SERVICE_ACCOUNT_JSON_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
       APNS_AUTH_KEY_P8_SECRET: ${{ secrets.APNS_AUTH_KEY_P8 }}
       APNS_KEY_ID: ${{ vars.APNS_KEY_ID || secrets.APNS_KEY_ID }}
@@ -68,17 +70,37 @@ jobs:
             echo "Missing GitHub secret: FIREBASE_SERVICE_ACCOUNT_JSON" >&2
             exit 2
           fi
+          if [[ -z "${IOS_GOOGLE_SERVICE_INFO_PLIST_SECRET}" ]]; then
+            echo "Missing GitHub secret: IOS_GOOGLE_SERVICE_INFO_PLIST" >&2
+            exit 2
+          fi
+          if [[ -z "${ANDROID_GOOGLE_SERVICES_JSON_SECRET}" ]]; then
+            echo "Missing GitHub secret: ANDROID_GOOGLE_SERVICES_JSON" >&2
+            exit 2
+          fi
           if [[ -z "${APNS_AUTH_KEY_P8_SECRET}" ]]; then
             echo "Missing GitHub secret: APNS_AUTH_KEY_P8" >&2
             exit 2
           fi
 
           firebase_file="$RUNNER_TEMP/firebase-service-account.json"
+          ios_firebase_file="$GITHUB_WORKSPACE/app/ios/Runner/GoogleService-Info.plist"
+          android_firebase_file="$GITHUB_WORKSPACE/app/android/app/google-services.json"
           apns_file="$RUNNER_TEMP/apns-auth-key.p8"
           printf '%s' "${FIREBASE_SERVICE_ACCOUNT_JSON_SECRET}" > "$firebase_file"
+          printf '%s' "${IOS_GOOGLE_SERVICE_INFO_PLIST_SECRET}" > "$ios_firebase_file"
+          printf '%s' "${ANDROID_GOOGLE_SERVICES_JSON_SECRET}" > "$android_firebase_file"
           printf '%s' "${APNS_AUTH_KEY_P8_SECRET}" > "$apns_file"
 
           python3 -m json.tool "$firebase_file" >/dev/null
+          python3 -m json.tool "$android_firebase_file" >/dev/null
+          python3 - "$ios_firebase_file" <<'PY'
+          import plistlib
+          import sys
+
+          with open(sys.argv[1], "rb") as file:
+              plistlib.load(file)
+          PY
           grep -q "BEGIN PRIVATE KEY" "$apns_file"
 
           echo "FIREBASE_SERVICE_ACCOUNT_FILE=$firebase_file" >> "$GITHUB_ENV"
