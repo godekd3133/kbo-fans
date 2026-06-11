@@ -30,6 +30,26 @@
                 "elasticloadbalancing:DescribeTags"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "AwsServiceLinkedRoles",
+            "Effect": "Allow",
+            "Action": "iam:CreateServiceLinkedRole",
+            "Resource": "*",
+            "Condition": {
+                "StringLike": {
+                    "iam:AWSServiceName": [
+                        "ecs.amazonaws.com",
+                        "elasticloadbalancing.amazonaws.com"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "ReadAwsServiceLinkedRoles",
+            "Effect": "Allow",
+            "Action": "iam:GetRole",
+            "Resource": "arn:aws:iam::*:role/aws-service-role/*"
         }
     ]
 }

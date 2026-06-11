@@ -162,6 +162,28 @@
                                     }
                                 },
                                 {
+                                    "Sid": "AwsServiceLinkedRoles",
+                                    "Effect": "Allow",
+                                    "Action": "iam:CreateServiceLinkedRole",
+                                    "Resource": "*",
+                                    "Condition": {
+                                        "StringLike": {
+                                            "iam:AWSServiceName": [
+                                                "ecs.amazonaws.com",
+                                                "elasticloadbalancing.amazonaws.com"
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "Sid": "ReadAwsServiceLinkedRoles",
+                                    "Effect": "Allow",
+                                    "Action": "iam:GetRole",
+                                    "Resource": {
+                                        "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/aws-service-role/*"
+                                    }
+                                },
+                                {
                                     "Sid": "EcrAuth",
                                     "Effect": "Allow",
                                     "Action": "ecr:GetAuthorizationToken",
