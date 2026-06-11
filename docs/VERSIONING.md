@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.32+32`
-- Current release tag: `0.0.32`
+- Flutter app version: `0.0.33+33`
+- Current release tag: `0.0.33`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -80,6 +80,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.30`: TestFlight first-run crash fix for missing my-team widget storage values, iOS background refresh plist declarations for widget/push surfaces, uploaded as build `0.0.30+30` and superseded by `0.0.31`.
 - `0.0.31`: push / Live Activity backend deployment preparation, immediate game-start notification defaults, iOS Workmanager BGTask launch handler registration for `kbo-widget-periodic`, direct lineup recovery through `GetLineUpAnalysis`, relay lineup labels, live my-team follow state polish, live-game ticket-info hiding, game-detail back fallback, and current app build `0.0.31+31`.
 - `0.0.32`: 마이팀 live 경기 감지 시 Live Activity / Dynamic Island follow target 자동 선택, 경기 시작 기본 push topic 구독, backend `deliveryModes` topic 계산 정렬, 문자중계 focus/선수 라벨 보정, and current app build `0.0.32+32`.
+- `0.0.33`: TestFlight push / Live Activity token registration build using the deployed AWS HTTP smoke backend `API_BASE_URL`, with a narrow temporary ATS exception for that ALB host, and current app build `0.0.33+33`.
 
 ## GitHub Release Note Template
 

@@ -36,6 +36,31 @@
 
 ---
 
+## 2026-06-12: 0.0.33 TestFlight push backend URL 주입
+
+### 완료
+- [x] GitHub Actions `Push Demo Deploy` 성공 run `27325944220` artifact에서 배포된 smoke backend URL `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` 확인
+- [x] 배포 로그 기준 `/api/health`, `/api/push/config-status`, `readyForIphoneOnlyDemo=true`, scheduler heartbeat 정상 확인
+- [x] 로컬에서 smoke backend `/api/health`가 200 응답하는 것을 확인
+- [x] `0.0.32 (32)` TestFlight 빌드는 기본 `https://api.kbofans.com/api` DNS 실패 때문에 push / Live Activity token registration 검증에 부적합하므로 `0.0.33+33`으로 다음 tester-facing build 결정
+- [x] HTTPS 도메인/ACM 연결 전 smoke 검증을 위해 iOS ATS exception을 현재 AWS ALB host 하나로 제한해 임시 추가
+- [x] `0.0.33 (33)` IPA를 smoke backend `API_BASE_URL`로 빌드하고 App Store Connect 업로드 성공 및 processing 시작 확인
+- [x] archive 기준 `CFBundleShortVersionString=0.0.33`, `CFBundleVersion=33`, ALB ATS exception, embedded `API_BASE_URL` 문자열 확인
+
+### 검증
+- [x] `plutil -lint app/ios/Runner/Info.plist`
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze`
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/services/live_activity_service_test.dart test/services/push_notification_service_test.dart` (`8 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_build_topics_respects_delivery_modes backend/tests/test_push_service.py::test_register_persists_device_token backend/tests/test_push_service.py::test_scoreboard_sync_pushes_score_moments_after_baseline` (`3 passed`)
+- [x] `git diff --check`
+- [x] `curl -fsS --max-time 15 http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build ipa --release --export-method app-store --build-name=0.0.33 --build-number=33 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+
+### 남은 작업
+- [ ] TestFlight 설치 후 알림 권한 허용, 마이팀 선택, `/push/config-status`와 실기기 push / Dynamic Island token registration 확인
+- [ ] 최종 운영 전 `api.kbofans.com` HTTPS/ACM 연결 후 ALB HTTP ATS exception 제거
+
 ## 2026-06-12: 마이팀 경기 시작 Live Activity 자동화 및 push topic 계약 보정
 
 ### 완료

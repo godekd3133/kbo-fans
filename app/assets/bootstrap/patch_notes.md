@@ -1,5 +1,10 @@
 # 패치노트
 
+## 0.0.33+33 - TestFlight Push Backend Handoff
+
+- TestFlight 빌드가 배포된 AWS push backend에 토큰 등록을 보낼 수 있도록 release API URL을 맞췄습니다.
+- 마이팀 경기 시작 알림과 Live Activity / Dynamic Island 자동 시작 검증을 위해 임시 HTTP smoke backend 연결을 허용했습니다.
+
 ## 0.0.32+32 - Push & Dynamic Island Autostart Fix
 
 - 마이팀 live 경기가 시작되면 `따라가기`를 먼저 누르지 않아도 Live Activity / Dynamic Island 대상이 자동으로 잡히도록 보정했습니다.

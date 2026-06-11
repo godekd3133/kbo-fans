@@ -12,6 +12,13 @@
 
 _아직 없음._
 
+## [0.0.33] - 2026-06-12
+
+### Changed
+
+- TestFlight 빌드가 배포 완료된 AWS push backend URL을 `API_BASE_URL`로 주입해 push / Live Activity token registration을 실제 backend로 보낼 수 있도록 변경
+- HTTPS 도메인 연결 전 smoke 검증을 위해 현재 AWS ALB host에만 iOS ATS HTTP 예외를 임시로 추가
+
 ## [0.0.32] - 2026-06-12
 
 ### Changed

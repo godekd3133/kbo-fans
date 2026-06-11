@@ -45,6 +45,14 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>kbo-fans-api-469252833.us-east-1.elb.amazonaws.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
