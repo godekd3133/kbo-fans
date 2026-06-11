@@ -10,11 +10,16 @@
 
 ## [Unreleased]
 
+_아직 없음._
+
+## [0.0.32] - 2026-06-12
+
 ### Changed
 
 - 마이팀 경기 시작 알림을 기본 `바로 알림` 대상으로 변경해 신규/기본 설정 사용자가 `game_start_<팀>` FCM topic을 구독하도록 보강
 - Push 등록 backend가 앱의 `deliveryModes`를 반영해 `summary`, `live_only`, `off` moment를 즉시 push topic에서 제외하도록 정렬
 - 홈에서 진행 중인 경기 카드를 열면 경기 상세가 `문자중계` 탭으로 바로 시작하고, 마이팀 `중계 보기` CTA는 문자중계 본문이 먼저 보이도록 상세 상단을 접는 focus 진입을 사용하도록 변경
+- `0.0.31` GitHub 릴리즈 이후 TestFlight 재검증을 위해 앱 버전과 빌드번호를 `0.0.32+32`로 증가
 
 ### Fixed
 

@@ -44,6 +44,7 @@
 - [x] 신규/기본 알림 설정에서 마이팀 `game_start_<팀>` topic을 구독하도록 경기 시작 기본 전달 방식을 `바로 알림`으로 변경
 - [x] backend push registration이 앱의 `deliveryModes`를 반영해 `summary`, `live_only`, `off` moment를 registry topic에서 제외하도록 보정
 - [x] 운영 상태 확인 중 기본 release API host `https://api.kbofans.com/api` DNS lookup 실패를 확인. 이 URL로 빌드된 TestFlight 앱은 push / Live Activity token registration이 실패하므로 다음 release build에는 실제 `RELEASE_API_BASE_URL` 주입 필요
+- [x] 앱 동작 / push 계약 / in-app patch note 변경이므로 다음 tester-facing release를 `0.0.32+32`로 결정하고 `pubspec`, README, VERSIONING, CHANGELOG, in-app patch notes를 동기화
 - [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 마이팀 경기 시작 즉시 알림 및 자동 Live Activity 정책 반영
 
 ### 검증
@@ -60,6 +61,7 @@
 
 ### 남은 작업
 - [ ] 실제 push backend URL을 `RELEASE_API_BASE_URL`로 확정하고 release/TestFlight build에 주입
+- [ ] `0.0.32+32` TestFlight IPA 빌드/업로드
 - [ ] 운영 backend 배포 후 `/api/push/config-status`, `/api/push/live-activity/sync-scoreboard`, 실기기 TestFlight push / Dynamic Island 수신 검증
 
 ## 2026-06-11: TestFlight 라인업 direct 원천 보정
