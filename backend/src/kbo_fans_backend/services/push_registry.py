@@ -174,7 +174,7 @@ class PushRegistry:
     def _file_lock(self, *, exclusive: bool) -> Iterator[None]:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         lock_mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
-        with self._lock_path.open("a", encoding="utf-8") as lock_file:
+        with self._lock_path.open("a+", encoding="utf-8") as lock_file:
             fcntl.flock(lock_file.fileno(), lock_mode)
             try:
                 yield

@@ -1,3 +1,5 @@
+import fcntl
+import os
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 from fastapi.testclient import TestClient
@@ -138,6 +140,21 @@ def test_push_registry_serializes_writes_across_instances_in_process(tmp_path) -
 
     assert total_registrations == worker_count * registrations_per_worker
     assert len(registry_data["devices"]) == total_registrations
+
+
+def test_push_registry_shared_lock_uses_readable_lock_fd(monkeypatch, tmp_path) -> None:
+    original_flock = fcntl.flock
+
+    def asserting_flock(fd: int, operation: int) -> None:
+        if operation & fcntl.LOCK_SH:
+            os.read(fd, 1)
+        original_flock(fd, operation)
+
+    monkeypatch.setattr(fcntl, "flock", asserting_flock)
+
+    heartbeat = PushRegistry(str(tmp_path / "push_registry.json")).sync_heartbeat()
+
+    assert heartbeat == {}
 
 
 def test_register_live_activity_replaces_previous_token(tmp_path) -> None:
