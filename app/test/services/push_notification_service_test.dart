@@ -54,4 +54,30 @@ void main() {
     expect(topics, isNot(contains('homerun_LG')));
     expect(topics, isNot(contains('reversal_LG')));
   });
+
+  test('라인업 공개 push data는 라인업 탭 상세 route로 변환한다', () {
+    final route = pushNotificationRouteForData({
+      'type': 'lineup_opened',
+      'gameId': '20260612KTLG0',
+    });
+
+    expect(route, '/game/20260612KTLG0?tab=lineup');
+  });
+
+  test('잘못된 push route는 앱 내부 route로 사용하지 않는다', () {
+    final route = pushNotificationRouteForData({
+      'route': 'https://example.com/game/20260612KTLG0',
+      'gameId': '',
+    });
+
+    expect(route, isNull);
+  });
+
+  test('kboFans 딥링크 payload는 내부 route로 변환한다', () {
+    final route = pushNotificationRouteForData({
+      'link': 'kboFans://game?gameId=20260612KTLG0&tab=lineup',
+    });
+
+    expect(route, '/game/20260612KTLG0?tab=lineup');
+  });
 }

@@ -452,7 +452,7 @@ GET /api/player/{playerId}?season=2026
 
 **인터랙션**:
 - 자동 스크롤 → 새 중계 추가 시 상단에 삽입 + 부드러운 애니메이션
-- 회차 선택 → `전체 / N회초 / N회말` 칩을 눌러 해당 회차 문자중계만 필터링
+- 회차 선택 → `전체 / N회초 / N회말` 칩을 눌러 해당 회차 문자중계만 필터링. 원문 이닝 전환 텍스트에 팀 공격 문구나 구분선이 포함되어도 칩 라벨은 `N회초/N회말`만 노출
 - 경기 종료 시 → "경기가 종료되었습니다" 배너
 - LIVE 경기에서는 relay 원천 실패를 득점 요약이나 과거 snapshot 으로 대체하지 않고 실패/미지원 상태로 노출
 - 종료 경기라도 원문 relay 확보가 가능하면 득점 요약이 아니라 실제 play-by-play와 교체 로그를 우선 표시하고, 실패 시에만 summary fallback 사용
@@ -522,6 +522,9 @@ GET /api/game/{gameId}/boxscore
 #### 2.3.4 탭: 라인업
 
 선발 라인업 정보
+
+- 경기 전이라도 KBO 원천이 라인업을 공개한 상태라면 라인업 탭에서 바로 표시한다.
+- 아직 공개되지 않은 경기 전 라인업은 “라인업 공개 전입니다” 빈 상태로 표시하며, “경기 시작 후”로 제한하지 않는다.
 
 ```
 ┌─────────────────────────────────────┐
@@ -774,6 +777,7 @@ GET /api/standings?season=2026
 - 사용자가 "경기 따라가기", "바로 알림", "권한 확인"처럼 명시적 action 을 선택했을 때 OS permission 을 요청한다
 - Moment 설정 변경 → 로컬 저장 + backend preference sync + FCM topic 재계산
 - `바로 알림`은 push/topic 및 로컬 이벤트 알림 대상이 되고, `묶음 요약`은 summary preference 로 저장하며, `따라가기만`은 따라가기 세션의 Live Activity / Android Live Update 로만 보낸다
+- 푸시/로컬 알림 클릭은 외부 URL을 직접 열지 않고 앱 내부 route로 변환한다. `lineupOpened` / `lineup_opened`는 `/game/{gameId}?tab=lineup`, 경기 시작/득점/홈런/역전/이닝 교대는 `/game/{gameId}?tab=relay`로 진입한다.
 - 경기 상세를 보고 있는 동안 같은 경기의 중복 push 는 억제하고, 따라가기 화면 또는 화면 내 상태 갱신으로 대체한다
 - "경기 따라가기"는 알림 설정이 아니라 현재 경기 session 시작 action 이며, 경기 종료 또는 사용자의 "그만 보기"로 종료한다
 - local 모바일에서는 같은 Moment 규칙으로 로컬 알림을 생성하되, records/mock fallback 으로 불완전한 알림을 만들지 않는다

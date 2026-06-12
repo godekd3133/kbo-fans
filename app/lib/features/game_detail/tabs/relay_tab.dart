@@ -373,8 +373,9 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   }
 
   String _chipLabel(String label) {
-    if (label.contains('회초') || label.contains('회말')) {
-      return label;
+    final inningMatch = RegExp(r'\d+회[초말]').firstMatch(label);
+    if (inningMatch != null) {
+      return inningMatch.group(0)!;
     }
     return label.replaceAll(' 공격 ---------------------------------------', '');
   }

@@ -129,8 +129,11 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   bool _didLogFirstFrame = false;
   bool _didScheduleBootstrap = false;
   StreamSubscription<Uri?>? _homeWidgetClickSubscription;
+  StreamSubscription<String>? _pushNotificationRouteSubscription;
   Uri? _pendingHomeWidgetUri;
+  String? _pendingPushNotificationRoute;
   bool _didInitializeHomeWidgetRouting = false;
+  bool _didInitializePushNotificationRouting = false;
   DateTime? _lastResumeSyncAt;
 
   @override
@@ -142,11 +145,15 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         unawaited(_initializeHomeWidgetRouting());
       });
     }
+    if (!kIsWeb) {
+      _initializePushNotificationRouting();
+    }
   }
 
   @override
   void dispose() {
     unawaited(_homeWidgetClickSubscription?.cancel());
+    unawaited(_pushNotificationRouteSubscription?.cancel());
     if (!kIsWeb && !_isWidgetTestBinding()) {
       WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     }
@@ -231,6 +238,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     }
     if (onboardingDone == true) {
       _routePendingHomeWidgetLaunch(router);
+      _routePendingPushNotificationLaunch(router);
     }
 
     return MaterialApp.router(
@@ -300,6 +308,22 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     }
   }
 
+  void _initializePushNotificationRouting() {
+    if (_didInitializePushNotificationRouting) {
+      return;
+    }
+    _didInitializePushNotificationRouting = true;
+    _pushNotificationRouteSubscription = PushNotificationService
+        .instance
+        .notificationRoutes
+        .listen(
+          _queuePushNotificationRoute,
+          onError: (Object error) {
+            DevConsole.instance.warn('Push route stream failed: $error');
+          },
+        );
+  }
+
   void _queueHomeWidgetUri(Uri? uri) {
     final route = _routeForHomeWidgetUri(uri);
     if (route == null) {
@@ -310,6 +334,20 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     if (mounted && ref.read(onboardingDoneProvider) == true) {
       final router = ref.read(routerProvider);
       _routePendingHomeWidgetLaunch(router);
+    }
+  }
+
+  void _queuePushNotificationRoute(String route) {
+    final safeRoute = _safeLaunchRoute(route);
+    if (safeRoute == null) {
+      DevConsole.instance.warn('Push launch route ignored: $route');
+      return;
+    }
+    _pendingPushNotificationRoute = safeRoute;
+    DevConsole.instance.info('Push launch queued: $safeRoute');
+    if (mounted && ref.read(onboardingDoneProvider) == true) {
+      final router = ref.read(routerProvider);
+      _routePendingPushNotificationLaunch(router);
     }
   }
 
@@ -329,6 +367,21 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     });
   }
 
+  void _routePendingPushNotificationLaunch(GoRouter router) {
+    final route = _pendingPushNotificationRoute;
+    if (route == null) {
+      return;
+    }
+    _pendingPushNotificationRoute = null;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      router.go(route);
+      DevConsole.instance.info('Push launch routed: $route');
+    });
+  }
+
   String? _routeForHomeWidgetUri(Uri? uri) {
     if (uri == null || !uri.queryParameters.containsKey('homeWidget')) {
       return null;
@@ -345,6 +398,20 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       return '/game/$encodedGameId';
     }
     return '/game/$encodedGameId?tab=${Uri.encodeQueryComponent(tab)}';
+  }
+
+  String? _safeLaunchRoute(String route) {
+    if (route.isEmpty || !route.startsWith('/') || route.startsWith('//')) {
+      return null;
+    }
+    final uri = Uri.tryParse(route);
+    if (uri == null || uri.hasScheme || uri.host.isNotEmpty) {
+      return null;
+    }
+    if (uri.path == '/' || uri.path == '/boot' || uri.path == '/onboarding') {
+      return '/home';
+    }
+    return uri.toString();
   }
 
   late final WidgetsBindingObserver _lifecycleObserver = _AppLifecycleObserver(

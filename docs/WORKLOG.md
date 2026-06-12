@@ -2,6 +2,58 @@
 
 ---
 
+## 2026-06-12: 문자중계 회차 버튼 원문 배너 노출 보정
+
+### 완료
+- [x] `INNING_CHANGE` 원문이 `1회초 두산공격--------------`처럼 회차와 공격 배너를 함께 담을 때 `_chipLabel()`이 원문을 그대로 반환하는 경로 확인
+- [x] 회차 chip/filter 라벨은 원문에서 첫 `N회초/N회말` 토큰만 추출하도록 보정
+- [x] 같은 회차가 `1회초`와 `1회초 두산공격...` 두 버튼으로 갈라지지 않도록 회귀 테스트 추가
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 문자중계 회차 chip 라벨 정책 반영
+
+### 검증
+- [x] `fvm dart format lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart`
+- [x] `fvm flutter test test/features/game_detail/relay_tab_test.dart --no-pub`
+- [x] `fvm flutter analyze lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart --no-pub`
+
+---
+
+## 2026-06-12: 경기 전 공개 라인업 표시 보정
+
+### 완료
+- [x] 라인업 탭이 `GameStatus.scheduled`이면 `gameLineupProvider`를 보기 전에 “경기 시작 후 라인업이 공개됩니다”를 반환하던 경로 확인
+- [x] 경기 전 상태에서도 공개된 `GameLineupData`가 있으면 라인업과 원천 지표를 표시하도록 보정
+- [x] 경기 전 라인업 응답이 아직 비어 있으면 “라인업 공개 전입니다”로 표시해 공개 여부와 경기 시작 여부를 분리
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 경기 전 공개 라인업 UX 정책 반영
+
+### 검증
+- [x] `fvm flutter test test/features/game_detail/lineup_tab_test.dart`
+- [x] `fvm dart format lib/features/game_detail/tabs/lineup_tab.dart test/features/game_detail/lineup_tab_test.dart`
+- [x] `fvm flutter analyze lib/features/game_detail/tabs/lineup_tab.dart test/features/game_detail/lineup_tab_test.dart`
+- [x] `fvm flutter test --no-pub`
+- [x] `fvm flutter analyze --no-pub`
+- [x] `fvm flutter build web --debug --no-pub`
+- [x] `git diff --check -- app/lib/features/game_detail/tabs/lineup_tab.dart app/test/features/game_detail/lineup_tab_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-12: 라인업 공개 푸시 클릭 크래시 경로 보정
+
+### 완료
+- [x] backend 라인업 공개 FCM data가 `type=lineup_opened`, `gameId`만 보내는 반면 앱이 `getInitialMessage` / `onMessageOpenedApp` 클릭 route를 소비하지 않는 경로 확인
+- [x] push data와 `kboFans://game?...` payload를 안전한 내부 route로 변환하는 helper 추가
+- [x] `lineup_opened`는 `/game/{gameId}?tab=lineup`, 경기 진행 moment는 `/game/{gameId}?tab=relay`로 진입하도록 보정
+- [x] remote push 클릭 route stream을 앱 시작/복귀 후 onboarding 완료 시점에 queue 후 `go_router`로 연결
+- [x] 앱 내부 로컬 경기 이벤트 알림에도 game detail payload를 넣어 라인업 알림 클릭이 같은 route 계약을 쓰도록 정리
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 알림 클릭 진입 계약 반영
+
+### 검증
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/services/push_notification_service_test.dart --no-pub`
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze lib/main.dart lib/services/push_notification_service.dart lib/services/game_event_alert_service.dart test/services/push_notification_service_test.dart --no-pub`
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`96 passed`)
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build ios --debug --no-codesign --no-pub`
+
+---
+
 ## 2026-06-12: 진행 중 경기 중계 탭/focus 진입 보정
 
 ### 완료

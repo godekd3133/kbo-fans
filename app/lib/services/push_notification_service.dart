@@ -236,10 +236,25 @@ class PushNotificationService {
   static const _deliverySuffix = '.delivery';
 
   bool _initialized = false;
+  bool _notificationOpenHandlersAttached = false;
   String? _lastToken;
   bool _notificationsAllowed = false;
+  final StreamController<String> _notificationRouteController =
+      StreamController<String>.broadcast();
   final FlutterLocalNotificationsPlugin _localPlugin =
       FlutterLocalNotificationsPlugin();
+
+  Stream<String> get notificationRoutes => _notificationRouteController.stream;
+
+  void handleNotificationPayload(String? payload) {
+    final route = _routeFromPushValue(payload);
+    if (route == null) {
+      DevConsole.instance.warn('Notification payload ignored: $payload');
+      return;
+    }
+    _notificationRouteController.add(route);
+    DevConsole.instance.info('Notification payload routed: $route');
+  }
 
   Future<void> initialize({String? myTeam}) async {
     if (_initialized || kIsWeb) {
@@ -278,6 +293,7 @@ class PushNotificationService {
         _lastToken = token;
         unawaited(syncRegistration(forceToken: token));
       });
+      await _attachNotificationOpenHandlers(messaging);
 
       _initialized = true;
       await _saveDebugInitState(status: 'ready', reason: null);
@@ -353,6 +369,40 @@ class PushNotificationService {
         enabledFallback: PushNotificationDelivery.liveOnly,
       ),
     );
+  }
+
+  Future<void> _attachNotificationOpenHandlers(
+    FirebaseMessaging messaging,
+  ) async {
+    if (_notificationOpenHandlersAttached) {
+      return;
+    }
+    _notificationOpenHandlersAttached = true;
+
+    FirebaseMessaging.onMessageOpenedApp.listen(
+      _handleOpenedRemoteMessage,
+      onError: (Object error) {
+        DevConsole.instance.warn('Push open stream failed: $error');
+      },
+    );
+
+    final initialMessage = await messaging.getInitialMessage();
+    _handleOpenedRemoteMessage(initialMessage);
+  }
+
+  void _handleOpenedRemoteMessage(RemoteMessage? message) {
+    if (message == null) {
+      return;
+    }
+    final route = pushNotificationRouteForData(message.data);
+    if (route == null) {
+      DevConsole.instance.warn(
+        'Push open ignored: unsupported data ${message.data.keys.join(',')}',
+      );
+      return;
+    }
+    _notificationRouteController.add(route);
+    DevConsole.instance.info('Push open routed: $route');
   }
 
   Future<void> saveSettings(
@@ -632,4 +682,116 @@ Set<String> buildPushTopics({
   }
 
   return topics;
+}
+
+String? pushNotificationRouteForData(Map<String, dynamic> data) {
+  final explicitRoute = _routeFromPushValue(data['route']);
+  if (explicitRoute != null) {
+    return explicitRoute;
+  }
+
+  final deepLinkRoute =
+      _routeFromPushValue(data['deepLink']) ??
+      _routeFromPushValue(data['deep_link']) ??
+      _routeFromPushValue(data['link']);
+  if (deepLinkRoute != null) {
+    return deepLinkRoute;
+  }
+
+  final gameId =
+      _pushString(data['gameId']) ??
+      _pushString(data['game_id']) ??
+      _pushString(data['game']);
+  if (gameId == null) {
+    return null;
+  }
+
+  final explicitTab = _normalizePushTab(_pushString(data['tab']));
+  final type = (_pushString(data['type']) ?? '').toLowerCase();
+  final tab = explicitTab ?? _tabForPushType(type);
+  final encodedGameId = Uri.encodeComponent(gameId);
+  if (tab == null) {
+    return '/game/$encodedGameId';
+  }
+  return '/game/$encodedGameId?tab=${Uri.encodeQueryComponent(tab)}';
+}
+
+String? _routeFromPushValue(Object? value) {
+  final raw = _pushString(value);
+  if (raw == null) {
+    return null;
+  }
+  final uri = Uri.tryParse(raw);
+  if (uri == null) {
+    return null;
+  }
+  if (uri.scheme.toLowerCase() == 'kbofans') {
+    return _routeFromKboFansUri(uri);
+  }
+  if (uri.hasScheme || uri.host.isNotEmpty) {
+    return null;
+  }
+  return _safeInternalRoute(uri.toString());
+}
+
+String? _routeFromKboFansUri(Uri uri) {
+  if (uri.host == 'game') {
+    final gameId = _pushString(uri.queryParameters['gameId']);
+    if (gameId == null) {
+      return null;
+    }
+    final tab = _normalizePushTab(uri.queryParameters['tab']);
+    final encodedGameId = Uri.encodeComponent(gameId);
+    if (tab == null) {
+      return '/game/$encodedGameId';
+    }
+    return '/game/$encodedGameId?tab=${Uri.encodeQueryComponent(tab)}';
+  }
+  if (uri.host == 'home') {
+    return '/home';
+  }
+  return null;
+}
+
+String? _safeInternalRoute(String route) {
+  if (route.isEmpty || !route.startsWith('/') || route.startsWith('//')) {
+    return null;
+  }
+  final uri = Uri.tryParse(route);
+  if (uri == null || uri.hasScheme || uri.host.isNotEmpty) {
+    return null;
+  }
+  if (uri.path == '/' || uri.path == '/boot' || uri.path == '/onboarding') {
+    return '/home';
+  }
+  return uri.toString();
+}
+
+String? _pushString(Object? value) {
+  final text = value?.toString().trim();
+  if (text == null || text.isEmpty) {
+    return null;
+  }
+  return text;
+}
+
+String? _normalizePushTab(String? value) {
+  return switch ((value ?? '').toLowerCase()) {
+    'relay' || 'middle' => 'relay',
+    'box' || 'boxscore' => 'boxscore',
+    'lineup' => 'lineup',
+    _ => null,
+  };
+}
+
+String? _tabForPushType(String type) {
+  return switch (type) {
+    'lineup_opened' || 'lineup_changed' || 'lineup' => 'lineup',
+    'game_start' ||
+    'scoring' ||
+    'homerun' ||
+    'reversal' ||
+    'inning_change' => 'relay',
+    _ => null,
+  };
 }

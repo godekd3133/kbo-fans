@@ -11,6 +11,11 @@ import '../data/models/relay.dart';
 import '../data/repositories/game_repository.dart';
 import 'push_notification_service.dart';
 
+@pragma('vm:entry-point')
+void gameEventNotificationTapBackground(NotificationResponse response) {
+  GameEventAlertService.handleNotificationResponse(response);
+}
+
 class GameEventAlertService {
   GameEventAlertService._();
 
@@ -44,7 +49,16 @@ class GameEventAlertService {
       macOS: darwin,
     );
 
-    await _plugin.initialize(settings);
+    await _plugin.initialize(
+      settings,
+      onDidReceiveNotificationResponse: handleNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse:
+          gameEventNotificationTapBackground,
+    );
+    final launchDetails = await _plugin.getNotificationAppLaunchDetails();
+    if (launchDetails?.didNotificationLaunchApp ?? false) {
+      handleNotificationResponse(launchDetails?.notificationResponse);
+    }
     final androidAllowed = await _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -57,6 +71,12 @@ class GameEventAlertService {
         ?.checkPermissions();
     _notificationsAllowed = androidAllowed ?? iosAllowed?.isEnabled ?? false;
     _initialized = true;
+  }
+
+  static void handleNotificationResponse(NotificationResponse? response) {
+    PushNotificationService.instance.handleNotificationPayload(
+      response?.payload,
+    );
   }
 
   Future<bool> requestPermissions() async {
@@ -475,10 +495,24 @@ class GameEventAlertService {
           ),
           iOS: const DarwinNotificationDetails(),
         ),
+        payload: _payloadForTag(tag),
       );
     } catch (error) {
       DevConsole.instance.warn('Game event alert failed: $error');
     }
+  }
+
+  String? _payloadForTag(String tag) {
+    final gameId = tag.split(':').first.trim();
+    if (gameId.isEmpty) {
+      return null;
+    }
+    final tab = tag.contains(':lineup:') ? 'lineup' : 'relay';
+    return Uri(
+      scheme: 'kboFans',
+      host: 'game',
+      queryParameters: {'gameId': gameId, 'tab': tab},
+    ).toString();
   }
 
   bool _isHomerunEvent(RelayItem item) {

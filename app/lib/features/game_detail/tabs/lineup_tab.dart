@@ -42,9 +42,6 @@ class LineupTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (gameStatus == GameStatus.scheduled) {
-      return _buildUnavailableState('경기 시작 후 라인업이 공개됩니다');
-    }
     if (gameStatus == GameStatus.cancelled) {
       return _buildUnavailableState('취소된 경기는 라인업이 없습니다');
     }
@@ -87,6 +84,10 @@ class LineupTab extends ConsumerWidget {
                     style: const TextStyle(color: AppColors.textDisabled),
                   ),
                   data: (gameLineup) {
+                    if (gameStatus == GameStatus.scheduled &&
+                        !_hasPublishedLineup(gameLineup)) {
+                      return _buildUnavailableState('라인업 공개 전입니다');
+                    }
                     final awayImageMap = _buildPlayerImageMap(
                       allImageMap: allImageMap,
                       teamPlayers:
@@ -206,6 +207,13 @@ class LineupTab extends ConsumerWidget {
       ),
     );
   }
+}
+
+bool _hasPublishedLineup(GameLineupData gameLineup) {
+  return gameLineup.away.lineup.isNotEmpty ||
+      gameLineup.home.lineup.isNotEmpty ||
+      (gameLineup.away.starterName?.isNotEmpty ?? false) ||
+      (gameLineup.home.starterName?.isNotEmpty ?? false);
 }
 
 _MatchupCompareData _buildMatchupCompareData({
