@@ -13,6 +13,17 @@ import 'package:kbo_fans/data/repositories/game_repository.dart';
 import 'package:kbo_fans/features/game_detail/game_detail_screen.dart';
 
 void main() {
+  test('라이브 경기 문자중계 탭은 15초 refresh cadence를 사용한다', () {
+    expect(
+      gameDetailRefreshIntervalFor(GameStatus.live, selectedTabIndex: 1),
+      const Duration(seconds: 15),
+    );
+    expect(
+      gameDetailRefreshIntervalFor(GameStatus.live, selectedTabIndex: 0),
+      const Duration(seconds: 30),
+    );
+  });
+
   testWidgets('상세가 첫 route일 때 뒤로가기는 빈 화면 대신 홈으로 이동한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -61,6 +72,56 @@ void main() {
 
     expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
   });
+
+  testWidgets('복귀 refresh 실패 시 기존 경기 상세를 유지한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(
+            _FakeGameRepository(game, failGameRefreshAfterFirstLoad: true),
+          ),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('KT'), findsWidgets);
+    expect(find.text('최신 경기 정보를 불러올 수 없습니다'), findsNothing);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('KT'), findsWidgets);
+    expect(find.text('최신 경기 정보를 불러올 수 없습니다'), findsNothing);
+  });
 }
 
 Game _liveGame() {
@@ -88,15 +149,21 @@ Game _liveGame() {
 }
 
 class _FakeGameRepository implements GameRepository {
-  _FakeGameRepository(this.game);
+  _FakeGameRepository(this.game, {this.failGameRefreshAfterFirstLoad = false});
 
   final Game game;
+  final bool failGameRefreshAfterFirstLoad;
+  int _getGameCallCount = 0;
 
   @override
   Future<List<Game>> getScoreboard(String date) async => [game];
 
   @override
   Future<Game?> getGame(String gameId) async {
+    _getGameCallCount += 1;
+    if (failGameRefreshAfterFirstLoad && _getGameCallCount > 1) {
+      throw Exception('network unavailable after resume');
+    }
     return gameId == game.gameId ? game : null;
   }
 

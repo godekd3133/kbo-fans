@@ -132,9 +132,9 @@ KBO Fans의 핵심 반복 사용 이유는 “오늘 내 팀이 어떻게 되고
 | 구분 | 상태 | 기준 |
 |------|------|------|
 | 화면 구현 | 온보딩/마이팀, 홈, 경기 상세 4탭, 일정, 순위, 기록실, 설정 화면을 발표 화면으로 사용 가능 | `docs/presentations/kbo_fans_8min_presentation.md` |
-| 서비스 준비 | 예매 오픈 local reminder, push moment, widget sync, Live Activity service는 코드/정책 단위로 준비 | 실제 기기와 운영 push backend 검증은 별도 |
-| 데이터 기본 경로 | 앱 기본 런타임은 backend API 없이 direct KBO source + 허용된 generated/bundled/device snapshot 사용 | `USE_BACKEND_API=true`일 때만 API-backed 검증 |
-| 앱 밖 갱신 | 앱 종료 후 push / Live Activity / Dynamic Island 갱신은 no-backend 앱만으로 완료되지 않음 | FastAPI backend + scheduler + FCM/APNs 필요 |
+| 서비스 준비 | 예매 오픈 local reminder, push moment, widget sync, Live Activity service는 앱 + backend 책임으로 준비 | 실제 기기와 운영 push backend readiness 검증은 별도 |
+| 데이터 경로 | backend-backed mode와 direct KBO mode를 명시적으로 분리 | 화면 데이터 API 검증은 `USE_BACKEND_API=true`, direct mode는 local/offline/web preview와 resilience 검증 |
+| 앱 밖 갱신 | 앱 종료 후 push / Live Activity / Dynamic Island 갱신은 FastAPI backend + scheduler + FCM/APNs가 담당 | backend readiness와 release `API_BASE_URL` 검증 필요 |
 
 ---
 
@@ -233,12 +233,16 @@ KBO Fans의 핵심 반복 사용 이유는 “오늘 내 팀이 어떻게 되고
 
 ### 데이터 흐름
 
-기본 앱 실행은 backend API를 전제로 하지 않는다.
+현재 데이터 아키텍처는 backend-backed mode와 direct KBO mode를 명시적으로 구분한다. Backend는 API-backed data, snapshot generation, push, Live Activity / Dynamic Island sync를 담당하는 active component다. Direct KBO mode는 local/offline/web preview와 resilience 검증을 위한 지원 경로로 유지한다.
 
 ```
 KBO 홈페이지 (koreabaseball.com)
         │
-        │  앱 direct loading / generated snapshot
+        │  FastAPI crawler/service/snapshot
+        ▼
+   [FastAPI backend + scheduler]
+        │
+        │  API response / push / liveactivity update
         ▼
    [Flutter App Provider]
         │
@@ -247,16 +251,16 @@ KBO 홈페이지 (koreabaseball.com)
    [화면 렌더링]
 ```
 
-앱이 꺼진 뒤에도 일반 push와 iOS Live Activity / Dynamic Island를 갱신해야 하는 경우만 운영 backend가 필요하다.
+direct mode는 앱 단독 검증과 preview 안정성을 위해 남긴다.
 
 ```
 KBO source
    │
    ▼
-[FastAPI backend + scheduler]
+[Flutter direct KBO repository]
    │
-   ├── FCM moment push
-   └── APNs liveactivity update/end
+   ▼
+[화면 렌더링 / local resilience check]
 ```
 
 ### 데이터 수집 전략 (Adaptive Polling)
@@ -299,7 +303,7 @@ KBO source
 | **상태 관리** | Riverpod | 컴파일 타임 안전성, 비동기 상태(AsyncValue) 기본 지원 |
 | **네비게이션** | go_router | 선언적 라우팅, 딥링크 지원 |
 | **HTTP** | dio | 인터셉터, 캐시, 에러 핸들링 편리 |
-| **백엔드 API** | Python FastAPI | 기본 앱 런타임이 아닌 legacy/reference 및 앱 종료 후 push/Live Activity 운영 예외 |
+| **백엔드 API** | Python FastAPI | API-backed data, snapshot generation, push, Live Activity / Dynamic Island sync의 active runtime component |
 | **크롤링** | requests + BeautifulSoup | SSR 페이지에 충분, 가볍고 빠름 |
 | **DB** | AWS RDS (PostgreSQL) | 운영 backend를 확장할 때의 정형 데이터 후보 |
 | **캐시** | AWS ElastiCache (Redis) | 운영 backend를 확장할 때의 실시간 캐시 후보 |
@@ -314,8 +318,8 @@ KBO source
 |------|------|-----------|
 | **M1: 기획 완료** | 서비스 범위, UX 설계, 화면 구성 | 진행 중 문서로 유지 |
 | **M2: 앱 코어 화면** | 온보딩, 홈, 경기 상세 4탭, 일정, 순위, 기록실, 설정 | 발표 자료 기준 화면 캡쳐 가능 |
-| **M3: 데이터 경로** | direct KBO source, provider routing, snapshot 정책 | no-backend 기본 방향으로 정리됨 |
-| **M4: 알림 + 앱 밖 표면** | push moment, 예매 reminder, widget sync, Live Activity | service 준비, 실제 기기/운영 backend 검증 남음 |
+| **M3: 데이터 경로** | backend-backed mode, direct KBO mode, provider routing, snapshot 정책 | backend 포함 방향으로 정리됨 |
+| **M4: 알림 + 앱 밖 표면** | push moment, 예매 reminder, widget sync, Live Activity | 앱 + backend service 준비, 실제 기기/운영 backend 검증 필요 |
 | **M5: 배포 준비** | TestFlight, Android internal testing, release build 검증 | 외부 계정/서명/APNs 입력값에 의존 |
 
 ---

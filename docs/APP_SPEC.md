@@ -7,10 +7,10 @@
 
 ## 0. 현재 런타임 기준
 
-- 앱의 기본 런타임은 no-backend mode다. iOS, Android, Web, local, dev, release 모두 direct KBO source와 허용된 generated/bundled/device snapshot을 기본 데이터 경로로 사용한다.
-- Backend API 경로는 legacy/reference이며 `USE_BACKEND_API=true` 를 명시한 검증 세션에서만 사용한다. `API_BASE_URL` 단독 지정은 정상 앱 라우팅을 API mode로 바꾸지 않는다.
-- 단, release push / Live Activity token 등록은 운영 backend endpoint가 필요하므로 no-backend direct data build에서도 `API_BASE_URL`을 push registration base URL로 사용할 수 있다.
-- 이 문서의 API 계약 섹션은 backend reference와 향후 재도입 가능성을 위한 계약 기록이며, 현재 앱 완성 기준의 blocker가 아니다.
+- 앱은 backend-backed mode와 direct KBO mode를 명시적으로 구분한다.
+- Backend API는 API-backed data, snapshot generation, push notification, Live Activity / Dynamic Island sync의 active runtime contract다.
+- Flutter 화면 provider를 backend-backed로 검증할 때는 `USE_BACKEND_API=true` 를 명시한다. `API_BASE_URL` 단독 지정은 push / Live Activity token registration endpoint 설정에는 쓰일 수 있지만, 화면 provider routing을 자동으로 API mode로 바꾸지 않는다.
+- Direct KBO mode는 local/offline/web preview, upstream parser 검증, backend 장애 시 영향 분리용 지원 경로로 유지한다. backend-backed 기능을 판단할 때 no-backend direct mode를 product-wide 기본 전제로 삼지 않는다.
 
 ---
 
@@ -205,7 +205,7 @@
 | KBO 브리프 | `오늘의 KBO 관전 포인트`, `지금 KBO`, `어제의 KBO 브리프`처럼 날짜/경기 상태별 리그 전체 핵심 이슈 3~5개 노출 |
 | 오늘의 야구 | 경기 수, LIVE 수, 종료 수를 한 줄 요약 카드로 표시 |
 | 빠른 콘텐츠 | 리그 리더/오늘의 플레이어/마이팀 순위 등 2~3개 카드형 콘텐츠. 선수 카드 탭 시 최근 기록 요약 바텀시트 후 상세 진입 가능 |
-| 마이팀 경기 카드 | 상단 고정, 확대 카드. 이닝별 스코어(R/H/E/B) 포함. H/E/B 원천값이 없으면 해당 요약 행은 숨김 |
+| 마이팀 경기 카드 | 상단 고정, 확대 카드. 진행 중 상태 배지는 `LIVE`만 표시. 이닝별 스코어(R/H/E/B) 포함. H/E/B 원천값이 없으면 해당 요약 행은 숨김 |
 | 일반 경기 카드 | 간략 표시: 양팀 로고 + 팀명 + 스코어 + 이닝/상태 |
 | 경기 상태 뱃지 | `경기 전` / `1회초` ~ `12회말` / `경기종료` / `우천취소` |
 
@@ -371,6 +371,7 @@ GET /api/player/{playerId}?season=2026
 - 박스스코어/라인업 선수 카드는 기록실 또는 선수 상세 진입점으로 사용한다.
 - 종료 경기 첫 화면은 스코어 탭 상단에 결과 요약 섹션을 먼저 둔다. 별도 `요약` 탭은 MVP 이후 검토한다.
 - 종료/과거 경기의 박스스코어, 라인업, 문자중계는 완성된 backend snapshot을 우선 사용하고, snapshot이 비었거나 현재/미래 경기일 때만 live 원천 조회로 넘어간다.
+- 이미 표시 중인 경기 상세에서 앱 복귀/주기 refresh가 실패하면 전체 화면 오류로 전환하지 않고 마지막 정상 경기 상세를 유지한다. 처음부터 단건 경기를 불러오지 못한 경우에만 오류/미존재 상태를 표시한다.
 - 후보 기능: 경기/마이팀 선수 기록 인사이트는 `docs/PLAYER_RECORD_INSIGHTS_PLAN_2026-05-20.md`의 검증/구현 기준으로 별도 승인 후 확정한다. 현재 앱/API 계약에는 포함하지 않는다.
 
 ---
@@ -453,6 +454,7 @@ GET /api/player/{playerId}?season=2026
 **인터랙션**:
 - 자동 스크롤 → 새 중계 추가 시 상단에 삽입 + 부드러운 애니메이션
 - 회차 선택 → `전체 / N회초 / N회말` 칩을 눌러 해당 회차 문자중계만 필터링. 원문 이닝 전환 텍스트에 팀 공격 문구나 구분선이 포함되어도 칩 라벨은 `N회초/N회말`만 노출
+- LIVE 경기에서 문자중계 탭이 foreground로 열려 있으면 15초 주기로 경기 상세와 relay 원천을 갱신한다. 다른 상세 탭과 홈 scoreboard는 기존 live 30초 cadence를 유지한다.
 - 경기 종료 시 → "경기가 종료되었습니다" 배너
 - LIVE 경기에서는 relay 원천 실패를 득점 요약이나 과거 snapshot 으로 대체하지 않고 실패/미지원 상태로 노출
 - 종료 경기라도 원문 relay 확보가 가능하면 득점 요약이 아니라 실제 play-by-play와 교체 로그를 우선 표시하고, 실패 시에만 summary fallback 사용
@@ -933,7 +935,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 
 ## 5. Backend API 명세
 
-현재 기본 앱 런타임은 no-backend direct mode다. 이 섹션은 legacy/reference backend 계약으로 유지하며, 앱 기본 동작은 이 API의 배포 여부에 의존하지 않는다.
+이 섹션은 active FastAPI backend 계약이다. 화면 데이터를 backend-backed로 검증할 때는 앱에 `USE_BACKEND_API=true` 와 적절한 `API_BASE_URL` 을 함께 주입하고, push / Live Activity token registration 및 scheduler sync는 운영 backend endpoint와 별도로 readiness를 확인한다.
 
 ### Base URL
 ```
@@ -991,7 +993,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - backend current data routes 는 공용 runtime service singleton 을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache 를 재사용한다.
 - LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다.
 - 앱은 scoreboard payload의 팀 합계 H/E/B가 `null`이면 미수집 값으로 처리하고, 이를 `0` 기록처럼 렌더링하지 않는다.
-- no-backend direct 앱 라인업은 박스스코어 파생보다 KBO `GetLineUpAnalysis`를 우선 사용해 경기 전/진행 중 공개 라인업과 원천 제공 지표를 표시한다. `LINEUP_CK=false`이거나 응답이 비어 있으면 라인업 미공개 상태로 둔다.
+- direct KBO mode 앱 라인업은 박스스코어 파생보다 KBO `GetLineUpAnalysis`를 우선 사용해 경기 전/진행 중 공개 라인업과 원천 제공 지표를 표시한다. `LINEUP_CK=false`이거나 응답이 비어 있으면 라인업 미공개 상태로 둔다.
 - 앱 전역 Provider retry 는 비활성화한다. 화면은 API 실패를 자동 retry 뒤에 숨기지 않고 오류 카드, 빈 상태, 또는 Dev Console 로그로 명시한다.
 - `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록/팀 선수/팀 스탯/선수 상세는 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.

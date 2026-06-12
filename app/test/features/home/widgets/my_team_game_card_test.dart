@@ -119,6 +119,37 @@ void main() {
     expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
     expect(find.text('따라가기'), findsNothing);
   });
+
+  testWidgets('uses concise LIVE badge for live games', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Scaffold(
+          body: MyTeamGameCard(
+            game: _game(
+              away: const TeamScore(
+                teamId: 'XX',
+                teamName: '원정',
+                shortName: '원정',
+                score: 2,
+                innings: [],
+              ),
+              home: const TeamScore(
+                teamId: 'YY',
+                teamName: '홈',
+                shortName: '홈',
+                score: 1,
+                innings: [],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('LIVE'), findsOneWidget);
+    expect(find.text('LIVE 경기중'), findsNothing);
+  });
 }
 
 Game _game({required TeamScore away, required TeamScore home}) {

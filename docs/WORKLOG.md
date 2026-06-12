@@ -2,6 +2,91 @@
 
 ---
 
+## 2026-06-12: 0.0.34 릴리즈/TestFlight 준비
+
+### 완료
+- [x] 현재 diff가 경기 상세 복귀 실패 보정, 문자중계 foreground 15초 refresh, 문자중계 선수 이미지 보강, 홈 마이팀 `LIVE` 배지 축약, 라인업/문자중계 route polish를 포함하는 tester-facing 앱 동작 변경임을 확인
+- [x] 다음 숫자 릴리즈를 `0.0.34+34`로 결정
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.34` 기준으로 동기화
+- [x] release/TestFlight 빌드는 direct data mode를 유지하되 push / Live Activity token registration용 `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`를 주입하는 기존 0.0.33 정책을 승계하기로 확인
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `cd app && fvm flutter test --no-pub`
+- [x] `git diff --check`
+- [x] `0.0.34 (34)` TestFlight upload 성공 확인
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" fvm flutter build ipa --release --export-method app-store --build-name=0.0.34 --build-number=34 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+- [x] archive 기준 `CFBundleShortVersionString=0.0.34`, `CFBundleVersion=34`, embedded smoke backend `API_BASE_URL`, embedded `0.0.34+34` patch note 확인
+- [x] export 중 `objective_c.framework` dSYM 누락 warning이 있었으나 `Upload succeeded` / `EXPORT SUCCEEDED`로 완료됨
+
+---
+
+## 2026-06-12: 기말과제 발표 PPTX 서비스 개요/스토리 보강
+
+### 완료
+- [x] 기존 `kbo-fans-8min-feature-screenshots-presentation.pptx`가 실제 화면 캡쳐는 충분하지만 기능 설명 중심으로 반복되는 문제 확인
+- [x] 대학 기말과제 발표용으로 서비스 개요, 문제/기회, 마이팀 기반 제품 구조, 화면 증거, 데이터 정책, 구현 현황, 다음 단계 흐름의 12장 deck으로 재구성
+- [x] 기존 PPTX의 앱 스크린샷 자산을 재사용하되 새 파일 `outputs/manual-20260612-kbo-presentation-refresh/presentations/kbo-fans-final-project-refresh/output/kbo-fans-final-project-presentation.pptx`로 생성
+- [x] 현재 diff의 backend active runtime 스펙을 반영해 데이터 처리 장의 `no-backend 기본` 표현을 `backend-backed / direct mode 분리` 표현으로 수정
+- [x] `docs/presentations/kbo_fans_8min_presentation.md`의 최신 PPTX 경로와 발표 구성 표를 보강본 기준으로 갱신
+
+### 검증
+- [x] artifact-tool export 성공: `kbo-fans-final-project-presentation.pptx`
+- [x] 최종 PPTX slide count 12 확인
+- [x] PNG preview 12장과 layout JSON 12장 생성 확인
+- [x] contact sheet 및 full-size preview로 2번, 5번, 11번 슬라이드 레이아웃 결함 수정 확인
+- [x] 최신 backend active runtime 스펙 반영 후 10번, 11번 슬라이드 full-size preview 재확인
+
+---
+
+## 2026-06-12: 문자중계 foreground refresh 15초 조정
+
+### 완료
+- [x] 기존 경기 상세 live refresh가 탭 구분 없이 30초 cadence로 동작하는 경로 확인
+- [x] live 경기의 문자중계 탭이 foreground일 때만 15초 cadence를 쓰도록 refresh interval 정책을 분리
+- [x] 스코어/박스스코어/라인업 탭과 홈 scoreboard는 기존 live 30초 cadence를 유지
+- [x] 탭 전환 시 refresh timer가 새 cadence를 반영하도록 `TabController` listener를 연결
+- [x] `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `CHANGELOG.md`에 사용자 체감/구현 기준 반영
+
+### 검증
+- [x] `fvm dart format lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart`
+- [x] `fvm flutter test test/features/game_detail/game_detail_navigation_test.dart --no-pub`
+- [x] `fvm flutter analyze lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart --no-pub`
+
+---
+
+## 2026-06-12: 홈 마이팀 LIVE 배지 문구 축약
+
+### 완료
+- [x] 홈 마이팀 경기 카드에서 진행 중 상태 pill이 `LIVE 경기중`을 직접 렌더링하는 경로 확인
+- [x] 상단 live 배지는 `LIVE`만 표시하도록 축약하고, 중앙 보조 문구/공용 상태 라벨은 기존 정책 유지
+- [x] `LIVE 경기중`이 재노출되지 않도록 마이팀 경기 카드 회귀 테스트 추가
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 홈 마이팀 카드 live 배지 표기 정책 반영
+
+### 검증
+- [x] `fvm dart format lib/features/home/widgets/my_team_game_card.dart test/features/home/widgets/my_team_game_card_test.dart`
+- [x] `fvm flutter test test/features/home/widgets/my_team_game_card_test.dart --no-pub`
+- [x] `fvm flutter analyze lib/features/home/widgets/my_team_game_card.dart test/features/home/widgets/my_team_game_card_test.dart --no-pub`
+- [x] `git diff --check -- app/lib/features/home/widgets/my_team_game_card.dart app/test/features/home/widgets/my_team_game_card_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-12: backend-first 작업 원칙 문서 동기화
+
+### 완료
+- [x] 기존 문서가 `backend/`를 legacy/reference 또는 no-backend 예외로 설명하던 경로를 점검
+- [x] `AGENTS.md`, `CLAUDE.md`, `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `docs/PLANNING.md`, `README.md`, `.claude/SKILL_REFERENCE.md`, `.claude/skills/kbo-runtime-data/SKILL.md`, `.claude/skills/kbo-release-flow/SKILL.md`를 backend active runtime 기준으로 동기화
+- [x] 앞으로 data routing, push, Live Activity, snapshot, release routing, API contract 작업은 `app/`과 `backend/`를 함께 확인하도록 작업 원칙 변경
+- [x] `API_BASE_URL`은 endpoint 설정, `USE_BACKEND_API=true`는 Flutter 화면 provider의 backend-backed routing 스위치라는 경계를 문서화
+- [x] direct KBO mode는 product-wide 기본 방침이 아니라 local/offline/web preview와 resilience 검증용 지원 경로로 재정의
+
+### 검증
+- [x] `kbo-doc-sync` 기준으로 AGENTS/CLAUDE/spec/worklog/skill 동기화 범위 확인
+- [x] 기존 dirty worktree의 app test 파일과 manual output 디렉터리는 건드리지 않음
+
+---
+
 ## 2026-06-12: 문자중계 회차 버튼 원문 배너 노출 보정
 
 ### 완료
@@ -2958,3 +3043,23 @@ kbo_fans/
 - 검증: `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart --no-pub`
 - 검증: `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub`
 - 검증: `/Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub`
+
+## 2026-06-12 경기 상세 복귀 refresh 실패 보정
+
+- 장시간 화면 꺼짐/백그라운드 뒤 앱이 `resumed` 되면 경기 상세가 `gameProvider(gameId)`를 invalidate 하고 최신 경기 정보를 다시 읽는 경로를 확인함.
+- 원인: 이미 상세를 보고 있던 상태에서도 refresh 요청이 실패하면 `GameDetailScreen`이 이전 정상 `Game` 스냅샷을 버리고 전체 화면 오류(`최신 경기 정보를 불러올 수 없습니다`)로 전환할 수 있었음.
+- 수정: `GameDetailScreen`을 `ConsumerStatefulWidget`으로 전환해 마지막 정상 `Game`을 보관하고, 초기 진입 실패와 refresh 실패를 분리함. 이미 보던 상세의 refresh 실패는 기존 상세를 유지하고, 처음부터 데이터가 없는 경우에만 오류/미존재 상태를 표시함.
+- 회귀 테스트: `test/features/game_detail/game_detail_navigation_test.dart`에 첫 로드는 성공하고 `AppLifecycleState.resumed` 후 `getGame`이 실패하는 케이스를 추가함.
+- 문서: `docs/APP_SPEC.md`의 경기 상세 상태 원칙과 `CHANGELOG.md`의 Unreleased Fixed 항목을 동기화함.
+- 검증: `fvm flutter test test/features/game_detail/game_detail_navigation_test.dart`
+- 검증: `fvm flutter analyze --no-fatal-infos`
+- 검증: `fvm flutter test`
+
+## 2026-06-12 문자중계 선수 프로필 이미지 보정
+
+- 증상: 경기 상세 문자중계 탭의 현재 타석/주요 장면 선수 카드가 선수 프로필 이미지를 표시하지 못하고 이니셜 fallback으로 보일 수 있었음.
+- 원인: `RelayTab`의 이미지 맵이 `PlayerProfile.imageUrl`이 이미 있는 선수만 수집했고, `PlayerProfile.id`로 만들 수 있는 KBO person 이미지 URL과 `CurrentAtBat`의 `batterImageUrl`/`pitcherImageUrl`을 주요 장면 카드용 이미지 맵에 병합하지 않았음.
+- 수정: 문자중계 탭의 선수 이미지 맵 생성부에서 팀 선수 `id` 기반 KBO 이미지 URL을 보강하고, relay data가 도착한 뒤 현재 타석 이미지 URL도 같은 맵에 병합하도록 변경함.
+- 회귀 테스트: `test/features/game_detail/relay_tab_test.dart`에 현재 타석 카드의 `PlayerProfile.id` 기반 이미지 보강과 주요 장면 카드의 `CurrentAtBat` 이미지 재사용 케이스를 추가함.
+- 검증: `cd app && fvm flutter test test/features/game_detail/relay_tab_test.dart`
+- 검증: `cd app && fvm flutter analyze lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart`

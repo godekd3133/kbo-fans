@@ -1,6 +1,6 @@
 # KBO Fans Skill Reference
 
-> 최종 수정: 2026-05-20
+> 최종 수정: 2026-06-12
 
 ## Data / Runtime
 
@@ -8,7 +8,7 @@
 - `kbo-history-snapshot`
   - 히스토리 데이터 snapshot 우선 조회, cache 계층 분리, 앱 cached-first 로딩 작업
 - `kbo-runtime-data`
-  - 앱 데이터 로딩 경로, API vs 임시 direct-primary, 성능/캐시 정책 조정
+  - 앱 데이터 로딩 경로, backend-backed vs direct KBO mode, 성능/캐시 정책 조정
 - `kbo-asmx-direct-integration`
   - 앱 direct KBO ASMX 호출 파라미터, plain text decode, `GetScheduleList` 파싱
 - `bootstrap-fallback-data`
@@ -28,7 +28,7 @@
 - `app-startup-runtime-triage`
   - startup white screen / noisy logs / plugin bootstrap
 - `kbo-asmx-direct-integration`
-  - native local direct KBO path only
+  - native local/offline direct KBO path only
 - `bootstrap-fallback-data`
   - 앱 번들 fallback snapshot 생성
 - `kbo-history-snapshot`

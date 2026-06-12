@@ -1,6 +1,6 @@
 ---
 name: kbo-runtime-data
-description: Use when changing KBO data-loading paths, no-backend direct crawler usage, legacy backend API opt-in, cache/snapshot behavior, or validating scoreboard/records/standings runtime flows in this repository.
+description: Use when changing KBO data-loading paths, backend-backed API usage, direct KBO crawler usage, cache/snapshot behavior, or validating scoreboard/records/standings runtime flows in this repository.
 ---
 
 # KBO Runtime Data
@@ -12,9 +12,10 @@ description: Use when changing KBO data-loading paths, no-backend direct crawler
 - Runtime performance or first-paint regressions
 
 ## Rules
-- Web, native, local, dev, and release builds default to no-backend direct KBO source loading plus allowed snapshots.
-- Backend API routing is legacy/optional and must be explicitly enabled with `USE_BACKEND_API=true`. `API_BASE_URL` alone must not make API the normal app path.
-- Direct KBO crawling is the primary default path, not a hidden fallback after API failure.
+- Backend is an active runtime component for API-backed data, snapshot generation, push notifications, and Live Activity / Dynamic Island sync.
+- Flutter provider routing is explicit. Use `USE_BACKEND_API=true` when validating backend-backed screen data. `API_BASE_URL` alone configures endpoints, especially push / Live Activity token registration, but must not silently switch provider routing.
+- Direct KBO crawling remains a supported local/offline/resilience path and parser parity reference, not a hidden fallback after API failure.
+- When a task touches live data delivery, snapshots, release routing, API contracts, push, or Live Activity, inspect both `app/` and `backend/` before deciding scope.
 - Slow detail-only payloads such as multi-highlight lookup should be lazy-loaded on a separate endpoint.
 - Historical standings, records, and completed-game data should prefer snapshots when available.
 - Explicit API-backed app mode should not mask current-season standings / records overview / leaderboard API failures with app-bundled bootstrap data or backend current snapshots.
@@ -36,7 +37,7 @@ description: Use when changing KBO data-loading paths, no-backend direct crawler
 - App UI must treat null H/E/B team totals as unavailable, not as 0 records.
 - App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.
-- Home should prefer lightweight direct payloads for first paint. Do not render separate current-day local cache before the current scoreboard source resolves.
+- Home should prefer the configured lightweight current source for first paint. Do not render separate current-day local cache before the current scoreboard source resolves.
 - Never block `runApp()` on non-critical platform plugin initialization.
 
 ## Validation

@@ -94,7 +94,7 @@ class MyTeamGameCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         isLive
-                            ? 'LIVE 경기중'
+                            ? 'LIVE'
                             : labelForGameStatus(
                                 game.status,
                                 statusLabel: game.statusLabel,

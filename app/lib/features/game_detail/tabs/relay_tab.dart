@@ -8,6 +8,7 @@ import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
+import '../../../data/models/records_overview.dart';
 import '../../../data/models/relay.dart';
 import '../../../data/providers.dart';
 
@@ -53,21 +54,12 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     final homePlayers = widget.game.home.teamId.isEmpty
         ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
         : ref.watch(teamPlayersProvider('${widget.game.home.teamId}|$season'));
-    final imageMap = {
-      for (final player in [
-        ...awayPlayers.asData?.value ?? const <PlayerProfile>[],
-        ...homePlayers.asData?.value ?? const <PlayerProfile>[],
-      ])
-        if (player.name.isNotEmpty &&
-            player.imageUrl != null &&
-            player.imageUrl!.isNotEmpty)
-          player.name: player.imageUrl!,
-    };
+    final teamPlayers = [
+      ...awayPlayers.asData?.value ?? const <PlayerProfile>[],
+      ...homePlayers.asData?.value ?? const <PlayerProfile>[],
+    ];
     final playersByName = {
-      for (final player in [
-        ...awayPlayers.asData?.value ?? const <PlayerProfile>[],
-        ...homePlayers.asData?.value ?? const <PlayerProfile>[],
-      ])
+      for (final player in teamPlayers)
         if (player.name.isNotEmpty) player.name: player,
     };
     final lineupData = ref
@@ -86,6 +78,11 @@ class _RelayTabState extends ConsumerState<RelayTab> {
           if (relayData.relayItems.isEmpty && relayData.currentAtBat == null) {
             return _buildFallbackContent(latestGame);
           }
+          final imageMap = _buildRelayPlayerImageMap(
+            teamPlayers: teamPlayers,
+            season: season,
+            currentAtBat: relayData.currentAtBat,
+          );
           return _buildContent(
             latestGame,
             relayData.relayItems,
@@ -465,6 +462,43 @@ String _normalizeRelayPlayerName(String value) {
       .replaceAll(RegExp(r'\s+'), '')
       .replaceAll(RegExp(r'[·ㆍ.]'), '')
       .trim();
+}
+
+Map<String, String> _buildRelayPlayerImageMap({
+  required Iterable<PlayerProfile> teamPlayers,
+  required int season,
+  required CurrentAtBat? currentAtBat,
+}) {
+  final imageMap = <String, String>{};
+  for (final player in teamPlayers) {
+    final imageUrl = _playerImageUrlFromProfile(player, season);
+    if (player.name.isNotEmpty && imageUrl != null && imageUrl.isNotEmpty) {
+      imageMap[player.name] = imageUrl;
+    }
+  }
+
+  if (currentAtBat != null) {
+    if (currentAtBat.batterName.isNotEmpty &&
+        currentAtBat.batterImageUrl.isNotEmpty) {
+      imageMap[currentAtBat.batterName] = currentAtBat.batterImageUrl;
+    }
+    if (currentAtBat.pitcherName.isNotEmpty &&
+        currentAtBat.pitcherImageUrl.isNotEmpty) {
+      imageMap[currentAtBat.pitcherName] = currentAtBat.pitcherImageUrl;
+    }
+  }
+  return imageMap;
+}
+
+String? _playerImageUrlFromProfile(PlayerProfile player, int season) {
+  if (player.imageUrl != null && player.imageUrl!.isNotEmpty) {
+    return player.imageUrl;
+  }
+  final playerId = player.id.trim();
+  if (playerId.isEmpty) {
+    return null;
+  }
+  return kboPlayerImageUrl(season: season, playerId: playerId);
 }
 
 class _RelayGameSummary extends StatelessWidget {

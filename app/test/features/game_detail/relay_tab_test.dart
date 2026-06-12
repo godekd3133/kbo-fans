@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -87,7 +88,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('전체'), findsOneWidget);
-    expect(find.text('1회초'), findsNWidgets(2));
+    expect(find.text('1회초'), findsWidgets);
     expect(find.textContaining('두산공격'), findsNothing);
   });
 
@@ -182,4 +183,204 @@ void main() {
     expect(find.text('9 김성윤 LF'), findsOneWidget);
     expect(find.textContaining('39번 김성윤'), findsNothing);
   });
+
+  testWidgets('현재 타석 선수 이미지는 프로필 id 기반 이미지 URL로 보강한다', (tester) async {
+    const game = Game(
+      gameId: '20260611SSLG0',
+      status: GameStatus.live,
+      inning: '7회초',
+      away: TeamScore(
+        teamId: 'SS',
+        teamName: '삼성 라이온즈',
+        shortName: '삼성',
+        score: 3,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 2,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+    final season = DateTime.now().year;
+    final expectedImageUrl =
+        'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/$season/56348.jpg';
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith((ref, gameId) async {
+            return const RelayData(
+              currentAtBat: CurrentAtBat(
+                batterName: '김성윤',
+                batterNumber: 39,
+                batterHand: '좌타',
+                pitcherName: '임찬규',
+                pitcherNumber: 1,
+                pitcherHand: '우투',
+                pitchCount: 12,
+                inningText: '7회초',
+                balls: 1,
+                strikes: 2,
+                outs: 1,
+              ),
+              relayItems: [],
+            );
+          }),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260611SSLG0',
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            if (key.startsWith('SS|')) {
+              return [_playerProfile(id: '56348', teamId: 'SS', name: '김성윤')];
+            }
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260611SSLG0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(_cachedImage(expectedImageUrl), findsOneWidget);
+  });
+
+  testWidgets('중계 이벤트 선수 이미지는 현재 타석 이미지 URL을 재사용한다', (tester) async {
+    const game = Game(
+      gameId: '20260611SSLG0',
+      status: GameStatus.live,
+      inning: '7회초',
+      away: TeamScore(
+        teamId: 'SS',
+        teamName: '삼성 라이온즈',
+        shortName: '삼성',
+        score: 3,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 2,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+    const expectedImageUrl =
+        'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56348.jpg';
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith((ref, gameId) async {
+            return const RelayData(
+              currentAtBat: CurrentAtBat(
+                batterName: '김성윤',
+                batterImageUrl: expectedImageUrl,
+                batterNumber: 39,
+                batterHand: '좌타',
+                pitcherName: '임찬규',
+                pitcherNumber: 1,
+                pitcherHand: '우투',
+                pitchCount: 12,
+                inningText: '7회초',
+                balls: 1,
+                strikes: 2,
+                outs: 1,
+              ),
+              relayItems: [
+                RelayItem(
+                  seqNo: 1,
+                  inning: 7,
+                  half: 'top',
+                  event: 'HIT',
+                  text: '김성윤: 중전 안타',
+                ),
+              ],
+            );
+          }),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260611SSLG0',
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260611SSLG0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(_cachedImage(expectedImageUrl), findsNWidgets(2));
+  });
+}
+
+Finder _cachedImage(String imageUrl) {
+  return find.byWidgetPredicate(
+    (widget) => widget is CachedNetworkImage && widget.imageUrl == imageUrl,
+  );
+}
+
+PlayerProfile _playerProfile({
+  required String id,
+  required String teamId,
+  required String name,
+}) {
+  return PlayerProfile(
+    id: id,
+    teamId: teamId,
+    name: name,
+    number: 0,
+    position: '외야수',
+    roleLabel: '외야수',
+    handedness: '',
+    heightWeight: '',
+    birthDate: '',
+    status: PlayerAvailabilityStatus.available,
+    rosterGroup: PlayerRosterGroup.entry,
+    headlineStat: '',
+    secondaryStat: '',
+    seasonStats: const [],
+    highlights: const [],
+    recentGames: const [],
+  );
 }

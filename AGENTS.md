@@ -2,8 +2,8 @@
 
 ## Project Summary
 - KBO Fans is a mobile app for KBO baseball fans on iOS and Android.
-- The current agreed stack is Flutter + Dart for the app. Python FastAPI backend code remains in the repository as legacy/reference tooling, not the default runtime dependency.
-- Main data comes from KBO official sources through app-side direct loading, with generated/bundled/device snapshots used only where the data policy allows it.
+- The current agreed stack is Flutter + Dart for the app plus a Python FastAPI backend. Treat the backend as an active runtime component for API-backed data, snapshot generation, push notifications, and Live Activity / Dynamic Island sync.
+- Main KBO data comes from official sources through the configured runtime path. Backend-backed work should inspect FastAPI services, scheduler, snapshots, and API contracts; app-side direct loading remains a supported local/offline/resilience path, not the only default assumption.
 
 ## Source Of Truth
 - Start with this file for repository-level working rules.
@@ -36,17 +36,18 @@
 - When work becomes repeatable, prefer documenting it under `.claude/skills/` and keep AGENTS/CLAUDE aligned with the new skill entrypoints.
 - Keep feature or task context as Markdown documents under `docs/` when the work is large enough to need durable context.
 - Use Korean commit messages.
-- Keep implementation aligned with Flutter, Riverpod, go_router, dio, and FCM unless the user explicitly changes direction. Use FastAPI/AWS paths only for explicit backend/reference work.
-- App-closed push and iOS Live Activity / Dynamic Island updates are the explicit backend/AWS exception: they require a running FastAPI backend plus FCM/APNs server push.
+- Keep implementation aligned with Flutter, Riverpod, go_router, dio, FCM, and the FastAPI backend unless the user explicitly changes direction. For data routing, push, Live Activity, release, snapshot, or API contract work, include backend impact by default.
+- App-closed push and iOS Live Activity / Dynamic Island updates are backend/AWS-owned surfaces: they require a running FastAPI backend plus FCM/APNs server push.
 - When changing UX flows, screen states, or navigation, update both the relevant spec doc and the work log in the same task when feasible.
 - Treat design artifacts as first-class project context, not secondary references.
 - Codex app action commands created in the repo still require manual registration in the app UI; do not assume scripts auto-populate the action menu.
 
 ## Runtime Notes
-- Web, native, local, dev, and release builds default to no-backend runtime: direct KBO source loading plus generated/bundled/device snapshots.
-- Backend API routing is legacy/optional and must be explicitly enabled with `USE_BACKEND_API=true`. `API_BASE_URL` alone must not make API the normal app path.
+- Backend is now a first-class runtime surface. When a task touches live data delivery, push, Live Activity, snapshots, release routing, or API contracts, inspect both `app/` and `backend/` before deciding scope.
+- Flutter provider routing is still explicit: use `USE_BACKEND_API=true` when validating API-backed screen data. `API_BASE_URL` alone supplies endpoint configuration, especially for push / Live Activity token registration, but must not silently change provider routing.
+- Direct KBO mode remains supported for local/offline/web preview and resilience checks. Do not assume it is the product-wide policy when backend-backed behavior is the task.
 - App-closed push and Live Activity updates still require operating backend infrastructure. For AWS ECS/Fargate demo deployment, use `infra/aws/ecs-fargate/` API service + sync worker templates.
-- Release no-backend direct builds should still inject the production `API_BASE_URL` for push / Live Activity token registration. This does not switch provider routing unless `USE_BACKEND_API=true` is also set.
+- Release builds that use direct data mode should still inject the production `API_BASE_URL` for push / Live Activity token registration. For release validation of backend-backed screen data, pass `USE_BACKEND_API=true` deliberately and verify backend health separately.
 - AWS ECS/Fargate push secrets should be injected through Secrets Manager as `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, and `PUSH_SYNC_SECRET`. Local/EC2 file deployments may use `FIREBASE_SERVICE_ACCOUNT_PATH` and `APNS_AUTH_KEY_PATH`.
 - Before demo deployment, run `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws` to check app Firebase files, APNs/Live Activity capability, release `API_BASE_URL` token-registration handoff, backend secret env, and AWS env shape without printing secrets.
 - Use `infra/aws/ecs-fargate/deploy.env.example` as the single local checklist for push preflight, local AWS deploy, and GitHub Actions secret/variable upload. Copy it to an untracked env file and replace every placeholder before `--apply`; its comments document where each value comes from and where it is uploaded.
@@ -64,7 +65,7 @@
 - Use `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` before `--apply` when preparing GitHub Actions push deploy secrets; it must not print secret values.
 - Dispatch GitHub Actions push deploy with `./scripts/github-push-demo-run.sh --dry-run true --watch` after the workflow file is committed and pushed. The script checks required GitHub secrets/variables before dispatch; use `--skip-config-check` only after a separate config check.
 - Live Activity scoreboard sync dates must use KBO game day in `Asia/Seoul`, not the AWS host's UTC date.
-- Home first paint should prefer the direct scoreboard path and avoid rendering a separate current-day local cache before the current scoreboard source resolves.
+- Home first paint should prefer the configured current scoreboard source and avoid rendering a separate current-day local cache before that source resolves.
 - Historical standings, records, and finished-game detail should prefer stored snapshots when available over re-crawling upstream pages.
 - Team records UX should enter through team selection first, then fetch team-specific records after selection.
 - If `origin` SSH access fails during push, use the repository SSH alias path `git@github-personal:godekd3133/kbo-fans.git`.
@@ -81,10 +82,11 @@
 
 ## Implementation Insights
 - Keep app data sources consistent by domain. Do not let one screen use mock data while another uses live API for the same product surface.
-- For mobile debug builds on real devices, do not assume a backend API is available. If explicitly testing backend mode, `localhost` API assumptions are unsafe; inject a LAN-reachable `API_BASE_URL` together with `USE_BACKEND_API=true`.
+- For mobile debug builds on real devices, do not assume `localhost` reaches the backend. Use direct mode for local app-only checks, or inject a LAN-reachable `API_BASE_URL` together with `USE_BACKEND_API=true` for backend-backed validation.
 - Current fallback policy:
-  - Direct KBO is the default primary source, not a hidden fallback after API failure.
-  - Backend API is an explicit opt-in path only. Keep provider, widget, script, and CI routing no-backend by default.
+  - Backend API and app-side direct KBO are explicit runtime modes. Do not mix sources silently within one product surface.
+  - Backend-backed work is active product scope. Check FastAPI routes, services, scheduler, snapshot policy, and deployment inputs when the feature depends on server behavior.
+  - Direct KBO remains the local/offline/resilience path and parser parity reference, not a hidden fallback after API failure.
   - Records must stay direct-source-backed or generated snapshot-backed. Do not silently fall back to incomplete mock data there.
   - In explicit API-backed mode, current-season standings / records overview / leaderboard failures must surface as API failures instead of being masked by app-bundled bootstrap data or backend current snapshots.
   - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings and records overview require a fresh `generatedAt`, and unverified historical seasons must stay empty instead of repeating another season.
@@ -109,7 +111,7 @@
   - standings
   - records overview / leaderboards
   - not full team player detail payloads
-- Current backend direction is broader than early app-only fallback notes:
+- Current backend direction is broader than early app-only fallback notes and should be treated as active product scope:
   - historical standings, past games, player detail, team players, and team stats may use stored backend snapshots
   - live relay / live scoreboard should remain live-first
 - When adding fallback data, prefer generated assets over handwritten literals and keep the generation path under `scripts/`.

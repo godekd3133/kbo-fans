@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,6 +34,28 @@ const _kboImageHeaders = {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
 };
 
+const gameDetailLiveRelayRefreshInterval = Duration(seconds: 15);
+const gameDetailLiveDefaultRefreshInterval = Duration(seconds: 30);
+const gameDetailScheduledRefreshInterval = Duration(minutes: 5);
+const _relayTabIndex = 1;
+
+@visibleForTesting
+Duration? gameDetailRefreshIntervalFor(
+  GameStatus status, {
+  required int selectedTabIndex,
+}) {
+  return switch (status) {
+    GameStatus.live =>
+      selectedTabIndex == _relayTabIndex
+          ? gameDetailLiveRelayRefreshInterval
+          : gameDetailLiveDefaultRefreshInterval,
+    GameStatus.scheduled => gameDetailScheduledRefreshInterval,
+    GameStatus.final_ => null,
+    GameStatus.cancelled => null,
+    GameStatus.suspended => null,
+  };
+}
+
 const _stadiumFullNameMap = {
   '잠실': '서울종합운동장 야구장',
   '문학': '인천 SSG랜더스필드',
@@ -50,7 +72,7 @@ String _displayStadiumName(String stadium) {
   return _stadiumFullNameMap[stadium] ?? stadium;
 }
 
-class GameDetailScreen extends ConsumerWidget {
+class GameDetailScreen extends ConsumerStatefulWidget {
   final String gameId;
   final Game? game;
   final String? initialTab;
@@ -65,20 +87,45 @@ class GameDetailScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final gameAsync = ref.watch(gameProvider(gameId));
+  ConsumerState<GameDetailScreen> createState() => _GameDetailScreenState();
+}
+
+class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
+  Game? _lastResolvedGame;
+
+  @override
+  void initState() {
+    super.initState();
+    _lastResolvedGame = widget.game;
+  }
+
+  @override
+  void didUpdateWidget(covariant GameDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.gameId != widget.gameId) {
+      _lastResolvedGame = widget.game;
+      return;
+    }
+    _lastResolvedGame ??= widget.game;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gameAsync = ref.watch(gameProvider(widget.gameId));
+    final fallbackGame =
+        gameAsync.asData?.value ?? _lastResolvedGame ?? widget.game;
 
     return AppMotionSwitcher(
       child: gameAsync.when(
         loading: () {
-          if (game != null) {
+          if (fallbackGame != null) {
             return KeyedSubtree(
-              key: ValueKey('game-detail-preview-$gameId'),
+              key: ValueKey('game-detail-preview-${widget.gameId}'),
               child: _GameDetailBody(
-                game: game!,
-                gameId: gameId,
-                initialTabIndex: _tabIndexFromName(initialTab),
-                focusInitialRelay: focusRelay,
+                game: fallbackGame,
+                gameId: widget.gameId,
+                initialTabIndex: _tabIndexFromName(widget.initialTab),
+                focusInitialRelay: widget.focusRelay,
               ),
             );
           }
@@ -94,21 +141,27 @@ class GameDetailScreen extends ConsumerWidget {
           );
         },
         error: (_, _) => KeyedSubtree(
-          key: ValueKey('game-detail-error-$gameId'),
-          child: Scaffold(
-            appBar: AppBar(title: const Text('경기 상세')),
-            body: Center(
-              child: Text(
-                game != null ? '최신 경기 정보를 불러올 수 없습니다' : '경기를 불러올 수 없습니다',
-              ),
-            ),
-          ),
+          key: ValueKey('game-detail-error-${widget.gameId}'),
+          child: fallbackGame != null
+              ? _GameDetailBody(
+                  game: fallbackGame,
+                  gameId: widget.gameId,
+                  initialTabIndex: _tabIndexFromName(widget.initialTab),
+                  focusInitialRelay: widget.focusRelay,
+                )
+              : Scaffold(
+                  appBar: AppBar(title: const Text('경기 상세')),
+                  body: const Center(child: Text('경기를 불러올 수 없습니다')),
+                ),
         ),
         data: (loadedGame) {
-          final resolvedGame = loadedGame ?? game;
+          final resolvedGame = loadedGame ?? fallbackGame;
+          if (resolvedGame != null) {
+            _lastResolvedGame = resolvedGame;
+          }
           if (resolvedGame == null) {
             return KeyedSubtree(
-              key: ValueKey('game-detail-missing-$gameId'),
+              key: ValueKey('game-detail-missing-${widget.gameId}'),
               child: Scaffold(
                 appBar: AppBar(title: const Text('경기 상세')),
                 body: const Center(child: Text('경기를 찾을 수 없습니다')),
@@ -117,12 +170,14 @@ class GameDetailScreen extends ConsumerWidget {
           }
 
           return KeyedSubtree(
-            key: ValueKey('game-detail-data-$gameId-${resolvedGame.status}'),
+            key: ValueKey(
+              'game-detail-data-${widget.gameId}-${resolvedGame.status}',
+            ),
             child: _GameDetailBody(
               game: resolvedGame,
-              gameId: gameId,
-              initialTabIndex: _tabIndexFromName(initialTab),
-              focusInitialRelay: focusRelay,
+              gameId: widget.gameId,
+              initialTabIndex: _tabIndexFromName(widget.initialTab),
+              focusInitialRelay: widget.focusRelay,
             ),
           );
         },
@@ -151,6 +206,7 @@ class _GameDetailBody extends ConsumerStatefulWidget {
 class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   Timer? _refreshTimer;
+  Duration? _refreshTimerInterval;
   bool _refreshInFlight = false;
   bool _followStateLoaded = false;
   bool _isFollowingGame = false;
@@ -166,7 +222,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       initialIndex: widget.initialTabIndex.clamp(0, 3),
       vsync: this,
     );
-    if (widget.focusInitialRelay && _tabController.index == 1) {
+    _tabController.addListener(_handleTabChanged);
+    if (widget.focusInitialRelay && _tabController.index == _relayTabIndex) {
       _scheduleRelayFocusScroll();
     }
     unawaited(_loadFollowState());
@@ -201,8 +258,17 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   }
 
   void _startRefreshTimer() {
+    final interval = gameDetailRefreshIntervalFor(
+      widget.game.status,
+      selectedTabIndex: _tabController.index,
+    );
+    if (_refreshTimerInterval == interval &&
+        (_refreshTimer?.isActive ?? false)) {
+      return;
+    }
+
     _refreshTimer?.cancel();
-    final interval = _refreshIntervalFor(widget.game.status);
+    _refreshTimerInterval = interval;
     if (interval == null) {
       return;
     }
@@ -214,14 +280,11 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     });
   }
 
-  Duration? _refreshIntervalFor(GameStatus status) {
-    return switch (status) {
-      GameStatus.live => const Duration(seconds: 30),
-      GameStatus.scheduled => const Duration(minutes: 5),
-      GameStatus.final_ => null,
-      GameStatus.cancelled => null,
-      GameStatus.suspended => null,
-    };
+  void _handleTabChanged() {
+    if (_tabController.indexIsChanging) {
+      return;
+    }
+    _startRefreshTimer();
   }
 
   Future<void> _refreshGameDetail() async {
@@ -334,6 +397,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _outerScrollController.dispose();
+    _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();
     super.dispose();
   }
@@ -612,8 +676,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   }
 
   void _showRelayOnly() {
-    if (_tabController.index != 1) {
-      _tabController.animateTo(1);
+    if (_tabController.index != _relayTabIndex) {
+      _tabController.animateTo(_relayTabIndex);
     }
     _scheduleRelayFocusScroll();
   }
