@@ -20,7 +20,11 @@
 - [x] `.github/workflows/push-demo-deploy.yml` YAML parse 확인
 
 ### 운영 실행
-- [ ] backend image 재배포 후 `resubscribe_topics=true` workflow에서 topic 재등록 결과 확인
+- [x] `./scripts/github-push-demo-run.sh --repo godekd3133/kbo-fans --ref main --dry-run false --tag 0.0.35-topic-resync --resubscribe-topics --watch` (`run 27455080075`)
+- [x] backend image `303099472043.dkr.ecr.us-east-1.amazonaws.com/kbo-fans-backend:0.0.35-topic-resync` 배포 및 `kbo-fans-sync-worker` stack update 성공
+- [x] workflow readiness: `/api/health` 200, `/api/push/config-status` 200, `readyForIphoneOnlyDemo=true`, scheduler heartbeat 정상
+- [x] topic 재등록 endpoint 호출 성공: `registeredDevices=0`, `eligibleDevices=0`, `subscriptionsAttempted=0`, `unsubscriptionsAttempted=0`
+- [x] 현재 운영 registry에 저장된 FCM device registration이 없어 실제 재구독 대상은 없었음. TestFlight 앱을 설치/실행해 `/push/register`가 다시 호출되면 이후 같은 workflow의 `--resubscribe-topics`로 재실행 가능
 
 ---
 
