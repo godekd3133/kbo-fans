@@ -19,6 +19,7 @@ void main() {
     expect(topics, contains('homerun_LG'));
     expect(topics, contains('reversal_LG'));
     expect(topics, contains('game_start_LG'));
+    expect(topics, contains('at_bat_LG'));
     expect(topics, isNot(contains('game_end_LG')));
     expect(topics, isNot(contains('game_start_ALL')));
     expect(topics, isNot(contains('all_games_enabled')));
@@ -35,6 +36,7 @@ void main() {
     expect(topics, contains('homerun_ALL'));
     expect(topics, contains('reversal_ALL'));
     expect(topics, contains('game_start_ALL'));
+    expect(topics, contains('at_bat_ALL'));
     expect(topics, contains('all_games_enabled'));
     expect(topics, isNot(contains('scoring_LG')));
   });
@@ -62,6 +64,15 @@ void main() {
     });
 
     expect(route, '/game/20260612KTLG0?tab=lineup');
+  });
+
+  test('타석 push data는 문자중계 탭 상세 route로 변환한다', () {
+    final route = pushNotificationRouteForData({
+      'type': 'at_bat',
+      'gameId': '20260612KTLG0',
+    });
+
+    expect(route, '/game/20260612KTLG0?tab=relay');
   });
 
   test('잘못된 push route는 앱 내부 route로 사용하지 않는다', () {

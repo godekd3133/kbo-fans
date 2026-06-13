@@ -86,9 +86,10 @@ APNS_AUTH_KEY_FILE=/path/AuthKey_<KEY_ID>.p8 \
 4. `PUSH_REGISTRY_PATH`는 재시작 후에도 남는 저장소를 사용
    - EC2: EBS 경로
    - ECS: EFS 또는 이후 DB/DynamoDB로 대체
-5. Fargate sync worker, EventBridge Scheduler, 또는 cron으로 scoreboard sync를 30~60초마다 실행
+5. Fargate sync worker, EventBridge Scheduler, 또는 cron으로 scoreboard/relay sync를 30~60초마다 실행
    - ActivityKit token이 등록된 경기는 APNs `liveactivity` update/end 발송
-   - FCM device/topic 등록이 있으면 scoreboard diff 기준 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change` topic push 발행
+   - FCM device/topic 등록이 있으면 scoreboard diff 기준 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` topic push 발행
+   - `homerun`은 live relay seq diff 기준으로 새 `HOMERUN` event 또는 `홈런` 텍스트가 들어올 때 topic push 발행
 
 ```bash
 curl -X POST "https://api.kbofans.com/api/push/live-activity/sync-scoreboard" \
@@ -375,7 +376,7 @@ iOS release/TestFlight 앱은 아래가 필요하다.
 - App Group: `group.com.kbofans.kbo_fans`
 - Widget extension 포함 provisioning profile
 
-앱은 사용자가 경기 상세에서 `경기 따라가기`를 누르면 ActivityKit push token을 backend에 등록한다. 이후 앱이 꺼져 있어도 backend가 APNs `liveactivity` push를 보내면 Dynamic Island가 갱신된다. 일반 푸시 설정은 FCM topic subscription으로 동작하며, backend scheduler가 scoreboard diff를 보고 득점/역전/종료 같은 moment push를 발행한다.
+앱은 사용자가 경기 상세에서 `경기 따라가기`를 누르면 ActivityKit push token을 backend에 등록한다. 이후 앱이 꺼져 있어도 backend가 APNs `liveactivity` push를 보내면 Dynamic Island가 갱신된다. 일반 푸시 설정은 FCM topic subscription으로 동작하며, backend scheduler가 scoreboard diff를 보고 득점/역전/종료/타석 같은 moment push를 발행하고 relay diff로 홈런 push를 발행한다.
 
 ## 완료 확인
 
@@ -385,7 +386,7 @@ iOS release/TestFlight 앱은 아래가 필요하다.
 - `GET /api/push/config-status`의 `readyForIphoneOnlyDemo`가 `true`
 - `GET /api/push/config-status`의 `scheduler.lastSyncAt`이 sync worker 주기에 맞춰 갱신
 - `PUSH_SYNC_SECRET=<...> ./scripts/push-readiness-check.sh https://api.kbofans.com/api` 통과
-- `POST /api/push/live-activity/sync-scoreboard`가 등록된 live game에 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff 기반 FCM moment push를 보냄
+- `POST /api/push/live-activity/sync-scoreboard`가 등록된 live game에 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff와 relay diff 기반 FCM moment push를 보냄
 - iPhone 실기기에서 앱을 종료한 뒤에도 Live Activity `updatedAt`이 서버 sync 주기에 맞춰 변경
 - 일반 push는 Firebase Console, `/api/push/test`, 또는 scheduler의 `pushedMoments` 응답으로 수신 확인
 

@@ -139,6 +139,27 @@ class PushRegistry:
             }
             return previous if isinstance(previous, dict) else None
 
+    def relay_state(self, game_id: str) -> Optional[dict[str, Any]]:
+        data = self._load()
+        states = data.get("relayStates", {})
+        state = states.get(game_id)
+        return state if isinstance(state, dict) else None
+
+    def replace_relay_state(
+        self,
+        game_id: str,
+        state: dict[str, Any],
+    ) -> Optional[dict[str, Any]]:
+        with self._mutate_data() as data:
+            states = data.setdefault("relayStates", {})
+            previous = states.get(game_id)
+            states[game_id] = {
+                **state,
+                "gameId": game_id,
+                "updatedAt": _now_iso(),
+            }
+            return previous if isinstance(previous, dict) else None
+
     def record_sync_heartbeat(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self._mutate_data() as data:
             heartbeat = {
@@ -195,6 +216,7 @@ class PushRegistry:
         data.setdefault("devices", {})
         data.setdefault("liveActivities", {})
         data.setdefault("scoreboardStates", {})
+        data.setdefault("relayStates", {})
         data.setdefault("syncHeartbeat", {})
         return data
 
@@ -227,7 +249,13 @@ def _now_iso() -> str:
 
 
 def _empty_registry() -> dict[str, Any]:
-    return {"devices": {}, "liveActivities": {}, "scoreboardStates": {}, "syncHeartbeat": {}}
+    return {
+        "devices": {},
+        "liveActivities": {},
+        "scoreboardStates": {},
+        "relayStates": {},
+        "syncHeartbeat": {},
+    }
 
 
 def _fsync_directory(path: Path) -> None:

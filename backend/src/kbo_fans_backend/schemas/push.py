@@ -15,6 +15,7 @@ class NotificationDeliveryModes(BaseModel):
     gameEnd: Optional[NotificationDelivery] = None
     lineupOpened: Optional[NotificationDelivery] = None
     inningChange: Optional[NotificationDelivery] = None
+    atBat: Optional[NotificationDelivery] = None
 
 
 class NotificationSettings(BaseModel):
@@ -25,6 +26,7 @@ class NotificationSettings(BaseModel):
     gameEnd: bool
     lineupOpened: bool = True
     inningChange: bool = False
+    atBat: bool = True
     allGames: bool
     deliveryModes: Optional[NotificationDeliveryModes] = None
 

@@ -1208,27 +1208,37 @@ class KboDirectRepository implements GameRepository {
     final homePitchers = pitcherPayload.length > 1
         ? _parsePitcherTeamFromTable(pitcherPayload[1] as Map<String, dynamic>)
         : const <PitcherRecord>[];
-
-    final enrichedPitchers = await _enrichLivePitchers(
-      gameId: gameId,
-      awayPitchers: awayPitchers,
-      homePitchers: homePitchers,
+    final parsedAway = TeamBoxscoreData(
+      teamId: gameId.substring(8, 10),
+      batters: awayBatters,
+      pitchers: awayPitchers,
     );
+    final parsedHome = TeamBoxscoreData(
+      teamId: gameId.substring(10, 12),
+      batters: homeBatters,
+      pitchers: homePitchers,
+    );
+    final hasOfficialRows =
+        parsedAway.hasDisplayableRecords || parsedHome.hasDisplayableRecords;
+
+    final enrichedPitchers = hasOfficialRows
+        ? await _enrichLivePitchers(
+            gameId: gameId,
+            awayPitchers: awayPitchers,
+            homePitchers: homePitchers,
+          )
+        : (awayPitchers, homePitchers);
 
     return GameBoxscoreData(
       gameId: gameId,
-      officialAvailable:
-          awayBatters.isNotEmpty ||
-          homeBatters.isNotEmpty ||
-          enrichedPitchers.$1.isNotEmpty ||
-          enrichedPitchers.$2.isNotEmpty,
+      officialAvailable: hasOfficialRows,
       away: TeamBoxscoreData(
-        teamId: gameId.substring(8, 10),
+        teamId: parsedAway.teamId,
         batters: awayBatters,
         pitchers: enrichedPitchers.$1,
       ),
       home: TeamBoxscoreData(
-        teamId: gameId.substring(10, 12),
+        teamId: parsedHome.teamId,
         batters: homeBatters,
         pitchers: enrichedPitchers.$2,
       ),

@@ -19,6 +19,7 @@ enum PushNotificationMoment {
   gameEnd,
   lineupOpened,
   inningChange,
+  atBat,
 }
 
 enum PushNotificationDelivery { immediate, summary, liveOnly, off }
@@ -66,6 +67,7 @@ class PushNotificationSettings {
   final bool gameEnd;
   final bool lineupOpened;
   final bool inningChange;
+  final bool atBat;
   final bool allGames;
   final PushNotificationDelivery gameStartDelivery;
   final PushNotificationDelivery scoringDelivery;
@@ -74,6 +76,7 @@ class PushNotificationSettings {
   final PushNotificationDelivery gameEndDelivery;
   final PushNotificationDelivery lineupOpenedDelivery;
   final PushNotificationDelivery inningChangeDelivery;
+  final PushNotificationDelivery atBatDelivery;
 
   const PushNotificationSettings({
     required this.gameStart,
@@ -83,6 +86,7 @@ class PushNotificationSettings {
     required this.gameEnd,
     required this.lineupOpened,
     required this.inningChange,
+    this.atBat = true,
     required this.allGames,
     PushNotificationDelivery? gameStartDelivery,
     PushNotificationDelivery? scoringDelivery,
@@ -91,6 +95,7 @@ class PushNotificationSettings {
     PushNotificationDelivery? gameEndDelivery,
     PushNotificationDelivery? lineupOpenedDelivery,
     PushNotificationDelivery? inningChangeDelivery,
+    PushNotificationDelivery? atBatDelivery,
   }) : gameStartDelivery =
            gameStartDelivery ??
            (gameStart
@@ -125,6 +130,11 @@ class PushNotificationSettings {
            inningChangeDelivery ??
            (inningChange
                ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off),
+       atBatDelivery =
+           atBatDelivery ??
+           (atBat
+               ? PushNotificationDelivery.immediate
                : PushNotificationDelivery.off);
 
   const PushNotificationSettings.defaults()
@@ -135,6 +145,7 @@ class PushNotificationSettings {
       gameEnd = true,
       lineupOpened = true,
       inningChange = true,
+      atBat = true,
       allGames = false,
       gameStartDelivery = PushNotificationDelivery.immediate,
       scoringDelivery = PushNotificationDelivery.immediate,
@@ -142,7 +153,8 @@ class PushNotificationSettings {
       reversalDelivery = PushNotificationDelivery.immediate,
       gameEndDelivery = PushNotificationDelivery.summary,
       lineupOpenedDelivery = PushNotificationDelivery.summary,
-      inningChangeDelivery = PushNotificationDelivery.liveOnly;
+      inningChangeDelivery = PushNotificationDelivery.liveOnly,
+      atBatDelivery = PushNotificationDelivery.immediate;
 
   PushNotificationSettings copyWith({
     bool? gameStart,
@@ -152,6 +164,7 @@ class PushNotificationSettings {
     bool? gameEnd,
     bool? lineupOpened,
     bool? inningChange,
+    bool? atBat,
     bool? allGames,
     PushNotificationDelivery? gameStartDelivery,
     PushNotificationDelivery? scoringDelivery,
@@ -160,6 +173,7 @@ class PushNotificationSettings {
     PushNotificationDelivery? gameEndDelivery,
     PushNotificationDelivery? lineupOpenedDelivery,
     PushNotificationDelivery? inningChangeDelivery,
+    PushNotificationDelivery? atBatDelivery,
   }) {
     return PushNotificationSettings(
       gameStart: gameStart ?? this.gameStart,
@@ -169,6 +183,7 @@ class PushNotificationSettings {
       gameEnd: gameEnd ?? this.gameEnd,
       lineupOpened: lineupOpened ?? this.lineupOpened,
       inningChange: inningChange ?? this.inningChange,
+      atBat: atBat ?? this.atBat,
       allGames: allGames ?? this.allGames,
       gameStartDelivery: gameStartDelivery ?? this.gameStartDelivery,
       scoringDelivery: scoringDelivery ?? this.scoringDelivery,
@@ -177,6 +192,7 @@ class PushNotificationSettings {
       gameEndDelivery: gameEndDelivery ?? this.gameEndDelivery,
       lineupOpenedDelivery: lineupOpenedDelivery ?? this.lineupOpenedDelivery,
       inningChangeDelivery: inningChangeDelivery ?? this.inningChangeDelivery,
+      atBatDelivery: atBatDelivery ?? this.atBatDelivery,
     );
   }
 
@@ -189,6 +205,7 @@ class PushNotificationSettings {
       PushNotificationMoment.gameEnd => gameEndDelivery,
       PushNotificationMoment.lineupOpened => lineupOpenedDelivery,
       PushNotificationMoment.inningChange => inningChangeDelivery,
+      PushNotificationMoment.atBat => atBatDelivery,
     };
   }
 
@@ -205,6 +222,7 @@ class PushNotificationSettings {
       'gameEnd': gameEnd,
       'lineupOpened': lineupOpened,
       'inningChange': inningChange,
+      'atBat': atBat,
       'allGames': allGames,
       'deliveryModes': {
         'gameStart': gameStartDelivery.storageValue,
@@ -214,6 +232,7 @@ class PushNotificationSettings {
         'gameEnd': gameEndDelivery.storageValue,
         'lineupOpened': lineupOpenedDelivery.storageValue,
         'inningChange': inningChangeDelivery.storageValue,
+        'atBat': atBatDelivery.storageValue,
       },
     };
   }
@@ -321,6 +340,7 @@ class PushNotificationService {
     final gameEndKey = '${_prefsPrefix}game_end';
     final lineupOpenedKey = '${_prefsPrefix}lineup_opened';
     final inningChangeKey = '${_prefsPrefix}inning_change';
+    final atBatKey = '${_prefsPrefix}at_bat';
     final gameStart = prefs.getBool(gameStartKey) ?? true;
     final scoring = prefs.getBool(scoringKey) ?? true;
     final homerun = prefs.getBool(homerunKey) ?? true;
@@ -328,6 +348,7 @@ class PushNotificationService {
     final gameEnd = prefs.getBool(gameEndKey) ?? true;
     final lineupOpened = prefs.getBool(lineupOpenedKey) ?? true;
     final inningChange = prefs.getBool(inningChangeKey) ?? true;
+    final atBat = prefs.getBool(atBatKey) ?? true;
     return PushNotificationSettings(
       gameStart: gameStart,
       scoring: scoring,
@@ -336,6 +357,7 @@ class PushNotificationService {
       gameEnd: gameEnd,
       lineupOpened: lineupOpened,
       inningChange: inningChange,
+      atBat: atBat,
       allGames: prefs.getBool('${_prefsPrefix}all_games') ?? false,
       gameStartDelivery: _deliveryFromStorage(
         prefs.getString('${_prefsPrefix}game_start$_deliverySuffix'),
@@ -367,6 +389,10 @@ class PushNotificationService {
         prefs.getString('${_prefsPrefix}inning_change$_deliverySuffix'),
         legacyEnabled: inningChange,
         enabledFallback: PushNotificationDelivery.liveOnly,
+      ),
+      atBatDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}at_bat$_deliverySuffix'),
+        legacyEnabled: atBat,
       ),
     );
   }
@@ -417,6 +443,7 @@ class PushNotificationService {
     await prefs.setBool('${_prefsPrefix}game_end', settings.gameEnd);
     await prefs.setBool('${_prefsPrefix}lineup_opened', settings.lineupOpened);
     await prefs.setBool('${_prefsPrefix}inning_change', settings.inningChange);
+    await prefs.setBool('${_prefsPrefix}at_bat', settings.atBat);
     await prefs.setBool('${_prefsPrefix}all_games', settings.allGames);
     await prefs.setString(
       '${_prefsPrefix}game_start$_deliverySuffix',
@@ -445,6 +472,10 @@ class PushNotificationService {
     await prefs.setString(
       '${_prefsPrefix}inning_change$_deliverySuffix',
       settings.inningChangeDelivery.storageValue,
+    );
+    await prefs.setString(
+      '${_prefsPrefix}at_bat$_deliverySuffix',
+      settings.atBatDelivery.storageValue,
     );
     await syncRegistration(myTeam: myTeam);
   }
@@ -662,6 +693,7 @@ Set<String> buildPushTopics({
     'inning_change': settings.sendsImmediately(
       PushNotificationMoment.inningChange,
     ),
+    'at_bat': settings.sendsImmediately(PushNotificationMoment.atBat),
   };
 
   flags.forEach((topicName, enabled) {
@@ -791,7 +823,8 @@ String? _tabForPushType(String type) {
     'scoring' ||
     'homerun' ||
     'reversal' ||
-    'inning_change' => 'relay',
+    'inning_change' ||
+    'at_bat' => 'relay',
     _ => null,
   };
 }

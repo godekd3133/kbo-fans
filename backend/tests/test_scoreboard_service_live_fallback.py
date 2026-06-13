@@ -98,6 +98,13 @@ def test_full_scoreboard_uses_view1_fallback_for_totals_and_main_inning(
     assert game["inning"] == "8회말"
     assert game["away"]["score"] == 5
     assert game["home"]["score"] == 2
+    assert game["current"] == {
+        "balls": 0,
+        "strikes": 0,
+        "outs": 2,
+        "batterName": "디아즈",
+        "pitcherName": "이병헌",
+    }
     assert game["away"]["scores"] == [0, 0, 1, 3, 1, 0, 0, 0, None]
     assert game["home"]["scores"] == [0, 0, 1, 0, 0, 0, 1, 0, None]
     assert game["away"]["hits"] == 10

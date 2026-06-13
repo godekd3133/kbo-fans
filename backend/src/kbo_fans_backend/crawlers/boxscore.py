@@ -37,6 +37,14 @@ class BoxscoreCrawler(BaseCrawler):
         home_hitters = self._parse_hitter_team(hitters_payload[1])
         away_pitchers = self._parse_pitcher_team(pitchers_payload[0])
         home_pitchers = self._parse_pitcher_team(pitchers_payload[1])
+        if not self._has_displayable_records(
+            away_hitters["batters"],
+            away_pitchers["pitchers"],
+        ) and not self._has_displayable_records(
+            home_hitters["batters"],
+            home_pitchers["pitchers"],
+        ):
+            return self._empty_boxscore(game_id, away_id, home_id)
 
         return {
             "gameId": game_id,
@@ -139,6 +147,8 @@ class BoxscoreCrawler(BaseCrawler):
                 "earnedRuns": self._parse_int(cells[15]),
                 "decision": None if cells[2] in {"", "-"} else unescape(cells[2]),
             }
+            if not self._is_displayable_pitcher(pitcher):
+                continue
             pitchers.append(pitcher)
             totals["hits"] += pitcher["hits"] or 0
             totals["strikeouts"] += pitcher["strikeouts"] or 0
@@ -148,6 +158,32 @@ class BoxscoreCrawler(BaseCrawler):
 
         totals["innings"] = self._outs_to_innings(innings_outs)
         return {"pitchers": pitchers, "totals": totals}
+
+    @classmethod
+    def _has_displayable_records(
+        cls,
+        batters: list[dict[str, Any]],
+        pitchers: list[dict[str, Any]],
+    ) -> bool:
+        return any((batter.get("name") or "").strip() for batter in batters) or bool(
+            pitchers
+        )
+
+    @staticmethod
+    def _is_displayable_pitcher(pitcher: dict[str, Any]) -> bool:
+        name = (pitcher.get("name") or "").strip()
+        if not name:
+            return False
+        innings = str(pitcher.get("innings") or "").strip()
+        decision = str(pitcher.get("decision") or "").strip().upper()
+        return (
+            innings not in {"", "0", "0.0"}
+            or (pitcher.get("hits") or 0) > 0
+            or (pitcher.get("strikeouts") or 0) > 0
+            or (pitcher.get("walks") or 0) > 0
+            or (pitcher.get("earnedRuns") or 0) > 0
+            or decision not in {"", "-", "LIVE", "NONE"}
+        )
 
     @staticmethod
     def _derive_team_ids(game_id: str) -> tuple[str, str]:

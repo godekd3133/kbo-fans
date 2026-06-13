@@ -2,7 +2,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
 
-from kbo_fans_backend.api.runtime_services import scoreboard_service
+from kbo_fans_backend.api.runtime_services import relay_service, scoreboard_service
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.scheduler.live_activity_sync import current_kbo_date
 from kbo_fans_backend.schemas.common import ApiEnvelope
@@ -22,6 +22,7 @@ service = PushService()
 live_activity_sync_service = LiveActivityScoreboardSyncService(
     scoreboard_service=scoreboard_service,
     push_service=service,
+    relay_service=relay_service,
 )
 diagnostics_service = PushConfigurationDiagnostics()
 

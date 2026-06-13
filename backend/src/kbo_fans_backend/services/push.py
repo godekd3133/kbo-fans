@@ -153,6 +153,8 @@ class PushService:
         away_score: int,
         home_score: int,
         inning: str,
+        batter_name: str = "",
+        pitcher_name: str = "",
     ) -> dict[str, Any]:
         messaging = self._get_messaging()
         title, body = _game_moment_copy(
@@ -162,6 +164,8 @@ class PushService:
             away_score=away_score,
             home_score=home_score,
             inning=inning,
+            batter_name=batter_name,
+            pitcher_name=pitcher_name,
         )
         targets = [
             f"{moment}_{away_team_id}",
@@ -180,6 +184,8 @@ class PushService:
                     "awayScore": str(away_score),
                     "homeScore": str(home_score),
                     "inning": inning,
+                    "batterName": batter_name,
+                    "pitcherName": pitcher_name,
                 },
                 topic=topic,
             )
@@ -220,6 +226,10 @@ class PushService:
             "inning_change": _sends_immediately(
                 payload.notifications.inningChange,
                 delivery_modes.inningChange if delivery_modes else None,
+            ),
+            "at_bat": _sends_immediately(
+                payload.notifications.atBat,
+                delivery_modes.atBat if delivery_modes else None,
             ),
         }
 
@@ -272,6 +282,8 @@ def _game_moment_copy(
     away_score: int,
     home_score: int,
     inning: str,
+    batter_name: str = "",
+    pitcher_name: str = "",
 ) -> tuple[str, str]:
     score = f"{away_score}:{home_score}"
     matchup = f"{away_team_name} vs {home_team_name}"
@@ -279,12 +291,20 @@ def _game_moment_copy(
         return "경기 시작", f"{matchup} 경기가 시작됐습니다."
     if moment == "scoring":
         return "득점 발생", f"{inning} {matchup} 현재 스코어 {score}"
+    if moment == "homerun":
+        return "홈런", f"{inning} {matchup} 홈런 발생, 현재 {score}"
     if moment == "reversal":
         return "역전", f"{inning} {matchup} 역전 상황입니다. 현재 {score}"
     if moment == "game_end":
         return "경기 종료", f"{matchup} 최종 스코어 {score}"
     if moment == "inning_change":
         return "이닝 변경", f"{matchup} {inning} 진입, 현재 {score}"
+    if moment == "at_bat":
+        if batter_name and pitcher_name:
+            return "타석 알림", f"{inning} {batter_name} 타석 · 투수 {pitcher_name}"
+        if batter_name:
+            return "타석 알림", f"{inning} {batter_name} 타석"
+        return "타석 알림", f"{matchup} {inning} 현재 {score}"
     return "경기 알림", f"{matchup} {inning} 현재 {score}"
 
 

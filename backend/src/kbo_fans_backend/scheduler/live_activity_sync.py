@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from kbo_fans_backend.api.runtime_services import scoreboard_service
+from kbo_fans_backend.api.runtime_services import relay_service, scoreboard_service
 from kbo_fans_backend.services.live_activity_scoreboard import LiveActivityScoreboardSyncService
 from kbo_fans_backend.services.push import PushService
 
@@ -26,6 +26,7 @@ def sync_once(date: Optional[str] = None) -> dict:
     service = LiveActivityScoreboardSyncService(
         scoreboard_service=scoreboard_service,
         push_service=PushService(),
+        relay_service=relay_service,
     )
     return service.sync_date(date or current_kbo_date())
 

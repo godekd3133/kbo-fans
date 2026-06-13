@@ -94,6 +94,7 @@ def test_build_topics_respects_delivery_modes() -> None:
                 gameEnd="immediate",
                 lineupOpened="summary",
                 inningChange="live_only",
+                atBat="summary",
             ),
         ),
     )
@@ -126,6 +127,7 @@ def test_register_persists_device_token(tmp_path) -> None:
 
     assert response["registered"] is True
     assert "scoring_LG" in response["subscribedTopics"]
+    assert "at_bat_LG" in response["subscribedTopics"]
 
 
 def test_push_registry_serializes_writes_across_processes(tmp_path) -> None:
@@ -361,6 +363,129 @@ def test_scoreboard_sync_pushes_inning_change_when_only_inning_changes(tmp_path)
 
     assert [call["moment"] for call in push_service.moment_calls] == ["inning_change"]
     assert response["pushedMoments"][0]["moment"] == "inning_change"
+
+
+def test_scoreboard_sync_pushes_at_bat_when_current_batter_changes(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    away_score=2,
+                    home_score=3,
+                    inning="7회말",
+                    batter_name="문상철",
+                    pitcher_name="김진성",
+                ),
+                _scoreboard_game(
+                    away_score=2,
+                    home_score=3,
+                    inning="7회말",
+                    batter_name="장성우",
+                    pitcher_name="김진성",
+                ),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    sync_service.sync_date("2026-06-04")
+    response = sync_service.sync_date("2026-06-04")
+
+    assert [call["moment"] for call in push_service.moment_calls] == ["at_bat"]
+    assert push_service.moment_calls[0]["batter_name"] == "장성우"
+    assert push_service.moment_calls[0]["pitcher_name"] == "김진성"
+    assert response["pushedMoments"][0]["moment"] == "at_bat"
+
+
+def test_scoreboard_sync_pushes_homerun_from_new_relay_items(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    relay_service = FakeRelaySequenceService(
+        [
+            [
+                {
+                    "seqNo": 10,
+                    "inning": 7,
+                    "half": "bottom",
+                    "event": "WALK",
+                    "isScoring": False,
+                    "text": "문상철 : 볼넷",
+                    "pitchSequence": None,
+                }
+            ],
+            [
+                {
+                    "seqNo": 11,
+                    "inning": 7,
+                    "half": "bottom",
+                    "event": "HOMERUN",
+                    "isScoring": True,
+                    "text": "장성우 : 좌월 홈런",
+                    "pitchSequence": None,
+                }
+            ],
+        ]
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+            ]
+        ),
+        push_service=push_service,
+        relay_service=relay_service,
+    )
+
+    first_response = sync_service.sync_date("2026-06-04")
+    second_response = sync_service.sync_date("2026-06-04")
+
+    assert first_response["pushedMoments"] == []
+    assert relay_service.calls[1]["after"] == 10
+    assert [call["moment"] for call in push_service.moment_calls] == ["homerun"]
+    assert second_response["pushedMoments"][0]["moment"] == "homerun"
 
 
 def test_push_config_status_reports_missing_release_secrets(tmp_path) -> None:
@@ -640,6 +765,27 @@ class FakeScoreboardSequenceService:
         return {"date": date, "games": [game]}
 
 
+class FakeRelaySequenceService:
+    def __init__(self, relay_items_by_call) -> None:
+        self.relay_items_by_call = relay_items_by_call
+        self.index = 0
+        self.calls = []
+
+    def get_relay(self, game_id: str, after=None):
+        self.calls.append({"game_id": game_id, "after": after})
+        relay_items = self.relay_items_by_call[
+            min(self.index, len(self.relay_items_by_call) - 1)
+        ]
+        self.index += 1
+        if after is not None:
+            relay_items = [item for item in relay_items if item["seqNo"] > after]
+        return {
+            "gameId": game_id,
+            "currentAtBat": None,
+            "relayItems": relay_items,
+        }
+
+
 def _register_device_token_batch(
     registry_path: str,
     token_prefix: str,
@@ -668,12 +814,26 @@ def _register_device_token_batch(
     return count
 
 
-def _scoreboard_game(*, away_score: int, home_score: int, inning: str) -> dict:
+def _scoreboard_game(
+    *,
+    away_score: int,
+    home_score: int,
+    inning: str,
+    batter_name: str = "",
+    pitcher_name: str = "",
+) -> dict:
     return {
         "gameId": "20260604LGKT0",
         "status": "LIVE",
         "inning": inning,
         "stadium": "수원",
+        "current": {
+            "batterName": batter_name,
+            "pitcherName": pitcher_name,
+            "balls": 0,
+            "strikes": 0,
+            "outs": 0,
+        },
         "away": {
             "teamId": "LG",
             "shortName": "LG",

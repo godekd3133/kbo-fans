@@ -1,5 +1,12 @@
 # 패치노트
 
+## 0.0.35+35 - Push Moments & Boxscore Guard
+
+- 새 타자가 타석에 들어설 때 문자중계 탭으로 연결되는 `타석` 바로 알림을 추가했습니다.
+- 앱이 백그라운드나 종료 상태여도 backend scheduler가 relay 변화에서 홈런을 감지해 홈런 푸시를 보낼 수 있도록 보강했습니다.
+- 진행 중 경기 박스스코어가 공식 기록 없이 선발/현재 투수 placeholder만 받은 경우 0값 기록 카드 대신 업데이트 전 상태를 표시합니다.
+- Live Activity / Dynamic Island update payload가 현재 타자, 투수, B/S/O, 투구 수 정보를 함께 받을 수 있도록 backend sync payload를 보강했습니다.
+
 ## 0.0.34+34 - Relay & Detail Refresh Polish
 
 - 진행 중 경기의 문자중계 탭이 열려 있을 때 자동 갱신 주기를 15초로 줄여 중계 반영 체감을 개선했습니다.

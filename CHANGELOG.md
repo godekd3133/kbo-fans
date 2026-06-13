@@ -10,6 +10,17 @@
 
 ## [Unreleased]
 
+## [0.0.35] - 2026-06-13
+
+### Added
+
+- 새 타자가 타석에 들어설 때 문자중계 탭으로 연결되는 `타석` 바로 알림 moment를 추가
+
+### Fixed
+
+- 앱이 백그라운드/종료 상태일 때도 홈런 알림이 계속 올 수 있도록 backend scheduler가 relay seq diff 기반 `homerun` FCM moment를 발행하게 보정
+- 진행 중 경기 박스스코어 탭/API가 공식 rows 없이 선발/현재 투수 placeholder만 받은 경우, 0값 기록 카드 대신 업데이트 전 상태를 표시하도록 보정
+
 ## [0.0.34] - 2026-06-12
 
 ### Changed

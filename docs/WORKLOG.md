@@ -2,6 +2,79 @@
 
 ---
 
+## 2026-06-13: 0.0.35 릴리즈/TestFlight 재업로드 준비
+
+### 완료
+- [x] `0.0.34+34`는 이미 GitHub Release와 TestFlight upload가 완료됐으므로 같은 build number 재업로드가 불가한 상태임을 확인
+- [x] 현재 diff가 `at_bat` push moment, relay 기반 `homerun` push, Live Activity current-at-bat payload, live boxscore placeholder guard를 포함하는 tester-facing 변경임을 확인
+- [x] 다음 숫자 릴리즈를 `0.0.35+35`로 결정
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.35` 기준으로 동기화
+- [x] release/TestFlight 빌드는 direct data mode를 유지하되 push / Live Activity token registration용 `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`를 계속 주입하기로 확인
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `cd app && fvm flutter test --no-pub` (`107 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`124 passed`)
+- [x] `git diff --check`
+- [x] `0.0.35 (35)` TestFlight upload 성공 확인
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" fvm flutter build ipa --release --export-method app-store --build-name=0.0.35 --build-number=35 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+- [x] archive 기준 `CFBundleShortVersionString=0.0.35`, `CFBundleVersion=35`, embedded smoke backend `API_BASE_URL`, embedded `0.0.35+35` patch note 확인
+- [x] export 중 `objective_c.framework` dSYM 누락 warning이 있었으나 `Upload succeeded` / `EXPORT SUCCEEDED`로 완료됨
+
+---
+
+## 2026-06-13: 타석 실시간 push moment 연결
+
+### 완료
+- [x] 일반 push와 Live Activity는 별도 경로이며, 현재 smoke backend `/api/health`가 응답하는 상태를 확인
+- [x] 기존 backend scheduler가 scoreboard diff에서 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`만 발행하고 `at_bat` moment가 없어 타석 푸시가 올 수 없는 root cause 확인
+- [x] 앱 알림 설정에 `타석` moment를 추가하고 기본 `바로 알림`으로 `at_bat_<팀>` / `at_bat_ALL` FCM topic을 구독하도록 보강
+- [x] backend push schema, topic build, FCM payload, route type을 `at_bat`으로 확장하고 푸시 클릭 시 문자중계 탭으로 진입하도록 연결
+- [x] `/scoreboard/home` 경량 payload에 KBO main list 기반 `current` 타석 정보를 포함해 worker와 Live Activity update가 같은 live state를 사용할 수 있게 보정
+- [x] sync worker가 첫 관측은 baseline으로 저장하고, 이후 점수/역전/종료 같은 상위 moment가 없는 tick에서 현재 타자 이름이 바뀌면 `at_bat` push를 발행하도록 구현
+- [x] `CHANGELOG.md`, `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `README.md`에 사용자-visible moment와 backend 운영 계약 반영
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test test/services/push_notification_service_test.dart`
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_register_persists_device_token backend/tests/test_push_service.py::test_scoreboard_sync_pushes_at_bat_when_current_batter_changes backend/tests/test_scoreboard_service_live_fallback.py::test_live_scoreboard_prefers_main_score_over_scheduled_zero_fallback`
+- [x] GREEN 확인: `cd app && fvm flutter test test/services/push_notification_service_test.dart`
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_register_persists_device_token backend/tests/test_push_service.py::test_build_topics_respects_delivery_modes backend/tests/test_push_service.py::test_scoreboard_sync_pushes_at_bat_when_current_batter_changes backend/tests/test_scoreboard_service_live_fallback.py::test_live_scoreboard_prefers_main_score_over_scheduled_zero_fallback`
+- [x] `cd app && fvm flutter analyze lib/services/push_notification_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/src/kbo_fans_backend/services/scoreboard.py backend/src/kbo_fans_backend/schemas/push.py backend/tests/test_push_service.py backend/tests/test_scoreboard_service_live_fallback.py`
+- [x] `curl -fsS --max-time 10 http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health`
+- [ ] 실제 기기 foreground/background 수신은 새 앱 빌드 설치, 알림 권한 허용, `at_bat_<팀>` topic 재등록, backend worker 배포 후 확인 필요
+
+---
+
+## 2026-06-13: 박스스코어 0값 placeholder 표시 보정
+
+### 완료
+- [x] 박스스코어 탭이 `officialAvailable=true`이면서 타자 rows 없이 0값 투수 placeholder만 받은 경우에도 공식 박스스코어처럼 렌더링하는 경로 재현
+- [x] `TeamBoxscoreData.hasDisplayableRecords` / `PitcherRecord.hasDisplayableLine` 기준을 추가해 0값 타자 row와 투수 placeholder를 구분
+- [x] direct KBO mode에서 공식 박스스코어 rows가 없으면 선발/현재 투수 이름만 합성해 박스스코어 기록으로 표시하지 않도록 보정
+- [x] backend API crawler도 placeholder-only pitcher rows를 `officialAvailable=false`로 반환하고 snapshot/cache에 공식 박스스코어처럼 저장하지 않도록 보정
+- [x] 박스스코어 탭은 선택된 팀에 표시 가능한 rows가 없으면 `공식 박스스코어 업데이트 전입니다` 상태를 유지
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 live 박스스코어 placeholder 처리 정책 반영
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test test/features/game_detail/boxscore_tab_test.dart --reporter expanded`
+- [x] RED 확인: `cd app && fvm flutter test test/data/models/boxscore_test.dart test/features/game_detail/boxscore_tab_test.dart --reporter expanded`
+- [x] GREEN 확인: `cd app && fvm dart format lib/data/models/boxscore.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart test/data/models/boxscore_test.dart test/features/game_detail/boxscore_tab_test.dart && fvm flutter test test/data/models/boxscore_test.dart test/features/game_detail/boxscore_tab_test.dart --reporter expanded`
+- [x] `cd app && fvm flutter analyze lib/data/models/boxscore.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart test/data/models/boxscore_test.dart test/features/game_detail/boxscore_tab_test.dart --no-pub`
+- [x] `cd app && fvm flutter test test/data/models/boxscore_test.dart test/data/kbo_direct_repository_test.dart test/features/game_detail/boxscore_tab_test.dart --no-pub --reporter expanded`
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `cd app && fvm flutter test --no-pub --reporter expanded` (`107 passed`)
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_boxscore_crawler.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_boxscore_crawler.py backend/tests/test_boxscore_service.py backend/tests/test_games.py` (`11 passed`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/crawlers/boxscore.py backend/tests/test_boxscore_crawler.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/crawlers/boxscore.py`
+- [x] `backend/.venv/bin/pytest -q` (`123 passed`)
+- [x] `git diff --check`
+
+---
+
 ## 2026-06-12: 0.0.34 릴리즈/TestFlight 준비
 
 ### 완료
@@ -26,9 +99,19 @@
 
 ### 완료
 - [x] 기존 `kbo-fans-8min-feature-screenshots-presentation.pptx`가 실제 화면 캡쳐는 충분하지만 기능 설명 중심으로 반복되는 문제 확인
-- [x] 대학 기말과제 발표용으로 서비스 개요, 문제/기회, 마이팀 기반 제품 구조, 화면 증거, 데이터 정책, 구현 현황, 다음 단계 흐름의 12장 deck으로 재구성
+- [x] 대학 기말과제 발표용으로 서비스 개요, 문제/기회, 마이팀 기반 제품 구조, 화면 증거, 데이터 정책, 구현 현황, 요약 흐름의 12장 deck으로 재구성
 - [x] 기존 PPTX의 앱 스크린샷 자산을 재사용하되 새 파일 `outputs/manual-20260612-kbo-presentation-refresh/presentations/kbo-fans-final-project-refresh/output/kbo-fans-final-project-presentation.pptx`로 생성
 - [x] 현재 diff의 backend active runtime 스펙을 반영해 데이터 처리 장의 `no-backend 기본` 표현을 `backend-backed / direct mode 분리` 표현으로 수정
+- [x] 1페이지 footer에 `20241874 김민규` 발표자 정보를 반영
+- [x] footer의 `기말 발표` 문구를 제거하고 오른쪽 배경 패널을 검은 배경과 같은 색으로 보정
+- [x] 12번 슬라이드의 `다음 단계` 로드맵 표현을 완료된 구현/검증 범위 표현으로 수정
+- [x] 과한 서비스 카피와 배포 중심 표현을 줄이고, 앱 실행 직후 보이는 마이팀 정보와 실제 화면 중심 표현으로 재작성
+- [x] `이번 프로젝트는`, `구현한 것입니다`, `구현 범위`, env var 설명처럼 AI/보고서 톤으로 보이는 발표 문구를 짧은 발표자 말투로 재작성
+- [x] `제가 만든`, `보여드리겠습니다`, `만들었습니다`처럼 개인 발표자 중심으로 들리는 표현을 제거하고 `PRODUCT PRESENTATION`, `PRODUCT SCOPE`, 제품 주어 중심 문구로 재작성
+- [x] 이후 피드백을 반영해 제품 피치 톤을 낮추고 `FEATURE OVERVIEW`, `FEATURE 1~5`, `IMPLEMENTED FEATURES`, `FEATURE SUMMARY` 흐름의 기능 설명형 발표 톤으로 재조정
+- [x] 1페이지를 기능 나열형 첫 장에서 서비스 개요형 첫 장으로 재정리하고, 발표 범위에 백엔드 API 및 push/Live Activity 연동이 포함된다는 표현 반영
+- [x] 10번, 11번 슬라이드의 `backend 연동 필요`, `구조 구현`처럼 미완성으로 들릴 수 있는 표현을 백엔드 연동 완료 기준으로 수정
+- [x] `~입니다`, `~합니다`식 보고서 말투를 줄이고, 유저에게 KBO Fans 기능을 소개하는 상품 소개 톤으로 전체 슬라이드 문구 재작성
 - [x] `docs/presentations/kbo_fans_8min_presentation.md`의 최신 PPTX 경로와 발표 구성 표를 보강본 기준으로 갱신
 
 ### 검증
@@ -37,6 +120,14 @@
 - [x] PNG preview 12장과 layout JSON 12장 생성 확인
 - [x] contact sheet 및 full-size preview로 2번, 5번, 11번 슬라이드 레이아웃 결함 수정 확인
 - [x] 최신 backend active runtime 스펙 반영 후 10번, 11번 슬라이드 full-size preview 재확인
+- [x] 1번, 12번 슬라이드 preview로 footer 문구와 오른쪽 배경 보정 확인
+- [x] 12번 슬라이드 preview로 완료 범위 문구 전환 확인
+- [x] 9번, 10번, 11번, 12번 슬라이드 full-size preview로 문구 줄바꿈과 배경/텍스트 겹침 없음 확인
+- [x] PPTX 텍스트에서 `제가`, `만들었습니다`, `보여드리겠습니다`, `TestFlight`, `배포`, `다음 단계`, `기말 발표`, `no-backend`, `USE_BACKEND_API`, `구현한 것입니다` 등 발표 톤에 맞지 않는 표현 제거 확인
+- [x] 최종 기능 설명형 PPTX 텍스트에서 `PRODUCT PRESENTATION`, `PRODUCT SCOPE`, `제품 발표`, `다음 단계`, `TestFlight`, `기말 발표` 등 현재 방향과 맞지 않는 표현 제거 확인
+- [x] 백엔드 연동 완료 표현 반영 후 1번, 9번, 10번, 11번 슬라이드 텍스트 재추출 확인
+- [x] 상품 소개형 문구 반영 후 PPTX 텍스트에서 `입니다`, `합니다`, `했습니다`, `습니다` 계열 문구 0건 확인
+- [x] 1번, 3번, 5번, 9번, 10번, 11번, 12번 슬라이드 PNG preview로 문구 잘림과 겹침 없음 확인
 
 ---
 
@@ -3063,3 +3154,12 @@ kbo_fans/
 - 회귀 테스트: `test/features/game_detail/relay_tab_test.dart`에 현재 타석 카드의 `PlayerProfile.id` 기반 이미지 보강과 주요 장면 카드의 `CurrentAtBat` 이미지 재사용 케이스를 추가함.
 - 검증: `cd app && fvm flutter test test/features/game_detail/relay_tab_test.dart`
 - 검증: `cd app && fvm flutter analyze lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart`
+
+## 2026-06-13 푸시 알림 반복 발송 경로 재점검
+
+- 증상: 타석 외에도 앱이 켜져 있거나 최소화된 상태에서 계속 푸시가 와야 하는데, 앱 기본 설정이 구독하는 `homerun` topic을 backend scheduler가 발행하지 못하는 불일치를 확인함.
+- 원인: scoreboard diff 기반 scheduler는 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat`만 만들고 있었고, 점수판만으로 확정하기 어려운 홈런은 앱 로컬 relay 알림 경로에만 남아 있었음.
+- 수정: backend scheduler의 sync 경로에 runtime `RelayService`를 연결하고, push registry에 `relayStates` baseline을 저장해 첫 관측은 기준선으로만 삼고 이후 새 relay item의 `HOMERUN` event 또는 `홈런` 텍스트에서 `homerun` FCM moment를 발행하도록 보정함.
+- 문서: `CHANGELOG.md`, `README.md`, `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`에 scoreboard/relay 기반 반복 푸시 계약을 동기화함.
+- 검증: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_scoreboard_sync_pushes_homerun_from_new_relay_items`
+- 검증: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py`

@@ -39,6 +39,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       PushNotificationDelivery.summary;
   PushNotificationDelivery _inningChangeDelivery =
       PushNotificationDelivery.liveOnly;
+  PushNotificationDelivery _atBatDelivery = PushNotificationDelivery.immediate;
   bool _notifAllGames = false;
   bool _pushLoaded = false;
   bool _permissionBusy = false;
@@ -83,6 +84,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _gameEndDelivery = settings.gameEndDelivery;
       _lineupOpenedDelivery = settings.lineupOpenedDelivery;
       _inningChangeDelivery = settings.inningChangeDelivery;
+      _atBatDelivery = settings.atBatDelivery;
       _notifAllGames = settings.allGames;
       _pushLoaded = true;
     });
@@ -99,6 +101,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         gameEnd: _isEnabled(_gameEndDelivery),
         lineupOpened: _isEnabled(_lineupOpenedDelivery),
         inningChange: _isEnabled(_inningChangeDelivery),
+        atBat: _isEnabled(_atBatDelivery),
         allGames: _notifAllGames,
         gameStartDelivery: _gameStartDelivery,
         scoringDelivery: _scoringDelivery,
@@ -107,6 +110,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         gameEndDelivery: _gameEndDelivery,
         lineupOpenedDelivery: _lineupOpenedDelivery,
         inningChangeDelivery: _inningChangeDelivery,
+        atBatDelivery: _atBatDelivery,
       ),
       myTeam: teamId,
     );
@@ -138,6 +142,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _gameEndDelivery = PushNotificationDelivery.summary;
       _lineupOpenedDelivery = PushNotificationDelivery.summary;
       _inningChangeDelivery = PushNotificationDelivery.liveOnly;
+      _atBatDelivery = PushNotificationDelivery.immediate;
       _notifAllGames = false;
     });
     await _savePushSettings();
@@ -369,6 +374,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: '이닝 교대',
                         current: _inningChangeDelivery,
                         update: (value) => _inningChangeDelivery = value,
+                      ),
+                    ),
+                    _divider(),
+                    _momentRow(
+                      label: '타석',
+                      description: '새 타자가 들어서면 문자중계로 바로 연결합니다',
+                      delivery: _atBatDelivery,
+                      teamColor: teamColor,
+                      onTap: () => _showDeliveryPicker(
+                        title: '타석',
+                        current: _atBatDelivery,
+                        update: (value) => _atBatDelivery = value,
                       ),
                     ),
                     if (!_pushLoaded)

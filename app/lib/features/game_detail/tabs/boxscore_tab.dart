@@ -70,8 +70,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       error: (error, _) => _buildUnavailableState('박스스코어 로딩 실패: $error'),
       data: (boxscore) {
         final selected = _showAway ? boxscore.away : boxscore.home;
-        if (!boxscore.officialAvailable ||
-            (selected.batters.isEmpty && selected.pitchers.isEmpty)) {
+        if (!boxscore.officialAvailable || !selected.hasDisplayableRecords) {
           return _buildUnavailableState('공식 박스스코어 업데이트 전입니다');
         }
 

@@ -28,6 +28,11 @@ class TeamBoxscoreData {
     required this.batters,
     required this.pitchers,
   });
+
+  bool get hasDisplayableRecords {
+    return batters.any((batter) => batter.name.trim().isNotEmpty) ||
+        pitchers.any((pitcher) => pitcher.hasDisplayableLine);
+  }
 }
 
 class GameBoxscoreData {
@@ -62,6 +67,21 @@ class PitcherRecord {
     required this.earnedRuns,
     this.decision,
   });
+
+  bool get hasDisplayableLine {
+    final normalizedInnings = innings.trim();
+    final normalizedDecision = decision?.trim().toUpperCase();
+    return name.trim().isNotEmpty &&
+        (normalizedInnings.isNotEmpty && normalizedInnings != '0.0' ||
+            hits > 0 ||
+            strikeouts > 0 ||
+            walks > 0 ||
+            earnedRuns > 0 ||
+            (normalizedDecision != null &&
+                normalizedDecision.isNotEmpty &&
+                normalizedDecision != 'LIVE' &&
+                normalizedDecision != '-'));
+  }
 }
 
 class LineupEntry {

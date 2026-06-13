@@ -768,6 +768,7 @@ class ScoreboardService:
             "inning": game.get("inning"),
             "stadium": game.get("stadium"),
             "startTime": game.get("startTime"),
+            "current": game.get("current"),
             "crowd": game.get("crowd"),
             "ticketInfo": game.get("ticketInfo"),
             "away": game.get("away"),
