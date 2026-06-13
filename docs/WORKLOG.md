@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-06-13: 0.0.36 TestFlight 푸시 초기화 보정
+
+### 완료
+- [x] API 진단 스크린샷에서 `/health`, `/scoreboard`, `/schedule`는 정상이고 push만 `initialized=false`, `tokenReady=false`로 실패하는 상태 확인
+- [x] `app/ios/Runner/GoogleService-Info.plist`는 존재하지만 Xcode Runner target의 Resources build phase에 등록되지 않아 archive 앱 번들에 복사되지 않는 root cause 확인
+- [x] Runner iOS target에 `GoogleService-Info.plist` file reference와 resources build entry를 추가해 TestFlight 앱 번들에 Firebase 설정이 포함되도록 보정
+- [x] API 진단 화면의 push 카드가 release 환경에서도 Firebase 초기화 실패 사유를 숨기지 않도록 보강
+- [x] 다음 tester-facing 릴리즈를 `0.0.36+36`으로 결정하고 `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`, `docs/APP_SPEC.md`, `README.md`를 동기화
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `cd app && fvm flutter test --no-pub` (`107 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`127 passed`)
+- [x] `ALLOW_INSECURE_RELEASE_API=true API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api scripts/release-api-health-check.sh`
+- [x] `git diff --check`
+- [x] `0.0.36 (36)` archive/IPA에 `GoogleService-Info.plist` 포함 확인
+- [x] exported IPA entitlements 확인: `aps-environment=production`, `get-task-allow=false`
+- [x] `0.0.36 (36)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`)
+- [x] export 중 `objective_c.framework` dSYM 누락 warning이 있었으나 `Upload succeeded` / `EXPORT SUCCEEDED`로 완료됨
+
+---
+
 ## 2026-06-13: push topic registry 재구독 운영 경로
 
 ### 완료

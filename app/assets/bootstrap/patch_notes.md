@@ -1,5 +1,11 @@
 # 패치노트
 
+## 0.0.36+36 - TestFlight Push Initialization Fix
+
+- TestFlight iOS 앱에 Firebase 설정 파일이 포함되도록 보정해 푸시 초기화가 실패하던 경로를 막았습니다.
+- API 진단 화면의 push 카드가 release 환경에서도 초기화 실패 사유를 함께 보여주도록 보강했습니다.
+- 운영 backend에 저장된 push registry 토큰을 현재 `at_bat` topic 계약으로 다시 구독시키는 재등록 경로를 추가했습니다.
+
 ## 0.0.35+35 - Push Moments & Boxscore Guard
 
 - 새 타자가 타석에 들어설 때 문자중계 탭으로 연결되는 `타석` 바로 알림을 추가했습니다.

@@ -136,7 +136,11 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                       detail:
                           '${_pushDetailPrefix(status)} initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
                           '${topics.isNotEmpty ? ' topics=$topics' : ''}',
-                      note: isLocalSkipped ? _pushReasonLabel(reason) : null,
+                      note: _pushReasonLabel(
+                        status: status,
+                        reason: reason,
+                        isLocalSkipped: isLocalSkipped,
+                      ),
                     ),
                   );
                 },
@@ -264,12 +268,24 @@ String _pushDetailPrefix(String status) {
   }
 }
 
-String _pushReasonLabel(String? reason) {
+String? _pushReasonLabel({
+  required String status,
+  required String? reason,
+  required bool isLocalSkipped,
+}) {
+  if (!isLocalSkipped && status != 'failed') {
+    return null;
+  }
   if (reason == null || reason.isEmpty) {
-    return '로컬 환경에서 푸시 초기화를 건너뛰었습니다.';
+    return isLocalSkipped ? '로컬 환경에서 푸시 초기화를 건너뛰었습니다.' : null;
   }
   if (reason.contains('FirebaseOptions')) {
     return '로컬 Firebase 설정이 없어 푸시를 비활성 상태로 표시합니다.';
   }
-  return '로컬 환경에서 푸시 초기화를 건너뛰었습니다.';
+  if (reason.contains('GoogleService-Info') ||
+      reason.contains('FirebaseApp') ||
+      reason.contains('Firebase')) {
+    return 'Firebase 설정을 읽지 못해 푸시 초기화가 실패했습니다.';
+  }
+  return isLocalSkipped ? '로컬 환경에서 푸시 초기화를 건너뛰었습니다.' : '푸시 초기화 실패: $reason';
 }

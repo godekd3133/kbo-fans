@@ -327,7 +327,7 @@ GitHub Actions 배포:
 - 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.
 - 개발 환경에서는 앱 Dev Console 에 `API`, `HOME loaded`, `RECORDS loaded` 타이밍 로그가 표시됩니다.
 - backend-backed mode에서는 `backend/logs/backend.log`, `backend/logs/client_metrics.log` 에 느린 요청과 클라이언트 실측 지표를 저장합니다.
-- 웹에서 API 실패 시 앱 내 `진단 보기` 화면으로 `health / scoreboard / schedule` 상태를 함께 확인할 수 있습니다.
+- 웹에서 API 실패 시 앱 내 `진단 보기` 화면으로 `health / scoreboard / schedule / push` 상태를 함께 확인할 수 있습니다.
 
 ## Design And Product Principles
 

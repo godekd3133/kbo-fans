@@ -265,7 +265,7 @@ GET /api/scoreboard?date=2026-03-28
 - 서버는 날짜별 scoreboard 응답을 `30초 TTL` 캐시로 보관한다.
 - 예정 경기일 때 KBO scoreboard 세부 테이블이 비어도 홈 화면은 fallback payload 로 렌더링한다.
 - 예정 경기는 YouTube 검색을 생략하고 KBO 공식 하이라이트 링크만 유지한다.
-- 웹 진단 화면은 `health / scoreboard / schedule` 상태를 한 번에 확인한다.
+- 진단 화면은 `health / scoreboard / schedule / push` 상태를 한 번에 확인하고, push 초기화 실패 사유를 표시한다.
 - 순위 히스토리 조회는 시즌별 번들 스냅샷 fallback(`2001~현재`)을 사용할 수 있다. 명시적 API-backed current 경로의 실패는 번들 snapshot으로 숨기지 않는다.
 
 ---

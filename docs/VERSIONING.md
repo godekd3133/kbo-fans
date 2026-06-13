@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.35+35`
-- Current release tag: `0.0.35`
+- Flutter app version: `0.0.36+36`
+- Current release tag: `0.0.36`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -83,6 +83,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.33`: TestFlight push / Live Activity token registration build using the deployed AWS HTTP smoke backend `API_BASE_URL`, with a narrow temporary ATS exception for that ALB host, and current app build `0.0.33+33`.
 - `0.0.34`: Relay foreground refresh cadence shortened to 15 seconds, game detail resume refresh keeps the last valid detail on transient failure, relay player images are reinforced from profile/current-at-bat sources, my-team live badge is shortened to `LIVE`, and current app build `0.0.34+34`.
 - `0.0.35`: `at_bat` immediate push moment, relay-seq based backend homerun push, Live Activity current-at-bat payload enrichment, live boxscore placeholder guard across direct/backend paths, and current app build `0.0.35+35`.
+- `0.0.36`: TestFlight iOS bundle now includes Firebase `GoogleService-Info.plist` for push initialization, API diagnostics shows release push failure reasons, backend topic resubscribe operation is documented in release notes, and current app build `0.0.36+36`.
 
 ## GitHub Release Note Template
 

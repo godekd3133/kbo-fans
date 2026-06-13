@@ -10,9 +10,16 @@
 
 ## [Unreleased]
 
+## [0.0.36] - 2026-06-13
+
 ### Added
 
 - 기존 push registry 토큰을 현재 moment/topic 계약으로 다시 구독시키는 backend 운영 endpoint 추가
+
+### Fixed
+
+- TestFlight iOS 앱 번들에 Firebase `GoogleService-Info.plist`가 포함되지 않아 푸시 초기화가 실패하던 경로를 보정
+- API 진단 화면의 push 카드가 release 환경 초기화 실패 사유를 함께 표시하도록 보강
 
 ## [0.0.35] - 2026-06-13
 
