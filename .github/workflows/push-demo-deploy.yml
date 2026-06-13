@@ -18,6 +18,11 @@ on:
         required: true
         default: false
         type: boolean
+      resubscribe_topics:
+        description: Reconcile registered FCM topics from the push registry after deploy
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -167,6 +172,54 @@ jobs:
 
           ./scripts/aws-push-demo-deploy.sh "${args[@]}"
 
+      - name: Resubscribe registered push topics
+        if: ${{ inputs.dry_run == false && inputs.resubscribe_topics == true }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -f outputs/aws/cloudformation/stack.env ]]; then
+            # shellcheck disable=SC1091
+            source outputs/aws/cloudformation/stack.env
+          fi
+
+          base_url="${KBO_PUSH_STACK_API_BASE_URL:-${RELEASE_API_BASE_URL:-${API_BASE_URL:-}}}"
+          if [[ -z "$base_url" ]]; then
+            echo "Missing deployed API base URL for topic resubscribe." >&2
+            exit 2
+          fi
+          if [[ -z "${PUSH_SYNC_SECRET:-}" ]]; then
+            echo "Missing PUSH_SYNC_SECRET for topic resubscribe." >&2
+            exit 2
+          fi
+
+          response_file="outputs/aws/push-topic-resubscribe.json"
+          mkdir -p "$(dirname "$response_file")"
+          curl -fsS \
+            -X POST \
+            -H "X-Kbo-Push-Sync-Secret: ${PUSH_SYNC_SECRET}" \
+            "${base_url%/}/push/resubscribe-topics" \
+            -o "$response_file"
+
+          python3 - "$response_file" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as file:
+              payload = json.load(file)
+
+          data = payload.get("data") or {}
+          print(
+              "push_topic_resubscribe=status=ok "
+              f"registeredDevices={data.get('registeredDevices')} "
+              f"eligibleDevices={data.get('eligibleDevices')} "
+              f"subscriptionsAttempted={data.get('subscriptionsAttempted')} "
+              f"unsubscriptionsAttempted={data.get('unsubscriptionsAttempted')}"
+          )
+          if not payload.get("success"):
+              raise SystemExit(1)
+          PY
+
       - name: Print push backend diagnostics
         if: ${{ failure() && inputs.dry_run == false }}
         shell: bash
@@ -214,5 +267,6 @@ jobs:
             outputs/aws/ecr/image.env
             outputs/aws/ecs-fargate/secrets.env
             outputs/aws/cloudformation/stack.env
+            outputs/aws/push-topic-resubscribe.json
           if-no-files-found: ignore
           retention-days: 7

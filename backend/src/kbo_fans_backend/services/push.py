@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -31,6 +32,68 @@ class PushService:
         return {
             "registered": True,
             "subscribedTopics": topics,
+        }
+
+    def resubscribe_registered_topics(self, *, dry_run: bool = False) -> dict[str, Any]:
+        registrations = self.registry.device_registrations()
+        parsed: list[tuple[PushRegisterRequest, list[str]]] = []
+        subscribe_groups: dict[str, list[str]] = defaultdict(list)
+        unsubscribe_groups: dict[str, list[str]] = defaultdict(list)
+        skipped = []
+
+        for registration in registrations:
+            try:
+                payload = _registration_to_payload(registration)
+            except ValueError as error:
+                skipped.append(
+                    {
+                        "deviceToken": str(registration.get("deviceToken") or ""),
+                        "reason": str(error),
+                    }
+                )
+                continue
+
+            desired_topics = self._build_topics(payload)
+            current_topics = _stored_topics(registration)
+            desired_topic_set = set(desired_topics)
+
+            parsed.append((payload, desired_topics))
+            for topic in desired_topics:
+                subscribe_groups[topic].append(payload.deviceToken)
+            for topic in sorted(current_topics.difference(desired_topic_set)):
+                unsubscribe_groups[topic].append(payload.deviceToken)
+
+        subscription_results = _planned_topic_results(subscribe_groups)
+        unsubscription_results = _planned_topic_results(unsubscribe_groups)
+        if not dry_run and (subscribe_groups or unsubscribe_groups):
+            messaging = self._get_messaging()
+            subscription_results = _apply_topic_operation(
+                messaging.subscribe_to_topic,
+                subscribe_groups,
+            )
+            unsubscription_results = _apply_topic_operation(
+                messaging.unsubscribe_from_topic,
+                unsubscribe_groups,
+            )
+
+        if not dry_run:
+            for payload, topics in parsed:
+                self.registry.save_device_registration(payload, topics)
+
+        return {
+            "dryRun": dry_run,
+            "resubscribed": not dry_run,
+            "registeredDevices": len(registrations),
+            "eligibleDevices": len(parsed),
+            "skippedDevices": skipped,
+            "subscriptionsAttempted": sum(
+                len(tokens) for tokens in subscribe_groups.values()
+            ),
+            "unsubscriptionsAttempted": sum(
+                len(tokens) for tokens in unsubscribe_groups.values()
+            ),
+            "subscriptionResults": subscription_results,
+            "unsubscriptionResults": unsubscription_results,
         }
 
     def send_test(self, payload: PushTestRequest) -> dict[str, Any]:
@@ -334,3 +397,74 @@ def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
     if delivery is None:
         return True
     return delivery == "immediate"
+
+
+def _registration_to_payload(registration: dict[str, Any]) -> PushRegisterRequest:
+    notifications = registration.get("notifications")
+    if not isinstance(notifications, dict):
+        raise ValueError("missing notifications")
+
+    try:
+        return PushRegisterRequest(
+            deviceToken=str(registration["deviceToken"]),
+            platform=str(registration.get("platform") or "unknown"),
+            myTeam=registration.get("myTeam"),
+            notifications=notifications,
+        )
+    except Exception as error:
+        raise ValueError(f"invalid registration: {error}") from error
+
+
+def _stored_topics(registration: dict[str, Any]) -> set[str]:
+    topics = registration.get("topics")
+    if not isinstance(topics, list):
+        return set()
+    return {str(topic) for topic in topics if topic}
+
+
+def _planned_topic_results(groups: dict[str, list[str]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "topic": topic,
+            "requestedCount": len(tokens),
+            "successCount": 0,
+            "failureCount": 0,
+            "dryRun": True,
+            "errors": [],
+        }
+        for topic, tokens in sorted(groups.items())
+    ]
+
+
+def _apply_topic_operation(operation, groups: dict[str, list[str]]) -> list[dict[str, Any]]:
+    results = []
+    for topic, tokens in sorted(groups.items()):
+        for batch in _topic_batches(tokens):
+            response = operation(batch, topic)
+            results.append(
+                {
+                    "topic": topic,
+                    "requestedCount": len(batch),
+                    "successCount": getattr(response, "success_count", 0),
+                    "failureCount": getattr(response, "failure_count", 0),
+                    "dryRun": False,
+                    "errors": _topic_response_errors(response),
+                }
+            )
+    return results
+
+
+def _topic_batches(tokens: list[str]) -> list[list[str]]:
+    return [tokens[index : index + 1000] for index in range(0, len(tokens), 1000)]
+
+
+def _topic_response_errors(response) -> list[dict[str, Any]]:
+    errors = []
+    for error in getattr(response, "errors", []) or []:
+        errors.append(
+            {
+                "index": getattr(error, "index", None),
+                "reason": str(getattr(error, "reason", error)),
+            }
+        )
+    return errors

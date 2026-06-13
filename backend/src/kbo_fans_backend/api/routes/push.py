@@ -37,6 +37,17 @@ def send_test_push(payload: PushTestRequest) -> ApiEnvelope[dict]:
     return ApiEnvelope.success_response(service.send_test(payload))
 
 
+@router.post("/resubscribe-topics", response_model=ApiEnvelope[dict])
+def resubscribe_push_topics(
+    dry_run: bool = Query(default=False),
+    x_kbo_push_sync_secret: Optional[str] = Header(default=None),
+) -> ApiEnvelope[dict]:
+    _ensure_sync_allowed(x_kbo_push_sync_secret)
+    return ApiEnvelope.success_response(
+        service.resubscribe_registered_topics(dry_run=dry_run)
+    )
+
+
 @router.get("/config-status", response_model=ApiEnvelope[dict])
 def get_push_config_status(
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),

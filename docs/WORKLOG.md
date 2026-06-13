@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-06-13: push topic registry 재구독 운영 경로
+
+### 완료
+- [x] 기존 TestFlight 설치자의 FCM topic membership을 새 moment 계약으로 보정할 수 있도록 `POST /api/push/resubscribe-topics` 운영 endpoint 추가
+- [x] endpoint는 `PUSH_SYNC_SECRET`으로 보호하고, registry에 저장된 device registration을 현재 push schema로 다시 해석해 `at_bat_<팀>` / `at_bat_ALL` 같은 신규 topic을 계산하도록 구현
+- [x] Firebase Admin batch subscribe와 obsolete topic unsubscribe를 함께 수행하고, registry의 저장 topic 목록도 최신 계산 결과로 갱신하도록 보정
+- [x] GitHub Actions `Push Demo Deploy`에 `resubscribe_topics` 입력을 추가해 backend 배포 직후 같은 secret으로 topic 재등록을 실행할 수 있게 연결
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_resubscribe_registered_topics_rebuilds_at_bat_topic backend/tests/test_push_service.py::test_resubscribe_registered_topics_dry_run_does_not_call_firebase backend/tests/test_push_service.py::test_resubscribe_topics_endpoint_uses_sync_secret` (`3 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`26 passed`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/api/routes/push.py backend/tests/test_push_service.py`
+- [x] `backend/.venv/bin/pytest -q` (`127 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `bash -n scripts/github-push-demo-run.sh`
+- [x] `.github/workflows/push-demo-deploy.yml` YAML parse 확인
+
+### 운영 실행
+- [ ] backend image 재배포 후 `resubscribe_topics=true` workflow에서 topic 재등록 결과 확인
+
+---
+
 ## 2026-06-13: 0.0.35 릴리즈/TestFlight 재업로드 준비
 
 ### 완료

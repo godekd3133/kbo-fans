@@ -1,4 +1,5 @@
 import fcntl
+import json
 import os
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
@@ -128,6 +129,85 @@ def test_register_persists_device_token(tmp_path) -> None:
     assert response["registered"] is True
     assert "scoring_LG" in response["subscribedTopics"]
     assert "at_bat_LG" in response["subscribedTopics"]
+
+
+def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
+    registry_path = tmp_path / "push_registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "devices": {
+                    "fcm-token": {
+                        "deviceToken": "fcm-token",
+                        "platform": "ios",
+                        "myTeam": "LG",
+                        "notifications": {
+                            "gameStart": True,
+                            "scoring": True,
+                            "homerun": True,
+                            "reversal": True,
+                            "gameEnd": True,
+                            "lineupOpened": True,
+                            "inningChange": False,
+                            "allGames": False,
+                        },
+                        "topics": ["game_start_LG", "scoring_LG", "legacy_LG"],
+                    }
+                },
+                "liveActivities": {},
+                "scoreboardStates": {},
+                "relayStates": {},
+                "syncHeartbeat": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    registry = PushRegistry(str(registry_path))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeTopicMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.resubscribe_registered_topics()
+
+    subscribed_topics = {call["topic"] for call in messaging.subscribe_calls}
+    unsubscribed_topics = {call["topic"] for call in messaging.unsubscribe_calls}
+    stored_topics = registry._load()["devices"]["fcm-token"]["topics"]
+
+    assert response["resubscribed"] is True
+    assert response["eligibleDevices"] == 1
+    assert "at_bat_LG" in subscribed_topics
+    assert "legacy_LG" in unsubscribed_topics
+    assert "at_bat_LG" in stored_topics
+    assert "legacy_LG" not in stored_topics
+
+
+def test_resubscribe_registered_topics_dry_run_does_not_call_firebase(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+    service._get_messaging = lambda: (_ for _ in ()).throw(AssertionError("called"))
+
+    response = service.resubscribe_registered_topics(dry_run=True)
+
+    assert response["dryRun"] is True
+    assert response["subscriptionsAttempted"] > 0
+    assert response["subscriptionResults"][0]["dryRun"] is True
 
 
 def test_push_registry_serializes_writes_across_processes(tmp_path) -> None:
@@ -628,6 +708,33 @@ def test_push_config_status_endpoint_uses_sync_secret(monkeypatch) -> None:
     assert allowed.json()["data"]["ready"] is True
 
 
+def test_resubscribe_topics_endpoint_uses_sync_secret(monkeypatch) -> None:
+    class SecretSettings:
+        push_sync_secret = "secret"
+
+    captured = {}
+
+    class FakeService:
+        def resubscribe_registered_topics(self, *, dry_run: bool) -> dict:
+            captured["dry_run"] = dry_run
+            return {"resubscribed": not dry_run, "dryRun": dry_run}
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: SecretSettings())
+    monkeypatch.setattr(push_routes, "service", FakeService())
+    client = TestClient(app)
+
+    denied = client.post("/api/push/resubscribe-topics")
+    allowed = client.post(
+        "/api/push/resubscribe-topics?dry_run=true",
+        headers={"X-Kbo-Push-Sync-Secret": "secret"},
+    )
+
+    assert denied.status_code == 401
+    assert allowed.status_code == 200
+    assert captured["dry_run"] is True
+    assert allowed.json()["data"]["dryRun"] is True
+
+
 def test_sync_scoreboard_endpoint_defaults_to_kbo_game_day(monkeypatch) -> None:
     class SecretSettings:
         push_sync_secret = "secret"
@@ -726,6 +833,27 @@ class FakeLiveActivitySender:
     def send(self, **kwargs):
         self.calls.append(kwargs)
         return {"sent": True, "apnsId": "apns-id", "statusCode": 200}
+
+
+class FakeTopicResponse:
+    def __init__(self, *, success_count: int, failure_count: int = 0) -> None:
+        self.success_count = success_count
+        self.failure_count = failure_count
+        self.errors = []
+
+
+class FakeTopicMessaging:
+    def __init__(self) -> None:
+        self.subscribe_calls = []
+        self.unsubscribe_calls = []
+
+    def subscribe_to_topic(self, tokens, topic):
+        self.subscribe_calls.append({"tokens": list(tokens), "topic": topic})
+        return FakeTopicResponse(success_count=len(tokens))
+
+    def unsubscribe_from_topic(self, tokens, topic):
+        self.unsubscribe_calls.append({"tokens": list(tokens), "topic": topic})
+        return FakeTopicResponse(success_count=len(tokens))
 
 
 class FakePushService(PushService):

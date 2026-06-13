@@ -124,6 +124,25 @@ class PushRegistry:
         devices = data.get("devices", {})
         return bool(devices)
 
+    def device_registrations(self) -> list[dict[str, Any]]:
+        data = self._load()
+        devices = data.get("devices", {})
+        registrations = []
+        for token, registration in devices.items():
+            if not isinstance(registration, dict):
+                continue
+            device_token = str(registration.get("deviceToken") or token)
+            if not device_token:
+                continue
+            registrations.append(
+                {
+                    **registration,
+                    "deviceToken": device_token,
+                }
+            )
+        registrations.sort(key=lambda item: str(item.get("deviceToken", "")))
+        return registrations
+
     def replace_scoreboard_state(
         self,
         game_id: str,

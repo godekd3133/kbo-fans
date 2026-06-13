@@ -10,6 +10,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- 기존 push registry 토큰을 현재 moment/topic 계약으로 다시 구독시키는 backend 운영 endpoint 추가
+
 ## [0.0.35] - 2026-06-13
 
 ### Added

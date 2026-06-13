@@ -7,6 +7,7 @@ REF=""
 DRY_RUN=true
 IMAGE_TAG="${KBO_BACKEND_IMAGE_TAG:-latest}"
 SKIP_READINESS=false
+RESUBSCRIBE_TOPICS=false
 WATCH=false
 SKIP_CONFIG_CHECK=false
 
@@ -21,6 +22,7 @@ Options:
   --dry-run <true|false>    Run workflow in dry-run mode. Default: true.
   --tag <tag>               Backend image tag. Default: KBO_BACKEND_IMAGE_TAG or latest.
   --skip-readiness          Skip deployed API readiness after stack deploy.
+  --resubscribe-topics      Reconcile FCM topics from the push registry after deploy.
   --skip-config-check       Do not check GitHub secrets/variables before dispatch.
   --watch                   Wait for the triggered workflow run.
 
@@ -67,6 +69,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skip-readiness)
       SKIP_READINESS=true
+      shift
+      ;;
+    --resubscribe-topics)
+      RESUBSCRIBE_TOPICS=true
       shift
       ;;
     --skip-config-check)
@@ -222,9 +228,10 @@ gh workflow run push-demo-deploy.yml \
   --ref "$ref" \
   -f "dry_run=$DRY_RUN" \
   -f "image_tag=$IMAGE_TAG" \
-  -f "skip_readiness=$SKIP_READINESS"
+  -f "skip_readiness=$SKIP_READINESS" \
+  -f "resubscribe_topics=$RESUBSCRIBE_TOPICS"
 
-echo "github_push_demo_run=status=dispatched repo=$repo ref=$ref dry_run=$DRY_RUN tag=$IMAGE_TAG skip_readiness=$SKIP_READINESS"
+echo "github_push_demo_run=status=dispatched repo=$repo ref=$ref dry_run=$DRY_RUN tag=$IMAGE_TAG skip_readiness=$SKIP_READINESS resubscribe_topics=$RESUBSCRIBE_TOPICS"
 
 if [[ "$WATCH" == "true" ]]; then
   sleep 3
