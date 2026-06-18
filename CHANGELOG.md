@@ -10,6 +10,13 @@
 
 ## [Unreleased]
 
+## [0.0.38] - 2026-06-18
+
+### Fixed
+
+- `game_start_soon` push를 눌렀을 때 경기 상세 문자중계 탭으로 안전하게 연결되도록 내부 route 매핑을 보강
+- `game_start_soon` / `hit` topic과 relay 상황 텍스트 계약을 앱 테스트와 backend 테스트로 명시
+
 ## [0.0.37] - 2026-06-18
 
 ### Changed

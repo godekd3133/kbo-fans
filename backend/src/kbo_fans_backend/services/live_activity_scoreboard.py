@@ -341,7 +341,9 @@ def _scheduled_start_at(
     if len(game_id) < 8:
         return None
 
-    raw_time = str(current_state.get("startTime") or game.get("startTime") or game.get("time") or "")
+    raw_time = str(
+        current_state.get("startTime") or game.get("startTime") or game.get("time") or ""
+    )
     match = re.search(r"(\d{1,2}):(\d{2})", raw_time)
     if not match:
         return None

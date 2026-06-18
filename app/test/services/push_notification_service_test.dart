@@ -19,6 +19,8 @@ void main() {
     expect(topics, contains('homerun_LG'));
     expect(topics, contains('reversal_LG'));
     expect(topics, contains('game_start_LG'));
+    expect(topics, contains('game_start_soon_LG'));
+    expect(topics, contains('hit_LG'));
     expect(topics, contains('at_bat_LG'));
     expect(topics, isNot(contains('game_end_LG')));
     expect(topics, isNot(contains('game_start_ALL')));
@@ -36,6 +38,8 @@ void main() {
     expect(topics, contains('homerun_ALL'));
     expect(topics, contains('reversal_ALL'));
     expect(topics, contains('game_start_ALL'));
+    expect(topics, contains('game_start_soon_ALL'));
+    expect(topics, contains('hit_ALL'));
     expect(topics, contains('at_bat_ALL'));
     expect(topics, contains('all_games_enabled'));
     expect(topics, isNot(contains('scoring_LG')));
@@ -86,6 +90,7 @@ void main() {
   test('summary 또는 liveOnly delivery는 즉시 push 토픽을 만들지 않는다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       scoringDelivery: PushNotificationDelivery.summary,
+      hitDelivery: PushNotificationDelivery.off,
       homerunDelivery: PushNotificationDelivery.liveOnly,
       reversalDelivery: PushNotificationDelivery.off,
       gameEndDelivery: PushNotificationDelivery.immediate,
@@ -95,6 +100,7 @@ void main() {
 
     expect(topics, contains('game_end_LG'));
     expect(topics, isNot(contains('scoring_LG')));
+    expect(topics, isNot(contains('hit_LG')));
     expect(topics, isNot(contains('homerun_LG')));
     expect(topics, isNot(contains('reversal_LG')));
   });
@@ -139,6 +145,24 @@ void main() {
   test('타석 push data는 문자중계 탭 상세 route로 변환한다', () {
     final route = pushNotificationRouteForData({
       'type': 'at_bat',
+      'gameId': '20260612KTLG0',
+    });
+
+    expect(route, '/game/20260612KTLG0?tab=relay');
+  });
+
+  test('안타 push data는 문자중계 탭 상세 route로 변환한다', () {
+    final route = pushNotificationRouteForData({
+      'type': 'hit',
+      'gameId': '20260612KTLG0',
+    });
+
+    expect(route, '/game/20260612KTLG0?tab=relay');
+  });
+
+  test('경기 시작 임박 push data는 문자중계 탭 상세 route로 변환한다', () {
+    final route = pushNotificationRouteForData({
+      'type': 'game_start_soon',
       'gameId': '20260612KTLG0',
     });
 

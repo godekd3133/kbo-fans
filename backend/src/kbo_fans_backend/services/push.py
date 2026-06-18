@@ -388,7 +388,7 @@ def _game_moment_copy(
     if moment == "hit":
         actor = f"{batter_name} " if batter_name else ""
         situation = f" · {situation_text}" if situation_text else ""
-        if play_text and not batter_name:
+        if play_text:
             return "안타", f"{inning} {play_text}{situation}"
         return "안타", f"{inning} {actor}안타{situation}"
     if moment == "homerun":

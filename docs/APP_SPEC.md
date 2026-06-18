@@ -768,8 +768,10 @@ GET /api/standings?season=2026
 **기본 플레이북**:
 | Moment | 기본 전달 방식 | 범위 | UX 원칙 |
 |--------|----------------|------|---------|
+| 경기 시작 임박 | 바로 알림 | 마이팀 | 예정 시작 10분 전 마이팀 경기를 미리 열 수 있게 알림 |
 | 경기 시작 | 바로 알림 | 마이팀 | 마이팀 플레이볼은 핵심 신호로 보고 즉시 알림과 자동 Live Activity 시작 대상에 포함 |
 | 득점 | 바로 알림 | 마이팀 | 점수 변화는 가장 강한 moment 로 취급 |
+| 안타 | 바로 알림 | 마이팀 | relay 기반 안타 직후 아웃/주자 상황을 함께 전달 |
 | 홈런 | 바로 알림 | 마이팀 | relay 기반으로 확인되는 큰 장면은 득점과 별도 신호로 분리 |
 | 역전 | 바로 알림 | 마이팀 | 승부 흐름이 바뀐 경우에만 발송 |
 | 경기 종료 | 묶음 요약 | 마이팀 | 결과는 묶어서 확인하되 사용자가 원하면 바로 알림으로 격상 가능 |
@@ -789,7 +791,7 @@ GET /api/standings?season=2026
 
 | 필드 | 값 |
 |------|-----|
-| `moment` | `gameStart`, `scoring`, `homerun`, `reversal`, `gameEnd`, `lineupOpened`, `inningChange`, `atBat` |
+| `moment` | `gameStartSoon`, `gameStart`, `scoring`, `hit`, `homerun`, `reversal`, `gameEnd`, `lineupOpened`, `inningChange`, `atBat` |
 | `delivery` | `immediate`, `summary`, `liveOnly`, `off` |
 | `scope` | `myTeam`, `selectedGame`, `allGames` |
 | `surface` | `push`, `summary`, `liveActivity`, `liveUpdate`, `widget` |
@@ -843,8 +845,8 @@ GET /api/standings?season=2026
 **원격 갱신 계약**:
 - iOS Live Activity는 앱에서 `ActivityKit` push token을 발급받아 `/api/push/live-activity/register`로 백엔드에 등록한다.
 - 백엔드는 live 경기 중 8초 간격으로 scoreboard를 갱신하고, 등록된 ActivityKit token에 APNs `liveactivity` update payload를 보낸다.
-- 같은 scheduler는 이전 scoreboard state와 현재 state를 비교해 일반 푸시용 FCM topic moment를 발행한다. 첫 관측은 baseline 저장만 하고, 이후 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat`을 감지한다.
-- scoreboard diff만으로 알 수 없는 `homerun`은 같은 scheduler가 relay seq baseline을 따로 저장한 뒤 새 relay item의 `HOMERUN` event 또는 `홈런` 텍스트를 감지해 FCM topic push로 발행한다.
+- 같은 scheduler는 예정 경기의 KST `startTime` 기준 10분 전 window에서 `game_start_soon`을 한 번 발행한다. 첫 관측은 baseline 저장만 하고, live 전환 이후 scoreboard diff로 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat`을 감지한다.
+- scoreboard diff만으로 알 수 없는 `hit` / `homerun`은 같은 scheduler가 relay seq baseline을 따로 저장한 뒤 새 relay item의 `HIT` / `HOMERUN` event 또는 `안타` / `홈런` 텍스트를 감지해 FCM topic push로 발행한다. `hit`은 relay의 `currentAtBat`에서 outs/baseState를 읽어 `1사 1,2루` 같은 상황 텍스트를 함께 보낸다.
 - 경기 종료/취소/서스펜디드 상태에서는 APNs `end` event와 final content state를 보내고 token registry에서 세션을 제거한다.
 - FCM은 일반 push notification과 topic subscription에 사용한다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
 
@@ -1353,7 +1355,17 @@ POST /api/push/register
       "scope": "myTeam"
     },
     {
+      "moment": "gameStartSoon",
+      "delivery": "immediate",
+      "scope": "myTeam"
+    },
+    {
       "moment": "scoring",
+      "delivery": "immediate",
+      "scope": "myTeam"
+    },
+    {
+      "moment": "hit",
       "delivery": "immediate",
       "scope": "myTeam"
     },
@@ -1404,8 +1416,8 @@ GET /api/push/config-status
 **Live Activity 운영 계약**:
 - `register`: 앱/iOS native가 `gameId`, `activityId`, `activityPushToken`을 등록한다.
 - `update`: 내부 운영 도구나 worker가 특정 `gameId`의 `content-state`를 APNs로 발송한다.
-- `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 scoreboard diff 기반 FCM moment push와 relay diff 기반 `homerun` push도 발행한다. `date` 생략 시 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
-- `resubscribe-topics`: registry에 저장된 FCM device registration을 현재 push schema로 다시 해석해 Firebase topic을 재구독한다. `at_bat`처럼 새 moment topic을 추가한 뒤 기존 TestFlight 설치자의 topic membership을 보정할 때 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon`, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. `date` 생략 시 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `resubscribe-topics`: registry에 저장된 FCM device registration을 현재 push schema로 다시 해석해 Firebase topic을 재구독한다. `at_bat`, `game_start_soon`, `hit`처럼 새 moment topic을 추가한 뒤 기존 TestFlight 설치자의 topic membership을 보정할 때 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다.
 
@@ -1415,8 +1427,8 @@ GET /api/push/config-status
   "success": true,
   "data": {
     "registered": true,
-    "subscribedTopics": ["scoring_LG", "homerun_LG", "reversal_LG", "at_bat_LG"],
-    "summaryTopics": ["game_start_LG", "game_end_LG", "lineup_opened_LG"],
+    "subscribedTopics": ["game_start_LG", "game_start_soon_LG", "scoring_LG", "hit_LG", "homerun_LG", "reversal_LG", "at_bat_LG"],
+    "summaryTopics": ["game_end_LG", "lineup_opened_LG"],
     "followedGameIds": ["20260328KTLG0"]
   }
 }

@@ -2,6 +2,66 @@
 
 ---
 
+## 2026-06-18: 0.0.38 push moment routing polish 릴리즈
+
+### 완료
+- [x] 0.0.37 업로드 이후 남은 `game_start_soon` push route/test/patch-note 보강이 앱 동작과 in-app patch note에 닿는 변경임을 확인
+- [x] 0.0.38+38로 버전 분리 결정
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 0.0.38 기준으로 동기화
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`113 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`133 passed`)
+- [x] `python3 -m compileall -q backend/src`
+- [x] `git diff --check`
+- [x] `./scripts/push-live-preflight.sh --app-only` (`push_live_preflight=status=ok checks=29 warnings=1 failures=0`)
+- [x] `ALLOW_INSECURE_RELEASE_API=true API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api ./scripts/release-api-health-check.sh` (`/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200)
+- [ ] `0.0.38 (38)` TestFlight upload
+- [ ] GitHub Release / backend deploy / topic resubscribe
+- [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
+
+## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강
+
+### 완료
+- [x] root cause: backend scheduler는 relay 기반 `homerun`만 발행했고 `HIT` relay item은 무시했다. 경기 시작 10분 전 예고 moment와 중복 발송 방지 registry state도 없어서, 앱이 꺼져 있으면 안타/시작 임박 push가 생성될 수 없었다.
+- [x] backend push schema/topic/copy에 `hit`과 `game_start_soon`을 추가하고, `game_start_soon`은 기존 경기 시작 설정의 즉시 알림 delivery를 공유하도록 정렬
+- [x] Live Activity scoreboard sync worker가 예정 경기 KST `startTime` 10분 전 window에서 `game_start_soon`을 한 번만 발행하도록 `pregameAlertStates`를 추가
+- [x] live relay diff에서 새 `HIT` item을 감지하고 `currentAtBat.ballCount.outs` / `baseState`를 조합해 `1사 1,2루` 같은 상황 텍스트를 FCM data/body에 포함
+- [x] 실제 FCM message copy/data 검증을 추가해 `hit` body가 relay 원문과 상황을 함께 담고, `game_start_soon` payload가 `startTime` / `stadium`을 포함하는지 확인
+- [x] 앱 설정/저장/토픽/로컬 알림/푸시 route에 `안타` moment를 추가하고, `game_start_soon` / `hit` 알림 클릭은 경기 상세 문자중계 탭으로 연결
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`에 새 moment 계약을 동기화
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/services/push_notification_service.dart lib/services/game_event_alert_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`32 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`133 passed`)
+- [x] `python3 -m compileall -q backend/src`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze lib/services/push_notification_service.dart lib/services/game_event_alert_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart --no-pub`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/services/push_notification_service_test.dart --no-pub` (`14 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`113 passed`)
+- [x] `git diff --check`
+- [ ] 운영 backend deploy, `/api/push/resubscribe-topics`, TestFlight/실기기 foreground/background/terminated notification receipt는 별도 runtime 확인 필요
+
+## 2026-06-18: 라이브 데이터 8초 갱신 기준 재검증
+
+### 완료
+- [x] 홈 scoreboard live refresh, 경기 상세 live refresh, 앱 API live cache maxAge, backend scoreboard/home live TTL, Live Activity sync worker 기본값/하한이 8초 기준인지 확인
+- [x] AWS CloudFormation/Fargate sync worker 기본값과 운영 문서의 live sync 기준이 8초로 정렬되어 있는지 확인
+- [x] full backend pytest를 막던 `test_push_service.py` 테스트 더블의 current at-bat / scheduled game fixture 표현을 보강
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/features/game_detail/game_detail_navigation_test.dart --no-pub` (`3 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`111 passed`)
+- [x] `python3 -m compileall -q backend/src`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_live_activity_sync_loop.py backend/tests/test_scoreboard_service_cache.py backend/tests/test_home.py` (`24 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_live_activity_sync_loop.py` (`32 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`133 passed`)
+- [ ] 실기기 Live Activity 8초 수신은 배포된 sync worker와 iPhone/TestFlight receipt로 별도 확인 필요
+
 ## 2026-06-18: 백그라운드/종료 push 등록 자동화
 
 ### 완료

@@ -164,6 +164,77 @@ def test_register_persists_followed_game_ids(tmp_path) -> None:
     assert registration["followedGameIds"] == ["20260612KTLG0"]
 
 
+def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="hit",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=2,
+        home_score=3,
+        inning="7회말",
+        batter_name="장성우",
+        pitcher_name="김진성",
+        situation_text="1사 1,2루",
+        play_text="장성우 : 좌전 안타",
+    )
+
+    assert response["sent"] is True
+    assert [message.topic for message in messaging.sent_messages] == [
+        "hit_LG",
+        "hit_KT",
+        "hit_ALL",
+    ]
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "안타"
+    assert first_message.notification.body == "7회말 장성우 : 좌전 안타 · 1사 1,2루"
+    assert first_message.data["type"] == "hit"
+    assert first_message.data["situationText"] == "1사 1,2루"
+    assert first_message.data["playText"] == "장성우 : 좌전 안타"
+    assert first_message.data["batterName"] == "장성우"
+
+
+def test_send_game_moment_start_soon_includes_start_time_payload(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="game_start_soon",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=0,
+        home_score=0,
+        inning="18:30 예정",
+        start_time="18:30",
+        stadium="수원",
+    )
+
+    assert response["sent"] is True
+    assert [message.topic for message in messaging.sent_messages] == [
+        "game_start_soon_LG",
+        "game_start_soon_KT",
+        "game_start_soon_ALL",
+    ]
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "경기 곧 시작"
+    assert first_message.notification.body == "LG vs KT 경기가 곧 시작됩니다. 18:30 · 수원"
+    assert first_message.data["type"] == "game_start_soon"
+    assert first_message.data["startTime"] == "18:30"
+    assert first_message.data["stadium"] == "수원"
+
+
 def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
     registry_path = tmp_path / "push_registry.json"
     registry_path.write_text(
@@ -1072,6 +1143,32 @@ class FakeTopicMessaging:
         return FakeTopicResponse(success_count=len(tokens))
 
 
+class FakeFcmNotification:
+    def __init__(self, *, title: str, body: str) -> None:
+        self.title = title
+        self.body = body
+
+
+class FakeFcmMessage:
+    def __init__(self, *, notification, data=None, topic=None, token=None) -> None:
+        self.notification = notification
+        self.data = data or {}
+        self.topic = topic
+        self.token = token
+
+
+class FakeFcmMessaging:
+    Notification = FakeFcmNotification
+    Message = FakeFcmMessage
+
+    def __init__(self) -> None:
+        self.sent_messages = []
+
+    def send(self, message) -> str:
+        self.sent_messages.append(message)
+        return f"message-{len(self.sent_messages)}"
+
+
 class FakePushService(PushService):
     def __init__(self, *, registry, live_activity_sender) -> None:
         super().__init__(registry=registry, live_activity_sender=live_activity_sender)
@@ -1110,22 +1207,29 @@ class FakeScoreboardSequenceService:
 
 
 class FakeRelaySequenceService:
-    def __init__(self, relay_items_by_call) -> None:
+    def __init__(self, relay_items_by_call, current_at_bat_by_call=None) -> None:
         self.relay_items_by_call = relay_items_by_call
+        self.current_at_bat_by_call = current_at_bat_by_call or []
         self.index = 0
         self.calls = []
 
     def get_relay(self, game_id: str, after=None):
         self.calls.append({"game_id": game_id, "after": after})
+        call_index = self.index
         relay_items = self.relay_items_by_call[
             min(self.index, len(self.relay_items_by_call) - 1)
         ]
         self.index += 1
+        current_at_bat = None
+        if self.current_at_bat_by_call:
+            current_at_bat = self.current_at_bat_by_call[
+                min(call_index, len(self.current_at_bat_by_call) - 1)
+            ]
         if after is not None:
             relay_items = [item for item in relay_items if item["seqNo"] > after]
         return {
             "gameId": game_id,
-            "currentAtBat": None,
+            "currentAtBat": current_at_bat,
             "relayItems": relay_items,
         }
 
@@ -1163,14 +1267,17 @@ def _scoreboard_game(
     away_score: int,
     home_score: int,
     inning: str,
+    status: str = "LIVE",
+    start_time: str = "",
     batter_name: str = "",
     pitcher_name: str = "",
 ) -> dict:
     return {
         "gameId": "20260604LGKT0",
-        "status": "LIVE",
+        "status": status,
         "inning": inning,
         "stadium": "수원",
+        "startTime": start_time,
         "current": {
             "batterName": batter_name,
             "pitcherName": pitcher_name,
@@ -1188,6 +1295,16 @@ def _scoreboard_game(
             "shortName": "KT",
             "score": home_score,
         },
+    }
+
+
+def _current_at_bat(*, outs: int, base_state: str) -> dict:
+    return {
+        "inningText": "7회말",
+        "batter": {"name": "장성우"},
+        "pitcher": {"name": "김진성"},
+        "ballCount": {"balls": 0, "strikes": 0, "outs": outs},
+        "baseState": base_state,
     }
 
 

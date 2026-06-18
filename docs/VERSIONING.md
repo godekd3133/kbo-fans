@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.37+37`
-- Current release tag: `0.0.37`
+- Flutter app version: `0.0.38+38`
+- Current release tag: `0.0.38`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -85,6 +85,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.35`: `at_bat` immediate push moment, relay-seq based backend homerun push, Live Activity current-at-bat payload enrichment, live boxscore placeholder guard across direct/backend paths, and current app build `0.0.35+35`.
 - `0.0.36`: TestFlight iOS bundle now includes Firebase `GoogleService-Info.plist` for push initialization, API diagnostics shows release push failure reasons, backend topic resubscribe operation is documented in release notes, and current app build `0.0.36+36`.
 - `0.0.37`: release/dev apps with a selected my-team now run one-time notification permission plus FCM registration sync automatically, live push/Live Activity cadence is aligned to 8 seconds, `game_start_soon` and `hit` moments are included in push topics, push registry preserves current followed game ids, Live Activity / Dynamic Island visual structure is aligned with the home score card, and current app build `0.0.37+37`.
+- `0.0.38`: push moment routing polish for `game_start_soon`, explicit app/backend tests for `game_start_soon` and `hit` topic contracts, and current app build `0.0.38+38`.
 
 ## GitHub Release Note Template
 

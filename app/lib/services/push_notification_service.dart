@@ -950,6 +950,7 @@ String? _tabForPushType(String type) {
   return switch (type) {
     'lineup_opened' || 'lineup_changed' || 'lineup' => 'lineup',
     'game_start' ||
+    'game_start_soon' ||
     'scoring' ||
     'hit' ||
     'homerun' ||
