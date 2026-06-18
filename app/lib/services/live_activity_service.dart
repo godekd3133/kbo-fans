@@ -11,6 +11,7 @@ import '../core/utils/game_status_label.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
 import '../data/models/game.dart';
+import 'push_notification_service.dart';
 
 @pragma('vm:entry-point')
 void liveActivityNotificationTapBackground(NotificationResponse response) {
@@ -41,6 +42,7 @@ class LiveActivityService {
     _ensureChannelHandler();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_followedGameIdKey, gameId);
+    unawaited(PushNotificationService.instance.syncRegistration());
   }
 
   Future<void> stopFollowing() async {
@@ -50,6 +52,7 @@ class LiveActivityService {
       await _unregisterLiveActivity(gameId);
     }
     await prefs.remove(_followedGameIdKey);
+    unawaited(PushNotificationService.instance.syncRegistration());
     await endCurrentScore();
   }
 

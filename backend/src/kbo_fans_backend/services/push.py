@@ -28,10 +28,11 @@ class PushService:
 
     def register(self, payload: PushRegisterRequest) -> dict[str, Any]:
         topics = self._build_topics(payload)
-        self.registry.save_device_registration(payload, topics)
+        registration = self.registry.save_device_registration(payload, topics)
         return {
             "registered": True,
             "subscribedTopics": topics,
+            "followedGameIds": registration.get("followedGameIds", []),
         }
 
     def resubscribe_registered_topics(self, *, dry_run: bool = False) -> dict[str, Any]:
@@ -218,6 +219,10 @@ class PushService:
         inning: str,
         batter_name: str = "",
         pitcher_name: str = "",
+        situation_text: str = "",
+        play_text: str = "",
+        start_time: str = "",
+        stadium: str = "",
     ) -> dict[str, Any]:
         messaging = self._get_messaging()
         title, body = _game_moment_copy(
@@ -229,6 +234,10 @@ class PushService:
             inning=inning,
             batter_name=batter_name,
             pitcher_name=pitcher_name,
+            situation_text=situation_text,
+            play_text=play_text,
+            start_time=start_time,
+            stadium=stadium,
         )
         targets = [
             f"{moment}_{away_team_id}",
@@ -249,6 +258,10 @@ class PushService:
                     "inning": inning,
                     "batterName": batter_name,
                     "pitcherName": pitcher_name,
+                    "situationText": situation_text,
+                    "playText": play_text,
+                    "startTime": start_time,
+                    "stadium": stadium,
                 },
                 topic=topic,
             )
@@ -266,9 +279,17 @@ class PushService:
                 payload.notifications.gameStart,
                 delivery_modes.gameStart if delivery_modes else None,
             ),
+            "game_start_soon": _sends_immediately(
+                payload.notifications.gameStart,
+                delivery_modes.gameStart if delivery_modes else None,
+            ),
             "scoring": _sends_immediately(
                 payload.notifications.scoring,
                 delivery_modes.scoring if delivery_modes else None,
+            ),
+            "hit": _sends_immediately(
+                payload.notifications.hit,
+                delivery_modes.hit if delivery_modes else None,
             ),
             "homerun": _sends_immediately(
                 payload.notifications.homerun,
@@ -347,13 +368,29 @@ def _game_moment_copy(
     inning: str,
     batter_name: str = "",
     pitcher_name: str = "",
+    situation_text: str = "",
+    play_text: str = "",
+    start_time: str = "",
+    stadium: str = "",
 ) -> tuple[str, str]:
     score = f"{away_score}:{home_score}"
     matchup = f"{away_team_name} vs {home_team_name}"
+    start_detail = " · ".join(
+        part for part in [start_time.strip(), stadium.strip()] if part
+    )
     if moment == "game_start":
         return "경기 시작", f"{matchup} 경기가 시작됐습니다."
+    if moment == "game_start_soon":
+        suffix = f" {start_detail}" if start_detail else ""
+        return "경기 곧 시작", f"{matchup} 경기가 곧 시작됩니다.{suffix}"
     if moment == "scoring":
         return "득점 발생", f"{inning} {matchup} 현재 스코어 {score}"
+    if moment == "hit":
+        actor = f"{batter_name} " if batter_name else ""
+        situation = f" · {situation_text}" if situation_text else ""
+        if play_text and not batter_name:
+            return "안타", f"{inning} {play_text}{situation}"
+        return "안타", f"{inning} {actor}안타{situation}"
     if moment == "homerun":
         return "홈런", f"{inning} {matchup} 홈런 발생, 현재 {score}"
     if moment == "reversal":
@@ -410,6 +447,7 @@ def _registration_to_payload(registration: dict[str, Any]) -> PushRegisterReques
             platform=str(registration.get("platform") or "unknown"),
             myTeam=registration.get("myTeam"),
             notifications=notifications,
+            followedGameIds=_stored_followed_game_ids(registration),
         )
     except Exception as error:
         raise ValueError(f"invalid registration: {error}") from error
@@ -420,6 +458,22 @@ def _stored_topics(registration: dict[str, Any]) -> set[str]:
     if not isinstance(topics, list):
         return set()
     return {str(topic) for topic in topics if topic}
+
+
+def _stored_followed_game_ids(registration: dict[str, Any]) -> list[str]:
+    followed = registration.get("followedGameIds")
+    if not isinstance(followed, list):
+        return []
+
+    cleaned = []
+    seen = set()
+    for game_id in followed:
+        text = str(game_id).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned
 
 
 def _planned_topic_results(groups: dict[str, list[str]]) -> list[dict[str, Any]]:

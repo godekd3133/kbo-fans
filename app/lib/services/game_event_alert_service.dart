@@ -203,10 +203,11 @@ class GameEventAlertService {
     final notifyHomerun = settings.sendsImmediately(
       PushNotificationMoment.homerun,
     );
+    final notifyHit = settings.sendsImmediately(PushNotificationMoment.hit);
     final notifyInningChange = settings.sendsImmediately(
       PushNotificationMoment.inningChange,
     );
-    if (!(notifyHomerun || notifyInningChange)) {
+    if (!(notifyHomerun || notifyHit || notifyInningChange)) {
       return previous?.lastRelaySeq;
     }
     if (game.status != GameStatus.live) {
@@ -236,6 +237,15 @@ class GameEventAlertService {
             title: '${game.away.shortName} vs ${game.home.shortName} 홈런',
             body: item.text,
             tag: '${game.gameId}:homerun:${item.seqNo}',
+          );
+        }
+
+        if (notifyHit && _isHitEvent(item)) {
+          final situation = _situationText(relayData.currentAtBat);
+          await _showNow(
+            title: '${game.away.shortName} vs ${game.home.shortName} 안타',
+            body: situation.isEmpty ? item.text : '${item.text} · $situation',
+            tag: '${game.gameId}:hit:${item.seqNo}',
           );
         }
 
@@ -521,6 +531,51 @@ class GameEventAlertService {
       return true;
     }
     return item.text.contains('홈런');
+  }
+
+  bool _isHitEvent(RelayItem item) {
+    if (_isHomerunEvent(item)) {
+      return false;
+    }
+    final event = item.event.toUpperCase();
+    if (event == 'HIT') {
+      return true;
+    }
+    return item.text.contains('안타') ||
+        item.text.contains('1루타') ||
+        item.text.contains('2루타') ||
+        item.text.contains('3루타');
+  }
+
+  String _situationText(CurrentAtBat? currentAtBat) {
+    if (currentAtBat == null) {
+      return '';
+    }
+    final outs = switch (currentAtBat.outs) {
+      0 => '무사',
+      1 => '1사',
+      2 => '2사',
+      _ => '',
+    };
+    final base = _baseStateLabel(currentAtBat.baseState);
+    if (outs.isNotEmpty && base.isNotEmpty) {
+      return '$outs $base';
+    }
+    return outs.isNotEmpty ? outs : base;
+  }
+
+  String _baseStateLabel(String baseState) {
+    final text = baseState.trim();
+    if (text.isEmpty) {
+      return '';
+    }
+    if (text == '주자없음') {
+      return '주자 없음';
+    }
+    if (text.startsWith('주자')) {
+      return text.substring(2);
+    }
+    return text;
   }
 
   String _lineupSignature(GameLineupData lineup) {

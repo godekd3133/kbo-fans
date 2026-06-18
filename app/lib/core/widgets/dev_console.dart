@@ -279,7 +279,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     const Text(
-                                      '🔧 Dev Console',
+                                      'Dev Console',
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,

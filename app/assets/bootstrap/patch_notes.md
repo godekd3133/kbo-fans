@@ -1,5 +1,12 @@
 # 패치노트
 
+## 0.0.37+37 - Background Push Registration Fix
+
+- 마이팀이 선택된 release 앱은 최초 1회 알림 권한 요청과 FCM 등록 동기화를 자동으로 실행해 앱 종료/백그라운드 push 수신 준비를 보강했습니다.
+- 홈에서 자동으로 따라가는 마이팀 live 경기 상태를 backend push registry의 `followedGameIds`에 함께 반영합니다.
+- 진행 중 경기의 홈 scoreboard, 경기 상세, Live Activity 원격 갱신 주기를 8초 기준으로 맞췄습니다.
+- iOS Live Activity / Dynamic Island와 홈 카드의 팀 로고-스코어 중심 표현을 맞추고, 앱 전역 다크 톤과 사용자 화면 문구를 더 절제된 형태로 정리했습니다.
+
 ## 0.0.36+36 - TestFlight Push Initialization Fix
 
 - TestFlight iOS 앱에 Firebase 설정 파일이 포함되도록 보정해 푸시 초기화가 실패하던 경로를 막았습니다.

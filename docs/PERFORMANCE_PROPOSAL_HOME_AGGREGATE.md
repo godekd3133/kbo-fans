@@ -138,7 +138,7 @@
 ### 캐시 안전성
 
 - `/api/home` 자체에 짧은 TTL 캐시 적용
-- live 게임 포함 시 `30초`
+- live 게임 포함 시 `8초`
 - scheduled 중심이면 `5분`
 - final만 존재하면 더 긴 TTL 가능
 

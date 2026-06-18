@@ -39,9 +39,9 @@ Service classes should decide:
 
 | Endpoint/data | Class | TTL | Snapshot | Request-time crawler allowed |
 | --- | --- | --- | --- | --- |
-| `/scoreboard/home?date=today` | Live | 30s | save when historical or terminal day | yes |
+| `/scoreboard/home?date=today` | Live | 8s | save when historical or terminal day | yes |
 | `/scoreboard/home?date=past` | Persisted snapshot | none | required if available | no by default |
-| `/game/{gameId}` live | Live | 30s | stale game snapshot allowed | yes |
+| `/game/{gameId}` live | Live | 8s | stale game snapshot allowed | yes |
 | `/game/{gameId}` final/past | Persisted snapshot | none | required if available | no by default |
 | `/game/{gameId}/relay` live | Live | 10-20s or `afterSeqNo` | stale detailed relay allowed | yes |
 | `/game/{gameId}/relay` final | Persisted snapshot | none | detailed relay or summary snapshot | no by default |
@@ -123,7 +123,7 @@ This review is based on the current code paths below:
 | All-player image map | `app/lib/data/providers.dart:270-305` can still loop through all 10 teams if explicitly watched, but normal detail tabs now use selected teams instead. |
 | Home fallback fan-out | `app/lib/features/home/home_screen.dart:430-455` skips local fallback assembly when aggregate fails. |
 | Home preload | Removed. Home now renders from the visible scoreboard provider or the local home scoreboard cache without `GameDetailPreloadService`. |
-| Home live refresh | `app/lib/features/home/home_screen.dart:791-812` invalidates the visible scoreboard provider only on live 30s / scheduled 5m cadence and stops after terminal games. |
+| Home live refresh | `app/lib/features/home/home_screen.dart:791-812` invalidates the visible scoreboard provider only on live 8s / scheduled 5m cadence and stops after terminal games. |
 | Web resume refresh | `app/lib/main.dart:127-142` registers the app-level resume observer only on native widget-capable runtimes, so web records/schedule views do not trigger unrelated scoreboard refresh. |
 | Schedule preload | Removed. `app/lib/features/schedule/schedule_screen.dart:74-76` opens detail on tap without top-3 detail preload. |
 | Detail visible-tab refresh | `app/lib/features/game_detail/game_detail_screen.dart:220-250` refreshes game summary and only the visible tab provider. |
@@ -189,12 +189,12 @@ Current:
 
 - `_refreshGameDetail()` invalidates game, relay, boxscore, and lineup together.
 - It runs on initial entry, resume, and timer.
-- Live interval is 30s.
+- Live interval is 8s.
 
 Why this is a problem:
 
 - If user is on Score tab, boxscore and lineup should not refresh.
-- If user is on Relay tab, lineup should not refresh every 30s.
+- If user is on Relay tab, lineup should not refresh every 8s.
 - If user is on Lineup tab, relay and boxscore should not be mandatory unless the tab explicitly uses decorations.
 
 Decision:
@@ -375,7 +375,7 @@ Current flow:
 - Detail screen watches `gameProvider(gameId)`.
 - Initial post-frame refresh warms the game summary only.
 - Refresh timer invalidates `gameProvider` plus the currently visible tab provider only.
-- Live interval: 30s. Scheduled interval: 5m.
+- Live interval: 8s. Scheduled interval: 5m.
 
 Residual risk:
 

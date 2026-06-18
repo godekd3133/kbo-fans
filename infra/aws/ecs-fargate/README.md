@@ -63,7 +63,7 @@ APNS_TEAM_ID=<apple-team-id>
 APNS_BUNDLE_ID=com.kbofans.kboFans
 APNS_USE_SANDBOX=false
 PUSH_REGISTRY_PATH=/var/lib/kbo-fans/push_registry.json
-PUSH_SYNC_INTERVAL_SECONDS=60
+PUSH_SYNC_INTERVAL_SECONDS=8
 ```
 
 `APNS_USE_SANDBOX=false` is required for TestFlight / App Store production APNs.

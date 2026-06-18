@@ -195,7 +195,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       height: height,
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider),
       ),
       child: showSpinner
@@ -482,7 +482,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.card,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: AppColors.divider),
                     ),
                     child: Column(
@@ -823,12 +823,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'MY TEAM',
+                  '마이팀',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textDisabled,
-                    letterSpacing: 0.8,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -866,7 +865,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                         child: const Text(
-                          'LIVE',
+                          '경기 중',
                           style: TextStyle(
                             fontSize: 10,
                             color: AppColors.live,
@@ -881,20 +880,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: const Icon(
-              Icons.notifications_none_rounded,
-              size: 20,
-              color: AppColors.textPrimary,
-            ),
-          ),
+          _HeaderTeamMark(team: myTeam),
         ],
       ),
     );
@@ -924,7 +910,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Duration? _resolveRefreshInterval(List<Game> games) {
     if (games.any((game) => game.status == GameStatus.live)) {
-      return const Duration(seconds: 30);
+      return const Duration(seconds: 8);
     }
     if (games.any((game) => game.status == GameStatus.scheduled)) {
       return const Duration(minutes: 5);
@@ -1010,6 +996,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
+class _HeaderTeamMark extends StatelessWidget {
+  final KboTeam? team;
+
+  const _HeaderTeamMark({required this.team});
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = team?.primaryColor ?? AppColors.divider;
+    return Container(
+      width: 44,
+      height: 44,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        shape: BoxShape.circle,
+        border: Border.all(color: borderColor.withValues(alpha: 0.58)),
+      ),
+      child: team == null
+          ? const Icon(
+              Icons.sports_baseball_rounded,
+              size: 20,
+              color: AppColors.textSecondary,
+            )
+          : CachedNetworkImage(
+              imageUrl: team!.logoUrl,
+              memCacheWidth: 90,
+              memCacheHeight: 90,
+              fit: BoxFit.contain,
+              errorWidget: (_, _, _) => _teamMarkFallback(team!.shortName, 30),
+              placeholder: (_, _) => _teamMarkFallback(team!.shortName, 30),
+            ),
+    );
+  }
+}
+
 class _DeferredSectionCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -1055,6 +1076,7 @@ class _MyTeamBriefCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (myTeamId == null || myTeamId!.isEmpty) {
       return _sectionCard(
+        accentColor: AppColors.accent,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1085,7 +1107,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 child: const Text('마이팀 선택하기'),
@@ -1127,6 +1149,7 @@ class _MyTeamBriefCard extends StatelessWidget {
 
     return _sectionCard(
       padding: const EdgeInsets.all(14),
+      accentColor: team?.primaryColor ?? AppColors.accent,
       child: AppPressable(
         onTap: openPrimaryDestination,
         pressedScale: 0.99,
@@ -1424,7 +1447,14 @@ class _TodayBaseballCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final spotlight = brief.spotlight;
+    final accentTeam = spotlight == null
+        ? null
+        : KboTeams.byId(spotlight.away.teamId) ??
+              KboTeams.byId(spotlight.home.teamId);
+
     return _sectionCard(
+      accentColor: accentTeam?.primaryColor ?? AppColors.live,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1433,8 +1463,8 @@ class _TodayBaseballCard extends StatelessWidget {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
-          if (brief.spotlight != null) ...[
-            _spotlightMatchupCard(context, brief.spotlight!),
+          if (spotlight != null) ...[
+            _spotlightMatchupCard(context, spotlight),
             const SizedBox(height: 12),
           ],
           if (brief.summaries.isNotEmpty)
@@ -1458,7 +1488,7 @@ class _TodayBaseballCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: const Text('일정 보기'),
@@ -1471,7 +1501,7 @@ class _TodayBaseballCard extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: const Text('순위 보기'),
@@ -1492,7 +1522,7 @@ class _TodayBaseballCard extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: AppColors.cardSub,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.divider),
         ),
         child: Column(
@@ -1504,12 +1534,11 @@ class _TodayBaseballCard extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 const Text(
-                  'MY TEAM',
+                  '마이팀',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w800,
-                    letterSpacing: 0.4,
                   ),
                 ),
                 _gameStatusChip(game),
@@ -1713,12 +1742,11 @@ class _TodayBaseballCard extends StatelessWidget {
                         ),
                       ),
                       child: const Text(
-                        'MY TEAM',
+                        '마이팀',
                         style: TextStyle(
                           fontSize: 10,
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
@@ -1830,6 +1858,7 @@ class _KboBriefCardState extends State<_KboBriefCard> {
         (_expanded ? widget.brief.items : widget.brief.items.take(3)).toList();
 
     return _sectionCard(
+      accentColor: AppColors.live,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2048,6 +2077,7 @@ class _QuickContentSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _sectionCard(
+      accentColor: AppColors.accent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2090,7 +2120,7 @@ class _QuickContentListItem extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         decoration: BoxDecoration(
           color: isPrimary ? accent.withValues(alpha: 0.08) : AppColors.cardSub,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isPrimary
                 ? accent.withValues(alpha: 0.35)
@@ -2244,7 +2274,7 @@ class _QuickContentListItem extends ConsumerWidget {
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
                                     color: AppColors.cardSub,
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
                                       color: AppColors.divider,
                                     ),
@@ -2344,9 +2374,7 @@ class _QuickContentListItem extends ConsumerWidget {
         },
         style: ElevatedButton.styleFrom(
           minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: const Text('선수 상세 열기'),
       ),
@@ -2357,15 +2385,34 @@ class _QuickContentListItem extends ConsumerWidget {
 Widget _sectionCard({
   required Widget child,
   EdgeInsetsGeometry padding = const EdgeInsets.all(16),
+  Color? accentColor,
 }) {
   return Container(
-    padding: padding,
+    clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
       color: AppColors.card,
       borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: AppColors.divider),
+      border: Border.all(
+        color: accentColor?.withValues(alpha: 0.36) ?? AppColors.divider,
+      ),
     ),
-    child: child,
+    child: Stack(
+      children: [
+        if (accentColor != null)
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        Padding(padding: padding, child: child),
+      ],
+    ),
   );
 }
 

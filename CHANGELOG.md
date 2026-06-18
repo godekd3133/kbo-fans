@@ -10,6 +10,18 @@
 
 ## [Unreleased]
 
+## [0.0.37] - 2026-06-18
+
+### Changed
+
+- 진행 중 경기의 홈 scoreboard, 경기 상세, API cache, iOS Live Activity 원격 sync worker 기준 갱신 주기를 8초로 통일
+- iOS Live Activity / Dynamic Island를 홈 경기 카드와 같은 팀 로고-스코어 중심 구조로 정리
+- 앱 전역 다크 팔레트를 중립 차콜 톤으로 낮추고, 사용자 화면의 장식형 영어 라벨과 이모지 사용을 축소
+- 홈 화면 헤더와 보조 섹션 카드를 팀 엠블럼, 얇은 컬러 rail, 8px 카드 체계 중심으로 정리해 스캔성과 시각 일관성을 개선
+- 마이팀 live 경기 자동 따라가기 상태가 backend push registry의 `followedGameIds`에 자동 반영되도록 변경
+- 마이팀이 선택된 release/dev 앱은 최초 1회 알림 권한 요청과 FCM 등록 동기화를 자동으로 실행해 앱 종료/백그라운드 push 수신 준비를 보강
+- backend/app push moment에 `game_start_soon`과 `hit`을 추가해 경기 시작 10분 전과 안타 relay 변화를 즉시 알림 대상으로 포함
+
 ## [0.0.36] - 2026-06-13
 
 ### Added

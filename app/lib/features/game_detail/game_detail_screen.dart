@@ -34,8 +34,8 @@ const _kboImageHeaders = {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
 };
 
-const gameDetailLiveRelayRefreshInterval = Duration(seconds: 15);
-const gameDetailLiveDefaultRefreshInterval = Duration(seconds: 30);
+const gameDetailLiveRelayRefreshInterval = Duration(seconds: 8);
+const gameDetailLiveDefaultRefreshInterval = Duration(seconds: 8);
 const gameDetailScheduledRefreshInterval = Duration(minutes: 5);
 const _relayTabIndex = 1;
 

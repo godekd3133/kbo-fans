@@ -1,8 +1,14 @@
 import ActivityKit
+import Foundation
 import SwiftUI
 import WidgetKit
 
 private let widgetGroupId = "group.com.kbofans.kbo_fans"
+private let kboBackground = Color(red: 0.05, green: 0.05, blue: 0.05)
+private let kboCard = Color(red: 0.13, green: 0.14, blue: 0.14)
+private let kboDivider = Color(red: 0.22, green: 0.23, blue: 0.24)
+private let kboTextSecondary = Color(red: 0.68, green: 0.70, blue: 0.72)
+private let kboLive = Color(red: 1.0, green: 0.27, blue: 0.27)
 
 struct KboFansWidgetEntry: TimelineEntry {
   let date: Date
@@ -171,69 +177,140 @@ struct KboFansLiveActivityView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
-      HStack {
-        Spacer(minLength: 0)
-        HStack(alignment: .center, spacing: 14) {
-          scoreColumn(
-            teamId: context.state.awayTeamId,
-            team: context.state.awayTeam,
-            score: context.state.awayScore
-          )
-            .frame(width: 64, alignment: .trailing)
-          inningBadge
-          scoreColumn(
-            teamId: context.state.homeTeamId,
-            team: context.state.homeTeam,
-            score: context.state.homeScore,
-            trailing: true
-          )
-            .frame(width: 64, alignment: .leading)
-        }
-        Spacer(minLength: 0)
-      }
-
-      HStack {
-        Label(context.state.stadium, systemImage: "mappin.and.ellipse")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-        Spacer()
-        Text("업데이트 \(context.state.updatedAt)")
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-      }
-      HStack(alignment: .top, spacing: 12) {
-        VStack(alignment: .leading, spacing: 2) {
-          if !context.state.batter.isEmpty {
-            Text("타석 \(context.state.batter)")
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
-          if !context.state.pitcher.isEmpty {
-            Text(
-              pitcherLine(
-                name: context.state.pitcher,
-                pitchCount: context.state.pitchCount
-              )
-            )
-              .font(.caption)
-              .foregroundStyle(.secondary)
-          }
+      HStack(spacing: 8) {
+        liveStatusPill
+        if !context.state.stadium.isEmpty {
+          Text(context.state.stadium)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(kboTextSecondary)
+            .lineLimit(1)
         }
         Spacer(minLength: 8)
-        if hasAtBatContext {
+        Text("갱신 \(context.state.updatedAt)")
+          .font(.caption2)
+          .foregroundStyle(kboTextSecondary)
+      }
+
+      HStack(alignment: .center, spacing: 12) {
+        liveTeamBlock(
+          teamId: context.state.awayTeamId,
+          team: context.state.awayTeam,
+          alignEnd: false
+        )
+        VStack(spacing: 4) {
+          Text(scoreText)
+            .font(.system(size: 34, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .monospacedDigit()
+            .minimumScaleFactor(0.72)
+            .lineLimit(1)
+          Text(statusText)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(kboLive)
+            .lineLimit(1)
+        }
+        .frame(width: 112)
+        liveTeamBlock(
+          teamId: context.state.homeTeamId,
+          team: context.state.homeTeam,
+          alignEnd: true
+        )
+      }
+
+      if hasAtBatContext {
+        HStack(alignment: .center, spacing: 12) {
+          Text(atBatLine)
+            .font(.caption)
+            .foregroundStyle(kboTextSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
+          Spacer(minLength: 6)
           _countBadges(
             balls: context.state.balls,
             strikes: context.state.strikes,
             outs: context.state.outs
           )
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+          RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(kboCard)
+            .overlay(
+              RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(kboDivider, lineWidth: 1)
+            )
+        )
       }
     }
     .padding(.horizontal, 16)
     .padding(.vertical, 14)
-    .activityBackgroundTint(Color.black.opacity(0.94))
+    .activityBackgroundTint(kboBackground.opacity(0.96))
     .activitySystemActionForegroundColor(.white)
     .widgetURL(launchURL(gameId: context.attributes.gameId, tab: "relay"))
+  }
+
+  private var statusText: String {
+    let text = context.state.inning.trimmingCharacters(
+      in: .whitespacesAndNewlines
+    )
+    return text.isEmpty ? "경기 중" : text
+  }
+
+  private var scoreText: String {
+    "\(context.state.awayScore):\(context.state.homeScore)"
+  }
+
+  private var atBatLine: String {
+    var parts: [String] = []
+    if !context.state.batter.isEmpty {
+      parts.append("타석 \(context.state.batter)")
+    }
+    let pitcher = pitcherLine(
+      name: context.state.pitcher,
+      pitchCount: context.state.pitchCount
+    )
+    if !pitcher.isEmpty {
+      parts.append(pitcher)
+    }
+    return parts.joined(separator: " / ")
+  }
+
+  private var liveStatusPill: some View {
+    HStack(spacing: 6) {
+      Circle()
+        .fill(kboLive)
+        .frame(width: 6, height: 6)
+      Text("경기 중")
+        .font(.caption2.weight(.bold))
+        .foregroundStyle(.white)
+    }
+    .padding(.horizontal, 9)
+    .padding(.vertical, 5)
+    .background(
+      Capsule()
+        .fill(kboLive.opacity(0.16))
+        .overlay(
+          Capsule()
+            .stroke(kboLive.opacity(0.42), lineWidth: 1)
+        )
+    )
+  }
+
+  private func liveTeamBlock(
+    teamId: String,
+    team: String,
+    alignEnd: Bool
+  ) -> some View {
+    VStack(alignment: alignEnd ? .trailing : .leading, spacing: 6) {
+      TeamLogoView(teamId: teamId, fallback: team, size: 30)
+      Text(team)
+        .font(.caption.weight(.bold))
+        .foregroundStyle(.white.opacity(0.82))
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
+    }
+    .frame(maxWidth: .infinity, alignment: alignEnd ? .trailing : .leading)
   }
 
   private var hasAtBatContext: Bool {
@@ -244,45 +321,38 @@ struct KboFansLiveActivityView: View {
       context.state.strikes > 0 ||
       context.state.outs > 0
   }
+}
 
-  private func scoreColumn(
-    teamId: String,
-    team: String,
-    score: Int,
-    trailing: Bool = false
-  ) -> some View {
-    VStack(alignment: trailing ? .trailing : .leading, spacing: 4) {
-      HStack(spacing: 6) {
-        if trailing {
-          Text(team)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-          TeamLogoView(teamId: teamId, fallback: team, size: 20)
+private struct DynamicIslandTeamScore: View {
+  let teamId: String
+  let team: String
+  let score: Int
+  let alignEnd: Bool
+
+  var body: some View {
+    VStack(alignment: alignEnd ? .trailing : .leading, spacing: 3) {
+      HStack(spacing: 4) {
+        if alignEnd {
+          teamName
+          TeamLogoView(teamId: teamId, fallback: team, size: 16)
         } else {
-          TeamLogoView(teamId: teamId, fallback: team, size: 20)
-          Text(team)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
+          TeamLogoView(teamId: teamId, fallback: team, size: 16)
+          teamName
         }
       }
       Text("\(score)")
-        .font(.system(size: 30, weight: .bold, design: .rounded))
+        .font(.title3.weight(.black))
         .foregroundStyle(.white)
+        .monospacedDigit()
     }
   }
 
-  private var inningBadge: some View {
-    Text(context.state.inning)
+  private var teamName: some View {
+    Text(team)
       .font(.caption.weight(.semibold))
-      .foregroundStyle(.white)
-      .padding(.horizontal, 10)
-      .padding(.vertical, 6)
-      .background(
-        Capsule()
-          .fill(Color(red: 1.0, green: 0.27, blue: 0.27))
-      )
+      .foregroundStyle(kboTextSecondary)
+      .lineLimit(1)
+      .minimumScaleFactor(0.72)
   }
 }
 
@@ -302,17 +372,12 @@ struct KboFansLiveActivityWidget: Widget {
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
-          VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
-              TeamLogoView(teamId: context.state.awayTeamId, fallback: context.state.awayTeam, size: 16)
-              Text(context.state.awayTeam)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            }
-            Text("\(context.state.awayScore)")
-              .font(.title3.weight(.bold))
-              .foregroundStyle(.white)
-          }
+          DynamicIslandTeamScore(
+            teamId: context.state.awayTeamId,
+            team: context.state.awayTeam,
+            score: context.state.awayScore,
+            alignEnd: false
+          )
         }
         DynamicIslandExpandedRegion(.center) {
           Text(context.state.inning)
@@ -322,28 +387,25 @@ struct KboFansLiveActivityWidget: Widget {
             .padding(.vertical, 6)
             .background(
               Capsule()
-                .fill(Color(red: 1.0, green: 0.27, blue: 0.27))
+                .fill(kboLive)
             )
         }
         DynamicIslandExpandedRegion(.trailing) {
-          VStack(alignment: .trailing, spacing: 2) {
-            HStack(spacing: 4) {
-              Text(context.state.homeTeam)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-              TeamLogoView(teamId: context.state.homeTeamId, fallback: context.state.homeTeam, size: 16)
-            }
-            Text("\(context.state.homeScore)")
-              .font(.title3.weight(.bold))
-              .foregroundStyle(.white)
-          }
+          DynamicIslandTeamScore(
+            teamId: context.state.homeTeamId,
+            team: context.state.homeTeam,
+            score: context.state.homeScore,
+            alignEnd: true
+          )
         }
         DynamicIslandExpandedRegion(.bottom) {
           VStack(alignment: .leading, spacing: 4) {
             HStack {
-              Label(context.state.stadium, systemImage: "baseball")
+              Text(
+                context.state.stadium.isEmpty ? "KBO" : context.state.stadium
+              )
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(kboTextSecondary)
               Spacer()
               if hasAtBatContext(context.state) {
                 _countBadges(
@@ -356,32 +418,40 @@ struct KboFansLiveActivityWidget: Widget {
             if !context.state.batter.isEmpty {
               Text("타석 \(context.state.batter)")
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(kboTextSecondary)
             }
             if !context.state.pitcher.isEmpty {
-              Text("투수 \(context.state.pitcher)")
+              Text(
+                pitcherLine(
+                  name: context.state.pitcher,
+                  pitchCount: context.state.pitchCount
+                )
+              )
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(kboTextSecondary)
             }
-            Text("업데이트 \(context.state.updatedAt)")
+            Text("갱신 \(context.state.updatedAt)")
               .font(.caption2)
-              .foregroundStyle(.secondary)
+              .foregroundStyle(kboTextSecondary)
           }
         }
       } compactLeading: {
         Text("\(context.state.awayScore)")
-          .font(.headline.weight(.bold))
+          .font(.headline.weight(.black))
           .foregroundStyle(.white)
+          .monospacedDigit()
       } compactTrailing: {
         Text("\(context.state.homeScore)")
-          .font(.headline.weight(.bold))
+          .font(.headline.weight(.black))
           .foregroundStyle(.white)
+          .monospacedDigit()
       } minimal: {
         Text("\(context.state.awayScore):\(context.state.homeScore)")
           .font(.caption2.weight(.bold))
           .foregroundStyle(.white)
+          .monospacedDigit()
       }
-      .keylineTint(Color(red: 1.0, green: 0.27, blue: 0.27))
+      .keylineTint(kboLive)
       .widgetURL(launchURL(gameId: context.attributes.gameId, tab: "relay"))
     }
   }

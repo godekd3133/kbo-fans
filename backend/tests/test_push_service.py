@@ -2,6 +2,7 @@ import fcntl
 import json
 import os
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
@@ -90,6 +91,7 @@ def test_build_topics_respects_delivery_modes() -> None:
             deliveryModes=NotificationDeliveryModes(
                 gameStart="immediate",
                 scoring="summary",
+                hit="off",
                 homerun="live_only",
                 reversal="off",
                 gameEnd="immediate",
@@ -102,7 +104,7 @@ def test_build_topics_respects_delivery_modes() -> None:
 
     topics = service._build_topics(payload)
 
-    assert topics == ["game_start_LG", "game_end_LG"]
+    assert topics == ["game_start_LG", "game_start_soon_LG", "game_end_LG"]
 
 
 def test_register_persists_device_token(tmp_path) -> None:
@@ -128,7 +130,38 @@ def test_register_persists_device_token(tmp_path) -> None:
 
     assert response["registered"] is True
     assert "scoring_LG" in response["subscribedTopics"]
+    assert "hit_LG" in response["subscribedTopics"]
+    assert "game_start_soon_LG" in response["subscribedTopics"]
     assert "at_bat_LG" in response["subscribedTopics"]
+
+
+def test_register_persists_followed_game_ids(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+
+    response = service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            followedGameIds=["20260612KTLG0", " ", "20260612KTLG0"],
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+
+    registration = registry.device_registrations()[0]
+
+    assert response["followedGameIds"] == ["20260612KTLG0"]
+    assert registration["followedGameIds"] == ["20260612KTLG0"]
 
 
 def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
@@ -151,6 +184,7 @@ def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
                             "inningChange": False,
                             "allGames": False,
                         },
+                        "followedGameIds": ["20260612KTLG0"],
                         "topics": ["game_start_LG", "scoring_LG", "legacy_LG"],
                     }
                 },
@@ -172,13 +206,60 @@ def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
     subscribed_topics = {call["topic"] for call in messaging.subscribe_calls}
     unsubscribed_topics = {call["topic"] for call in messaging.unsubscribe_calls}
     stored_topics = registry._load()["devices"]["fcm-token"]["topics"]
+    stored_followed_game_ids = registry._load()["devices"]["fcm-token"][
+        "followedGameIds"
+    ]
 
     assert response["resubscribed"] is True
     assert response["eligibleDevices"] == 1
     assert "at_bat_LG" in subscribed_topics
+    assert "hit_LG" in subscribed_topics
+    assert "game_start_soon_LG" in subscribed_topics
     assert "legacy_LG" in unsubscribed_topics
     assert "at_bat_LG" in stored_topics
     assert "legacy_LG" not in stored_topics
+    assert stored_followed_game_ids == ["20260612KTLG0"]
+
+
+def test_resubscribe_registered_topics_clears_missing_followed_game_ids(tmp_path) -> None:
+    registry_path = tmp_path / "push_registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "devices": {
+                    "fcm-token": {
+                        "deviceToken": "fcm-token",
+                        "platform": "ios",
+                        "myTeam": "LG",
+                        "notifications": {
+                            "gameStart": True,
+                            "scoring": True,
+                            "homerun": True,
+                            "reversal": True,
+                            "gameEnd": True,
+                            "lineupOpened": True,
+                            "inningChange": False,
+                            "allGames": False,
+                        },
+                        "topics": ["game_start_LG"],
+                    }
+                },
+                "liveActivities": {},
+                "scoreboardStates": {},
+                "relayStates": {},
+                "syncHeartbeat": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    registry = PushRegistry(str(registry_path))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service._get_messaging = lambda: FakeTopicMessaging()
+
+    service.resubscribe_registered_topics()
+
+    registration = registry.device_registrations()[0]
+    assert registration["followedGameIds"] == []
 
 
 def test_resubscribe_registered_topics_dry_run_does_not_call_firebase(tmp_path) -> None:
@@ -566,6 +647,141 @@ def test_scoreboard_sync_pushes_homerun_from_new_relay_items(tmp_path) -> None:
     assert relay_service.calls[1]["after"] == 10
     assert [call["moment"] for call in push_service.moment_calls] == ["homerun"]
     assert second_response["pushedMoments"][0]["moment"] == "homerun"
+
+
+def test_scoreboard_sync_pushes_hit_with_base_out_situation_from_relay(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                hit=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    relay_service = FakeRelaySequenceService(
+        [
+            [
+                {
+                    "seqNo": 10,
+                    "inning": 7,
+                    "half": "bottom",
+                    "event": "WALK",
+                    "isScoring": False,
+                    "text": "문상철 : 볼넷",
+                    "pitchSequence": None,
+                }
+            ],
+            [
+                {
+                    "seqNo": 11,
+                    "inning": 7,
+                    "half": "bottom",
+                    "event": "HIT",
+                    "isScoring": False,
+                    "text": "장성우 : 좌전 안타",
+                    "pitchSequence": None,
+                }
+            ],
+        ],
+        current_at_bat_by_call=[
+            _current_at_bat(outs=1, base_state="주자1루"),
+            _current_at_bat(outs=1, base_state="주자1,2루"),
+        ],
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+            ]
+        ),
+        push_service=push_service,
+        relay_service=relay_service,
+    )
+
+    first_response = sync_service.sync_date("2026-06-04")
+    second_response = sync_service.sync_date("2026-06-04")
+
+    assert first_response["pushedMoments"] == []
+    assert [call["moment"] for call in push_service.moment_calls] == ["hit"]
+    assert push_service.moment_calls[0]["batter_name"] == "장성우"
+    assert push_service.moment_calls[0]["situation_text"] == "1사 1,2루"
+    assert second_response["pushedMoments"][0]["moment"] == "hit"
+
+
+def test_scoreboard_sync_pushes_game_start_soon_once_within_ten_minutes(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                hit=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    now = datetime(2026, 6, 4, 18, 20, tzinfo=timezone(timedelta(hours=9)))
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    away_score=0,
+                    home_score=0,
+                    inning="18:30 예정",
+                    status="SCHEDULED",
+                    start_time="18:30",
+                ),
+                _scoreboard_game(
+                    away_score=0,
+                    home_score=0,
+                    inning="18:30 예정",
+                    status="SCHEDULED",
+                    start_time="18:30",
+                ),
+            ]
+        ),
+        push_service=push_service,
+        now_provider=lambda: now,
+    )
+
+    first_response = sync_service.sync_date("2026-06-04")
+    second_response = sync_service.sync_date("2026-06-04")
+
+    assert [call["moment"] for call in push_service.moment_calls] == [
+        "game_start_soon"
+    ]
+    assert push_service.moment_calls[0]["start_time"] == "18:30"
+    assert push_service.moment_calls[0]["stadium"] == "수원"
+    assert first_response["pushedMoments"][0]["moment"] == "game_start_soon"
+    assert second_response["pushedMoments"] == []
 
 
 def test_push_config_status_reports_missing_release_secrets(tmp_path) -> None:

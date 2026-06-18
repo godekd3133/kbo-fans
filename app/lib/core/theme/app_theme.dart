@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  static const background = Color(0xFF07090C);
-  static const surface = Color(0xFF10141A);
-  static const card = Color(0xFF171D24);
-  static const cardSub = Color(0xFF222832);
-  static const divider = Color(0xFF323A45);
+  static const background = Color(0xFF0F0F0F);
+  static const surface = Color(0xFF171717);
+  static const card = Color(0xFF1D1D1D);
+  static const cardSub = Color(0xFF292929);
+  static const divider = Color(0xFF373737);
   static const textPrimary = Color(0xFFF7F9FC);
   static const textSecondary = Color(0xFFA6B0BD);
   static const textDisabled = Color(0xFF6E7784);

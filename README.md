@@ -109,7 +109,7 @@ flutter run -d android
 - `macos/` 프로젝트는 아직 생성되지 않았습니다.
 - 데이터 정확성 검증은 과제의 runtime mode에 맞춰 수행합니다. backend-backed 기능은 FastAPI API/service/snapshot 경로를 확인하고, direct KBO mode는 local/offline/web preview와 resilience 검증에 사용합니다.
 - 예매 오픈 알림은 앱 로컬 예약 알림으로 동작합니다. 현재 예매처/오픈 시간은 홈팀 기본 정책 기준 추정값입니다.
-- 위젯 갱신은 앱 foreground에서는 라이브 30초 / 예정 5분 기준으로 반영되며, 백그라운드 주기는 OS 정책에 따라 제한됩니다.
+- 위젯 갱신은 앱 foreground에서는 라이브 8초 / 예정 5분 기준으로 반영되며, 백그라운드 주기는 OS 정책에 따라 제한됩니다.
 - 앱이 꺼진 뒤에도 일반 푸시와 iOS Live Activity를 갱신하려면 운영 백엔드가 KBO 상태를 polling하고 FCM/APNs로 발송해야 합니다. Firebase는 일반 푸시 전달 채널이고, Dynamic Island 갱신은 ActivityKit 전용 APNs liveactivity push token을 사용합니다. 같은 scheduler가 점수판 diff 기반 득점/역전/타석/종료와 relay diff 기반 홈런 FCM topic push도 발행합니다.
 
 Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했습니다.
@@ -284,7 +284,7 @@ uvicorn kbo_fans_backend.main:app --reload
 - `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env`: 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables 상태를 secret 값 없이 한 번에 점검하고, 누락된 Firebase/APNs/AWS/GitHub 설정을 `next_config[...]`로 안내합니다.
 - `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`: GitHub Actions `Push Demo Deploy`에 필요한 secrets/variables를 dry-run으로 확인. `--apply`를 붙이면 `gh secret set` / `gh variable set`으로 실제 업로드합니다. obvious placeholder 값은 업로드 전에 실패합니다.
 - `./scripts/github-push-demo-run.sh --dry-run true`: GitHub Actions `Push Demo Deploy` workflow를 dispatch합니다. workflow 파일이 아직 원격 default branch에 없으면 커밋/푸시 필요 상태를 안내하고, 필수 secrets/variables가 누락되면 workflow run 생성 전에 목록을 출력하고 중단합니다.
-- `POST /api/push/live-activity/sync-scoreboard`: 운영 scheduler가 30~60초 간격으로 호출하는 scoreboard/relay sync trigger. 등록된 Live Activity에는 APNs update/end를 보내고, scoreboard diff 기반 득점/역전/타석/종료/이닝 변경과 relay diff 기반 홈런은 FCM topic push로 발행합니다.
+- `POST /api/push/live-activity/sync-scoreboard`: 운영 scheduler가 8초 간격으로 호출하는 scoreboard/relay sync trigger. 등록된 Live Activity에는 APNs update/end를 보내고, scoreboard diff 기반 득점/역전/타석/종료/이닝 변경과 relay diff 기반 홈런은 FCM topic push로 발행합니다.
 - AWS ECS/Fargate 시연 배포 템플릿은 `infra/aws/ecs-fargate/`와 `infra/aws/cloudformation/`에 있습니다. 권장 구조는 FastAPI API service 1개와 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` sync worker service 1개입니다.
 
 GitHub Actions 배포:

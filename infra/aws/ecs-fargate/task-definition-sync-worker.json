@@ -59,7 +59,7 @@
         },
         {
           "name": "PUSH_SYNC_INTERVAL_SECONDS",
-          "value": "60"
+          "value": "8"
         }
       ],
       "secrets": [

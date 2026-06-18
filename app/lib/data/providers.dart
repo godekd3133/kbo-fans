@@ -59,6 +59,12 @@ class MyTeamNotifier extends Notifier<String?> {
       await prefs.remove('myTeam');
     }
     state = teamId;
+    if (teamId != null && teamId.isNotEmpty) {
+      await PushNotificationService.instance.ensureAutoPermissionAndSync(
+        myTeam: teamId,
+      );
+      return;
+    }
     await PushNotificationService.instance.syncRegistration(myTeam: teamId);
   }
 }

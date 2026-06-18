@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 NotificationDelivery = Literal["immediate", "summary", "live_only", "off"]
 
@@ -10,6 +10,7 @@ NotificationDelivery = Literal["immediate", "summary", "live_only", "off"]
 class NotificationDeliveryModes(BaseModel):
     gameStart: Optional[NotificationDelivery] = None
     scoring: Optional[NotificationDelivery] = None
+    hit: Optional[NotificationDelivery] = None
     homerun: Optional[NotificationDelivery] = None
     reversal: Optional[NotificationDelivery] = None
     gameEnd: Optional[NotificationDelivery] = None
@@ -21,6 +22,7 @@ class NotificationDeliveryModes(BaseModel):
 class NotificationSettings(BaseModel):
     gameStart: bool
     scoring: bool
+    hit: bool = True
     homerun: bool
     reversal: bool
     gameEnd: bool
@@ -36,6 +38,7 @@ class PushRegisterRequest(BaseModel):
     platform: str
     myTeam: Optional[str] = None
     notifications: NotificationSettings
+    followedGameIds: list[str] = Field(default_factory=list)
 
 
 class PushTestRequest(BaseModel):

@@ -41,6 +41,48 @@ void main() {
     expect(topics, isNot(contains('scoring_LG')));
   });
 
+  test('release 앱에서 마이팀이 있으면 자동 푸시 권한 요청 대상이다', () {
+    expect(
+      shouldAutoRequestPushPermission(
+        isWeb: false,
+        isLocal: false,
+        alreadyRequested: false,
+        myTeam: 'LG',
+      ),
+      isTrue,
+    );
+  });
+
+  test('local 또는 마이팀 없음 또는 이미 요청한 경우 자동 푸시 권한을 요청하지 않는다', () {
+    expect(
+      shouldAutoRequestPushPermission(
+        isWeb: false,
+        isLocal: true,
+        alreadyRequested: false,
+        myTeam: 'LG',
+      ),
+      isFalse,
+    );
+    expect(
+      shouldAutoRequestPushPermission(
+        isWeb: false,
+        isLocal: false,
+        alreadyRequested: false,
+        myTeam: null,
+      ),
+      isFalse,
+    );
+    expect(
+      shouldAutoRequestPushPermission(
+        isWeb: false,
+        isLocal: false,
+        alreadyRequested: true,
+        myTeam: 'LG',
+      ),
+      isFalse,
+    );
+  });
+
   test('summary 또는 liveOnly delivery는 즉시 push 토픽을 만들지 않는다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       scoringDelivery: PushNotificationDelivery.summary,
@@ -55,6 +97,34 @@ void main() {
     expect(topics, isNot(contains('scoring_LG')));
     expect(topics, isNot(contains('homerun_LG')));
     expect(topics, isNot(contains('reversal_LG')));
+  });
+
+  test('push 등록 payload는 현재 따라가는 경기 id를 포함한다', () {
+    const settings = PushNotificationSettings.defaults();
+
+    final payload = buildPushRegistrationPayload(
+      deviceToken: 'fcm-token',
+      platform: 'ios',
+      myTeam: 'LG',
+      settings: settings,
+      followedGameIds: const ['20260612KTLG0', '  ', '20260612KTLG0'],
+    );
+
+    expect(payload['deviceToken'], 'fcm-token');
+    expect(payload['myTeam'], 'LG');
+    expect(payload['followedGameIds'], ['20260612KTLG0']);
+  });
+
+  test('따라가는 경기가 없어도 빈 followedGameIds를 보내 registry를 정리한다', () {
+    final payload = buildPushRegistrationPayload(
+      deviceToken: 'fcm-token',
+      platform: 'ios',
+      myTeam: 'LG',
+      settings: const PushNotificationSettings.defaults(),
+      followedGameIds: const [],
+    );
+
+    expect(payload['followedGameIds'], isEmpty);
   });
 
   test('라인업 공개 push data는 라인업 탭 상세 route로 변환한다', () {

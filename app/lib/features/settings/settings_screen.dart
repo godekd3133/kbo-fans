@@ -30,6 +30,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       PushNotificationDelivery.immediate;
   PushNotificationDelivery _scoringDelivery =
       PushNotificationDelivery.immediate;
+  PushNotificationDelivery _hitDelivery = PushNotificationDelivery.immediate;
   PushNotificationDelivery _homerunDelivery =
       PushNotificationDelivery.immediate;
   PushNotificationDelivery _reversalDelivery =
@@ -79,6 +80,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() {
       _gameStartDelivery = settings.gameStartDelivery;
       _scoringDelivery = settings.scoringDelivery;
+      _hitDelivery = settings.hitDelivery;
       _homerunDelivery = settings.homerunDelivery;
       _reversalDelivery = settings.reversalDelivery;
       _gameEndDelivery = settings.gameEndDelivery;
@@ -96,6 +98,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       PushNotificationSettings(
         gameStart: _isEnabled(_gameStartDelivery),
         scoring: _isEnabled(_scoringDelivery),
+        hit: _isEnabled(_hitDelivery),
         homerun: _isEnabled(_homerunDelivery),
         reversal: _isEnabled(_reversalDelivery),
         gameEnd: _isEnabled(_gameEndDelivery),
@@ -105,6 +108,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         allGames: _notifAllGames,
         gameStartDelivery: _gameStartDelivery,
         scoringDelivery: _scoringDelivery,
+        hitDelivery: _hitDelivery,
         homerunDelivery: _homerunDelivery,
         reversalDelivery: _reversalDelivery,
         gameEndDelivery: _gameEndDelivery,
@@ -137,6 +141,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     setState(() {
       _gameStartDelivery = PushNotificationDelivery.immediate;
       _scoringDelivery = PushNotificationDelivery.immediate;
+      _hitDelivery = PushNotificationDelivery.immediate;
       _homerunDelivery = PushNotificationDelivery.immediate;
       _reversalDelivery = PushNotificationDelivery.immediate;
       _gameEndDelivery = PushNotificationDelivery.summary;
@@ -209,17 +214,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'SETTINGS',
+                          '설정',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w900,
                             color: AppColors.textDisabled,
-                            letterSpacing: 0.8,
                           ),
                         ),
                         SizedBox(height: 4),
                         Text(
-                          '알림',
+                          '알림 설정',
                           style: TextStyle(
                             fontSize: 23,
                             fontWeight: FontWeight.w900,
@@ -314,6 +318,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: '득점',
                         current: _scoringDelivery,
                         update: (value) => _scoringDelivery = value,
+                      ),
+                    ),
+                    _divider(),
+                    _momentRow(
+                      label: '안타',
+                      description: '안타 뒤 아웃/주자 상황을 바로 알려줍니다',
+                      delivery: _hitDelivery,
+                      teamColor: teamColor,
+                      onTap: () => _showDeliveryPicker(
+                        title: '안타',
+                        current: _hitDelivery,
+                        update: (value) => _hitDelivery = value,
                       ),
                     ),
                     _divider(),

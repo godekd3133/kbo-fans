@@ -189,8 +189,16 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       DevConsole.instance.warn('myTeam bootstrap fallback: $error');
     }
 
+    final myTeamId = ref.read(myTeamProvider);
     ref.read(onboardingDoneProvider.notifier).setValue(onboardingDone);
     startupPrep.complete('초기 화면으로 이동합니다');
+    if (onboardingDone == true && myTeamId != null && myTeamId.isNotEmpty) {
+      unawaited(
+        PushNotificationService.instance.ensureAutoPermissionAndSync(
+          myTeam: myTeamId,
+        ),
+      );
+    }
     DevConsole.instance.info(
       'STARTUP bootstrap complete ${_dartStartupStopwatch.elapsedMilliseconds}ms',
     );
@@ -265,7 +273,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     final now = DateTime.now();
     final lastResumeSyncAt = _lastResumeSyncAt;
     if (lastResumeSyncAt != null &&
-        now.difference(lastResumeSyncAt) < const Duration(seconds: 15)) {
+        now.difference(lastResumeSyncAt) < const Duration(seconds: 8)) {
       DevConsole.instance.info('Resume sync skipped: recently synced');
       return;
     }

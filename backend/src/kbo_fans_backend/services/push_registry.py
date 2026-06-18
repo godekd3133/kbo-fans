@@ -51,6 +51,7 @@ class PushRegistry:
                 "platform": payload.platform,
                 "myTeam": payload.myTeam,
                 "notifications": _model_to_dict(payload.notifications),
+                "followedGameIds": _clean_string_list(payload.followedGameIds),
                 "topics": topics,
                 "updatedAt": now,
                 "createdAt": existing.get("createdAt", now),
@@ -179,6 +180,25 @@ class PushRegistry:
             }
             return previous if isinstance(previous, dict) else None
 
+    def pregame_alert_sent(self, game_id: str, alert_key: str) -> bool:
+        data = self._load()
+        states = data.get("pregameAlertStates", {})
+        state = states.get(game_id)
+        if not isinstance(state, dict):
+            return False
+        return str(state.get("alertKey") or "") == alert_key
+
+    def mark_pregame_alert_sent(self, game_id: str, alert_key: str) -> dict[str, Any]:
+        with self._mutate_data() as data:
+            states = data.setdefault("pregameAlertStates", {})
+            state = {
+                "gameId": game_id,
+                "alertKey": alert_key,
+                "updatedAt": _now_iso(),
+            }
+            states[game_id] = state
+            return state
+
     def record_sync_heartbeat(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self._mutate_data() as data:
             heartbeat = {
@@ -236,6 +256,7 @@ class PushRegistry:
         data.setdefault("liveActivities", {})
         data.setdefault("scoreboardStates", {})
         data.setdefault("relayStates", {})
+        data.setdefault("pregameAlertStates", {})
         data.setdefault("syncHeartbeat", {})
         return data
 
@@ -273,6 +294,7 @@ def _empty_registry() -> dict[str, Any]:
         "liveActivities": {},
         "scoreboardStates": {},
         "relayStates": {},
+        "pregameAlertStates": {},
         "syncHeartbeat": {},
     }
 
@@ -294,3 +316,15 @@ def _model_to_dict(model: Any) -> dict[str, Any]:
     if hasattr(model, "model_dump"):
         return model.model_dump()
     return model.dict()
+
+
+def _clean_string_list(values: list[str]) -> list[str]:
+    seen = set()
+    cleaned = []
+    for value in values:
+        text = str(value).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned

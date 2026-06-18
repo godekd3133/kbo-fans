@@ -13,7 +13,7 @@ import 'game_repository.dart';
 class ApiGameRepository implements GameRepository {
   final ApiClient _client;
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
-  static const _liveishCacheAge = Duration(seconds: 30);
+  static const _liveishCacheAge = Duration(seconds: 8);
   static const _stableCacheAge = Duration(minutes: 5);
 
   ApiGameRepository(this._client);

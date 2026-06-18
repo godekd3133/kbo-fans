@@ -14,6 +14,7 @@ import '../data/api/api_client.dart';
 enum PushNotificationMoment {
   gameStart,
   scoring,
+  hit,
   homerun,
   reversal,
   gameEnd,
@@ -62,6 +63,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class PushNotificationSettings {
   final bool gameStart;
   final bool scoring;
+  final bool hit;
   final bool homerun;
   final bool reversal;
   final bool gameEnd;
@@ -71,6 +73,7 @@ class PushNotificationSettings {
   final bool allGames;
   final PushNotificationDelivery gameStartDelivery;
   final PushNotificationDelivery scoringDelivery;
+  final PushNotificationDelivery hitDelivery;
   final PushNotificationDelivery homerunDelivery;
   final PushNotificationDelivery reversalDelivery;
   final PushNotificationDelivery gameEndDelivery;
@@ -81,6 +84,7 @@ class PushNotificationSettings {
   const PushNotificationSettings({
     required this.gameStart,
     required this.scoring,
+    this.hit = true,
     required this.homerun,
     required this.reversal,
     required this.gameEnd,
@@ -90,6 +94,7 @@ class PushNotificationSettings {
     required this.allGames,
     PushNotificationDelivery? gameStartDelivery,
     PushNotificationDelivery? scoringDelivery,
+    PushNotificationDelivery? hitDelivery,
     PushNotificationDelivery? homerunDelivery,
     PushNotificationDelivery? reversalDelivery,
     PushNotificationDelivery? gameEndDelivery,
@@ -104,6 +109,11 @@ class PushNotificationSettings {
        scoringDelivery =
            scoringDelivery ??
            (scoring
+               ? PushNotificationDelivery.immediate
+               : PushNotificationDelivery.off),
+       hitDelivery =
+           hitDelivery ??
+           (hit
                ? PushNotificationDelivery.immediate
                : PushNotificationDelivery.off),
        homerunDelivery =
@@ -140,6 +150,7 @@ class PushNotificationSettings {
   const PushNotificationSettings.defaults()
     : gameStart = true,
       scoring = true,
+      hit = true,
       homerun = true,
       reversal = true,
       gameEnd = true,
@@ -149,6 +160,7 @@ class PushNotificationSettings {
       allGames = false,
       gameStartDelivery = PushNotificationDelivery.immediate,
       scoringDelivery = PushNotificationDelivery.immediate,
+      hitDelivery = PushNotificationDelivery.immediate,
       homerunDelivery = PushNotificationDelivery.immediate,
       reversalDelivery = PushNotificationDelivery.immediate,
       gameEndDelivery = PushNotificationDelivery.summary,
@@ -159,6 +171,7 @@ class PushNotificationSettings {
   PushNotificationSettings copyWith({
     bool? gameStart,
     bool? scoring,
+    bool? hit,
     bool? homerun,
     bool? reversal,
     bool? gameEnd,
@@ -168,6 +181,7 @@ class PushNotificationSettings {
     bool? allGames,
     PushNotificationDelivery? gameStartDelivery,
     PushNotificationDelivery? scoringDelivery,
+    PushNotificationDelivery? hitDelivery,
     PushNotificationDelivery? homerunDelivery,
     PushNotificationDelivery? reversalDelivery,
     PushNotificationDelivery? gameEndDelivery,
@@ -178,6 +192,7 @@ class PushNotificationSettings {
     return PushNotificationSettings(
       gameStart: gameStart ?? this.gameStart,
       scoring: scoring ?? this.scoring,
+      hit: hit ?? this.hit,
       homerun: homerun ?? this.homerun,
       reversal: reversal ?? this.reversal,
       gameEnd: gameEnd ?? this.gameEnd,
@@ -187,6 +202,7 @@ class PushNotificationSettings {
       allGames: allGames ?? this.allGames,
       gameStartDelivery: gameStartDelivery ?? this.gameStartDelivery,
       scoringDelivery: scoringDelivery ?? this.scoringDelivery,
+      hitDelivery: hitDelivery ?? this.hitDelivery,
       homerunDelivery: homerunDelivery ?? this.homerunDelivery,
       reversalDelivery: reversalDelivery ?? this.reversalDelivery,
       gameEndDelivery: gameEndDelivery ?? this.gameEndDelivery,
@@ -200,6 +216,7 @@ class PushNotificationSettings {
     return switch (moment) {
       PushNotificationMoment.gameStart => gameStartDelivery,
       PushNotificationMoment.scoring => scoringDelivery,
+      PushNotificationMoment.hit => hitDelivery,
       PushNotificationMoment.homerun => homerunDelivery,
       PushNotificationMoment.reversal => reversalDelivery,
       PushNotificationMoment.gameEnd => gameEndDelivery,
@@ -217,6 +234,7 @@ class PushNotificationSettings {
     return {
       'gameStart': gameStart,
       'scoring': scoring,
+      'hit': hit,
       'homerun': homerun,
       'reversal': reversal,
       'gameEnd': gameEnd,
@@ -227,6 +245,7 @@ class PushNotificationSettings {
       'deliveryModes': {
         'gameStart': gameStartDelivery.storageValue,
         'scoring': scoringDelivery.storageValue,
+        'hit': hitDelivery.storageValue,
         'homerun': homerunDelivery.storageValue,
         'reversal': reversalDelivery.storageValue,
         'gameEnd': gameEndDelivery.storageValue,
@@ -249,12 +268,16 @@ class PushNotificationService {
       '${_prefsPrefix}debug_last_init_status';
   static const _debugLastInitReasonKey =
       '${_prefsPrefix}debug_last_init_reason';
+  static const _autoPermissionRequestedKey =
+      '${_prefsPrefix}auto_permission_requested';
+  static const _followedGameIdKey = 'live_activity.followed_game_id';
   static const _channelId = 'remote_push_foreground';
   static const _channelName = '원격 푸시 알림';
   static const _channelDescription = '앱 실행 중 수신한 원격 푸시 알림';
   static const _deliverySuffix = '.delivery';
 
   bool _initialized = false;
+  Future<void>? _initializing;
   bool _notificationOpenHandlersAttached = false;
   String? _lastToken;
   bool _notificationsAllowed = false;
@@ -279,7 +302,22 @@ class PushNotificationService {
     if (_initialized || kIsWeb) {
       return;
     }
+    final pending = _initializing;
+    if (pending != null) {
+      await pending;
+      return;
+    }
 
+    final initialization = _initialize(myTeam: myTeam);
+    _initializing = initialization;
+    try {
+      await initialization;
+    } finally {
+      _initializing = null;
+    }
+  }
+
+  Future<void> _initialize({String? myTeam}) async {
     try {
       await Firebase.initializeApp();
       final messaging = FirebaseMessaging.instance;
@@ -331,10 +369,37 @@ class PushNotificationService {
     }
   }
 
+  Future<void> ensureAutoPermissionAndSync({String? myTeam}) async {
+    if (kIsWeb) {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final alreadyRequested =
+        prefs.getBool(_autoPermissionRequestedKey) ?? false;
+    if (!shouldAutoRequestPushPermission(
+      isWeb: kIsWeb,
+      isLocal: AppConfig.instance.isLocal,
+      alreadyRequested: alreadyRequested,
+      myTeam: myTeam,
+    )) {
+      await syncRegistration(myTeam: myTeam);
+      return;
+    }
+
+    await prefs.setBool(_autoPermissionRequestedKey, true);
+    final allowed = await requestPermissionAndSync(myTeam: myTeam);
+    DevConsole.instance.info(
+      allowed
+          ? 'Push auto permission synced'
+          : 'Push auto permission not granted',
+    );
+  }
+
   Future<PushNotificationSettings> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final gameStartKey = '${_prefsPrefix}game_start';
     final scoringKey = '${_prefsPrefix}scoring';
+    final hitKey = '${_prefsPrefix}hit';
     final homerunKey = '${_prefsPrefix}homerun';
     final reversalKey = '${_prefsPrefix}reversal';
     final gameEndKey = '${_prefsPrefix}game_end';
@@ -343,6 +408,7 @@ class PushNotificationService {
     final atBatKey = '${_prefsPrefix}at_bat';
     final gameStart = prefs.getBool(gameStartKey) ?? true;
     final scoring = prefs.getBool(scoringKey) ?? true;
+    final hit = prefs.getBool(hitKey) ?? true;
     final homerun = prefs.getBool(homerunKey) ?? true;
     final reversal = prefs.getBool(reversalKey) ?? true;
     final gameEnd = prefs.getBool(gameEndKey) ?? true;
@@ -352,6 +418,7 @@ class PushNotificationService {
     return PushNotificationSettings(
       gameStart: gameStart,
       scoring: scoring,
+      hit: hit,
       homerun: homerun,
       reversal: reversal,
       gameEnd: gameEnd,
@@ -366,6 +433,10 @@ class PushNotificationService {
       scoringDelivery: _deliveryFromStorage(
         prefs.getString('${_prefsPrefix}scoring$_deliverySuffix'),
         legacyEnabled: scoring,
+      ),
+      hitDelivery: _deliveryFromStorage(
+        prefs.getString('${_prefsPrefix}hit$_deliverySuffix'),
+        legacyEnabled: hit,
       ),
       homerunDelivery: _deliveryFromStorage(
         prefs.getString('${_prefsPrefix}homerun$_deliverySuffix'),
@@ -438,6 +509,7 @@ class PushNotificationService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('${_prefsPrefix}game_start', settings.gameStart);
     await prefs.setBool('${_prefsPrefix}scoring', settings.scoring);
+    await prefs.setBool('${_prefsPrefix}hit', settings.hit);
     await prefs.setBool('${_prefsPrefix}homerun', settings.homerun);
     await prefs.setBool('${_prefsPrefix}reversal', settings.reversal);
     await prefs.setBool('${_prefsPrefix}game_end', settings.gameEnd);
@@ -452,6 +524,10 @@ class PushNotificationService {
     await prefs.setString(
       '${_prefsPrefix}scoring$_deliverySuffix',
       settings.scoringDelivery.storageValue,
+    );
+    await prefs.setString(
+      '${_prefsPrefix}hit$_deliverySuffix',
+      settings.hitDelivery.storageValue,
     );
     await prefs.setString(
       '${_prefsPrefix}homerun$_deliverySuffix',
@@ -521,6 +597,7 @@ class PushNotificationService {
 
       _lastToken = token;
       final desiredTopics = _buildTopics(settings, resolvedMyTeam);
+      final followedGameIds = await _loadFollowedGameIds();
       final prefs = await SharedPreferences.getInstance();
       final currentTopics =
           (prefs.getStringList(_subscribedTopicsKey) ?? const <String>[])
@@ -541,12 +618,13 @@ class PushNotificationService {
       final client = ApiClient();
       await client.post(
         '/push/register',
-        data: {
-          'deviceToken': token,
-          'platform': _platformName(),
-          'myTeam': resolvedMyTeam,
-          'notifications': settings.toJson(),
-        },
+        data: buildPushRegistrationPayload(
+          deviceToken: token,
+          platform: _platformName(),
+          myTeam: resolvedMyTeam,
+          settings: settings,
+          followedGameIds: followedGameIds,
+        ),
       );
       DevConsole.instance.info(
         'Push registration synced (${desiredTopics.length} topics)',
@@ -579,6 +657,15 @@ class PushNotificationService {
   Future<String?> _loadStoredMyTeam() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('myTeam');
+  }
+
+  Future<List<String>> _loadFollowedGameIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final gameId = prefs.getString(_followedGameIdKey);
+    if (gameId == null || gameId.isEmpty) {
+      return const <String>[];
+    }
+    return <String>[gameId];
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
@@ -675,6 +762,45 @@ class PushNotificationService {
 }
 
 @visibleForTesting
+Map<String, dynamic> buildPushRegistrationPayload({
+  required String deviceToken,
+  required String platform,
+  required String? myTeam,
+  required PushNotificationSettings settings,
+  required Iterable<String> followedGameIds,
+}) {
+  final followed = <String>{};
+  for (final gameId in followedGameIds) {
+    final normalized = gameId.trim();
+    if (normalized.isNotEmpty) {
+      followed.add(normalized);
+    }
+  }
+
+  return {
+    'deviceToken': deviceToken,
+    'platform': platform,
+    'myTeam': myTeam,
+    'notifications': settings.toJson(),
+    'followedGameIds': followed.toList()..sort(),
+  };
+}
+
+@visibleForTesting
+bool shouldAutoRequestPushPermission({
+  required bool isWeb,
+  required bool isLocal,
+  required bool alreadyRequested,
+  required String? myTeam,
+}) {
+  return !isWeb &&
+      !isLocal &&
+      !alreadyRequested &&
+      myTeam != null &&
+      myTeam.trim().isNotEmpty;
+}
+
+@visibleForTesting
 Set<String> buildPushTopics({
   required PushNotificationSettings settings,
   required String? myTeam,
@@ -683,7 +809,11 @@ Set<String> buildPushTopics({
   final topics = <String>{};
   final flags = <String, bool>{
     'game_start': settings.sendsImmediately(PushNotificationMoment.gameStart),
+    'game_start_soon': settings.sendsImmediately(
+      PushNotificationMoment.gameStart,
+    ),
     'scoring': settings.sendsImmediately(PushNotificationMoment.scoring),
+    'hit': settings.sendsImmediately(PushNotificationMoment.hit),
     'homerun': settings.sendsImmediately(PushNotificationMoment.homerun),
     'reversal': settings.sendsImmediately(PushNotificationMoment.reversal),
     'game_end': settings.sendsImmediately(PushNotificationMoment.gameEnd),
@@ -821,6 +951,7 @@ String? _tabForPushType(String type) {
     'lineup_opened' || 'lineup_changed' || 'lineup' => 'lineup',
     'game_start' ||
     'scoring' ||
+    'hit' ||
     'homerun' ||
     'reversal' ||
     'inning_change' ||

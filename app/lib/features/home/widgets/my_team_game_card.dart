@@ -52,16 +52,16 @@ class MyTeamGameCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: accent.withValues(alpha: 0.26)),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              accent.withValues(alpha: 0.34),
+              accent.withValues(alpha: 0.14),
               AppColors.card,
               AppColors.surface,
             ],
-            stops: const [0, 0.48, 1],
+            stops: const [0, 0.38, 1],
           ),
         ),
         child: Column(

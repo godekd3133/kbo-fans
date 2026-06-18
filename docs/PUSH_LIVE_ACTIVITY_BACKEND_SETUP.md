@@ -57,7 +57,7 @@ APNS_BUNDLE_ID=com.kbofans.kboFans
 APNS_USE_SANDBOX=false
 PUSH_REGISTRY_PATH=/var/lib/kbo-fans/push_registry.json
 PUSH_SYNC_SECRET=<long-random-secret>
-PUSH_SYNC_INTERVAL_SECONDS=60
+PUSH_SYNC_INTERVAL_SECONDS=8
 ```
 
 AWS ECS/Fargate에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`과 `APNS_AUTH_KEY_P8`을 AWS Secrets Manager에서 환경변수로 주입하는 방식을 권장한다. 로컬/EC2 파일 배포에서는 기존처럼 `FIREBASE_SERVICE_ACCOUNT_PATH`, `APNS_AUTH_KEY_PATH`를 사용할 수 있다.
@@ -86,7 +86,7 @@ APNS_AUTH_KEY_FILE=/path/AuthKey_<KEY_ID>.p8 \
 4. `PUSH_REGISTRY_PATH`는 재시작 후에도 남는 저장소를 사용
    - EC2: EBS 경로
    - ECS: EFS 또는 이후 DB/DynamoDB로 대체
-5. Fargate sync worker, EventBridge Scheduler, 또는 cron으로 scoreboard/relay sync를 30~60초마다 실행
+5. Fargate sync worker 또는 cron으로 scoreboard/relay sync를 8초마다 실행
    - ActivityKit token이 등록된 경기는 APNs `liveactivity` update/end 발송
    - FCM device/topic 등록이 있으면 scoreboard diff 기준 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` topic push 발행
    - `homerun`은 live relay seq diff 기준으로 새 `HOMERUN` event 또는 `홈런` 텍스트가 들어올 때 topic push 발행
@@ -100,7 +100,7 @@ curl -X POST "https://api.kbofans.com/api/push/live-activity/sync-scoreboard" \
 python -m kbo_fans_backend.scheduler.live_activity_sync
 ```
 
-Fargate에서 30초 단위 시연이 필요하면 장기 실행 worker를 쓴다.
+Fargate에서 8초 단위 시연이 필요하면 장기 실행 worker를 쓴다.
 
 ```bash
 python -m kbo_fans_backend.scheduler.live_activity_sync_loop
@@ -130,7 +130,7 @@ python -m kbo_fans_backend.scheduler.push_config_status
 `readyForIphoneOnlyDemo`가 `true`여야 TestFlight/운영 APNs, Firebase Admin, registry 저장소, scheduler secret이 모두 준비된 상태다.
 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`가 갱신되면 sync worker 또는 scheduler가 실제로 실행된 상태다.
 
-KBO live 경기는 30~60초, 예정 경기는 5분, 종료 경기는 sync 중단 정책이 적절하다.
+KBO live 경기는 8초, 예정 경기는 5분, 종료 경기는 sync 중단 정책이 적절하다.
 
 배포 전에 로컬 설정 파일과 env 형태를 먼저 확인한다. 이 명령은 AWS를 호출하지 않고 secret 값을 출력하지 않는다.
 
@@ -372,7 +372,7 @@ iOS release/TestFlight 앱은 아래가 필요하다.
   - Debug/Profile: `development`
   - Release: `production`
 - Runner와 Widget extension `Info.plist`의 `NSSupportsLiveActivities=true`
-- 30~60초 스포츠 갱신 시연을 위한 `NSSupportsLiveActivitiesFrequentUpdates=true`
+- 8초 스포츠 갱신 시연을 위한 `NSSupportsLiveActivitiesFrequentUpdates=true`
 - App Group: `group.com.kbofans.kbo_fans`
 - Widget extension 포함 provisioning profile
 

@@ -32,12 +32,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--interval-seconds",
         type=int,
-        default=int(os.getenv("PUSH_SYNC_INTERVAL_SECONDS", "60")),
+        default=int(os.getenv("PUSH_SYNC_INTERVAL_SECONDS", "8")),
     )
     args = parser.parse_args(argv)
 
-    if args.interval_seconds < 30:
-        raise SystemExit("interval-seconds must be at least 30")
+    if args.interval_seconds < 8:
+        raise SystemExit("interval-seconds must be at least 8")
 
     signal.signal(signal.SIGTERM, _handle_stop)
     signal.signal(signal.SIGINT, _handle_stop)

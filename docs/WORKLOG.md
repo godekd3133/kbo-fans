@@ -2,6 +2,82 @@
 
 ---
 
+## 2026-06-18: 백그라운드/종료 push 등록 자동화
+
+### 완료
+- [x] root cause: backend smoke API와 scheduler readiness 이력은 정상이어도 운영 registry가 `registeredDevices=0`이면 FCM topic push를 보낼 대상이 없고, 앱은 마이팀 기본 알림이 켜져 있어도 설정/따라가기 버튼 전에는 OS 알림 권한 요청과 `/push/register`가 보장되지 않았음
+- [x] `PushNotificationService.ensureAutoPermissionAndSync()`를 추가해 마이팀이 있는 non-local 앱에서 최초 1회 OS 알림 권한 요청과 FCM token/topic registration을 실행하도록 보강
+- [x] 앱 bootstrap 후 기존 마이팀 사용자는 자동 sync를 시도하고, 신규 마이팀 선택 직후에도 같은 경로를 타도록 `main.dart`와 `myTeamProvider`를 연결
+- [x] push 초기화가 동시에 여러 경로에서 호출될 때 중복 listener/register가 생기지 않도록 `_initializing` guard를 추가
+- [x] live push 체감을 위해 앱 live cache/경기 상세 refresh/backend sync worker cadence를 8초 기준으로 맞추고, `game_start_soon` / `hit` moment를 topic/relay sync 경로에 추가
+- [x] 현재 release registration endpoint로 쓰는 AWS smoke backend `/api/health`는 200 확인, 기본 `https://api.kbofans.com/api`는 아직 DNS 미해결이라 release/TestFlight에는 smoke backend URL 주입이 계속 필요함을 재확인
+- [x] tester-facing 앱 동작 변경이므로 다음 릴리즈를 `0.0.37+37`로 결정하고 `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 동기화
+
+### 검증
+- [x] RED: `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/services/push_notification_service_test.dart --no-pub` (`shouldAutoRequestPushPermission` missing)
+- [x] GREEN: `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/services/push_notification_service_test.dart --no-pub` (`12 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/services/push_notification_service.dart lib/main.dart lib/data/providers.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze lib/services/push_notification_service.dart lib/main.dart lib/data/providers.dart test/services/push_notification_service_test.dart --no-pub`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`111 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`28 passed`)
+- [x] `python3 -m compileall -q backend/src`
+- [x] `./scripts/push-live-preflight.sh --app-only` (`push_live_preflight=status=ok checks=29 warnings=1 failures=0`)
+- [x] `ALLOW_INSECURE_RELEASE_API=true API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api ./scripts/release-api-health-check.sh` (`/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200)
+- [x] `curl -fsS --max-time 10 http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health`
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build ipa --release --export-method app-store --build-name=0.0.37 --build-number=37 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`
+- [x] `0.0.37 (37)` archive/IPA 기준 smoke backend `API_BASE_URL`, embedded `0.0.37+37` patch note, exported IPA entitlement `aps-environment=production`, `get-task-allow=false` 확인
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+- [x] export 중 `objective_c.framework` dSYM 누락 warning이 있었으나 `Upload succeeded` / `EXPORT SUCCEEDED`로 완료됨
+- [ ] 실제 iPhone/TestFlight foreground/background/terminated 수신은 새 빌드 설치, 알림 권한 허용, 마이팀 선택 후 `/api/push/config-status` registry device count와 실기기 notification receipt로 확인 필요
+
+## 2026-06-18: 마이팀 경기 자동 따라가기 push registry 동기화
+
+### 완료
+- [x] root cause: 홈의 마이팀 live 경기 자동 follow는 `LiveActivityService` 로컬 상태만 갱신했고, `/push/register` body에는 현재 follow session id가 포함되지 않아 backend registry와 앱 follow 상태가 분리될 수 있었음
+- [x] `PushNotificationService`가 registration body에 `followedGameIds`를 항상 포함하도록 보강해 follow 종료 시 빈 배열로 registry를 정리할 수 있게 변경
+- [x] `LiveActivityService.followGame()` / `stopFollowing()` 직후 push registration sync를 트리거해 사용자가 경기 상세에서 직접 켜지 않아도 마이팀 자동 follow 상태가 backend registry에 반영되도록 연결
+- [x] 마이팀 선택 직후와 기존 사용자 bootstrap 이후 `ensureAutoPermissionAndSync()`를 최초 1회 실행해 경기별 알림 설정을 열지 않아도 내 팀 push token/topic 등록이 진행되도록 보강
+- [x] backend `PushRegisterRequest`, `PushRegistry`, resubscribe 변환 경로가 `followedGameIds`를 저장/정규화/보존하도록 변경
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 자동 follow registry sync 계약을 동기화
+
+### 검증
+- [x] `cd app && fvm dart format lib/services/push_notification_service.dart lib/services/live_activity_service.dart test/services/push_notification_service_test.dart`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/tests/test_push_service.py`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart test/features/home/home_screen_test.dart --no-pub` (`16 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`28 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `python3 -m compileall backend/src`
+- [x] `git diff --check`
+- [x] `backend/.venv/bin/pytest -q` (`129 passed`)
+- [x] `cd app && fvm flutter test --no-pub` (`111 passed`)
+
+## 2026-06-18: Live Activity / 앱 디자인 톤 정리
+
+### 완료
+- [x] iOS Live Activity lock screen 레이아웃을 홈 마이팀 경기 카드와 같은 팀 로고-중앙 스코어-상태 정보 구조로 재정리
+- [x] Dynamic Island expanded/compact 표면도 같은 스코어 중심 톤으로 맞추고, 구장/갱신/타석 정보에서 장식성 아이콘 표현을 줄임
+- [x] 앱 전역 다크 팔레트를 파란 기가 강한 슬레이트에서 중립 차콜 계열로 낮춤
+- [x] 홈/설정 화면의 장식형 영어 eyebrow(`MY TEAM`, `SETTINGS`)를 한국어 라벨로 바꾸고, 앱 코드의 사용자 표시 이모지 1건을 제거
+- [x] Google Material 3 Expressive, Apple Live Activities, NN/g dark mode, 2025 UI trend references를 확인해 색/shape/motion/containment, glanceable live data, dark mode contrast, motion-as-feedback 기준으로 추가 개선 범위 선정
+- [x] 홈 헤더의 행동 없는 알림 아이콘을 제거하고 선택된 마이팀 엠블럼 또는 중립 야구 아이콘으로 교체
+- [x] 홈 보조 섹션 카드에 얇은 팀/상태 컬러 rail을 추가해 정보 그룹을 더 빨리 구분할 수 있게 보정
+- [x] 홈 화면의 큰 라운드 카드/버튼을 8px 체계로 낮춰 스포츠 정보 앱에 맞는 단정한 밀도로 조정
+- [x] `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 이모지 없는 UI 라벨, 절제된 팔레트, Live Activity 카드 문법을 동기화
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/features/home/home_screen.dart lib/core/theme/app_theme.dart lib/core/widgets/dev_console.dart lib/features/home/widgets/my_team_game_card.dart lib/features/settings/settings_screen.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/services/push_notification_service.dart lib/features/home/home_screen.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/features/schedule/widgets/schedule_game_card_golden_test.dart --update-goldens --no-pub`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`111 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build ios --debug --no-codesign --no-pub`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build web --release --no-pub --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` (`✓ Built build/web`; `flutter_timezone_web.dart` Wasm dry-run warning은 일반 web release build를 막지 않음)
+- [x] `git diff --check`
+- [x] 앱 코드와 최신 앱 스펙/피그마 프롬프트 범위에서 이모지 검색 0건 확인
+- [x] `command -v npx` 확인 결과 `npx`가 없어 Playwright screenshot 검수는 수행하지 못함
+- [ ] 실기기 Live Activity 수신/갱신은 별도 확인 필요
+
 ## 2026-06-13: 0.0.36 TestFlight 푸시 초기화 보정
 
 ### 완료
@@ -905,7 +981,7 @@
 - [ ] GitHub Actions workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`와 `--dry-run false --watch` 순서로 실행해야 한다. 이 CLI의 config check는 필수 secrets/variables 누락 시 dispatch 전에 실패해야 한다.
 - [ ] release TestFlight/Android artifact에는 운영 `API_BASE_URL`이 push / Live Activity token registration endpoint로 주입되어야 한다.
 - [ ] API task와 scheduler task가 분리되면 `PUSH_REGISTRY_PATH`는 EFS/EBS/DynamoDB 등 공유 영속 저장소를 바라봐야 한다.
-- [ ] ECS sync worker, EventBridge Scheduler, 또는 cron이 live 경기 중 30~60초 간격으로 scoreboard sync를 실행해야 한다.
+- [ ] ECS long-running sync worker 또는 cron이 live 경기 중 8초 간격으로 scoreboard sync를 실행해야 한다.
 - [ ] 운영 확인 시 `GET /api/push/config-status`의 `scheduler.lastSyncAt`이 최근 시각으로 갱신되어야 한다.
 - [ ] 실기기 TestFlight/release 검증에는 Firebase plist, Push Notifications capability, APNs production profile이 필요하다.
 

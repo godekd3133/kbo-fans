@@ -15,7 +15,7 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
 class HomeService:
-    _LIVE_CACHE_TTL_SECONDS = 30
+    _LIVE_CACHE_TTL_SECONDS = 8
     _STABLE_CACHE_TTL_SECONDS = 300
     _TEAM_LABELS = {
         "LG": "LG 트윈스",

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class ScoreboardService:
-    _SCOREBOARD_CACHE_TTL_SECONDS = 30
+    _SCOREBOARD_CACHE_TTL_SECONDS = 8
 
     def __init__(
         self,
