@@ -8,6 +8,7 @@
 - [x] 0.0.37 업로드 이후 남은 `game_start_soon` push route/test/patch-note 보강이 앱 동작과 in-app patch note에 닿는 변경임을 확인
 - [x] 0.0.38+38로 버전 분리 결정
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 0.0.38 기준으로 동기화
+- [x] 운영 `/api/push/test`가 secret 없이 topic push를 발송할 수 있는 gap을 확인하고 `X-Kbo-Push-Sync-Secret` 보호를 추가
 
 ### 검증
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub` (`No issues found`)
@@ -27,6 +28,15 @@
 - [x] `curl -fsS --max-time 10 http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health`
 - [x] deployed backend `/openapi.json`에 `NotificationSettings.hit`, `NotificationDeliveryModes.hit`, `PushRegisterRequest.followedGameIds` 노출 확인
 - [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun altool --build-status --apple-id 6779130075 --bundle-version 38 -u godekd3133@naver.com -p @keychain:DRAuth` 실패 확인: App Store Connect app-specific password 또는 JWT 인증 필요
+- [x] 운영 `/api/push/test`로 `game_start_ALL`, `game_start_LG`, `game_start_KT`, `game_start_SK`, `game_start_SS`, `game_start_NC`, `game_start_HH`, `game_start_LT`, `game_start_HT`, `game_start_OB`, `game_start_WO` 테스트 알림 발송: 모든 topic HTTP 200, Firebase `messageId` 발급 확인
+- [x] 운영 `/api/push/test`로 `hit_OB` 테스트 알림 발송: `projects/kbo-fans-47189/messages/8516079409901788163`
+- [x] 운영 `/api/push/test`로 `game_start_soon_OB` 테스트 알림 발송: `projects/kbo-fans-47189/messages/1801064269839009066`
+- [x] `xcrun devicectl list devices`와 `flutter devices --machine` 기준 연결된 iPhone 실기기 없음: FCM 발송은 확인했지만 실제 단말 receipt는 미확인
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/api/routes/push.py backend/tests/test_push_service.py` (`All checks passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`33 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`136 passed`)
+- [x] `python3 -m compileall -q backend/src`
+- [x] `git diff --check`
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
 ## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강

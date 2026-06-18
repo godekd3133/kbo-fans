@@ -1022,6 +1022,35 @@ def test_resubscribe_topics_endpoint_uses_sync_secret(monkeypatch) -> None:
     assert allowed.json()["data"]["dryRun"] is True
 
 
+def test_send_test_push_endpoint_uses_sync_secret(monkeypatch) -> None:
+    class SecretSettings:
+        push_sync_secret = "secret"
+
+    captured = {}
+
+    class FakeService:
+        def send_test(self, payload) -> dict:
+            captured["topic"] = payload.topic
+            return {"sent": True, "target": f"topic:{payload.topic}"}
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: SecretSettings())
+    monkeypatch.setattr(push_routes, "service", FakeService())
+    client = TestClient(app)
+    body = {"title": "안타", "body": "테스트", "topic": "hit_OB"}
+
+    denied = client.post("/api/push/test", json=body)
+    allowed = client.post(
+        "/api/push/test",
+        json=body,
+        headers={"X-Kbo-Push-Sync-Secret": "secret"},
+    )
+
+    assert denied.status_code == 401
+    assert allowed.status_code == 200
+    assert captured["topic"] == "hit_OB"
+    assert allowed.json()["data"]["sent"] is True
+
+
 def test_sync_scoreboard_endpoint_defaults_to_kbo_game_day(monkeypatch) -> None:
     class SecretSettings:
         push_sync_secret = "secret"

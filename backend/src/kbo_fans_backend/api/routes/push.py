@@ -33,7 +33,11 @@ def register_push(payload: PushRegisterRequest) -> ApiEnvelope[dict]:
 
 
 @router.post("/test", response_model=ApiEnvelope[dict])
-def send_test_push(payload: PushTestRequest) -> ApiEnvelope[dict]:
+def send_test_push(
+    payload: PushTestRequest,
+    x_kbo_push_sync_secret: Optional[str] = Header(default=None),
+) -> ApiEnvelope[dict]:
+    _ensure_sync_allowed(x_kbo_push_sync_secret)
     return ApiEnvelope.success_response(service.send_test(payload))
 
 

@@ -107,11 +107,12 @@ FIREBASE_PROJECT_ID=YOUR_FIREBASE_PROJECT_ID
 3. backend `.env`에 Firebase 경로/프로젝트 ID 설정
 4. `cd backend && source .venv/bin/activate && pip install -e ".[dev]"` 재실행
 5. 앱 실행 후 설정 > 연결 진단에서 push 상태 확인
-6. 백엔드 테스트 발송 실행
+6. 백엔드 테스트 발송 실행 (`PUSH_SYNC_SECRET` 필요)
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/push/test \
   -H 'Content-Type: application/json' \
+  -H "X-Kbo-Push-Sync-Secret: $PUSH_SYNC_SECRET" \
   -d '{
     "title": "KBO Fans Test",
     "body": "Push delivery test",
