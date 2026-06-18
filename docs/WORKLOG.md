@@ -53,6 +53,7 @@
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py` (`All checks passed`)
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`35 passed`)
 - [x] `python3 -m compileall -q backend/src`
+- [x] `0bfde9b` backend 운영 재배포: `0bfde9b-apns-alert-push` image tag로 GitHub Actions `Push Demo Deploy` run `27749370070` 성공, ECR digest `sha256:b8f5ba52971df8f26167d73b1f65865493907f9cde07404c85cb8cb7dc147eac`, `push_config=status=ok readyForIphoneOnlyDemo=true`, `push_registry=status=ok registeredDevices=1 ... game_start_soon_OB:1,hit_OB:1`, `scheduler=status=ok ageSeconds=1`, `push_topic_resubscribe=status=ok registeredDevices=1 eligibleDevices=1 subscriptionsAttempted=10 unsubscriptionsAttempted=0`
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
 ## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강
