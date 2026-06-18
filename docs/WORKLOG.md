@@ -25,6 +25,8 @@
 - [x] `PATH="/opt/homebrew/bin:$PATH" ./scripts/github-push-demo-run.sh --repo godekd3133/kbo-fans --ref main --dry-run false --tag 0.0.38 --resubscribe-topics --watch` (`run 27741651699`, backend deploy success)
 - [x] deploy readiness: `/api/push/config-status` 200, `readyForIphoneOnlyDemo=true`, `push_topic_resubscribe=status=ok registeredDevices=1 eligibleDevices=1 subscriptionsAttempted=10 unsubscriptionsAttempted=0`
 - [x] `curl -fsS --max-time 10 http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health`
+- [x] deployed backend `/openapi.json`에 `NotificationSettings.hit`, `NotificationDeliveryModes.hit`, `PushRegisterRequest.followedGameIds` 노출 확인
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun altool --build-status --apple-id 6779130075 --bundle-version 38 -u godekd3133@naver.com -p @keychain:DRAuth` 실패 확인: App Store Connect app-specific password 또는 JWT 인증 필요
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
 ## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강
