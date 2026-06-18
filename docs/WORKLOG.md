@@ -47,6 +47,7 @@
 - [x] production `LiveActivityScoreboardSyncService` + 실제 2026-06-18 scoreboard + fake FCM sender dry-run에서 now=18:20 KST로 고정 시 5경기 모두 `game_start_soon` 발화: `20260618KTOB0`은 `game_start_soon_KT`, `game_start_soon_OB`, `game_start_soon_ALL` topic 대상
 - [x] 일반 FCM message에 iOS APNs `apns-priority=10` / default sound, Android high priority / default sound 옵션을 추가해 background/locked 상태의 즉시 표시 가능성을 보강
 - [x] `GET /api/push/config-status`가 token 원문 없이 `registeredDeviceCount`, `followedGameCount`, `activeLiveActivityGameCount`, `topicCounts`, `myTeamCounts`를 반환하도록 보강하고 readiness log에 `push_registry=... topics=...`를 출력하도록 변경
+- [ ] `f4169fa` backend 운영 재배포: 로컬 `gh` token 만료, `GH_TOKEN`/`GITHUB_TOKEN` 없음, 로컬 `aws` CLI 없음, Docker daemon 미실행으로 현재 세션에서 dispatch/deploy 불가. GitHub 재인증 후 `./scripts/github-push-demo-run.sh --repo godekd3133/kbo-fans --ref main --dry-run false --tag 0.0.38-f4169fa-push-visible --resubscribe-topics --watch` 필요
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
 ## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강
