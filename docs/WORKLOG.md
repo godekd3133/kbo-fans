@@ -42,6 +42,9 @@
 - [x] image tag를 `0.0.38-14368f1`로 바꿔 `run 27742421909` 재배포: `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `push_config=status=ok readyForIphoneOnlyDemo=true`, `push_topic_resubscribe=status=ok registeredDevices=1 eligibleDevices=1 subscriptionsAttempted=10 unsubscriptionsAttempted=0`
 - [x] 추가 확인용 image tag `14368f1-push-test-secret`로 `run 27742477135` 재배포: `aws_push_cloudformation=status=ok`, `push_config=status=ok readyForIphoneOnlyDemo=true`, `push_topic_resubscribe=status=ok registeredDevices=1 eligibleDevices=1 subscriptionsAttempted=10 unsubscriptionsAttempted=0`
 - [x] 최종 운영 검증: `/openapi.json`의 `/api/push/test`에 `x-kbo-push-sync-secret` header 노출, secret 없는 `POST /api/push/test`는 401, `/api/health`는 200
+- [x] `run 27742421909` artifact `push-topic-resubscribe.json` 확인: 등록 단말 1대가 `game_start_soon_OB`, `hit_OB`, `at_bat_OB`, `game_start_OB`, `scoring_OB`, `homerun_OB`, `reversal_OB`, `inning_change_OB`, `lineup_opened_OB`, `game_end_OB`에 각각 `success=1 failure=0`
+- [x] 2026-06-18 16:08 KST 운영 `/api/scoreboard/home` 기준 오늘 5경기는 모두 18:30 예정이라 10분 전 push window 전임을 확인
+- [x] production `LiveActivityScoreboardSyncService` + 실제 2026-06-18 scoreboard + fake FCM sender dry-run에서 now=18:20 KST로 고정 시 5경기 모두 `game_start_soon` 발화: `20260618KTOB0`은 `game_start_soon_KT`, `game_start_soon_OB`, `game_start_soon_ALL` topic 대상
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
 ## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강
