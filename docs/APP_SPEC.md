@@ -848,7 +848,7 @@ GET /api/standings?season=2026
 - 같은 scheduler는 예정 경기의 KST `startTime` 기준 10분 전 window에서 `game_start_soon`을 한 번 발행한다. 첫 관측은 baseline 저장만 하고, live 전환 이후 scoreboard diff로 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat`을 감지한다.
 - scoreboard diff만으로 알 수 없는 `hit` / `homerun`은 같은 scheduler가 relay seq baseline을 따로 저장한 뒤 새 relay item의 `HIT` / `HOMERUN` event 또는 `안타` / `홈런` 텍스트를 감지해 FCM topic push로 발행한다. `hit`은 relay의 `currentAtBat`에서 outs/baseState를 읽어 `1사 1,2루` 같은 상황 텍스트를 함께 보낸다.
 - 경기 종료/취소/서스펜디드 상태에서는 APNs `end` event와 final content state를 보내고 token registry에서 세션을 제거한다.
-- FCM은 일반 push notification과 topic subscription에 사용한다. Backend가 보내는 일반 FCM message는 iOS APNs `apns-priority=10` / default sound, Android high priority / default sound를 함께 지정해 background/locked 상태에서 즉시 노출될 가능성을 높인다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
+- FCM은 일반 push notification과 topic subscription에 사용한다. Backend가 보내는 일반 FCM message는 iOS APNs `apns-push-type=alert`, `apns-topic`, `aps.alert`, `apns-priority=10`, default sound와 Android high priority / default sound를 함께 지정해 background/locked 상태에서 알림으로 즉시 노출되도록 한다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
 
 **따라가기 화면 원칙**:
 - 마이팀 live 경기는 홈에서 기본 follow target 으로 자동 선택한다.

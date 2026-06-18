@@ -12,7 +12,7 @@
 
 ### Fixed
 
-- 원격 푸시가 잠금/백그라운드 상태에서 즉시 표시되도록 backend FCM 메시지에 iOS APNs 우선순위/사운드와 Android high priority/사운드 옵션을 명시
+- 원격 푸시가 잠금/백그라운드 상태에서 앱 실행 시점까지 밀리지 않도록 backend FCM 메시지에 iOS APNs `alert` push type/topic/alert payload/우선순위/사운드와 Android high priority/사운드 옵션을 명시
 
 ## [0.0.38] - 2026-06-18
 

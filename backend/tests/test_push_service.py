@@ -201,6 +201,13 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
     assert first_message.data["playText"] == "장성우 : 좌전 안타"
     assert first_message.data["batterName"] == "장성우"
     assert first_message.apns.headers["apns-priority"] == "10"
+    assert first_message.apns.headers["apns-push-type"] == "alert"
+    assert first_message.apns.headers["apns-topic"] == "com.kbofans.kboFans"
+    assert first_message.apns.payload.aps.alert.title == "안타"
+    assert (
+        first_message.apns.payload.aps.alert.body
+        == "7회말 장성우 : 좌전 안타 · 1사 1,2루"
+    )
     assert first_message.apns.payload.aps.sound == "default"
     assert first_message.android.priority == "high"
     assert first_message.android.notification.sound == "default"
@@ -258,6 +265,10 @@ def test_send_test_push_uses_visible_notification_options(tmp_path) -> None:
     message = messaging.sent_messages[0]
     assert message.topic == "game_start_OB"
     assert message.apns.headers["apns-priority"] == "10"
+    assert message.apns.headers["apns-push-type"] == "alert"
+    assert message.apns.headers["apns-topic"] == "com.kbofans.kboFans"
+    assert message.apns.payload.aps.alert.title == "테스트"
+    assert message.apns.payload.aps.alert.body == "백그라운드 수신 확인"
     assert message.apns.payload.aps.sound == "default"
     assert message.android.priority == "high"
     assert message.android.notification.sound == "default"
@@ -1253,9 +1264,16 @@ class FakeFcmNotification:
         self.body = body
 
 
+class FakeFcmApsAlert:
+    def __init__(self, *, title: str, body: str) -> None:
+        self.title = title
+        self.body = body
+
+
 class FakeFcmAps:
-    def __init__(self, *, sound: str) -> None:
+    def __init__(self, *, sound: str, alert=None) -> None:
         self.sound = sound
+        self.alert = alert
 
 
 class FakeFcmApnsPayload:
@@ -1304,6 +1322,7 @@ class FakeFcmMessage:
 class FakeFcmMessaging:
     Notification = FakeFcmNotification
     Message = FakeFcmMessage
+    ApsAlert = FakeFcmApsAlert
     Aps = FakeFcmAps
     APNSPayload = FakeFcmApnsPayload
     APNSConfig = FakeFcmApnsConfig

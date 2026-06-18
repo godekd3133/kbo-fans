@@ -48,6 +48,11 @@
 - [x] 일반 FCM message에 iOS APNs `apns-priority=10` / default sound, Android high priority / default sound 옵션을 추가해 background/locked 상태의 즉시 표시 가능성을 보강
 - [x] `GET /api/push/config-status`가 token 원문 없이 `registeredDeviceCount`, `followedGameCount`, `activeLiveActivityGameCount`, `topicCounts`, `myTeamCounts`를 반환하도록 보강하고 readiness log에 `push_registry=... topics=...`를 출력하도록 변경
 - [x] `f4169fa` backend 운영 재배포: `f4169fa-visible-push` image tag로 GitHub Actions `Push Demo Deploy` run `27743284571` 성공, `push_config=status=ok readyForIphoneOnlyDemo=true`, `push_registry=status=ok registeredDevices=1 ... game_start_soon_OB:1,hit_OB:1`, `push_topic_resubscribe=status=ok registeredDevices=1 eligibleDevices=1 subscriptionsAttempted=10 unsubscriptionsAttempted=0`
+- [x] 추가 제보: 앱을 켤 때 알림이 몰아서 표시됨. 앱 iOS foreground handler는 local notification을 재표시하지 않고 backend FCM payload에는 notification body가 있으므로, ordinary push를 APNs alert-class로 더 명확히 고정하는 방향으로 원인 가설을 좁힘
+- [x] 일반 FCM message의 iOS APNs config에 `apns-push-type=alert`, app bundle `apns-topic`, 명시 `aps.alert`, `apns-priority=10`, default sound를 모두 포함하도록 보강
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py` (`All checks passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`35 passed`)
+- [x] `python3 -m compileall -q backend/src`
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
 ## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강

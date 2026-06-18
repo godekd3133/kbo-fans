@@ -103,7 +103,11 @@ class PushService:
 
         messaging = self._get_messaging()
         notification = messaging.Notification(title=payload.title, body=payload.body)
-        visible_options = _visible_push_options(messaging)
+        visible_options = _visible_push_options(
+            messaging,
+            title=payload.title,
+            body=payload.body,
+        )
         if payload.topic:
             message = messaging.Message(
                 notification=notification,
@@ -192,7 +196,7 @@ class PushService:
             f"lineup_opened_{home_team_id}",
             "lineup_opened_ALL",
         ]
-        visible_options = _visible_push_options(messaging)
+        visible_options = _visible_push_options(messaging, title=title, body=body)
         sent = []
         for topic in targets:
             message = messaging.Message(
@@ -249,7 +253,7 @@ class PushService:
             f"{moment}_{home_team_id}",
             f"{moment}_ALL",
         ]
-        visible_options = _visible_push_options(messaging)
+        visible_options = _visible_push_options(messaging, title=title, body=body)
         sent = []
         for topic in targets:
             message = messaging.Message(
@@ -435,14 +439,29 @@ def _firebase_certificate_source(
     raise ValueError("FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_PATH is required")
 
 
-def _visible_push_options(messaging) -> dict[str, Any]:
+def _visible_push_options(
+    messaging,
+    *,
+    title: str,
+    body: str,
+) -> dict[str, Any]:
     options: dict[str, Any] = {}
 
     if all(hasattr(messaging, name) for name in ("APNSConfig", "APNSPayload", "Aps")):
+        headers = {
+            "apns-priority": "10",
+            "apns-push-type": "alert",
+        }
+        bundle_id = get_settings().apns_bundle_id
+        if bundle_id:
+            headers["apns-topic"] = bundle_id
+        aps_kwargs: dict[str, Any] = {"sound": "default"}
+        if hasattr(messaging, "ApsAlert"):
+            aps_kwargs["alert"] = messaging.ApsAlert(title=title, body=body)
         options["apns"] = messaging.APNSConfig(
-            headers={"apns-priority": "10"},
+            headers=headers,
             payload=messaging.APNSPayload(
-                aps=messaging.Aps(sound="default"),
+                aps=messaging.Aps(**aps_kwargs),
             ),
         )
 
