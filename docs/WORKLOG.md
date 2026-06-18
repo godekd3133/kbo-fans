@@ -37,6 +37,10 @@
 - [x] `backend/.venv/bin/pytest -q` (`136 passed`)
 - [x] `python3 -m compileall -q backend/src`
 - [x] `git diff --check`
+- [x] `PATH="/opt/homebrew/bin:$PATH" ./scripts/github-push-demo-run.sh --repo godekd3133/kbo-fans --ref main --dry-run false --tag 0.0.38 --resubscribe-topics --watch` (`run 27742321314`, headSha `14368f1`, success) 후 동일 image URI 재사용으로 운영 `/api/push/test`가 아직 200을 반환함을 확인
+- [x] 위 확인 과정에서 secret 없는 `hit_OB` probe가 기존 운영 task에서 FCM messageId를 발급: `projects/kbo-fans-47189/messages/4070671717623932114`, `3843424968269898682`, `5854907486798922533`, `8162477654445269396`, `7565568238836534116`, `5647637839180425052`
+- [x] image tag를 `0.0.38-14368f1`로 바꿔 `run 27742421909` 재배포: `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `push_config=status=ok readyForIphoneOnlyDemo=true`, `push_topic_resubscribe=status=ok registeredDevices=1 eligibleDevices=1 subscriptionsAttempted=10 unsubscriptionsAttempted=0`
+- [x] 최종 운영 검증: `/openapi.json`의 `/api/push/test`에 `x-kbo-push-sync-secret` header 노출, secret 없는 `POST /api/push/test`는 401, `/api/health`는 200
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
 ## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강

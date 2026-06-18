@@ -1409,6 +1409,7 @@ POST /api/push/live-activity/register
 POST /api/push/live-activity/unregister
 POST /api/push/live-activity/update
 POST /api/push/live-activity/sync-scoreboard
+POST /api/push/test
 POST /api/push/resubscribe-topics
 GET /api/push/config-status
 ```
@@ -1417,6 +1418,7 @@ GET /api/push/config-status
 - `register`: 앱/iOS native가 `gameId`, `activityId`, `activityPushToken`을 등록한다.
 - `update`: 내부 운영 도구나 worker가 특정 `gameId`의 `content-state`를 APNs로 발송한다.
 - `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon`, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. `date` 생략 시 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `test`: 운영자가 특정 FCM token 또는 topic으로 테스트 알림을 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `resubscribe-topics`: registry에 저장된 FCM device registration을 현재 push schema로 다시 해석해 Firebase topic을 재구독한다. `at_bat`, `game_start_soon`, `hit`처럼 새 moment topic을 추가한 뒤 기존 TestFlight 설치자의 topic membership을 보정할 때 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다.
@@ -1494,6 +1496,7 @@ GET /api/game/{gameId}
 | GET | `/api/schedule` | 경기 일정 | 월 단위 1시간 / 지난 날짜 snapshot 우선 |
 | GET | `/api/standings` | 팀 순위 | latest 5분 / 과거 기준 standings snapshot |
 | POST | `/api/push/register` | Push 등록 / Moment Subscription 저장 | 없음 |
+| POST | `/api/push/test` | 운영 테스트 FCM 알림 발송 (`PUSH_SYNC_SECRET` 필요) | 없음 |
 | POST | `/api/push/resubscribe-topics` | registry 기반 FCM topic 재구독 운영 도구 | 없음 |
 | POST | `/api/push/live-activity/register` | iOS ActivityKit push token 등록 | 없음 |
 | POST | `/api/push/live-activity/sync-scoreboard` | backend scheduler용 Live Activity scoreboard push trigger | 없음 |
