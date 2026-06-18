@@ -17,6 +17,7 @@ from kbo_fans_backend.schemas.push import (
     NotificationDeliveryModes,
     NotificationSettings,
     PushRegisterRequest,
+    PushTestRequest,
 )
 from kbo_fans_backend.services.apns_live_activity import ApnsLiveActivitySender
 from kbo_fans_backend.services.live_activity_scoreboard import LiveActivityScoreboardSyncService
@@ -199,6 +200,10 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
     assert first_message.data["situationText"] == "1사 1,2루"
     assert first_message.data["playText"] == "장성우 : 좌전 안타"
     assert first_message.data["batterName"] == "장성우"
+    assert first_message.apns.headers["apns-priority"] == "10"
+    assert first_message.apns.payload.aps.sound == "default"
+    assert first_message.android.priority == "high"
+    assert first_message.android.notification.sound == "default"
 
 
 def test_send_game_moment_start_soon_includes_start_time_payload(tmp_path) -> None:
@@ -233,6 +238,29 @@ def test_send_game_moment_start_soon_includes_start_time_payload(tmp_path) -> No
     assert first_message.data["type"] == "game_start_soon"
     assert first_message.data["startTime"] == "18:30"
     assert first_message.data["stadium"] == "수원"
+
+
+def test_send_test_push_uses_visible_notification_options(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_test(
+        PushTestRequest(
+            title="테스트",
+            body="백그라운드 수신 확인",
+            topic="game_start_OB",
+        )
+    )
+
+    assert response["sent"] is True
+    message = messaging.sent_messages[0]
+    assert message.topic == "game_start_OB"
+    assert message.apns.headers["apns-priority"] == "10"
+    assert message.apns.payload.aps.sound == "default"
+    assert message.android.priority == "high"
+    assert message.android.notification.sound == "default"
 
 
 def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
@@ -901,6 +929,53 @@ def test_push_config_status_accepts_production_ready_paths(tmp_path) -> None:
     assert status["registry"]["parentWritable"] is True
 
 
+def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> None:
+    firebase_path = tmp_path / "firebase-service-account.json"
+    apns_path = tmp_path / "AuthKey_TESTKEY.p8"
+    registry_path = tmp_path / "runtime" / "push_registry.json"
+    firebase_path.write_text("{}", encoding="utf-8")
+    apns_path.write_text(
+        "-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----\n", encoding="utf-8"
+    )
+    registry = PushRegistry(str(registry_path))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service.register(
+        PushRegisterRequest(
+            deviceToken="secret-fcm-token",
+            platform="ios",
+            myTeam="OB",
+            followedGameIds=["20260618KTOB0"],
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                hit=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    settings = _settings(
+        app_env="release",
+        firebase_service_account_path=str(firebase_path),
+        push_registry_path=str(registry_path),
+        apns_auth_key_path=str(apns_path),
+        apns_use_sandbox=False,
+        push_sync_secret="secret",
+    )
+
+    status = PushConfigurationDiagnostics(settings).status()
+
+    assert status["registry"]["registeredDeviceCount"] == 1
+    assert status["registry"]["followedGameCount"] == 1
+    assert status["registry"]["topicCounts"]["game_start_soon_OB"] == 1
+    assert status["registry"]["topicCounts"]["hit_OB"] == 1
+    assert "secret-fcm-token" not in str(status["registry"])
+
+
 def test_push_config_status_accepts_aws_secret_env_content(tmp_path) -> None:
     registry_path = tmp_path / "runtime" / "push_registry.json"
     PushRegistry(str(registry_path)).record_sync_heartbeat(
@@ -1178,17 +1253,62 @@ class FakeFcmNotification:
         self.body = body
 
 
+class FakeFcmAps:
+    def __init__(self, *, sound: str) -> None:
+        self.sound = sound
+
+
+class FakeFcmApnsPayload:
+    def __init__(self, *, aps: FakeFcmAps) -> None:
+        self.aps = aps
+
+
+class FakeFcmApnsConfig:
+    def __init__(self, *, headers, payload: FakeFcmApnsPayload) -> None:
+        self.headers = headers
+        self.payload = payload
+
+
+class FakeFcmAndroidNotification:
+    def __init__(self, *, sound: str) -> None:
+        self.sound = sound
+
+
+class FakeFcmAndroidConfig:
+    def __init__(
+        self, *, priority: str, notification: FakeFcmAndroidNotification
+    ) -> None:
+        self.priority = priority
+        self.notification = notification
+
+
 class FakeFcmMessage:
-    def __init__(self, *, notification, data=None, topic=None, token=None) -> None:
+    def __init__(
+        self,
+        *,
+        notification,
+        data=None,
+        topic=None,
+        token=None,
+        apns=None,
+        android=None,
+    ) -> None:
         self.notification = notification
         self.data = data or {}
         self.topic = topic
         self.token = token
+        self.apns = apns
+        self.android = android
 
 
 class FakeFcmMessaging:
     Notification = FakeFcmNotification
     Message = FakeFcmMessage
+    Aps = FakeFcmAps
+    APNSPayload = FakeFcmApnsPayload
+    APNSConfig = FakeFcmApnsConfig
+    AndroidNotification = FakeFcmAndroidNotification
+    AndroidConfig = FakeFcmAndroidConfig
 
     def __init__(self) -> None:
         self.sent_messages = []
@@ -1245,9 +1365,7 @@ class FakeRelaySequenceService:
     def get_relay(self, game_id: str, after=None):
         self.calls.append({"game_id": game_id, "after": after})
         call_index = self.index
-        relay_items = self.relay_items_by_call[
-            min(self.index, len(self.relay_items_by_call) - 1)
-        ]
+        relay_items = self.relay_items_by_call[min(self.index, len(self.relay_items_by_call) - 1)]
         self.index += 1
         current_at_bat = None
         if self.current_at_bat_by_call:

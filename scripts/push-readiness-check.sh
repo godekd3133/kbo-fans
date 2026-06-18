@@ -199,6 +199,19 @@ if data.get("readyForIphoneOnlyDemo") is not True:
 
 print("push_config=status=ok readyForIphoneOnlyDemo=true")
 
+registry = data.get("registry") if isinstance(data.get("registry"), dict) else {}
+topic_counts = registry.get("topicCounts") if isinstance(registry.get("topicCounts"), dict) else {}
+topic_text = ",".join(
+    f"{topic}:{topic_counts[topic]}" for topic in sorted(topic_counts)
+)
+print(
+    "push_registry=status=ok "
+    f"registeredDevices={registry.get('registeredDeviceCount')} "
+    f"followedGames={registry.get('followedGameCount')} "
+    f"activeLiveActivityGames={registry.get('activeLiveActivityGameCount')} "
+    f"topics={topic_text}"
+)
+
 if scheduler_mode == "skip":
     print("scheduler=status=skipped reason=PUSH_READINESS_REQUIRE_SCHEDULER=false")
     raise SystemExit(0)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections import Counter
 from pathlib import Path
 from typing import Any, Optional
 
@@ -90,6 +91,7 @@ class PushConfigurationDiagnostics:
 
     def _registry_status(self) -> dict[str, Any]:
         registry = _writable_path_status(self.settings.push_registry_path)
+        runtime = self._registry_runtime_status()
         missing = []
         if not registry["configured"]:
             missing.append("PUSH_REGISTRY_PATH")
@@ -102,8 +104,57 @@ class PushConfigurationDiagnostics:
             "parentExists": registry["parentExists"],
             "parentWritable": registry["parentWritable"],
             "filename": registry["filename"],
+            **runtime,
             "ready": not missing,
             "missing": missing,
+        }
+
+    def _registry_runtime_status(self) -> dict[str, Any]:
+        try:
+            registry = PushRegistry(self.settings.push_registry_path)
+            registrations = registry.device_registrations()
+            live_activity_game_ids = registry.live_activity_game_ids()
+        except Exception as exc:
+            return {
+                "readable": False,
+                "readError": exc.__class__.__name__,
+                "registeredDeviceCount": 0,
+                "activeLiveActivityGameCount": 0,
+                "followedGameCount": 0,
+                "topicCounts": {},
+                "myTeamCounts": {},
+            }
+
+        topic_counts: Counter[str] = Counter()
+        my_team_counts: Counter[str] = Counter()
+        followed_game_ids: set[str] = set()
+        for registration in registrations:
+            topics = registration.get("topics")
+            if isinstance(topics, list):
+                for topic in topics:
+                    topic_text = str(topic).strip()
+                    if topic_text:
+                        topic_counts[topic_text] += 1
+
+            my_team = str(registration.get("myTeam") or "").strip()
+            if my_team:
+                my_team_counts[my_team] += 1
+
+            followed = registration.get("followedGameIds")
+            if isinstance(followed, list):
+                for game_id in followed:
+                    game_id_text = str(game_id).strip()
+                    if game_id_text:
+                        followed_game_ids.add(game_id_text)
+
+        return {
+            "readable": True,
+            "readError": "",
+            "registeredDeviceCount": len(registrations),
+            "activeLiveActivityGameCount": len(live_activity_game_ids),
+            "followedGameCount": len(followed_game_ids),
+            "topicCounts": dict(sorted(topic_counts.items())),
+            "myTeamCounts": dict(sorted(my_team_counts.items())),
         }
 
     def _scheduler_status(self) -> dict[str, Any]:

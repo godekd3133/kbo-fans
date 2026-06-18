@@ -848,7 +848,7 @@ GET /api/standings?season=2026
 - 같은 scheduler는 예정 경기의 KST `startTime` 기준 10분 전 window에서 `game_start_soon`을 한 번 발행한다. 첫 관측은 baseline 저장만 하고, live 전환 이후 scoreboard diff로 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat`을 감지한다.
 - scoreboard diff만으로 알 수 없는 `hit` / `homerun`은 같은 scheduler가 relay seq baseline을 따로 저장한 뒤 새 relay item의 `HIT` / `HOMERUN` event 또는 `안타` / `홈런` 텍스트를 감지해 FCM topic push로 발행한다. `hit`은 relay의 `currentAtBat`에서 outs/baseState를 읽어 `1사 1,2루` 같은 상황 텍스트를 함께 보낸다.
 - 경기 종료/취소/서스펜디드 상태에서는 APNs `end` event와 final content state를 보내고 token registry에서 세션을 제거한다.
-- FCM은 일반 push notification과 topic subscription에 사용한다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
+- FCM은 일반 push notification과 topic subscription에 사용한다. Backend가 보내는 일반 FCM message는 iOS APNs `apns-priority=10` / default sound, Android high priority / default sound를 함께 지정해 background/locked 상태에서 즉시 노출될 가능성을 높인다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
 
 **따라가기 화면 원칙**:
 - 마이팀 live 경기는 홈에서 기본 follow target 으로 자동 선택한다.
@@ -1420,7 +1420,7 @@ GET /api/push/config-status
 - `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon`, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. `date` 생략 시 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `test`: 운영자가 특정 FCM token 또는 topic으로 테스트 알림을 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `resubscribe-topics`: registry에 저장된 FCM device registration을 현재 push schema로 다시 해석해 Firebase topic을 재구독한다. `at_bat`, `game_start_soon`, `hit`처럼 새 moment topic을 추가한 뒤 기존 TestFlight 설치자의 topic membership을 보정할 때 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
-- `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. registry 진단에는 device token 원문 없이 `registeredDeviceCount`, `followedGameCount`, `activeLiveActivityGameCount`, `topicCounts`, `myTeamCounts`만 포함한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다.
 
 **응답**:

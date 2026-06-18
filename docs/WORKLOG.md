@@ -45,6 +45,8 @@
 - [x] `run 27742421909` artifact `push-topic-resubscribe.json` 확인: 등록 단말 1대가 `game_start_soon_OB`, `hit_OB`, `at_bat_OB`, `game_start_OB`, `scoring_OB`, `homerun_OB`, `reversal_OB`, `inning_change_OB`, `lineup_opened_OB`, `game_end_OB`에 각각 `success=1 failure=0`
 - [x] 2026-06-18 16:08 KST 운영 `/api/scoreboard/home` 기준 오늘 5경기는 모두 18:30 예정이라 10분 전 push window 전임을 확인
 - [x] production `LiveActivityScoreboardSyncService` + 실제 2026-06-18 scoreboard + fake FCM sender dry-run에서 now=18:20 KST로 고정 시 5경기 모두 `game_start_soon` 발화: `20260618KTOB0`은 `game_start_soon_KT`, `game_start_soon_OB`, `game_start_soon_ALL` topic 대상
+- [x] 일반 FCM message에 iOS APNs `apns-priority=10` / default sound, Android high priority / default sound 옵션을 추가해 background/locked 상태의 즉시 표시 가능성을 보강
+- [x] `GET /api/push/config-status`가 token 원문 없이 `registeredDeviceCount`, `followedGameCount`, `activeLiveActivityGameCount`, `topicCounts`, `myTeamCounts`를 반환하도록 보강하고 readiness log에 `push_registry=... topics=...`를 출력하도록 변경
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
 ## 2026-06-18: 안타/경기 시작 임박 원격 push moment 보강

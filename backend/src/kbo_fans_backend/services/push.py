@@ -103,10 +103,12 @@ class PushService:
 
         messaging = self._get_messaging()
         notification = messaging.Notification(title=payload.title, body=payload.body)
+        visible_options = _visible_push_options(messaging)
         if payload.topic:
             message = messaging.Message(
                 notification=notification,
                 topic=payload.topic,
+                **visible_options,
             )
             response = messaging.send(message)
             return {"sent": True, "target": f"topic:{payload.topic}", "messageId": response}
@@ -114,6 +116,7 @@ class PushService:
         message = messaging.Message(
             notification=notification,
             token=payload.token,
+            **visible_options,
         )
         response = messaging.send(message)
         return {"sent": True, "target": "token", "messageId": response}
@@ -189,6 +192,7 @@ class PushService:
             f"lineup_opened_{home_team_id}",
             "lineup_opened_ALL",
         ]
+        visible_options = _visible_push_options(messaging)
         sent = []
         for topic in targets:
             message = messaging.Message(
@@ -200,6 +204,7 @@ class PushService:
                     "homeTeamId": home_team_id,
                 },
                 topic=topic,
+                **visible_options,
             )
             message_id = messaging.send(message)
             sent.append({"topic": topic, "messageId": message_id})
@@ -244,6 +249,7 @@ class PushService:
             f"{moment}_{home_team_id}",
             f"{moment}_ALL",
         ]
+        visible_options = _visible_push_options(messaging)
         sent = []
         for topic in targets:
             message = messaging.Message(
@@ -264,6 +270,7 @@ class PushService:
                     "stadium": stadium,
                 },
                 topic=topic,
+                **visible_options,
             )
             message_id = messaging.send(message)
             sent.append({"topic": topic, "messageId": message_id})
@@ -426,6 +433,28 @@ def _firebase_certificate_source(
         return str(Path(service_account_path).expanduser())
 
     raise ValueError("FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_PATH is required")
+
+
+def _visible_push_options(messaging) -> dict[str, Any]:
+    options: dict[str, Any] = {}
+
+    if all(hasattr(messaging, name) for name in ("APNSConfig", "APNSPayload", "Aps")):
+        options["apns"] = messaging.APNSConfig(
+            headers={"apns-priority": "10"},
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(sound="default"),
+            ),
+        )
+
+    if all(
+        hasattr(messaging, name) for name in ("AndroidConfig", "AndroidNotification")
+    ):
+        options["android"] = messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(sound="default"),
+        )
+
+    return options
 
 
 def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
