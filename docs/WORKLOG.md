@@ -12,12 +12,15 @@
 ### 검증
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub` (`No issues found`)
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`113 passed`)
-- [x] `backend/.venv/bin/pytest -q` (`133 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`135 passed`)
 - [x] `python3 -m compileall -q backend/src`
 - [x] `git diff --check`
 - [x] `./scripts/push-live-preflight.sh --app-only` (`push_live_preflight=status=ok checks=29 warnings=1 failures=0`)
 - [x] `ALLOW_INSECURE_RELEASE_API=true API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api ./scripts/release-api-health-check.sh` (`/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200)
-- [ ] `0.0.38 (38)` TestFlight upload
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build ipa --release --export-method app-store --build-name=0.0.38 --build-number=38 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`
+- [x] `0.0.38 (38)` archive/IPA 기준 smoke backend `API_BASE_URL`, embedded `0.0.38+38` patch note, exported IPA entitlement `aps-environment=production`, `get-task-allow=false` 확인
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+- [x] export 중 `objective_c.framework` dSYM 누락 warning이 있었으나 `Upload succeeded` / `EXPORT SUCCEEDED`로 완료됨
 - [ ] GitHub Release / backend deploy / topic resubscribe
 - [ ] 실제 iPhone/TestFlight foreground/background/terminated notification receipt
 
@@ -36,7 +39,7 @@
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/services/push_notification_service.dart lib/services/game_event_alert_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`32 passed`)
-- [x] `backend/.venv/bin/pytest -q` (`133 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`135 passed`)
 - [x] `python3 -m compileall -q backend/src`
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze lib/services/push_notification_service.dart lib/services/game_event_alert_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart --no-pub`
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test test/services/push_notification_service_test.dart --no-pub` (`14 passed`)
