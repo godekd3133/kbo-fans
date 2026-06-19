@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
+import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/home/home_screen.dart';
 import 'package:kbo_fans/services/live_activity_service.dart';
@@ -243,6 +245,58 @@ void main() {
     );
   });
 
+  testWidgets('recent flow row opens team records with press interaction', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(child: MaterialApp.router(routerConfig: router)),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('4연승'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('team-record-LG'), findsOneWidget);
+  });
+
+  testWidgets('standings row opens team records with press interaction', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(child: MaterialApp.router(routerConfig: router)),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('KIA').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('team-record-HT'), findsOneWidget);
+  });
+
   test('진행 중인 경기 상세 route는 기본으로 중계 탭을 지정한다', () {
     final liveGame = _liveGame(
       gameId: '20260611XXYY0',
@@ -315,6 +369,139 @@ class _FixedMyTeamNotifier extends MyTeamNotifier {
 
   @override
   String? build() => teamId;
+}
+
+GoRouter _homeInteractionRouter() {
+  return GoRouter(
+    initialLocation: '/home',
+    routes: [
+      GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+      GoRoute(
+        path: '/records/team/:teamId',
+        builder: (_, state) =>
+            Text('team-record-${state.pathParameters['teamId']}'),
+      ),
+      GoRoute(path: '/records', builder: (_, _) => const Text('records')),
+      GoRoute(path: '/standings', builder: (_, _) => const Text('standings')),
+      GoRoute(path: '/onboarding', builder: (_, _) => const Text('onboarding')),
+      GoRoute(path: '/settings', builder: (_, _) => const Text('settings')),
+    ],
+  );
+}
+
+Widget _homeInteractionScope({required Widget child}) {
+  final standings = [
+    _standing(
+      rank: 1,
+      teamId: 'HT',
+      teamName: 'KIA 타이거즈',
+      wins: 30,
+      losses: 15,
+      draws: 3,
+      pct: '.667',
+      gb: '-',
+      streak: 'W2',
+    ),
+    _standing(
+      rank: 2,
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      wins: 28,
+      losses: 17,
+      draws: 2,
+      pct: '.622',
+      gb: '2.0',
+      streak: 'W4',
+    ),
+    _standing(
+      rank: 3,
+      teamId: 'SS',
+      teamName: '삼성 라이온즈',
+      wins: 24,
+      losses: 21,
+      draws: 1,
+      pct: '.533',
+      gb: '6.0',
+      streak: 'W2',
+    ),
+  ];
+  return ProviderScope(
+    retry: (_, _) => null,
+    overrides: [
+      myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+      scoreboardProvider.overrideWith((ref, date) async {
+        return [
+          _scheduledGame(
+            gameId: '20260619SSLG0',
+            awayTeamId: 'SS',
+            awayShortName: '삼성',
+            homeTeamId: 'LG',
+            homeShortName: 'LG',
+            stadium: '잠실',
+          ),
+        ];
+      }),
+      homeAggregateProvider.overrideWith((ref, key) async {
+        return HomeAggregate(
+          date: key.split('|').first,
+          myTeam: 'LG',
+          myTeamBrief: HomeMyTeamBrief(
+            teamId: 'LG',
+            teamLabel: 'LG 트윈스',
+            standing: standings[1],
+            todayGameId: '20260619SSLG0',
+            nextGame: null,
+            recentWins: 4,
+            recentLosses: 1,
+            recentDraws: 0,
+            recentGamesCount: 5,
+            recentSummaries: const [
+              HomeRecentGameSummary(
+                gameId: 'recent-1',
+                result: '승',
+                opponentName: 'NC',
+                score: '4:3',
+              ),
+              HomeRecentGameSummary(
+                gameId: 'recent-2',
+                result: '승',
+                opponentName: 'NC',
+                score: '7:1',
+              ),
+            ],
+          ),
+          kboBrief: null,
+          quickItems: const [],
+          standingsPreview: standings,
+        );
+      }),
+    ],
+    child: child,
+  );
+}
+
+TeamStanding _standing({
+  required int rank,
+  required String teamId,
+  required String teamName,
+  required int wins,
+  required int losses,
+  required int draws,
+  required String pct,
+  required String gb,
+  required String streak,
+}) {
+  return TeamStanding(
+    rank: rank,
+    teamId: teamId,
+    teamName: teamName,
+    wins: wins,
+    losses: losses,
+    draws: draws,
+    pct: pct,
+    gb: gb,
+    streak: streak,
+  );
 }
 
 Game _liveGame({

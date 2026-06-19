@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -1984,6 +1985,12 @@ class _RecentFlowReferenceCard extends StatelessWidget {
                     summaries: entry.$2.summaries,
                     trailingText: entry.$2.trailingText,
                     showDivider: entry.$1 < rows.length - 1,
+                    onTap: entry.$2.team == null
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            context.push('/records/team/${entry.$2.team!.id}');
+                          },
                   ),
             ],
           ),
@@ -2170,6 +2177,7 @@ class _RecentFlowRow extends StatelessWidget {
   final List<_RecentGameSummaryData> summaries;
   final String trailingText;
   final bool showDivider;
+  final VoidCallback? onTap;
 
   const _RecentFlowRow({
     required this.team,
@@ -2177,77 +2185,94 @@ class _RecentFlowRow extends StatelessWidget {
     required this.summaries,
     required this.trailingText,
     required this.showDivider,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 28,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 2, 14, 2),
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: AppColors.divider.withValues(alpha: 0.55)),
-            bottom: showDivider
-                ? BorderSide(color: AppColors.divider.withValues(alpha: 0.45))
-                : BorderSide.none,
+    return Semantics(
+      button: onTap != null,
+      label: onTap == null ? null : '$teamLabel 팀 기록 보기',
+      child: AppPressable(
+        onTap: onTap,
+        pressedScale: 0.988,
+        pressedOpacity: 0.82,
+        child: SizedBox(
+          height: 28,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(14, 2, 14, 2),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: AppColors.divider.withValues(alpha: 0.55),
+                ),
+                bottom: showDivider
+                    ? BorderSide(
+                        color: AppColors.divider.withValues(alpha: 0.45),
+                      )
+                    : BorderSide.none,
+              ),
+            ),
+            child: Row(
+              children: [
+                _TeamLogo(
+                  team: team,
+                  fallbackLabel: teamLabel,
+                  size: 22,
+                  visualScale: 1.22,
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 54,
+                  child: Text(
+                    team?.shortName ?? teamLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 7,
+                    runSpacing: 4,
+                    children: summaries.isEmpty
+                        ? const [_ResultBubble(result: '-', size: 19)]
+                        : summaries
+                              .take(5)
+                              .map(
+                                (summary) => _ResultBubble(
+                                  result: summary.result,
+                                  size: 19,
+                                ),
+                              )
+                              .toList(),
+                  ),
+                ),
+                SizedBox(
+                  width: 58,
+                  child: Text(
+                    trailingText,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color:
+                          trailingText.contains('연승') ||
+                              trailingText.contains('승')
+                          ? AppColors.live
+                          : AppColors.textSecondary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            _TeamLogo(
-              team: team,
-              fallbackLabel: teamLabel,
-              size: 22,
-              visualScale: 1.22,
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 54,
-              child: Text(
-                team?.shortName ?? teamLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Expanded(
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 7,
-                runSpacing: 4,
-                children: summaries.isEmpty
-                    ? const [_ResultBubble(result: '-', size: 19)]
-                    : summaries
-                          .take(5)
-                          .map(
-                            (summary) =>
-                                _ResultBubble(result: summary.result, size: 19),
-                          )
-                          .toList(),
-              ),
-            ),
-            SizedBox(
-              width: 58,
-              child: Text(
-                trailingText,
-                textAlign: TextAlign.end,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  color:
-                      trailingText.contains('연승') || trailingText.contains('승')
-                      ? AppColors.live
-                      : AppColors.textSecondary,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -2316,6 +2341,10 @@ class _StandingsSnapshotCard extends StatelessWidget {
                   _StandingSnapshotRow(
                     standing: standing,
                     highlighted: standing.teamId == myTeamId,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      context.push('/records/team/${standing.teamId}');
+                    },
                   ),
               ],
             ],
@@ -2380,10 +2409,12 @@ class _StandingsHeaderRow extends StatelessWidget {
 class _StandingSnapshotRow extends StatelessWidget {
   final TeamStanding standing;
   final bool highlighted;
+  final VoidCallback onTap;
 
   const _StandingSnapshotRow({
     required this.standing,
     required this.highlighted,
+    required this.onTap,
   });
 
   @override
@@ -2391,48 +2422,59 @@ class _StandingSnapshotRow extends StatelessWidget {
     final team = KboTeams.byId(standing.teamId);
     final games = standing.wins + standing.losses + standing.draws;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 3, 14, 3),
-      decoration: BoxDecoration(
-        color: highlighted ? AppColors.live.withValues(alpha: 0.22) : null,
-        border: Border(
-          bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.5)),
-        ),
-      ),
-      child: Row(
-        children: [
-          _StandingCell('${standing.rank}', width: 34),
-          Expanded(
-            child: Row(
-              children: [
-                _TeamLogo(
-                  team: team,
-                  fallbackLabel: standing.teamName,
-                  size: 18,
-                  visualScale: 1.25,
-                ),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Text(
-                    team?.shortName ?? standing.teamName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
+    return Semantics(
+      button: true,
+      label: '${team?.shortName ?? standing.teamName} 팀 기록 보기',
+      child: AppPressable(
+        onTap: onTap,
+        pressedScale: 0.99,
+        pressedOpacity: 0.84,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 3, 14, 3),
+          decoration: BoxDecoration(
+            color: highlighted ? AppColors.live.withValues(alpha: 0.22) : null,
+            border: Border(
+              bottom: BorderSide(
+                color: AppColors.divider.withValues(alpha: 0.5),
+              ),
             ),
           ),
-          _StandingCell('$games', width: 34),
-          _StandingCell('${standing.wins}', width: 30),
-          _StandingCell('${standing.losses}', width: 30),
-          _StandingCell('${standing.draws}', width: 30),
-          _StandingCell(standing.pct, width: 48),
-          _StandingCell(_gbLabel(standing.gb), width: 44),
-        ],
+          child: Row(
+            children: [
+              _StandingCell('${standing.rank}', width: 34),
+              Expanded(
+                child: Row(
+                  children: [
+                    _TeamLogo(
+                      team: team,
+                      fallbackLabel: standing.teamName,
+                      size: 18,
+                      visualScale: 1.25,
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        team?.shortName ?? standing.teamName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _StandingCell('$games', width: 34),
+              _StandingCell('${standing.wins}', width: 30),
+              _StandingCell('${standing.losses}', width: 30),
+              _StandingCell('${standing.draws}', width: 30),
+              _StandingCell(standing.pct, width: 48),
+              _StandingCell(_gbLabel(standing.gb), width: 44),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -2740,57 +2782,84 @@ class _KboBriefCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visibleItems = brief.items.take(3).toList();
+    final insightItems = brief.items.take(8).toList();
+    final featuredItem = _featuredKboBriefItem(insightItems);
+    final topicItems = _topicKboBriefItems(insightItems);
+    final miniItems = _miniKboBriefItems(insightItems, featuredItem);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ReferenceSectionHeader(
           title: '인사이트',
-          actionLabel: brief.items.length > 3 ? '더보기' : '기록',
+          actionLabel: '전체 보기',
           onAction: () => context.push('/records'),
         ),
         const SizedBox(height: 8),
         _sectionCard(
-          padding: const EdgeInsets.fromLTRB(20, 18, 16, 17),
-          accentColor: AppColors.live,
-          backgroundAssetName: VisualAssets.standingsRace,
-          backgroundAlignment: Alignment.topRight,
-          backgroundOpacity: 0.1,
+          padding: const EdgeInsets.fromLTRB(12, 13, 12, 12),
+          backgroundAssetName: VisualAssets.liveRelayField,
+          backgroundAlignment: Alignment.center,
+          backgroundOpacity: 0.08,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                brief.title.isEmpty ? '오늘의 KBO 관전 포인트' : brief.title,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0,
-                  height: 1.12,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 5, 8, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '오늘의 KBO 인사이트 팩',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0,
+                        height: 1.12,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      insightItems.isEmpty
+                          ? '오늘 체크할 장면을 준비 중입니다'
+                          : '지금 볼 장면 ${insightItems.length}개',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (brief.subtitle.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  brief.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
+              if (topicItems.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    for (int index = 0; index < topicItems.length; index++) ...[
+                      if (index > 0) const SizedBox(width: 8),
+                      Expanded(
+                        child: _KboInsightTopicCard(item: topicItems[index]),
+                      ),
+                    ],
+                  ],
                 ),
               ],
-              const SizedBox(height: 18),
-              for (int index = 0; index < visibleItems.length; index++) ...[
-                if (index > 0)
-                  Divider(
-                    height: 23,
-                    color: AppColors.divider.withValues(alpha: 0.8),
-                  ),
-                _KboBriefListItem(item: visibleItems[index]),
+              if (featuredItem != null) ...[
+                const SizedBox(height: 10),
+                _KboInsightScoreStrip(item: featuredItem),
               ],
+              if (miniItems.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _KboInsightMiniGrid(items: miniItems),
+              ],
+              const SizedBox(height: 10),
+              _KboInsightFooter(
+                label: _kboBriefFooterLabel(insightItems),
+                onTap: () => context.push('/schedule'),
+              ),
             ],
           ),
         ),
@@ -2799,100 +2868,415 @@ class _KboBriefCard extends StatelessWidget {
   }
 }
 
-class _KboBriefListItem extends StatelessWidget {
+class _KboInsightTopicCard extends StatelessWidget {
   final HomeKboBriefItem item;
 
-  const _KboBriefListItem({required this.item});
+  const _KboInsightTopicCard({required this.item});
 
   @override
   Widget build(BuildContext context) {
     final accent = _kboBriefAccent(item.type);
-
     return AppPressable(
       onTap: () => context.push(item.route),
       pressedScale: 0.985,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: accent.withValues(alpha: 0.14),
-              border: Border.all(color: accent.withValues(alpha: 0.28)),
-            ),
-            alignment: Alignment.center,
-            child: Icon(_kboBriefIcon(item.type), size: 29, color: accent),
+      child: Container(
+        height: 82,
+        padding: const EdgeInsets.fromLTRB(11, 11, 10, 10),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border(
+            top: BorderSide(color: accent.withValues(alpha: 0.85), width: 2),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _kboBriefShortTitle(item),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+            ),
+            const Spacer(),
+            Text(
+              _kboBriefBadgeLabel(item),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              _kboBriefCompactSubtitle(item),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KboInsightScoreStrip extends StatelessWidget {
+  final HomeKboBriefItem item;
+
+  const _KboInsightScoreStrip({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final awayTeamId = item.teamIds.isNotEmpty ? item.teamIds.first : null;
+    final homeTeamId = item.teamIds.length > 1 ? item.teamIds[1] : null;
+    final awayTeam = KboTeams.byId(awayTeamId ?? '');
+    final homeTeam = KboTeams.byId(homeTeamId ?? '');
+
+    return AppPressable(
+      onTap: () => context.push(item.route),
+      pressedScale: 0.988,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+        decoration: BoxDecoration(
+          color: AppColors.cardSub.withValues(alpha: 0.78),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          children: [
+            Row(
               children: [
-                Text(
-                  item.eyebrow,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: accent,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0,
-                    height: 1.18,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.live,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'LIVE',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  item.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    height: 1.2,
+                const SizedBox(width: 10),
+                if (awayTeam != null)
+                  _TeamLogo(
+                    team: awayTeam,
+                    fallbackLabel: awayTeam.shortName,
+                    size: 34,
+                  ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(width: 8),
+                if (homeTeam != null)
+                  _TeamLogo(
+                    team: homeTeam,
+                    fallbackLabel: homeTeam.shortName,
+                    size: 34,
+                  ),
+                const SizedBox(width: 10),
                 Text(
-                  item.subtitle,
+                  _kboBriefTimeLabel(item),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontSize: 13,
-                    color: AppColors.textSecondary,
-                    height: 1.35,
-                    fontWeight: FontWeight.w600,
+                    color: AppColors.live,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            constraints: const BoxConstraints(minWidth: 54),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.11),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: accent.withValues(alpha: 0.42)),
+            const SizedBox(height: 9),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    item.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Icon(
+                  Icons.sports_baseball_rounded,
+                  size: 16,
+                  color: AppColors.ballYellow,
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.circle, size: 8, color: AppColors.positive),
+                const SizedBox(width: 3),
+                const Icon(Icons.circle, size: 8, color: AppColors.live),
+              ],
             ),
-            alignment: Alignment.center,
-            child: Text(
-              _kboBriefBadgeLabel(item),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 14,
-                color: accent,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+class _KboInsightMiniGrid extends StatelessWidget {
+  final List<HomeKboBriefItem> items;
+
+  const _KboInsightMiniGrid({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleItems = items.take(4).toList();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 8.0;
+        final itemWidth = (constraints.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final item in visibleItems)
+              SizedBox(
+                width: itemWidth,
+                height: 102,
+                child: _KboInsightMiniCard(item: item),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _KboInsightMiniCard extends StatelessWidget {
+  final HomeKboBriefItem item;
+
+  const _KboInsightMiniCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _kboBriefAccent(item.type);
+    return AppPressable(
+      onTap: () => context.push(item.route),
+      pressedScale: 0.985,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.cardSub.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _kboBriefShortTitle(item),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: accent,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    item.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      height: 1.18,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _kboBriefCompactSubtitle(item),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(_kboBriefIcon(item.type), size: 30, color: accent),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KboInsightFooter extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+
+  const _KboInsightFooter({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPressable(
+      onTap: onTap,
+      pressedScale: 0.99,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+        decoration: BoxDecoration(
+          color: AppColors.cardSub.withValues(alpha: 0.66),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider.withValues(alpha: 0.7)),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.event_note_rounded,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              '중계 바로가기',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.accent,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: AppColors.accent,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+HomeKboBriefItem? _featuredKboBriefItem(List<HomeKboBriefItem> items) {
+  for (final item in items) {
+    if (item.type == 'game_flow') return item;
+  }
+  for (final item in items) {
+    if (item.type == 'big_match') return item;
+  }
+  return items.isEmpty ? null : items.first;
+}
+
+List<HomeKboBriefItem> _topicKboBriefItems(List<HomeKboBriefItem> items) {
+  final preferredTypes = ['game_flow', 'standings', 'record_radar'];
+  final ordered = <HomeKboBriefItem>[];
+  for (final type in preferredTypes) {
+    final match = items.where((item) => item.type == type).firstOrNull;
+    if (match != null && !ordered.contains(match)) {
+      ordered.add(match);
+    }
+  }
+  for (final item in items) {
+    if (ordered.length >= 3) break;
+    if (!ordered.contains(item)) ordered.add(item);
+  }
+  return ordered.take(3).toList();
+}
+
+List<HomeKboBriefItem> _miniKboBriefItems(
+  List<HomeKboBriefItem> items,
+  HomeKboBriefItem? featuredItem,
+) {
+  return items.where((item) => !identical(item, featuredItem)).take(4).toList();
+}
+
+String _kboBriefFooterLabel(List<HomeKboBriefItem> items) {
+  for (final item in items) {
+    if (item.type != 'big_match') continue;
+    final match = RegExp(r'오늘\s+([0-9]+)경기').firstMatch(item.subtitle);
+    if (match != null) {
+      return '오늘 남은 경기 ${match.group(1)}';
+    }
+  }
+  return '오늘 체크할 정보 ${items.length}';
+}
+
+String _kboBriefShortTitle(HomeKboBriefItem item) {
+  if (item.eyebrow.contains('접전')) return '접전';
+  if (item.eyebrow.contains('순위') || item.eyebrow.contains('선두')) {
+    return '순위';
+  }
+  if (item.eyebrow.contains('기록')) return '기록';
+  if (item.eyebrow.contains('일정')) return '일정';
+  if (item.eyebrow.contains('안타') || item.eyebrow.contains('타격')) {
+    return '승부처';
+  }
+  if (item.eyebrow.contains('선발')) return '선발 체크';
+  if (item.eyebrow.contains('남은')) return '남은 경기';
+  if (item.eyebrow.contains('LIVE')) return 'LIVE';
+  return item.eyebrow;
+}
+
+String _kboBriefCompactSubtitle(HomeKboBriefItem item) {
+  final parts = item.subtitle
+      .split('·')
+      .map((part) => part.trim())
+      .where((part) => part.isNotEmpty)
+      .toList();
+  if (parts.isEmpty) {
+    return item.subtitle;
+  }
+  return parts.take(2).join(' · ');
+}
+
+String _kboBriefTimeLabel(HomeKboBriefItem item) {
+  final match = RegExp(r'([0-9]+회[초말]?)').firstMatch(item.subtitle);
+  return match?.group(1) ?? _kboBriefBadgeLabel(item);
 }
 
 Color _kboBriefAccent(String type) {
@@ -2904,7 +3288,12 @@ Color _kboBriefAccent(String type) {
     case 'record_radar':
       return AppColors.ballYellow;
     case 'standings':
+    case 'team_trend':
       return AppColors.accent;
+    case 'pitcher_check':
+      return AppColors.positive;
+    case 'schedule_remaining':
+      return AppColors.textSecondary;
     case 'big_match':
     case 'league_now':
       return AppColors.textPrimary;
@@ -2925,6 +3314,12 @@ IconData _kboBriefIcon(String type) {
       return Icons.auto_graph_rounded;
     case 'standings':
       return Icons.leaderboard_rounded;
+    case 'team_trend':
+      return Icons.show_chart_rounded;
+    case 'pitcher_check':
+      return Icons.speed_rounded;
+    case 'schedule_remaining':
+      return Icons.calendar_month_rounded;
     case 'big_match':
       return Icons.event_available_rounded;
     case 'league_now':
@@ -2950,6 +3345,12 @@ String _kboBriefBadgeLabel(HomeKboBriefItem item) {
       return valueMatch == null ? 'TOP' : '${valueMatch.group(1)}개';
     case 'player_performance':
       return '타격';
+    case 'pitcher_check':
+      return '선발';
+    case 'team_trend':
+      return '흐름';
+    case 'schedule_remaining':
+      return '일정';
     case 'league_now':
       return 'LIVE';
     case 'big_match':
@@ -3363,7 +3764,9 @@ Widget _sectionCard({
 Color _quickItemAccent(_QuickContentItemData item) {
   final key = item.eyebrow;
   if (key.contains('홈런')) return AppColors.live;
+  if (key.contains('기록')) return AppColors.ballYellow;
   if (key.contains('예매')) return AppColors.ballYellow;
+  if (key.contains('일정')) return AppColors.textPrimary;
   if (key.contains('마이팀')) return AppColors.accent;
   if (key.contains('순위')) return AppColors.accent;
   if (key.contains('오늘의 플레이어') || key.contains('오늘의 선수')) {
@@ -3375,7 +3778,9 @@ Color _quickItemAccent(_QuickContentItemData item) {
 String _quickItemIcon(_QuickContentItemData item) {
   final key = item.eyebrow;
   if (key.contains('홈런')) return 'HR';
+  if (key.contains('기록')) return 'R';
   if (key.contains('예매')) return 'T';
+  if (key.contains('일정')) return 'S';
   if (key.contains('마이팀 경기')) return 'G';
   if (key.contains('마이팀 하이라이트')) return 'V';
   if (key.contains('오늘의 플레이어') || key.contains('오늘의 선수')) return 'P';
@@ -3386,8 +3791,9 @@ String _quickItemIcon(_QuickContentItemData item) {
 String _quickItemCta(_QuickContentItemData item) {
   final key = item.eyebrow;
   if (key.contains('마이팀 경기')) return '경기 상세';
+  if (key.contains('일정')) return '일정 보기';
   if (key.contains('순위')) return '전체 순위';
-  if (key.contains('홈런')) return '전체 기록';
+  if (key.contains('홈런') || key.contains('기록')) return '전체 기록';
   if (key.contains('오늘의 플레이어') || key.contains('오늘의 선수')) {
     return '선수 상세';
   }

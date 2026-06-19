@@ -10,6 +10,18 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 경기 상세 박스스코어와 하단 `홈 / 경기 / 기록 / 뉴스 / 더보기` 탭의 이미지 기반 레퍼런스를 보강하고, 박스스코어를 큰 카드보다 dense record row와 `선수 기록 보기` CTA 중심으로 정리
+
+## [0.0.55] - 2026-06-19
+
+### Changed
+
+- 홈 하단 `오늘의 KBO 관전 포인트`와 `지금 보면 좋은 정보`를 생성 레퍼런스 이미지 기준의 인사이트 카드/2열 quick info 배치로 정리하고, reference API QA 데이터도 함께 채움
+- 홈 최근 흐름 행과 순위 snapshot 행을 팀 기록 화면으로 이어지는 tap target으로 보강하고 선택 haptic feedback을 추가
+- `0.0.54`는 TestFlight upload/Git tag checkpoint로 남기고, 최신 GitHub Release/backend deploy/TestFlight tester 연결 기준은 `0.0.55`로 승격
+
 ## [0.0.54] - 2026-06-19
 
 ### Fixed

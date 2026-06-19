@@ -376,7 +376,7 @@ class HomeService:
                 }
             )
 
-        prioritized_items = self._prioritize_kbo_brief_items(items, my_team)[:5]
+        prioritized_items = self._prioritize_kbo_brief_items(items, my_team)[:8]
         return {
             "title": self._kbo_brief_title(
                 today=today,

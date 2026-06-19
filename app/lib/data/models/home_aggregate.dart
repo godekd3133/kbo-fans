@@ -527,7 +527,7 @@ HomeKboBrief _buildLocalKboBrief({
   final prioritizedItems = _prioritizeKboBriefItems(
     items,
     myTeam,
-  ).take(5).toList();
+  ).take(8).toList();
   return HomeKboBrief(
     title: title,
     subtitle: subtitle,

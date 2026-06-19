@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-06-19: 경기/뉴스/기록/더보기 이미지 레퍼런스와 박스스코어 레코드형 UI 검증
+
+### 완료
+- [x] 외부 스포츠 앱 레퍼런스와 `image_gen` 생성 시안을 조합해 `docs/design_refs/2026-06-19-game-news-records-more-reference.png` 추가
+- [x] 경기 상세 scorebug/tabs, 박스스코어 기록 요약/핵심 선수/타자·투수 row, 하단 `홈/경기/기록/뉴스/더보기` 탭이 생성 레퍼런스의 dark sports UI 톤과 맞도록 현재 HEAD 상태 확인
+- [x] 박스스코어는 매칭된 선수만 `선수 기록 보기` CTA를 노출하고, 미매칭 선수는 static row로 유지하는 위젯 테스트 보강
+- [x] `docs/design_refs/2026-06-19-ui-image-reference.md`, `docs/APP_SPEC.md`에 레퍼런스와 구현 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/core/widgets/main_scaffold.dart test/features/game_detail/boxscore_tab_test.dart`
+- [x] `cd app && fvm flutter analyze lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/core/widgets/main_scaffold.dart test/features/game_detail/boxscore_tab_test.dart --no-pub`
+- [x] `cd app && fvm flutter test test/features/game_detail/boxscore_tab_test.dart --no-pub --reporter expanded`
+- [x] `cd app && fvm flutter build web --release --dart-define=USE_BACKEND_API=false`
+- [x] `artifacts/ui-reference-check-2026-06-19-release/`에 390x844 release 캡처 저장. 로컬 direct mode에서는 KBO 원천 403으로 홈/뉴스 데이터 오류 상태가 보이지만 하단 탭/기록 화면 레이아웃은 렌더링 확인
+
+---
+
 ## 2026-06-19: 0.0.55 홈 KBO 관전 포인트 / 빠른 정보 릴리즈
 
 ### 원인
@@ -17,14 +34,19 @@
 - [x] 홈 최근 흐름 행과 순위 snapshot 행을 팀 기록 화면으로 이어지는 tap target으로 보강하고 선택 haptic feedback 추가
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.55` 기준으로 동기화
 - [x] `scripts/kbo-reference-api.py`의 `/home` 응답에 `kboBrief.items`와 `quickItems`를 채워 로컬 웹 QA에서 실제 섹션이 렌더링되도록 정리
-- [x] `design-qa.md`, `docs/design_refs/2026-06-19-kbo-info-brief-design-qa.md`에 최종 레퍼런스/캡처/검증 결과 기록
+- [x] `docs/design_refs/2026-06-19-kbo-info-brief-design-qa.md`에 최종 레퍼런스/캡처/검증 결과 기록
 
 ### 검증
-- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart` (`No issues found`)
-- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart` (`7 passed`)
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`9 passed`)
+- [x] `cd app && fvm flutter test --no-pub -r expanded` (`144 passed`)
 - [x] `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8001/api` (`✓ Built build/web`)
 - [x] `python3 -m py_compile scripts/kbo-reference-api.py`
-- [x] `git diff --check -- app/lib/features/home/home_screen.dart scripts/kbo-reference-api.py docs/assets/mockups/kbo-info-brief-reference-2026-06-19.png`
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/ruff check backend/src/kbo_fans_backend/services/home.py backend/tests/test_home.py` (`All checks passed`)
+- [x] `backend/.venv/bin/pytest -q` (`158 passed`)
+- [x] `git diff --check`
 - [x] Playwright/Chrome 390x844 capture: `output/playwright/kbo-info-brief-reference/home-info-final-scroll-1540.png`
 
 ---

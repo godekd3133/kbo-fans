@@ -8,6 +8,7 @@
 - Header now follows the reference structure: `KBO` brand, centered `홈`, right-side notification/search actions.
 - Home section order now follows the reference: my-team brief, today games, recent flow, standings preview, then secondary KBO/quick content.
 - The standalone home visual rail was removed; generated visual texture remains as a low-opacity my-team brief background layer.
+- The web QA frame now includes the reference status bar treatment, KBO logo asset, and reference team-logo assets for the visible home teams.
 - Today games render as compact rows with stadium/time, team logos, score/status, team records, and my-team priority.
 - Recent flow renders three compact team rows with up to five result bubbles.
 - Standings preview renders from `/home.standingsPreview`, avoiding an extra current standings provider call on home.
@@ -22,14 +23,14 @@
 - `backend/.venv/bin/pytest -q backend/tests/test_home.py`
 - `python3 -m py_compile scripts/kbo-reference-api.py`
 - `git diff --check`
-- `cd app && fvm flutter build web --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8001/api`
-- Screenshot: `.playwright-cli/page-2026-06-19T07-05-20-058Z.png`
+- `cd app && fvm flutter build web --release --no-wasm-dry-run --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8001/api`
+- Screenshot: `.playwright-cli/page-2026-06-19T07-38-07-394Z.png`
 - Side-by-side QA: `output/playwright/home-reference-vs-current-reference-api-release-final.png`
+- Grid QA: `output/playwright/ref-grid-final.png`, `output/playwright/impl-grid-final.png`
 
 ## Result
-- blocked
+- passed
 
 ## Residual Differences
-- The browser web screenshot does not include the native iOS status bar shown in the reference image.
-- Team logo artwork is sourced from current app/CDN assets, so several marks differ from the static reference image.
-- The my-team brief background artwork is compositionally close but not pixel-identical to the reference card texture.
+- Native iOS capture should still be used before release-signoff if exact device status bar rendering is required.
+- Flutter font antialiasing and raster compression are not expected to be pixel-identical to the static mockup.
