@@ -10,8 +10,11 @@
 
 ## [Unreleased]
 
+## [0.0.39] - 2026-06-19
+
 ### Fixed
 
+- TestFlight/release 앱을 다시 열거나 포커스했을 때 홈 화면 로컬 경기 이벤트 알림이 지난 득점/안타/종료를 몰아서 띄우지 않도록, 경기 이벤트 로컬 알림 처리를 local 개발 모드로 제한
 - 원격 푸시가 잠금/백그라운드 상태에서 앱 실행 시점까지 밀리지 않도록 backend FCM 메시지에 iOS APNs `alert` push type/topic/alert payload/우선순위/사운드와 Android high priority/사운드 옵션을 명시
 
 ## [0.0.38] - 2026-06-18

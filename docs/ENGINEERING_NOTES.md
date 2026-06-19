@@ -33,6 +33,7 @@
   - backend scheduler가 live 경기 중 8초 간격으로 scoreboard를 갱신하고, 등록된 ActivityKit token에는 update/end payload를 보낸다.
   - 같은 scheduler가 이전 scoreboard state와 비교해 FCM topic push용 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` moment를 발행한다.
   - 일반 FCM message의 iOS APNs config는 `apns-push-type=alert`, app bundle `apns-topic`, `aps.alert`, `apns-priority=10`, default sound를 명시한다. 앱 실행 시점에 몰려 보이는 증상이 재현되면 이 alert-class payload가 운영 image에 배포됐는지 먼저 확인한다.
+  - `GameEventAlertService`의 scoreboard/relay diff 기반 local notification은 local 개발 모드에서만 처리한다. release/dev에서 이 경로가 켜져 있으면 앱 resume/focus 시 지난 이벤트가 몰아서 표시될 수 있으므로 backend remote push와 역할을 섞지 않는다.
   - scoreboard diff만으로 확정하기 어려운 `homerun` moment는 같은 scheduler가 live relay seq baseline을 저장하고, 새 relay item의 `HOMERUN` event 또는 `홈런` 텍스트를 감지해 발행한다.
   - 앱 종료/백그라운드 push가 안 오면 먼저 `/push/register`가 실제 기기에서 성공해 registry `devices`가 채워졌는지 확인한다. 앱은 마이팀 선택 후 non-local 환경에서 최초 1회 권한 요청과 FCM registration sync를 자동 시도해야 한다.
   - 배포 후 `GET /api/push/config-status` 또는 `python -m kbo_fans_backend.scheduler.push_config_status`로 Firebase/APNs/registry/scheduler secret 누락을 먼저 확인한다.

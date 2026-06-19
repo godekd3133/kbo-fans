@@ -1,9 +1,10 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../core/config/app_config.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/models/boxscore.dart';
 import '../data/models/game.dart';
@@ -105,7 +106,10 @@ class GameEventAlertService {
     required String? myTeamId,
     required GameRepository repository,
   }) async {
-    if (kIsWeb) {
+    if (!shouldProcessLocalGameEventAlerts(
+      isWeb: kIsWeb,
+      isLocal: AppConfig.instance.isLocal,
+    )) {
       return;
     }
 
@@ -729,4 +733,12 @@ class _LineupCheckResult {
   final int? checkedAtMs;
 
   const _LineupCheckResult({this.signature, this.checkedAtMs});
+}
+
+@visibleForTesting
+bool shouldProcessLocalGameEventAlerts({
+  required bool isWeb,
+  required bool isLocal,
+}) {
+  return !isWeb && isLocal;
 }

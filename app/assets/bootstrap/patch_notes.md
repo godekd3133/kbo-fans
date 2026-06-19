@@ -1,5 +1,10 @@
 # 패치노트
 
+## 0.0.39+39 - Push Backfill Stop
+
+- TestFlight/release 앱을 다시 열거나 포커스했을 때 지난 경기 이벤트 알림이 몰아서 뜨지 않도록 홈 화면 로컬 알림 backfill을 막았습니다.
+- 앱 밖 알림은 backend FCM/APNs 경로가 담당하도록 정리하고, 앱 내부 로컬 경기 이벤트 알림은 local 개발 모드에서만 처리합니다.
+
 ## 0.0.38+38 - Push Moment Routing Polish
 
 - 경기 시작 10분 전 `경기 곧 시작` 알림을 누르면 경기 상세 문자중계 탭으로 이동하도록 보강했습니다.

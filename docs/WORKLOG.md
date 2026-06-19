@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-06-19: 앱 포커스 시 로컬 알림 backfill 차단
+
+### 완료
+- [x] 제보 증상: 앱을 직접 열거나 포커스해야 알림이 몰아서 표시됨
+- [x] root cause: 홈 scoreboard refresh가 `GameEventAlertService.processGames()`를 호출하고, 이 서비스가 저장된 snapshot과 현재 scoreboard/relay/lineup diff를 비교해 `FlutterLocalNotificationsPlugin.show()`로 로컬 알림을 직접 띄우는 구조였음. 앱이 꺼져 있는 동안 못 띄운 이벤트를 앱 resume/focus 후 한꺼번에 backfill할 수 있었다.
+- [x] release/dev/TestFlight에서는 앱 밖 알림을 backend FCM/APNs가 단독 책임지도록 하고, `GameEventAlertService`의 로컬 경기 이벤트 diff 알림은 local 개발 모드에서만 처리하도록 제한
+- [x] `shouldProcessLocalGameEventAlerts()` 단위 테스트 추가
+- [x] 앱 동작 변경이므로 `0.0.39+39` 새 TestFlight 빌드 대상으로 결정하고 `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 동기화
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/services/game_event_alert_service.dart test/services/game_event_alert_service_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/services/game_event_alert_service_test.dart` (`All tests passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/services/game_event_alert_service.dart test/services/game_event_alert_service_test.dart` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`114 passed`)
+- [x] `./scripts/push-live-preflight.sh --app-only` (`push_live_preflight=status=ok checks=29 warnings=1 failures=0`)
+- [x] `ALLOW_INSECURE_RELEASE_API=true API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api ./scripts/release-api-health-check.sh` (`/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200)
+- [x] `git diff --check`
+- [ ] release build/TestFlight 업로드, 실기기 foreground/background/terminated receipt
+
+---
+
 ## 2026-06-18: 0.0.38 push moment routing polish 릴리즈
 
 ### 완료
