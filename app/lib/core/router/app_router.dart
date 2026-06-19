@@ -12,10 +12,12 @@ import '../../features/records/player_detail_screen.dart';
 import '../../features/records/records_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
 import '../../features/news/news_screen.dart';
+import '../../features/notifications/notification_inbox_screen.dart';
 import '../../features/standings/standings_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/api_diagnostics_screen.dart';
 import '../../features/settings/patch_notes_screen.dart';
+import 'app_route_sanitizer.dart';
 import '../widgets/main_scaffold.dart';
 import '../widgets/boot_splash_screen.dart';
 
@@ -230,6 +232,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) =>
             _swipeBackPage(state, child: const PatchNotesScreen()),
       ),
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            _swipeBackPage(state, child: const NotificationInboxScreen()),
+      ),
     ],
   );
   ref.onDispose(() {
@@ -253,23 +261,7 @@ String? _hashLocation(Uri uri) {
 }
 
 String _safeRedirectPath(String? target) {
-  if (target == null ||
-      target.isEmpty ||
-      !target.startsWith('/') ||
-      target.startsWith('//')) {
-    return '/home';
-  }
-  final uri = Uri.tryParse(target);
-  if (uri == null) {
-    return '/home';
-  }
-  if (uri.hasScheme || uri.host.isNotEmpty) {
-    return '/home';
-  }
-  if (uri.path == '/' || uri.path == '/boot' || uri.path == '/onboarding') {
-    return '/home';
-  }
-  return uri.toString();
+  return sanitizeAppRoute(target, fallback: '/home') ?? '/home';
 }
 
 CustomTransitionPage<void> _fadeTransitionPage(

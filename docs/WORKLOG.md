@@ -2,6 +2,133 @@
 
 ---
 
+## 2026-06-19: 온보딩 이미지 레퍼런스 기반 재정렬
+
+### 원인
+- 기존 온보딩은 설명 chip과 비주얼 rail 중심이라, 새로 생성한 이미지 레퍼런스의 `히어로 -> MY TEAM preview -> 2열 팀 선택 -> CTA` 흐름과 달랐다.
+
+### 완료
+- [x] `image_gen`으로 390x844 온보딩 레퍼런스를 생성하고 `docs/assets/mockups/kbo-onboarding-reference-2026-06-19.png`로 보존
+- [x] 레퍼런스 히어로를 앱 자산 `assets/visuals/onboarding_stadium_hero.png`로 잘라 넣고 `VisualAssets.onboardingStadiumHero`로 연결
+- [x] 온보딩을 레퍼런스처럼 제목, 히어로, MY TEAM 카드, 2열 팀 로고 카드, 시작 CTA, 스킵 순서로 재배치
+- [x] 팀 선택 카드를 image-logo 기반으로 바꾸고 selected border/check state를 레퍼런스 톤으로 조정
+- [x] `design-qa.md`, `docs/design_refs/2026-06-19-onboarding-design-qa.md`, `CHANGELOG.md`에 QA 결과와 남은 리스크 기록
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/onboarding/onboarding_screen.dart lib/core/constants/visual_assets.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/onboarding/onboarding_screen.dart lib/core/constants/visual_assets.dart` (`No issues found`)
+- [x] `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=APP_ENV=local` (`✓ Built build/web`; 기존 font 경고는 남음)
+- [x] 390x844 Chrome CDP 캡처: `output/playwright/kbo-onboarding-reference/onboarding-selected-lg-final.png`
+- [ ] release web capture: 기존 dirty `records_screen.dart` 중복 class 상태 때문에 차단
+
+---
+
+## 2026-06-19: 뉴스탭 다양성/뉴스 믹스 보강
+
+### 원인
+- 기존 개선으로 편집형 브리프는 생겼지만, 첫 화면 카드 타입이 여전히 `경기/순위/기록/마이팀` 큰 분류에 묶여 보여서 선수, 일정, 최근 경기, 순위 행 단위 뉴스가 충분히 다양하게 느껴지지 않았다.
+
+### 완료
+- [x] `image_gen`으로 더 다양한 뉴스탭 390x844 레퍼런스를 생성하고 `docs/design_refs/2026-06-19-news-tab-diverse-reference.png`로 보존
+- [x] 뉴스탭에 `뉴스 믹스` rail 추가: 라이브, 선수, 순위, 기록, 일정, 마이팀 story kind count를 보여주고 탭 시 관련 필터로 연결
+- [x] `HomeAggregate.myTeamBrief.recentSummaries`를 최근 경기 카드로 변환
+- [x] `HomeAggregate.standingsPreview` 각 행을 순위 뉴스 카드로 변환해 top team/rank 흐름이 더 많이 노출되도록 확장
+- [x] `HomeKboBriefItem` / `HomeQuickItem`의 `imageUrl` / `fallbackLabel`을 뉴스 카드 우측 visual mark로 표시
+- [x] reference API `/home`의 뉴스 QA 데이터에 선수 이미지 route, 선수 집중, 불펜 체크 quick item 보강
+- [x] `docs/APP_SPEC.md`, `docs/design_refs/2026-06-19-news-tab-design-qa.md`, `CHANGELOG.md`에 다양성 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/news/news_screen.dart test/features/news/news_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/news/news_screen.dart test/features/news/news_screen_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart -r expanded` (`3 passed`)
+- [x] `python3 -m py_compile scripts/kbo-reference-api.py`
+- [ ] Browser 390x844 diverse 뉴스탭 캡처/상호작용 확인
+
+---
+
+## 2026-06-19: 0.0.58 뉴스/기록/더보기 정보 가공 릴리즈
+
+### 완료
+- [x] 최신 tester-facing build를 `0.0.58+58`로 승격
+- [x] 뉴스 탭을 편집형 브리프와 경기/순위/기록/마이팀 signal grid 중심으로 재구성
+- [x] 기록 탭을 리그 브리핑, 지표 spotlight rail, 지표별 TOP 3 preview, 팀 기록실 흐름으로 재구성
+- [x] 더보기 탭을 `KBO 팬 허브`로 재구성해 마이팀 요약, 오늘 챙길 정보, 빠른 이동, 앱 밖 표면, 알림 플레이북 순서로 정보 흐름을 정리
+- [x] 온보딩과 더보기 화면을 KBO 팬 허브 톤에 맞춰 조밀한 정보 카드 중심으로 보강
+- [x] 경기 상세/박스스코어/라인업/중계 화면의 팀 로고와 선수 이미지 표시를 공통 위젯/row 구조로 정리
+- [x] home brief 기록 레이더에 선수 이미지/fallback label을 포함하고 off-day CTA를 `/schedule`로 연결
+- [x] Android background/terminated FCM 표시가 fallback notification channel에 의존하지 않도록 앱/manifest/backend Android payload의 channel id를 `remote_push_foreground`로 정렬
+- [x] 홈 인사이트/빠른 정보의 broad CTA를 `/news`로 고정하고, app route sanitizer로 aggregate/push/deep-link route를 내부 route whitelist 기준으로 검증
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.58` 기준으로 동기화
+
+### 검증
+- [x] 더보기 탭: `cd app && fvm dart format lib/features/settings/settings_screen.dart`
+- [x] 더보기 탭: `cd app && fvm flutter analyze --no-pub lib/features/settings/settings_screen.dart` (`No issues found`)
+- [x] 더보기 탭 관련 진행 중 화면까지 포함: `cd app && fvm flutter analyze --no-pub lib/features/news/news_screen.dart lib/features/onboarding/onboarding_screen.dart lib/features/settings/settings_screen.dart` (`No issues found`)
+- [x] 링크/route 관련 Flutter test: `cd app && fvm flutter test --no-pub test/core/router/app_route_sanitizer_test.dart test/core/router/app_router_test.dart test/data/models/home_aggregate_test.dart test/features/home/home_screen_test.dart test/features/news/news_screen_test.dart test/features/settings/settings_screen_test.dart` (`28 passed`)
+- [x] backend home route 계약: `PYTHONPATH=backend/src backend/.venv/bin/pytest backend/tests/test_home.py -q` (`14 passed`)
+- [x] API-backed 웹 빌드: `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8011/api` (`✓ Built build/web`; 기존 Cupertino icon font 경고는 남음)
+- [x] 더보기 탭 390x844 Playwright 캡처: `output/playwright/kbo-more-reference/more-tab-final-top.png`, `output/playwright/kbo-more-reference/more-tab-final-scroll-1.png`, `output/playwright/kbo-more-reference/more-tab-final-scroll-2.png`
+
+### 남은 전체 릴리즈 검증
+- [x] 전체 변경 범위 format: `cd app && fvm dart format ...` (`settings_screen.dart` 1건 재포맷, 이후 알림함 파일 변경 없음)
+- [x] 전체 변경 범위 `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] 관련 Flutter widget/model tests 통과 (`settings/push/router/news/home/game_detail/home_aggregate` 44 passed, `notifications/notification_inbox/push` 20 passed)
+- [x] backend 전체 tests 통과: `backend/.venv/bin/pytest -q` (`159 passed`)
+- [ ] `0.0.58 (58)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인
+- [ ] `0.0.58 (58)` TestFlight upload 성공 확인
+- [ ] `0.0.58` backend deploy workflow 성공 및 운영 `/api/health` 확인
+- [ ] topic 재등록 성공 확인
+- [x] push 경로: `cd backend && .venv/bin/pytest -q tests/test_push_service.py tests/test_live_activity_sync_loop.py` (`43 passed`)
+- [x] push 경로 lint/analyze: `cd backend && .venv/bin/ruff check --select E,F,I,B src/kbo_fans_backend/services/push.py tests/test_push_service.py` (`All checks passed`), `cd app && fvm flutter analyze --no-pub lib/main.dart lib/services/push_notification_service.dart lib/services/live_activity_service.dart lib/services/notification_inbox_service.dart` (`No issues found`)
+- [x] push 경로: `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart test/services/live_activity_service_test.dart test/services/notification_inbox_service_test.dart -r expanded` (`22 passed`)
+
+---
+
+## 2026-06-19: 기록탭 리그 브리핑/리더보드 정보 가공 강화
+
+### 원인
+- `/records` 리그 진입 화면은 리더보드 데이터가 있었지만 지표별 카드가 세로로 반복되어, “오늘 무엇을 봐야 하는지”와 1위 경쟁 맥락이 먼저 읽히지 않았다.
+
+### 완료
+- [x] KBO 공식 기록 Top5/리더보드와 MLB/FanGraphs/SofaScore/FotMob 계열 스포츠 통계 화면을 다시 참고해 `요약 브리핑 -> 지표 rail -> 리더보드 preview -> 팀 기록실` 순서로 재정렬
+- [x] `RecordsScreen` 상단에 `오늘 읽을 기록` 패널을 추가해 헤드라인 선수, 활성 지표 수, TOP5 선수 수, 공식/계산 소스, 홈런/ERA 격차 브리프를 한 번에 보여주도록 개선
+- [x] AVG/HR/OPS/wRC+/ERA 지표 spotlight rail과 지표별 TOP 3 preview card를 추가하고 전체 리더보드 route를 유지
+- [x] 기존 provider/API 계약은 유지하고, `recordsOverviewProvider` 응답만 더 가공해서 표시하도록 범위를 제한
+- [x] 웹 빌드를 막던 진행 중 뉴스탭 변경의 누락 helper 중복/정의 상태를 최소 정리해 records QA 경로를 복구
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 기록탭 리그 진입 화면 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/records/records_screen.dart lib/features/news/news_screen.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/records/records_screen.dart lib/features/news/news_screen.dart` (`No issues found`)
+- [x] `bash scripts/codex-run-web-static.sh` (`✓ Built build/web`; 기존 wasm dry-run / Cupertino icon font 경고는 남음)
+- [x] Playwright Chrome 390x844 캡처: `output/playwright/kbo-records-redesign/records-390x844.png`
+- [ ] 하단 스크롤 캡처는 Chrome headless/MCP가 시작 직후 SIGKILL되어 추가 확보 실패. 상단 캡처와 콘솔 오류 없음까지 확인
+
+---
+
+## 2026-06-19: 뉴스탭 편집형 브리프 레퍼런스/픽셀 정리
+
+### 원인
+- `/news` 화면은 실제 탭으로 분리돼 있었지만, 홈 aggregate item을 단순 카드 목록으로 펼치는 수준이라 "더 많은 정보 / 더 양질의 정보 / 더 좋은 가공" 요구에 비해 편집 순서와 정보 밀도가 약했다.
+
+### 완료
+- [x] 외부 스포츠/뉴스 앱 레퍼런스와 `image_gen` 생성 시안을 조합해 `docs/design_refs/2026-06-19-news-tab-reference.png` 추가
+- [x] `docs/design_refs/2026-06-19-news-tab-design-qa.md`에 레퍼런스, 구현 방향, 검증 기준 기록
+- [x] 뉴스탭 상단을 `오늘 읽을 순서` rank row가 있는 편집 리드로 재구성
+- [x] 경기 흐름 / 순위 변동 / 기록 신호 / 마이팀 2x2 signal grid를 추가하고 tile 탭 시 해당 필터로 좁히도록 연결
+- [x] 뉴스 카드 입력을 `HomeKboBriefItem` + `myTeamBrief`에서 `quickItems`, `standingsPreview`까지 확장하고 route/title 기준 중복 제거
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 뉴스탭 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/news/news_screen.dart test/features/news/news_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/news/news_screen.dart test/features/news/news_screen_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart -r expanded` (`2 passed`)
+- [x] `python3 -m py_compile scripts/kbo-reference-api.py`
+- [x] `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8012/api` (`✓ Built build/web`; 기존 Cupertino icon font 경고는 남음)
+- [x] Browser 390x844 캡처/상호작용: `/tmp/kbo-news-tab-qa/news-mobile-initial.png`, `/tmp/kbo-news-tab-qa/news-mobile-records-filter.png`
+
+---
+
 ## 2026-06-19: 0.0.57 홈 인사이트 팩 카드뉴스 레퍼런스 재정렬
 
 ### 완료
@@ -20,9 +147,11 @@
 - [x] `0.0.57 (57)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`CFBundleShortVersionString=0.0.57`, `CFBundleVersion=57`, `com.kbofans.kboFans`, Firebase project `kbo-fans-47189`, `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `casual_*.webp` 175개, reference team logo PNG 7개, reference status PNG 1개)
 - [x] `0.0.57 (57)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`)
 - [x] TestFlight upload warning: `objective_c.framework` dSYM warning은 남음
-- [x] `0.0.57` backend deploy workflow `27815325814` 성공 확인 (`KBO_BACKEND_IMAGE_TAG=0.0.57`, ECR image push, CloudFormation deploy, scheduler ok)
+- [x] `0.0.57` backend deploy workflow `27815520932` 성공 확인 (`KBO_BACKEND_IMAGE_TAG=0.0.57`, ECR image digest `sha256:0eef05950f92f3aad552b2d915632beb5f33cb6523a506ca58ba96fb0c49a695`, CloudFormation deploy, push config ready)
 - [x] 운영 `/api/health` 200 및 `/api/home?date=2026-06-19&myTeam=LG` 응답의 `standingsPreview` 5개, `kboBrief.items` 3개, `LG` 행 포함 확인
 - [x] topic 재등록 성공 확인 (`registeredDevices=3`, `eligibleDevices=3`, `subscriptionsAttempted=28`, `unsubscriptionsAttempted=0`)
+- [x] App Store Connect `External Testers` 그룹에 build `57` 연결 및 Beta App Review 제출 (`WAITING_FOR_REVIEW`)
+- [x] `External Testers` 그룹에서 이전 build `55` 관계 제거. 최종 그룹 build 목록은 `57` 단독 연결
 
 ---
 

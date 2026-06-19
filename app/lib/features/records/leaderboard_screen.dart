@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
+import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/models/records_overview.dart';
 import '../../data/providers.dart';
 
@@ -156,14 +157,11 @@ class LeaderboardScreen extends ConsumerWidget {
               child: Row(
                 children: [
                   if (team != null) ...[
-                    CachedNetworkImage(
-                      imageUrl: team.logoUrl,
-                      width: 26,
-                      height: 26,
-                      memCacheWidth: 78,
-                      memCacheHeight: 78,
-                      errorWidget: (_, _, _) =>
-                          _teamLogoFallback(team.shortName),
+                    KboTeamLogoImage(
+                      teamId: team.id,
+                      fallback: team.shortName,
+                      size: 26,
+                      padding: 0,
                     ),
                     const SizedBox(width: 8),
                   ],
@@ -263,19 +261,4 @@ class LeaderboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _teamLogoFallback(String shortName) {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: const BoxDecoration(
-        color: AppColors.cardSub,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        shortName,
-        style: const TextStyle(fontSize: 7, color: AppColors.textSecondary),
-      ),
-    );
-  }
 }

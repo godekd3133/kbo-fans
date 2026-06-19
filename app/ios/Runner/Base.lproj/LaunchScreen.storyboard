@@ -16,16 +16,14 @@
                     <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="KBO Fans" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" minimumFontSize="18" translatesAutoresizingMaskIntoConstraints="NO" id="b7W-bT-w8h">
-                                <fontDescription key="fontDescription" type="system" weight="heavy" pointSize="28"/>
-                                <color key="textColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                <nil key="highlightedColor"/>
-                            </label>
+                            <imageView opaque="NO" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="LaunchImage" translatesAutoresizingMaskIntoConstraints="NO" id="b7W-bT-w8h"/>
                         </subviews>
                         <color key="backgroundColor" red="0.058823529399999999" green="0.058823529399999999" blue="0.058823529399999999" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
                             <constraint firstItem="b7W-bT-w8h" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="1a2-6s-vTC"/>
                             <constraint firstItem="b7W-bT-w8h" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="4X2-HB-R7a"/>
+                            <constraint firstItem="b7W-bT-w8h" firstAttribute="width" constant="128" id="Wh9-gv-uuJ"/>
+                            <constraint firstItem="b7W-bT-w8h" firstAttribute="height" constant="128" id="tA4-e2-g1R"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -34,5 +32,7 @@
             <point key="canvasLocation" x="53" y="375"/>
         </scene>
     </scenes>
-    <resources/>
+    <resources>
+        <image name="LaunchImage" width="128" height="128"/>
+    </resources>
 </document>

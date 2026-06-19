@@ -1,18 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
-import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/game_status_label.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/game_status_badge.dart';
+import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/game.dart';
-
-const _kboImageHeaders = {
-  'Referer': 'https://www.koreabaseball.com/',
-  'User-Agent':
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-};
 
 class GameCard extends StatelessWidget {
   final Game game;
@@ -150,49 +143,12 @@ class GameCard extends StatelessWidget {
   }
 
   Widget _teamLogo(String teamId, String shortName, double size) {
-    final team = KboTeams.resolve(
-      id: teamId,
-      name: shortName,
-      shortName: shortName,
-    );
-    final imageUrl = team?.logoUrl ?? '';
-    if (imageUrl.isEmpty) {
-      return _logoFallback(team?.shortName ?? shortName, size);
-    }
-    final cacheSize = (size * 3).round();
-    return Image(
-      image: CachedNetworkImageProvider(
-        imageUrl,
-        headers: _kboImageHeaders,
-        maxWidth: cacheSize,
-        maxHeight: cacheSize,
-      ),
-      width: size,
-      height: size,
-      errorBuilder: (_, _, _) =>
-          _logoFallback(team?.shortName ?? shortName, size),
+    return KboTeamLogoImage(
+      teamId: teamId,
+      fallback: shortName,
+      size: size,
+      padding: 0,
     );
   }
 
-  Widget _logoFallback(String shortName, double size) {
-    final label = shortName.isEmpty ? '?' : shortName.substring(0, 1);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: size * 0.34,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
 }

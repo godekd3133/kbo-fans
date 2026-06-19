@@ -7,6 +7,7 @@ import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_artwork_card.dart';
 import '../../../core/widgets/app_motion.dart';
+import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
@@ -2650,7 +2651,6 @@ class _MomentPlayerSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final teamLogo = offenseTeam?.logoUrl ?? '';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2667,19 +2667,14 @@ class _MomentPlayerSummary extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  if (teamLogo.isNotEmpty)
-                    CachedNetworkImage(
-                      imageUrl: teamLogo,
-                      httpHeaders: _RelayPlayerAvatar._imageHeaders,
-                      width: 22,
-                      height: 22,
-                      memCacheWidth: 66,
-                      memCacheHeight: 66,
-                      fit: BoxFit.contain,
-                      errorWidget: (_, _, _) => const SizedBox(width: 22),
-                      placeholder: (_, _) => const SizedBox(width: 22),
+                  if (offenseTeam != null)
+                    KboTeamLogoImage(
+                      teamId: offenseTeam!.id,
+                      fallback: offenseTeam!.shortName,
+                      size: 22,
+                      padding: 1,
                     ),
-                  if (teamLogo.isNotEmpty) const SizedBox(width: 8),
+                  if (offenseTeam != null) const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _nameLine(),

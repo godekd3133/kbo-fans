@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/app_config.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
+import 'notification_inbox_service.dart';
 
 enum PushNotificationMoment {
   gameStart,
@@ -56,9 +57,49 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   } catch (_) {
     // Firebase may already be initialized in a warm background isolate.
   }
+  await _recordRemotePush(message, source: 'background', read: false);
   DevConsole.instance.info(
     'Push background message: ${message.messageId ?? "-"}',
   );
+}
+
+@pragma('vm:entry-point')
+void remotePushNotificationTapBackground(NotificationResponse response) {
+  PushNotificationService.instance.handleNotificationPayload(response.payload);
+}
+
+Future<void> _recordRemotePush(
+  RemoteMessage message, {
+  required String source,
+  required bool read,
+  String? resolvedRoute,
+}) async {
+  try {
+    final data = Map<String, dynamic>.from(message.data);
+    final title =
+        message.notification?.title ??
+        _pushString(data['title']) ??
+        _pushString(data['notificationTitle']) ??
+        '푸시 수신';
+    final body =
+        message.notification?.body ??
+        _pushString(data['body']) ??
+        _pushString(data['notificationBody']) ??
+        '';
+    final route = resolvedRoute ?? pushNotificationRouteForData(data) ?? '';
+    await NotificationInboxService.instance.addPush(
+      messageId: message.messageId,
+      title: title,
+      body: body,
+      data: data,
+      route: route,
+      source: source,
+      read: read,
+      receivedAt: DateTime.now(),
+    );
+  } catch (error) {
+    DevConsole.instance.warn('Push inbox record skipped: $error');
+  }
 }
 
 class PushNotificationSettings {
@@ -360,7 +401,13 @@ class PushNotificationService {
             requestSoundPermission: false,
           ),
         ),
+        onDidReceiveNotificationResponse: (response) {
+          handleNotificationPayload(response.payload);
+        },
+        onDidReceiveBackgroundNotificationResponse:
+            remotePushNotificationTapBackground,
       );
+      await _ensureAndroidRemotePushChannel();
       _notificationsAllowed = await _resolveNotificationsAllowed(
         authorizationStatus: notificationSettings.authorizationStatus,
       );
@@ -518,6 +565,14 @@ class PushNotificationService {
       return;
     }
     final route = pushNotificationRouteForData(message.data);
+    unawaited(
+      _recordRemotePush(
+        message,
+        source: 'opened',
+        read: true,
+        resolvedRoute: route,
+      ),
+    );
     if (route == null) {
       DevConsole.instance.warn(
         'Push open ignored: unsupported data ${message.data.keys.join(',')}',
@@ -702,6 +757,15 @@ class PushNotificationService {
   void _handleForegroundMessage(RemoteMessage message) {
     final title = message.notification?.title ?? '푸시 수신';
     final body = message.notification?.body ?? '';
+    final route = pushNotificationRouteForData(message.data);
+    unawaited(
+      _recordRemotePush(
+        message,
+        source: 'foreground',
+        read: false,
+        resolvedRoute: route,
+      ),
+    );
     DevConsole.instance.info(
       'Push foreground: $title ${body.isEmpty ? '' : '· $body'}',
     );
@@ -725,6 +789,7 @@ class PushNotificationService {
           ),
           iOS: DarwinNotificationDetails(),
         ),
+        payload: route,
       ),
     );
   }
@@ -764,6 +829,27 @@ class PushNotificationService {
         ?.checkPermissions();
 
     return androidAllowed ?? iosAllowed?.isEnabled ?? authorized;
+  }
+
+  Future<void> _ensureAndroidRemotePushChannel() async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+    final android = _localPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _channelId,
+        _channelName,
+        description: _channelDescription,
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      ),
+    );
   }
 
   Future<void> _waitForAppleApnsTokenIfNeeded() async {

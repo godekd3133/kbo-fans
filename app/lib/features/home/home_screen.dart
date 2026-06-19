@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/constants/visual_assets.dart';
+import '../../core/router/app_route_sanitizer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
@@ -16,6 +17,7 @@ import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/game_status_badge.dart';
 import '../../core/widgets/dev_console.dart';
+import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/models/game.dart';
 import '../../data/models/home_aggregate.dart';
 import '../../data/models/schedule.dart';
@@ -1365,43 +1367,6 @@ class _BriefMetricSnapshot {
   });
 }
 
-Widget _teamMarkFallback(String shortName, double size) {
-  final initial = shortName.isNotEmpty ? shortName.substring(0, 1) : '?';
-  return Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      color: AppColors.card,
-      borderRadius: BorderRadius.circular(999),
-    ),
-    alignment: Alignment.center,
-    child: Text(
-      initial,
-      style: TextStyle(
-        fontSize: size * 0.45,
-        color: AppColors.textSecondary,
-        fontWeight: FontWeight.w700,
-      ),
-    ),
-  );
-}
-
-String? _referenceTeamLogoAsset(String? teamId) {
-  if (teamId == null || teamId.isEmpty) {
-    return null;
-  }
-  return switch (teamId) {
-    'LG' ||
-    'SS' ||
-    'OB' ||
-    'KT' ||
-    'SK' ||
-    'NC' ||
-    'HT' => 'assets/visuals/reference_team_logos/$teamId.png',
-    _ => null,
-  };
-}
-
 class _MyTeamBriefViewModel {
   final String statusLabel;
   final Color statusColor;
@@ -1581,13 +1546,11 @@ class _BriefTeamMark extends StatelessWidget {
       height: size,
       child: Transform.scale(
         scale: visualScale,
-        child: CachedNetworkImage(
-          imageUrl: team?.logoUrl ?? '',
-          fit: BoxFit.contain,
-          memCacheWidth: (size * visualScale * 3).round(),
-          memCacheHeight: (size * visualScale * 3).round(),
-          errorWidget: (_, _, _) => _teamMarkFallback(fallbackLabel, size),
-          placeholder: (_, _) => _teamMarkFallback(fallbackLabel, size),
+        child: KboTeamLogoImage(
+          teamId: team?.id,
+          fallback: fallbackLabel,
+          size: size,
+          padding: 0,
         ),
       ),
     );
@@ -2722,28 +2685,13 @@ class _TeamLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final referenceAsset = _referenceTeamLogoAsset(team?.id);
-    final image = referenceAsset == null
-        ? CachedNetworkImage(
-            imageUrl: team?.logoUrl ?? '',
-            memCacheWidth: (size * visualScale * 3).round(),
-            memCacheHeight: (size * visualScale * 3).round(),
-            fit: BoxFit.contain,
-            errorWidget: (_, _, _) => _teamMarkFallback(fallbackLabel, size),
-            placeholder: (_, _) => _teamMarkFallback(fallbackLabel, size),
-          )
-        : Image.asset(
-            referenceAsset,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            errorBuilder: (_, _, _) => _teamMarkFallback(fallbackLabel, size),
-          );
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Transform.scale(
-        scale: referenceAsset == null ? visualScale : 1,
-        child: image,
+    return Transform.scale(
+      scale: visualScale,
+      child: KboTeamLogoImage(
+        teamId: team?.id,
+        fallback: fallbackLabel,
+        size: size,
+        padding: 0,
       ),
     );
   }
@@ -2793,7 +2741,7 @@ class _KboBriefCard extends StatelessWidget {
         _ReferenceSectionHeader(
           title: '인사이트',
           actionLabel: '전체 보기',
-          onAction: () => context.push('/records'),
+          onAction: () => context.push('/news'),
         ),
         const SizedBox(height: 8),
         _sectionCard(
@@ -2877,10 +2825,12 @@ class _KboInsightTopicCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = _kboBriefAccent(item.type);
     return AppPressable(
-      onTap: () => context.push(item.route),
+      onTap: () => context.push(
+        sanitizeAppRoute(item.route, fallback: '/news') ?? '/news',
+      ),
       pressedScale: 0.985,
       child: Container(
-        height: 82,
+        height: 92,
         padding: const EdgeInsets.fromLTRB(11, 11, 10, 10),
         decoration: BoxDecoration(
           color: accent.withValues(alpha: 0.08),
@@ -2889,37 +2839,50 @@ class _KboInsightTopicCard extends StatelessWidget {
             top: BorderSide(color: accent.withValues(alpha: 0.85), width: 2),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              _kboBriefShortTitle(item),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
-            ),
-            const Spacer(),
-            Text(
-              _kboBriefBadgeLabel(item),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w900,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _kboBriefShortTitle(item),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    _kboBriefBadgeLabel(item),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _kboBriefCompactSubtitle(item),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 3),
-            Text(
-              _kboBriefCompactSubtitle(item),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            if (item.imageUrl != null && item.imageUrl!.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              _KboInsightItemVisual(item: item, accent: accent, size: 38),
+            ],
           ],
         ),
       ),
@@ -2941,7 +2904,9 @@ class _KboInsightScoreStrip extends StatelessWidget {
     final score = _parseKboBriefScoreTitle(item.title);
 
     return AppPressable(
-      onTap: () => context.push(item.route),
+      onTap: () => context.push(
+        sanitizeAppRoute(item.route, fallback: '/news') ?? '/news',
+      ),
       pressedScale: 0.988,
       child: Container(
         padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
@@ -3150,7 +3115,7 @@ class _KboInsightMiniGrid extends StatelessWidget {
             for (final item in visibleItems)
               SizedBox(
                 width: itemWidth,
-                height: 102,
+                height: 110,
                 child: _KboInsightMiniCard(item: item),
               ),
           ],
@@ -3169,7 +3134,9 @@ class _KboInsightMiniCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = _kboBriefAccent(item.type);
     return AppPressable(
-      onTap: () => context.push(item.route),
+      onTap: () => context.push(
+        sanitizeAppRoute(item.route, fallback: '/news') ?? '/news',
+      ),
       pressedScale: 0.985,
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -3220,10 +3187,68 @@ class _KboInsightMiniCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(_kboBriefIcon(item.type), size: 30, color: accent),
+            _KboInsightItemVisual(item: item, accent: accent, size: 38),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _KboInsightItemVisual extends StatelessWidget {
+  final HomeKboBriefItem item;
+  final Color accent;
+  final double size;
+
+  const _KboInsightItemVisual({
+    required this.item,
+    required this.accent,
+    required this.size,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = item.imageUrl;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: size,
+          height: size,
+          memCacheWidth: (size * 3).round(),
+          memCacheHeight: (size * 3).round(),
+          fit: BoxFit.cover,
+          placeholder: (_, _) => _fallback(),
+          errorWidget: (_, _, _) => _fallback(),
+        ),
+      );
+    }
+    return _fallback();
+  }
+
+  Widget _fallback() {
+    final label = (item.fallbackLabel ?? item.title).trim();
+    final initial = label.isEmpty ? '' : label.characters.first;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: accent.withValues(alpha: 0.32)),
+      ),
+      alignment: Alignment.center,
+      child: initial.isNotEmpty
+          ? Text(
+              initial,
+              style: TextStyle(
+                color: accent,
+                fontSize: size * 0.36,
+                fontWeight: FontWeight.w900,
+              ),
+            )
+          : Icon(_kboBriefIcon(item.type), size: size * 0.66, color: accent),
     );
   }
 }
@@ -3507,7 +3532,7 @@ class _QuickContentSection extends StatelessWidget {
         _ReferenceSectionHeader(
           title: '지금 보면 좋은 정보',
           actionLabel: '더보기',
-          onAction: () => context.push('/records'),
+          onAction: () => context.push('/news'),
         ),
         const SizedBox(height: 8),
         LayoutBuilder(
@@ -3658,7 +3683,7 @@ class _QuickContentListItem extends ConsumerWidget {
     _PlayerQuickRoute? playerRoute,
   ) async {
     if (playerRoute == null) {
-      context.push(item.route);
+      context.push(sanitizeAppRoute(item.route, fallback: '/news') ?? '/news');
       return;
     }
 
@@ -3837,7 +3862,9 @@ class _QuickContentListItem extends ConsumerWidget {
       child: ElevatedButton(
         onPressed: () {
           Navigator.of(context).pop();
-          context.push(item.route);
+          context.push(
+            sanitizeAppRoute(item.route, fallback: '/records') ?? '/records',
+          );
         },
         style: ElevatedButton.styleFrom(
           minimumSize: const Size.fromHeight(48),
@@ -3941,7 +3968,6 @@ Widget _quickItemAvatar(_QuickContentItemData item, Color accent) {
     shortName: item.fallbackLabel,
   );
   final imageUrl = item.imageUrl;
-  final referenceAsset = _referenceTeamLogoAsset(team?.id);
 
   if (imageUrl != null && imageUrl.isNotEmpty) {
     return ClipRRect(
@@ -3959,29 +3985,12 @@ Widget _quickItemAvatar(_QuickContentItemData item, Color accent) {
     );
   }
 
-  if (referenceAsset != null) {
-    return SizedBox(
-      width: 52,
-      height: 52,
-      child: Image.asset(
-        referenceAsset,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-        errorBuilder: (_, _, _) => _quickItemAvatarFallback(item, accent, team),
-      ),
-    );
-  }
-
   if (team != null) {
-    return CachedNetworkImage(
-      imageUrl: team.logoUrl,
-      width: 52,
-      height: 52,
-      memCacheWidth: 156,
-      memCacheHeight: 156,
-      fit: BoxFit.contain,
-      errorWidget: (_, _, _) => _quickItemAvatarFallback(item, accent, team),
-      placeholder: (_, _) => _quickItemAvatarFallback(item, accent, team),
+    return KboTeamLogoImage(
+      teamId: team.id,
+      fallback: team.shortName,
+      size: 52,
+      padding: 0,
     );
   }
 

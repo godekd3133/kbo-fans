@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
@@ -9,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
 import '../../data/providers.dart';
@@ -245,31 +245,11 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                         shape: BoxShape.circle,
                       ),
                     ),
-                  CachedNetworkImage(
-                    imageUrl: team?.logoUrl ?? '',
-                    width: 24,
-                    height: 24,
-                    memCacheWidth: 72,
-                    memCacheHeight: 72,
-                    placeholder: (_, _) =>
-                        const SizedBox(width: 24, height: 24),
-                    errorWidget: (_, _, _) => Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: AppColors.cardSub,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          team?.shortName ?? '',
-                          style: const TextStyle(
-                            fontSize: 8,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
+                  KboTeamLogoImage(
+                    teamId: team?.id,
+                    fallback: team?.shortName ?? s.teamName,
+                    size: 24,
+                    padding: 0,
                   ),
                   const SizedBox(width: 8),
                   Expanded(

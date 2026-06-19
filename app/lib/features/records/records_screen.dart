@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
+import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/player.dart';
 import '../../data/models/records_overview.dart';
@@ -22,6 +23,11 @@ enum PlayerListFilter { all, entryOnly, reserveOnly }
 enum PlayerSortOption { name, avg, ops, era, whip }
 
 const firstSupportedRecordsSeason = 2002;
+const _tableHeaderStyle = TextStyle(
+  fontSize: 11,
+  color: AppColors.textDisabled,
+  fontWeight: FontWeight.w800,
+);
 
 class RecordsScreen extends ConsumerStatefulWidget {
   final String? teamId;
@@ -39,6 +45,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   PlayerSortOption _sort = PlayerSortOption.avg;
   String _searchQuery = '';
   late int _selectedSeason;
+  LeaderboardMetric _selectedPreviewMetric = LeaderboardMetric.avg;
   int? _teamRecordsLoadStartedAtMicros;
   String? _lastTeamRecordsLogKey;
   String? _lastTeamRecordsDiagKey;
@@ -109,138 +116,149 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
     return Scaffold(
       body: SafeArea(
-        child: AppPageFrame(
-          child: RefreshIndicator(
-            onRefresh: _refreshOverview,
-            color: AppColors.live,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
-              children: [
-                Row(
+        child: Stack(
+          children: [
+            const Positioned.fill(child: _RecordsBackdrop()),
+            AppPageFrame(
+              child: RefreshIndicator(
+                onRefresh: _refreshOverview,
+                color: AppColors.live,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
                   children: [
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'RECORDS',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.textDisabled,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '기록실',
+                                style: TextStyle(
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.05,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                '한눈에 보는 리그 리더와 팀&선수 기록',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: '기록실 새로고침',
+                          onPressed: () {
+                            unawaited(_refreshOverview());
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.refresh_rounded),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _seasonSelector(),
+                    const SizedBox(height: 14),
+                    overviewAsync.when(
+                      loading: () => const SizedBox.shrink(),
+                      error: (error, stackTrace) =>
+                          _recordsOverviewErrorCard(error),
+                      data: (overview) => Column(
                         children: [
-                          Text(
-                            'RECORDS',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.textDisabled,
-                              letterSpacing: 0.8,
-                            ),
+                          _recordsBriefingPanel(overview),
+                          const SizedBox(height: 14),
+                          _metricSpotlightRail(overview),
+                          const SizedBox(height: 14),
+                          _recordsSectionHeader(
+                            title: '리그 리더보드',
+                            subtitle: '핵심 지표별 TOP 5를 빠르게 비교합니다.',
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            '기록실',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              height: 1.05,
-                            ),
+                          const SizedBox(height: 10),
+                          _metricHub(overview),
+                          const SizedBox(height: 18),
+                          _recordsSectionHeader(
+                            title: '팀 기록실',
+                            subtitle: '마이팀을 먼저 배치하고 팀별 선수 기록으로 이어집니다.',
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            '팀을 먼저 고르면 선수 기록과 리그 리더가 한 화면에 보입니다.',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                              height: 1.35,
-                            ),
-                          ),
+                          const SizedBox(height: 12),
                         ],
                       ),
                     ),
-                    IconButton(
-                      tooltip: '기록실 새로고침',
-                      onPressed: () {
-                        unawaited(_refreshOverview());
-                        setState(() {});
-                      },
-                      icon: const Icon(Icons.refresh_rounded),
+                    TextField(
+                      onChanged: (value) =>
+                          setState(() => _searchQuery = value),
+                      decoration: InputDecoration(
+                        hintText: '팀 검색',
+                        hintStyle: const TextStyle(
+                          color: AppColors.textDisabled,
+                        ),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: AppColors.textDisabled,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.card,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.divider,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.divider,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 14),
+                    for (final team in visibleTeams)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _teamChooserCard(
+                          team,
+                          isMyTeam: myTeamId == team.id,
+                        ),
+                      ),
+                    if (visibleTeams.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 48),
+                        child: Center(
+                          child: Text(
+                            '검색 결과가 없습니다',
+                            style: TextStyle(color: AppColors.textDisabled),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                _seasonSelector(),
-                const SizedBox(height: 14),
-                overviewAsync.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (error, stackTrace) =>
-                      _recordsOverviewErrorCard(error),
-                  data: (overview) => Column(
-                    children: [
-                      _featuredCards(overview),
-                      const SizedBox(height: 14),
-                      _leaderboardCard('리그 타율 리더보드', overview.avgLeaders),
-                      const SizedBox(height: 10),
-                      _leaderboardCard('리그 홈런왕 순위', overview.hrLeaders),
-                      const SizedBox(height: 10),
-                      _leaderboardCard('리그 OPS 리더보드', overview.opsLeaders),
-                      const SizedBox(height: 10),
-                      _leaderboardCard(
-                        LeaderboardMetric.opsPlus.title,
-                        overview.opsPlusLeaders,
-                        metric: LeaderboardMetric.opsPlus,
-                      ),
-                      const SizedBox(height: 10),
-                      _leaderboardCard('리그 ERA 리더보드', overview.eraLeaders),
-                      const SizedBox(height: 10),
-                      const SizedBox(height: 14),
-                    ],
-                  ),
-                ),
-                TextField(
-                  onChanged: (value) => setState(() => _searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: '팀 검색',
-                    hintStyle: const TextStyle(color: AppColors.textDisabled),
-                    prefixIcon: const Icon(
-                      Icons.search,
-                      color: AppColors.textDisabled,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.card,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.divider),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.divider),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                for (final team in visibleTeams)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: _teamChooserCard(
-                      team,
-                      isMyTeam: myTeamId == team.id,
-                    ),
-                  ),
-                if (visibleTeams.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 48),
-                    child: Center(
-                      child: Text(
-                        '검색 결과가 없습니다',
-                        style: TextStyle(color: AppColors.textDisabled),
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -261,13 +279,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         ),
         child: Row(
           children: [
-            CachedNetworkImage(
-              imageUrl: team.logoUrl,
-              width: 40,
-              height: 40,
-              memCacheWidth: 120,
-              memCacheHeight: 120,
-              errorWidget: (_, _, _) => _logoFallback(team.shortName, 40),
+            KboTeamLogoImage(
+              teamId: team.id,
+              fallback: team.shortName,
+              size: 40,
+              padding: 0,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -384,14 +400,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       icon: const Icon(Icons.refresh_rounded),
                     ),
                     if (team != null)
-                      CachedNetworkImage(
-                        imageUrl: team.logoUrl,
-                        width: 40,
-                        height: 40,
-                        memCacheWidth: 120,
-                        memCacheHeight: 120,
-                        errorWidget: (_, _, _) =>
-                            _logoFallback(team.shortName, 40),
+                      KboTeamLogoImage(
+                        teamId: team.id,
+                        fallback: team.shortName,
+                        size: 40,
+                        padding: 0,
                       ),
                   ],
                 ),
@@ -1179,22 +1192,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     );
   }
 
-  Widget _logoFallback(String text, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(size / 2),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-      ),
-    );
-  }
-
   Widget _seasonSelector() {
     final seasons = [
       for (
@@ -1325,246 +1322,987 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     );
   }
 
-  Widget _featuredCards(RecordsOverview overview) {
-    final avgLeader = _seasonLeaderCard('시즌 타율 리더', overview.avgLeaders);
-    final eraLeader = _seasonLeaderCard('시즌 ERA 리더', overview.eraLeaders);
-    final hrLeader = _seasonLeaderCard('시즌 홈런왕', overview.hrLeaders);
-    final opsLeader = _seasonLeaderCard('시즌 OPS 리더', overview.opsLeaders);
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: _featuredCard(avgLeader)),
-            const SizedBox(width: 10),
-            Expanded(child: _featuredCard(eraLeader)),
+  Widget _recordsBriefingPanel(RecordsOverview overview) {
+    final snapshots = _metricSnapshots(overview);
+    final headline = _headlineLeader(overview);
+    final uniqueTopFive = {
+      for (final snapshot in snapshots)
+        for (final leader in snapshot.leaders.take(5)) leader.playerId,
+    }.length;
+    final activeMetricCount = snapshots
+        .where((snapshot) => snapshot.leaders.isNotEmpty)
+        .length;
+    final briefLines = _recordBriefLines(overview);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.card.withValues(alpha: 0.96),
+            AppColors.surface.withValues(alpha: 0.9),
+            AppColors.background.withValues(alpha: 0.86),
           ],
         ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(child: _featuredCard(hrLeader)),
-            const SizedBox(width: 10),
-            Expanded(child: _featuredCard(opsLeader)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.32),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.query_stats_rounded,
+                  color: AppColors.accent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '오늘 읽을 기록',
+                      style: TextStyle(
+                        fontSize: 21,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      '리그 주요 지표 리더를 먼저 확인하세요.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '$_selectedSeason',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textDisabled,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (headline == null)
+            const Text(
+              '현재 표시할 기록 리더가 없습니다.',
+              style: TextStyle(fontSize: 13, color: AppColors.textDisabled),
+            )
+          else
+            _headlineLeaderBlock(overview, headline),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: _briefStat('활성 지표', '$activeMetricCount/5')),
+              const SizedBox(width: 8),
+              Expanded(child: _briefStat('TOP5 선수', '$uniqueTopFive명')),
+              const SizedBox(width: 8),
+              Expanded(child: _briefStat('소스', '공식+계산')),
+            ],
+          ),
+          if (briefLines.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(height: 1, color: AppColors.divider),
+            const SizedBox(height: 12),
+            for (final line in briefLines)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 7),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.arrow_right_rounded,
+                      size: 18,
+                      color: AppColors.accent,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        line,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          height: 1.35,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _headlineLeaderBlock(RecordsOverview overview, RecordLeader leader) {
+    final team = KboTeams.byId(leader.teamId);
+    final metricLabels = _leaderMetricLabels(overview, leader);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _leaderPhoto(leader, width: 86, height: 104),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (team != null) ...[
+                    KboTeamLogoImage(
+                      teamId: team.id,
+                      fallback: team.shortName,
+                      size: 22,
+                      padding: 0,
+                    ),
+                    const SizedBox(width: 7),
+                  ],
+                  Expanded(
+                    child: Text(
+                      leader.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                        height: 1.05,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 7),
+              Text(
+                '${team?.name ?? leader.teamId} · ${metricLabels.join(' / ')} 선두',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: _metricSnapshots(overview)
+                    .where(
+                      (snapshot) =>
+                          snapshot.topLeader?.playerId == leader.playerId,
+                    )
+                    .map(
+                      (snapshot) => _miniMetricPill(
+                        snapshot.metric.shortLabel,
+                        snapshot.topLeader?.value ?? '-',
+                        snapshot.color,
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  FeaturedPlayerCard _seasonLeaderCard(
-    String label,
-    List<RecordLeader> leaders,
-  ) {
-    if (leaders.isEmpty) {
-      return FeaturedPlayerCard(label: label);
-    }
-    final leader = leaders.first;
-    return FeaturedPlayerCard(
-      label: label,
-      playerId: leader.playerId,
-      playerType: leader.playerType,
-      name: leader.name,
-      teamId: leader.teamId,
-      headline: '${_metricLabelFromFeaturedLabel(label)} ${leader.value}',
-      imageUrl: kboPlayerImageUrl(
-        season: _selectedSeason,
-        playerId: leader.playerId,
-      ),
-    );
-  }
-
-  String _metricLabelFromFeaturedLabel(String label) {
-    if (label.contains('타율')) return '타율';
-    if (label.contains('홈런')) return '홈런';
-    if (label.contains('ERA')) return 'ERA';
-    if (label.contains('OPS')) return 'OPS';
-    return '기록';
-  }
-
-  Widget _featuredCard(FeaturedPlayerCard card) {
-    final team = KboTeams.byId(card.teamId ?? '');
+  Widget _briefStat(String label, String value) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: AppColors.background.withValues(alpha: 0.28),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            card.label,
-            style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.textDisabled,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (card.imageUrl != null && card.imageUrl!.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: CachedNetworkImage(
-                    imageUrl: card.imageUrl!,
-                    width: 56,
-                    height: 72,
-                    memCacheWidth: 168,
-                    memCacheHeight: 216,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, _, _) =>
-                        _logoFallback(team?.shortName ?? '', 56),
-                  ),
-                )
-              else
-                _logoFallback(team?.shortName ?? '', 56),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      card.name ?? '-',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      card.headline ?? '-',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                    if (card.summary?.isNotEmpty ?? false) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        card.summary!,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+          const Spacer(),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
           ),
         ],
       ),
     );
   }
 
-  Widget _leaderboardCard(
-    String title,
-    List<RecordLeader> leaders, {
-    LeaderboardMetric? metric,
-  }) {
-    final resolvedMetric = metric ?? _metricFromTitle(title);
-    final supported = resolvedMetric?.supportedByOfficialSource ?? true;
+  Widget _metricSpotlightRail(RecordsOverview overview) {
+    final snapshots = _metricSnapshots(overview);
+    return SizedBox(
+      height: 172,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: snapshots.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
+        itemBuilder: (context, index) =>
+            SizedBox(width: 154, child: _metricSpotlightCard(snapshots[index])),
+      ),
+    );
+  }
 
+  Widget _metricSpotlightCard(_MetricSnapshot snapshot) {
+    final leader = snapshot.topLeader;
+    final team = leader == null ? null : KboTeams.byId(leader.teamId);
     return AppPressable(
-      onTap: resolvedMetric == null
-          ? null
-          : () => context.push(
-              '/records/leaderboard/${resolvedMetric.key}?season=$_selectedSeason',
-            ),
+      onTap: () => context.push(
+        '/records/leaderboard/${snapshot.metric.key}?season=$_selectedSeason',
+      ),
+      pressedScale: 0.97,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.card.withValues(alpha: 0.98),
+              AppColors.surface.withValues(alpha: 0.9),
+            ],
+          ),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: snapshot.color.withValues(alpha: 0.62)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
+                Container(
+                  width: 7,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: snapshot.color,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    title,
+                    snapshot.metric.shortLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
-                Text(
-                  supported ? '전체 보기' : '준비 중',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: supported
-                        ? AppColors.textSecondary
-                        : AppColors.textDisabled,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  Icons.chevron_right,
-                  size: 16,
-                  color: supported
-                      ? AppColors.textSecondary
-                      : AppColors.textDisabled,
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: AppColors.textDisabled,
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-            if (leaders.isEmpty)
-              const Text(
-                '현재 공식 소스 기준 리더보드 준비 중',
-                style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
-              )
-            else
-              for (final leader in leaders)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 24,
-                        child: Text(
-                          '${leader.rank}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textDisabled,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          leader.name,
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ),
-                      Text(
-                        leader.value,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+            const Spacer(),
+            Row(
+              children: [
+                if (leader != null)
+                  _rankBadge('${leader.rank}위', snapshot.color),
+                if (leader != null) const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    leader?.name ?? '준비 중',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Text(
+              leader == null ? '공식 소스 확인 중' : team?.shortName ?? leader.teamId,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              leader?.value ?? '-',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _leaderGapText(snapshot.metric, snapshot.leaders),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textDisabled,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  LeaderboardMetric? _metricFromTitle(String title) {
-    for (final metric in LeaderboardMetric.values) {
-      if (metric.title == title) {
-        return metric;
-      }
-    }
-    return null;
+  Widget _metricHub(RecordsOverview overview) {
+    final snapshots = _metricSnapshots(overview);
+    final selected = snapshots.firstWhere(
+      (snapshot) => snapshot.metric == _selectedPreviewMetric,
+      orElse: () => snapshots.first,
+    );
+    final leaders = selected.leaders.take(3).toList();
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.card.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final snapshot in snapshots)
+                  _leaderboardTab(
+                    snapshot,
+                    selected: snapshot.metric == selected.metric,
+                  ),
+              ],
+            ),
+          ),
+          Container(height: 1, color: AppColors.divider),
+          _leaderboardHeader(),
+          if (leaders.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 18, 14, 18),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '현재 리더보드 준비 중',
+                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                ),
+              ),
+            )
+          else
+            for (var index = 0; index < leaders.length; index++)
+              _leaderboardTableRow(
+                leader: leaders[index],
+                color: selected.color,
+                showDivider: index != leaders.length - 1,
+              ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: AppPressable(
+              onTap: () => context.push(
+                '/records/leaderboard/${selected.metric.key}?season=$_selectedSeason',
+              ),
+              pressedScale: 0.98,
+              child: Container(
+                height: 46,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.background.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.divider),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${selected.metric.shortLabel} 전체 리더보드 보기',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: selected.color,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      size: 18,
+                      color: selected.color,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
+
+  Widget _leaderboardTab(_MetricSnapshot snapshot, {required bool selected}) {
+    return AppPressable(
+      onTap: selected
+          ? null
+          : () => setState(() => _selectedPreviewMetric = snapshot.metric),
+      pressedScale: 0.98,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        width: 78,
+        height: 58,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected
+              ? snapshot.color.withValues(alpha: 0.12)
+              : Colors.transparent,
+          border: Border(
+            bottom: BorderSide(
+              color: selected ? snapshot.color : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Text(
+          snapshot.metric.shortLabel,
+          style: TextStyle(
+            fontSize: 14,
+            color: selected ? snapshot.color : AppColors.textSecondary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _leaderboardHeader() {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: const Row(
+        children: [
+          SizedBox(width: 34, child: Text('순위', style: _tableHeaderStyle)),
+          SizedBox(width: 14),
+          Expanded(flex: 5, child: Text('선수', style: _tableHeaderStyle)),
+          Expanded(flex: 3, child: Text('팀', style: _tableHeaderStyle)),
+          SizedBox(
+            width: 64,
+            child: Text(
+              '기록',
+              textAlign: TextAlign.right,
+              style: _tableHeaderStyle,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _leaderboardTableRow({
+    required RecordLeader leader,
+    required Color color,
+    required bool showDivider,
+  }) {
+    final team = KboTeams.byId(leader.teamId);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        border: Border(
+          top: const BorderSide(color: AppColors.divider),
+          bottom: showDivider
+              ? BorderSide(color: AppColors.background.withValues(alpha: 0.3))
+              : BorderSide.none,
+        ),
+      ),
+      child: AppPressable(
+        onTap: leader.isRetired
+            ? null
+            : () => context.push(
+                '/records/player/${leader.playerId}?season=$_selectedSeason',
+              ),
+        pressedScale: 0.992,
+        child: SizedBox(
+          height: 58,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 34,
+                child: Text(
+                  '${leader.rank}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 5,
+                child: Text(
+                  leader.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 3,
+                child: Row(
+                  children: [
+                    if (team != null) ...[
+                      KboTeamLogoImage(
+                        teamId: team.id,
+                        fallback: team.shortName,
+                        size: 24,
+                        padding: 0,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Flexible(
+                      child: Text(
+                        team?.shortName ?? leader.teamId,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: 64,
+                child: Text(
+                  leader.value,
+                  textAlign: TextAlign.right,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _rankBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
+  Widget _miniMetricPill(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Text(
+        '$label $value',
+        style: TextStyle(
+          fontSize: 11,
+          color: color,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
+  Widget _leaderPhoto(
+    RecordLeader leader, {
+    required double width,
+    required double height,
+  }) {
+    final team = KboTeams.byId(leader.teamId);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: CachedNetworkImage(
+        imageUrl: kboPlayerImageUrl(
+          season: _selectedSeason,
+          playerId: leader.playerId,
+        ),
+        width: width,
+        height: height,
+        memCacheWidth: (width * 3).round(),
+        memCacheHeight: (height * 3).round(),
+        fit: BoxFit.cover,
+        errorWidget: (_, _, _) => Container(
+          width: width,
+          height: height,
+          color:
+              team?.primaryColor.withValues(alpha: 0.14) ?? AppColors.cardSub,
+          alignment: Alignment.center,
+          child: Text(
+            leader.name.isEmpty ? '?' : leader.name.substring(0, 1),
+            style: TextStyle(
+              color: team?.primaryColor ?? AppColors.textSecondary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _recordsSectionHeader({
+    required String title,
+    required String subtitle,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  RecordLeader? _headlineLeader(RecordsOverview overview) {
+    final leaders = _metricSnapshots(
+      overview,
+    ).map((snapshot) => snapshot.topLeader).whereType<RecordLeader>().toList();
+    if (leaders.isEmpty) {
+      return null;
+    }
+
+    final counts = <String, int>{};
+    for (final leader in leaders) {
+      counts[leader.playerId] = (counts[leader.playerId] ?? 0) + 1;
+    }
+    final ordered = [...leaders]
+      ..sort((a, b) {
+        final countDiff = (counts[b.playerId] ?? 0).compareTo(
+          counts[a.playerId] ?? 0,
+        );
+        if (countDiff != 0) {
+          return countDiff;
+        }
+        return a.rank.compareTo(b.rank);
+      });
+    return ordered.first;
+  }
+
+  List<String> _leaderMetricLabels(
+    RecordsOverview overview,
+    RecordLeader leader,
+  ) {
+    return _metricSnapshots(overview)
+        .where((snapshot) => snapshot.topLeader?.playerId == leader.playerId)
+        .map((snapshot) => snapshot.metric.shortLabel)
+        .toList();
+  }
+
+  List<String> _recordBriefLines(RecordsOverview overview) {
+    final lines = <String>[];
+    final snapshots = _metricSnapshots(overview);
+    final headline = _headlineLeader(overview);
+    if (headline != null) {
+      final labels = _leaderMetricLabels(overview, headline).join('/');
+      lines.add(
+        '${headline.name}이 $labels 선두입니다. ${KboTeams.byId(headline.teamId)?.shortName ?? headline.teamId} 기록을 같이 보면 흐름이 빠르게 잡힙니다.',
+      );
+    }
+
+    final hr = snapshots
+        .where((snapshot) => snapshot.metric == LeaderboardMetric.hr)
+        .first
+        .topLeader;
+    if (hr != null) {
+      lines.add(
+        '홈런 경쟁은 ${hr.name} ${hr.value}개, ${_leaderGapText(LeaderboardMetric.hr, overview.hrLeaders)}입니다.',
+      );
+    }
+
+    final era = snapshots
+        .where((snapshot) => snapshot.metric == LeaderboardMetric.era)
+        .first
+        .topLeader;
+    if (era != null) {
+      lines.add(
+        '마운드는 ${era.name} ERA ${era.value}, ${_leaderGapText(LeaderboardMetric.era, overview.eraLeaders)}입니다.',
+      );
+    }
+
+    return lines.take(3).toList();
+  }
+
+  List<_MetricSnapshot> _metricSnapshots(RecordsOverview overview) {
+    return [
+      _MetricSnapshot(
+        metric: LeaderboardMetric.avg,
+        title: '타율 리더',
+        description: '컨택과 출루 흐름의 첫 기준',
+        leaders: overview.avgLeaders,
+        color: AppColors.accent,
+      ),
+      _MetricSnapshot(
+        metric: LeaderboardMetric.hr,
+        title: '홈런왕 경쟁',
+        description: '장타 한 방의 순위 변화',
+        leaders: overview.hrLeaders,
+        color: AppColors.ballYellow,
+      ),
+      _MetricSnapshot(
+        metric: LeaderboardMetric.ops,
+        title: 'OPS 생산력',
+        description: '출루와 장타를 함께 보는 지표',
+        leaders: overview.opsLeaders,
+        color: AppColors.positive,
+      ),
+      _MetricSnapshot(
+        metric: LeaderboardMetric.opsPlus,
+        title: LeaderboardMetric.opsPlus.title,
+        description: '리그 OPS 리더군 기준 환산',
+        leaders: overview.opsPlusLeaders,
+        color: const Color(0xFF9D7CFF),
+      ),
+      _MetricSnapshot(
+        metric: LeaderboardMetric.era,
+        title: 'ERA 마운드',
+        description: '낮을수록 강한 선발 경쟁',
+        leaders: overview.eraLeaders,
+        color: AppColors.live,
+      ),
+    ];
+  }
+
+  String _leaderGapText(LeaderboardMetric metric, List<RecordLeader> leaders) {
+    if (leaders.isEmpty) {
+      return '데이터 준비 중';
+    }
+    if (leaders.length < 2) {
+      return '단독 1위';
+    }
+
+    final first = double.tryParse(leaders[0].value);
+    final second = double.tryParse(leaders[1].value);
+    if (first == null || second == null) {
+      return '2위 ${leaders[1].value}';
+    }
+
+    if (metric == LeaderboardMetric.era) {
+      final diff = second - first;
+      return diff > 0 ? '2위보다 ${diff.toStringAsFixed(2)} 낮음' : '공동 선두권';
+    }
+
+    final diff = first - second;
+    if (diff <= 0) {
+      return '공동 선두권';
+    }
+    if (metric == LeaderboardMetric.hr || metric == LeaderboardMetric.opsPlus) {
+      return '2위와 +${diff.round()}';
+    }
+    return '2위와 +${diff.toStringAsFixed(3)}';
+  }
+}
+
+class _RecordsBackdrop extends StatelessWidget {
+  const _RecordsBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        children: [
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF080808),
+                  AppColors.background,
+                  AppColors.background,
+                ],
+                stops: [0, 0.48, 1],
+              ),
+            ),
+            child: SizedBox.expand(),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            right: 0,
+            height: 235,
+            child: CustomPaint(painter: _StadiumBackdropPainter()),
+          ),
+          Positioned(
+            left: 0,
+            top: 0,
+            right: 0,
+            height: 260,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.12),
+                    Colors.black.withValues(alpha: 0.62),
+                    AppColors.background,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StadiumBackdropPainter extends CustomPainter {
+  const _StadiumBackdropPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final arcPaint = Paint()
+      ..color = AppColors.textSecondary.withValues(alpha: 0.09)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final glowPaint = Paint()
+      ..color = AppColors.textSecondary.withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 7
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    for (var i = 0; i < 4; i++) {
+      final y = 58.0 + (i * 22);
+      final path = Path()
+        ..moveTo(-20, y + 24)
+        ..quadraticBezierTo(size.width / 2, y - 28, size.width + 20, y + 24);
+      canvas.drawPath(path, i == 0 ? glowPaint : arcPaint);
+      canvas.drawPath(path, arcPaint);
+    }
+
+    final lightPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    for (var i = 0; i < 10; i++) {
+      final x = (size.width / 9) * i;
+      canvas.drawLine(Offset(x, 54), Offset(x + 18, 138), lightPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _MetricSnapshot {
+  final LeaderboardMetric metric;
+  final String title;
+  final String description;
+  final List<RecordLeader> leaders;
+  final Color color;
+
+  const _MetricSnapshot({
+    required this.metric,
+    required this.title,
+    required this.description,
+    required this.leaders,
+    required this.color,
+  });
+
+  RecordLeader? get topLeader => leaders.isEmpty ? null : leaders.first;
 }

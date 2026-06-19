@@ -42,6 +42,39 @@ void main() {
     expect(item.imageUrl, endsWith('/2026/52605.jpg'));
     expect(aggregate.kboBrief?.title, '이번 주 KBO 포인트');
     expect(aggregate.kboBrief?.items.single.title, '김도영 13홈런');
+    expect(
+      aggregate.kboBrief?.items.single.imageUrl,
+      endsWith('/2026/52605.jpg'),
+    );
+    expect(aggregate.kboBrief?.items.single.fallbackLabel, '김도영');
+  });
+
+  test('off-day KBO brief opens schedule instead of generic records', () {
+    final aggregate = buildLocalHomeAggregate(
+      date: '2026-06-20',
+      myTeam: null,
+      games: const [],
+      scheduleDays: const [],
+      standings: const [],
+      overview: const RecordsOverview(
+        season: 2026,
+        avgLeaders: [],
+        hrLeaders: [],
+        opsLeaders: [],
+        opsPlusLeaders: [],
+        eraLeaders: [],
+        todayHitter: FeaturedPlayerCard(label: 'today hitter'),
+        todayPitcher: FeaturedPlayerCard(label: 'today pitcher'),
+        monthHitter: FeaturedPlayerCard(label: 'month hitter'),
+        monthPitcher: FeaturedPlayerCard(label: 'month pitcher'),
+      ),
+    );
+
+    final item = aggregate.kboBrief!.items.single;
+
+    expect(item.type, 'offday');
+    expect(item.title, '오늘은 KBO 경기가 없습니다');
+    expect(item.route, '/schedule');
   });
 
   test('local KBO brief puts league game ahead of my-team duplicate', () {

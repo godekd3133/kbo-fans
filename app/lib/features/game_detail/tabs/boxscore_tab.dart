@@ -8,6 +8,7 @@ import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_artwork_card.dart';
 import '../../../core/widgets/app_motion.dart';
+import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
@@ -367,6 +368,8 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final todayAvg = batter.atBats > 0 ? (batter.hits / batter.atBats) : 0.0;
     return _RecordDataRow(
       onTap: player == null ? null : () => _pushPlayerDetail(player),
+      imageUrl: player?.imageUrl,
+      badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
       name: batter.name,
       meta: '${batter.position}  ${batter.order}번',
       actionLabel: player == null ? null : '선수 기록 보기',
@@ -393,6 +396,8 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final player = _resolvePlayer(playersByName, pitcher.name);
     return _RecordDataRow(
       onTap: player == null ? null : () => _pushPlayerDetail(player),
+      imageUrl: player?.imageUrl,
+      badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
       name: pitcher.name,
       meta: '투수 기록',
       actionLabel: player == null ? null : '선수 기록 보기',
@@ -847,6 +852,8 @@ class _RecordTableHeader extends StatelessWidget {
 
 class _RecordDataRow extends StatelessWidget {
   final VoidCallback? onTap;
+  final String? imageUrl;
+  final String? badgeLabel;
   final String name;
   final String meta;
   final String? actionLabel;
@@ -855,6 +862,8 @@ class _RecordDataRow extends StatelessWidget {
 
   const _RecordDataRow({
     required this.onTap,
+    required this.imageUrl,
+    required this.badgeLabel,
     required this.name,
     required this.meta,
     required this.actionLabel,
@@ -875,6 +884,15 @@ class _RecordDataRow extends StatelessWidget {
         ),
         child: Row(
           children: [
+            _PlayerAvatar(
+              imageUrl: imageUrl,
+              fallbackLabel: name,
+              accent: accent,
+              badgeLabel: badgeLabel,
+              size: 42,
+              radius: 10,
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1091,38 +1109,11 @@ class _TeamLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final team = KboTeams.resolve(
-      id: teamId,
-      name: fallback,
-      shortName: fallback,
-    );
-    return CachedNetworkImage(
-      imageUrl: team?.logoUrl ?? '',
-      httpHeaders: _kboImageHeaders,
-      width: size,
-      height: size,
-      memCacheWidth: (size * 3).round(),
-      memCacheHeight: (size * 3).round(),
-      placeholder: (_, _) => _fallbackAvatar(team, fallback),
-      errorWidget: (_, _, _) => _fallbackAvatar(team, fallback),
-    );
-  }
-
-  Widget _fallbackAvatar(KboTeam? team, String fallback) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: (team?.primaryColor ?? AppColors.cardSub).withValues(
-          alpha: 0.18,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        fallback.isNotEmpty ? fallback.substring(0, 1) : '?',
-        style: TextStyle(fontSize: size * 0.34, fontWeight: FontWeight.w900),
-      ),
+    return KboTeamLogoImage(
+      teamId: teamId,
+      fallback: fallback,
+      size: size,
+      padding: size <= 34 ? 1.5 : 2,
     );
   }
 }
@@ -1132,12 +1123,16 @@ class _PlayerAvatar extends StatelessWidget {
   final String fallbackLabel;
   final Color accent;
   final String? badgeLabel;
+  final double size;
+  final double radius;
 
   const _PlayerAvatar({
     required this.imageUrl,
     required this.fallbackLabel,
     required this.accent,
     this.badgeLabel,
+    this.size = 52,
+    this.radius = 12,
   });
 
   @override
@@ -1147,14 +1142,14 @@ class _PlayerAvatar extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(radius),
             child: CachedNetworkImage(
               imageUrl: imageUrl!,
               httpHeaders: _kboImageHeaders,
-              width: 52,
-              height: 52,
-              memCacheWidth: 156,
-              memCacheHeight: 156,
+              width: size,
+              height: size,
+              memCacheWidth: (size * 3).round(),
+              memCacheHeight: (size * 3).round(),
               fit: BoxFit.cover,
               placeholder: (_, _) => _fallbackAvatar(),
               errorWidget: (_, _, _) => _fallbackAvatar(),
@@ -1172,14 +1167,14 @@ class _PlayerAvatar extends StatelessWidget {
 
   Widget _fallbackAvatar() {
     return Container(
-      width: 52,
-      height: 52,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.16),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(radius),
       ),
       alignment: Alignment.center,
-      child: Icon(Icons.person_rounded, color: accent, size: 28),
+      child: Icon(Icons.person_rounded, color: accent, size: size * 0.54),
     );
   }
 

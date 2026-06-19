@@ -7,6 +7,7 @@ import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_artwork_card.dart';
 import '../../../core/widgets/app_motion.dart';
+import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/player.dart';
@@ -1929,40 +1930,11 @@ class _TeamLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final team = KboTeams.byId(teamId);
-    final cacheSize = (size * 3).round();
-    return CachedNetworkImage(
-      imageUrl: team?.logoUrl ?? '',
-      httpHeaders: _kboImageHeaders,
-      width: size,
-      height: size,
-      memCacheWidth: cacheSize,
-      memCacheHeight: cacheSize,
-      placeholder: (_, _) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          shape: BoxShape.circle,
-        ),
-      ),
-      errorWidget: (_, _, _) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          shape: BoxShape.circle,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          fallback.isEmpty ? '?' : fallback.substring(0, 1).toUpperCase(),
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
+    return KboTeamLogoImage(
+      teamId: teamId,
+      fallback: fallback,
+      size: size,
+      padding: size <= 30 ? 1.5 : 2,
     );
   }
 }

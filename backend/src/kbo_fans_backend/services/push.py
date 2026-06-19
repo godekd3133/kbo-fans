@@ -29,6 +29,7 @@ KBO_TEAM_NAMES = {
     "OB": "두산 베어스",
     "WO": "키움 히어로즈",
 }
+ANDROID_REMOTE_PUSH_CHANNEL_ID = "remote_push_foreground"
 
 
 class PushService:
@@ -628,7 +629,10 @@ def _visible_push_options(
     ):
         options["android"] = messaging.AndroidConfig(
             priority="high",
-            notification=messaging.AndroidNotification(sound="default"),
+            notification=messaging.AndroidNotification(
+                channel_id=ANDROID_REMOTE_PUSH_CHANNEL_ID,
+                sound="default",
+            ),
         )
 
     return options

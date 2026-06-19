@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/team_data.dart';
@@ -6,13 +5,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/game_status_label.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/game_status_badge.dart';
+import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/schedule.dart';
-
-const _kboImageHeaders = {
-  'Referer': 'https://www.koreabaseball.com/',
-  'User-Agent':
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-};
 
 class ScheduleGameCard extends StatelessWidget {
   final ScheduleGame game;
@@ -213,39 +207,11 @@ class _TeamLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final team = KboTeams.byId(teamId);
-    final cacheSize = (size * 3).round();
-    return CachedNetworkImage(
-      imageUrl: team?.logoUrl ?? '',
-      httpHeaders: _kboImageHeaders,
-      width: size,
-      height: size,
-      memCacheWidth: cacheSize,
-      memCacheHeight: cacheSize,
-      placeholder: (_, _) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          shape: BoxShape.circle,
-        ),
-      ),
-      errorWidget: (_, _, _) => Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: AppColors.cardSub,
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: Text(
-            team?.shortName ?? '',
-            style: TextStyle(
-              fontSize: size * 0.35,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-      ),
+    return KboTeamLogoImage(
+      teamId: teamId,
+      fallback: team?.shortName ?? '',
+      size: size,
+      padding: 0,
     );
   }
 }

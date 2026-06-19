@@ -212,6 +212,7 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
     )
     assert first_message.apns.payload.aps.sound == "default"
     assert first_message.android.priority == "high"
+    assert first_message.android.notification.channel_id == "remote_push_foreground"
     assert first_message.android.notification.sound == "default"
 
 
@@ -403,6 +404,7 @@ def test_send_test_push_uses_visible_notification_options(tmp_path) -> None:
     assert message.apns.payload.aps.alert.body == "백그라운드 수신 확인"
     assert message.apns.payload.aps.sound == "default"
     assert message.android.priority == "high"
+    assert message.android.notification.channel_id == "remote_push_foreground"
     assert message.android.notification.sound == "default"
 
 
@@ -1453,8 +1455,9 @@ class FakeFcmApnsConfig:
 
 
 class FakeFcmAndroidNotification:
-    def __init__(self, *, sound: str) -> None:
+    def __init__(self, *, sound: str, channel_id: str = "") -> None:
         self.sound = sound
+        self.channel_id = channel_id
 
 
 class FakeFcmAndroidConfig:

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -100,6 +101,14 @@ void main() {
 
     expect(find.text('오늘 기록 요약'), findsWidgets);
     expect(find.text('선수 기록 보기'), findsWidgets);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CachedNetworkImage &&
+            widget.imageUrl == 'https://example.test/no.png',
+      ),
+      findsWidgets,
+    );
   });
 
   testWidgets('미매칭 박스스코어 선수는 선수 기록 보기 CTA를 숨긴다', (tester) async {
@@ -245,4 +254,5 @@ const _matchedBatter = PlayerProfile(
   seasonStats: [],
   highlights: [],
   recentGames: [],
+  imageUrl: 'https://example.test/no.png',
 );

@@ -30,6 +30,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('현재 프리셋: 내 팀 집중'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('적용됨'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('적용됨'), findsOneWidget);
   });
 
@@ -48,6 +53,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('현재 프리셋: 커스텀'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('프리셋 적용'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('프리셋 적용'), findsOneWidget);
   });
 
@@ -62,15 +72,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final mainScroll = find.byWidgetPredicate(
-      (widget) =>
-          widget is Scrollable && widget.axisDirection == AxisDirection.down,
-    );
+    final mainScroll = find.byType(Scrollable).first;
 
     await tester.scrollUntilVisible(
-      find.text('앱 정보 및 지원'),
+      find.text('세부 설정 및 지원'),
       500,
-      scrollable: mainScroll.first,
+      scrollable: mainScroll,
     );
 
     expect(find.text('0.1.0+1'), findsOneWidget);
@@ -79,7 +86,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('이용약관'),
       200,
-      scrollable: mainScroll.first,
+      scrollable: mainScroll,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('이용약관'));
@@ -93,7 +100,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('개인정보처리방침'),
       200,
-      scrollable: mainScroll.first,
+      scrollable: mainScroll,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('개인정보처리방침'));
@@ -107,7 +114,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('오픈소스 라이선스'),
       200,
-      scrollable: mainScroll.first,
+      scrollable: mainScroll,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('오픈소스 라이선스'));

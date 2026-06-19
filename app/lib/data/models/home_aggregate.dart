@@ -30,6 +30,8 @@ class HomeKboBriefItem {
   final String route;
   final String? gameId;
   final List<String> teamIds;
+  final String? imageUrl;
+  final String? fallbackLabel;
 
   const HomeKboBriefItem({
     required this.type,
@@ -39,6 +41,8 @@ class HomeKboBriefItem {
     required this.route,
     this.gameId,
     this.teamIds = const [],
+    this.imageUrl,
+    this.fallbackLabel,
   });
 }
 
@@ -519,7 +523,7 @@ HomeKboBrief _buildLocalKboBrief({
         eyebrow: '리그 체크',
         title: '오늘은 KBO 경기가 없습니다',
         subtitle: '순위표와 리더보드로 다음 경기 관전 포인트를 준비하세요.',
-        route: '/records',
+        route: '/schedule',
       ),
     );
   }
@@ -560,6 +564,9 @@ HomeKboBriefItem? _buildRecordBriefItem(RecordsOverview overview) {
     return null;
   }
   final leader = overview.hrLeaders.first;
+  final imageUrl = leader.playerId.isEmpty
+      ? null
+      : kboPlayerImageUrl(season: overview.season, playerId: leader.playerId);
   return HomeKboBriefItem(
     type: 'record_radar',
     eyebrow: '기록 레이더',
@@ -569,6 +576,8 @@ HomeKboBriefItem? _buildRecordBriefItem(RecordsOverview overview) {
         ? '/records'
         : '/records/player/${leader.playerId}?season=${overview.season}',
     teamIds: [leader.teamId],
+    imageUrl: imageUrl,
+    fallbackLabel: leader.name,
   );
 }
 

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -297,6 +298,141 @@ void main() {
     expect(find.text('team-record-HT'), findsOneWidget);
   });
 
+  testWidgets('KBO brief record item renders real player image URL', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    const imageUrl =
+        'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52605.jpg';
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        kboBrief: const HomeKboBrief(
+          title: '오늘의 KBO 인사이트 팩',
+          subtitle: '실제 기록 신호',
+          items: [
+            HomeKboBriefItem(
+              type: 'record_radar',
+              eyebrow: '기록 레이더',
+              title: '김도영 13홈런',
+              subtitle: 'KIA 타이거즈 · 시즌 홈런 1위',
+              route: '/records/player/52605?season=2026',
+              teamIds: ['HT'],
+              imageUrl: imageUrl,
+              fallbackLabel: '김도영',
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is CachedNetworkImage && widget.imageUrl == imageUrl,
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('home broad insight CTAs open news brief instead of records', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        kboBrief: const HomeKboBrief(
+          title: '오늘의 KBO 관전 포인트',
+          subtitle: '2경기 예정',
+          items: [
+            HomeKboBriefItem(
+              type: 'big_match',
+              eyebrow: '오늘 일정',
+              title: '삼성 vs LG',
+              subtitle: '18:30 · 잠실 · 오늘 2경기 예정',
+              route: '/game/20260619SSLG0',
+            ),
+            HomeKboBriefItem(
+              type: 'standings',
+              eyebrow: '선두권',
+              title: 'KIA 1위',
+              subtitle: 'LG와 2.0G차',
+              route: '/standings',
+            ),
+          ],
+        ),
+        quickItems: const [
+          HomeQuickItem(
+            eyebrow: '홈런왕',
+            title: '김도영 13개',
+            subtitle: 'KIA · 시즌 홈런 1위',
+            route: '/records/player/52605?season=2026',
+          ),
+        ],
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('인사이트'));
+    await tester.pumpAndSettle();
+
+    final insightHeader = find.ancestor(
+      of: find.text('인사이트'),
+      matching: find.byType(Row),
+    );
+    await tester.tap(
+      find.descendant(
+        of: insightHeader,
+        matching: find.widgetWithText(TextButton, '전체 보기'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('news'), findsOneWidget);
+
+    router.go('/home');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('지금 보면 좋은 정보'));
+    await tester.pumpAndSettle();
+
+    final quickHeader = find.ancestor(
+      of: find.text('지금 보면 좋은 정보'),
+      matching: find.byType(Row),
+    );
+    await tester.tap(
+      find.descendant(
+        of: quickHeader,
+        matching: find.widgetWithText(TextButton, '더보기'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('news'), findsOneWidget);
+  });
+
   test('진행 중인 경기 상세 route는 기본으로 중계 탭을 지정한다', () {
     final liveGame = _liveGame(
       gameId: '20260611XXYY0',
@@ -383,13 +519,18 @@ GoRouter _homeInteractionRouter() {
       ),
       GoRoute(path: '/records', builder: (_, _) => const Text('records')),
       GoRoute(path: '/standings', builder: (_, _) => const Text('standings')),
+      GoRoute(path: '/news', builder: (_, _) => const Text('news')),
       GoRoute(path: '/onboarding', builder: (_, _) => const Text('onboarding')),
       GoRoute(path: '/settings', builder: (_, _) => const Text('settings')),
     ],
   );
 }
 
-Widget _homeInteractionScope({required Widget child}) {
+Widget _homeInteractionScope({
+  required Widget child,
+  HomeKboBrief? kboBrief,
+  List<HomeQuickItem> quickItems = const [],
+}) {
   final standings = [
     _standing(
       rank: 1,
@@ -470,8 +611,8 @@ Widget _homeInteractionScope({required Widget child}) {
               ),
             ],
           ),
-          kboBrief: null,
-          quickItems: const [],
+          kboBrief: kboBrief,
+          quickItems: quickItems,
           standingsPreview: standings,
         );
       }),

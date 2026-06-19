@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.57+57`
-- Current release tag: `0.0.57`
+- Flutter app version: `0.0.58+58`
+- Current release tag: `0.0.58`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -105,6 +105,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.55`: home is rebuilt around the reference dashboard flow with KBO brand mark, my-team brief, today games, recent flow, standings snapshot, insight/quick-info lower sections, and team-record tap targets from recent-flow/standings rows; bottom tabs align as home/game/records/news/more with a real `/news` brief screen; schedule calendar scrolling, records information density, common motion, and game-detail scorebug stability are reinforced; backend `/home` adds `standingsPreview`; current app build `0.0.55+55`.
 - `0.0.56`: home KBO brief score strip is densified around team labels, score, B-S-O dots, and base diamond; mini cards prioritize player performance, team trend, record radar, and pitcher check items before generic fallback cards; TestFlight build `0.0.56+56` upload checkpoint, superseded before GitHub Release/backend deploy by `0.0.57` after the home info-pack flow reorder.
 - `0.0.57`: home lower information flow is reordered to standings, insight pack, quick info, and recent flow; includes the `0.0.56` KBO brief strip/card ordering checkpoint and aligns TestFlight, Git tag, GitHub Release, backend deploy, and topic resubscribe on build `0.0.57+57`.
+- `0.0.58`: news and records tabs are rebuilt around editorial brief/signals and league briefing flows; onboarding, more/settings, game detail, boxscore, lineup, and relay surfaces share bundled team logo imagery and richer player image rows; backend/home brief record items carry player image fallback data and off-day CTA routes to schedule; current app build `0.0.58+58`.
 
 ## GitHub Release Note Template
 

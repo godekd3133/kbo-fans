@@ -17,6 +17,7 @@ import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
+import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/models/game.dart';
 import '../../data/models/highlight_info.dart';
 import '../../data/models/highlight_video.dart';
@@ -29,12 +30,6 @@ import 'tabs/boxscore_tab.dart';
 import 'tabs/lineup_tab.dart';
 import 'tabs/relay_tab.dart';
 import 'tabs/score_tab.dart';
-
-const _kboImageHeaders = {
-  'Referer': 'https://www.koreabaseball.com/',
-  'User-Agent':
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-};
 
 const gameDetailLiveRelayRefreshInterval = Duration(seconds: 5);
 const gameDetailLiveDefaultRefreshInterval = Duration(seconds: 8);
@@ -859,34 +854,11 @@ class _ScorebugLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CachedNetworkImage(
-      imageUrl: team?.logoUrl ?? '',
-      httpHeaders: _kboImageHeaders,
-      width: 54,
-      height: 54,
-      memCacheWidth: 162,
-      memCacheHeight: 162,
-      placeholder: (_, _) => _fallback(),
-      errorWidget: (_, _, _) => _fallback(),
-    );
-  }
-
-  Widget _fallback() {
-    return Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        color: (team?.primaryColor ?? AppColors.cardSub).withValues(
-          alpha: 0.18,
-        ),
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.divider),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        fallback.isNotEmpty ? fallback.substring(0, 1) : '?',
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-      ),
+    return KboTeamLogoImage(
+      teamId: team?.id,
+      fallback: fallback,
+      size: 54,
+      padding: 3,
     );
   }
 }
@@ -1649,14 +1621,11 @@ class _HighlightCardState extends State<_HighlightCard> {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CachedNetworkImage(
-            imageUrl: team?.logoUrl ?? '',
-            width: 34,
-            height: 34,
-            memCacheWidth: 102,
-            memCacheHeight: 102,
-            errorWidget: (_, _, _) => _teamBadgeFallback(shortName),
-            placeholder: (_, _) => _teamBadgeFallback(shortName),
+          KboTeamLogoImage(
+            teamId: team?.id,
+            fallback: shortName,
+            size: 34,
+            padding: 1.5,
           ),
           const SizedBox(height: 6),
           Text(
@@ -1756,27 +1725,6 @@ class _HighlightCardState extends State<_HighlightCard> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _teamBadgeFallback(String shortName) {
-    final initial = shortName.isNotEmpty ? shortName.substring(0, 1) : '?';
-    return Container(
-      width: 34,
-      height: 34,
-      decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-          color: AppColors.textPrimary,
-        ),
       ),
     );
   }

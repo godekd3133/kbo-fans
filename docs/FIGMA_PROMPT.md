@@ -13,7 +13,7 @@
 - **스타일**: 모던, 미니멀, 다크 모드 기반 스포츠 앱
 - **폰트**: Pretendard (한글), SF Pro Display (영문/숫자). Flutter 앱은 `PretendardVariable.ttf`를 번들에 포함해 시스템 fallback이 아니라 실제 Pretendard 렌더링을 기준으로 한다.
 - **라운드**: Hero 카드 12px, 일반/요약 카드 8px, 버튼 12px, 입력 8px
-- **아이콘**: 앱 UI에서는 이모지 텍스트를 쓰지 않고, 홈/일정/순위/기록실/설정 의미의 벡터 아이콘을 사용
+- **아이콘**: 앱 UI에서는 이모지 텍스트를 쓰지 않고, 홈/경기/기록/뉴스/더보기 의미의 벡터 아이콘을 사용
 - **앱 구현 기준**: 2026-05-19 v4 `Moment Subscription & Surface Strategy` 이후 실제 Flutter 화면도 430px 이하 mobile frame, 8px 카드, 작은 outline bottom tab, 상태 우선 헤더를 기본값으로 둔다.
 - **보조 비주얼 리소스**: 리얼/시네마틱 사진풍이 아니라 캐주얼 2.5D 스티커형 야구 일러스트를 사용한다. 화면별 25개 단위 리소스는 48~54px 높이의 가로 레일로 다루고, 로고/읽을 수 있는 텍스트/실제 선수 얼굴을 넣지 않는다.
 
@@ -80,7 +80,7 @@ https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_{�
 
 ### Bottom Tab Bar (공통)
 
-- 5탭: 홈 | 일정 | 순위 | 기록실 | 설정
+- 5탭: 홈 | 경기 | 기록 | 뉴스 | 더보기
 - 높이: 83px (하단 Safe Area 34px 포함)
 - 배경: #0F0F0F, 상단 구분선 #333333 (0.5px)
 - 활성 탭: #FFFFFF 아이콘 + 텍스트
@@ -131,11 +131,12 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
                          ├── 리그 리더
                          └── 선수 카드 탭 → [선수 상세]
 
-                    [7. 설정] ◀── Bottom Tab "설정"
-                         ├── 마이팀 변경 → [팀 선택 모달]
+                    [7. 더보기] ◀── Bottom Tab "더보기"
+                         ├── 마이팀 요약 / 오늘 챙길 정보
+                         ├── 빠른 이동 → 경기 / 순위 / 기록 / 뉴스
+                         ├── 앱 밖 표면 Push · Live · Brief
                          ├── 알림 플레이북 / Moment Subscription
-                         ├── 앱 밖 표면 Push · Live · Widget
-                         └── 앱 정보
+                         └── 세부 설정 및 지원
 ```
 
 - 각 화면을 라운드 사각형(#1A1A1A, border #333333)으로 표현
@@ -504,22 +505,44 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 ---
 
-### Page 10: 설정
+### Page 10: 더보기 - KBO 팬 허브
 
-개인화 옵션 관리. **Bottom Tab 포함 (설정 탭 활성).**
+마이팀 상태, 오늘 챙길 정보, 주요 화면 이동, 앱 밖 표면, 알림 플레이북을 한 흐름으로 정리하는 허브 화면. **Bottom Tab 포함 (더보기 탭 활성).**
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "설정" 20px Pretendard Bold #FFFFFF
+- 좌측: "더보기" 11px Pretendard ExtraBold #B0B0B0 + "KBO 팬 허브" 23px Pretendard Black #FFFFFF
 
-**섹션 1 — 마이팀** (상단 마진 24px, 좌우 패딩 16px):
+**섹션 1 — 마이팀 요약** (상단 마진 16px, 좌우 패딩 16px):
 
-- 라벨: "마이팀" 14px #B0B0B0, 하단 마진 8px
-- 카드: #1A1A1A, 라운드 12px, 높이 56px, 패딩 0 16px
-  - 좌측: LG 로고(32px) + "LG 트윈스" 16px #FFFFFF (간격 12px)
-  - 우측: ">" 화살표 16px #666666
+- 카드: #1A1A1A, 라운드 8px, 패딩 16px
+  - 좌측: 팀 로고 52px
+  - 중앙: "마이팀" 10px #666666 + 팀명 20px #FFFFFF + 승패/승률/경기차 요약 12px #B0B0B0
+  - 우측: 상태 pill "오늘 경기" 또는 "팬 허브"
+  - 하단: 오늘 / 순위 / 최근 3개 metric tile, 각 tile 은 고정 높이와 8px radius
 
-**섹션 2 — 알림 플레이북 / Moment Subscription** (상단 마진 24px):
+**섹션 2 — 오늘 챙길 정보**:
+
+- 라벨: "오늘 챙길 정보" 15px #FFFFFF
+- home aggregate brief를 4개 row로 가공해 경기, 순위, 기록, 마이팀 문맥을 먼저 보여줌
+- 각 row: label pill 10px, title 13px, summary 11px, chevron
+
+**섹션 3 — 빠른 이동**:
+
+- 2x2 shortcut grid: 경기 일정, 순위표, 기록실, 뉴스
+- 각 카드: #1A1A1A, 8px radius, 82px 내외 높이, icon circle 34px, title 14px, subtitle 11px
+
+**섹션 4 — 앱 밖 표면** (상단 마진 20px):
+
+- 라벨: "앱 밖 표면" 14px #B0B0B0, 하단 마진 8px
+- 3개 row: 푸시, 라이브 액티비티, 브리프
+- 내부 구현명 설명이 아니라 사용자가 받는 경험을 설명: "득점/홈런/역전", "따라가는 경기", "비경기일 정보"
+
+**섹션 5 — 마이팀** (상단 마진 20px):
+
+- 기존 팀 변경 카드 유지. 좌측: LG 로고(32px) + "LG 트윈스" 16px #FFFFFF, 우측 chevron
+
+**섹션 6 — 알림 플레이북 / Moment Subscription** (상단 마진 24px):
 
 - 기준 산출물: `docs/UI_UX_NOTIFICATION_OUTSIDE_APP_TRENDS_2026-05-19.md`
 - 라벨: "알림 플레이북" 14px #B0B0B0, 하단 마진 8px
@@ -542,14 +565,8 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
     - 라인업 — 요약, "선발 라인업 공개 또는 변경을 묶어서 봅니다"
     - 이닝 교대 — Live만, "알림 대신 Live 표면에서 상태만 갱신합니다"
 
-**섹션 3 — 앱 밖 표면** (상단 마진 20px):
+**섹션 7 — 권한 / 따라가기 원칙** (상단 마진 20px):
 
-- 라벨: "앱 밖 표면" 14px #B0B0B0, 하단 마진 8px
-- 4개 surface chip/card 를 한 카드 안에 세로 배치:
-  - Push — "즉시 알아야 하는 장면"
-  - 요약 — "덜 급한 장면 묶음"
-  - Live — "따라가는 경기만 잠금화면에"
-  - Widget — "실시간 중계가 아닌 상태판"
 - "경기 따라가기" CTA 는 설정 화면의 전역 토글이 아니라 경기 상세 화면의 session action 으로 설계
 - Permission preview sheet:
   - OS permission sheet 전에 앱 자체 sheet 를 먼저 표시
@@ -558,7 +575,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
   - 버튼: "허용하고 따라가기" / "나중에"
   - 첫 실행 onboarding 에서 push permission 을 요청하지 말 것
 
-**섹션 4 — 앱 정보 및 지원** (상단 마진 24px):
+**섹션 8 — 세부 설정 및 지원** (상단 마진 24px):
 
 - 라벨: "앱 정보 및 지원" 14px #B0B0B0, 하단 마진 8px
 - 카드: #1A1A1A, 라운드 12px

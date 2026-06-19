@@ -35,7 +35,12 @@ class ApiPlayerRepository implements PlayerRepository {
     );
     final players = data['players'] as List<dynamic>? ?? [];
     return players
-        .map((item) => _parsePlayer(item as Map<String, dynamic>))
+        .map(
+          (item) => _parsePlayer(
+            item as Map<String, dynamic>,
+            fallbackSeason: season,
+          ),
+        )
         .toList();
   }
 
@@ -57,7 +62,7 @@ class ApiPlayerRepository implements PlayerRepository {
       maxAge: _stableCacheAge,
       allowCacheOnFailure: isHistoricalSeason,
     );
-    return _parsePlayer(data);
+    return _parsePlayer(data, fallbackSeason: season);
   }
 
   @override
@@ -106,7 +111,12 @@ class ApiPlayerRepository implements PlayerRepository {
     final players = data['players'] as List<dynamic>? ?? [];
     return TeamRecordsBundle(
       players: players
-          .map((item) => _parsePlayer(item as Map<String, dynamic>))
+          .map(
+            (item) => _parsePlayer(
+              item as Map<String, dynamic>,
+              fallbackSeason: season,
+            ),
+          )
           .toList(),
       teamStats: _parseTeamStats(
         data['teamStats'] as Map<String, dynamic>? ?? const {},
@@ -304,7 +314,7 @@ class ApiPlayerRepository implements PlayerRepository {
     return (first['rank'] as num?)?.toInt() == 1;
   }
 
-  PlayerProfile _parsePlayer(Map<String, dynamic> json) {
+  PlayerProfile _parsePlayer(Map<String, dynamic> json, {int? fallbackSeason}) {
     final seasonStats = (json['seasonStats'] as List<dynamic>? ?? [])
         .map((item) => item.toString())
         .toList();
@@ -332,7 +342,11 @@ class ApiPlayerRepository implements PlayerRepository {
           (json['playerType'] as String? ?? '').toLowerCase() == 'pitcher'
           ? PlayerType.pitcher
           : PlayerType.hitter,
-      imageUrl: _normalizePlayerImageUrl(json['imageUrl'] as String?, json),
+      imageUrl: _normalizePlayerImageUrl(
+        json['imageUrl'] as String?,
+        json,
+        fallbackSeason: fallbackSeason,
+      ),
       name: json['name'] as String? ?? '',
       number: json['number'] as int? ?? 0,
       position: json['position'] as String? ?? '',
@@ -372,11 +386,12 @@ class ApiPlayerRepository implements PlayerRepository {
 
   String? _normalizePlayerImageUrl(
     String? imageUrl,
-    Map<String, dynamic> json,
-  ) {
+    Map<String, dynamic> json, {
+    int? fallbackSeason,
+  }) {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       final playerId = json['id'] as String? ?? '';
-      final season = json['season'] as int?;
+      final season = json['season'] as int? ?? fallbackSeason;
       if (season != null &&
           season < kboPlayerImageMinSeason &&
           playerId.isNotEmpty) {
@@ -385,7 +400,7 @@ class ApiPlayerRepository implements PlayerRepository {
       return imageUrl;
     }
     final playerId = json['id'] as String? ?? '';
-    final season = json['season'] as int?;
+    final season = json['season'] as int? ?? fallbackSeason;
     if (season == null || playerId.isEmpty) {
       return imageUrl;
     }

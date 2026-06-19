@@ -166,6 +166,7 @@ def test_historical_home_keeps_partial_section_fallback() -> None:
     assert payload["date"] == "2001-01-01"
     assert payload["myTeamBrief"]["recentGamesCount"] == 0
     assert payload["kboBrief"]["items"][0]["type"] == "offday"
+    assert payload["kboBrief"]["items"][0]["route"] == "/schedule"
 
 
 def test_home_run_quick_item_uses_player_image_and_detail_route() -> None:
@@ -192,6 +193,32 @@ def test_home_run_quick_item_uses_player_image_and_detail_route() -> None:
     assert items[0]["title"] == "김도영 13개"
     assert items[0]["route"] == "/records/player/52605?season=2026"
     assert items[0]["imageUrl"].endswith("/2026/52605.jpg")
+
+
+def test_kbo_brief_record_item_uses_player_image_and_detail_route() -> None:
+    service = HomeService.__new__(HomeService)
+
+    item = service._build_record_brief_item(
+        {
+            "leaders": {
+                "hr": [
+                    {
+                        "playerId": "52605",
+                        "name": "김도영",
+                        "teamId": "HT",
+                        "value": "13",
+                    }
+                ]
+            }
+        },
+        season=2026,
+    )
+
+    assert item is not None
+    assert item["title"] == "김도영 13홈런"
+    assert item["route"] == "/records/player/52605?season=2026"
+    assert item["imageUrl"].endswith("/2026/52605.jpg")
+    assert item["fallbackLabel"] == "김도영"
 
 
 def test_kbo_brief_summarizes_final_game_without_fake_records() -> None:

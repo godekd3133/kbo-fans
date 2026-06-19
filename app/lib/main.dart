@@ -11,6 +11,7 @@ import 'core/config/app_config.dart';
 import 'core/bootstrap/startup_prep_state.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'core/router/app_route_sanitizer.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
 import 'services/game_event_alert_service.dart';
@@ -409,17 +410,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   }
 
   String? _safeLaunchRoute(String route) {
-    if (route.isEmpty || !route.startsWith('/') || route.startsWith('//')) {
-      return null;
-    }
-    final uri = Uri.tryParse(route);
-    if (uri == null || uri.hasScheme || uri.host.isNotEmpty) {
-      return null;
-    }
-    if (uri.path == '/' || uri.path == '/boot' || uri.path == '/onboarding') {
-      return '/home';
-    }
-    return uri.toString();
+    return sanitizeAppRoute(route, fallback: null);
   }
 
   late final WidgetsBindingObserver _lifecycleObserver = _AppLifecycleObserver(

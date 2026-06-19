@@ -370,7 +370,7 @@ class HomeService:
                     "eyebrow": "리그 체크",
                     "title": "오늘은 KBO 경기가 없습니다",
                     "subtitle": "순위표와 리더보드로 다음 경기 관전 포인트를 준비하세요.",
-                    "route": "/records",
+                    "route": "/schedule",
                     "gameId": None,
                     "teamIds": [],
                 }
@@ -613,6 +613,8 @@ class HomeService:
             "route": route,
             "gameId": None,
             "teamIds": [team_id] if team_id else [],
+            "imageUrl": self._record_leader_image_url(leader, season),
+            "fallbackLabel": leader.get("name"),
         }
 
     def _kbo_brief_item(

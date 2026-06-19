@@ -84,6 +84,8 @@ class ApiHomeRepository {
       route: json['route'] as String? ?? '/home',
       gameId: json['gameId'] as String?,
       teamIds: teamIds,
+      imageUrl: json['imageUrl'] as String?,
+      fallbackLabel: json['fallbackLabel'] as String?,
     );
   }
 

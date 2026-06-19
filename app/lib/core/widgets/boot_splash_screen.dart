@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../bootstrap/startup_prep_state.dart';
-import '../constants/visual_assets.dart';
+import '../router/app_route_sanitizer.dart';
 import '../theme/app_theme.dart';
-import 'app_artwork_card.dart';
 
 class BootSplashScreen extends ConsumerWidget {
   final String redirectTo;
@@ -18,7 +17,9 @@ class BootSplashScreen extends ConsumerWidget {
     if (!prep.blocking) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (context.mounted) {
-          context.go(redirectTo);
+          context.go(
+            sanitizeAppRoute(redirectTo, fallback: '/home') ?? '/home',
+          );
         }
       });
     }
@@ -32,112 +33,95 @@ class BootSplashScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 320),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.divider),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x24000000),
-                    blurRadius: 24,
-                    offset: Offset(0, 12),
-                  ),
-                ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+          child: Column(
+            children: [
+              const Spacer(flex: 3),
+              Image.asset(
+                'assets/branding/app_icon_source_1024.png',
+                width: 112,
+                height: 112,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const AppArtworkCard(
-                    assetName: VisualAssets.liveRelayField,
-                    height: 86,
+              const SizedBox(height: 22),
+              Image.asset(
+                'assets/visuals/kbo_header_logo.png',
+                width: 142,
+                height: 54,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                semanticLabel: prep.title,
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 42,
+                child: Text(
+                  prep.message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    prep.title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    prep.message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textSecondary,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Align(
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        color: AppColors.live,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: 228,
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    Container(
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: AppColors.cardSub,
+                        borderRadius: BorderRadius.circular(999),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  Stack(
-                    alignment: Alignment.centerLeft,
-                    children: [
-                      Container(
-                        height: 14,
+                    FractionallySizedBox(
+                      widthFactor: visualProgress ?? 1,
+                      child: Container(
+                        height: 6,
                         decoration: BoxDecoration(
-                          color: AppColors.cardSub,
+                          color: AppColors.live,
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
-                      FractionallySizedBox(
-                        widthFactor: visualProgress ?? 1,
-                        child: Container(
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: AppColors.live,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        prep.blocking
-                            ? '${prep.completedSteps}/${prep.totalSteps} 단계'
-                            : '곧 시작합니다',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textDisabled,
-                        ),
-                      ),
-                      Text(
-                        progressLabel,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 228,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      prep.blocking
+                          ? '${prep.completedSteps}/${prep.totalSteps} 단계'
+                          : '곧 시작합니다',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textDisabled,
+                      ),
+                    ),
+                    Text(
+                      progressLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(flex: 4),
+            ],
           ),
         ),
       ),
