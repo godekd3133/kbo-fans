@@ -20,7 +20,11 @@
 - [x] `./scripts/push-live-preflight.sh --app-only` (`push_live_preflight=status=ok checks=29 warnings=1 failures=0`)
 - [x] `ALLOW_INSECURE_RELEASE_API=true API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api ./scripts/release-api-health-check.sh` (`/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200)
 - [x] `git diff --check`
-- [ ] release build/TestFlight 업로드, 실기기 foreground/background/terminated receipt
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build ipa --release --export-method app-store --build-name=0.0.39 --build-number=39 --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true --dart-define=API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`
+- [x] `0.0.39 (39)` IPA 기준 `CFBundleShortVersionString=0.0.39`, `CFBundleVersion=39`, `aps-environment=production`, `get-task-allow=false`, smoke backend `API_BASE_URL` 주입 확인
+- [x] `DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer PATH="/opt/homebrew/bin:$PATH" xcrun xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/upload -exportOptionsPlist build/ios/ipa/ExportOptions-upload.plist -allowProvisioningUpdates` (`Upload succeeded`, `Uploaded package is processing`)
+- [x] export 중 `objective_c.framework` dSYM 누락 warning이 있었으나 `Upload succeeded` / `EXPORT SUCCEEDED`로 완료됨
+- [ ] 실기기 foreground/background/terminated receipt
 
 ---
 
