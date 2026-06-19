@@ -166,6 +166,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
+    await tester.scrollUntilVisible(
+      find.text('선수 기록 보기').first,
+      120,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.pump();
     await tester.tap(find.text('선수 기록 보기').first);
     await tester.pumpAndSettle();
 
@@ -213,6 +219,83 @@ void main() {
     expect(find.text('ERA 0.00'), findsOneWidget);
     expect(find.text('WHIP 0.50'), findsOneWidget);
     expect(find.text('실점 1'), findsOneWidget);
+  });
+
+  testWidgets('팀 비교와 선수별 상세 기록을 같은 탭에서 확인할 수 있다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _boxscoreHarness(
+        boxscore: _displayableBoxscore,
+        players: [
+          _playerProfile(
+            id: '50054',
+            teamId: 'KT',
+            name: '강백호',
+            number: 50,
+            playerType: PlayerType.hitter,
+            avg: 0.312,
+            ops: 0.842,
+          ),
+          _playerProfile(
+            id: '61023',
+            teamId: 'KT',
+            name: '김영현',
+            number: 60,
+            playerType: PlayerType.pitcher,
+            era: 3.21,
+            whip: 1.08,
+          ),
+        ],
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('팀 비교'), findsOneWidget);
+    expect(find.text('KT'), findsWidgets);
+    expect(find.text('LG'), findsWidgets);
+    expect(find.text('득점'), findsWidgets);
+    expect(find.text('장타'), findsWidgets);
+    expect(find.text('오늘 세부 기록'), findsNothing);
+    expect(find.text('투수 세부 기록'), findsNothing);
+
+    await tester.scrollUntilVisible(
+      find.text('상세 기록').first,
+      120,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.pump();
+    await tester.tap(find.text('상세 기록').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('오늘 세부 기록'), findsOneWidget);
+    expect(find.text('시즌 기록'), findsOneWidget);
+    expect(find.text('AVG .312'), findsOneWidget);
+    expect(find.text('OPS .842'), findsOneWidget);
+    expect(find.text('멀티히트'), findsOneWidget);
+    expect(find.text('득점 관여'), findsOneWidget);
+    expect(find.text('타석 5'), findsOneWidget);
+    expect(find.text('사구 1'), findsWidgets);
+
+    await tester.scrollUntilVisible(
+      find.text('상세 기록').first,
+      120,
+      scrollable: find.byType(Scrollable),
+    );
+    await tester.pump();
+    await tester.tap(find.text('상세 기록').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('투수 세부 기록'), findsOneWidget);
+    expect(find.text('ERA 3.21'), findsOneWidget);
+    expect(find.text('WHIP 1.08'), findsOneWidget);
+    expect(find.text('무자책'), findsOneWidget);
+    expect(find.text('투구수 34'), findsOneWidget);
   });
 }
 
@@ -275,7 +358,40 @@ final _displayableBoxscore = GameBoxscoreData(
       ),
     ],
   ),
-  home: const TeamBoxscoreData(teamId: 'LG', batters: [], pitchers: []),
+  home: const TeamBoxscoreData(
+    teamId: 'LG',
+    batters: [
+      BatterRecord(
+        order: 4,
+        position: '좌',
+        name: '김현수',
+        atBats: 4,
+        runs: 1,
+        hits: 1,
+        rbi: 2,
+        plateAppearances: 4,
+        doubles: 1,
+        triples: 0,
+        homeRuns: 0,
+        walks: 0,
+        hitByPitch: 0,
+        strikeouts: 1,
+        stolenBases: 0,
+      ),
+    ],
+    pitchers: [
+      PitcherRecord(
+        name: '상대투수',
+        innings: '2.0',
+        hits: 2,
+        strikeouts: 1,
+        walks: 1,
+        earnedRuns: 2,
+        pitchCount: 41,
+        runs: 2,
+      ),
+    ],
+  ),
 );
 
 Widget _boxscoreHarness({
@@ -336,6 +452,10 @@ PlayerProfile _playerProfile({
   required String name,
   required int number,
   PlayerType playerType = PlayerType.hitter,
+  double? avg,
+  double? ops,
+  double? era,
+  double? whip,
 }) {
   return PlayerProfile(
     id: id,
@@ -355,5 +475,9 @@ PlayerProfile _playerProfile({
     seasonStats: const [],
     highlights: const [],
     recentGames: const [],
+    avg: avg,
+    ops: ops,
+    era: era,
+    whip: whip,
   );
 }

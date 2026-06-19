@@ -45,10 +45,14 @@ class BoxscoreTab extends ConsumerStatefulWidget {
 
 class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   bool _showAway = true;
+  final Set<String> _expandedRows = <String>{};
 
   String get _selectedTeamName => _showAway ? widget.awayName : widget.homeName;
   String get _selectedTeamId =>
       _showAway ? widget.awayTeamId : widget.homeTeamId;
+  String get _opponentTeamName => _showAway ? widget.homeName : widget.awayName;
+  String get _opponentTeamId =>
+      _showAway ? widget.homeTeamId : widget.awayTeamId;
 
   @override
   Widget build(BuildContext context) {
@@ -70,6 +74,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       error: (error, _) => _buildUnavailableState('박스스코어 로딩 실패: $error'),
       data: (boxscore) {
         final selected = _showAway ? boxscore.away : boxscore.home;
+        final opponent = _showAway ? boxscore.home : boxscore.away;
         if (!boxscore.officialAvailable || !selected.hasDisplayableRecords) {
           return _buildUnavailableState('공식 박스스코어 업데이트 전입니다');
         }
@@ -79,15 +84,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
             : ref.watch(teamPlayersProvider('$_selectedTeamId|$season'));
         return playersAsync.when(
-          loading: () =>
-              _buildContent(selected.batters, selected.pitchers, const {}),
-          error: (_, _) =>
-              _buildContent(selected.batters, selected.pitchers, const {}),
-          data: (players) =>
-              _buildContent(selected.batters, selected.pitchers, {
-                for (final player in players)
-                  if (player.name.isNotEmpty) player.name: player,
-              }),
+          loading: () => _buildContent(selected, opponent, const {}),
+          error: (_, _) => _buildContent(selected, opponent, const {}),
+          data: (players) => _buildContent(selected, opponent, {
+            for (final player in players)
+              if (player.name.isNotEmpty) player.name: player,
+          }),
         );
       },
     );
@@ -171,12 +173,16 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   }
 
   Widget _buildContent(
-    List<BatterRecord> batters,
-    List<PitcherRecord> pitchers,
+    TeamBoxscoreData selected,
+    TeamBoxscoreData opponent,
     Map<String, PlayerProfile> playersByName,
   ) {
     final team = KboTeams.byId(_selectedTeamId);
     final accent = team?.primaryColor ?? AppColors.accent;
+    final batters = selected.batters;
+    final pitchers = selected.pitchers;
+    final selectedMetrics = _TeamBoxscoreMetrics.from(selected);
+    final opponentMetrics = _TeamBoxscoreMetrics.from(opponent);
 
     final totalAtBats = batters.fold<int>(
       0,
@@ -231,6 +237,18 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             ),
           ],
         ),
+        if (opponent.hasDisplayableRecords) ...[
+          const SizedBox(height: 12),
+          _TeamComparisonCard(
+            selectedTeamId: _selectedTeamId,
+            selectedTeamName: _selectedTeamName,
+            opponentTeamId: _opponentTeamId,
+            opponentTeamName: _opponentTeamName,
+            selected: selectedMetrics,
+            opponent: opponentMetrics,
+            accent: accent,
+          ),
+        ],
         if (keyBatter != null || keyPitcher != null) ...[
           const SizedBox(height: 16),
           Wrap(
@@ -314,6 +332,8 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         player?.imageUrl ??
         _resolveImageUrl(_playerImageMap(playersByName), batter.name);
     final todayAvg = batter.atBats > 0 ? (batter.hits / batter.atBats) : 0.0;
+    final rowKey = _rowKey('batter', batter.name);
+    final expanded = _expandedRows.contains(rowKey);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppPressable(
@@ -400,6 +420,17 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                       const SizedBox(height: 8),
                       const _RecordsLinkCue(),
                     ],
+                    const SizedBox(height: 8),
+                    _BoxscoreDetailToggle(
+                      expanded: expanded,
+                      onTap: () => _toggleRow(rowKey),
+                    ),
+                    if (expanded)
+                      _BatterDetailPanel(
+                        batter: batter,
+                        player: player,
+                        accent: accent,
+                      ),
                   ],
                 ),
               ),
@@ -419,6 +450,8 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final imageUrl =
         player?.imageUrl ??
         _resolveImageUrl(_playerImageMap(playersByName), pitcher.name);
+    final rowKey = _rowKey('pitcher', pitcher.name);
+    final expanded = _expandedRows.contains(rowKey);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppPressable(
@@ -512,6 +545,17 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                 const SizedBox(height: 10),
                 const _RecordsLinkCue(),
               ],
+              const SizedBox(height: 8),
+              _BoxscoreDetailToggle(
+                expanded: expanded,
+                onTap: () => _toggleRow(rowKey),
+              ),
+              if (expanded)
+                _PitcherDetailPanel(
+                  pitcher: pitcher,
+                  player: player,
+                  accent: accent,
+                ),
             ],
           ),
         ),
@@ -590,6 +634,18 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         (pitcher.earnedRuns * 3);
   }
 
+  String _rowKey(String type, String rawName) {
+    return '$_selectedTeamId:$type:${_normalizeName(rawName)}';
+  }
+
+  void _toggleRow(String rowKey) {
+    setState(() {
+      if (!_expandedRows.remove(rowKey)) {
+        _expandedRows.add(rowKey);
+      }
+    });
+  }
+
   List<Widget> _batterAdvancedPills(BatterRecord batter) {
     return [
       if (batter.totalBases != null)
@@ -643,6 +699,536 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
 
   void _openPlayerDetail(PlayerProfile player) {
     context.push('/records/player/${player.id}?season=${DateTime.now().year}');
+  }
+}
+
+class _TeamBoxscoreMetrics {
+  final int runs;
+  final int hits;
+  final int rbi;
+  final int pitcherStrikeouts;
+  final int? extraBaseHits;
+  final int? batterWalks;
+
+  const _TeamBoxscoreMetrics({
+    required this.runs,
+    required this.hits,
+    required this.rbi,
+    required this.pitcherStrikeouts,
+    required this.extraBaseHits,
+    required this.batterWalks,
+  });
+
+  factory _TeamBoxscoreMetrics.from(TeamBoxscoreData team) {
+    return _TeamBoxscoreMetrics(
+      runs: team.batters.fold<int>(0, (sum, batter) => sum + batter.runs),
+      hits: team.batters.fold<int>(0, (sum, batter) => sum + batter.hits),
+      rbi: team.batters.fold<int>(0, (sum, batter) => sum + batter.rbi),
+      pitcherStrikeouts: team.pitchers.fold<int>(
+        0,
+        (sum, pitcher) => sum + pitcher.strikeouts,
+      ),
+      extraBaseHits: _sumKnownInt(
+        team.batters.map((batter) => batter.extraBaseHits),
+      ),
+      batterWalks: _sumKnownInt(team.batters.map((batter) => batter.walks)),
+    );
+  }
+}
+
+int? _sumKnownInt(Iterable<int?> values) {
+  var hasKnown = false;
+  var total = 0;
+  for (final value in values) {
+    if (value == null) {
+      continue;
+    }
+    hasKnown = true;
+    total += value;
+  }
+  return hasKnown ? total : null;
+}
+
+String _knownIntText(int? value) => value == null ? '-' : '$value';
+
+List<Widget> _seasonPills(PlayerProfile? player) {
+  if (player == null) {
+    return const <Widget>[];
+  }
+  return [
+    if (player.avg != null)
+      _InfoPill(
+        label: 'AVG ${_formatThreeNoLeadingZero(player.avg!)}',
+        accent: AppColors.positive,
+      ),
+    if (player.ops != null)
+      _InfoPill(
+        label: 'OPS ${_formatThreeNoLeadingZero(player.ops!)}',
+        accent: AppColors.accent,
+      ),
+    if (player.era != null)
+      _InfoPill(
+        label: 'ERA ${player.era!.toStringAsFixed(2)}',
+        accent: AppColors.live,
+      ),
+    if (player.whip != null)
+      _InfoPill(
+        label: 'WHIP ${player.whip!.toStringAsFixed(2)}',
+        accent: AppColors.accent,
+      ),
+  ];
+}
+
+String _formatThreeNoLeadingZero(double value) {
+  final formatted = value.toStringAsFixed(3);
+  if (formatted.startsWith('0')) {
+    return formatted.substring(1);
+  }
+  return formatted;
+}
+
+class _TeamComparisonCard extends StatelessWidget {
+  final String selectedTeamId;
+  final String selectedTeamName;
+  final String opponentTeamId;
+  final String opponentTeamName;
+  final _TeamBoxscoreMetrics selected;
+  final _TeamBoxscoreMetrics opponent;
+  final Color accent;
+
+  const _TeamComparisonCard({
+    required this.selectedTeamId,
+    required this.selectedTeamName,
+    required this.opponentTeamId,
+    required this.opponentTeamName,
+    required this.selected,
+    required this.opponent,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <_ComparisonMetric>[
+      _ComparisonMetric('득점', '${selected.runs}', '${opponent.runs}'),
+      _ComparisonMetric('안타', '${selected.hits}', '${opponent.hits}'),
+      _ComparisonMetric('타점', '${selected.rbi}', '${opponent.rbi}'),
+      if (selected.extraBaseHits != null || opponent.extraBaseHits != null)
+        _ComparisonMetric(
+          '장타',
+          _knownIntText(selected.extraBaseHits),
+          _knownIntText(opponent.extraBaseHits),
+        ),
+      if (selected.batterWalks != null || opponent.batterWalks != null)
+        _ComparisonMetric(
+          '볼넷',
+          _knownIntText(selected.batterWalks),
+          _knownIntText(opponent.batterWalks),
+        ),
+      _ComparisonMetric(
+        '탈삼진',
+        '${selected.pitcherStrikeouts}',
+        '${opponent.pitcherStrikeouts}',
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  '팀 비교',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                ),
+              ),
+              _TeamMiniLabel(
+                teamId: selectedTeamId,
+                teamName: selectedTeamName,
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'vs',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textDisabled,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _TeamMiniLabel(
+                teamId: opponentTeamId,
+                teamName: opponentTeamName,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Column(
+            children: [
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) const SizedBox(height: 8),
+                _ComparisonMetricRow(metric: rows[i], accent: accent),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeamMiniLabel extends StatelessWidget {
+  final String teamId;
+  final String teamName;
+
+  const _TeamMiniLabel({required this.teamId, required this.teamName});
+
+  @override
+  Widget build(BuildContext context) {
+    final team = KboTeams.resolve(
+      id: teamId,
+      name: teamName,
+      shortName: teamName,
+    );
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 92),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: (team?.primaryColor ?? AppColors.card).withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        teamName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+}
+
+class _ComparisonMetric {
+  final String label;
+  final String selected;
+  final String opponent;
+
+  const _ComparisonMetric(this.label, this.selected, this.opponent);
+}
+
+class _ComparisonMetricRow extends StatelessWidget {
+  final _ComparisonMetric metric;
+  final Color accent;
+
+  const _ComparisonMetricRow({required this.metric, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 54,
+          child: Text(
+            metric.selected,
+            textAlign: TextAlign.left,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: accent,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.background.withValues(alpha: 0.42),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: Text(
+                metric.label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(
+          width: 54,
+          child: Text(
+            metric.opponent,
+            textAlign: TextAlign.right,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BoxscoreDetailToggle extends StatelessWidget {
+  final bool expanded;
+  final VoidCallback onTap;
+
+  const _BoxscoreDetailToggle({required this.expanded, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          foregroundColor: AppColors.textSecondary,
+        ),
+        icon: Icon(
+          expanded
+              ? Icons.keyboard_arrow_up_rounded
+              : Icons.keyboard_arrow_down_rounded,
+          size: 18,
+        ),
+        label: Text(
+          expanded ? '접기' : '상세 기록',
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+        ),
+      ),
+    );
+  }
+}
+
+class _BatterDetailPanel extends StatelessWidget {
+  final BatterRecord batter;
+  final PlayerProfile? player;
+  final Color accent;
+
+  const _BatterDetailPanel({
+    required this.batter,
+    required this.player,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final detailPills = <Widget>[
+      if (batter.plateAppearances != null)
+        _InfoPill(
+          label: '타석 ${batter.plateAppearances}',
+          accent: AppColors.textSecondary,
+          subtle: true,
+        ),
+      _InfoPill(
+        label: '타수 ${batter.atBats}',
+        accent: AppColors.textSecondary,
+        subtle: true,
+      ),
+      if (batter.totalBases != null)
+        _InfoPill(label: '루타 ${batter.totalBases}', accent: accent),
+      if (batter.extraBaseHits != null)
+        _InfoPill(label: '장타 ${batter.extraBaseHits}', accent: AppColors.live),
+      if (batter.walks != null)
+        _InfoPill(label: '볼넷 ${batter.walks}', accent: AppColors.ballYellow),
+      if (batter.hitByPitch != null)
+        _InfoPill(
+          label: '사구 ${batter.hitByPitch}',
+          accent: AppColors.ballYellow,
+        ),
+      if (batter.strikeouts != null)
+        _InfoPill(
+          label: '삼진 ${batter.strikeouts}',
+          accent: AppColors.textSecondary,
+          subtle: true,
+        ),
+      if (batter.stolenBases != null)
+        _InfoPill(
+          label: '도루 ${batter.stolenBases}',
+          accent: AppColors.positive,
+        ),
+    ];
+    final seasonPills = _seasonPills(player);
+    final contextPills = <Widget>[
+      if (batter.hits >= 2)
+        const _ContextBadge(label: '멀티히트', color: AppColors.positive),
+      if (batter.rbi >= 2 || batter.runs >= 2)
+        const _ContextBadge(label: '득점 관여', color: AppColors.live),
+      if ((batter.homeRuns ?? 0) > 0)
+        const _ContextBadge(label: '홈런', color: AppColors.ballYellow),
+      if ((batter.stolenBases ?? 0) > 0)
+        const _ContextBadge(label: '주루 기여', color: AppColors.accent),
+    ];
+
+    return _DetailPanel(
+      children: [
+        if (contextPills.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, runSpacing: 6, children: contextPills),
+        ],
+        const SizedBox(height: 10),
+        const _DetailTitle('오늘 세부 기록'),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: detailPills),
+        if (seasonPills.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const _DetailTitle('시즌 기록'),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: seasonPills),
+        ],
+      ],
+    );
+  }
+}
+
+class _PitcherDetailPanel extends StatelessWidget {
+  final PitcherRecord pitcher;
+  final PlayerProfile? player;
+  final Color accent;
+
+  const _PitcherDetailPanel({
+    required this.pitcher,
+    required this.player,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final detailPills = <Widget>[
+      if (pitcher.pitchCount != null)
+        _InfoPill(label: '투구수 ${pitcher.pitchCount}', accent: accent),
+      _InfoPill(label: '이닝 ${pitcher.innings}', accent: accent),
+      _InfoPill(
+        label: '피안타 ${pitcher.hits}',
+        accent: AppColors.textSecondary,
+        subtle: true,
+      ),
+      _InfoPill(label: '삼진 ${pitcher.strikeouts}', accent: AppColors.live),
+      _InfoPill(label: '사사구 ${pitcher.walks}', accent: AppColors.ballYellow),
+      _InfoPill(
+        label: '자책 ${pitcher.earnedRuns}',
+        accent: AppColors.textSecondary,
+        subtle: true,
+      ),
+      if (pitcher.runs != null)
+        _InfoPill(label: '실점 ${pitcher.runs}', accent: AppColors.ballYellow),
+    ];
+    final seasonPills = _seasonPills(player);
+    final contextPills = <Widget>[
+      if (pitcher.earnedRuns == 0 && (pitcher.inningsPitched ?? 0) > 0)
+        const _ContextBadge(label: '무자책', color: AppColors.positive),
+      if (pitcher.runs != null &&
+          pitcher.runs == 0 &&
+          (pitcher.inningsPitched ?? 0) > 0)
+        const _ContextBadge(label: '무실점', color: AppColors.positive),
+      if (pitcher.strikeouts >= 2)
+        const _ContextBadge(label: '탈삼진 흐름', color: AppColors.live),
+      if (pitcher.walks == 0 && (pitcher.inningsPitched ?? 0) > 0)
+        const _ContextBadge(label: '무볼넷', color: AppColors.accent),
+    ];
+
+    return _DetailPanel(
+      children: [
+        if (contextPills.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(spacing: 6, runSpacing: 6, children: contextPills),
+        ],
+        const SizedBox(height: 10),
+        const _DetailTitle('투수 세부 기록'),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: detailPills),
+        if (seasonPills.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          const _DetailTitle('시즌 기록'),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: seasonPills),
+        ],
+      ],
+    );
+  }
+}
+
+class _DetailPanel extends StatelessWidget {
+  final List<Widget> children;
+
+  const _DetailPanel({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 1,
+            width: double.infinity,
+            color: AppColors.divider,
+          ),
+          const SizedBox(height: 8),
+          ...children,
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailTitle extends StatelessWidget {
+  final String label;
+
+  const _DetailTitle(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 12,
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class _ContextBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _ContextBadge({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          color: color,
+        ),
+      ),
+    );
   }
 }
 

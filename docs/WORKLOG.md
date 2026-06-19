@@ -12,11 +12,14 @@
 - [x] backend/API/direct KBO 박스스코어 계약에 optional 확장 필드 추가: 타석, 2루타, 3루타, 홈런, 볼넷, 사구, 삼진, 도루, 투구수, 실점
 - [x] 앱 모델에서 경기 단위 루타/장타/SLG, 투수 게임 ERA/WHIP를 파생하고 unknown optional field는 UI에서 숨김
 - [x] 박스스코어 카드에 루타/장타/SLG/볼넷/삼진/도루/투구수/ERA/WHIP/실점 chip 추가
+- [x] 선택 팀과 상대 팀의 득점/안타/타점/장타/볼넷/탈삼진을 비교하는 팀 비교 카드 추가
+- [x] 타자/투수 카드에 `상세 기록` 펼침을 추가해 오늘 세부 기록, 선수 프로필 기반 시즌 미니 지표, 멀티히트/득점 관여/무자책 같은 경기 맥락 badge를 표시
 - [x] placeholder-only 박스스코어 guard 유지 검증
 
 ### 검증
 - [x] `cd app && fvm dart format lib/features/game_detail/tabs/boxscore_tab.dart test/features/game_detail/boxscore_tab_test.dart`
 - [x] `cd app && fvm flutter test test/features/game_detail/boxscore_tab_test.dart --no-pub --reporter expanded` (`All tests passed`)
+- [x] `cd app && fvm flutter test test/features/game_detail/boxscore_tab_test.dart --no-pub --reporter expanded` (`6 passed`)
 - [x] `cd app && fvm flutter analyze lib/features/game_detail/tabs/boxscore_tab.dart test/features/game_detail/boxscore_tab_test.dart --no-pub` (`No issues found`)
 - [x] `PYTHONPATH=backend/src /Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/backend/.venv/bin/pytest -q backend/tests/test_boxscore_crawler.py` (`3 passed`)
 - [x] `cd app && fvm flutter test test/data/models/boxscore_test.dart --no-pub --reporter expanded` (`All tests passed`)
@@ -24,6 +27,7 @@
 - [x] `cd app && fvm flutter test test/data/kbo_direct_repository_test.dart --no-pub --reporter expanded` (`All tests passed`)
 - [x] `cd app && fvm dart format lib/data/models/boxscore.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart test/data/models/boxscore_test.dart test/data/api_client_test.dart test/data/kbo_direct_repository_test.dart test/features/game_detail/boxscore_tab_test.dart`
 - [x] `cd app && fvm flutter test test/data/models/boxscore_test.dart test/data/api_client_test.dart test/data/kbo_direct_repository_test.dart test/features/game_detail/boxscore_tab_test.dart --no-pub --reporter expanded` (`All tests passed`)
+- [x] `cd app && fvm flutter test test/data/models/boxscore_test.dart test/data/api_client_test.dart test/data/kbo_direct_repository_test.dart test/features/game_detail/boxscore_tab_test.dart --no-pub --reporter expanded` (`31 passed`)
 - [x] `cd app && fvm flutter analyze lib/data/models/boxscore.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart test/data/models/boxscore_test.dart test/data/api_client_test.dart test/data/kbo_direct_repository_test.dart test/features/game_detail/boxscore_tab_test.dart --no-pub` (`No issues found`)
 - [x] `PYTHONPATH=backend/src /Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/backend/.venv/bin/pytest -q backend/tests/test_boxscore_crawler.py backend/tests/test_boxscore_service.py` (`8 passed`)
 - [x] `python3 -m compileall backend/src/kbo_fans_backend/crawlers/boxscore.py`

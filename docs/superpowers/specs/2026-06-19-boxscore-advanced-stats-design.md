@@ -74,12 +74,17 @@ App-derived getters:
 
 Boxscore rows should expose richer but compact chips:
 
+- Team comparison:
+  - show selected team vs opponent for core counts: 득점, 안타, 타점, 탈삼진
+  - show optional comparison rows such as 장타 and 볼넷 only when at least one side has a known source value
 - Batter rows:
   - existing chips: production, AVG, AB, H, RBI, R
   - new chips when available: `루타 N`, `장타 N`, `SLG .000`, `볼넷 N`, `삼진 N`, `도루 N`
+  - expandable detail: today detail pills, season mini metrics from matched player profile, and context badges such as `멀티히트`, `득점 관여`, `홈런`
 - Pitcher rows:
   - existing chips: efficiency, IP, H, K, BB/HBP, ER
   - new chips when available: `투구 N`, `ERA 0.00`, `WHIP 0.00`, `실점 N`
+  - expandable detail: pitch count, line stats, season mini metrics from matched player profile, and context badges such as `무자책`, `무실점`, `탈삼진 흐름`
 
 Highlight cards can keep current summaries, but their underlying row cards should carry the richer stats.
 
@@ -90,11 +95,13 @@ Highlight cards can keep current summaries, but their underlying row cards shoul
 - API repository test or model parser coverage: optional fields from backend JSON reach app model.
 - Direct repository parser test: optional fields are read from ASMX-style headers when present.
 - Boxscore tab widget test: advanced stat chips render when optional values exist and do not render when values are null.
+- Boxscore tab widget test: team comparison and expandable batter/pitcher detail render only from known boxscore/player-profile values.
 
 ## Acceptance
 
 - Backend and direct app modes share the same optional field names.
 - No existing placeholder guard regresses.
 - No unverified zeros are shown for unknown optional fields.
+- Expanded details and comparison rows must not replace the existing player-detail navigation affordance.
 - Targeted backend and Flutter tests pass.
 - APP_SPEC, WORKLOG, and CHANGELOG describe the expanded boxscore surface.
