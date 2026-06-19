@@ -228,10 +228,12 @@
 | 경기 종료 | 최종 스코어, 승패 요약, 핵심 선수 1~2명 | `경기 기록`, `하이라이트` |
 | 취소/지연 | 취소/지연 사유, 다음 일정 | `일정 보기` |
 
+- 마이팀 브리프는 단순 지표 나열보다 `지금 내 팀 상황`을 먼저 판단하게 한다. 선택된 팀이 있으면 상태 pill, 한 줄 헤드라인(`5회초 3:2 리드`, `4:2 승리`, `오늘 18:30 vs 두산`, `오늘은 LG 경기 없음`), 짧은 상황 문장, 최근 3경기/순위/상태 지표, 기본 CTA 순서로 구성한다.
+- 브리프 문구는 홈 첫 프레임 전략을 해치지 않도록 기존 scoreboard와 지연 로딩된 `/home` aggregate 안의 `myTeamBrief` 데이터만 사용한다. 선발/라인업/직전 플레이처럼 별도 상세 fetch가 필요한 정보는 경기 상세/문자중계 진입 뒤에 확인하게 한다.
 - 마이팀이 선택되어 있고 오늘 마이팀 경기가 live 상태이면 홈 진입 시 해당 경기를 기본 follow session target 으로 맞춘다. 별도 설정을 열지 않아도 홈 마이팀 경기 카드의 follow CTA는 같은 자리에서 `따라가는 중` 체크 상태로 바뀌고, `/push/register`의 `followedGameIds`도 조용히 갱신한다.
 - 홈의 `따라가기` CTA를 명시적으로 누르면 같은 follow session 을 시작하고, OS permission / push sync 는 마이팀 자동 등록 경로를 보완하는 수동 재시도 경로로도 동작한다.
-- 홈에서 진행 중인 경기 카드를 열면 경기 상세는 기본으로 `문자중계` 탭에서 시작한다.
-- 마이팀 경기 카드의 `중계 보기` CTA는 `문자중계` 탭으로 이동하면서 상세 상단 요약을 접어 문자중계 본문이 먼저 보이도록 focus 진입을 사용한다.
+- 홈에서 진행 중인 경기 카드(마이팀 확대 카드, 오늘의 야구 spotlight, 일반 경기 카드)를 열면 경기 상세는 기본으로 `문자중계` 탭에서 시작한다.
+- 마이팀 live 경기 카드의 박스 전체와 `중계 보기` CTA는 `문자중계` 탭으로 이동하면서 상세 상단 요약을 접어 문자중계 본문이 먼저 보이도록 focus 진입을 사용한다.
 
 **KBO 브리프 상태별 규칙**:
 | 상태 | 우선 노출 | 예시 |
@@ -315,6 +317,7 @@ GET /api/team/{teamId}/players?season=2026
 - 기록실 요약/리더보드 API cache 와 기기 snapshot 은 핵심 리더보드 첫 항목이 1위일 때만 재사용하거나 저장한다.
 - 명시적 API-backed 앱 모드에서는 현재 시즌 기록실 요약/리더보드 API 실패를 앱 번들 bootstrap, fresh local API cache, backend current snapshot 으로 대체하지 않는다.
 - 다른 시즌 기록으로 대체 표시하지 않는다. exact snapshot 이 없거나 비어 있으면 빈 상태/오류를 노출해 가짜 리더가 재유입되지 않게 한다.
+- KBO 선수 기록 원천은 2001년 이하 요청에서 현재 시즌 rows를 반환할 수 있어, 앱 기록실 시즌 선택과 backend/direct 기록실 크롤링은 2002년 이후만 지원한다.
 - 팀 선수/팀 스탯 local asset 은 요청한 팀/시즌의 exact snapshot 만 사용한다. 해당 시즌 snapshot 이 없거나 팀 스탯의 타격/투구 중 한쪽만 있으면 다른 시즌 데이터를 빌리지 않고 빈 상태로 처리한다.
 - 명시적 API-backed current 경로에서 현재 시즌 팀 선수/팀 스탯/선수 상세 실패는 backend/app/device snapshot 으로 대체하지 않는다. 과거 시즌만 저장 snapshot 과 cached-first 조회를 허용한다.
 
@@ -370,7 +373,7 @@ GET /api/player/{playerId}?season=2026
 - 뒤로 버튼 + 경기장명 + 관중수
 - 양팀 로고 + 팀명 + 현재 스코어 (큰 폰트)
 - 현재 이닝/경기 상태
-- 예매 정보 카드: 경기 전 상태에서만 노출. 예매처 / 예매 시작시간 / 예매처 바로가기 / 예매 오픈 알림 토글
+- 예매 정보 카드: 경기 전 상태에서만 노출하되, 경기 상세에서는 경기 시작 2시간 전부터 숨김. 예매처 / 예매 시작시간 / 예매처 바로가기 / 예매 오픈 알림 토글
 - 하이라이트 카드: 유튜브 썸네일 / 영상 제목 / `KBO 하이라이트` / `유튜브 보기` 버튼
 - 진행/종료/취소/서스펜디드 경기에서는 예매 정보 대신 현재 경기 상태, 최종 결과, 승패 요약, 핵심 선수, 주요 이벤트 요약을 우선 노출
 
@@ -419,14 +422,12 @@ GET /api/player/{playerId}?season=2026
 
 ```
 ┌─────────────────────────────────────┐
-│  ┌──── 현재 타석 ────┐              │
-│  │ 타자: 이정훈 (좌타)  │             │
-│  │ 투수: 이정용 (우투)  │             │
-│  │                    │              │
-│  │  B: ● ● ● ○       │              │
-│  │  S: ● ● ○         │              │
-│  │  O: ● ● ○         │              │
-│  └────────────────────┘              │
+│  ┌──── 현재 타석 스코어버그 ────┐      │
+│  │ 삼성  3  ◇◇◇  2  LG        │
+│  │        7회초 / BSO           │
+│  │      1루수 앞 땅볼           │
+│  └──────────────────────────────┘      │
+│  전체  득점  안타  홈런  교체          │
 │                                     │
 │  ─── 4회초 ───                       │
 │                                     │
@@ -451,18 +452,23 @@ GET /api/player/{playerId}?season=2026
 **UI 요소**:
 | 요소 | 설명 |
 |------|------|
-| 현재 타석 카드 | 상단 고정. 이닝/주자/타자/투수/투구수/볼카운트(B/S/O) 실시간 표시, 타자는 라인업 기준 `타순 이름 포지션` 형식으로 노출, 타자/투수 프로필 이미지와 색상별 B/S/O 요약 포함 |
+| 현재 타석 스코어버그 | Live Activity 예제와 같은 방송형 레이아웃. 좌우 팀명/타자/투수, 중앙 점수/베이스 다이아몬드/이닝 pill, B-S-OUT 점, 하단 직전 플레이 pill 표시 |
+| 현재 타석 카드 | 스코어버그 아래에 이닝/주자/타자/투수/투구수/볼카운트(B/S/O) 실시간 표시, 타자는 라인업 기준 `타순 이름 포지션` 형식으로 노출, 타자/투수 프로필 이미지와 색상별 B/S/O 요약 포함 |
 | 최근 상태 요약 | 현재 타석 카드 하단에 직전 플레이와 최근 교체(대타/대주자/투수교체 포함) 노출 |
 | 이닝 구분선 | `─── N회 초/말 ───` 형태 |
 | 중계 아이템 | 타석 결과 카드. 역순 정렬 (최신이 위), 주체 선수 아바타를 같이 표시 |
 | 이벤트 강조 | 득점 / 홈런 / 교체 / 삼진 / 일반 플레이를 배지와 컬러로 구분 |
-| 타석 카드 레이아웃 | 선택한 회차에서는 타석별 카드에 선수 프로필, 상대투수/상대팀, 플레이 결과, 순번형 투구 로그를 묶어서 표시 |
+| 주요 장면 필터 | `전체 / 득점 / 안타 / 홈런 / 교체` 칩에 현재 카운트를 표시하고, 선택 시 해당 이벤트 카드만 표시 |
+| 새 중계 배너 | 사용자가 상단에서 떨어져 있을 때 새 seq가 들어오면 `새 중계가 들어왔습니다` 배너와 `최신 보기` 액션 표시 |
+| 타석 카드 레이아웃 | 선택한 회차/필터에서는 타석별 카드에 선수 프로필, 상대투수/상대팀, 플레이 결과 바, 순번형 투구 로그를 묶어서 표시 |
 | 투구 로그 | `N구` 단위 로그에 볼/스트라이크/파울 결과 배지와 누적 볼카운트 시각화 표시 |
 | 투구 시퀀스 | 각 타석의 볼/스트라이크/파울 순서 표시 |
 
 **인터랙션**:
 - 자동 스크롤 → 새 중계 추가 시 상단에 삽입 + 부드러운 애니메이션
 - 회차 선택 → `전체 / N회초 / N회말` 칩을 눌러 해당 회차 문자중계만 필터링. 원문 이닝 전환 텍스트에 팀 공격 문구나 구분선이 포함되어도 칩 라벨은 `N회초/N회말`만 노출
+- 주요 장면 선택 → `전체 / 득점 / 안타 / 홈런 / 교체` 칩을 눌러 해당 이벤트만 확인. 필터 결과가 비면 조건별 빈 상태를 노출
+- 새 중계 도착 → 사용자가 최신 영역을 보고 있지 않을 때 상단 복귀 배너를 띄우고, 탭하면 전체/최신 상태로 돌아간다
 - LIVE 경기에서는 홈 scoreboard와 경기 상세/문자중계 foreground 갱신을 8초 cadence로 맞춘다.
 - 경기 종료 시 → "경기가 종료되었습니다" 배너
 - LIVE 경기에서는 relay 원천 실패를 득점 요약이나 과거 snapshot 으로 대체하지 않고 실패/미지원 상태로 노출
@@ -660,7 +666,7 @@ GET /api/schedule?month=2026-03
 │  2026 정규시즌 순위                  │
 ├─────────────────────────────────────┤
 │                                     │
-│  순위  팀명      승  패 무  승률 차  │
+│  순위  팀명      승  패 무  승률 차 연속 │
 │  ──────────────────────────────     │
 │  1  LG 트윈스  1  0  0  1.000 -     │
 │  2    KIA       1  0  0  1.000 -   │
@@ -683,24 +689,27 @@ GET /api/schedule?month=2026-03
 **UI 요소**:
 | 요소 | 설명 |
 |------|------|
-| 순위 테이블 | 승/패/무/승률/게임차. 순위 순 정렬 |
+| 시즌 선택 | 현재 시즌부터 2001년까지 선택하는 드롭다운. 선택한 시즌 기준으로 순위표와 마이팀 요약을 다시 조회 |
+| 순위 테이블 | 승/패/무/승률/게임차/연속. 순위 순 정렬 |
 | 마이팀 강조 | 팀 컬러 좌측 바 + 팀 로고 + 강조 배경 행 |
 | 업데이트 시간 | 데이터 갱신 시각 표시 |
 | 확장 정보 | 최근 10경기, 연속, 홈/원정은 행 펼침 또는 상세 보기에서 노출 |
 
 **인터랙션**:
+- 시즌 선택 → `GET /api/standings?season={YYYY}`로 해당 연도 순위 조회
 - Pull-to-refresh → 순위 갱신
 - (Phase 2) 팀 탭 → 팀 상세 (상대 전적, 최근 성적 등)
 
 **데이터 바인딩**:
 ```
 GET /api/standings?season=2026
-→ [{rank, teamId, teamName, wins, losses, draws, pct, gb}]
+→ [{rank, teamId, teamName, wins, losses, draws, pct, gb, streak}]
 ```
 
 **운영 메모**:
 - 순위는 latest 응답만 짧게 캐시하는 것을 넘어서, 시즌 중 하루 여러 번 standings snapshot 을 저장해 과거 날짜 기준 순위 회고가 가능하도록 설계한다.
 - 앱 기본 화면은 최신 snapshot 을 즉시 보여주고, 당일 경기 진행 중에만 주기적 재계산 또는 원천 재수집을 허용한다.
+- 순위탭의 과거 시즌 선택은 historical standings 경로로 처리하며, API-backed 모드는 cached-first / snapshot fallback 을 사용하고 direct 모드는 KBO `seasonId` 요청을 사용한다.
 
 ---
 
@@ -728,6 +737,7 @@ GET /api/standings?season=2026
 │  │  경기 종료       묶음 요약  │    │
 │  │  이닝 교대       따라가기만 │    │
 │  │  타석            바로 알림  │    │
+│  │  야구 브리프     바로 알림  │    │
 │  └─────────────────────────────┘    │
 │                                     │
 │  앱 정보 및 지원                      │
@@ -750,7 +760,7 @@ GET /api/standings?season=2026
 |------|------|
 | 마이팀 | 현재 선택 팀 표시. 탭 → 팀 선택 화면 |
 | 장면별 알림 | 알림 강도 다이얼 대신 사용자가 받을 야구 장면과 전달 방식을 고르는 설정 |
-| Moment 행 | 경기 시작 임박, 경기 시작, 득점, 안타, 홈런, 역전, 경기 종료, 라인업, 이닝 교대, 타석 |
+| Moment 행 | 경기 시작 임박, 경기 시작, 득점, 안타, 홈런, 역전, 경기 종료, 라인업, 이닝 교대, 타석, 야구 브리프 |
 | 전달 방식 | `바로 알림` / `묶음 요약` / `따라가기만` / `끄기` 중 하나를 선택 |
 | 경기 따라가기 | 마이팀 live 경기 자동 선택 또는 현재 경기 상세에서 사용자가 직접 시작하는 Live Activity / Android Live Update 세션 |
 | 앱 정보 및 지원 | 플랫폼 앱 메타데이터의 실제 버전, 버전별 패치노트, 앱 내 법적 문서, 오픈소스 라이선스 페이지, 지원 메일 연결 |
@@ -778,6 +788,7 @@ GET /api/standings?season=2026
 | 라인업 | 묶음 요약 | 마이팀 | 즉시성이 낮으므로 summary 또는 앱 내 카드로 처리 |
 | 이닝 교대 | 따라가기만 | 따라가기 중인 경기 | push 폭주를 막고 Live Activity / Live Update 상태 갱신에 집중 |
 | 타석 | 바로 알림 | 마이팀 | 새 타자가 들어서는 순간 문자중계 탭으로 바로 연결 |
+| 야구 브리프 | 바로 알림 | 마이팀 | 월요일 주간 체크, 비경기일 일정/순위/기록 확인처럼 경기 이벤트가 아닌 야구 정보 확인 신호를 낮은 빈도로 발송 |
 
 **Moment Preference 모델**:
 ```json
@@ -791,7 +802,7 @@ GET /api/standings?season=2026
 
 | 필드 | 값 |
 |------|-----|
-| `moment` | `gameStartSoon`, `gameStart`, `scoring`, `hit`, `homerun`, `reversal`, `gameEnd`, `lineupOpened`, `inningChange`, `atBat` |
+| `moment` | `gameStartSoon`, `gameStart`, `scoring`, `hit`, `homerun`, `reversal`, `gameEnd`, `lineupOpened`, `inningChange`, `atBat`, `baseballInfo` |
 | `delivery` | `immediate`, `summary`, `liveOnly`, `off` |
 | `scope` | `myTeam`, `selectedGame`, `allGames` |
 | `surface` | `push`, `summary`, `liveActivity`, `liveUpdate`, `widget` |
@@ -802,8 +813,9 @@ GET /api/standings?season=2026
 - 마이팀이 선택된 non-local 앱은 최초 1회 OS push permission 과 FCM registration sync를 자동 시도한다
 - 사용자가 "경기 따라가기", "바로 알림", "권한 확인"처럼 명시적 action 을 선택했을 때도 OS permission / registration sync를 재시도할 수 있다
 - Moment 설정 변경 → 로컬 저장 + backend preference sync + FCM topic 재계산
+- `야구 브리프`가 바로 알림이면 앱은 `baseball_info_<팀>` 또는 리그 전체 설정 시 `baseball_info_ALL` topic을 구독한다.
 - `바로 알림`은 push/topic 및 로컬 이벤트 알림 대상이 되고, `묶음 요약`은 summary preference 로 저장하며, `따라가기만`은 따라가기 세션의 Live Activity / Android Live Update 로만 보낸다
-- 푸시/로컬 알림 클릭은 외부 URL을 직접 열지 않고 앱 내부 route로 변환한다. `lineupOpened` / `lineup_opened`는 `/game/{gameId}?tab=lineup`, 경기 시작 임박/경기 시작/득점/안타/홈런/역전/이닝 교대/타석은 `/game/{gameId}?tab=relay`로 진입한다.
+- 푸시/로컬 알림 클릭은 외부 URL을 직접 열지 않고 앱 내부 route로 변환한다. `lineupOpened` / `lineup_opened`는 `/game/{gameId}?tab=lineup`, 경기 시작 임박/경기 시작/득점/안타/홈런/역전/이닝 교대/타석은 `/game/{gameId}?tab=relay`로 진입한다. `baseball_info`는 홈으로 진입한다.
 - 경기 상세를 보고 있는 동안 같은 경기의 중복 push 는 억제하고, 따라가기 화면 또는 화면 내 상태 갱신으로 대체한다
 - "경기 따라가기"는 알림 설정이 아니라 현재 경기 session 시작 action 이며, 경기 종료 또는 사용자의 "그만 보기"로 종료한다
 - local 모바일에서는 같은 Moment 규칙으로 로컬 알림을 생성하되, records/mock fallback 으로 불완전한 알림을 만들지 않는다
@@ -827,10 +839,10 @@ GET /api/standings?season=2026
 ```
 [iOS Lock Screen / Dynamic Island]
 ┌────────────────────────────┐
-│ 경기 중 · 잠실      갱신 18:42 │
-│ LG          2:1          KT │
-│             7회말           │
-│ 타석 문보경 / B2 S1 O1       │
+│ 삼성  3   ◇ ◆ ◆   2   LG │
+│ 구자욱      5회초      임찬규 │
+│ 타석   B ●●○ S ●○ OUT ●○ 78구 │
+│        1루수 앞 땅볼        │
 └────────────────────────────┘
 
 [Android Live Update]
@@ -850,6 +862,7 @@ GET /api/standings?season=2026
 - 경기 종료/취소/서스펜디드 상태에서는 APNs `end` event와 final content state를 보내고 token registry에서 세션을 제거한다.
 - FCM은 일반 push notification과 topic subscription에 사용한다. Backend가 보내는 일반 FCM message는 iOS APNs `apns-push-type=alert`, `apns-topic`, `aps.alert`, `apns-priority=10`, default sound와 Android high priority / default sound를 함께 지정해 background/locked 상태에서 알림으로 즉시 노출되도록 한다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
 - 홈 화면의 앱 내부 경기 이벤트 로컬 알림은 local 개발 모드에서만 처리한다. release/dev/TestFlight에서는 앱을 열거나 포커스했을 때 과거 scoreboard/relay diff를 로컬 알림으로 backfill하지 않고, 앱 밖 알림은 backend FCM/APNs 경로가 단독 책임진다.
+- Live Activity content-state는 `situationText`와 `playText`를 optional로 받을 수 있다. `playText`가 있으면 하단 pill에 우선 표시하고, 없으면 `situationText`, 타자명, 구장명 순서로 fallback한다.
 
 **따라가기 화면 원칙**:
 - 마이팀 live 경기는 홈에서 기본 follow target 으로 자동 선택한다.
@@ -1110,7 +1123,9 @@ GET /api/game/{gameId}/relay?after={seqNo}
     "currentAtBat": {
       "batter": {"number": 33, "name": "이정훈", "hand": "좌타"},
       "pitcher": {"number": 31, "name": "이정용", "hand": "우투", "pitchCount": 19},
-      "ballCount": {"balls": 3, "strikes": 2, "outs": 2}
+      "ballCount": {"balls": 3, "strikes": 2, "outs": 2},
+      "inningText": "4회초",
+      "baseState": "주자1,2루"
     },
     "relayItems": [
       {
@@ -1120,11 +1135,10 @@ GET /api/game/{gameId}/relay?after={seqNo}
         "event": "HIT",
         "isScoring": true,
         "text": "이강민: 2타점 적시타 (좌중간 2루타)",
-        "pitchSequence": ["S", "B", "B", "S", "F", "HIT"],
+        "pitchSequence": "S→B→B→S→F→HIT",
         "timestamp": "2026-03-28T15:23:00+09:00"
       }
-    ],
-    "lastSeqNo": 142
+    ]
   }
 }
 ```
@@ -1135,12 +1149,15 @@ GET /api/game/{gameId}/relay?after={seqNo}
 | HIT | 안타 (1루타, 2루타, 3루타) |
 | HOMERUN | 홈런 |
 | OUT | 아웃 (땅볼, 플라이, 삼진 등) |
+| RUNS | 득점 요약 또는 득점 확인 플레이 |
 | WALK | 볼넷 |
 | HBP | 사구 |
 | ERROR | 실책 |
 | STEAL | 도루 |
+| PASSED_BALL | 포일 |
 | SUBSTITUTION | 선수 교체 |
 | INNING_CHANGE | 이닝 전환 |
+| GAME_END | 경기 종료 |
 
 ---
 
@@ -1411,6 +1428,7 @@ POST /api/push/live-activity/unregister
 POST /api/push/live-activity/update
 POST /api/push/live-activity/sync-scoreboard
 POST /api/push/test
+POST /api/push/baseball-info
 POST /api/push/resubscribe-topics
 GET /api/push/config-status
 ```
@@ -1420,9 +1438,11 @@ GET /api/push/config-status
 - `update`: 내부 운영 도구나 worker가 특정 `gameId`의 `content-state`를 APNs로 발송한다.
 - `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon`, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. `date` 생략 시 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `test`: 운영자가 특정 FCM token 또는 topic으로 테스트 알림을 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `baseball-info`: 운영자가 `weekly_check`, `off_day`, `records_check`, `lineup_day`, `rival_watch` 같은 야구 정보 확인 push를 보낸다. topic/token/teamId를 지정할 수 있고, 지정하지 않으면 10개 구단 `baseball_info_<팀>` topic과 `baseball_info_ALL`로 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `python -m kbo_fans_backend.scheduler.baseball_info`: scheduled worker/cron용 CLI다. `--date`만 주면 KBO 경기일 기준 월요일에는 `weekly_check`를 발송하고, 다른 요일에는 자동 발송하지 않는다. `--kind records_check`처럼 명시하면 요일과 무관하게 해당 야구 브리프를 보낸다.
 - `resubscribe-topics`: registry에 저장된 FCM device registration을 현재 push schema로 다시 해석해 Firebase topic을 재구독한다. `at_bat`, `game_start_soon`, `hit`처럼 새 moment topic을 추가한 뒤 기존 TestFlight 설치자의 topic membership을 보정할 때 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. registry 진단에는 device token 원문 없이 `registeredDeviceCount`, `followedGameCount`, `activeLiveActivityGameCount`, `topicCounts`, `myTeamCounts`만 포함한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
-- `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다.
+- `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다. 기본 스코어/이닝/선수/카운트 필드 외에 하단 상황 표시용 `situationText`, `playText`를 optional로 보낼 수 있다.
 
 **응답**:
 ```json
@@ -1430,7 +1450,7 @@ GET /api/push/config-status
   "success": true,
   "data": {
     "registered": true,
-    "subscribedTopics": ["game_start_LG", "game_start_soon_LG", "scoring_LG", "hit_LG", "homerun_LG", "reversal_LG", "at_bat_LG"],
+    "subscribedTopics": ["game_start_LG", "game_start_soon_LG", "scoring_LG", "hit_LG", "homerun_LG", "reversal_LG", "at_bat_LG", "baseball_info_LG"],
     "summaryTopics": ["game_end_LG", "lineup_opened_LG"],
     "followedGameIds": ["20260328KTLG0"]
   }

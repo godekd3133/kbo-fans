@@ -2,6 +2,227 @@
 
 ---
 
+## 2026-06-19: 순위탭 시즌별 조회 연결
+
+### 완료
+- [x] 현재 순위탭이 `_selectedSeason`과 `standingsProvider(_selectedSeason)`로 시즌별 조회를 지원하는 상태인지 확인
+- [x] 시즌 드롭다운 변경 시 선택한 연도 provider가 호출되고 화면 순위가 바뀌는 widget 회귀 테스트 추가
+- [x] API-backed 순위는 `/standings?season={YYYY}` + historical cached-first/snapshot fallback, direct 순위는 KBO `seasonId` 요청을 사용하는 기존 경로 확인
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 순위탭 시즌 선택 UX 반영
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format test/features/standings/standings_screen_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/standings/standings_screen_test.dart -r expanded` (`2 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/standings/standings_screen.dart test/features/standings/standings_screen_test.dart`
+- [x] `git diff --check -- app/lib/features/standings/standings_screen.dart app/test/features/standings/standings_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-19: AI 생성 야구 비주얼 리소스 앱 적용
+
+### 완료
+- [x] `image_gen` 내장 경로로 공식 로고/구단 엠블럼/읽을 수 있는 텍스트 없는 16:9 야구 비주얼 6장을 생성
+- [x] 원본은 Codex generated image 경로에 보존하고, 앱 번들용으로 `app/assets/visuals/*.png` 1200×675 버전을 저장
+- [x] `VisualAssets` 상수와 `AppArtworkCard` 공통 위젯을 추가해 asset 누락 시 테스트 fallback이 동작하도록 정리
+- [x] 온보딩, 홈 경기 없음 상태, 일정, 기록실, 설정 알림 플레이북, 부트 스플래시에 각각 리소스를 연결
+- [x] `CHANGELOG.md`에 사용자 체감 변경을 기록
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/core/widgets/boot_splash_screen.dart lib/features/onboarding/onboarding_screen.dart lib/features/home/home_screen.dart lib/features/schedule/schedule_screen.dart lib/features/records/records_screen.dart lib/features/settings/settings_screen.dart`
+- [x] `cd app && fvm flutter analyze lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/core/widgets/boot_splash_screen.dart lib/features/onboarding/onboarding_screen.dart lib/features/home/home_screen.dart lib/features/schedule/schedule_screen.dart lib/features/records/records_screen.dart lib/features/settings/settings_screen.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test test/widget_test.dart test/features/home/home_screen_test.dart test/features/schedule/schedule_screen_test.dart test/features/settings/settings_screen_test.dart` (`All tests passed`)
+- [x] `file app/assets/visuals/*.png` (`1200 x 675`, RGB PNG)
+
+---
+
+## 2026-06-19: 홈 마이팀 브리프 상황판 개선
+
+### 완료
+- [x] gpt-image 기반 홈 마이팀 브리프 고충실도 목업을 생성하고 `docs/assets/mockups/my-team-brief-concept-2026-06-19.png`에 보관
+- [x] `_MyTeamBriefCard`를 상태 pill, 팀 마크, 한 줄 헤드라인, 상황 문장, 최근 3경기/순위/상태 지표, 기본 CTA 구조로 재배치
+- [x] 경기 중/종료/경기 전/경기 없음/취소·중단 상태별로 브리프 문구와 CTA 아이콘을 분기
+- [x] 새 API 호출 없이 기존 scoreboard와 지연 로딩된 `/home` aggregate의 `myTeamBrief` 데이터만 사용해 홈 첫 프레임 전략을 유지
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 마이팀 브리프의 상태별 판단 중심 UX 기준 반영
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/features/home/home_screen.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/home/home_screen.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart --reporter expanded` (`All tests passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-19: 홈 경기 박스 중계 탭 진입 보정
+
+### 완료
+- [x] 홈 경기 상세 route helper를 `gameId/status` 기준으로 분리해 live 경기는 기본 `tab=relay`를 붙이도록 정리
+- [x] `오늘의 야구` spotlight 경기 박스와 일반 경기 카드가 같은 helper를 사용하도록 보정
+- [x] 마이팀 live 경기 확대 카드의 박스 전체 탭도 `중계 보기` CTA와 같은 중계 focus 경로를 사용하도록 변경
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 홈 경기 박스 탭 UX 반영
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/features/home/home_screen.dart lib/features/home/widgets/my_team_game_card.dart test/features/home/home_screen_test.dart test/features/home/widgets/my_team_game_card_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart --reporter expanded` (`All tests passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/widgets/my_team_game_card_test.dart --reporter expanded` (`All tests passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/home/home_screen.dart lib/features/home/widgets/my_team_game_card.dart test/features/home/home_screen_test.dart test/features/home/widgets/my_team_game_card_test.dart` (`No issues found`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/lib/features/home/widgets/my_team_game_card.dart app/test/features/home/home_screen_test.dart app/test/features/home/widgets/my_team_game_card_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-19: 야구 브리프 push 메시지 다양화
+
+### 완료
+- [x] 알림 메시지 다양화 요구를 기존 경기 moment push와 별도인 `baseball_info` 계열로 분리
+- [x] 앱 push 설정/등록 payload에 `야구 브리프` moment를 추가해 `baseball_info_<팀>` / `baseball_info_ALL` topic을 구독할 수 있게 연결
+- [x] backend `PushService`에 `weekly_check`, `off_day`, `records_check`, `lineup_day`, `rival_watch` copy catalog와 `send_baseball_info` 발송 경로 추가
+- [x] 운영 보호 endpoint `POST /api/push/baseball-info`를 추가해 월요일 주간 체크 같은 야구 정보 push를 직접 발송할 수 있게 구성
+- [x] `python -m kbo_fans_backend.scheduler.baseball_info` CLI를 추가해 월요일에는 `weekly_check`를 자동 선택하고, 다른 요일은 명시 kind가 없으면 발송하지 않도록 구성
+- [x] 득점 moment가 `playText` / `situationText`를 받으면 고정 문구 대신 실제 플레이 중심 문구를 쓰도록 보강
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 `야구 브리프` 설정과 backend push API 계약 반영
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_register_persists_device_token backend/tests/test_push_service.py::test_build_topics_respects_delivery_modes backend/tests/test_push_service.py::test_send_game_moment_scoring_uses_play_text_for_varied_copy backend/tests/test_push_service.py::test_send_baseball_info_weekly_check_targets_all_team_topics backend/tests/test_push_service.py::test_send_baseball_info_endpoint_uses_sync_secret` (`5 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/services/push_notification_service_test.dart` (`14 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_baseball_info_scheduler.py backend/tests/test_push_service.py` (`41 passed`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/scheduler/baseball_info.py backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/api/routes/push.py backend/src/kbo_fans_backend/services/push.py backend/tests/test_baseball_info_scheduler.py backend/tests/test_push_service.py`
+- [x] `python3 -m compileall -q backend/src`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/services/push_notification_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 홈 타구장 경기 중복 노출 제거
+
+### 완료
+- [x] 원인 확인: 홈 scoreboard 원본에 같은 `gameId`가 중복될 수 있고, `오늘의 야구` 요약 행이 아래 `다른 경기` 리스트와 같은 타구장 경기를 다시 노출할 수 있었음
+- [x] 홈 렌더/side-effect 입력을 `gameId` 기준으로 정규화해 refresh, widget sync, event alert, auto-follow가 중복 경기 목록을 받지 않도록 정리
+- [x] `오늘의 야구` 카드의 보조 경기 요약 행을 제거하고, 타구장 경기는 전용 `다른 경기` 리스트에서만 보이도록 조정
+- [x] raw scoreboard에 중복 `Game`이 들어와도 홈에는 한 개의 `GameCard`만 렌더되는 회귀 테스트 추가
+
+### 검증
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart --plain-name "shows other games only in the dedicated game list"`
+- [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart` (`6 passed`)
+
+---
+
+## 2026-06-19: 기록실 2001 시즌 current-row fallback 차단
+
+### 완료
+- [x] 원인 확인: KBO 선수 기록 WebForms는 2001년 이하를 selected 상태로 받지만 rows는 2026 현재 시즌 리더를 반환함
+- [x] 기록실 시즌 selector를 2002년 이후로 제한
+- [x] backend `RecordsOverviewService` / `RecordsOverviewCrawler`가 2001년 이하에서 원천 호출·snapshot 재사용 없이 빈 exact payload를 반환하도록 차단
+- [x] API/direct/device 앱 기록실 경로도 2001년 이하 팀 선수/팀 스탯/리더보드를 빈 상태로 반환하고 기존 API cache/기기 snapshot을 재사용하지 않도록 맞춤
+- [x] 잘못된 2001 backend records snapshot을 빈 exact snapshot으로 정리
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 기록실 지원 시즌 정책 반영
+
+### 검증
+- [x] `python3 -m py_compile backend/src/kbo_fans_backend/crawlers/records_overview.py backend/src/kbo_fans_backend/services/records_overview.py backend/tests/test_records_overview.py`
+- [x] `python3 -m json.tool backend/data/snapshots/records_overview/2001.json >/dev/null`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py` (`16 passed`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/crawlers/records_overview.py backend/src/kbo_fans_backend/services/records_overview.py backend/tests/test_records_overview.py`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/data/kbo_direct_player_repository_test.dart -r expanded` (`3 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/data/api_client_test.dart -r expanded` (`13 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/data/device_snapshot_player_repository_test.dart -r expanded` (`10 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/records/records_screen.dart lib/data/repositories/api_player_repository.dart lib/data/repositories/kbo_direct_player_repository.dart lib/data/repositories/device_snapshot_player_repository.dart test/data/api_client_test.dart test/data/kbo_direct_player_repository_test.dart test/data/device_snapshot_player_repository_test.dart`
+- [x] service smoke: 2001 overview/leaderboard는 빈 payload, 2002 overview는 `장성호` 등 정상 과거 리더 반환 확인
+
+---
+
+## 2026-06-19: 문자중계 방송형 스코어버그/주요 장면 필터
+
+### 완료
+- [x] 문자중계 현재 타석 상단에 예제 Live Activity와 같은 좌우 팀명, 중앙 점수/베이스 다이아몬드, 이닝 pill, B-S-OUT 점, 하단 상황 pill 구조의 방송형 스코어버그 추가
+- [x] 중계 리스트에 `전체 / 득점 / 안타 / 홈런 / 교체` 주요 장면 필터를 추가하고 각 필터의 현재 건수를 표시
+- [x] 사용자가 최신 영역을 보고 있지 않을 때 새 relay seq가 들어오면 `새 중계가 들어왔습니다` 배너와 `최신 보기` 액션을 노출
+- [x] 타석 카드에 결과 바를 추가하고 relay 탭 카드/아바타 radius와 과한 그림자를 줄여 전체 톤을 더 절제된 스포츠 앱 UI로 정리
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 문자중계 UI/relay 계약 변경 반영
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/game_detail/relay_tab_test.dart` (`5 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_relay_crawler.py backend/tests/test_relay_service.py` (`10 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`126 passed`)
+- [ ] 실제 KBO live 경기에서 새 중계 배너/상단 스코어버그의 실데이터 렌더링은 별도 기기 확인 필요
+
+---
+
+## 2026-06-19: 앱 전역 Pretendard 폰트 번들 적용
+
+### 완료
+- [x] 제보 증상: 경기 화면 텍스트가 기본 시스템 fallback처럼 보여 선명도와 앱 고유 톤이 부족함
+- [x] root cause: `AppTheme`은 `fontFamily: 'Pretendard'`를 참조하지만 `pubspec.yaml`에 실제 Pretendard font asset 등록이 없어 Flutter가 플랫폼 기본 폰트로 fallback할 수 있었음
+- [x] OFL 라이선스 Pretendard `v1.3.9`의 `PretendardVariable.ttf`만 앱 asset으로 포함하고, 라이선스 파일을 함께 보관
+- [x] `ThemeData.fontFamily`를 전역 설정해 경기 상세/문자중계처럼 로컬 `TextStyle`을 쓰는 화면도 같은 폰트 family를 기본 적용
+- [x] `docs/FIGMA_PROMPT.md`와 `CHANGELOG.md`에 실제 앱 번들 폰트 기준 반영
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/theme/app_theme.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/theme/app_theme.dart` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/game_detail/relay_tab_test.dart` (`All tests passed`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 순위표 연승/연패 정보 표시
+
+### 완료
+- [x] backend standings crawler가 이미 내려주는 `streak` 계약을 Flutter `TeamStanding` 모델까지 보존하도록 연결
+- [x] API-backed standings, direct KBO standings, bootstrap standings 경로에서 연속 승패 값이 누락되지 않도록 파서와 테스트 보강
+- [x] 순위표에 `연속` 컬럼을 추가하고 `1승`/`W1` 형태를 `1연승`, `1패`/`L1` 형태를 `1연패`로 표시
+- [x] 마이팀 순위 요약 카드에도 연속 승패 정보를 함께 표시
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 순위표 연속 승패 표시 정책 반영
+
+### 검증
+- [x] `fvm dart format lib/data/models/schedule.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/api_home_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/standings/standings_screen.dart test/data/models/team_standing_test.dart test/data/api_client_test.dart test/data/kbo_direct_repository_test.dart test/features/standings/standings_screen_test.dart`
+- [x] `fvm dart format test/data/bootstrap_repository_test.dart`
+- [x] `fvm flutter test --no-pub test/data/models/team_standing_test.dart test/data/api_client_test.dart test/data/kbo_direct_repository_test.dart test/features/standings/standings_screen_test.dart`
+- [x] `fvm flutter test --no-pub test/data/bootstrap_repository_test.dart`
+- [x] `fvm flutter analyze --no-pub lib/data/models/schedule.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/api_home_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/standings/standings_screen.dart test/data/models/team_standing_test.dart test/data/api_client_test.dart test/data/kbo_direct_repository_test.dart test/features/standings/standings_screen_test.dart`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_standings_crawler.py`
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/tests/test_standings_crawler.py backend/src/kbo_fans_backend/crawlers/standings.py`
+- [x] `python3 -m compileall -q backend/src`
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 경기 상세 예매 정보 2시간 전 비노출
+
+### 완료
+- [x] 경기 상세 예매 카드 노출 조건을 `scheduled` 상태만 보던 방식에서 경기 시작 2시간 전 컷오프까지 포함하도록 변경
+- [x] `gameId` 날짜와 `startTime`을 조합해 시작 시각을 계산하고, 파싱할 수 없는 기존 데이터는 기존 경기 전 노출 정책을 유지하도록 방어
+- [x] 상세 화면 헤더가 새 노출 판단 유틸을 사용하도록 연결
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 경기 상세 예매 정보 비노출 정책 반영
+
+### 검증
+- [x] `fvm dart format lib/core/utils/game_status_label.dart lib/features/game_detail/game_detail_screen.dart test/core/utils/game_status_label_test.dart`
+- [x] `fvm flutter test test/core/utils/game_status_label_test.dart`
+- [x] `fvm flutter analyze lib/core/utils/game_status_label.dart lib/features/game_detail/game_detail_screen.dart test/core/utils/game_status_label_test.dart`
+
+---
+
+## 2026-06-19: 예제형 Live Activity 잠금화면 레이아웃 정렬
+
+### 완료
+- [x] Director 제공 예제 기준을 재해석 카드가 아니라 좌우 팀명, 중앙 큰 점수, 베이스 다이아몬드, 이닝 pill, B-S-OUT 점, 하단 상황 pill 구조로 재정의
+- [x] iOS Live Activity lock screen UI를 팀 로고 중심에서 예제형 스코어보드 카드로 변경
+- [x] Dynamic Island expanded 영역도 팀명/점수, 중앙 다이아몬드/이닝, 하단 B-S-OUT/상황 pill 구조로 정렬
+- [x] ActivityKit content-state에 optional `situationText` / `playText`를 추가해 하단 상황 문구를 서버 payload로 표현할 수 있게 확장
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/services/live_activity_service.dart`
+- [x] `backend/.venv/bin/ruff check --fix backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py`
+- [x] `python3 -m compileall -q backend/src`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build ios --debug --no-codesign --no-pub` (`✓ Built build/ios/iphoneos/Runner.app`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub` (`No issues found`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`35 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`138 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`114 passed`)
+- [ ] 실제 잠금화면 렌더링은 iPhone/TestFlight Live Activity에서 확인 필요
+
 ## 2026-06-19: 앱 포커스 시 로컬 알림 backfill 차단
 
 ### 완료
@@ -3409,3 +3630,12 @@ kbo_fans/
 - 문서: `CHANGELOG.md`, `README.md`, `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`에 scoreboard/relay 기반 반복 푸시 계약을 동기화함.
 - 검증: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_scoreboard_sync_pushes_homerun_from_new_relay_items`
 - 검증: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py`
+
+## 2026-06-19 구단 로고 고화질 소스 감사
+
+- 구글/Pinterest 경유 후보와 구단 공식 BI/VI 페이지를 함께 확인해 KBO 팀 로고 고화질 후보를 `docs/design/kbo-team-logo-source-audit-2026-06-19.md`에 정리함.
+- 현재 iOS `TeamLogo_*` 번들 로고가 전부 `26x17`인 반면, 공식 후보 중 SSG/KT/NC/KIA/삼성/키움/두산은 AI/PDF/ZIP 또는 700px 이상 JPG/PNG/SVG 후보가 있음을 확인함.
+- Pinterest는 직접 번들 출처가 아니라 FoxCG/Seeklogo/블로그 AI 첨부 같은 후보 탐색 경로로만 분리하고, 앱 번들 적용은 공식/권리 확인된 파일을 우선하도록 기준을 세움.
+- 반복 감사 도구 `scripts/audit_team_logo_sources.py`를 추가해 공식 후보, KBO CDN fallback, Pinterest/검색 reference 후보, ZIP 내부 이미지 해상도, 현재 iOS 번들 크기를 한 번에 리포트하도록 함.
+- 검증: `python3 -m py_compile scripts/audit_team_logo_sources.py`
+- 검증: `python3 scripts/audit_team_logo_sources.py --output /tmp/kbo-team-logo-source-audit-run`

@@ -11,7 +11,7 @@
 
 - **프레임**: 390×844px (iPhone 14 기준, 모바일 앱)
 - **스타일**: 모던, 미니멀, 다크 모드 기반 스포츠 앱
-- **폰트**: Pretendard (한글), SF Pro Display (영문/숫자)
+- **폰트**: Pretendard (한글), SF Pro Display (영문/숫자). Flutter 앱은 `PretendardVariable.ttf`를 번들에 포함해 시스템 fallback이 아니라 실제 Pretendard 렌더링을 기준으로 한다.
 - **라운드**: Hero 카드 12px, 일반/요약 카드 8px, 버튼 12px, 입력 8px
 - **아이콘**: 앱 UI에서는 이모지 텍스트를 쓰지 않고, 홈/일정/순위/기록실/설정 의미의 벡터 아이콘을 사용
 - **앱 구현 기준**: 2026-05-19 v4 `Moment Subscription & Surface Strategy` 이후 실제 Flutter 화면도 430px 이하 mobile frame, 8px 카드, 작은 outline bottom tab, 상태 우선 헤더를 기본값으로 둔다.
