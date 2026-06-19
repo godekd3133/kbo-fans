@@ -228,296 +228,203 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final keyPitcherPlayer = keyPitcher == null
         ? null
         : _resolvePlayer(playersByName, keyPitcher.name);
+    final productionScore = keyBatter == null
+        ? 0
+        : _batterProductionScore(keyBatter);
+    final efficiencyScore = keyPitcher == null
+        ? 0
+        : _pitcherEfficiencyScore(keyPitcher);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SummaryHeader(
+        _BoxscoreSummaryPanel(
           teamId: _selectedTeamId,
           teamName: _selectedTeamName,
           accent: accent,
-          title: '타격 요약',
-          artworkAssetName: VisualAssets.boxscoreAnalytics,
-          artworkAlignment: Alignment.centerRight,
-          statTiles: [
-            _StatTile(label: '타수', value: '$totalAtBats'),
-            _StatTile(label: '득점', value: '$totalRuns'),
-            _StatTile(label: '안타', value: '$totalHits'),
-            _StatTile(label: '타점', value: '$totalRbi'),
-            _StatTile(
+          metrics: [
+            _SummaryMetric(label: '타수', value: '$totalAtBats'),
+            _SummaryMetric(label: '득점', value: '$totalRuns'),
+            _SummaryMetric(label: '안타', value: '$totalHits'),
+            _SummaryMetric(label: '타점', value: '$totalRbi'),
+            _SummaryMetric(
               label: '팀 타율',
               value: teamBattingAverage.toStringAsFixed(3),
             ),
           ],
         ),
         if (keyBatter != null || keyPitcher != null) ...[
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              if (keyBatter != null)
-                _HighlightCard(
-                  title: '핵심 타자',
-                  name: keyBatter.name,
-                  accent: accent,
-                  imageUrl:
-                      keyBatterPlayer?.imageUrl ??
-                      _resolveImageUrl(playerImageMap, keyBatter.name),
-                  badgeLabel: (keyBatterPlayer?.number ?? 0) > 0
-                      ? '${keyBatterPlayer!.number}'
-                      : null,
-                  summary:
-                      '안타 ${keyBatter.hits} · 타점 ${keyBatter.rbi} · 득점 ${keyBatter.runs}',
-                ),
-              if (keyPitcher != null)
-                _HighlightCard(
-                  title: '핵심 투수',
-                  name: keyPitcher.name,
-                  accent: AppColors.live,
-                  imageUrl:
-                      keyPitcherPlayer?.imageUrl ??
-                      _resolveImageUrl(playerImageMap, keyPitcher.name),
-                  badgeLabel: (keyPitcherPlayer?.number ?? 0) > 0
-                      ? '${keyPitcherPlayer!.number}'
-                      : null,
-                  summary:
-                      '이닝 ${keyPitcher.innings} · 삼진 ${keyPitcher.strikeouts} · 자책 ${keyPitcher.earnedRuns}',
-                ),
-            ],
+          const SizedBox(height: 20),
+          _SectionTitle(
+            title: '오늘 기록 요약',
+            actionLabel: _selectedTeamId.isEmpty ? null : '팀 기록 보기',
+            onAction: _selectedTeamId.isEmpty
+                ? null
+                : () => context.push('/records/team/$_selectedTeamId'),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: const BoxDecoration(
+              border: Border(
+                top: BorderSide(color: AppColors.divider),
+                bottom: BorderSide(color: AppColors.divider),
+              ),
+            ),
+            child: Column(
+              children: [
+                if (keyBatter != null)
+                  _RecordHighlightRow(
+                    tag: '결승타',
+                    name: keyBatter.name,
+                    role: '${keyBatter.position}  ${keyBatter.order}번',
+                    summary:
+                        '${keyBatter.atBats}타수 ${keyBatter.hits}안타  ${keyBatter.rbi}타점  ${keyBatter.runs}득점',
+                    metricLabel: '생산 +$productionScore',
+                    accent: accent,
+                    imageUrl:
+                        keyBatterPlayer?.imageUrl ??
+                        _resolveImageUrl(playerImageMap, keyBatter.name),
+                    badgeLabel: (keyBatterPlayer?.number ?? 0) > 0
+                        ? '${keyBatterPlayer!.number}'
+                        : null,
+                    actionLabel: keyBatterPlayer == null ? null : '선수 기록 보기',
+                    onTap: keyBatterPlayer == null
+                        ? null
+                        : () => _pushPlayerDetail(keyBatterPlayer),
+                  ),
+                if (keyPitcher != null)
+                  _RecordHighlightRow(
+                    tag: '호투',
+                    name: keyPitcher.name,
+                    role: keyPitcher.decision == null
+                        ? '투수'
+                        : '투수  ${keyPitcher.decision}',
+                    summary:
+                        '${keyPitcher.innings}이닝  ${keyPitcher.hits}피안타  ${keyPitcher.earnedRuns}자책  ${keyPitcher.strikeouts}탈삼진',
+                    metricLabel: '효율 +$efficiencyScore',
+                    accent: AppColors.live,
+                    imageUrl:
+                        keyPitcherPlayer?.imageUrl ??
+                        _resolveImageUrl(playerImageMap, keyPitcher.name),
+                    badgeLabel: (keyPitcherPlayer?.number ?? 0) > 0
+                        ? '${keyPitcherPlayer!.number}'
+                        : null,
+                    actionLabel: keyPitcherPlayer == null ? null : '선수 기록 보기',
+                    onTap: keyPitcherPlayer == null
+                        ? null
+                        : () => _pushPlayerDetail(keyPitcherPlayer),
+                  ),
+              ],
+            ),
           ),
         ],
-        const SizedBox(height: 18),
-        const Text(
-          '타자',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        const SizedBox(height: 22),
+        const _SectionTitle(title: '타자 기록'),
+        const SizedBox(height: 8),
+        const _RecordTableHeader(
+          labels: ['선수명', '타수', '안타', '타점', '득점', '타율'],
+          widths: [38, 38, 38, 38, 54],
         ),
-        const SizedBox(height: 10),
         ...batters.asMap().entries.map(
           (entry) => AppMotionListItem(
             index: entry.key,
-            child: _buildBatterCard(entry.value, accent, playersByName),
+            child: _buildBatterRecordRow(entry.value, accent, playersByName),
           ),
         ),
-        const SizedBox(height: 18),
-        const Text(
-          '투수',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        const SizedBox(height: 22),
+        const _SectionTitle(title: '투수 기록'),
+        const SizedBox(height: 8),
+        const _RecordTableHeader(
+          labels: ['선수명', '이닝', '피안타', '자책', '삼진', '결과'],
+          widths: [42, 42, 38, 38, 42],
         ),
-        const SizedBox(height: 10),
         ...pitchers.asMap().entries.map(
           (entry) => AppMotionListItem(
             index: batters.length + entry.key,
-            child: _buildPitcherCard(entry.value, accent, playersByName),
+            child: _buildPitcherRecordRow(entry.value, accent, playersByName),
           ),
         ),
+        if (_selectedTeamId.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          Center(
+            child: AppPressable(
+              pressedScale: 0.97,
+              onTap: () => context.push('/records/team/$_selectedTeamId'),
+              child: const _InlineAction(label: '팀 기록 보기'),
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _buildBatterCard(
+  Widget _buildBatterRecordRow(
     BatterRecord batter,
     Color accent,
     Map<String, PlayerProfile> playersByName,
   ) {
     final player = _resolvePlayer(playersByName, batter.name);
-    final imageUrl =
-        player?.imageUrl ??
-        _resolveImageUrl(_playerImageMap(playersByName), batter.name);
     final todayAvg = batter.atBats > 0 ? (batter.hits / batter.atBats) : 0.0;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppPressable(
-        onTap: player == null
-            ? null
-            : () => context.push(
-                '/records/player/${player.id}?season=${DateTime.now().year}',
-              ),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: accent.withValues(alpha: 0.18)),
-          ),
-          child: Row(
-            children: [
-              _PlayerAvatar(
-                imageUrl: imageUrl,
-                fallbackLabel: batter.name,
-                accent: accent,
-                badgeLabel: (player?.number ?? 0) > 0
-                    ? '${player!.number}'
-                    : null,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            batter.name,
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        _InfoPill(label: '${batter.order}번', accent: accent),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${batter.position} 포지션',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _InfoPill(
-                          label: '오늘 타율 ${todayAvg.toStringAsFixed(3)}',
-                          accent: accent,
-                        ),
-                        _InfoPill(
-                          label: '타수 ${batter.atBats}',
-                          accent: AppColors.textDisabled,
-                          subtle: true,
-                        ),
-                        _InfoPill(
-                          label: '안타 ${batter.hits}',
-                          accent: AppColors.positive,
-                        ),
-                        _InfoPill(
-                          label: '타점 ${batter.rbi}',
-                          accent: AppColors.live,
-                        ),
-                        _InfoPill(
-                          label: '득점 ${batter.runs}',
-                          accent: AppColors.ballYellow,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+    return _RecordDataRow(
+      onTap: player == null ? null : () => _pushPlayerDetail(player),
+      name: batter.name,
+      meta: '${batter.position}  ${batter.order}번',
+      actionLabel: player == null ? null : '선수 기록 보기',
+      accent: accent,
+      values: [
+        _RecordCell(value: '${batter.atBats}', width: 38),
+        _RecordCell(value: '${batter.hits}', width: 38),
+        _RecordCell(value: '${batter.rbi}', width: 38),
+        _RecordCell(value: '${batter.runs}', width: 38),
+        _RecordCell(
+          value: todayAvg.toStringAsFixed(3),
+          width: 54,
+          color: accent,
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildPitcherCard(
+  Widget _buildPitcherRecordRow(
     PitcherRecord pitcher,
     Color accent,
     Map<String, PlayerProfile> playersByName,
   ) {
     final player = _resolvePlayer(playersByName, pitcher.name);
-    final imageUrl =
-        player?.imageUrl ??
-        _resolveImageUrl(_playerImageMap(playersByName), pitcher.name);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppPressable(
-        onTap: player == null
-            ? null
-            : () => context.push(
-                '/records/player/${player.id}?season=${DateTime.now().year}',
-              ),
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: accent.withValues(alpha: 0.18)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _PlayerAvatar(
-                    imageUrl: imageUrl,
-                    fallbackLabel: pitcher.name,
-                    accent: accent,
-                    badgeLabel: (player?.number ?? 0) > 0
-                        ? '${player!.number}'
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          pitcher.name,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          '투수 기록',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (pitcher.decision != null) ...[
-                    const SizedBox(width: 8),
-                    _InfoPill(
-                      label: pitcher.decision!,
-                      accent: AppColors.positive,
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  _InfoPill(label: '이닝 ${pitcher.innings}', accent: accent),
-                  _InfoPill(
-                    label: '안타 ${pitcher.hits}',
-                    accent: AppColors.textDisabled,
-                    subtle: true,
-                  ),
-                  _InfoPill(
-                    label: '삼진 ${pitcher.strikeouts}',
-                    accent: AppColors.live,
-                  ),
-                  _InfoPill(
-                    label: '사사구 ${pitcher.walks}',
-                    accent: AppColors.ballYellow,
-                  ),
-                  _InfoPill(
-                    label: '자책 ${pitcher.earnedRuns}',
-                    accent: AppColors.textDisabled,
-                    subtle: true,
-                  ),
-                ],
-              ),
-            ],
-          ),
+    return _RecordDataRow(
+      onTap: player == null ? null : () => _pushPlayerDetail(player),
+      name: pitcher.name,
+      meta: '투수 기록',
+      actionLabel: player == null ? null : '선수 기록 보기',
+      accent: AppColors.live,
+      values: [
+        _RecordCell(value: pitcher.innings, width: 42),
+        _RecordCell(value: '${pitcher.hits}', width: 42),
+        _RecordCell(value: '${pitcher.earnedRuns}', width: 38),
+        _RecordCell(value: '${pitcher.strikeouts}', width: 38),
+        _RecordCell(
+          value: pitcher.decision ?? '-',
+          width: 42,
+          color: pitcher.decision == null ? AppColors.textDisabled : accent,
         ),
-      ),
+      ],
     );
+  }
+
+  int _batterProductionScore(BatterRecord batter) {
+    return (batter.hits * 3) + (batter.rbi * 2) + batter.runs;
+  }
+
+  int _pitcherEfficiencyScore(PitcherRecord pitcher) {
+    final score =
+        (pitcher.strikeouts * 2) -
+        (pitcher.walks * 2) -
+        (pitcher.earnedRuns * 3);
+    return score < 0 ? 0 : score;
+  }
+
+  void _pushPlayerDetail(PlayerProfile player) {
+    context.push('/records/player/${player.id}?season=${DateTime.now().year}');
   }
 
   Map<String, String> _playerImageMap(
@@ -582,88 +489,511 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   }
 }
 
-class _SummaryHeader extends StatelessWidget {
+class _SummaryMetric {
+  final String label;
+  final String value;
+
+  const _SummaryMetric({required this.label, required this.value});
+}
+
+class _BoxscoreSummaryPanel extends StatelessWidget {
   final String teamId;
   final String teamName;
   final Color accent;
-  final String title;
-  final String? artworkAssetName;
-  final Alignment artworkAlignment;
-  final List<Widget> statTiles;
+  final List<_SummaryMetric> metrics;
 
-  const _SummaryHeader({
+  const _BoxscoreSummaryPanel({
     required this.teamId,
     required this.teamName,
     required this.accent,
-    required this.title,
-    this.artworkAssetName,
-    this.artworkAlignment = Alignment.center,
-    required this.statTiles,
+    required this.metrics,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.divider),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [accent.withValues(alpha: 0.16), AppColors.card],
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          top: BorderSide(color: AppColors.divider),
+          bottom: BorderSide(color: AppColors.divider),
         ),
       ),
       child: Stack(
         children: [
-          if (artworkAssetName != null)
-            Positioned.fill(
-              child: AppArtworkLayer(
-                assetName: artworkAssetName!,
-                alignment: artworkAlignment,
-                opacity: 0.18,
-              ),
+          const Positioned.fill(
+            child: AppArtworkLayer(
+              assetName: VisualAssets.boxscoreAnalytics,
+              alignment: Alignment.centerRight,
+              opacity: 0.14,
             ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _TeamLogo(teamId: teamId, fallback: teamName),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          teamName,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _TeamLogo(teamId: teamId, fallback: teamName, size: 38),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '오늘 기록 요약',
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
+                          const SizedBox(height: 4),
+                          Text(
+                            teamName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: accent,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Wrap(spacing: 10, runSpacing: 10, children: statTiles),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    for (int i = 0; i < metrics.length; i++) ...[
+                      Expanded(child: _SummaryMetricTile(metric: metrics[i])),
+                      if (i != metrics.length - 1)
+                        Container(
+                          width: 1,
+                          height: 34,
+                          color: AppColors.divider,
+                        ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SummaryMetricTile extends StatelessWidget {
+  final _SummaryMetric metric;
+
+  const _SummaryMetricTile({required this.metric});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          metric.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          metric.value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 18,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+
+  const _SectionTitle({required this.title, this.actionLabel, this.onAction});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w900),
+          ),
+        ),
+        if (actionLabel != null && onAction != null)
+          AppPressable(
+            pressedScale: 0.97,
+            onTap: onAction,
+            child: _InlineAction(label: actionLabel!, compact: true),
+          ),
+      ],
+    );
+  }
+}
+
+class _RecordHighlightRow extends StatelessWidget {
+  final String tag;
+  final String name;
+  final String role;
+  final String summary;
+  final String metricLabel;
+  final Color accent;
+  final String? imageUrl;
+  final String? badgeLabel;
+  final String? actionLabel;
+  final VoidCallback? onTap;
+
+  const _RecordHighlightRow({
+    required this.tag,
+    required this.name,
+    required this.role,
+    required this.summary,
+    required this.metricLabel,
+    required this.accent,
+    this.imageUrl,
+    this.badgeLabel,
+    this.actionLabel,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPressable(
+      pressedScale: onTap == null ? 1 : 0.985,
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 84),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.divider)),
+        ),
+        child: Row(
+          children: [
+            _PlayerAvatar(
+              imageUrl: imageUrl,
+              fallbackLabel: name,
+              accent: accent,
+              badgeLabel: badgeLabel,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      _RecordTag(label: tag, accent: accent),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '$name  $role',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            height: 1.2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    summary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  if (actionLabel != null) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      actionLabel!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: accent,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              metricLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                color: accent,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: onTap == null ? AppColors.textDisabled : accent,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecordTag extends StatelessWidget {
+  final String label;
+  final Color accent;
+
+  const _RecordTag({required this.label, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: accent,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _RecordTableHeader extends StatelessWidget {
+  final List<String> labels;
+  final List<double> widths;
+
+  const _RecordTableHeader({required this.labels, required this.widths});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 34,
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              labels.first,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          for (int i = 1; i < labels.length; i++)
+            SizedBox(
+              width: widths[i - 1],
+              child: Text(
+                labels[i],
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          const SizedBox(width: 18),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecordDataRow extends StatelessWidget {
+  final VoidCallback? onTap;
+  final String name;
+  final String meta;
+  final String? actionLabel;
+  final Color accent;
+  final List<_RecordCell> values;
+
+  const _RecordDataRow({
+    required this.onTap,
+    required this.name,
+    required this.meta,
+    required this.actionLabel,
+    required this.accent,
+    required this.values,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPressable(
+      pressedScale: onTap == null ? 1 : 0.99,
+      onTap: onTap,
+      child: Container(
+        constraints: BoxConstraints(minHeight: actionLabel == null ? 58 : 68),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.divider)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (actionLabel != null) ...[
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            actionLabel!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: accent,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            for (final value in values) value,
+            SizedBox(
+              width: 18,
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: onTap == null ? Colors.transparent : accent,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecordCell extends StatelessWidget {
+  final String value;
+  final double width;
+  final Color? color;
+
+  const _RecordCell({required this.value, required this.width, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 16,
+          color: color ?? AppColors.textPrimary,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class _InlineAction extends StatelessWidget {
+  final String label;
+  final bool compact;
+
+  const _InlineAction({required this.label, this.compact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: compact ? 12 : 16,
+            color: AppColors.accent,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Icon(
+          Icons.chevron_right_rounded,
+          size: 20,
+          color: AppColors.accent,
+        ),
+      ],
     );
   }
 }
@@ -693,45 +1023,46 @@ class _TeamToggleCard extends StatelessWidget {
 
     return AppPressable(
       onTap: onTap,
-      pressedScale: 0.97,
+      pressedScale: 0.985,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(14),
+        height: 58,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: active ? AppColors.card : AppColors.background,
-          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: active
-                ? (team?.primaryColor ?? AppColors.textPrimary)
+                ? (team?.primaryColor ?? AppColors.accent)
                 : AppColors.divider,
           ),
         ),
         child: Row(
           children: [
-            _TeamLogo(teamId: teamId, fallback: teamName),
-            const SizedBox(width: 10),
+            _TeamLogo(teamId: teamId, fallback: teamName, size: 34),
+            const SizedBox(width: 9),
             Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     sideLabel,
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
                       color: active
-                          ? (team?.primaryColor ?? AppColors.textPrimary)
+                          ? (team?.primaryColor ?? AppColors.accent)
                           : AppColors.textDisabled,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     teamName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w900,
                       color: active
                           ? AppColors.textPrimary
                           : AppColors.textSecondary,
@@ -750,8 +1081,13 @@ class _TeamToggleCard extends StatelessWidget {
 class _TeamLogo extends StatelessWidget {
   final String teamId;
   final String fallback;
+  final double size;
 
-  const _TeamLogo({required this.teamId, required this.fallback});
+  const _TeamLogo({
+    required this.teamId,
+    required this.fallback,
+    this.size = 46,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -763,10 +1099,10 @@ class _TeamLogo extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: team?.logoUrl ?? '',
       httpHeaders: _kboImageHeaders,
-      width: 46,
-      height: 46,
-      memCacheWidth: 138,
-      memCacheHeight: 138,
+      width: size,
+      height: size,
+      memCacheWidth: (size * 3).round(),
+      memCacheHeight: (size * 3).round(),
       placeholder: (_, _) => _fallbackAvatar(team, fallback),
       errorWidget: (_, _, _) => _fallbackAvatar(team, fallback),
     );
@@ -774,150 +1110,18 @@ class _TeamLogo extends StatelessWidget {
 
   Widget _fallbackAvatar(KboTeam? team, String fallback) {
     return Container(
-      width: 46,
-      height: 46,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: (team?.primaryColor ?? AppColors.cardSub).withValues(
           alpha: 0.18,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.center,
       child: Text(
         fallback.isNotEmpty ? fallback.substring(0, 1) : '?',
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _StatTile({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 100,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HighlightCard extends StatelessWidget {
-  final String title;
-  final String name;
-  final String summary;
-  final Color accent;
-  final String? imageUrl;
-  final String? badgeLabel;
-
-  const _HighlightCard({
-    required this.title,
-    required this.name,
-    required this.summary,
-    required this.accent,
-    this.imageUrl,
-    this.badgeLabel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accent.withValues(alpha: 0.24)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [accent.withValues(alpha: 0.16), AppColors.card],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _PlayerAvatar(
-                imageUrl: imageUrl,
-                fallbackLabel: name,
-                accent: accent,
-                badgeLabel: badgeLabel,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      summary,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '오늘 경기 기준',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+        style: TextStyle(fontSize: size * 0.34, fontWeight: FontWeight.w900),
       ),
     );
   }
@@ -997,39 +1201,6 @@ class _PlayerAvatar extends StatelessWidget {
             fontWeight: FontWeight.w900,
             color: accent,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  final String label;
-  final Color accent;
-  final bool subtle;
-
-  const _InfoPill({
-    required this.label,
-    required this.accent,
-    this.subtle = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = subtle ? AppColors.textSecondary : accent;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: color,
         ),
       ),
     );

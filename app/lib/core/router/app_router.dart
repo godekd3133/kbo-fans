@@ -11,6 +11,7 @@ import '../../features/records/leaderboard_screen.dart';
 import '../../features/records/player_detail_screen.dart';
 import '../../features/records/records_screen.dart';
 import '../../features/schedule/schedule_screen.dart';
+import '../../features/news/news_screen.dart';
 import '../../features/standings/standings_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/settings/api_diagnostics_screen.dart';
@@ -130,6 +131,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               state,
               tabIndex: 1,
               child: const ScheduleScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/news',
+            pageBuilder: (context, state) => _tabTransitionPage(
+              state,
+              tabIndex: 3,
+              child: const NewsScreen(),
             ),
           ),
           GoRoute(

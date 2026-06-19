@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.53+53`
-- Current release tag: `0.0.53`
+- Flutter app version: `0.0.54+54`
+- Current release tag: `0.0.54`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -100,7 +100,8 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.50`: home reference dashboard TestFlight/backend deploy checkpoint, superseded before GitHub Release by `0.0.51` after post-deploy source sync.
 - `0.0.51`: home reference dashboard TestFlight upload checkpoint, superseded before GitHub release/tag/backend deploy by `0.0.52` after home header action icon source sync.
 - `0.0.52`: home reference dashboard TestFlight upload checkpoint, superseded before GitHub release/tag/backend deploy by `0.0.53` after reference team logo asset source sync.
-- `0.0.53`: home is rebuilt around the reference dashboard flow with KBO brand mark, my-team brief, today games, recent flow, and standings snapshot; bottom tabs align as home/game/records/news/more; live status badges preserve inning labels; backend `/home` adds `standingsPreview`; current app build `0.0.53+53`.
+- `0.0.53`: home reference dashboard release checkpoint, superseded before GitHub release/tag/backend deploy by `0.0.54` after schedule/records/motion UX and game-detail scorebug source sync.
+- `0.0.54`: home is rebuilt around the reference dashboard flow with KBO brand mark, my-team brief, today games, recent flow, and standings snapshot; bottom tabs align as home/game/records/news/more with a real `/news` brief screen; schedule calendar scrolling, records information density, common motion, and game-detail scorebug stability are reinforced; backend `/home` adds `standingsPreview`; current app build `0.0.54+54`.
 
 ## GitHub Release Note Template
 

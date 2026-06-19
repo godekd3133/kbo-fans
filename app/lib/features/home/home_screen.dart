@@ -2752,7 +2752,7 @@ class _KboBriefCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _sectionCard(
-          padding: const EdgeInsets.fromLTRB(20, 19, 16, 18),
+          padding: const EdgeInsets.fromLTRB(20, 18, 16, 17),
           accentColor: AppColors.live,
           backgroundAssetName: VisualAssets.standingsRace,
           backgroundAlignment: Alignment.topRight,
@@ -2763,7 +2763,7 @@ class _KboBriefCard extends StatelessWidget {
               Text(
                 brief.title.isEmpty ? '오늘의 KBO 관전 포인트' : brief.title,
                 style: const TextStyle(
-                  fontSize: 21,
+                  fontSize: 20,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
                   height: 1.12,
@@ -2815,17 +2815,17 @@ class _KboBriefListItem extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: 58,
+            height: 58,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: accent.withValues(alpha: 0.14),
               border: Border.all(color: accent.withValues(alpha: 0.28)),
             ),
             alignment: Alignment.center,
-            child: Icon(_kboBriefIcon(item.type), size: 31, color: accent),
+            child: Icon(_kboBriefIcon(item.type), size: 29, color: accent),
           ),
-          const SizedBox(width: 15),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2848,7 +2848,7 @@ class _KboBriefListItem extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                     height: 1.2,
                   ),
@@ -3106,7 +3106,7 @@ class _QuickContentListItem extends ConsumerWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: accent,
                   fontWeight: FontWeight.w900,
                 ),

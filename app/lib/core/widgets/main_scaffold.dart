@@ -12,14 +12,14 @@ class MainScaffold extends StatelessWidget {
     (icon: Icons.home_rounded, label: '홈', path: '/home'),
     (icon: Icons.sports_baseball_rounded, label: '경기', path: '/schedule'),
     (icon: Icons.bar_chart_rounded, label: '기록', path: '/records'),
-    (icon: Icons.article_outlined, label: '뉴스', path: '/standings'),
+    (icon: Icons.article_outlined, label: '뉴스', path: '/news'),
     (icon: Icons.more_horiz_rounded, label: '더보기', path: '/settings'),
   ];
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     final idx = _tabs.indexWhere((t) => location.startsWith(t.path));
-    return idx >= 0 ? idx : 0;
+    return idx;
   }
 
   @override
@@ -30,10 +30,17 @@ class MainScaffold extends StatelessWidget {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(top: BorderSide(color: AppColors.divider)),
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+          decoration: BoxDecoration(
+            color: AppColors.background.withValues(alpha: 0.98),
+            border: const Border(top: BorderSide(color: AppColors.divider)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.36),
+                blurRadius: 18,
+                offset: const Offset(0, -8),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -53,9 +60,9 @@ class MainScaffold extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
               Container(
-                width: 96,
+                width: 128,
                 height: 4,
                 decoration: BoxDecoration(
                   color: AppColors.textPrimary,

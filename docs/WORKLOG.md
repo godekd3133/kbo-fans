@@ -2,6 +2,68 @@
 
 ---
 
+## 2026-06-19: 실제 뉴스 탭 화면 추가
+
+### 원인
+- 하단 `뉴스` 탭 라벨은 들어갔지만 실제 path가 `/standings`라 순위 화면을 임시 재사용하고 있었다.
+
+### 완료
+- [x] 하단 `뉴스` 탭 path를 `/news`로 분리
+- [x] `NewsScreen` 추가: 기준일 헤더, 전체/경기/순위/기록/마이팀 필터, 홈 aggregate 기반 브리프 요약, compact 뉴스 카드, 오류/빈 상태 포함
+- [x] `/news` 라우트를 ShellRoute에 추가하고 기존 `/standings` 화면은 홈/뉴스 카드에서 진입 가능한 별도 화면으로 유지
+- [x] `/standings`처럼 하단 탭에 없는 shell route에서는 하단 탭이 홈으로 잘못 선택되지 않도록 정리
+- [x] 뉴스 화면 widget test 추가
+- [x] 라우터 테스트 컴파일을 막던 `boxscore_tab.dart`의 중복 `Column(child: Column(...))` 구조를 단일 `Column(children: ...)`로 정리
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 뉴스 탭 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/widgets/main_scaffold.dart lib/core/router/app_router.dart lib/features/news/news_screen.dart test/features/news/news_screen_test.dart`
+- [x] `cd app && fvm dart format lib/features/game_detail/tabs/boxscore_tab.dart` (`0 changed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/game_detail/tabs/boxscore_tab.dart lib/features/news/news_screen.dart lib/core/router/app_router.dart lib/core/widgets/main_scaffold.dart test/features/news/news_screen_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/core/router/app_router_test.dart test/features/news/news_screen_test.dart -r expanded` (`4 passed`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 0.0.54 최신 홈 대시보드 릴리즈/TestFlight/backend 배포
+
+### 완료
+- [x] `0.0.53+53` 준비 뒤 실제 `/news` 탭, 일정/기록/모션 UX, 경기 상세 scorebug source sync가 추가되어 최신 tester-facing build를 `0.0.54+54`로 승격
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.54` 기준으로 동기화
+- [x] `0.0.53`은 TestFlight/GitHub release/backend deploy 없이 `0.0.54`로 supersede 처리
+- [x] 운영 backend `/api/home?date=2026-06-19&myTeam=LG` 응답에 `standingsPreview` 5개와 `LG` 행 포함 확인
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/router/app_router.dart lib/core/widgets/main_scaffold.dart lib/features/news/news_screen.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/schedule/schedule_screen.dart test/features/news/news_screen_test.dart test/features/schedule/schedule_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub` (`140 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`158 passed`)
+- [x] `python3 -m py_compile scripts/kbo-reference-api.py`
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 일정 탭 스크롤 UX 개선
+
+### 원인
+- 일정 탭 캘린더 모드가 상단 컨트롤/캘린더는 고정 `Column`, 하단 경기 목록만 별도 `ListView`인 구조라 캘린더나 범례 위에서 세로 드래그를 시작하면 경기 목록 스크롤이 잡히지 않았다.
+
+### 완료
+- [x] 캘린더 모드의 컨트롤, 캘린더, 선택일 경기 목록을 하나의 `RefreshIndicator` + `ListView` 스크롤 표면으로 통합
+- [x] 초기 로딩 상태는 기존처럼 중복 새로고침 indicator 없이 단일 spinner만 보이도록 유지
+- [x] 월 이동 `PageView`, 날짜 선택, 하단 일정 탭 재탭 시 선택 월 유지 동작 보존
+- [x] 캘린더 범례 영역에서 세로 드래그해도 경기 목록이 스크롤되는 위젯 테스트 추가
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 일정 스크롤 UX 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart -r expanded` (`4 passed`)
+- [x] `git diff --check`
+
+---
+
 ## 2026-06-19: 기록 탭 상단 비주얼 제거
 
 ### 원인

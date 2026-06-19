@@ -587,52 +587,6 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     });
   }
 
-  Widget _teamSection(String teamId, String shortName) {
-    final team = KboTeams.byId(teamId);
-    return Column(
-      children: [
-        CachedNetworkImage(
-          imageUrl: team?.logoUrl ?? '',
-          httpHeaders: _kboImageHeaders,
-          width: 48,
-          height: 48,
-          memCacheWidth: 144,
-          memCacheHeight: 144,
-          placeholder: (_, _) => Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.cardSub,
-              shape: BoxShape.circle,
-            ),
-          ),
-          errorWidget: (_, _, _) => Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.cardSub,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                shortName,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          shortName,
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-        ),
-      ],
-    );
-  }
-
   String _stateMetaText(Game game) {
     return switch (game.status) {
       GameStatus.live => '방금 업데이트',
@@ -642,6 +596,378 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       GameStatus.cancelled => '취소',
       GameStatus.suspended => '중단',
     };
+  }
+}
+
+class _GameScorebug extends StatelessWidget {
+  final Game game;
+  final bool isLive;
+  final String metaText;
+
+  const _GameScorebug({
+    required this.game,
+    required this.isLive,
+    required this.metaText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final statusLabel = isLive
+        ? 'LIVE'
+        : labelForGameStatus(game.status, statusLabel: game.statusLabel);
+    final inningLabel = secondaryTextForGameStatus(
+      game.status,
+      inning: game.inning,
+      startTime: game.startTime,
+      statusLabel: game.statusLabel,
+    );
+
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
+      ),
+      child: Stack(
+        children: [
+          const Positioned.fill(
+            child: AppArtworkLayer(
+              assetName: VisualAssets.gameDetailScoreboard,
+              alignment: Alignment.center,
+              opacity: 0.22,
+            ),
+          ),
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.background.withValues(alpha: 0.18),
+                    AppColors.background.withValues(alpha: 0.92),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    _LiveBadge(label: statusLabel, active: isLive),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'KBO 리그 | $metaText',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: _ScorebugTeam(
+                        teamId: game.away.teamId,
+                        shortName: game.away.shortName,
+                        alignEnd: false,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 46,
+                      child: AppMotionValue(
+                        value: '${game.away.score}',
+                        child: Text(
+                          '${game.away.score}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 48,
+                            height: 0.96,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 76,
+                      child: Column(
+                        children: [
+                          Text(
+                            inningLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isLive
+                                  ? AppColors.live
+                                  : AppColors.textSecondary,
+                              fontWeight: FontWeight.w900,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const _BaseDiamondMini(),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      width: 46,
+                      child: AppMotionValue(
+                        value: '${game.home.score}',
+                        child: Text(
+                          '${game.home.score}',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 48,
+                            height: 0.96,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: _ScorebugTeam(
+                        teamId: game.home.teamId,
+                        shortName: game.home.shortName,
+                        alignEnd: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _ScorebugInfoPill(label: game.stadium),
+                    const SizedBox(width: 8),
+                    _ScorebugInfoPill(label: game.startTime),
+                    const SizedBox(width: 8),
+                    _ScorebugInfoPill(label: metaText),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveBadge extends StatelessWidget {
+  final String label;
+  final bool active;
+
+  const _LiveBadge({required this.label, required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? AppColors.live : AppColors.textSecondary;
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: active ? 0.18 : 0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: color.withValues(alpha: active ? 0.75 : 0.28),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: color,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _ScorebugTeam extends StatelessWidget {
+  final String teamId;
+  final String shortName;
+  final bool alignEnd;
+
+  const _ScorebugTeam({
+    required this.teamId,
+    required this.shortName,
+    required this.alignEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final team = KboTeams.byId(teamId);
+    final accent = team?.primaryColor ?? AppColors.textSecondary;
+    return Column(
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        _ScorebugLogo(team: team, fallback: shortName),
+        const SizedBox(height: 8),
+        Container(
+          width: 40,
+          height: 3,
+          decoration: BoxDecoration(
+            color: accent,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          shortName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+          style: const TextStyle(
+            fontSize: 18,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+            height: 1.08,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScorebugLogo extends StatelessWidget {
+  final KboTeam? team;
+  final String fallback;
+
+  const _ScorebugLogo({required this.team, required this.fallback});
+
+  @override
+  Widget build(BuildContext context) {
+    return CachedNetworkImage(
+      imageUrl: team?.logoUrl ?? '',
+      httpHeaders: _kboImageHeaders,
+      width: 54,
+      height: 54,
+      memCacheWidth: 162,
+      memCacheHeight: 162,
+      placeholder: (_, _) => _fallback(),
+      errorWidget: (_, _, _) => _fallback(),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+        color: (team?.primaryColor ?? AppColors.cardSub).withValues(
+          alpha: 0.18,
+        ),
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.divider),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        fallback.isNotEmpty ? fallback.substring(0, 1) : '?',
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+      ),
+    );
+  }
+}
+
+class _BaseDiamondMini extends StatelessWidget {
+  const _BaseDiamondMini();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 34,
+      height: 28,
+      child: Stack(
+        alignment: Alignment.center,
+        children: const [
+          Positioned(top: 0, child: _BaseDot(active: false)),
+          Positioned(left: 2, top: 11, child: _BaseDot(active: false)),
+          Positioned(right: 2, top: 11, child: _BaseDot(active: false)),
+          Positioned(bottom: 0, child: _BaseDot(active: false)),
+        ],
+      ),
+    );
+  }
+}
+
+class _BaseDot extends StatelessWidget {
+  final bool active;
+
+  const _BaseDot({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.rotate(
+      angle: 0.785398,
+      child: Container(
+        width: 13,
+        height: 13,
+        decoration: BoxDecoration(
+          color: active ? AppColors.ballYellow : Colors.transparent,
+          border: Border.all(
+            color: active ? AppColors.ballYellow : AppColors.textDisabled,
+            width: 1.5,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScorebugInfoPill extends StatelessWidget {
+  final String label;
+
+  const _ScorebugInfoPill({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    if (label.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Flexible(
+      child: Container(
+        height: 24,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -1686,10 +2012,10 @@ class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
   const _TabBarHeaderDelegate(this.tabBar);
 
   @override
-  double get minExtent => tabBar.preferredSize.height + 6;
+  double get minExtent => tabBar.preferredSize.height;
 
   @override
-  double get maxExtent => tabBar.preferredSize.height + 6;
+  double get maxExtent => tabBar.preferredSize.height;
 
   @override
   Widget build(
@@ -1698,20 +2024,11 @@ class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     return DecoratedBox(
-      decoration: const BoxDecoration(color: AppColors.background),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-        child: Container(
-          height: tabBar.preferredSize.height,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: tabBar,
-        ),
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
+      child: SizedBox(height: tabBar.preferredSize.height, child: tabBar),
     );
   }
 

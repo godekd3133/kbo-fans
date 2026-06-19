@@ -265,24 +265,53 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           .firstOrNull;
     }
 
+    if (_viewMode == ScheduleViewMode.calendar) {
+      return _buildCalendarModeBody(scheduleAsync, selectedSchedule);
+    }
+
     return Column(
       children: [
         _buildControls(),
-        if (_viewMode == ScheduleViewMode.calendar) ...[
+        const Divider(color: AppColors.divider, height: 1),
+        Expanded(child: _buildStadiumPager()),
+      ],
+    );
+  }
+
+  Widget _buildCalendarModeBody(
+    AsyncValue<List<ScheduleDay>> scheduleAsync,
+    ScheduleDay? selectedSchedule,
+  ) {
+    final isInitialLoading =
+        scheduleAsync.isLoading && scheduleAsync.asData == null;
+    if (isInitialLoading) {
+      return Column(
+        children: [
+          _buildControls(),
           _buildCalendarPager(context),
           const Divider(color: AppColors.divider, height: 1),
-          Expanded(
-            child: scheduleAsync.when(
-              loading: _buildGameListLoading,
-              error: (e, _) => _buildScheduleError(e),
-              data: (_) => _buildGameList(selectedSchedule),
-            ),
-          ),
-        ] else ...[
-          const Divider(color: AppColors.divider, height: 1),
-          Expanded(child: _buildStadiumPager()),
+          Expanded(child: _buildGameListLoading()),
         ],
-      ],
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshSchedule,
+      color: AppColors.live,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        children: [
+          _buildControls(),
+          _buildCalendarPager(context),
+          const Divider(color: AppColors.divider, height: 1),
+          ...scheduleAsync.when<List<Widget>>(
+            loading: () => [_buildGameListLoadingSection()],
+            error: (error, _) => [_buildScheduleErrorContent(error)],
+            data: (_) => _buildGameListItems(selectedSchedule),
+          ),
+        ],
+      ),
     );
   }
 
@@ -771,37 +800,20 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return DateTime(now.year, now.month + delta);
   }
 
-  Widget _buildGameList(ScheduleDay? schedule) {
+  List<Widget> _buildGameListItems(ScheduleDay? schedule) {
     if (_selectedDay == null) {
-      return RefreshIndicator(
-        onRefresh: _refreshSchedule,
-        color: AppColors.live,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            _buildScheduleEmptyArtwork(
-              title: '일정 선택',
-              message: '날짜를 탭해 경기 일정을 보세요',
-            ),
-          ],
+      return [
+        _buildScheduleEmptyArtwork(
+          title: '일정 선택',
+          message: '날짜를 탭해 경기 일정을 보세요',
         ),
-      );
+      ];
     }
 
     if (schedule == null || schedule.games.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: _refreshSchedule,
-        color: AppColors.live,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            _buildScheduleEmptyArtwork(
-              title: '경기 없음',
-              message: '선택한 날짜에 경기가 없습니다',
-            ),
-          ],
-        ),
-      );
+      return [
+        _buildScheduleEmptyArtwork(title: '경기 없음', message: '선택한 날짜에 경기가 없습니다'),
+      ];
     }
 
     final dayNames = ['', '월', '화', '수', '목', '금', '토', '일'];
@@ -815,43 +827,34 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final label = schedule.label != null
         ? '$dateLabel — ${schedule.label}'
         : dateLabel;
-    return RefreshIndicator(
-      onRefresh: _refreshSchedule,
-      color: AppColors.live,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 12),
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-          ...schedule.games.asMap().entries.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: AppMotionListItem(
-                key: ValueKey('schedule-game-${entry.value.gameId}'),
-                index: entry.key,
-                child: ScheduleGameCard(
-                  game: entry.value,
-                  onTap: () => _openGameDetail(entry.value.gameId),
-                  ticketSummary:
-                      entry.value.ticketInfo == null ||
-                          !shouldShowTicketInfoForScheduleStatus(
-                            entry.value.status,
-                          )
-                      ? null
-                      : _ticketSummary(entry.value.ticketInfo!),
-                ),
-              ),
-            ),
-          ),
-        ],
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
       ),
-    );
+      ...schedule.games.asMap().entries.map(
+        (entry) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          child: AppMotionListItem(
+            key: ValueKey('schedule-game-${entry.value.gameId}'),
+            index: entry.key,
+            child: ScheduleGameCard(
+              game: entry.value,
+              onTap: () => _openGameDetail(entry.value.gameId),
+              ticketSummary:
+                  entry.value.ticketInfo == null ||
+                      !shouldShowTicketInfoForScheduleStatus(entry.value.status)
+                  ? null
+                  : _ticketSummary(entry.value.ticketInfo!),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 14),
+    ];
   }
 
   Widget _buildScheduleEmptyArtwork({
@@ -892,48 +895,43 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildScheduleError(Object error) {
-    return RefreshIndicator(
-      onRefresh: _refreshSchedule,
-      color: AppColors.live,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
-            child: AppArtworkCard(
-              assetName: VisualAssets.dataRetry,
-              height: 184,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const Text(
-                    '일정을 불러올 수 없습니다',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    describeAsyncError(error),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      height: 1.35,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      onPressed: _refreshSchedule,
-                      child: const Text('다시 시도'),
-                    ),
-                  ),
-                ],
+  Widget _buildGameListLoadingSection() {
+    return SizedBox(height: 260, child: _buildGameListLoading());
+  }
+
+  Widget _buildScheduleErrorContent(Object error) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+      child: AppArtworkCard(
+        assetName: VisualAssets.dataRetry,
+        height: 184,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            const Text(
+              '일정을 불러올 수 없습니다',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              describeAsyncError(error),
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.35,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _refreshSchedule,
+                child: const Text('다시 시도'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

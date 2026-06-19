@@ -57,6 +57,31 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('캘린더 영역에서 위로 밀어도 선택일 경기 목록이 스크롤된다', (tester) async {
+    final now = DateTime.now();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          scheduleProvider.overrideWith(
+            (_, yearMonth) async => _longScheduleForToday(now, yearMonth),
+          ),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final firstGame = find.text('Away 0');
+    expect(firstGame, findsOneWidget);
+    final initialTop = tester.getTopLeft(firstGame).dy;
+
+    await tester.drag(find.text('일반 경기일'), const Offset(0, -180));
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(firstGame).dy, lessThan(initialTop));
+  });
+
   testWidgets('이미 선택된 일정 탭을 다시 눌러도 선택 월을 유지한다', (tester) async {
     final now = DateTime.now();
     final nextMonth = DateTime(now.year, now.month + 1);
@@ -122,4 +147,30 @@ String _monthLabel(DateTime month) {
 
 List<ScheduleDay> _scheduleForMonth(String yearMonth) {
   return [ScheduleDay(date: '$yearMonth-01', games: const [])];
+}
+
+List<ScheduleDay> _longScheduleForToday(DateTime today, String yearMonth) {
+  final currentYearMonth =
+      '${today.year}-${today.month.toString().padLeft(2, '0')}';
+  if (yearMonth != currentYearMonth) {
+    return const [];
+  }
+
+  return [
+    ScheduleDay(
+      date: '$yearMonth-${today.day.toString().padLeft(2, '0')}',
+      games: List.generate(
+        18,
+        (index) => ScheduleGame(
+          gameId: 'scroll-test-$index',
+          time: '18:${index.toString().padLeft(2, '0')}',
+          awayId: 'AW$index',
+          awayName: 'Away $index',
+          homeId: 'HM$index',
+          homeName: 'Home $index',
+          stadium: '테스트 구장',
+        ),
+      ),
+    ),
+  ];
 }

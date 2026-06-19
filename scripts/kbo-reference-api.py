@@ -233,8 +233,8 @@ def _home_payload(date: str, my_team: Optional[str]) -> dict:
                 {
                     "type": "record_radar",
                     "eyebrow": "기록 레이더",
-                    "title": "노시환 17홈런 · 홈런왕 경쟁",
-                    "subtitle": "상위 3명 격차 3개 · 오늘 타석 체크",
+                    "title": "노시환 17홈런",
+                    "subtitle": "홈런왕 경쟁 · 상위 3명 격차 3개",
                     "route": "/records",
                     "gameId": None,
                     "teamIds": ["HH"],
