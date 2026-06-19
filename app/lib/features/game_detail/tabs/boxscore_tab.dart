@@ -219,7 +219,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           teamId: _selectedTeamId,
           teamName: _selectedTeamName,
           accent: accent,
-          title: '타격 요약',
+          title: '오늘 기록 요약',
           statTiles: [
             _StatTile(label: '타수', value: '$totalAtBats'),
             _StatTile(label: '득점', value: '$totalRuns'),
@@ -242,6 +242,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                   title: '핵심 타자',
                   name: keyBatter.name,
                   accent: accent,
+                  metricLabel: '오늘 생산 +${_batterProductionScore(keyBatter)}',
                   imageUrl:
                       keyBatterPlayer?.imageUrl ??
                       _resolveImageUrl(playerImageMap, keyBatter.name),
@@ -250,12 +251,16 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                       : null,
                   summary:
                       '안타 ${keyBatter.hits} · 타점 ${keyBatter.rbi} · 득점 ${keyBatter.runs}',
+                  onTap: keyBatterPlayer == null
+                      ? null
+                      : () => _openPlayerDetail(keyBatterPlayer),
                 ),
               if (keyPitcher != null)
                 _HighlightCard(
                   title: '핵심 투수',
                   name: keyPitcher.name,
                   accent: AppColors.live,
+                  metricLabel: '오늘 효율 +${_pitcherEfficiencyScore(keyPitcher)}',
                   imageUrl:
                       keyPitcherPlayer?.imageUrl ??
                       _resolveImageUrl(playerImageMap, keyPitcher.name),
@@ -264,6 +269,9 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                       : null,
                   summary:
                       '이닝 ${keyPitcher.innings} · 삼진 ${keyPitcher.strikeouts} · 자책 ${keyPitcher.earnedRuns}',
+                  onTap: keyPitcherPlayer == null
+                      ? null
+                      : () => _openPlayerDetail(keyPitcherPlayer),
                 ),
             ],
           ),
@@ -309,11 +317,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppPressable(
-        onTap: player == null
-            ? null
-            : () => context.push(
-                '/records/player/${player.id}?season=${DateTime.now().year}',
-              ),
+        onTap: player == null ? null : () => _openPlayerDetail(player),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -365,6 +369,10 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                       runSpacing: 8,
                       children: [
                         _InfoPill(
+                          label: '생산 +${_batterProductionScore(batter)}',
+                          accent: AppColors.positive,
+                        ),
+                        _InfoPill(
                           label: '오늘 타율 ${todayAvg.toStringAsFixed(3)}',
                           accent: accent,
                         ),
@@ -387,6 +395,10 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         ),
                       ],
                     ),
+                    if (player != null) ...[
+                      const SizedBox(height: 8),
+                      const _RecordsLinkCue(),
+                    ],
                   ],
                 ),
               ),
@@ -409,11 +421,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: AppPressable(
-        onTap: player == null
-            ? null
-            : () => context.push(
-                '/records/player/${player.id}?season=${DateTime.now().year}',
-              ),
+        onTap: player == null ? null : () => _openPlayerDetail(player),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -473,6 +481,10 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
+                  _InfoPill(
+                    label: '효율 +${_pitcherEfficiencyScore(pitcher)}',
+                    accent: AppColors.positive,
+                  ),
                   _InfoPill(label: '이닝 ${pitcher.innings}', accent: accent),
                   _InfoPill(
                     label: '안타 ${pitcher.hits}',
@@ -494,6 +506,10 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                   ),
                 ],
               ),
+              if (player != null) ...[
+                const SizedBox(height: 10),
+                const _RecordsLinkCue(),
+              ],
             ],
           ),
         ),
@@ -560,6 +576,20 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         .replaceAll('(', '')
         .replaceAll(')', '')
         .toLowerCase();
+  }
+
+  int _batterProductionScore(BatterRecord batter) {
+    return (batter.hits * 3) + (batter.rbi * 2) + batter.runs;
+  }
+
+  int _pitcherEfficiencyScore(PitcherRecord pitcher) {
+    return (pitcher.strikeouts * 2) -
+        (pitcher.walks * 2) -
+        (pitcher.earnedRuns * 3);
+  }
+
+  void _openPlayerDetail(PlayerProfile player) {
+    context.push('/records/player/${player.id}?season=${DateTime.now().year}');
   }
 }
 
@@ -793,96 +823,136 @@ class _HighlightCard extends StatelessWidget {
   final String name;
   final String summary;
   final Color accent;
+  final String metricLabel;
   final String? imageUrl;
   final String? badgeLabel;
+  final VoidCallback? onTap;
 
   const _HighlightCard({
     required this.title,
     required this.name,
     required this.summary,
     required this.accent,
+    required this.metricLabel,
     this.imageUrl,
     this.badgeLabel,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accent.withValues(alpha: 0.24)),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [accent.withValues(alpha: 0.16), AppColors.card],
+    return AppPressable(
+      onTap: onTap,
+      pressedScale: onTap == null ? 1 : 0.98,
+      child: Container(
+        width: 220,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: 0.24)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [accent.withValues(alpha: 0.16), AppColors.card],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                _InfoPill(label: metricLabel, accent: accent),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _PlayerAvatar(
+                  imageUrl: imageUrl,
+                  fallbackLabel: name,
+                  accent: accent,
+                  badgeLabel: badgeLabel,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        summary,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            onTap == null
+                ? const Text(
+                    '오늘 경기 기준',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                : const _RecordsLinkCue(),
+          ],
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
+    );
+  }
+}
+
+class _RecordsLinkCue extends StatelessWidget {
+  const _RecordsLinkCue();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '선수 기록 보기',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.accent,
+            fontWeight: FontWeight.w800,
           ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _PlayerAvatar(
-                imageUrl: imageUrl,
-                fallbackLabel: name,
-                accent: accent,
-                badgeLabel: badgeLabel,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      summary,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '오늘 경기 기준',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+        ),
+        SizedBox(width: 4),
+        Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.accent),
+      ],
     );
   }
 }

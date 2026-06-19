@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-06-19: 박스스코어 기록실 연결형 개선
+
+### 완료
+- [x] C 방향을 기존 박스스코어 계약 기반 기록실 연결형으로 확정
+- [x] 매칭된 타자/투수 row와 핵심 카드에 `선수 기록 보기` 진입점 추가
+- [x] 미매칭 선수 row는 기록만 표시하고 탭 진입점은 숨기도록 분리
+- [x] 현재 경기 기준 타자 생산/투수 효율 라벨을 기존 boxscore fields에서 파생
+- [x] placeholder-only 박스스코어 guard 유지 검증
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/game_detail/tabs/boxscore_tab.dart test/features/game_detail/boxscore_tab_test.dart`
+- [x] `cd app && fvm flutter test test/features/game_detail/boxscore_tab_test.dart --no-pub --reporter expanded` (`All tests passed`)
+- [x] `cd app && fvm flutter analyze lib/features/game_detail/tabs/boxscore_tab.dart test/features/game_detail/boxscore_tab_test.dart --no-pub` (`No issues found`)
+- [x] `git diff --check`
+
+---
+
 ## 2026-06-19: 앱 포커스 시 로컬 알림 backfill 차단
 
 ### 완료
