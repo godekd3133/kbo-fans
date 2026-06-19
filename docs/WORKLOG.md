@@ -17,8 +17,9 @@
 - [x] `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8011/api`
 - [x] `python3 -m py_compile scripts/kbo-reference-api.py backend/src/kbo_fans_backend/services/home.py`
 - [x] Chrome CDP 390x844 최종 캡처: `output/playwright/kbo-info-pack-reference/home-pack-final3-06.png`
-- [ ] `0.0.57 (57)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인
-- [ ] `0.0.57 (57)` TestFlight upload 성공 확인
+- [x] `0.0.57 (57)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`CFBundleShortVersionString=0.0.57`, `CFBundleVersion=57`, `com.kbofans.kboFans`, Firebase project `kbo-fans-47189`, `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `casual_*.webp` 175개, reference team logo PNG 7개, reference status PNG 1개)
+- [x] `0.0.57 (57)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`)
+- [x] TestFlight upload warning: `objective_c.framework` dSYM warning은 남음
 - [ ] `0.0.57` backend deploy workflow 성공 및 운영 `/api/health` 확인
 - [ ] topic 재등록 성공 확인
 
