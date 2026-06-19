@@ -35,6 +35,9 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   final GlobalKey _scrollViewKey = GlobalKey();
   final Map<String, GlobalKey> _inningKeys = {};
   String? _selectedInningLabel;
+  _RelayMomentFilter _selectedMomentFilter = _RelayMomentFilter.all;
+  int? _latestSeenSeq;
+  bool _hasNewRelay = false;
 
   @override
   void dispose() {
@@ -78,6 +81,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
           if (relayData.relayItems.isEmpty && relayData.currentAtBat == null) {
             return _buildFallbackContent(latestGame);
           }
+          _trackRelayUpdates(relayData.relayItems);
           final imageMap = _buildRelayPlayerImageMap(
             teamPlayers: teamPlayers,
             season: season,
@@ -135,7 +139,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     final sortedItems = List<RelayItem>.from(items)
       ..sort((a, b) => b.seqNo.compareTo(a.seqNo));
     final moments = _buildMoments(sortedItems);
-    final filteredMoments = _selectedInningLabel == null
+    final inningFilteredMoments = _selectedInningLabel == null
         ? moments
         : moments
               .where(
@@ -144,6 +148,9 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                     moment.inningLabel.startsWith('$_selectedInningLabel '),
               )
               .toList();
+    final filteredMoments = inningFilteredMoments
+        .where((moment) => _selectedMomentFilter.matches(moment))
+        .toList();
 
     return CustomScrollView(
       key: _scrollViewKey,
@@ -174,6 +181,20 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             child: Padding(
               padding: const EdgeInsets.only(top: 14),
               child: _buildInningChips(sortedItems),
+            ),
+          ),
+        if (moments.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: _buildMomentFilterChips(moments),
+            ),
+          ),
+        if (_hasNewRelay)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _NewRelayBanner(onTap: _jumpToLatestRelay),
             ),
           ),
         if (_selectedInningLabel != null)
@@ -215,10 +236,12 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                     const SizedBox(height: 12),
                 ],
                 if (filteredMoments.isEmpty)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 16),
                     child: Text(
-                      '선택한 회차의 문자중계가 아직 없습니다',
+                      _selectedMomentFilter == _RelayMomentFilter.all
+                          ? '선택한 회차의 문자중계가 아직 없습니다'
+                          : '선택한 조건의 주요 장면이 없습니다',
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -231,6 +254,37 @@ class _RelayTabState extends ConsumerState<RelayTab> {
         ),
       ],
     );
+  }
+
+  void _trackRelayUpdates(List<RelayItem> items) {
+    if (items.isEmpty) {
+      return;
+    }
+
+    final latestSeq = items.fold<int>(
+      0,
+      (latest, item) => item.seqNo > latest ? item.seqNo : latest,
+    );
+    final previousSeq = _latestSeenSeq;
+    if (previousSeq == null) {
+      _latestSeenSeq = latestSeq;
+      return;
+    }
+    if (latestSeq <= previousSeq) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final isAwayFromTop =
+          _scrollController.hasClients && _scrollController.offset > 140;
+      setState(() {
+        _latestSeenSeq = latestSeq;
+        _hasNewRelay = isAwayFromTop;
+      });
+    });
   }
 
   Widget _buildFallbackContent(Game game) {
@@ -353,6 +407,52 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     );
   }
 
+  Widget _buildMomentFilterChips(List<_RelayMoment> moments) {
+    const filters = _RelayMomentFilter.values;
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: filters.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final filter = filters[index];
+          final isActive = filter == _selectedMomentFilter;
+          final count = filter == _RelayMomentFilter.all
+              ? moments.length
+              : moments.where(filter.matches).length;
+          return AppPressable(
+            onTap: () => _selectMomentFilter(filter),
+            pressedScale: 0.94,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.live : AppColors.cardSub,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isActive ? AppColors.live : AppColors.divider,
+                ),
+              ),
+              child: Text(
+                '${filter.label} $count',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive
+                      ? AppColors.textPrimary
+                      : AppColors.textDisabled,
+                  fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _selectInning(String label) {
     setState(() {
       _selectedInningLabel = label == '전체' ? null : label;
@@ -365,6 +465,40 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     _scrollController.animateTo(
       0,
       duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _selectMomentFilter(_RelayMomentFilter filter) {
+    setState(() {
+      _selectedMomentFilter = filter;
+    });
+
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _jumpToLatestRelay() {
+    setState(() {
+      _hasNewRelay = false;
+      _selectedInningLabel = null;
+      _selectedMomentFilter = _RelayMomentFilter.all;
+    });
+
+    if (!_scrollController.hasClients) {
+      return;
+    }
+
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
     );
   }
@@ -513,7 +647,7 @@ class _RelayGameSummary extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -581,7 +715,7 @@ class _RelayFallbackNotice extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider),
       ),
       child: Column(
@@ -786,6 +920,51 @@ class _LineScoreRow extends StatelessWidget {
   }
 }
 
+class _NewRelayBanner extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _NewRelayBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPressable(
+      onTap: onTap,
+      pressedScale: 0.98,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.accent.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.accent.withValues(alpha: 0.34)),
+        ),
+        child: Row(
+          children: const [
+            Expanded(
+              child: Text(
+                '새 중계가 들어왔습니다',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            Text(
+              '최신 보기',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.accent,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SelectedInningHeader extends StatelessWidget {
   final String label;
   final Game game;
@@ -813,6 +992,368 @@ class _SelectedInningHeader extends StatelessWidget {
           ),
         ),
         if (matchesCurrentInning) _OutStateIndicator(outs: currentAtBat!.outs),
+      ],
+    );
+  }
+}
+
+class _RelayBroadcastScorebug extends StatelessWidget {
+  final Game game;
+  final CurrentAtBat atBat;
+  final String baseState;
+  final RelayItem? latestPlay;
+
+  const _RelayBroadcastScorebug({
+    required this.game,
+    required this.atBat,
+    required this.baseState,
+    required this.latestPlay,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final awayColor =
+        KboTeams.byId(game.away.teamId)?.primaryColor ?? AppColors.accent;
+    final homeColor =
+        KboTeams.byId(game.home.teamId)?.primaryColor ?? AppColors.live;
+    return Container(
+      width: double.infinity,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.6)),
+        gradient: LinearGradient(
+          colors: [
+            awayColor.withValues(alpha: 0.58),
+            AppColors.cardSub,
+            homeColor.withValues(alpha: 0.58),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        child: Column(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ScorebugSide(
+                  team: game.away.shortName,
+                  primary: atBat.batterName.isEmpty ? '타자' : atBat.batterName,
+                  secondary: atBat.batterRecent.isEmpty
+                      ? _safeDetail(baseState, '타석')
+                      : atBat.batterRecent,
+                  alignEnd: false,
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _ScorebugScore(score: game.away.score),
+                          const SizedBox(width: 8),
+                          _RelayBaseDiamond(
+                            occupiedBases: _occupiedBasesForBaseState(
+                              baseState,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _ScorebugScore(score: game.home.score),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.textPrimary.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          atBat.inningText.isEmpty
+                              ? _safeDetail(game.inning, '경기 중')
+                              : atBat.inningText,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      _RelayCountDotsRow(
+                        balls: atBat.balls,
+                        strikes: atBat.strikes,
+                        outs: atBat.outs,
+                      ),
+                    ],
+                  ),
+                ),
+                _ScorebugSide(
+                  team: game.home.shortName,
+                  primary: atBat.pitcherName.isEmpty ? '투수' : atBat.pitcherName,
+                  secondary: atBat.pitchCount > 0
+                      ? '${atBat.pitchCount}구'
+                      : _safeDetail(game.stadium, 'KBO'),
+                  alignEnd: true,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.textPrimary.withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                _scorebugBottomText,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String get _scorebugBottomText {
+    final play = latestPlay == null
+        ? ''
+        : _cleanRelayPlayText(latestPlay!.text);
+    if (play.isNotEmpty) {
+      return play;
+    }
+    if (baseState.isNotEmpty) {
+      return baseState;
+    }
+    if (atBat.batterName.isNotEmpty) {
+      return '${atBat.batterName} 타석';
+    }
+    return game.stadium.isEmpty ? 'KBO 경기' : game.stadium;
+  }
+}
+
+class _ScorebugSide extends StatelessWidget {
+  final String team;
+  final String primary;
+  final String secondary;
+  final bool alignEnd;
+
+  const _ScorebugSide({
+    required this.team,
+    required this.primary,
+    required this.secondary,
+    required this.alignEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final alignment = alignEnd
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start;
+    return SizedBox(
+      width: 72,
+      child: Column(
+        crossAxisAlignment: alignment,
+        children: [
+          Text(
+            team,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 22,
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 22),
+          Text(
+            primary,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+            style: const TextStyle(
+              fontSize: 15,
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            secondary,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScorebugScore extends StatelessWidget {
+  final int? score;
+
+  const _ScorebugScore({required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 28,
+      child: Text(
+        score?.toString() ?? '-',
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 34,
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w900,
+          height: 1.0,
+        ),
+      ),
+    );
+  }
+}
+
+class _RelayBaseDiamond extends StatelessWidget {
+  final Set<int> occupiedBases;
+
+  const _RelayBaseDiamond({required this.occupiedBases});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 56,
+      height: 42,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          _base(index: 2, offset: const Offset(0, -14)),
+          _base(index: 3, offset: const Offset(-18, 5)),
+          _base(index: 1, offset: const Offset(18, 5)),
+        ],
+      ),
+    );
+  }
+
+  Widget _base({required int index, required Offset offset}) {
+    final occupied = occupiedBases.contains(index);
+    return Transform.translate(
+      offset: offset,
+      child: Transform.rotate(
+        angle: 0.785398,
+        child: Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: occupied ? AppColors.textPrimary : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppColors.textPrimary, width: 1.8),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RelayCountDotsRow extends StatelessWidget {
+  final int balls;
+  final int strikes;
+  final int outs;
+
+  const _RelayCountDotsRow({
+    required this.balls,
+    required this.strikes,
+    required this.outs,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 6,
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        _RelayCountDots(
+          label: 'B',
+          value: balls,
+          total: 3,
+          color: AppColors.positive,
+        ),
+        _RelayCountDots(
+          label: 'S',
+          value: strikes,
+          total: 2,
+          color: AppColors.ballYellow,
+        ),
+        _RelayCountDots(
+          label: 'OUT',
+          value: outs,
+          total: 2,
+          color: AppColors.live,
+        ),
+      ],
+    );
+  }
+}
+
+class _RelayCountDots extends StatelessWidget {
+  final String label;
+  final int value;
+  final int total;
+  final Color color;
+
+  const _RelayCountDots({
+    required this.label,
+    required this.value,
+    required this.total,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final clampedValue = value.clamp(0, total);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(width: 5),
+        for (int index = 0; index < total; index++)
+          Container(
+            width: 8,
+            height: 8,
+            margin: EdgeInsets.only(right: index == total - 1 ? 0 : 4),
+            decoration: BoxDecoration(
+              color: index < clampedValue ? color : AppColors.textDisabled,
+              shape: BoxShape.circle,
+            ),
+          ),
       ],
     );
   }
@@ -848,12 +1389,19 @@ class _CurrentAtBatHero extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.divider),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              _RelayBroadcastScorebug(
+                game: game,
+                atBat: atBat,
+                baseState: baseStateLabel,
+                latestPlay: latestPlay,
+              ),
+              const SizedBox(height: 14),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -990,7 +1538,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.cardSub,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1184,7 +1732,7 @@ class _ParticipantCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         children: [
@@ -1246,7 +1794,7 @@ class _RelayPlayerAvatar extends StatelessWidget {
     required this.imageUrl,
     required this.fallbackLabel,
     this.size = 54,
-    this.radius = 14,
+    this.radius = 8,
   });
 
   @override
@@ -1513,7 +2061,7 @@ class _CountSummaryCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: activeColor.withValues(alpha: 0.22)),
       ),
       child: Column(
@@ -1621,19 +2169,12 @@ class _RelayMomentCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: moment.isScoring
               ? AppColors.live.withValues(alpha: 0.45)
               : AppColors.divider,
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1673,33 +2214,26 @@ class _RelayMomentCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: AppColors.divider.withValues(alpha: 0.7),
-                ),
-                bottom: BorderSide(
-                  color: AppColors.divider.withValues(alpha: 0.7),
-                ),
-              ),
-            ),
-            child: Text(
-              moment.lead.text,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: moment.isScoring || moment.isGameEnd
-                    ? FontWeight.w800
-                    : FontWeight.w700,
-                color: moment.isScoring
-                    ? AppColors.textPrimary
-                    : AppColors.textSecondary,
-                height: 1.4,
-              ),
-            ),
+          _RelayResultBar(
+            label: eventLabel ?? (moment.isGameEnd ? '종료' : '플레이'),
+            value: moment.lead.text,
+            accent: accent,
+            emphasized: moment.isScoring || moment.isGameEnd,
           ),
+          if (moment.lead.text.contains(':')) ...[
+            const SizedBox(height: 8),
+            Text(
+              _cleanRelayPlayText(moment.lead.text),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
+            ),
+          ],
           if (pitchLogs.isNotEmpty) ...[
             const SizedBox(height: 12),
             for (int index = 0; index < pitchLogs.length; index++) ...[
@@ -2013,6 +2547,72 @@ class _RelayMomentCard extends StatelessWidget {
   }
 }
 
+class _RelayResultBar extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color accent;
+  final bool emphasized;
+
+  const _RelayResultBar({
+    required this.label,
+    required this.value,
+    required this.accent,
+    required this.emphasized,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.48),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.72)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            constraints: const BoxConstraints(minWidth: 42),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: accent.withValues(alpha: 0.28)),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                color: emphasized ? AppColors.textPrimary : accent,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 15,
+                color: emphasized
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                fontWeight: emphasized ? FontWeight.w800 : FontWeight.w700,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MomentPlayerSummary extends StatelessWidget {
   final String playerName;
   final String? imageUrl;
@@ -2042,7 +2642,7 @@ class _MomentPlayerSummary extends StatelessWidget {
           imageUrl: imageUrl,
           fallbackLabel: playerName,
           size: 64,
-          radius: 14,
+          radius: 8,
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -2220,7 +2820,7 @@ class _SequencePill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.64),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         sequence,
@@ -2354,16 +2954,7 @@ class _BaseStateBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final occupiedBases = switch (baseState) {
-      '주자1루' => {1},
-      '주자2루' => {2},
-      '주자3루' => {3},
-      '주자1,2루' => {1, 2},
-      '주자1,3루' => {1, 3},
-      '주자2,3루' => {2, 3},
-      '만루' => {1, 2, 3},
-      _ => <int>{},
-    };
+    final occupiedBases = _occupiedBasesForBaseState(baseState);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -2433,6 +3024,43 @@ class _BaseStateBadge extends StatelessWidget {
   }
 }
 
+Set<int> _occupiedBasesForBaseState(String baseState) {
+  final normalized = baseState.replaceAll(RegExp(r'\s+'), '');
+  if (normalized.isEmpty ||
+      normalized.contains('주자없음') ||
+      normalized.contains('주자무')) {
+    return <int>{};
+  }
+  if (normalized.contains('만루')) {
+    return {1, 2, 3};
+  }
+  return {
+    if (normalized.contains('1루')) 1,
+    if (normalized.contains('2루')) 2,
+    if (normalized.contains('3루')) 3,
+  };
+}
+
+String _safeDetail(String value, String fallback) {
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? fallback : trimmed;
+}
+
+String _cleanRelayPlayText(String text) {
+  final trimmed = text.trim();
+  if (trimmed.isEmpty) {
+    return '';
+  }
+  if (trimmed.startsWith('- ')) {
+    return trimmed.replaceFirst('- ', '').trim();
+  }
+  final colonIndex = trimmed.indexOf(':');
+  if (colonIndex > 0 && colonIndex < trimmed.length - 1) {
+    return trimmed.substring(colonIndex + 1).trim();
+  }
+  return trimmed;
+}
+
 class _RelayMoment {
   final String inningLabel;
   final RelayItem lead;
@@ -2449,6 +3077,34 @@ class _RelayMoment {
     required this.isGameEnd,
     required this.isSubstitution,
   });
+}
+
+enum _RelayMomentFilter {
+  all('전체'),
+  scoring('득점'),
+  hit('안타'),
+  homerun('홈런'),
+  substitution('교체');
+
+  const _RelayMomentFilter(this.label);
+
+  final String label;
+
+  bool matches(_RelayMoment moment) {
+    switch (this) {
+      case _RelayMomentFilter.all:
+        return true;
+      case _RelayMomentFilter.scoring:
+        return moment.isScoring || moment.lead.event == 'RUNS';
+      case _RelayMomentFilter.hit:
+        return moment.lead.event == 'HIT';
+      case _RelayMomentFilter.homerun:
+        return moment.lead.event == 'HOMERUN' ||
+            moment.lead.text.contains('홈런');
+      case _RelayMomentFilter.substitution:
+        return moment.isSubstitution;
+    }
+  }
 }
 
 class _RelayMomentBuilder {

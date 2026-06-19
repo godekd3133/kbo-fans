@@ -184,6 +184,127 @@ void main() {
     expect(find.textContaining('39번 김성윤'), findsNothing);
   });
 
+  testWidgets('중계 주요 장면 필터는 선택한 이벤트 카드만 남긴다', (tester) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const game = Game(
+      gameId: '20260611SSLG0',
+      status: GameStatus.live,
+      inning: '7회초',
+      away: TeamScore(
+        teamId: 'SS',
+        teamName: '삼성 라이온즈',
+        shortName: '삼성',
+        score: 3,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 2,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith((ref, gameId) async {
+            return const RelayData(
+              currentAtBat: CurrentAtBat(
+                batterName: '김성윤',
+                batterNumber: 39,
+                batterHand: '좌타',
+                pitcherName: '임찬규',
+                pitcherNumber: 1,
+                pitcherHand: '우투',
+                pitchCount: 12,
+                inningText: '7회초',
+                baseState: '주자1,2루',
+                balls: 1,
+                strikes: 2,
+                outs: 1,
+              ),
+              relayItems: [
+                RelayItem(
+                  seqNo: 4,
+                  inning: 7,
+                  half: 'top',
+                  event: 'OUT',
+                  text: '구자욱: 중견수 플라이 아웃',
+                ),
+                RelayItem(
+                  seqNo: 3,
+                  inning: 7,
+                  half: 'top',
+                  event: 'SUBSTITUTION',
+                  text: '대주자 김헌곤',
+                ),
+                RelayItem(
+                  seqNo: 2,
+                  inning: 7,
+                  half: 'top',
+                  event: 'HOMERUN',
+                  isScoring: true,
+                  text: '오스틴: 좌월 홈런',
+                ),
+                RelayItem(
+                  seqNo: 1,
+                  inning: 7,
+                  half: 'top',
+                  event: 'HIT',
+                  text: '김성윤: 중전 안타',
+                ),
+              ],
+            );
+          }),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260611SSLG0',
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260611SSLG0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('안타 1'), findsOneWidget);
+    expect(find.text('홈런 1'), findsOneWidget);
+    expect(find.text('교체 1'), findsOneWidget);
+
+    await tester.tap(find.text('홈런 1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('오스틴: 좌월 홈런'), findsOneWidget);
+    expect(find.text('김성윤: 중전 안타'), findsNothing);
+    expect(find.text('구자욱: 중견수 플라이 아웃'), findsNothing);
+  });
+
   testWidgets('현재 타석 선수 이미지는 프로필 id 기반 이미지 URL로 보강한다', (tester) async {
     const game = Game(
       gameId: '20260611SSLG0',
@@ -267,6 +388,11 @@ void main() {
   });
 
   testWidgets('중계 이벤트 선수 이미지는 현재 타석 이미지 URL을 재사용한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     const game = Game(
       gameId: '20260611SSLG0',
       status: GameStatus.live,
