@@ -32,11 +32,13 @@
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.54` 기준으로 동기화
 - [x] `0.0.53`은 TestFlight/GitHub release/backend deploy 없이 `0.0.54`로 supersede 처리
 - [x] 운영 backend `/api/home?date=2026-06-19&myTeam=LG` 응답에 `standingsPreview` 5개와 `LG` 행 포함 확인
+- [x] `0.0.54 (54)` IPA metadata 확인: `CFBundleShortVersionString=0.0.54`, `CFBundleVersion=54`
+- [x] `0.0.54 (54)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`; `objective_c.framework` dSYM warning은 남음)
 
 ### 검증
 - [x] `cd app && fvm dart format lib/core/router/app_router.dart lib/core/widgets/main_scaffold.dart lib/features/news/news_screen.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/schedule/schedule_screen.dart test/features/news/news_screen_test.dart test/features/schedule/schedule_screen_test.dart`
 - [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
-- [x] `cd app && fvm flutter test --no-pub` (`140 passed`)
+- [x] `cd app && fvm flutter test --no-pub` (`142 passed`)
 - [x] `python3 -m compileall backend/src`
 - [x] `backend/.venv/bin/pytest -q` (`158 passed`)
 - [x] `python3 -m py_compile scripts/kbo-reference-api.py`
