@@ -124,6 +124,214 @@ def _games() -> List[dict]:
     ]
 
 
+def _game_by_id(game_id: str) -> Optional[dict]:
+    for game in _games():
+        if game["gameId"] == game_id:
+            return game
+    return None
+
+
+def _batter(
+    order: int,
+    position: str,
+    name: str,
+    at_bats: int,
+    runs: int,
+    hits: int,
+    rbi: int,
+) -> dict:
+    return {
+        "order": order,
+        "position": position,
+        "name": name,
+        "atBats": at_bats,
+        "runs": runs,
+        "hits": hits,
+        "rbi": rbi,
+    }
+
+
+def _pitcher(
+    name: str,
+    innings: str,
+    hits: int,
+    strikeouts: int,
+    walks: int,
+    earned_runs: int,
+    decision: Optional[str] = None,
+) -> dict:
+    return {
+        "name": name,
+        "innings": innings,
+        "hits": hits,
+        "strikeouts": strikeouts,
+        "walks": walks,
+        "earnedRuns": earned_runs,
+        "decision": decision,
+    }
+
+
+def _boxscore_payload(game_id: str) -> dict:
+    return {
+        "gameId": game_id,
+        "officialAvailable": True,
+        "away": {
+            "teamId": "SS",
+            "batters": [
+                _batter(1, "CF", "김지찬", 4, 1, 2, 0),
+                _batter(2, "RF", "구자욱", 4, 1, 2, 2),
+                _batter(3, "1B", "디아즈", 3, 0, 1, 1),
+                _batter(4, "C", "강민호", 3, 0, 1, 0),
+                _batter(5, "LF", "이성규", 3, 0, 0, 0),
+            ],
+            "pitchers": [
+                _pitcher("원태인", "6.0", 5, 5, 2, 2, "LIVE"),
+                _pitcher("김태훈", "1.0", 1, 1, 0, 0, "H"),
+            ],
+        },
+        "home": {
+            "teamId": "LG",
+            "batters": [
+                _batter(1, "RF", "홍창기", 4, 1, 2, 0),
+                _batter(2, "2B", "신민재", 3, 0, 1, 0),
+                _batter(3, "3B", "문보경", 3, 1, 2, 1),
+                _batter(4, "1B", "오스틴", 3, 0, 1, 1),
+                _batter(5, "DH", "김현수", 3, 0, 0, 0),
+            ],
+            "pitchers": [
+                _pitcher("임찬규", "5.2", 6, 4, 2, 3, "LIVE"),
+                _pitcher("유영찬", "1.1", 1, 2, 0, 0, None),
+            ],
+        },
+    }
+
+
+def _player(
+    player_id: str,
+    team_id: str,
+    player_type: str,
+    name: str,
+    number: int,
+    position: str,
+    headline_stat: str,
+    secondary_stat: str,
+) -> dict:
+    return {
+        "id": player_id,
+        "teamId": team_id,
+        "playerType": player_type,
+        "name": name,
+        "number": number,
+        "position": position,
+        "roleLabel": position,
+        "handedness": "",
+        "heightWeight": "",
+        "birthDate": "",
+        "status": "available",
+        "rosterGroup": "entry",
+        "headlineStat": headline_stat,
+        "secondaryStat": secondary_stat,
+        "seasonStats": [headline_stat, secondary_stat],
+        "highlights": [],
+        "recentGames": [],
+        "sortMetrics": {},
+        "isRetired": False,
+    }
+
+
+def _players(team_id: str) -> List[dict]:
+    players_by_team = {
+        "SS": [
+            _player("SS-001", "SS", "hitter", "김지찬", 58, "CF", "AVG .312", "최근 5G 8안타"),
+            _player("SS-002", "SS", "hitter", "구자욱", 5, "RF", "OPS .908", "오늘 2타점"),
+            _player("SS-003", "SS", "hitter", "디아즈", 0, "1B", "HR 18", "중심 타선"),
+            _player("SS-004", "SS", "pitcher", "원태인", 18, "SP", "ERA 2.89", "6이닝 5K"),
+            _player("SS-005", "SS", "pitcher", "김태훈", 27, "RP", "HLD 9", "무실점"),
+        ],
+        "LG": [
+            _player("LG-001", "LG", "hitter", "홍창기", 51, "RF", "OBP .421", "멀티히트"),
+            _player("LG-002", "LG", "hitter", "문보경", 35, "3B", "AVG .301", "동점권 안타"),
+            _player("LG-003", "LG", "hitter", "오스틴", 23, "1B", "OPS .884", "타점 생산"),
+            _player("LG-004", "LG", "pitcher", "임찬규", 1, "SP", "ERA 3.41", "5.2이닝"),
+            _player("LG-005", "LG", "pitcher", "유영찬", 18, "RP", "K/9 10.1", "불펜"),
+        ],
+    }
+    return players_by_team.get(team_id.upper(), [])
+
+
+def _lineup_payload(game_id: str) -> dict:
+    boxscore = _boxscore_payload(game_id)
+    return {
+        "gameId": game_id,
+        "away": {
+            "teamId": "SS",
+            "starter": {"id": "SS-004", "name": "원태인"},
+            "lineup": [
+                {
+                    "order": batter["order"],
+                    "position": batter["position"],
+                    "positionKo": batter["position"],
+                    "name": batter["name"],
+                    "statValue": f"{batter['hits']}-{batter['atBats']}",
+                }
+                for batter in boxscore["away"]["batters"]
+            ],
+        },
+        "home": {
+            "teamId": "LG",
+            "starter": {"id": "LG-004", "name": "임찬규"},
+            "lineup": [
+                {
+                    "order": batter["order"],
+                    "position": batter["position"],
+                    "positionKo": batter["position"],
+                    "name": batter["name"],
+                    "statValue": f"{batter['hits']}-{batter['atBats']}",
+                }
+                for batter in boxscore["home"]["batters"]
+            ],
+        },
+    }
+
+
+def _relay_payload() -> dict:
+    return {
+        "currentAtBat": {
+            "batter": {"name": "문보경", "number": 35, "hand": "L", "recent": "3타수 2안타"},
+            "pitcher": {"name": "원태인", "number": 18, "hand": "R", "pitchCount": 91},
+            "inningText": "7회말",
+            "baseState": "1루",
+            "ballCount": {"balls": 1, "strikes": 2, "outs": 1},
+        },
+        "relayItems": [
+            {
+                "seqNo": 3,
+                "inning": 7,
+                "half": "bottom",
+                "event": "안타",
+                "isScoring": False,
+                "text": "문보경 우전 안타, 1사 1루.",
+            },
+            {
+                "seqNo": 2,
+                "inning": 6,
+                "half": "top",
+                "event": "득점",
+                "isScoring": True,
+                "text": "구자욱 우중간 2루타로 삼성 2득점.",
+            },
+            {
+                "seqNo": 1,
+                "inning": 2,
+                "half": "bottom",
+                "event": "득점",
+                "isScoring": True,
+                "text": "오스틴 희생플라이, LG 1득점.",
+            },
+        ],
+    }
+
+
 def _standing(
     rank: int,
     team_id: str,
@@ -369,6 +577,53 @@ class ReferenceApiHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/home":
             my_team = params.get("myTeam", [None])[0]
             self._send_json({"success": True, "data": _home_payload(date, my_team)})
+            return
+
+        path_parts = [part for part in parsed.path.split("/") if part]
+        if len(path_parts) == 3 and path_parts[:2] == ["api", "game"]:
+            game = _game_by_id(path_parts[2])
+            if game is None:
+                self._send_json(
+                    {
+                        "success": False,
+                        "error": {
+                            "code": "NOT_FOUND",
+                            "message": f"Unsupported reference game: {path_parts[2]}",
+                        },
+                    },
+                    status=404,
+                )
+                return
+            self._send_json({"success": True, "data": {"game": game}})
+            return
+
+        if len(path_parts) == 4 and path_parts[:2] == ["api", "game"]:
+            game_id = path_parts[2]
+            resource = path_parts[3]
+            if resource == "boxscore":
+                self._send_json({"success": True, "data": _boxscore_payload(game_id)})
+                return
+            if resource == "lineup":
+                self._send_json({"success": True, "data": _lineup_payload(game_id)})
+                return
+            if resource == "relay":
+                self._send_json({"success": True, "data": _relay_payload()})
+                return
+            if resource == "highlights":
+                self._send_json(
+                    {"success": True, "data": {"highlightInfo": None}}
+                )
+                return
+
+        if (
+            len(path_parts) == 4
+            and path_parts[0] == "api"
+            and path_parts[1] == "team"
+            and path_parts[3] == "players"
+        ):
+            self._send_json(
+                {"success": True, "data": {"players": _players(path_parts[2])}}
+            )
             return
 
         self._send_json(
