@@ -34,7 +34,10 @@
 - [x] 홈 최근 흐름 행과 순위 snapshot 행을 팀 기록 화면으로 이어지는 tap target으로 보강하고 선택 haptic feedback 추가
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.55` 기준으로 동기화
 - [x] `scripts/kbo-reference-api.py`의 `/home` 응답에 `kboBrief.items`와 `quickItems`를 채워 로컬 웹 QA에서 실제 섹션이 렌더링되도록 정리
+- [x] backend/app local aggregate의 KBO brief item limit을 5개에서 8개로 맞춰 홈 `인사이트 팩` 카드 구성이 서버/직접 모드에서 동일하게 나오도록 정리
 - [x] `docs/design_refs/2026-06-19-kbo-info-brief-design-qa.md`에 최종 레퍼런스/캡처/검증 결과 기록
+- [x] `0.0.55 (55)` IPA metadata 확인: `CFBundleShortVersionString=0.0.55`, `CFBundleVersion=55`
+- [x] `0.0.55 (55)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`; `objective_c.framework` dSYM warning은 남음)
 
 ### 검증
 - [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
