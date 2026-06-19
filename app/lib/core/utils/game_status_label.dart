@@ -1,5 +1,7 @@
 import '../../data/models/game.dart';
 
+const ticketInfoGameDetailHideLeadTime = Duration(hours: 2);
+
 bool isTerminalGameStatus(GameStatus status) {
   switch (status) {
     case GameStatus.final_:
@@ -16,6 +18,21 @@ bool shouldShowTicketInfoForGameStatus(GameStatus status) {
   return status == GameStatus.scheduled;
 }
 
+bool shouldShowTicketInfoForGameDetail(Game game, {DateTime? now}) {
+  if (game.ticketInfo == null ||
+      !shouldShowTicketInfoForGameStatus(game.status)) {
+    return false;
+  }
+
+  final startAt = _gameStartDateTime(game.gameId, game.startTime);
+  if (startAt == null) {
+    return true;
+  }
+
+  final hideFrom = startAt.subtract(ticketInfoGameDetailHideLeadTime);
+  return (now ?? DateTime.now()).isBefore(hideFrom);
+}
+
 bool isTerminalScheduleStatus(String status) {
   switch (status.toUpperCase()) {
     case 'FINAL':
@@ -25,6 +42,36 @@ bool isTerminalScheduleStatus(String status) {
     default:
       return false;
   }
+}
+
+DateTime? _gameStartDateTime(String gameId, String startTime) {
+  if (gameId.length < 8) {
+    return null;
+  }
+
+  final year = int.tryParse(gameId.substring(0, 4));
+  final month = int.tryParse(gameId.substring(4, 6));
+  final day = int.tryParse(gameId.substring(6, 8));
+  final timeMatch = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(startTime.trim());
+  if (year == null || month == null || day == null || timeMatch == null) {
+    return null;
+  }
+
+  final hour = int.tryParse(timeMatch.group(1)!);
+  final minute = int.tryParse(timeMatch.group(2)!);
+  if (hour == null || minute == null || hour > 23 || minute > 59) {
+    return null;
+  }
+
+  final parsed = DateTime(year, month, day, hour, minute);
+  if (parsed.year != year ||
+      parsed.month != month ||
+      parsed.day != day ||
+      parsed.hour != hour ||
+      parsed.minute != minute) {
+    return null;
+  }
+  return parsed;
 }
 
 bool shouldShowTicketInfoForScheduleStatus(String status) {

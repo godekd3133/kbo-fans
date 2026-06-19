@@ -407,9 +407,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     final game = widget.game;
     final gameId = widget.gameId;
     final isLive = game.status == GameStatus.live;
-    final showTicketInfo =
-        game.ticketInfo != null &&
-        shouldShowTicketInfoForGameStatus(game.status);
+    final showTicketInfo = shouldShowTicketInfoForGameDetail(game);
     final tabBar = TabBar(
       controller: _tabController,
       indicatorSize: TabBarIndicatorSize.tab,
