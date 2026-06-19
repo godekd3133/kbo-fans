@@ -171,6 +171,49 @@ void main() {
 
     expect(find.text('player:50054'), findsOneWidget);
   });
+
+  testWidgets('확장 박스스코어 지표가 있으면 기록 칩으로 표시한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _boxscoreHarness(
+        boxscore: _displayableBoxscore,
+        players: [
+          _playerProfile(
+            id: '50054',
+            teamId: 'KT',
+            name: '강백호',
+            number: 50,
+            playerType: PlayerType.hitter,
+          ),
+          _playerProfile(
+            id: '61023',
+            teamId: 'KT',
+            name: '김영현',
+            number: 60,
+            playerType: PlayerType.pitcher,
+          ),
+        ],
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('루타 6'), findsOneWidget);
+    expect(find.text('장타 2'), findsOneWidget);
+    expect(find.text('SLG 1.500'), findsOneWidget);
+    expect(find.text('볼넷 1'), findsOneWidget);
+    expect(find.text('삼진 1'), findsOneWidget);
+    expect(find.text('도루 1'), findsOneWidget);
+    expect(find.text('투구 34'), findsOneWidget);
+    expect(find.text('ERA 0.00'), findsOneWidget);
+    expect(find.text('WHIP 0.50'), findsOneWidget);
+    expect(find.text('실점 1'), findsOneWidget);
+  });
 }
 
 const _liveGame = Game(
@@ -209,6 +252,14 @@ final _displayableBoxscore = GameBoxscoreData(
         runs: 2,
         hits: 2,
         rbi: 3,
+        plateAppearances: 5,
+        doubles: 1,
+        triples: 0,
+        homeRuns: 1,
+        walks: 1,
+        hitByPitch: 1,
+        strikeouts: 1,
+        stolenBases: 1,
       ),
     ],
     pitchers: [
@@ -219,6 +270,8 @@ final _displayableBoxscore = GameBoxscoreData(
         strikeouts: 2,
         walks: 0,
         earnedRuns: 0,
+        pitchCount: 34,
+        runs: 1,
       ),
     ],
   ),

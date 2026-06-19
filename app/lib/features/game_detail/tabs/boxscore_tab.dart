@@ -372,6 +372,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                           label: '생산 +${_batterProductionScore(batter)}',
                           accent: AppColors.positive,
                         ),
+                        ..._batterAdvancedPills(batter),
                         _InfoPill(
                           label: '오늘 타율 ${todayAvg.toStringAsFixed(3)}',
                           accent: accent,
@@ -485,6 +486,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                     label: '효율 +${_pitcherEfficiencyScore(pitcher)}',
                     accent: AppColors.positive,
                   ),
+                  ..._pitcherAdvancedPills(pitcher),
                   _InfoPill(label: '이닝 ${pitcher.innings}', accent: accent),
                   _InfoPill(
                     label: '안타 ${pitcher.hits}',
@@ -586,6 +588,57 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     return (pitcher.strikeouts * 2) -
         (pitcher.walks * 2) -
         (pitcher.earnedRuns * 3);
+  }
+
+  List<Widget> _batterAdvancedPills(BatterRecord batter) {
+    return [
+      if (batter.totalBases != null)
+        _InfoPill(label: '루타 ${batter.totalBases}', accent: AppColors.accent),
+      if ((batter.extraBaseHits ?? 0) > 0)
+        _InfoPill(label: '장타 ${batter.extraBaseHits}', accent: AppColors.live),
+      if (batter.slugging != null)
+        _InfoPill(
+          label: 'SLG ${batter.slugging!.toStringAsFixed(3)}',
+          accent: AppColors.accent,
+        ),
+      if ((batter.walks ?? 0) > 0)
+        _InfoPill(label: '볼넷 ${batter.walks}', accent: AppColors.ballYellow),
+      if ((batter.hitByPitch ?? 0) > 0)
+        _InfoPill(
+          label: '사구 ${batter.hitByPitch}',
+          accent: AppColors.ballYellow,
+        ),
+      if ((batter.strikeouts ?? 0) > 0)
+        _InfoPill(
+          label: '삼진 ${batter.strikeouts}',
+          accent: AppColors.textDisabled,
+          subtle: true,
+        ),
+      if ((batter.stolenBases ?? 0) > 0)
+        _InfoPill(
+          label: '도루 ${batter.stolenBases}',
+          accent: AppColors.positive,
+        ),
+    ];
+  }
+
+  List<Widget> _pitcherAdvancedPills(PitcherRecord pitcher) {
+    return [
+      if ((pitcher.pitchCount ?? 0) > 0)
+        _InfoPill(label: '투구 ${pitcher.pitchCount}', accent: AppColors.accent),
+      if (pitcher.gameEra != null)
+        _InfoPill(
+          label: 'ERA ${pitcher.gameEra!.toStringAsFixed(2)}',
+          accent: AppColors.live,
+        ),
+      if (pitcher.gameWhip != null)
+        _InfoPill(
+          label: 'WHIP ${pitcher.gameWhip!.toStringAsFixed(2)}',
+          accent: AppColors.accent,
+        ),
+      if ((pitcher.runs ?? 0) > 0)
+        _InfoPill(label: '실점 ${pitcher.runs}', accent: AppColors.ballYellow),
+    ];
   }
 
   void _openPlayerDetail(PlayerProfile player) {

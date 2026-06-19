@@ -101,21 +101,92 @@ class BoxscoreCrawler(BaseCrawler):
     def _parse_hitter_team(self, team_payload: dict[str, Any]) -> dict[str, Any]:
         table1 = json.loads(team_payload["table1"])
         table3 = json.loads(team_payload["table3"])
+        stat_tables = [
+            json.loads(team_payload[key])
+            for key in ("table2", "table3")
+            if key in team_payload
+        ]
 
         batters = []
         totals = {"atBats": 0, "runs": 0, "hits": 0, "rbi": 0}
         for row1, row3 in zip(table1["rows"], table3["rows"]):
-            left = [strip_tags(cell["Text"]).replace("\xa0", "").strip() for cell in row1["row"]]
-            right = [strip_tags(cell["Text"]).replace("\xa0", "").strip() for cell in row3["row"]]
+            left = self._row_values(row1)
+            right = self._row_values(row3)
+            stat_rows = self._stat_rows_for_index(stat_tables, len(batters))
+
+            at_bats = self._stat_int(
+                stat_rows,
+                ("타수", "AB"),
+                fallback_values=right,
+                fallback_index=0,
+            )
+            hits = self._stat_int(
+                stat_rows,
+                ("안타", "H"),
+                fallback_values=right,
+                fallback_index=1,
+            )
+            rbi = self._stat_int(
+                stat_rows,
+                ("타점", "RBI"),
+                fallback_values=right,
+                fallback_index=2,
+            )
+            runs = self._stat_int(
+                stat_rows,
+                ("득점", "R"),
+                fallback_values=right,
+                fallback_index=3,
+            )
             batter = {
                 "order": self._parse_int(left[0]),
                 "position": left[1],
                 "name": left[2],
-                "atBats": self._parse_int(right[0]),
-                "hits": self._parse_int(right[1]),
-                "rbi": self._parse_int(right[2]),
-                "runs": self._parse_int(right[3]),
+                "atBats": at_bats,
+                "hits": hits,
+                "rbi": rbi,
+                "runs": runs,
             }
+            self._put_optional_int(
+                batter,
+                "plateAppearances",
+                self._stat_int(stat_rows, ("타석", "PA")),
+            )
+            self._put_optional_int(
+                batter,
+                "doubles",
+                self._stat_int(stat_rows, ("2루타", "2B")),
+            )
+            self._put_optional_int(
+                batter,
+                "triples",
+                self._stat_int(stat_rows, ("3루타", "3B")),
+            )
+            self._put_optional_int(
+                batter,
+                "homeRuns",
+                self._stat_int(stat_rows, ("홈런", "HR")),
+            )
+            self._put_optional_int(
+                batter,
+                "walks",
+                self._stat_int(stat_rows, ("볼넷", "BB")),
+            )
+            self._put_optional_int(
+                batter,
+                "hitByPitch",
+                self._stat_int(stat_rows, ("사구", "HBP")),
+            )
+            self._put_optional_int(
+                batter,
+                "strikeouts",
+                self._stat_int(stat_rows, ("삼진", "SO", "K")),
+            )
+            self._put_optional_int(
+                batter,
+                "stolenBases",
+                self._stat_int(stat_rows, ("도루", "SB")),
+            )
             batters.append(batter)
             totals["atBats"] += batter["atBats"] or 0
             totals["runs"] += batter["runs"] or 0
@@ -126,6 +197,7 @@ class BoxscoreCrawler(BaseCrawler):
 
     def _parse_pitcher_team(self, team_payload: dict[str, Any]) -> dict[str, Any]:
         table = json.loads(team_payload["table"])
+        header_map = self._header_index_map(table)
         pitchers = []
         totals = {
             "innings": "0.0",
@@ -137,16 +209,32 @@ class BoxscoreCrawler(BaseCrawler):
         innings_outs = 0
 
         for row in table["rows"]:
-            cells = [strip_tags(cell["Text"]).replace("\xa0", "").strip() for cell in row["row"]]
+            cells = self._row_values(row)
+
+            def value(headers: tuple[str, ...], fallback_index: int) -> str:
+                return self._value_by_headers(cells, header_map, headers, fallback_index)
+
             pitcher = {
-                "name": cells[0],
-                "innings": cells[6],
-                "hits": self._parse_int(cells[10]),
-                "strikeouts": self._parse_int(cells[13]),
-                "walks": self._parse_int(cells[12]),
-                "earnedRuns": self._parse_int(cells[15]),
-                "decision": None if cells[2] in {"", "-"} else unescape(cells[2]),
+                "name": value(("선수명", "선수"), 0),
+                "innings": value(("이닝", "IP"), 6),
+                "hits": self._parse_int(value(("피안타", "H"), 10)),
+                "strikeouts": self._parse_int(value(("삼진", "SO", "K"), 13)),
+                "walks": self._parse_int(value(("4사구", "볼넷", "BB"), 12)),
+                "earnedRuns": self._parse_int(value(("자책", "ER"), 15)),
+                "decision": None
+                if value(("결과",), 2) in {"", "-"}
+                else unescape(value(("결과",), 2)),
             }
+            self._put_optional_int(
+                pitcher,
+                "pitchCount",
+                self._parse_int(value(("투구수", "투구", "NP"), 8)),
+            )
+            self._put_optional_int(
+                pitcher,
+                "runs",
+                self._parse_int(value(("실점", "R"), 14)),
+            )
             if not self._is_displayable_pitcher(pitcher):
                 continue
             pitchers.append(pitcher)
@@ -214,3 +302,73 @@ class BoxscoreCrawler(BaseCrawler):
         whole = outs // 3
         remainder = outs % 3
         return f"{whole}.{remainder}"
+
+    @staticmethod
+    def _row_values(row: dict[str, Any]) -> list[str]:
+        return [
+            strip_tags(cell["Text"]).replace("\xa0", "").strip()
+            for cell in row.get("row", [])
+        ]
+
+    def _stat_rows_for_index(
+        self,
+        tables: list[dict[str, Any]],
+        index: int,
+    ) -> list[tuple[dict[str, int], list[str]]]:
+        rows = []
+        for table in tables:
+            table_rows = table.get("rows") or []
+            if index >= len(table_rows):
+                continue
+            rows.append((self._header_index_map(table), self._row_values(table_rows[index])))
+        return rows
+
+    def _stat_int(
+        self,
+        stat_rows: list[tuple[dict[str, int], list[str]]],
+        headers: tuple[str, ...],
+        fallback_values: Optional[list[str]] = None,
+        fallback_index: Optional[int] = None,
+    ) -> Optional[int]:
+        for header_map, values in stat_rows:
+            raw = self._value_by_headers(values, header_map, headers)
+            parsed = self._parse_int(raw)
+            if parsed is not None:
+                return parsed
+        if fallback_values is not None and fallback_index is not None:
+            if 0 <= fallback_index < len(fallback_values):
+                return self._parse_int(fallback_values[fallback_index])
+        return None
+
+    @staticmethod
+    def _put_optional_int(payload: dict[str, Any], key: str, value: Optional[int]) -> None:
+        if value is not None:
+            payload[key] = value
+
+    @staticmethod
+    def _header_index_map(table: dict[str, Any]) -> dict[str, int]:
+        headers = table.get("headers") or []
+        if not headers:
+            return {}
+        header_cells = headers[0].get("row", [])
+        result = {}
+        for index, cell in enumerate(header_cells):
+            text = strip_tags(cell["Text"]).replace("\xa0", "").strip()
+            if text:
+                result[text] = index
+        return result
+
+    @staticmethod
+    def _value_by_headers(
+        values: list[str],
+        header_map: dict[str, int],
+        headers: tuple[str, ...],
+        fallback_index: Optional[int] = None,
+    ) -> str:
+        for header in headers:
+            index = header_map.get(header)
+            if index is not None and 0 <= index < len(values):
+                return values[index]
+        if fallback_index is not None and 0 <= fallback_index < len(values):
+            return values[fallback_index]
+        return ""

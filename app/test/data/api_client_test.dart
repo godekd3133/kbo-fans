@@ -253,6 +253,70 @@ void main() {
     expect(games.single.home.walks, 0);
   });
 
+  test('boxscore parser preserves optional advanced fields', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ApiGameRepository(
+      ApiClient(
+        dio: _dioWithAdapter(
+          _SuccessAdapter({
+            'gameId': '20260329KTLG0',
+            'officialAvailable': true,
+            'away': {
+              'teamId': 'KT',
+              'batters': [
+                {
+                  'order': 3,
+                  'position': 'DH',
+                  'name': '강백호',
+                  'plateAppearances': 5,
+                  'atBats': 4,
+                  'runs': 2,
+                  'hits': 2,
+                  'doubles': 1,
+                  'triples': 0,
+                  'homeRuns': 1,
+                  'rbi': 3,
+                  'walks': 1,
+                  'hitByPitch': 1,
+                  'strikeouts': 1,
+                  'stolenBases': 0,
+                },
+              ],
+              'pitchers': [
+                {
+                  'name': '김영현',
+                  'innings': '2.0',
+                  'hits': 1,
+                  'strikeouts': 2,
+                  'walks': 1,
+                  'earnedRuns': 1,
+                  'pitchCount': 34,
+                  'runs': 1,
+                },
+              ],
+            },
+            'home': {'teamId': 'LG', 'batters': [], 'pitchers': []},
+          }),
+        ),
+        enableRequestTiming: false,
+      ),
+    );
+
+    final boxscore = await repository.getBoxscoreData('20260329KTLG0');
+
+    final batter = boxscore.away.batters.single;
+    expect(batter.plateAppearances, 5);
+    expect(batter.extraBaseHits, 2);
+    expect(batter.totalBases, 6);
+    expect(batter.slugging, 1.5);
+
+    final pitcher = boxscore.away.pitchers.single;
+    expect(pitcher.pitchCount, 34);
+    expect(pitcher.runs, 1);
+    expect(pitcher.gameEra, 4.5);
+    expect(pitcher.gameWhip, 1.0);
+  });
+
   test(
     'current standings API failure is not masked by fresh API cache or app bootstrap',
     () async {

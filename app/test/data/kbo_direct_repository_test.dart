@@ -162,6 +162,27 @@ void main() {
 
     expect(lineup, isNull);
   });
+
+  test('direct boxscore parser preserves optional advanced stats', () {
+    final repository = KboDirectRepository();
+
+    final boxscore = repository.parseBoxscoreScrollForTesting(
+      '20260613KTLG0',
+      _boxscorePayload(),
+    );
+
+    final batter = boxscore.away.batters.single;
+    expect(batter.plateAppearances, 5);
+    expect(batter.extraBaseHits, 2);
+    expect(batter.totalBases, 6);
+    expect(batter.slugging, 1.5);
+
+    final pitcher = boxscore.away.pitchers.single;
+    expect(pitcher.pitchCount, 34);
+    expect(pitcher.runs, 1);
+    expect(pitcher.gameEra, 4.5);
+    expect(pitcher.gameWhip, 1.0);
+  });
 }
 
 Game _game({
@@ -203,4 +224,113 @@ String _lineupTableJson(List<List<String>> rows) {
       )
       .toList();
   return jsonEncode({'rows': tableRows});
+}
+
+Map<String, dynamic> _boxscorePayload() {
+  return {
+    'arrHitter': [
+      {
+        'table1': _tableJson([
+          ['3', '지', '강백호'],
+        ]),
+        'table3': _tableJson(
+          [
+            [
+              '5',
+              '4',
+              '2',
+              '2',
+              '1',
+              '0',
+              '1',
+              '3',
+              '0',
+              '0',
+              '1',
+              '1',
+              '1',
+              '0',
+            ],
+          ],
+          headers: [
+            '타석',
+            '타수',
+            '득점',
+            '안타',
+            '2루타',
+            '3루타',
+            '홈런',
+            '타점',
+            '도루',
+            '도실',
+            '볼넷',
+            '사구',
+            '삼진',
+            '병살',
+          ],
+        ),
+      },
+      {'table1': _tableJson([]), 'table3': _tableJson([])},
+    ],
+    'arrPitcher': [
+      {
+        'table': _tableJson(
+          [
+            [
+              '김영현',
+              '',
+              '-',
+              '',
+              '',
+              '',
+              '2.0',
+              '',
+              '34',
+              '',
+              '1',
+              '',
+              '1',
+              '2',
+              '1',
+              '1',
+            ],
+          ],
+          headers: [
+            '선수명',
+            '등판',
+            '결과',
+            '승',
+            '패',
+            '세',
+            '이닝',
+            '타자',
+            '투구수',
+            '타수',
+            '피안타',
+            '홈런',
+            '4사구',
+            '삼진',
+            '실점',
+            '자책',
+          ],
+        ),
+      },
+      {'table': _tableJson([])},
+    ],
+  };
+}
+
+String _tableJson(List<List<String>> rows, {List<String>? headers}) {
+  return jsonEncode({
+    if (headers != null) 'headers': [_tableRow(headers)],
+    'rows': rows.map(_tableRow).toList(),
+  });
+}
+
+Map<String, dynamic> _tableRow(List<String> row) {
+  return {
+    'row': [
+      for (final value in row) {'Text': value},
+    ],
+  };
 }

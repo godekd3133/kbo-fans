@@ -1193,53 +1193,27 @@ class KboDirectRepository implements GameRepository {
       'gameId': gameId,
     });
 
-    final hitterPayload = data['arrHitter'] as List<dynamic>? ?? const [];
-    final pitcherPayload = data['arrPitcher'] as List<dynamic>? ?? const [];
+    final parsed = _parseBoxscoreScrollPayload(gameId, data);
 
-    final awayBatters = hitterPayload.isNotEmpty
-        ? _parseHitterTeamFromTables(hitterPayload[0] as Map<String, dynamic>)
-        : const <BatterRecord>[];
-    final homeBatters = hitterPayload.length > 1
-        ? _parseHitterTeamFromTables(hitterPayload[1] as Map<String, dynamic>)
-        : const <BatterRecord>[];
-    final awayPitchers = pitcherPayload.isNotEmpty
-        ? _parsePitcherTeamFromTable(pitcherPayload[0] as Map<String, dynamic>)
-        : const <PitcherRecord>[];
-    final homePitchers = pitcherPayload.length > 1
-        ? _parsePitcherTeamFromTable(pitcherPayload[1] as Map<String, dynamic>)
-        : const <PitcherRecord>[];
-    final parsedAway = TeamBoxscoreData(
-      teamId: gameId.substring(8, 10),
-      batters: awayBatters,
-      pitchers: awayPitchers,
-    );
-    final parsedHome = TeamBoxscoreData(
-      teamId: gameId.substring(10, 12),
-      batters: homeBatters,
-      pitchers: homePitchers,
-    );
-    final hasOfficialRows =
-        parsedAway.hasDisplayableRecords || parsedHome.hasDisplayableRecords;
-
-    final enrichedPitchers = hasOfficialRows
+    final enrichedPitchers = parsed.officialAvailable
         ? await _enrichLivePitchers(
             gameId: gameId,
-            awayPitchers: awayPitchers,
-            homePitchers: homePitchers,
+            awayPitchers: parsed.away.pitchers,
+            homePitchers: parsed.home.pitchers,
           )
-        : (awayPitchers, homePitchers);
+        : (parsed.away.pitchers, parsed.home.pitchers);
 
     return GameBoxscoreData(
       gameId: gameId,
-      officialAvailable: hasOfficialRows,
+      officialAvailable: parsed.officialAvailable,
       away: TeamBoxscoreData(
-        teamId: parsedAway.teamId,
-        batters: awayBatters,
+        teamId: parsed.away.teamId,
+        batters: parsed.away.batters,
         pitchers: enrichedPitchers.$1,
       ),
       home: TeamBoxscoreData(
-        teamId: parsedHome.teamId,
-        batters: homeBatters,
+        teamId: parsed.home.teamId,
+        batters: parsed.home.batters,
         pitchers: enrichedPitchers.$2,
       ),
     );
@@ -1519,6 +1493,7 @@ class KboDirectRepository implements GameRepository {
         jsonDecode(payload['table3'] as String) as Map<String, dynamic>;
     final rows1 = table1['rows'] as List<dynamic>? ?? const [];
     final rows3 = table3['rows'] as List<dynamic>? ?? const [];
+    final headerMap = _headerIndexMap(table3);
     final length = rows1.length < rows3.length ? rows1.length : rows3.length;
     final batters = <BatterRecord>[];
     for (var i = 0; i < length; i++) {
@@ -1543,6 +1518,21 @@ class KboDirectRepository implements GameRepository {
       if (left.length < 3 || right.length < 4) {
         continue;
       }
+      String value(List<String> headers, {int? fallbackIndex}) {
+        for (final header in headers) {
+          final index = headerMap[header];
+          if (index != null && index >= 0 && index < right.length) {
+            return right[index];
+          }
+        }
+        if (fallbackIndex != null &&
+            fallbackIndex >= 0 &&
+            fallbackIndex < right.length) {
+          return right[fallbackIndex];
+        }
+        return '';
+      }
+
       final order =
           left
               .map(_parseInt)
@@ -1559,19 +1549,23 @@ class KboDirectRepository implements GameRepository {
         (cell) => _parseInt(cell) == null && !_looksLikePositionToken(cell),
         orElse: () => left.last,
       );
-      final numericStats = right
-          .map((cell) => _parseInt(cell) ?? -1)
-          .where((value) => value >= 0)
-          .toList();
       batters.add(
         BatterRecord(
           order: order,
           position: _normalizePositionToken(position),
           name: name,
-          atBats: numericStats.isNotEmpty ? numericStats[0] : 0,
-          hits: numericStats.length > 1 ? numericStats[1] : 0,
-          rbi: numericStats.length > 2 ? numericStats[2] : 0,
-          runs: numericStats.length > 3 ? numericStats[3] : 0,
+          atBats: _parseInt(value(['타수', 'AB'], fallbackIndex: 0)) ?? 0,
+          hits: _parseInt(value(['안타', 'H'], fallbackIndex: 1)) ?? 0,
+          rbi: _parseInt(value(['타점', 'RBI'], fallbackIndex: 2)) ?? 0,
+          runs: _parseInt(value(['득점', 'R'], fallbackIndex: 3)) ?? 0,
+          plateAppearances: _parseInt(value(['타석', 'PA'])),
+          doubles: _parseInt(value(['2루타', '2B'])),
+          triples: _parseInt(value(['3루타', '3B'])),
+          homeRuns: _parseInt(value(['홈런', 'HR'])),
+          walks: _parseInt(value(['볼넷', 'BB'])),
+          hitByPitch: _parseInt(value(['사구', 'HBP'])),
+          strikeouts: _parseInt(value(['삼진', 'SO', 'K'])),
+          stolenBases: _parseInt(value(['도루', 'SB'])),
         ),
       );
     }
@@ -1667,6 +1661,8 @@ class KboDirectRepository implements GameRepository {
           strikeouts: _parseInt(value('삼진', fallbackIndex: 13)) ?? 0,
           walks: _parseInt(value('4사구', fallbackIndex: 12)) ?? 0,
           earnedRuns: _parseInt(value('자책', fallbackIndex: 15)) ?? 0,
+          pitchCount: _parseInt(value('투구수', fallbackIndex: 8)),
+          runs: _parseInt(value('실점', fallbackIndex: 14)),
           decision:
               (decision.isEmpty || decision == '-' || decision == '&nbsp;')
               ? null
@@ -1694,6 +1690,45 @@ class KboDirectRepository implements GameRepository {
       }
     }
     return result;
+  }
+
+  GameBoxscoreData _parseBoxscoreScrollPayload(
+    String gameId,
+    Map<String, dynamic> data,
+  ) {
+    final hitterPayload = data['arrHitter'] as List<dynamic>? ?? const [];
+    final pitcherPayload = data['arrPitcher'] as List<dynamic>? ?? const [];
+
+    final awayBatters = hitterPayload.isNotEmpty
+        ? _parseHitterTeamFromTables(hitterPayload[0] as Map<String, dynamic>)
+        : const <BatterRecord>[];
+    final homeBatters = hitterPayload.length > 1
+        ? _parseHitterTeamFromTables(hitterPayload[1] as Map<String, dynamic>)
+        : const <BatterRecord>[];
+    final awayPitchers = pitcherPayload.isNotEmpty
+        ? _parsePitcherTeamFromTable(pitcherPayload[0] as Map<String, dynamic>)
+        : const <PitcherRecord>[];
+    final homePitchers = pitcherPayload.length > 1
+        ? _parsePitcherTeamFromTable(pitcherPayload[1] as Map<String, dynamic>)
+        : const <PitcherRecord>[];
+    final away = TeamBoxscoreData(
+      teamId: gameId.substring(8, 10),
+      batters: awayBatters,
+      pitchers: awayPitchers,
+    );
+    final home = TeamBoxscoreData(
+      teamId: gameId.substring(10, 12),
+      batters: homeBatters,
+      pitchers: homePitchers,
+    );
+
+    return GameBoxscoreData(
+      gameId: gameId,
+      officialAvailable:
+          away.hasDisplayableRecords || home.hasDisplayableRecords,
+      away: away,
+      home: home,
+    );
   }
 
   Future<Map<String, dynamic>?> _getMainGameForGame(String gameId) async {
@@ -1800,6 +1835,14 @@ class KboDirectRepository implements GameRepository {
     Map<String, dynamic>? mainGame,
   }) {
     return _parseLineupAnalysisPayload(gameId, payload, mainGame: mainGame);
+  }
+
+  @visibleForTesting
+  GameBoxscoreData parseBoxscoreScrollForTesting(
+    String gameId,
+    Map<String, dynamic> payload,
+  ) {
+    return _parseBoxscoreScrollPayload(gameId, payload);
   }
 
   @visibleForTesting
