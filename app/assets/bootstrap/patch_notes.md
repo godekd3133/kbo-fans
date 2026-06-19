@@ -1,5 +1,10 @@
 # 패치노트
 
+## 0.0.45+45 - TestFlight Reupload Checkpoint
+
+- 앱 동작 변경 없이 0.0.44의 WebP-only 비주얼 자산 구성을 새 TestFlight build number로 다시 올렸습니다.
+- Apple TestFlight 처리 빌드와 Git tag/GitHub Release 기준을 한 번 더 맞춘 배포 checkpoint입니다.
+
 ## 0.0.44+44 - WebP Visual Asset Cutover
 
 - 대표 artwork 이미지까지 캐주얼 WebP 리소스로 전환해 화면별 비주얼 톤을 한 계열로 맞췄습니다.

@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-06-19: 0.0.45 TestFlight 재업로드 checkpoint
+
+### 완료
+- [x] `0.0.44` 이후 tracked 앱 동작 변경이 없음을 확인
+- [x] 같은 WebP-only 자산 구성을 Apple에 한 번 더 올리기 위해 `0.0.45+45`로 version/build만 분리
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.45` 기준으로 동기화
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `0.0.45 (45)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/Png asset count 확인 (`casual_*.webp` 175개, PNG 대표 이미지 0개)
+- [x] `0.0.45 (45)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [x] 운영 API health 확인 (`/api/health` `status=ok`)
+- [x] `git diff --check`
+
+---
+
 ## 2026-06-19: 0.0.44 175개 캐주얼 비주얼 리소스 릴리즈/TestFlight 재업로드
 
 ### 완료

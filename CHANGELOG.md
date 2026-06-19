@@ -10,6 +10,13 @@
 
 ## [Unreleased]
 
+## [0.0.45] - 2026-06-19
+
+### Changed
+
+- 앱 동작 변경 없이 `0.0.44` WebP-only 비주얼 자산 구성을 새 TestFlight build `0.0.45 (45)`로 재업로드
+- Apple TestFlight 처리 빌드와 Git tag/GitHub Release 기준을 한 번 더 맞춘 배포 checkpoint로 정리
+
 ## [0.0.44] - 2026-06-19
 
 ### Changed

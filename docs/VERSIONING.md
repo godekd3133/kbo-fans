@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.44+44`
-- Current release tag: `0.0.44`
+- Flutter app version: `0.0.45+45`
+- Current release tag: `0.0.45`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -92,6 +92,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.42`: schedule and standings generated baseball visuals are integrated into the functional header/summary rail instead of separate strips, secondary-screen motion is reinforced for diagnostics/patch notes/lineup, integrated visual UI mockup docs are preserved, and current app build `0.0.42+42`.
 - `0.0.43`: common visual resource rail ships across home, game detail, schedule, standings, records, notifications, and onboarding; `casual_*.webp` assets are explicitly included in the release manifest; `0.0.42` TestFlight processing build is superseded by the current source-aligned `0.0.43+43` build.
 - `0.0.44`: representative artwork constants are cut over to casual WebP assets, the release manifest drops the older PNG representative artwork entries, and `0.0.43` TestFlight processing build is superseded by the current source-aligned `0.0.44+44` build.
+- `0.0.45`: no app behavior change; reuploads the `0.0.44` WebP-only visual asset configuration as TestFlight build `0.0.45+45` so Apple processing, Git tag, and GitHub Release checkpoints align again.
 
 ## GitHub Release Note Template
 
