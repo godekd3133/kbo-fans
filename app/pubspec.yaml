@@ -1,7 +1,7 @@
 name: kbo_fans
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.0.50+50
+version: 0.0.53+53
 
 environment:
   sdk: ^3.11.4
@@ -43,6 +43,8 @@ flutter:
     - assets/bootstrap/team_players/
     - assets/bootstrap/team_stats/
     - assets/visuals/kbo_header_logo.png
+    - assets/visuals/reference_status_icons.png
+    - assets/visuals/reference_team_logos/
     - assets/visuals/casual_home_01.webp
     - assets/visuals/casual_home_02.webp
     - assets/visuals/casual_home_03.webp

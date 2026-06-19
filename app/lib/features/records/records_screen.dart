@@ -6,12 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
-import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/player.dart';
@@ -165,18 +162,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       icon: const Icon(Icons.refresh_rounded),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                const AppArtworkCard(
-                  assetName: VisualAssets.recordsStats,
-                  height: 112,
-                  alignment: Alignment.centerRight,
-                ),
-                const SizedBox(height: 10),
-                AppVisualResourceRail(
-                  assets: VisualAssets.casualRecords,
-                  semanticLabel: '기록실 캐주얼 야구 비주얼',
-                  padding: EdgeInsets.zero,
                 ),
                 const SizedBox(height: 14),
                 _seasonSelector(),

@@ -22,11 +22,14 @@
 - `backend/.venv/bin/pytest -q backend/tests/test_home.py`
 - `python3 -m py_compile scripts/kbo-reference-api.py`
 - `git diff --check`
-- `cd app && fvm flutter build web --release --dart-define-from-file=../output/playwright/kbo-ui-reference-exact/dart-defines.json`
-- Screenshot: `output/playwright/kbo-ui-reference-exact/home-final-reference-news-label.png`
+- `cd app && fvm flutter build web --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8001/api`
+- Screenshot: `.playwright-cli/page-2026-06-19T07-05-20-058Z.png`
+- Side-by-side QA: `output/playwright/home-reference-vs-current-reference-api-release-final.png`
 
 ## Result
-- passed
+- blocked
 
-## Residual Difference
-- The browser web screenshot does not include an OS status bar. The in-app header/content density and first viewport section order now match the reference target.
+## Residual Differences
+- The browser web screenshot does not include the native iOS status bar shown in the reference image.
+- Team logo artwork is sourced from current app/CDN assets, so several marks differ from the static reference image.
+- The my-team brief background artwork is compositionally close but not pixel-identical to the reference card texture.

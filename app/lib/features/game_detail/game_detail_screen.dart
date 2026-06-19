@@ -16,7 +16,6 @@ import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
-import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/game.dart';
 import '../../data/models/highlight_info.dart';
@@ -414,23 +413,26 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     final tabBar = TabBar(
       controller: _tabController,
       indicatorSize: TabBarIndicatorSize.tab,
-      indicator: BoxDecoration(
-        color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(7),
+      indicator: const UnderlineTabIndicator(
+        borderSide: BorderSide(color: AppColors.accent, width: 3),
+        insets: EdgeInsets.symmetric(horizontal: 18),
       ),
-      labelColor: AppColors.textPrimary,
-      labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+      labelColor: AppColors.accent,
+      labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
       unselectedLabelColor: AppColors.textDisabled,
       unselectedLabelStyle: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
+        fontSize: 14,
+        fontWeight: FontWeight.w800,
       ),
-      dividerColor: Colors.transparent,
-      overlayColor: WidgetStateProperty.all(Colors.transparent),
+      labelPadding: EdgeInsets.zero,
+      dividerColor: AppColors.divider,
+      overlayColor: WidgetStateProperty.all(
+        AppColors.accent.withValues(alpha: 0.08),
+      ),
       tabs: const [
         Tab(text: '스코어'),
-        Tab(text: '중계'),
-        Tab(text: '박스'),
+        Tab(text: '문자중계'),
+        Tab(text: '박스스코어'),
         Tab(text: '라인업'),
       ],
     );
@@ -474,152 +476,10 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
-                    child: AppVisualResourceRail(
-                      assets: VisualAssets.casualGame,
-                      semanticLabel: '경기 상세 캐주얼 야구 비주얼',
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                    child: Container(
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: AppColors.card,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.divider),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            AppColors.live.withValues(
-                              alpha: isLive ? 0.22 : 0.08,
-                            ),
-                            AppColors.card,
-                          ],
-                        ),
-                      ),
-                      child: Stack(
-                        children: [
-                          const Positioned.fill(
-                            child: AppArtworkLayer(
-                              assetName: VisualAssets.gameDetailScoreboard,
-                              alignment: Alignment.centerRight,
-                              opacity: 0.16,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-                            child: Column(
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 9,
-                                        vertical: 5,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.live.withValues(
-                                          alpha: isLive ? 0.18 : 0.08,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          999,
-                                        ),
-                                        border: Border.all(
-                                          color: AppColors.live.withValues(
-                                            alpha: isLive ? 0.45 : 0.18,
-                                          ),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        isLive
-                                            ? 'LIVE'
-                                            : labelForGameStatus(
-                                                game.status,
-                                                statusLabel: game.statusLabel,
-                                              ),
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: isLive
-                                              ? AppColors.live
-                                              : AppColors.textSecondary,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      _stateMetaText(game),
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.textSecondary,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _teamSection(
-                                        game.away.teamId,
-                                        game.away.shortName,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Column(
-                                      children: [
-                                        AppMotionValue(
-                                          value:
-                                              '${game.away.score}:${game.home.score}',
-                                          child: Text(
-                                            '${game.away.score}:${game.home.score}',
-                                            style: const TextStyle(
-                                              fontSize: 38,
-                                              height: 1,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 0,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 7),
-                                        Text(
-                                          secondaryTextForGameStatus(
-                                            game.status,
-                                            inning: game.inning,
-                                            startTime: game.startTime,
-                                            statusLabel: game.statusLabel,
-                                          ),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: isLive
-                                                ? AppColors.textPrimary
-                                                : AppColors.textSecondary,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: _teamSection(
-                                        game.home.teamId,
-                                        game.home.shortName,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  child: _GameScorebug(
+                    game: game,
+                    isLive: isLive,
+                    metaText: _stateMetaText(game),
                   ),
                 ),
                 if (isLive)

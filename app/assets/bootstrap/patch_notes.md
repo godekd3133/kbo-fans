@@ -1,13 +1,27 @@
 # 패치노트
 
-## 0.0.50+50 - Home Reference Dashboard
+## 0.0.53+53 - Home Reference Dashboard
 
 - 홈 첫 화면을 `마이팀 브리프 → 오늘 경기 → 최근 흐름 → 순위` 흐름으로 재배치해 앱을 열자마자 오늘 야구 상황을 더 빨리 훑어볼 수 있습니다.
 - 마이팀 브리프는 KBO 브랜드 마크, 팀 로고, 최근 5경기 결과 버블, 승률/게임차, 일정/팀 기록 버튼 중심으로 더 조밀하게 정리했습니다.
+- 일부 팀 로고는 reference 전용 bundled logo asset을 사용해 홈 첫 화면에서 더 선명하게 보이도록 했습니다.
 - 오늘 경기와 순위 snapshot은 별도 이미지 레일이 아니라 팀 로고, 경기 행, compact 순위표 안에 비주얼과 데이터를 통합해 보여줍니다.
-- 하단 탭을 `홈 / 경기 / 기록 / 뉴스 / 더보기` 레퍼런스형 라벨과 아이콘으로 다듬었습니다.
+- 하단 탭을 `홈 / 경기 / 기록 / 순위 / 더보기` 레퍼런스형 라벨과 아이콘으로 다듬었습니다.
+- 일정, 순위, 더보기 알림 영역의 정상 화면 보조 이미지 rail을 덜어내 정보 밀도를 높였습니다.
 - live 경기 badge는 `7회말` 같은 실제 경기 상태를 더 선명하게 보여줍니다.
 - backend `/home` 응답에 홈 전용 순위 preview를 추가해 홈 화면이 별도 순위 호출 없이 필요한 정보를 받을 수 있게 했습니다.
+
+## 0.0.52+52 - Home Reference Dashboard Checkpoint
+
+- 홈 참조 대시보드 TestFlight upload checkpoint입니다. 업로드 중 reference team logo asset source sync가 추가되어 0.0.53으로 대체했습니다.
+
+## 0.0.51+51 - Home Reference Dashboard Checkpoint
+
+- 홈 참조 대시보드 TestFlight upload checkpoint입니다. 업로드 중 홈 헤더 액션 icon size source sync가 추가되어 0.0.52로 대체했습니다.
+
+## 0.0.50+50 - Home Reference Dashboard Checkpoint
+
+- 홈 참조 대시보드 TestFlight upload/backend deploy checkpoint입니다. 업로드와 backend deploy 뒤 홈 헤더 밀도, 최근 흐름 streak 표시, reference API metrics sink를 다시 맞추기 위해 0.0.51로 대체했습니다.
 
 ## 0.0.49+49 - Home Reference Dashboard Checkpoint
 

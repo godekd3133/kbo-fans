@@ -2,16 +2,110 @@
 
 ---
 
-## 2026-06-19: 0.0.50 홈 참조 대시보드 릴리즈/TestFlight/backend 배포
+## 2026-06-19: 기록 탭 상단 비주얼 제거
+
+### 원인
+- 기록 탭 정상 화면에서 상단 artwork 카드와 캐주얼 비주얼 rail이 시즌 선택, 리더보드, 팀 목록보다 먼저 공간을 차지해 정보 접근이 늦어졌다.
 
 ### 완료
-- [x] 홈 참조 대시보드 변경과 backend `/home.standingsPreview` 변경을 새 tester-facing build `0.0.50+50`으로 분리
+- [x] `RecordsScreen` 팀 선택/리그 기록 화면에서 `recordsStats` artwork 카드 제거
+- [x] `casualRecords` `AppVisualResourceRail` 제거 및 불필요한 visual import 정리
+- [x] 팀 상세 화면의 팀 로고는 식별 정보라 유지
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 기록실 정상 화면은 정보 밀도 우선이라는 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/records/records_screen.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/records/records_screen.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/data/models/records_overview_test.dart -r expanded` (`3 passed`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 공통 화면 연출 강도 상향
+
+### 원인
+- 라우트 전환과 일부 보조 화면 모션은 이미 보강됐지만, 상태 전환/리스트 등장/값 변경/터치 피드백의 공통 기본값이 여전히 약해 화면 연출 체감이 충분히 크지 않았다.
+
+### 완료
+- [x] `AppMotionSwitcher` 기본값을 360ms, 더 큰 vertical slide, 얕은 scale, `easeOutQuart` 중심으로 조정해 loading/error/data 교체가 더 분명하게 보이도록 변경
+- [x] `AppMotionListItem` 등장 offset/scale/duration과 index별 duration 증가폭을 키워 카드/행 등장감 강화
+- [x] `AppPressable` 기본 press scale/opacity/duration을 키워 카드, chip, 탭 터치 피드백이 더 잘 보이도록 조정
+- [x] `AppMotionValue`에 value swap scale을 추가하고 숫자 변경 slide/duration을 키워 점수/값 변경 체감 강화
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 공통 모션 기준과 사용자 체감 변경 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/widgets/app_motion.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/widgets/app_motion.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart` (`7 passed`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart test/features/game_detail/lineup_tab_test.dart test/features/settings/settings_screen_test.dart test/features/schedule/schedule_screen_test.dart test/features/standings/standings_screen_test.dart -r expanded` (`18 passed`)
+
+---
+
+## 2026-06-19: 하단 탭 순위 라벨 정정
+
+### 원인
+- 하단 네 번째 탭이 실제 `/standings` 순위 화면으로 연결되는데 라벨이 `뉴스`로 표시되어 화면 의미와 맞지 않았다.
+
+### 완료
+- [x] `MainScaffold` 네 번째 탭 라벨을 `뉴스`에서 `순위`로 변경하고 아이콘도 순위 의미에 맞게 조정
+- [x] 순위 화면 정상 상태의 상단 보조 이미지 rail 제거 기준을 `docs/APP_SPEC.md`, `CHANGELOG.md`, 패치노트와 동기화
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/widgets/main_scaffold.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/widgets/main_scaffold.dart lib/features/standings/standings_screen.dart` (`No issues found`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 일정 탭 상단 비주얼 제거
+
+### 원인
+- 일정 탭 정상 화면에서 상단 캐주얼 비주얼 rail과 월 헤더 배경 이미지가 실제 캘린더/경기 목록보다 먼저 공간을 차지해 정보 밀도가 떨어졌다.
+
+### 완료
+- [x] `ScheduleScreen` 정상 데이터 레이아웃에서 상단 `AppVisualResourceRail` 제거
+- [x] 월 헤더의 `scheduleTicketing` 배경 이미지를 제거하고 월 텍스트 + 이전/다음/오늘 컨트롤만 남기도록 압축
+- [x] 빈 상태/오류 상태 artwork는 상태 안내 용도로 유지
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 일정 정상 화면은 정보 밀도 우선이라는 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/schedule/schedule_screen.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/schedule/schedule_screen.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart -r expanded` (`3 passed`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 더보기 알림 화면 이미지 제거
+
+### 완료
+- [x] 더보기(`/settings`) 장면별 알림 섹션에서 장식용 `notificationPlaybook` 배너와 `casualNotifications` 가로 이미지 레일 제거
+- [x] 마이팀 카드의 팀 로고는 식별 요소라 유지하고, 더보기 화면의 불필요해진 visual asset import만 정리
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/settings/settings_screen.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/settings/settings_screen.dart test/features/settings/settings_screen_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/settings/settings_screen_test.dart -r expanded` (`3 passed`)
+
+---
+
+## 2026-06-19: 0.0.53 홈 참조 대시보드 릴리즈/TestFlight/backend 배포
+
+### 완료
+- [x] 홈 참조 대시보드 변경과 backend `/home.standingsPreview` 변경을 새 tester-facing build `0.0.53+53`으로 분리
 - [x] `0.0.46 (46)`은 TestFlight upload 후 홈 UI compact 마감 수정이 들어와 최신 GitHub release/tag 대상에서 제외하고 `0.0.47`로 supersede
 - [x] `0.0.47 (47)`은 TestFlight upload 후 하단 탭 label/source sync 수정이 들어와 최신 GitHub release/tag 대상에서 제외하고 `0.0.48`로 supersede
 - [x] `0.0.48 (48)`은 TestFlight upload 후 source sync 확인 과정에서 최신 소스 재빌드가 필요해 최신 GitHub release/tag 대상에서 제외하고 `0.0.49`로 supersede
 - [x] `0.0.49 (49)`는 TestFlight upload 후 패치노트/하단 `뉴스` 탭 source sync가 들어와 최신 GitHub release/tag 대상에서 제외하고 `0.0.50`으로 supersede
-- [x] 하단 탭은 `홈 / 경기 / 기록 / 뉴스 / 더보기` 레퍼런스형 라벨로 정리. 현재 `뉴스` slot은 별도 news screen 전까지 `/standings` route를 임시 재사용
-- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.50` 기준으로 동기화
+- [x] `0.0.50 (50)`은 TestFlight upload/backend deploy 후 홈 헤더 밀도, 최근 흐름 streak 표시, reference API metrics sink source sync가 들어와 최신 GitHub Release 대상에서 제외하고 `0.0.51`로 supersede
+- [x] `0.0.51 (51)`은 TestFlight upload 중 홈 헤더 액션 icon size source sync가 들어와 최신 GitHub release/tag/backend deploy 대상에서 제외하고 `0.0.52`로 supersede
+- [x] `0.0.52 (52)`는 TestFlight upload 중 reference team logo asset source sync가 들어와 최신 GitHub release/tag/backend deploy 대상에서 제외하고 `0.0.53`으로 supersede
+- [x] 하단 탭은 `홈 / 경기 / 기록 / 순위 / 더보기` 레퍼런스형 라벨로 정리
+- [x] `순위` 탭으로 쓰는 `/standings` 화면에서 헤더 아래 상단 비주얼 레일 제거
+- [x] 일정 정상 화면의 월 헤더/목록 정보 밀도를 우선하도록 상단 보조 비주얼 레일 제거
+- [x] 더보기 알림 영역의 장식용 image rail 제거
+- [x] 홈 팀 로고 일부를 reference 전용 bundled logo asset으로 고정
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.53` 기준으로 동기화
 
 ### 검증
 - [x] `cd app && fvm dart format ...`
@@ -36,7 +130,17 @@
 - [x] `0.0.49 (49)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
 - [x] `0.0.50 (50)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, KBO header PNG 1개)
 - [x] `0.0.50 (50)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
-- [ ] backend deploy workflow 성공 및 운영 `/api/health` 확인
+- [x] backend deploy workflow 성공 및 운영 `/api/health` 확인 (`Push Demo Deploy` run `27810541214`, image tag `0.0.50`, `/api/health` `status=ok`)
+- [x] topic 재등록 성공 확인 (`registeredDevices=2`, `eligibleDevices=2`, `subscriptionsAttempted=20`, `unsubscriptionsAttempted=0`)
+- [x] 운영 `/api/home?date=2026-06-19&myTeam=LG` 응답에 `standingsPreview` 5개 포함 확인
+- [x] `0.0.51 (51)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, KBO header PNG 1개)
+- [x] `0.0.51 (51)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `asset-description` validation warning과 `objective_c.framework` dSYM warning은 남음)
+- [x] `0.0.52 (52)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, KBO header PNG 1개)
+- [x] `0.0.52 (52)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [ ] `0.0.53 (53)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인
+- [ ] `0.0.53 (53)` TestFlight upload 성공 확인
+- [ ] `0.0.53` backend deploy workflow 성공 및 운영 `/api/health` 확인
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/standings/standings_screen.dart` (`No issues found`)
 - [x] `git diff --check`
 
 ---

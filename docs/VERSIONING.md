@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.50+50`
-- Current release tag: `0.0.50`
+- Flutter app version: `0.0.53+53`
+- Current release tag: `0.0.53`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -97,7 +97,10 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.47`: home reference dashboard TestFlight upload checkpoint, superseded before GitHub release/tag by `0.0.48` after bottom-tab label/route alignment fixes.
 - `0.0.48`: home reference dashboard TestFlight upload checkpoint, superseded before GitHub release/tag by `0.0.49` after final source sync and bottom-tab label confirmation.
 - `0.0.49`: home reference dashboard TestFlight upload checkpoint, superseded before GitHub release/tag by `0.0.50` after patch-note and news-tab source sync.
-- `0.0.50`: home is rebuilt around the reference dashboard flow with KBO brand mark, my-team brief, today games, recent flow, and standings snapshot; bottom tabs align as home/game/records/news/more; live status badges preserve inning labels; backend `/home` adds `standingsPreview`; current app build `0.0.50+50`.
+- `0.0.50`: home reference dashboard TestFlight/backend deploy checkpoint, superseded before GitHub Release by `0.0.51` after post-deploy source sync.
+- `0.0.51`: home reference dashboard TestFlight upload checkpoint, superseded before GitHub release/tag/backend deploy by `0.0.52` after home header action icon source sync.
+- `0.0.52`: home reference dashboard TestFlight upload checkpoint, superseded before GitHub release/tag/backend deploy by `0.0.53` after reference team logo asset source sync.
+- `0.0.53`: home is rebuilt around the reference dashboard flow with KBO brand mark, my-team brief, today games, recent flow, and standings snapshot; bottom tabs align as home/game/records/news/more; live status badges preserve inning labels; backend `/home` adds `standingsPreview`; current app build `0.0.53+53`.
 
 ## GitHub Release Note Template
 

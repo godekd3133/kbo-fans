@@ -13,10 +13,10 @@ class AppMotionSwitcher extends StatelessWidget {
   const AppMotionSwitcher({
     super.key,
     required this.child,
-    this.duration = const Duration(milliseconds: 300),
-    this.reverseDuration = const Duration(milliseconds: 220),
-    this.beginOffset = const Offset(0, 0.018),
-    this.beginScale = 0.985,
+    this.duration = const Duration(milliseconds: 360),
+    this.reverseDuration = const Duration(milliseconds: 260),
+    this.beginOffset = const Offset(0, 0.032),
+    this.beginScale = 0.975,
     this.alignment = Alignment.topCenter,
   });
 
@@ -29,8 +29,8 @@ class AppMotionSwitcher extends StatelessWidget {
     return AnimatedSwitcher(
       duration: duration,
       reverseDuration: reverseDuration,
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
+      switchInCurve: Curves.easeOutQuart,
+      switchOutCurve: Curves.easeInOutCubic,
       layoutBuilder: (currentChild, previousChildren) {
         return Stack(
           alignment: alignment,
@@ -40,8 +40,8 @@ class AppMotionSwitcher extends StatelessWidget {
       transitionBuilder: (child, animation) {
         final curved = CurvedAnimation(
           parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
+          curve: Curves.easeOutQuart,
+          reverseCurve: Curves.easeInOutCubic,
         );
         return FadeTransition(
           opacity: curved,
@@ -72,8 +72,8 @@ class AppMotionListItem extends StatelessWidget {
     super.key,
     required this.index,
     required this.child,
-    this.beginYOffset = 14,
-    this.beginScale = 0.985,
+    this.beginYOffset = 22,
+    this.beginScale = 0.972,
   });
 
   @override
@@ -82,11 +82,11 @@ class AppMotionListItem extends StatelessWidget {
       return child;
     }
 
-    final extraMs = math.min(index, 8) * 26;
+    final extraMs = math.min(index, 10) * 34;
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: 260 + extraMs),
-      curve: Curves.easeOutCubic,
+      duration: Duration(milliseconds: 320 + extraMs),
+      curve: Curves.easeOutQuart,
       builder: (context, value, child) {
         final opacity = value.clamp(0.0, 1.0).toDouble();
         return Opacity(
@@ -118,9 +118,9 @@ class AppPressable extends StatefulWidget {
     required this.child,
     this.onTap,
     this.behavior = HitTestBehavior.opaque,
-    this.pressedScale = 0.985,
-    this.pressedOpacity = 0.96,
-    this.duration = const Duration(milliseconds: 165),
+    this.pressedScale = 0.972,
+    this.pressedOpacity = 0.92,
+    this.duration = const Duration(milliseconds: 190),
   });
 
   @override
@@ -155,11 +155,11 @@ class _AppPressableState extends State<AppPressable> {
       onTap: widget.onTap,
       child: AnimatedScale(
         duration: widget.duration,
-        curve: Curves.easeOutCubic,
+        curve: Curves.easeOutQuart,
         scale: _pressed ? widget.pressedScale : 1,
         child: AnimatedOpacity(
           duration: widget.duration,
-          curve: Curves.easeOutCubic,
+          curve: Curves.easeOutQuart,
           opacity: _pressed ? widget.pressedOpacity : 1,
           child: widget.child,
         ),
@@ -172,12 +172,14 @@ class AppMotionValue extends StatelessWidget {
   final Object? value;
   final Widget child;
   final Offset beginOffset;
+  final double beginScale;
 
   const AppMotionValue({
     super.key,
     required this.value,
     required this.child,
-    this.beginOffset = const Offset(0, -0.12),
+    this.beginOffset = const Offset(0, -0.18),
+    this.beginScale = 0.965,
   });
 
   @override
@@ -187,24 +189,27 @@ class AppMotionValue extends StatelessWidget {
     }
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 280),
-      reverseDuration: const Duration(milliseconds: 190),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
+      duration: const Duration(milliseconds: 340),
+      reverseDuration: const Duration(milliseconds: 240),
+      switchInCurve: Curves.easeOutQuart,
+      switchOutCurve: Curves.easeInOutCubic,
       transitionBuilder: (child, animation) {
         final curved = CurvedAnimation(
           parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
+          curve: Curves.easeOutQuart,
+          reverseCurve: Curves.easeInOutCubic,
         );
         return FadeTransition(
           opacity: curved,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: beginOffset,
-              end: Offset.zero,
-            ).animate(curved),
-            child: child,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: beginScale, end: 1).animate(curved),
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: beginOffset,
+                end: Offset.zero,
+              ).animate(curved),
+              child: child,
+            ),
           ),
         );
       },

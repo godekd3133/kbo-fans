@@ -9,12 +9,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
-import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../data/providers.dart';
 import '../../services/game_event_alert_service.dart';
 import '../../services/push_notification_service.dart';
@@ -314,18 +311,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 6),
-              const AppArtworkCard(
-                assetName: VisualAssets.notificationPlaybook,
-                height: 96,
-                alignment: Alignment.centerLeft,
-              ),
-              const SizedBox(height: 10),
-              AppVisualResourceRail(
-                assets: VisualAssets.casualNotifications,
-                semanticLabel: '알림 캐주얼 야구 비주얼',
-                padding: EdgeInsets.zero,
-              ),
-              const SizedBox(height: 8),
               _PlaybookPreviewCard(
                 teamName: team?.shortName ?? '마이팀',
                 teamColor: teamColor,

@@ -12,7 +12,6 @@ import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
-import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
@@ -182,13 +181,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           child: Column(
             children: [
               _buildMonthHeader(),
-              if (MediaQuery.sizeOf(context).height >= 760) ...[
-                AppVisualResourceRail(
-                  assets: VisualAssets.casualSchedule,
-                  semanticLabel: '일정 캐주얼 야구 비주얼',
-                ),
-                const SizedBox(height: 10),
-              ],
               Expanded(child: _buildBody(scheduleAsync)),
             ],
           ),
@@ -199,63 +191,49 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   Widget _buildMonthHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Stack(
-          children: [
-            const Positioned.fill(
-              child: AppArtworkLayer(
-                assetName: VisualAssets.scheduleTicketing,
-                alignment: Alignment.centerRight,
-                opacity: 0.18,
-              ),
-            ),
-            Row(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        DateFormat(
-                          'MMM yyyy',
-                          'en_US',
-                        ).format(_currentMonth).toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textDisabled,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        '일정',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          height: 1.05,
-                        ),
-                      ),
-                    ],
+                Text(
+                  DateFormat(
+                    'MMM yyyy',
+                    'en_US',
+                  ).format(_currentMonth).toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textDisabled,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
                   ),
                 ),
-                _HeaderIconButton(
-                  icon: Icons.chevron_left_rounded,
-                  onTap: () => _changeMonth(-1),
+                const SizedBox(height: 4),
+                const Text(
+                  '일정',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    height: 1.05,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                _HeaderIconButton(
-                  icon: Icons.chevron_right_rounded,
-                  onTap: () => _changeMonth(1),
-                ),
-                const SizedBox(width: 8),
-                _HeaderIconButton(icon: Icons.today_rounded, onTap: _goToToday),
               ],
             ),
-          ],
-        ),
+          ),
+          _HeaderIconButton(
+            icon: Icons.chevron_left_rounded,
+            onTap: () => _changeMonth(-1),
+          ),
+          const SizedBox(width: 8),
+          _HeaderIconButton(
+            icon: Icons.chevron_right_rounded,
+            onTap: () => _changeMonth(1),
+          ),
+          const SizedBox(width: 8),
+          _HeaderIconButton(icon: Icons.today_rounded, onTap: _goToToday),
+        ],
       ),
     );
   }

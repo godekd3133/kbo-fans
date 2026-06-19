@@ -209,11 +209,72 @@ def _home_payload(date: str, my_team: Optional[str]) -> dict:
             ],
         },
         "kboBrief": {
-            "title": "KBO 브리프",
-            "subtitle": "",
-            "items": [],
+            "title": "오늘의 KBO 관전 포인트",
+            "subtitle": "3경기 진행/예정 · 접전과 순위 흐름을 먼저 확인",
+            "items": [
+                {
+                    "type": "game_flow",
+                    "eyebrow": "접전 체크",
+                    "title": "삼성 3 : 2 LG",
+                    "subtitle": "7회말 · 잠실 · 한 점 승부 구간",
+                    "route": "/game/20260619SSLG0",
+                    "gameId": "20260619SSLG0",
+                    "teamIds": ["SS", "LG"],
+                },
+                {
+                    "type": "standings",
+                    "eyebrow": "선두권 흐름",
+                    "title": "1위 KIA, 2위 LG와 2.0G차",
+                    "subtitle": "LG 4연승 · 상위권 추격 구도",
+                    "route": "/standings",
+                    "gameId": None,
+                    "teamIds": ["HT", "LG"],
+                },
+                {
+                    "type": "record_radar",
+                    "eyebrow": "기록 레이더",
+                    "title": "노시환 17홈런 · 홈런왕 경쟁",
+                    "subtitle": "상위 3명 격차 3개 · 오늘 타석 체크",
+                    "route": "/records",
+                    "gameId": None,
+                    "teamIds": ["HH"],
+                },
+            ],
         },
-        "quickItems": [],
+        "quickItems": [
+            {
+                "eyebrow": "마이팀 경기",
+                "title": "LG 2 : 3 삼성",
+                "subtitle": "잠실 · 7회말 · 승부처 진행 중",
+                "route": "/game/20260619SSLG0",
+                "teamId": "LG",
+                "fallbackLabel": "LG 트윈스",
+            },
+            {
+                "eyebrow": "순위표",
+                "title": "KIA 단독 1위",
+                "subtitle": "LG와 2.0G차 · SSG 4위권 압박",
+                "route": "/standings",
+                "teamId": "HT",
+                "fallbackLabel": "KIA 타이거즈",
+            },
+            {
+                "eyebrow": "홈런왕",
+                "title": "노시환 17개",
+                "subtitle": "한화 · 시즌 홈런 1위",
+                "route": "/records",
+                "teamId": "HH",
+                "fallbackLabel": "노시환",
+            },
+            {
+                "eyebrow": "오늘의 선수",
+                "title": "임찬규",
+                "subtitle": "LG · 최근 선발 안정감 체크",
+                "route": "/records/player/61101?season=2026",
+                "teamId": "LG",
+                "fallbackLabel": "임찬규",
+            },
+        ],
         "standingsPreview": _standings(),
     }
 
@@ -221,6 +282,23 @@ def _home_payload(date: str, my_team: Optional[str]) -> dict:
 class ReferenceApiHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         self._send_headers(204)
+
+    def do_POST(self) -> None:
+        parsed = urlparse(self.path)
+        if parsed.path == "/api/metrics/client":
+            self._send_headers(204)
+            return
+
+        self._send_json(
+            {
+                "success": False,
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Unsupported reference path: {parsed.path}",
+                },
+            },
+            status=404,
+        )
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)

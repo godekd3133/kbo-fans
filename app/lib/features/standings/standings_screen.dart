@@ -9,7 +9,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
-import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
 import '../../data/providers.dart';
@@ -69,11 +68,6 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              AppVisualResourceRail(
-                assets: VisualAssets.casualStandings,
-                semanticLabel: '순위 캐주얼 야구 비주얼',
-              ),
-              const SizedBox(height: 10),
               Expanded(
                 child: AppMotionSwitcher(
                   child: standingsAsync.when(
