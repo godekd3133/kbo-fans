@@ -70,7 +70,18 @@
   - `backend/.venv/bin/pytest -q backend/tests/test_boxscore_crawler.py backend/tests/test_boxscore_service.py`
   - `python3 -m compileall backend/src/kbo_fans_backend/crawlers/boxscore.py`
 - [x] Run `git diff --check`.
-- [ ] Commit with Korean message.
+- [x] Commit with Korean message.
+
+### Task 6: Dense Boxscore UX Follow-Up
+
+- [x] Add widget RED coverage for team comparison and expandable batter/pitcher detail.
+- [x] Add a team comparison card for selected team vs opponent without synthesizing unknown optional rows.
+- [x] Add `상세 기록` expansion to batter and pitcher cards while preserving player-detail navigation.
+- [x] Surface matched player-profile season mini metrics only when already available.
+- [x] Add context badges such as `멀티히트`, `득점 관여`, `무자책`, and `탈삼진 흐름`.
+- [x] Update `APP_SPEC`, `WORKLOG`, `CHANGELOG`, and design notes for the denser boxscore surface.
+- [x] Run final targeted format, tests, analyze, and `git diff --check`.
+- [x] Commit with Korean message.
 
 ## Self-Review
 

@@ -15,6 +15,7 @@
 - [x] `PitcherRecord`에 투구수, 실점과 경기 ERA/WHIP 계산 getter를 추가.
 - [x] API-backed parser와 direct KBO parser가 확장 박스스코어 지표를 보존하도록 연결.
 - [x] 경기 상세 박스스코어 row 아래에 루타/장타/SLG/투구수/ERA/WHIP 보조 라벨을 표시.
+- [x] `7217bec`의 정보 밀도 개선은 현재 main의 no-photo/dense row 방향을 유지하면서 득점/안타/타점/장타 팀 비교 strip으로 통합.
 - [x] `CHANGELOG.md`, `docs/APP_SPEC.md`, `docs/superpowers/` 계획 문서에 병합 내용을 반영.
 
 ### 검증

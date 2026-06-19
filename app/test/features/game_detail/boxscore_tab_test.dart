@@ -120,6 +120,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('오늘 기록 요약'), findsWidgets);
+    expect(find.text('팀 비교'), findsOneWidget);
+    expect(find.text('2 : 1'), findsOneWidget);
     expect(find.text('선수 기록 보기'), findsWidgets);
     expect(find.text('루타 6'), findsOneWidget);
     expect(find.text('장타 2'), findsOneWidget);

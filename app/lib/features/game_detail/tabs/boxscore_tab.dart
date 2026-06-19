@@ -43,6 +43,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   String get _selectedTeamName => _showAway ? widget.awayName : widget.homeName;
   String get _selectedTeamId =>
       _showAway ? widget.awayTeamId : widget.homeTeamId;
+  String get _opponentTeamName => _showAway ? widget.homeName : widget.awayName;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +65,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       error: (error, _) => _buildUnavailableState('박스스코어 로딩 실패: $error'),
       data: (boxscore) {
         final selected = _showAway ? boxscore.away : boxscore.home;
+        final opponent = _showAway ? boxscore.home : boxscore.away;
         final isLiveContext =
             !boxscore.officialAvailable && boxscore.liveContextAvailable;
         if ((!boxscore.officialAvailable && !isLiveContext) ||
@@ -77,22 +79,21 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             : ref.watch(teamPlayersProvider('$_selectedTeamId|$season'));
         return playersAsync.when(
           loading: () => _buildContent(
-            selected.batters,
-            selected.pitchers,
+            selected,
+            opponent,
             const {},
             isLiveContext: isLiveContext,
           ),
           error: (_, _) => _buildContent(
-            selected.batters,
-            selected.pitchers,
+            selected,
+            opponent,
             const {},
             isLiveContext: isLiveContext,
           ),
-          data: (players) =>
-              _buildContent(selected.batters, selected.pitchers, {
-                for (final player in players)
-                  if (player.name.isNotEmpty) player.name: player,
-              }, isLiveContext: isLiveContext),
+          data: (players) => _buildContent(selected, opponent, {
+            for (final player in players)
+              if (player.name.isNotEmpty) player.name: player,
+          }, isLiveContext: isLiveContext),
         );
       },
     );
@@ -197,14 +198,18 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   }
 
   Widget _buildContent(
-    List<BatterRecord> batters,
-    List<PitcherRecord> pitchers,
+    TeamBoxscoreData selected,
+    TeamBoxscoreData opponent,
     Map<String, PlayerProfile> playersByName, {
     required bool isLiveContext,
   }) {
+    final batters = selected.batters;
+    final pitchers = selected.pitchers;
     final team = KboTeams.byId(_selectedTeamId);
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
+    final selectedMetrics = _BoxscoreTeamMetrics.from(selected);
+    final opponentMetrics = _BoxscoreTeamMetrics.from(opponent);
 
     final officialBatters = batters.where((batter) => !batter.liveContext);
     final totalAtBats = officialBatters.fold<int>(
@@ -293,6 +298,16 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                   ),
                 ],
         ),
+        if (!isLiveContext && opponent.hasDisplayableRecords) ...[
+          const SizedBox(height: 12),
+          _TeamComparisonStrip(
+            selectedTeamName: _selectedTeamName,
+            opponentTeamName: _opponentTeamName,
+            selected: selectedMetrics,
+            opponent: opponentMetrics,
+            accent: accent,
+          ),
+        ],
         if (keyBatter != null || keyPitcher != null) ...[
           const SizedBox(height: 20),
           _SectionTitle(
@@ -755,6 +770,170 @@ class _SummaryMetricTile extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _BoxscoreTeamMetrics {
+  final int runs;
+  final int hits;
+  final int rbi;
+  final int extraBaseHits;
+
+  const _BoxscoreTeamMetrics({
+    required this.runs,
+    required this.hits,
+    required this.rbi,
+    required this.extraBaseHits,
+  });
+
+  factory _BoxscoreTeamMetrics.from(TeamBoxscoreData team) {
+    return _BoxscoreTeamMetrics(
+      runs: team.batters.fold<int>(0, (sum, batter) => sum + batter.runs),
+      hits: team.batters.fold<int>(0, (sum, batter) => sum + batter.hits),
+      rbi: team.batters.fold<int>(0, (sum, batter) => sum + batter.rbi),
+      extraBaseHits: team.batters.fold<int>(
+        0,
+        (sum, batter) => sum + (batter.extraBaseHits ?? 0),
+      ),
+    );
+  }
+}
+
+class _TeamComparisonStrip extends StatelessWidget {
+  final String selectedTeamName;
+  final String opponentTeamName;
+  final _BoxscoreTeamMetrics selected;
+  final _BoxscoreTeamMetrics opponent;
+  final Color accent;
+
+  const _TeamComparisonStrip({
+    required this.selectedTeamName,
+    required this.opponentTeamName,
+    required this.selected,
+    required this.opponent,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.divider),
+        color: AppColors.card.withValues(alpha: 0.72),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '팀 비교',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _ComparisonMetric(
+                label: '득점',
+                selectedValue: selected.runs,
+                opponentValue: opponent.runs,
+                selectedTeamName: selectedTeamName,
+                opponentTeamName: opponentTeamName,
+                accent: accent,
+              ),
+              _ComparisonMetric(
+                label: '안타',
+                selectedValue: selected.hits,
+                opponentValue: opponent.hits,
+                selectedTeamName: selectedTeamName,
+                opponentTeamName: opponentTeamName,
+                accent: accent,
+              ),
+              _ComparisonMetric(
+                label: '타점',
+                selectedValue: selected.rbi,
+                opponentValue: opponent.rbi,
+                selectedTeamName: selectedTeamName,
+                opponentTeamName: opponentTeamName,
+                accent: accent,
+              ),
+              _ComparisonMetric(
+                label: '장타',
+                selectedValue: selected.extraBaseHits,
+                opponentValue: opponent.extraBaseHits,
+                selectedTeamName: selectedTeamName,
+                opponentTeamName: opponentTeamName,
+                accent: accent,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComparisonMetric extends StatelessWidget {
+  final String label;
+  final int selectedValue;
+  final int opponentValue;
+  final String selectedTeamName;
+  final String opponentTeamName;
+  final Color accent;
+
+  const _ComparisonMetric({
+    required this.label,
+    required this.selectedValue,
+    required this.opponentValue,
+    required this.selectedTeamName,
+    required this.opponentTeamName,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedLeading = selectedValue > opponentValue;
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.textDisabled,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$selectedValue : $opponentValue',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 15,
+              color: selectedLeading ? accent : AppColors.textPrimary,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            selectedLeading ? selectedTeamName : opponentTeamName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 9,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
