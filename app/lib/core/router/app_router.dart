@@ -136,7 +136,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/standings',
             pageBuilder: (context, state) => _tabTransitionPage(
               state,
-              tabIndex: 2,
+              tabIndex: 3,
               child: const StandingsScreen(),
             ),
           ),
@@ -144,7 +144,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/records',
             pageBuilder: (context, state) => _tabTransitionPage(
               state,
-              tabIndex: 3,
+              tabIndex: 2,
               child: const RecordsScreen(),
             ),
           ),
@@ -152,7 +152,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/records/team/:teamId',
             pageBuilder: (context, state) => _tabTransitionPage(
               state,
-              tabIndex: 3,
+              tabIndex: 2,
               child: RecordsScreen(teamId: state.pathParameters['teamId']!),
             ),
           ),

@@ -74,6 +74,9 @@ class GameStatusBadge extends StatelessWidget {
           AppColors.ballYellow,
         );
       default:
+        if (label.contains('회')) {
+          return (AppColors.live.withValues(alpha: 0.16), AppColors.live);
+        }
         if (label.contains('취소')) {
           return (
             AppColors.textDisabled.withValues(alpha: 0.18),

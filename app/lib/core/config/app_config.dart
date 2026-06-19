@@ -38,6 +38,10 @@ class AppConfig {
       'USE_BACKEND_API',
       defaultValue: '',
     );
+    const useBackendApiBool = bool.fromEnvironment(
+      'USE_BACKEND_API',
+      defaultValue: false,
+    );
     final env = AppEnvironment.values.firstWhere(
       (e) => e.name == envString,
       orElse: () => AppEnvironment.local,
@@ -45,7 +49,7 @@ class AppConfig {
     final preferDirectScrape = preferDirectScrapeFlag.isNotEmpty
         ? preferDirectScrapeFlag == 'true'
         : false;
-    final useBackendApi = useBackendApiFlag == 'true';
+    final useBackendApi = useBackendApiBool || useBackendApiFlag == 'true';
 
     _instance = AppConfig._(
       environment: env,

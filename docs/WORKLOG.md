@@ -2,6 +2,86 @@
 
 ---
 
+## 2026-06-19: 0.0.50 홈 참조 대시보드 릴리즈/TestFlight/backend 배포
+
+### 완료
+- [x] 홈 참조 대시보드 변경과 backend `/home.standingsPreview` 변경을 새 tester-facing build `0.0.50+50`으로 분리
+- [x] `0.0.46 (46)`은 TestFlight upload 후 홈 UI compact 마감 수정이 들어와 최신 GitHub release/tag 대상에서 제외하고 `0.0.47`로 supersede
+- [x] `0.0.47 (47)`은 TestFlight upload 후 하단 탭 label/source sync 수정이 들어와 최신 GitHub release/tag 대상에서 제외하고 `0.0.48`로 supersede
+- [x] `0.0.48 (48)`은 TestFlight upload 후 source sync 확인 과정에서 최신 소스 재빌드가 필요해 최신 GitHub release/tag 대상에서 제외하고 `0.0.49`로 supersede
+- [x] `0.0.49 (49)`는 TestFlight upload 후 패치노트/하단 `뉴스` 탭 source sync가 들어와 최신 GitHub release/tag 대상에서 제외하고 `0.0.50`으로 supersede
+- [x] 하단 탭은 `홈 / 경기 / 기록 / 뉴스 / 더보기` 레퍼런스형 라벨로 정리. 현재 `뉴스` slot은 별도 news screen 전까지 `/standings` route를 임시 재사용
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.50` 기준으로 동기화
+
+### 검증
+- [x] `cd app && fvm dart format ...`
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`7 passed`)
+- [x] `cd app && fvm flutter test --no-pub` (`137 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`158 passed`)
+- [x] `python3 -m py_compile scripts/kbo-reference-api.py`
+- [x] 로컬 기준 API `http://127.0.0.1:8001/api` + web release `http://127.0.0.1:4188/#/home` 390x844 캡처로 참조 첫 화면 정상 상태 확인 (`output/playwright/kbo-ui-reference-exact/home-final-reference-news-label.png`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/config/app_config.dart lib/features/home/home_screen.dart lib/core/widgets/main_scaffold.dart lib/core/utils/game_status_label.dart lib/core/widgets/game_status_badge.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart` (`7 passed`)
+- [x] `backend/.venv/bin/ruff check backend/src/kbo_fans_backend/services/home.py backend/tests/test_home.py`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py` (`13 passed`)
+- [x] `0.0.46 (46)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, PNG 대표 이미지 0개)
+- [x] `0.0.46 (46)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [x] `0.0.47 (47)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, PNG 대표 이미지 0개)
+- [x] `0.0.47 (47)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [x] `0.0.48 (48)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, PNG 대표 이미지 0개)
+- [x] `0.0.48 (48)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [x] `0.0.49 (49)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, PNG 대표 이미지 0개)
+- [x] `0.0.49 (49)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [x] `0.0.50 (50)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, KBO header PNG 1개)
+- [x] `0.0.50 (50)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [ ] backend deploy workflow 성공 및 운영 `/api/health` 확인
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 홈 마이팀 브리프 참조 레이아웃 반영
+
+### 원인
+- 홈 `마이팀 브리프` 주변이 생성 비주얼을 상단에 끼워 넣은 구조처럼 보여, `docs/assets/mockups/integrated-visual-ui-2026-06-19.png` 참조처럼 실제 UI 카드/행/표 안에 자연스럽게 녹아들도록 재구성이 필요했다.
+
+### 완료
+- [x] 홈 상단 독립 `AppVisualResourceRail`, 별도 `MyTeamGameCard`, 하단 `GameCard` 스코어보드 리스트를 제거
+- [x] 홈 헤더를 참조 목업처럼 좌측 `KBO` 브랜드, 중앙 `홈`, 우측 알림/검색 아이콘 구조로 정리
+- [x] 홈 첫 화면 순서를 `마이팀 브리프 → 오늘 경기 → 최근 흐름 → 순위`로 재배치
+- [x] 마이팀 브리프를 팀 로고, 최근 결과 버블, 승률/게임차, `경기 일정`/`팀 기록` CTA 중심의 compact dashboard 카드로 재구성
+- [x] 오늘 경기는 scoreboard 데이터를 compact row로 보여주고 마이팀 경기를 우선 정렬하도록 변경
+- [x] 최근 흐름은 `/home` aggregate의 `recentSummaries`를 결과 버블과 연승/연패 텍스트로 표시
+- [x] 순위 snapshot은 secondary section 활성화 이후 `/home.standingsPreview`를 읽어 top 5와 마이팀 행을 compact table로 표시
+- [x] 로컬 `HomeMyTeamBrief` 집계의 최근 경기 요약을 최대 3경기에서 5경기로 확장
+- [x] 새 홈 구조에 맞춰 `docs/APP_SPEC.md`, `CHANGELOG.md`, 홈 widget test를 동기화
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart lib/data/models/home_aggregate.dart lib/data/repositories/api_home_repository.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`7 passed`)
+- [x] `cd app && fvm flutter test --no-pub -r expanded` (`137 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py` (`13 passed`)
+- [x] `python3 -m compileall backend/src`
+
+---
+
+## 2026-06-19: TestFlight 외부 테스터 추가
+
+### 완료
+- [x] App Store Connect API key를 로컬 보안 경로 `~/.config/kbo-fans/secrets/appstoreconnect/`로 이동하고 issuer/key/path env 파일을 생성
+- [x] App Store Connect API 인증 확인 (`KBO Fans` app id `6779130075`)
+- [x] 기존 `Tester` 그룹은 내부 그룹(`isInternalGroup=true`)이라 외부 이메일을 직접 배정할 수 없음을 확인
+- [x] 외부 TestFlight 그룹 `External Testers`를 생성하고 `nahanlee@naver.com` beta tester를 추가
+- [x] 최신 valid 빌드 `45`를 `External Testers` 그룹에 연결
+- [x] 외부 초대 발송을 위해 build `45` Beta App Review 제출 완료 (`WAITING_FOR_REVIEW` / external build state `WAITING_FOR_BETA_REVIEW`)
+
+### 남은 확인
+- [ ] Apple Beta App Review 승인 후 `nahanlee@naver.com` 초대 메일 수신 및 TestFlight 설치 가능 여부 확인
+
+---
+
 ## 2026-06-19: 0.0.45 TestFlight 재업로드 checkpoint
 
 ### 완료

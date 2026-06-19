@@ -100,6 +100,7 @@ class HomeAggregate {
   final HomeMyTeamBrief? myTeamBrief;
   final HomeKboBrief? kboBrief;
   final List<HomeQuickItem> quickItems;
+  final List<TeamStanding> standingsPreview;
 
   const HomeAggregate({
     required this.date,
@@ -107,6 +108,7 @@ class HomeAggregate {
     required this.myTeamBrief,
     required this.kboBrief,
     required this.quickItems,
+    this.standingsPreview = const [],
   });
 }
 
@@ -147,7 +149,33 @@ HomeAggregate buildLocalHomeAggregate({
     myTeamBrief: myTeamBrief,
     kboBrief: kboBrief,
     quickItems: quickItems,
+    standingsPreview: _buildLocalStandingsPreview(standings, myTeam),
   );
+}
+
+List<TeamStanding> _buildLocalStandingsPreview(
+  List<TeamStanding> standings,
+  String? myTeam,
+) {
+  if (standings.isEmpty) {
+    return const [];
+  }
+
+  final sorted = [...standings]..sort((a, b) => a.rank.compareTo(b.rank));
+  final preview = sorted.take(5).toList();
+  final myTeamStanding = myTeam == null
+      ? null
+      : sorted.where((item) => item.teamId == myTeam).firstOrNull;
+  if (myTeamStanding != null &&
+      !preview.any((item) => item.teamId == myTeamStanding.teamId)) {
+    if (preview.length >= 5) {
+      preview[preview.length - 1] = myTeamStanding;
+    } else {
+      preview.add(myTeamStanding);
+    }
+    preview.sort((a, b) => a.rank.compareTo(b.rank));
+  }
+  return List.unmodifiable(preview);
 }
 
 HomeMyTeamBrief? _buildLocalMyTeamBrief({
@@ -184,7 +212,7 @@ HomeMyTeamBrief? _buildLocalMyTeamBrief({
   var wins = 0;
   var losses = 0;
   var draws = 0;
-  for (final entry in recentGames.take(3)) {
+  for (final entry in recentGames.take(5)) {
     final game = entry.$2;
     final isAway = game.awayId == myTeam;
     final myScore = isAway ? game.awayScore! : game.homeScore!;

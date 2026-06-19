@@ -109,7 +109,7 @@ void main() {
 
     expect(find.text(_monthLabel(nextMonth)), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.calendar_month));
+    await tester.tap(find.byIcon(Icons.sports_baseball_rounded));
     await tester.pumpAndSettle();
 
     expect(find.text(_monthLabel(nextMonth)), findsOneWidget);

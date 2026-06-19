@@ -6,7 +6,6 @@ import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/home/home_screen.dart';
-import 'package:kbo_fans/features/home/widgets/game_card.dart';
 import 'package:kbo_fans/services/live_activity_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -49,7 +48,7 @@ void main() {
 
     expect(find.text('홈 첫 화면을 먼저 띄우는 중입니다.'), findsOneWidget);
     expect(find.text('일정 보기'), findsAtLeastNWidgets(1));
-    expect(find.text('기록실'), findsAtLeastNWidgets(1));
+    expect(find.text('순위'), findsOneWidget);
     expect(aggregateCalls, 0);
 
     await tester.pump();
@@ -108,17 +107,17 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    final gameCardFinder = find.byWidgetPredicate(
-      (widget) => widget is GameCard && widget.game.gameId == game.gameId,
+    final gameRowFinder = find.byKey(
+      ValueKey('home-today-game-${game.gameId}'),
     );
-    expect(gameCardFinder, findsAtLeastNWidgets(1));
+    expect(gameRowFinder, findsOneWidget);
     expect(find.text('다시 시도'), findsNothing);
 
     container.invalidate(scoreboardProvider(_todayKey()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(gameCardFinder, findsAtLeastNWidgets(1));
+    expect(gameRowFinder, findsOneWidget);
     expect(find.text('다시 시도'), findsNothing);
   });
 
@@ -167,10 +166,13 @@ void main() {
       await LiveActivityService.instance.followedGameId(),
       liveMyTeamGame.gameId,
     );
-    expect(find.text('따라가는 중'), findsOneWidget);
+    expect(
+      find.byKey(ValueKey('home-today-game-${liveMyTeamGame.gameId}')),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('shows other games only in the dedicated game list', (
+  testWidgets('deduplicates today games and keeps my-team row visible', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -231,23 +233,14 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    final otherGameCardFinder = find.byWidgetPredicate(
-      (widget) => widget is GameCard && widget.game.gameId == otherGame.gameId,
+    expect(
+      find.byKey(ValueKey('home-today-game-${myTeamGame.gameId}')),
+      findsOneWidget,
     );
-
-    expect(find.text('NC vs 두산'), findsNothing);
-    await tester.scrollUntilVisible(
-      otherGameCardFinder,
-      300,
-      scrollable: find
-          .byWidgetPredicate(
-            (widget) =>
-                widget is Scrollable &&
-                widget.axisDirection == AxisDirection.down,
-          )
-          .first,
+    expect(
+      find.byKey(ValueKey('home-today-game-${otherGame.gameId}')),
+      findsOneWidget,
     );
-    expect(otherGameCardFinder, findsOneWidget);
   });
 
   test('진행 중인 경기 상세 route는 기본으로 중계 탭을 지정한다', () {

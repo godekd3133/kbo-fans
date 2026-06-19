@@ -10,10 +10,10 @@ class MainScaffold extends StatelessWidget {
 
   static const _tabs = [
     (icon: Icons.home_rounded, label: '홈', path: '/home'),
-    (icon: Icons.calendar_month, label: '일정', path: '/schedule'),
-    (icon: Icons.leaderboard, label: '순위', path: '/standings'),
-    (icon: Icons.groups_2, label: '기록실', path: '/records'),
-    (icon: Icons.settings, label: '설정', path: '/settings'),
+    (icon: Icons.sports_baseball_rounded, label: '경기', path: '/schedule'),
+    (icon: Icons.bar_chart_rounded, label: '기록', path: '/records'),
+    (icon: Icons.article_outlined, label: '뉴스', path: '/standings'),
+    (icon: Icons.more_horiz_rounded, label: '더보기', path: '/settings'),
   ];
 
   int _currentIndex(BuildContext context) {
@@ -30,24 +30,38 @@ class MainScaffold extends StatelessWidget {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          padding: const EdgeInsets.fromLTRB(12, 5, 12, 5),
           decoration: const BoxDecoration(
             color: AppColors.surface,
             border: Border(top: BorderSide(color: AppColors.divider)),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              for (int i = 0; i < _tabs.length; i++)
-                Expanded(
-                  child: _NavItem(
-                    icon: _tabs[i].icon,
-                    label: _tabs[i].label,
-                    selected: current == i,
-                    onTap: current == i
-                        ? null
-                        : () => context.go(_tabs[i].path),
-                  ),
+              Row(
+                children: [
+                  for (int i = 0; i < _tabs.length; i++)
+                    Expanded(
+                      child: _NavItem(
+                        icon: _tabs[i].icon,
+                        label: _tabs[i].label,
+                        selected: current == i,
+                        onTap: current == i
+                            ? null
+                            : () => context.go(_tabs[i].path),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Container(
+                width: 96,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.textPrimary,
+                  borderRadius: BorderRadius.circular(999),
                 ),
+              ),
             ],
           ),
         ),
@@ -71,10 +85,8 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = selected ? AppColors.accent : AppColors.textDisabled;
-    final labelColor = selected
-        ? AppColors.textPrimary
-        : AppColors.textDisabled;
+    final iconColor = selected ? AppColors.live : AppColors.textDisabled;
+    final labelColor = selected ? AppColors.live : AppColors.textDisabled;
     const animationDuration = Duration(milliseconds: 180);
     const animationCurve = Curves.easeOutCubic;
 
@@ -87,39 +99,23 @@ class _NavItem extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: 34,
+            height: 28,
             child: Center(
               child: AnimatedScale(
                 duration: animationDuration,
                 curve: animationCurve,
-                scale: selected ? 1.06 : 1,
-                child: AnimatedContainer(
-                  duration: animationDuration,
-                  curve: animationCurve,
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.accent.withValues(alpha: 0.16)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(7),
-                    border: Border.all(
-                      color: selected ? AppColors.accent : AppColors.divider,
-                      width: selected ? 2 : 1.4,
-                    ),
-                  ),
-                  child: Icon(icon, size: 14, color: iconColor),
-                ),
+                scale: selected ? 1.04 : 1,
+                child: Icon(icon, size: 23, color: iconColor),
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 1),
           AnimatedDefaultTextStyle(
             duration: animationDuration,
             curve: animationCurve,
             style: TextStyle(
-              fontSize: 10,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
               color: labelColor,
             ),
             child: Text(label),

@@ -10,6 +10,42 @@
 
 ## [Unreleased]
 
+## [0.0.50] - 2026-06-19
+
+### Changed
+
+- 홈 첫 화면을 통합 비주얼 참조처럼 `KBO` 헤더와 `마이팀 브리프 → 오늘 경기 → 최근 흐름 → 순위` 대시보드 구조로 재배치
+- 홈 상단의 독립 비주얼 레일과 별도 스코어보드 리스트를 제거하고, KBO 브랜드 마크/팀 로고/결과 버블/compact 경기 행/순위표 안에 비주얼과 데이터를 통합
+- 하단 탭을 참조 이미지처럼 `홈 / 경기 / 기록 / 뉴스 / 더보기` 라벨과 단순 아이콘 스타일로 정리
+- live 경기 상태 badge가 `7회말` 같은 inning label을 그대로 쓰고 live accent로 보이도록 정리
+- release dart-define에서 `USE_BACKEND_API=true`가 bool environment로 들어와도 정상 인식하도록 보강
+- 마이팀 최근 흐름 집계를 최근 3경기에서 최대 5경기로 확장해 홈 브리프와 최근 흐름 카드의 결과 버블 밀도를 레퍼런스에 맞춤
+- backend `/home` 응답에 `standingsPreview`를 추가해 홈 순위 snapshot이 별도 current-season standings provider 호출 없이 aggregate 응답으로 렌더링되도록 정리
+
+## [0.0.49] - 2026-06-19
+
+### Changed
+
+- 홈 참조 대시보드 TestFlight upload checkpoint. 업로드 후 패치노트/하단 `뉴스` 탭 source sync가 추가되어 GitHub release/tag 없이 `0.0.50`으로 supersede
+
+## [0.0.48] - 2026-06-19
+
+### Changed
+
+- 홈 참조 대시보드 TestFlight upload checkpoint. 업로드 직후 source sync 확인 과정에서 하단 탭 label 고정과 최신 소스 동기화가 필요해 GitHub release/tag 없이 `0.0.49`로 supersede
+
+## [0.0.47] - 2026-06-19
+
+### Changed
+
+- 홈 참조 대시보드 TestFlight upload checkpoint. 업로드 후 하단 탭 label/route 정합성 수정이 추가되어 GitHub release/tag 없이 `0.0.48`로 supersede
+
+## [0.0.46] - 2026-06-19
+
+### Changed
+
+- 홈 참조 대시보드 TestFlight upload checkpoint. 업로드 후 홈 UI compact 마감 수정이 추가되어 GitHub release/tag 없이 `0.0.47`로 supersede
+
 ## [0.0.45] - 2026-06-19
 
 ### Changed

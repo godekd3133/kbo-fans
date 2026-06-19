@@ -320,6 +320,68 @@ def test_my_team_brief_excludes_scheduled_zero_score_from_recent_results() -> No
     ]
 
 
+def test_my_team_brief_keeps_recent_five_results() -> None:
+    service = HomeService.__new__(HomeService)
+
+    schedule_days = []
+    for day in range(10, 16):
+        schedule_days.append(
+            {
+                "date": f"2026-05-{day}",
+                "games": [
+                    {
+                        "gameId": f"202605{day}OBLG0",
+                        "awayId": "OB",
+                        "awayName": "두산",
+                        "awayScore": day - 9,
+                        "homeId": "LG",
+                        "homeName": "LG",
+                        "homeScore": day - 8,
+                        "stadium": "잠실",
+                        "status": "FINAL",
+                    }
+                ],
+            }
+        )
+
+    brief = service._build_my_team_brief(
+        my_team="LG",
+        games=[],
+        schedule_days=schedule_days,
+        standings=[],
+        today="2026-05-16",
+    )
+
+    assert brief is not None
+    assert brief["recentGamesCount"] == 5
+    assert len(brief["recentSummaries"]) == 5
+    assert brief["recentSummaries"][0]["gameId"] == "20260515OBLG0"
+
+
+def test_standings_preview_keeps_my_team_when_outside_top_five() -> None:
+    service = HomeService.__new__(HomeService)
+
+    standings = [
+        {
+            "rank": rank,
+            "teamId": team_id,
+            "teamName": team_id,
+            "wins": 10 - rank,
+            "losses": rank,
+            "draws": 0,
+            "pct": ".500",
+            "gb": str(rank - 1),
+        }
+        for rank, team_id in enumerate(["HT", "OB", "SS", "SK", "NC", "LG"], start=1)
+    ]
+
+    preview = service._build_standings_preview(standings=standings, my_team="LG")
+
+    assert len(preview) == 5
+    assert preview[-1]["teamId"] == "LG"
+    assert preview[-1]["rank"] == 6
+
+
 def test_kbo_brief_builds_scheduled_game_and_record_radar_items() -> None:
     service = HomeService.__new__(HomeService)
 

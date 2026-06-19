@@ -31,6 +31,10 @@ class ApiHomeRepository {
         .toList();
     final briefMap = data['myTeamBrief'] as Map<String, dynamic>?;
     final kboBriefMap = data['kboBrief'] as Map<String, dynamic>?;
+    final standingsPreview =
+        (data['standingsPreview'] as List<dynamic>? ?? const [])
+            .map((item) => _parseStanding(item as Map<String, dynamic>))
+            .toList();
 
     return HomeAggregate(
       date: data['date'] as String? ?? date,
@@ -38,6 +42,7 @@ class ApiHomeRepository {
       myTeamBrief: briefMap == null ? null : _parseMyTeamBrief(briefMap),
       kboBrief: kboBriefMap == null ? null : _parseKboBrief(kboBriefMap),
       quickItems: quickItems,
+      standingsPreview: standingsPreview,
     );
   }
 

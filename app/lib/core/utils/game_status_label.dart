@@ -97,7 +97,7 @@ String? _normalizedStatusLabel(String? statusLabel) {
 String labelForGameStatus(GameStatus status, {String? statusLabel}) {
   switch (status) {
     case GameStatus.live:
-      return '경기 중';
+      return _normalizedStatusLabel(statusLabel) ?? '경기 중';
     case GameStatus.final_:
       return '경기 종료';
     case GameStatus.cancelled:

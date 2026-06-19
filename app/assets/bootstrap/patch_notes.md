@@ -1,5 +1,33 @@
 # 패치노트
 
+## 0.0.50+50 - Home Reference Dashboard
+
+- 홈 첫 화면을 `마이팀 브리프 → 오늘 경기 → 최근 흐름 → 순위` 흐름으로 재배치해 앱을 열자마자 오늘 야구 상황을 더 빨리 훑어볼 수 있습니다.
+- 마이팀 브리프는 KBO 브랜드 마크, 팀 로고, 최근 5경기 결과 버블, 승률/게임차, 일정/팀 기록 버튼 중심으로 더 조밀하게 정리했습니다.
+- 오늘 경기와 순위 snapshot은 별도 이미지 레일이 아니라 팀 로고, 경기 행, compact 순위표 안에 비주얼과 데이터를 통합해 보여줍니다.
+- 하단 탭을 `홈 / 경기 / 기록 / 뉴스 / 더보기` 레퍼런스형 라벨과 아이콘으로 다듬었습니다.
+- live 경기 badge는 `7회말` 같은 실제 경기 상태를 더 선명하게 보여줍니다.
+- backend `/home` 응답에 홈 전용 순위 preview를 추가해 홈 화면이 별도 순위 호출 없이 필요한 정보를 받을 수 있게 했습니다.
+
+## 0.0.49+49 - Home Reference Dashboard Checkpoint
+
+- 홈 참조 대시보드 TestFlight upload checkpoint입니다. 업로드 뒤 패치노트와 하단 `뉴스` 탭 source sync를 다시 맞추기 위해 0.0.50으로 대체했습니다.
+
+## 0.0.48+48 - Home Reference Dashboard Checkpoint
+
+- 홈 참조 대시보드 TestFlight upload checkpoint입니다. 업로드 직후 source sync를 다시 맞추기 위해 0.0.49로 대체했습니다.
+
+## 0.0.47+47 - Home Reference Dashboard Checkpoint
+
+- 홈 참조 대시보드 TestFlight upload checkpoint입니다. 하단 탭 label/route 정합성 수정이 추가되어 0.0.48로 대체했습니다.
+
+## 0.0.46+46 - Home Reference Dashboard Checkpoint
+
+- 홈 첫 화면을 `마이팀 브리프 → 오늘 경기 → 최근 흐름 → 순위` 흐름으로 재배치해 앱을 열자마자 오늘 야구 상황을 더 빨리 훑어볼 수 있습니다.
+- 마이팀 브리프는 팀 로고, 최근 5경기 결과 버블, 승률/게임차, 일정/팀 기록 버튼 중심으로 더 조밀하게 정리했습니다.
+- 오늘 경기와 순위 snapshot은 별도 이미지 레일이 아니라 팀 로고, 경기 행, compact 순위표 안에 비주얼과 데이터를 통합해 보여줍니다.
+- backend `/home` 응답에 홈 전용 순위 preview를 추가해 홈 화면이 별도 순위 호출 없이 필요한 정보를 받을 수 있게 했습니다.
+
 ## 0.0.45+45 - TestFlight Reupload Checkpoint
 
 - 앱 동작 변경 없이 0.0.44의 WebP-only 비주얼 자산 구성을 새 TestFlight build number로 다시 올렸습니다.

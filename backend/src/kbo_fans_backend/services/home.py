@@ -110,6 +110,10 @@ class HomeService:
             games=games,
             season=season,
         )
+        standings_preview = self._build_standings_preview(
+            standings=standings_payload.get("standings", []),
+            my_team=my_team,
+        )
 
         payload = {
             "date": date,
@@ -117,6 +121,7 @@ class HomeService:
             "myTeamBrief": my_team_brief,
             "kboBrief": kbo_brief,
             "quickItems": quick_items,
+            "standingsPreview": standings_preview,
             "meta": {"generatedAt": time.time()},
         }
 
@@ -172,7 +177,7 @@ class HomeService:
         wins = 0
         losses = 0
         draws = 0
-        for _, game in recent_games[:3]:
+        for _, game in recent_games[:5]:
             is_away = game.get("awayId") == my_team
             my_score = game.get("awayScore") if is_away else game.get("homeScore")
             opponent_score = game.get("homeScore") if is_away else game.get("awayScore")
@@ -542,6 +547,49 @@ class HomeService:
                 for team_id in [leader.get("teamId"), (second or {}).get("teamId")]
                 if isinstance(team_id, str) and team_id
             ],
+        }
+
+    def _build_standings_preview(
+        self,
+        *,
+        standings: List[Dict[str, Any]],
+        my_team: Optional[str],
+    ) -> List[Dict[str, Any]]:
+        if not standings:
+            return []
+
+        sorted_standings = sorted(
+            standings,
+            key=lambda item: self._as_int(item.get("rank"), fallback=999),
+        )
+        preview = list(sorted_standings[:5])
+        if my_team:
+            my_team_standing = next(
+                (item for item in sorted_standings if item.get("teamId") == my_team),
+                None,
+            )
+            if my_team_standing is not None and all(
+                item.get("teamId") != my_team for item in preview
+            ):
+                if len(preview) >= 5:
+                    preview[-1] = my_team_standing
+                else:
+                    preview.append(my_team_standing)
+                preview.sort(key=lambda item: self._as_int(item.get("rank"), fallback=999))
+
+        return [self._standings_preview_item(item) for item in preview]
+
+    def _standings_preview_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "rank": self._as_int(item.get("rank"), fallback=0),
+            "teamId": str(item.get("teamId") or ""),
+            "teamName": str(item.get("teamName") or item.get("teamId") or ""),
+            "wins": self._as_int(item.get("wins"), fallback=0),
+            "losses": self._as_int(item.get("losses"), fallback=0),
+            "draws": self._as_int(item.get("draws"), fallback=0),
+            "pct": str(item.get("pct") or ".000"),
+            "gb": str(item.get("gb") or "-"),
+            "streak": str(item.get("streak") or ""),
         }
 
     def _build_record_brief_item(
