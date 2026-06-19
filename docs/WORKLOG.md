@@ -76,8 +76,8 @@
 - [x] backend 전체 tests 통과: `backend/.venv/bin/pytest -q` (`159 passed`)
 - [x] `0.0.58 (58)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인 (`CFBundleShortVersionString=0.0.58`, `CFBundleVersion=58`, `com.kbofans.kboFans`, widget `0.0.58/58`, Firebase project `kbo-fans-47189`, `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `casual_*.webp` 175개, reference team logo PNG 10개, reference status PNG 1개, `onboarding_stadium_hero.png` 포함)
 - [x] `0.0.58 (58)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`; 기존 `objective_c.framework` dSYM warning은 남음)
-- [ ] `0.0.58` backend deploy workflow 성공 및 운영 `/api/health` 확인
-- [ ] topic 재등록 성공 확인
+- [x] `0.0.58` backend deploy workflow `27817961910` 성공 확인 (`KBO_BACKEND_IMAGE_TAG=0.0.58`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `/api/health` 200, `/api/push/config-status` 200, `readyForIphoneOnlyDemo=true`, scheduler ok)
+- [x] topic 재등록 성공 확인 (`registeredDevices=4`, `eligibleDevices=4`, `subscriptionsAttempted=35`, `unsubscriptionsAttempted=0`)
 - [x] push 경로: `cd backend && .venv/bin/pytest -q tests/test_push_service.py tests/test_live_activity_sync_loop.py` (`43 passed`)
 - [x] push 경로 lint/analyze: `cd backend && .venv/bin/ruff check --select E,F,I,B src/kbo_fans_backend/services/push.py tests/test_push_service.py` (`All checks passed`), `cd app && fvm flutter analyze --no-pub lib/main.dart lib/services/push_notification_service.dart lib/services/live_activity_service.dart lib/services/notification_inbox_service.dart` (`No issues found`)
 - [x] push 경로: `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart test/services/live_activity_service_test.dart test/services/notification_inbox_service_test.dart -r expanded` (`22 passed`)
