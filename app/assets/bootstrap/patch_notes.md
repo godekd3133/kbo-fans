@@ -1,5 +1,12 @@
 # 패치노트
 
+## 0.0.56+56 - Home Brief Ordering
+
+- 홈 `오늘의 KBO 관전 포인트` 점수 strip을 팀명/스코어/B-S-O/루상 표시 중심으로 더 조밀하게 정리했습니다.
+- 미니 카드가 선수 활약, 팀 흐름, 기록 레이더, 선발/투수 체크 순서로 먼저 보이도록 정리했습니다.
+- 0.0.55의 홈 인사이트 대시보드, 뉴스 탭, 경기 상세/박스스코어 UI, backend push worker 기준을 새 TestFlight build number로 다시 올렸습니다.
+- Apple processing, Git tag, GitHub Release, backend deploy, topic 재등록 기준을 0.0.56으로 다시 맞춘 checkpoint입니다.
+
 ## 0.0.55+55 - Home Reference Dashboard
 
 - 홈 하단 `오늘의 KBO 관전 포인트`와 `지금 보면 좋은 정보`를 레퍼런스형 인사이트 카드와 2열 quick info 배치로 정리했습니다.

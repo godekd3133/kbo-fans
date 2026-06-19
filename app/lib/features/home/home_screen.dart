@@ -2938,12 +2938,13 @@ class _KboInsightScoreStrip extends StatelessWidget {
     final homeTeamId = item.teamIds.length > 1 ? item.teamIds[1] : null;
     final awayTeam = KboTeams.byId(awayTeamId ?? '');
     final homeTeam = KboTeams.byId(homeTeamId ?? '');
+    final score = _parseKboBriefScoreTitle(item.title);
 
     return AppPressable(
       onTap: () => context.push(item.route),
       pressedScale: 0.988,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+        padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
         decoration: BoxDecoration(
           color: AppColors.cardSub.withValues(alpha: 0.78),
           borderRadius: BorderRadius.circular(8),
@@ -2971,17 +2972,28 @@ class _KboInsightScoreStrip extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 if (awayTeam != null)
                   _TeamLogo(
                     team: awayTeam,
                     fallbackLabel: awayTeam.shortName,
-                    size: 34,
+                    size: 30,
                   ),
+                const SizedBox(width: 7),
+                Text(
+                  score.awayLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(
+                Flexible(
+                  fit: FlexFit.tight,
                   child: Text(
-                    item.title,
+                    score.value,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
@@ -2992,13 +3004,23 @@ class _KboInsightScoreStrip extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
+                Text(
+                  score.homeLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 7),
                 if (homeTeam != null)
                   _TeamLogo(
                     team: homeTeam,
                     fallbackLabel: homeTeam.shortName,
-                    size: 34,
+                    size: 30,
                   ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Text(
                   _kboBriefTimeLabel(item),
                   maxLines: 1,
@@ -3011,35 +3033,99 @@ class _KboInsightScoreStrip extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    item.subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      _ScoreDotGroup(label: 'B', active: 3, total: 3),
+                      SizedBox(width: 14),
+                      _ScoreDotGroup(label: 'S', active: 2, total: 2),
+                      SizedBox(width: 14),
+                      _ScoreDotGroup(label: 'O', active: 2, total: 2),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Icon(
-                  Icons.sports_baseball_rounded,
-                  size: 16,
-                  color: AppColors.ballYellow,
-                ),
-                const SizedBox(width: 4),
-                const Icon(Icons.circle, size: 8, color: AppColors.positive),
-                const SizedBox(width: 3),
-                const Icon(Icons.circle, size: 8, color: AppColors.live),
+                const _BaseDiamond(),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ScoreDotGroup extends StatelessWidget {
+  final String label;
+  final int active;
+  final int total;
+
+  const _ScoreDotGroup({
+    required this.label,
+    required this.active,
+    required this.total,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dotColor = label == 'S' ? AppColors.ballYellow : AppColors.positive;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(width: 4),
+        for (var index = 0; index < total; index++) ...[
+          Icon(
+            Icons.circle,
+            size: 7,
+            color: index < active
+                ? dotColor
+                : AppColors.textDisabled.withValues(alpha: 0.35),
+          ),
+          if (index < total - 1) const SizedBox(width: 3),
+        ],
+      ],
+    );
+  }
+}
+
+class _BaseDiamond extends StatelessWidget {
+  const _BaseDiamond();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget base(Color color) {
+      return Transform.rotate(
+        angle: 0.785398,
+        child: Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 28,
+      height: 24,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(top: 1, child: base(AppColors.ballYellow)),
+          Positioned(left: 3, bottom: 3, child: base(AppColors.textPrimary)),
+          Positioned(right: 3, bottom: 3, child: base(AppColors.textPrimary)),
+        ],
       ),
     );
   }
@@ -3232,7 +3318,54 @@ List<HomeKboBriefItem> _miniKboBriefItems(
   List<HomeKboBriefItem> items,
   HomeKboBriefItem? featuredItem,
 ) {
-  return items.where((item) => !identical(item, featuredItem)).take(4).toList();
+  final preferredTypes = [
+    'player_performance',
+    'team_trend',
+    'record_radar',
+    'pitcher_check',
+  ];
+  final ordered = <HomeKboBriefItem>[];
+  for (final type in preferredTypes) {
+    final match = items
+        .where((item) => item.type == type && !identical(item, featuredItem))
+        .firstOrNull;
+    if (match != null) {
+      ordered.add(match);
+    }
+  }
+  for (final item in items) {
+    if (ordered.length >= 4) break;
+    if (!identical(item, featuredItem) && !ordered.contains(item)) {
+      ordered.add(item);
+    }
+  }
+  return ordered.take(4).toList();
+}
+
+_KboBriefScore _parseKboBriefScoreTitle(String title) {
+  final match = RegExp(
+    r'^(.+?)\s+([0-9]+)\s*:\s*([0-9]+)\s+(.+)$',
+  ).firstMatch(title);
+  if (match == null) {
+    return _KboBriefScore(awayLabel: '', value: title, homeLabel: '');
+  }
+  return _KboBriefScore(
+    awayLabel: match.group(1)?.trim() ?? '',
+    value: '${match.group(2)} : ${match.group(3)}',
+    homeLabel: match.group(4)?.trim() ?? '',
+  );
+}
+
+class _KboBriefScore {
+  final String awayLabel;
+  final String value;
+  final String homeLabel;
+
+  const _KboBriefScore({
+    required this.awayLabel,
+    required this.value,
+    required this.homeLabel,
+  });
 }
 
 String _kboBriefFooterLabel(List<HomeKboBriefItem> items) {
@@ -3388,7 +3521,7 @@ class _QuickContentSection extends StatelessWidget {
                 for (final item in visibleItems)
                   SizedBox(
                     width: itemWidth,
-                    height: 184,
+                    height: 172,
                     child: _QuickContentListItem(item: item),
                   ),
               ],
@@ -3415,7 +3548,7 @@ class _QuickContentListItem extends ConsumerWidget {
       pressedScale: 0.985,
       child: Container(
         clipBehavior: Clip.antiAlias,
-        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(8),
@@ -3432,7 +3565,7 @@ class _QuickContentListItem extends ConsumerWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w900,
                       height: 1.18,
@@ -3455,7 +3588,7 @@ class _QuickContentListItem extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 13),
+            const SizedBox(height: 11),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -3470,7 +3603,7 @@ class _QuickContentListItem extends ConsumerWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.w900,
                             height: 1.12,
                           ),
@@ -3492,14 +3625,14 @@ class _QuickContentListItem extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   Transform.scale(
-                    scale: 0.78,
+                    scale: 0.72,
                     alignment: Alignment.bottomRight,
                     child: _quickItemAvatar(item, accent),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerLeft,
               child: Text(

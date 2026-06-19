@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-06-19: 0.0.56 홈 KBO brief strip 정리 / backend 재배포
+
+### 완료
+- [x] 최신 `0.0.55` 홈 인사이트 대시보드 기준을 새 tester-facing build `0.0.56+56`으로 승격
+- [x] 홈 `오늘의 KBO 관전 포인트` 점수 strip을 팀명/스코어/B-S-O/루상 표시 중심으로 조밀하게 정리
+- [x] 홈 `오늘의 KBO 관전 포인트` 미니 카드가 선수 활약, 팀 흐름, 기록 레이더, 선발/투수 체크 순서로 우선 노출되도록 정리
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.56` 기준으로 동기화
+
+### 검증
+- [ ] `0.0.56 (56)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인
+- [ ] `0.0.56 (56)` TestFlight upload 성공 확인
+- [ ] `0.0.56` backend deploy workflow 성공 및 운영 `/api/health` 확인
+- [ ] topic 재등록 성공 확인
+
+---
+
 ## 2026-06-19: 경기/뉴스/기록/더보기 이미지 레퍼런스와 박스스코어 레코드형 UI 검증
 
 ### 완료
@@ -40,6 +56,11 @@
 - [x] `0.0.55 (55)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`CFBundleShortVersionString=0.0.55`, `CFBundleVersion=55`, `casual_*.webp` 175개, reference team logo PNG 7개, reference status PNG 1개)
 - [x] `0.0.55 (55)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`)
 - [x] TestFlight upload warning: App Store Connect buildUpload 재생성 warning과 `objective_c.framework` dSYM warning은 남음
+- [x] GitHub Release `0.0.55 - Home Insight Dashboard` 생성
+- [x] backend deploy workflow `27813764494` 성공 확인 (`KBO_BACKEND_IMAGE_TAG=0.0.55`, ECR image push, CloudFormation deploy, push topic resubscribe)
+- [x] 운영 `/api/health` 200 및 `/api/home?date=2026-06-19&myTeam=LG` 응답의 `standingsPreview` 5개, `LG` 행 포함 확인
+- [x] App Store Connect `External Testers` 그룹에 build `55` 연결 및 Beta App Review 제출 (`WAITING_FOR_REVIEW`)
+- [x] `External Testers` 그룹에서 이전 build `45` 관계 제거. 최종 그룹 build 목록은 `55` 단독 연결
 
 ### 검증
 - [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
