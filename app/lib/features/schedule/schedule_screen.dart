@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
@@ -179,10 +181,25 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           child: Column(
             children: [
               _buildMonthHeader(),
+              _buildScheduleArtwork(),
               Expanded(child: _buildBody(scheduleAsync)),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleArtwork() {
+    if (MediaQuery.sizeOf(context).height < 760) {
+      return const SizedBox.shrink();
+    }
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: AppArtworkCard(
+        assetName: VisualAssets.scheduleTicketing,
+        height: 78,
+        alignment: Alignment.centerRight,
       ),
     );
   }

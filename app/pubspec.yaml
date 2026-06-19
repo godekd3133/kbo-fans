@@ -42,3 +42,8 @@ flutter:
     - assets/bootstrap/
     - assets/bootstrap/team_players/
     - assets/bootstrap/team_stats/
+    - assets/visuals/
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/PretendardVariable.ttf

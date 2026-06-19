@@ -5,7 +5,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../core/constants/visual_assets.dart';
 import '../../core/router/app_router.dart';
+import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/providers.dart';
@@ -96,6 +98,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   _OnboardingHintChip(label: '예매 오픈 추적'),
                   _OnboardingHintChip(label: '마이팀 중심 홈'),
                 ],
+              ),
+              const SizedBox(height: 14),
+              AppArtworkCard(
+                assetName: VisualAssets.onboardingHero,
+                height: viewportWidth >= 900 ? 176 : 124,
               ),
               const SizedBox(height: 20),
               Expanded(

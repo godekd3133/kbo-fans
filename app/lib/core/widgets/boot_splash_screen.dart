@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../bootstrap/startup_prep_state.dart';
+import '../constants/visual_assets.dart';
 import '../theme/app_theme.dart';
+import 'app_artwork_card.dart';
 
 class BootSplashScreen extends ConsumerWidget {
   final String redirectTo;
@@ -51,6 +53,11 @@ class BootSplashScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const AppArtworkCard(
+                    assetName: VisualAssets.liveRelayField,
+                    height: 86,
+                  ),
+                  const SizedBox(height: 16),
                   Text(
                     prep.title,
                     textAlign: TextAlign.center,
