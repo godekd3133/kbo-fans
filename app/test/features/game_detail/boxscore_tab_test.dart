@@ -121,6 +121,11 @@ void main() {
 
     expect(find.text('오늘 기록 요약'), findsWidgets);
     expect(find.text('선수 기록 보기'), findsWidgets);
+    expect(find.text('루타 6'), findsOneWidget);
+    expect(find.text('장타 2'), findsOneWidget);
+    expect(find.text('SLG 1.500'), findsOneWidget);
+    expect(find.text('투구 61'), findsOneWidget);
+    expect(find.text('WHIP 1.20'), findsOneWidget);
     expect(find.byType(CachedNetworkImage), findsNothing);
   });
 
@@ -274,6 +279,11 @@ const _officialBoxscore = GameBoxscoreData(
         runs: 1,
         hits: 2,
         rbi: 1,
+        doubles: 1,
+        triples: 0,
+        homeRuns: 1,
+        walks: 1,
+        strikeouts: 1,
       ),
     ],
     pitchers: [
@@ -284,6 +294,8 @@ const _officialBoxscore = GameBoxscoreData(
         strikeouts: 5,
         walks: 1,
         earnedRuns: 1,
+        pitchCount: 61,
+        runs: 1,
       ),
     ],
   ),

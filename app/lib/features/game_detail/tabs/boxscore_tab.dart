@@ -422,6 +422,9 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           : '${batter.position}  ${batter.order}번',
       actionLabel: player == null ? null : '선수 기록 보기',
       accent: accent,
+      supportingLabels: batter.liveContext
+          ? const []
+          : _batterAdvancedLabels(batter),
       values: batter.liveContext
           ? _liveBatterRecordCells(batter, accent)
           : [
@@ -487,6 +490,9 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       meta: pitcher.liveContext ? pitcher.contextLabel ?? '투수 정보' : '투수 기록',
       actionLabel: player == null ? null : '선수 기록 보기',
       accent: AppColors.live,
+      supportingLabels: pitcher.liveContext
+          ? const []
+          : _pitcherAdvancedLabels(pitcher),
       values: pitcher.liveContext
           ? [
               const _RecordCell(value: '-', width: 42),
@@ -567,6 +573,28 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         (pitcher.walks * 2) -
         (pitcher.earnedRuns * 3);
     return score < 0 ? 0 : score;
+  }
+
+  List<String> _batterAdvancedLabels(BatterRecord batter) {
+    return [
+      if (batter.totalBases != null) '루타 ${batter.totalBases}',
+      if ((batter.extraBaseHits ?? 0) > 0) '장타 ${batter.extraBaseHits}',
+      if (batter.slugging != null) 'SLG ${batter.slugging!.toStringAsFixed(3)}',
+      if ((batter.walks ?? 0) > 0) '볼넷 ${batter.walks}',
+      if ((batter.hitByPitch ?? 0) > 0) '사구 ${batter.hitByPitch}',
+      if ((batter.strikeouts ?? 0) > 0) '삼진 ${batter.strikeouts}',
+      if ((batter.stolenBases ?? 0) > 0) '도루 ${batter.stolenBases}',
+    ];
+  }
+
+  List<String> _pitcherAdvancedLabels(PitcherRecord pitcher) {
+    return [
+      if ((pitcher.pitchCount ?? 0) > 0) '투구 ${pitcher.pitchCount}',
+      if (pitcher.gameEra != null) 'ERA ${pitcher.gameEra!.toStringAsFixed(2)}',
+      if (pitcher.gameWhip != null)
+        'WHIP ${pitcher.gameWhip!.toStringAsFixed(2)}',
+      if ((pitcher.runs ?? 0) > 0) '실점 ${pitcher.runs}',
+    ];
   }
 
   void _pushPlayerDetail(PlayerProfile player) {
@@ -950,6 +978,7 @@ class _RecordDataRow extends StatelessWidget {
   final String meta;
   final String? actionLabel;
   final Color accent;
+  final List<String> supportingLabels;
   final List<_RecordCell> values;
 
   const _RecordDataRow({
@@ -959,6 +988,7 @@ class _RecordDataRow extends StatelessWidget {
     required this.meta,
     required this.actionLabel,
     required this.accent,
+    this.supportingLabels = const [],
     required this.values,
   });
 
@@ -1029,6 +1059,17 @@ class _RecordDataRow extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if (supportingLabels.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        for (final label in supportingLabels)
+                          _RecordSupportLabel(label: label, accent: accent),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1042,6 +1083,34 @@ class _RecordDataRow extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecordSupportLabel extends StatelessWidget {
+  final String label;
+  final Color accent;
+
+  const _RecordSupportLabel({required this.label, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.12),
+        border: Border.all(color: accent.withValues(alpha: 0.22)),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          color: accent,
+          fontWeight: FontWeight.w900,
+          height: 1,
         ),
       ),
     );

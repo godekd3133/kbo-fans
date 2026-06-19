@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-06-30: boxscore 브랜치 확장 지표 main 통합
+
+### 원인
+- 사장님 요청: 모든 브랜치에 작업된 것을 main으로 잘 머지한 뒤 다시 빌드/릴리즈/TestFlight까지 진행해야 한다.
+- 확인 결과 main 대비 실제 미병합 커밋은 `codex/boxscore-records-link`의 3개였고, 첫 커밋의 `선수 기록 보기` CTA는 현재 main 통합 커밋에 이미 더 최신 형태로 들어와 있었다.
+- 두 번째 커밋의 박스스코어 확장 지표 계약은 현재 main에 끝까지 연결되지 않아 app/backend 계약 드리프트를 막기 위해 별도 통합이 필요했다.
+
+### 진행
+- [x] `fcda4e5`는 현재 main의 no-photo/dense row 방향을 유지하고, 브랜치 계획 문서만 보존.
+- [x] `BatterRecord`에 타석, 2루타, 3루타, 홈런, 볼넷, 사구, 삼진, 도루와 루타/장타율 계산 getter를 추가.
+- [x] `PitcherRecord`에 투구수, 실점과 경기 ERA/WHIP 계산 getter를 추가.
+- [x] API-backed parser와 direct KBO parser가 확장 박스스코어 지표를 보존하도록 연결.
+- [x] 경기 상세 박스스코어 row 아래에 루타/장타/SLG/투구수/ERA/WHIP 보조 라벨을 표시.
+- [x] `CHANGELOG.md`, `docs/APP_SPEC.md`, `docs/superpowers/` 계획 문서에 병합 내용을 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/data/models/boxscore.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart test/data/api_client_test.dart test/data/models/boxscore_test.dart test/features/game_detail/boxscore_tab_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/data/models/boxscore_test.dart test/data/api_client_test.dart test/features/game_detail/boxscore_tab_test.dart -r expanded` (`All tests passed!`, 30 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/data/models/boxscore.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart test/data/api_client_test.dart test/data/models/boxscore_test.dart test/features/game_detail/boxscore_tab_test.dart` (`No issues found!`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_boxscore_crawler.py backend/tests/test_home.py` (`24 passed`)
+- [x] `git diff --check`
+
+---
+
 ## 2026-06-30: 기록실 라이트모드 대비 보정
 
 ### 원인

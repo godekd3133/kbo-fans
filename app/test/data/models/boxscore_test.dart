@@ -84,4 +84,41 @@ void main() {
 
     expect(team.hasDisplayableRecords, isTrue);
   });
+
+  test('타자 확장 지표는 루타와 장타율을 계산한다', () {
+    const batter = BatterRecord(
+      order: 4,
+      position: 'DH',
+      name: '강백호',
+      atBats: 4,
+      runs: 2,
+      hits: 3,
+      rbi: 4,
+      doubles: 1,
+      triples: 0,
+      homeRuns: 1,
+      walks: 1,
+    );
+
+    expect(batter.extraBaseHits, 2);
+    expect(batter.totalBases, 7);
+    expect(batter.slugging, 1.75);
+  });
+
+  test('투수 확장 지표는 경기 ERA와 WHIP를 계산한다', () {
+    const pitcher = PitcherRecord(
+      name: '선발투수',
+      innings: '5.2',
+      hits: 4,
+      strikeouts: 6,
+      walks: 2,
+      earnedRuns: 1,
+      pitchCount: 92,
+      runs: 2,
+    );
+
+    expect(pitcher.inningsPitched, closeTo(5 + (2 / 3), 0.001));
+    expect(pitcher.gameEra, closeTo(1.59, 0.01));
+    expect(pitcher.gameWhip, closeTo(1.06, 0.01));
+  });
 }

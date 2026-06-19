@@ -374,6 +374,14 @@ class ApiGameRepository implements GameRepository {
       runs: json['runs'] as int? ?? 0,
       hits: json['hits'] as int? ?? 0,
       rbi: json['rbi'] as int? ?? 0,
+      plateAppearances: json['plateAppearances'] as int?,
+      doubles: json['doubles'] as int?,
+      triples: json['triples'] as int?,
+      homeRuns: json['homeRuns'] as int?,
+      walks: json['walks'] as int?,
+      hitByPitch: json['hitByPitch'] as int?,
+      strikeouts: json['strikeouts'] as int?,
+      stolenBases: json['stolenBases'] as int?,
       liveContext: json['liveContext'] as bool? ?? false,
       contextLabel: json['contextLabel'] as String?,
     );
@@ -388,6 +396,8 @@ class ApiGameRepository implements GameRepository {
       walks: json['walks'] as int? ?? 0,
       earnedRuns: json['earnedRuns'] as int? ?? 0,
       decision: json['decision'] as String?,
+      pitchCount: json['pitchCount'] as int?,
+      runs: json['runs'] as int?,
       liveContext: json['liveContext'] as bool? ?? false,
       contextLabel: json['contextLabel'] as String?,
     );

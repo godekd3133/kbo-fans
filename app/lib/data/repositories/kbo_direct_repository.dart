@@ -1656,32 +1656,56 @@ class KboDirectRepository implements GameRepository {
         jsonDecode(payload['table1'] as String) as Map<String, dynamic>;
     final table3 =
         jsonDecode(payload['table3'] as String) as Map<String, dynamic>;
+    final statTables = <Map<String, dynamic>>[
+      if (payload['table2'] != null)
+        jsonDecode(payload['table2'] as String) as Map<String, dynamic>,
+      table3,
+    ];
     final rows1 = table1['rows'] as List<dynamic>? ?? const [];
     final rows3 = table3['rows'] as List<dynamic>? ?? const [];
     final length = rows1.length < rows3.length ? rows1.length : rows3.length;
     final batters = <BatterRecord>[];
     for (var i = 0; i < length; i++) {
-      final left =
-          ((rows1[i] as Map<String, dynamic>)['row'] as List<dynamic>? ??
-                  const [])
-              .map(
-                (cell) => _stripHtml(
-                  (cell as Map<String, dynamic>)['Text'] as String? ?? '',
-                ).replaceAll('\u00a0', '').trim(),
-              )
-              .toList();
-      final right =
-          ((rows3[i] as Map<String, dynamic>)['row'] as List<dynamic>? ??
-                  const [])
-              .map(
-                (cell) => _stripHtml(
-                  (cell as Map<String, dynamic>)['Text'] as String? ?? '',
-                ).replaceAll('\u00a0', '').trim(),
-              )
-              .toList();
+      final left = _boxscoreRowValues(rows1[i]);
+      final right = _boxscoreRowValues(rows3[i]);
       if (left.length < 3 || right.length < 4) {
         continue;
       }
+      final statRows = [
+        for (final table in statTables)
+          (
+            values: _boxscoreRowValues(
+              ((table['rows'] as List<dynamic>? ?? const []).length > i)
+                  ? (table['rows'] as List<dynamic>)[i]
+                  : const <String, dynamic>{},
+            ),
+            headers: _headerIndexMap(table),
+          ),
+      ];
+      String statValue(
+        List<String> names, {
+        List<String> fallbackValues = const [],
+        int? fallbackIndex,
+      }) {
+        for (final row in statRows) {
+          for (final name in names) {
+            final index = row.headers[name];
+            if (index != null && index >= 0 && index < row.values.length) {
+              final value = row.values[index];
+              if (value.isNotEmpty) {
+                return value;
+              }
+            }
+          }
+        }
+        if (fallbackIndex != null &&
+            fallbackIndex >= 0 &&
+            fallbackIndex < fallbackValues.length) {
+          return fallbackValues[fallbackIndex];
+        }
+        return '';
+      }
+
       final order =
           left
               .map(_parseInt)
@@ -1698,23 +1722,72 @@ class KboDirectRepository implements GameRepository {
         (cell) => _parseInt(cell) == null && !_looksLikePositionToken(cell),
         orElse: () => left.last,
       );
-      final numericStats = right
-          .map((cell) => _parseInt(cell) ?? -1)
-          .where((value) => value >= 0)
-          .toList();
       batters.add(
         BatterRecord(
           order: order,
           position: _normalizePositionToken(position),
           name: name,
-          atBats: numericStats.isNotEmpty ? numericStats[0] : 0,
-          hits: numericStats.length > 1 ? numericStats[1] : 0,
-          rbi: numericStats.length > 2 ? numericStats[2] : 0,
-          runs: numericStats.length > 3 ? numericStats[3] : 0,
+          atBats:
+              _parseInt(
+                statValue(
+                  const ['타수', 'AB'],
+                  fallbackValues: right,
+                  fallbackIndex: 0,
+                ),
+              ) ??
+              0,
+          hits:
+              _parseInt(
+                statValue(
+                  const ['안타', 'H'],
+                  fallbackValues: right,
+                  fallbackIndex: 1,
+                ),
+              ) ??
+              0,
+          rbi:
+              _parseInt(
+                statValue(
+                  const ['타점', 'RBI'],
+                  fallbackValues: right,
+                  fallbackIndex: 2,
+                ),
+              ) ??
+              0,
+          runs:
+              _parseInt(
+                statValue(
+                  const ['득점', 'R'],
+                  fallbackValues: right,
+                  fallbackIndex: 3,
+                ),
+              ) ??
+              0,
+          plateAppearances: _parseInt(statValue(const ['타석', 'PA'])),
+          doubles: _parseInt(statValue(const ['2루타', '2B'])),
+          triples: _parseInt(statValue(const ['3루타', '3B'])),
+          homeRuns: _parseInt(statValue(const ['홈런', 'HR'])),
+          walks: _parseInt(statValue(const ['볼넷', 'BB'])),
+          hitByPitch: _parseInt(statValue(const ['사구', 'HBP'])),
+          strikeouts: _parseInt(statValue(const ['삼진', 'SO', 'K'])),
+          stolenBases: _parseInt(statValue(const ['도루', 'SB'])),
         ),
       );
     }
     return batters;
+  }
+
+  List<String> _boxscoreRowValues(Object? row) {
+    if (row is! Map<String, dynamic>) {
+      return const [];
+    }
+    return (row['row'] as List<dynamic>? ?? const [])
+        .map(
+          (cell) => _stripHtml(
+            (cell as Map<String, dynamic>)['Text'] as String? ?? '',
+          ).replaceAll('\u00a0', '').trim(),
+        )
+        .toList();
   }
 
   bool _looksLikePositionToken(String value) {
@@ -1789,23 +1862,36 @@ class KboDirectRepository implements GameRepository {
       if (cells.length < 8) {
         continue;
       }
-      String value(String header, {int? fallbackIndex}) {
-        final index = headerMap[header] ?? fallbackIndex;
-        if (index == null || index < 0 || index >= cells.length) {
-          return '';
+      String value(List<String> headers, {int? fallbackIndex}) {
+        for (final header in headers) {
+          final index = headerMap[header];
+          if (index != null && index >= 0 && index < cells.length) {
+            return cells[index];
+          }
         }
-        return cells[index];
+        if (fallbackIndex != null &&
+            fallbackIndex >= 0 &&
+            fallbackIndex < cells.length) {
+          return cells[fallbackIndex];
+        }
+        return '';
       }
 
-      final decision = value('결과', fallbackIndex: 2);
+      final decision = value(const ['결과'], fallbackIndex: 2);
       pitchers.add(
         PitcherRecord(
-          name: value('선수명', fallbackIndex: 0),
-          innings: value('이닝', fallbackIndex: 6),
-          hits: _parseInt(value('피안타', fallbackIndex: 10)) ?? 0,
-          strikeouts: _parseInt(value('삼진', fallbackIndex: 13)) ?? 0,
-          walks: _parseInt(value('4사구', fallbackIndex: 12)) ?? 0,
-          earnedRuns: _parseInt(value('자책', fallbackIndex: 15)) ?? 0,
+          name: value(const ['선수명'], fallbackIndex: 0),
+          innings: value(const ['이닝'], fallbackIndex: 6),
+          hits: _parseInt(value(const ['피안타'], fallbackIndex: 10)) ?? 0,
+          strikeouts: _parseInt(value(const ['삼진'], fallbackIndex: 13)) ?? 0,
+          walks:
+              _parseInt(value(const ['4사구', '볼넷', 'BB'], fallbackIndex: 12)) ??
+              0,
+          earnedRuns: _parseInt(value(const ['자책'], fallbackIndex: 15)) ?? 0,
+          pitchCount: _parseInt(
+            value(const ['투구수', '투구', 'NP'], fallbackIndex: 8),
+          ),
+          runs: _parseInt(value(const ['실점', 'R'], fallbackIndex: 14)),
           decision:
               (decision.isEmpty || decision == '-' || decision == '&nbsp;')
               ? null

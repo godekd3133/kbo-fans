@@ -401,6 +401,69 @@ void main() {
     expect(standings.single.streakLabel, '3연승');
   });
 
+  test('boxscore parser preserves extended batter and pitcher stats', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ApiGameRepository(
+      ApiClient(
+        dio: _dioWithAdapter(
+          _SuccessAdapter({
+            'gameId': '20260613KTLG0',
+            'officialAvailable': true,
+            'away': {
+              'teamId': 'KT',
+              'batters': [
+                {
+                  'order': 4,
+                  'position': 'DH',
+                  'name': '강백호',
+                  'atBats': 4,
+                  'runs': 2,
+                  'hits': 3,
+                  'rbi': 4,
+                  'plateAppearances': 5,
+                  'doubles': 1,
+                  'triples': 0,
+                  'homeRuns': 1,
+                  'walks': 1,
+                  'hitByPitch': 0,
+                  'strikeouts': 1,
+                  'stolenBases': 1,
+                },
+              ],
+              'pitchers': [
+                {
+                  'name': '선발투수',
+                  'innings': '5.2',
+                  'hits': 4,
+                  'strikeouts': 6,
+                  'walks': 2,
+                  'earnedRuns': 1,
+                  'decision': 'W',
+                  'pitchCount': 92,
+                  'runs': 2,
+                },
+              ],
+            },
+            'home': {'teamId': 'LG', 'batters': const [], 'pitchers': const []},
+          }),
+        ),
+        enableRequestTiming: false,
+      ),
+    );
+
+    final boxscore = await repository.getBoxscoreData('20260613KTLG0');
+    final batter = boxscore.away.batters.single;
+    final pitcher = boxscore.away.pitchers.single;
+
+    expect(batter.plateAppearances, 5);
+    expect(batter.extraBaseHits, 2);
+    expect(batter.slugging, 1.75);
+    expect(batter.stolenBases, 1);
+    expect(pitcher.pitchCount, 92);
+    expect(pitcher.runs, 2);
+    expect(pitcher.gameWhip, closeTo(1.06, 0.01));
+  });
+
   test('home aggregate drops stale schedule remaining brief items', () async {
     SharedPreferences.setMockInitialValues({});
     final repository = ApiHomeRepository(
