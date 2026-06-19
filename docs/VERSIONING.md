@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.56+56`
-- Current release tag: `0.0.56`
+- Flutter app version: `0.0.57+57`
+- Current release tag: `0.0.57`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -103,7 +103,8 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.53`: home reference dashboard release checkpoint, superseded before GitHub release/tag/backend deploy by `0.0.54` after schedule/records/motion UX and game-detail scorebug source sync.
 - `0.0.54`: home reference dashboard TestFlight upload/Git tag checkpoint, superseded before GitHub Release/backend deploy by `0.0.55` after home lower-info and team-record navigation source sync.
 - `0.0.55`: home is rebuilt around the reference dashboard flow with KBO brand mark, my-team brief, today games, recent flow, standings snapshot, insight/quick-info lower sections, and team-record tap targets from recent-flow/standings rows; bottom tabs align as home/game/records/news/more with a real `/news` brief screen; schedule calendar scrolling, records information density, common motion, and game-detail scorebug stability are reinforced; backend `/home` adds `standingsPreview`; current app build `0.0.55+55`.
-- `0.0.56`: home KBO brief score strip is densified around team labels, score, B-S-O dots, and base diamond; mini cards prioritize player performance, team trend, record radar, and pitcher check items before generic fallback cards; reuploads the `0.0.55` home insight dashboard and backend push worker checkpoint as TestFlight build `0.0.56+56` so Apple processing, Git tag, GitHub Release, backend deploy, and topic resubscribe align again.
+- `0.0.56`: home KBO brief score strip is densified around team labels, score, B-S-O dots, and base diamond; mini cards prioritize player performance, team trend, record radar, and pitcher check items before generic fallback cards; TestFlight build `0.0.56+56` upload checkpoint, superseded before GitHub Release/backend deploy by `0.0.57` after the home info-pack flow reorder.
+- `0.0.57`: home lower information flow is reordered to standings, insight pack, quick info, and recent flow; includes the `0.0.56` KBO brief strip/card ordering checkpoint and aligns TestFlight, Git tag, GitHub Release, backend deploy, and topic resubscribe on build `0.0.57+57`.
 
 ## GitHub Release Note Template
 

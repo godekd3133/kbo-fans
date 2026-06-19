@@ -512,18 +512,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
-                        child: _RecentFlowReferenceCard(
-                          myTeamId: myTeamId,
-                          brief: myTeamBrief,
-                          standings: standingsPreview,
-                          isLoading:
-                              !_secondarySectionsEnabled ||
-                              (aggregateAsync?.isLoading ?? false),
-                          hasError: aggregateAsync?.hasError ?? false,
-                        ),
-                      ),
-                      Padding(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                         child: _StandingsSnapshotCard(
                           myTeamId: myTeamId,
@@ -547,6 +535,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                           child: _QuickContentSection(items: baseQuickItems),
                         ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+                        child: _RecentFlowReferenceCard(
+                          myTeamId: myTeamId,
+                          brief: myTeamBrief,
+                          standings: standingsPreview,
+                          isLoading:
+                              !_secondarySectionsEnabled ||
+                              (aggregateAsync?.isLoading ?? false),
+                          hasError: aggregateAsync?.hasError ?? false,
+                        ),
+                      ),
                     ],
                   );
                 },

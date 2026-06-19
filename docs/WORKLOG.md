@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-06-19: 0.0.57 홈 인사이트 팩 카드뉴스 레퍼런스 재정렬
+
+### 완료
+- [x] `image_gen`으로 홈 `오늘의 KBO 인사이트 팩` 카드뉴스형 390x844 레퍼런스 생성 및 `docs/assets/mockups/kbo-info-pack-reference-2026-06-19.png` 저장
+- [x] 홈 하단 정보 흐름을 `순위 -> 인사이트 -> 지금 보면 좋은 정보 -> 최근 흐름` 순서로 재배치해 레퍼런스와 같은 정보 흐름으로 정리
+- [x] 인사이트 팩을 8개 신호 기반으로 확장하고, 3개 토픽 카드 + LIVE 점수 strip + 2x2 미니 카드 + 중계 CTA 구성을 적용
+- [x] reference API `/home` 응답과 backend/local aggregate item limit을 8개 기준으로 맞춤
+- [x] 최신 tester-facing build를 `0.0.57+57`로 승격
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart lib/data/models/home_aggregate.dart`
+- [x] `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8011/api`
+- [x] `python3 -m py_compile scripts/kbo-reference-api.py backend/src/kbo_fans_backend/services/home.py`
+- [x] Chrome CDP 390x844 최종 캡처: `output/playwright/kbo-info-pack-reference/home-pack-final3-06.png`
+- [ ] `0.0.57 (57)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인
+- [ ] `0.0.57 (57)` TestFlight upload 성공 확인
+- [ ] `0.0.57` backend deploy workflow 성공 및 운영 `/api/health` 확인
+- [ ] topic 재등록 성공 확인
+
+---
+
 ## 2026-06-19: 0.0.56 홈 KBO brief strip 정리 / backend 재배포
 
 ### 완료
@@ -11,10 +33,10 @@
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.56` 기준으로 동기화
 
 ### 검증
-- [ ] `0.0.56 (56)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인
-- [ ] `0.0.56 (56)` TestFlight upload 성공 확인
-- [ ] `0.0.56` backend deploy workflow 성공 및 운영 `/api/health` 확인
-- [ ] topic 재등록 성공 확인
+- [x] `0.0.56 (56)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`CFBundleShortVersionString=0.0.56`, `CFBundleVersion=56`, `com.kbofans.kboFans`, Firebase project `kbo-fans-47189`, `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `casual_*.webp` 175개, reference team logo PNG 7개, reference status PNG 1개)
+- [x] `0.0.56 (56)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`)
+- [x] TestFlight upload warning: `objective_c.framework` dSYM warning은 남음
+- [x] `0.0.56` backend deploy/topic 재등록은 `0.0.57`로 승격하면서 생략
 
 ---
 
