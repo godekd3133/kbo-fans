@@ -2,6 +2,33 @@
 
 ---
 
+## 2026-06-19: 0.0.55 홈 KBO 관전 포인트 / 빠른 정보 릴리즈
+
+### 원인
+- 홈 하단 `KBO 브리프`와 `지금 보면 좋은 정보`가 데이터는 준비돼 있었지만, 레퍼런스 이미지처럼 정보 밀도 높은 카드 배치로 보이지 않았고 reference API에서는 해당 섹션 데이터가 비어 있어 시각 QA 기준이 흔들렸다.
+- `0.0.54 (54)` TestFlight upload와 Git tag 이후 홈 recent-flow/standings row tap target source sync가 추가되어, 최신 tester-facing build number를 새로 올려야 했다.
+
+### 완료
+- [x] 최신 tester-facing build를 `0.0.55+55`로 승격
+- [x] 이미지 생성으로 `오늘의 KBO 관전 포인트` / `지금 보면 좋은 정보` 전용 390x844 레퍼런스를 만들고 `docs/assets/mockups/kbo-info-brief-reference-2026-06-19.png`에 보존
+- [x] 홈 `KBO 브리프`를 레퍼런스처럼 `인사이트` 섹션 헤더 + 3행 관전 포인트 카드로 재배치
+- [x] `지금 보면 좋은 정보`를 세로 리스트에서 2열 compact card grid로 전환
+- [x] quick info 카드가 가능한 경우 bundled reference team logo를 먼저 쓰도록 보정
+- [x] 홈 최근 흐름 행과 순위 snapshot 행을 팀 기록 화면으로 이어지는 tap target으로 보강하고 선택 haptic feedback 추가
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.55` 기준으로 동기화
+- [x] `scripts/kbo-reference-api.py`의 `/home` 응답에 `kboBrief.items`와 `quickItems`를 채워 로컬 웹 QA에서 실제 섹션이 렌더링되도록 정리
+- [x] `design-qa.md`, `docs/design_refs/2026-06-19-kbo-info-brief-design-qa.md`에 최종 레퍼런스/캡처/검증 결과 기록
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart` (`7 passed`)
+- [x] `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8001/api` (`✓ Built build/web`)
+- [x] `python3 -m py_compile scripts/kbo-reference-api.py`
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart scripts/kbo-reference-api.py docs/assets/mockups/kbo-info-brief-reference-2026-06-19.png`
+- [x] Playwright/Chrome 390x844 capture: `output/playwright/kbo-info-brief-reference/home-info-final-scroll-1540.png`
+
+---
+
 ## 2026-06-19: 실제 뉴스 탭 화면 추가
 
 ### 원인
@@ -31,12 +58,17 @@
 - [x] `0.0.53+53` 준비 뒤 실제 `/news` 탭, 일정/기록/모션 UX, 경기 상세 scorebug source sync가 추가되어 최신 tester-facing build를 `0.0.54+54`로 승격
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.54` 기준으로 동기화
 - [x] `0.0.53`은 TestFlight/GitHub release/backend deploy 없이 `0.0.54`로 supersede 처리
+- [x] `0.0.54 (54)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`casual_*.webp` 175개, reference team logo PNG 7개, reference status PNG 1개)
+- [x] `0.0.54 (54)` TestFlight 업로드 등록 확인. 첫 업로드는 100% 전송 후 `The entity has been replaced`로 종료됐지만, 재시도에서 App Store Connect가 `Redundant Binary Upload`로 `0.0.54` build `54`가 이미 업로드됐다고 응답
+- [x] TestFlight upload warning: `objective_c.framework` dSYM warning은 기존과 동일하게 남음
 - [x] 운영 backend `/api/home?date=2026-06-19&myTeam=LG` 응답에 `standingsPreview` 5개와 `LG` 행 포함 확인
+- [x] `0.0.54 (54)` IPA metadata 확인: `CFBundleShortVersionString=0.0.54`, `CFBundleVersion=54`
+- [x] `0.0.54 (54)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`; `objective_c.framework` dSYM warning은 남음)
 
 ### 검증
 - [x] `cd app && fvm dart format lib/core/router/app_router.dart lib/core/widgets/main_scaffold.dart lib/features/news/news_screen.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/schedule/schedule_screen.dart test/features/news/news_screen_test.dart test/features/schedule/schedule_screen_test.dart`
 - [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
-- [x] `cd app && fvm flutter test --no-pub` (`140 passed`)
+- [x] `cd app && fvm flutter test --no-pub` (`142 passed`)
 - [x] `python3 -m compileall backend/src`
 - [x] `backend/.venv/bin/pytest -q` (`158 passed`)
 - [x] `python3 -m py_compile scripts/kbo-reference-api.py`
