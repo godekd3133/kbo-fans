@@ -58,6 +58,23 @@ This note records high-resolution logo source candidates found through official 
 - Keep a local, uncommitted source cache for original ZIP/AI/JPG files if rights are uncertain; commit only normalized app-safe outputs after approval.
 - For release builds, document trademark/copyright status before bundling non-KBO-CDN logo files.
 
+## Reusable Audit Command
+
+Use this command before replacing team logo assets:
+
+```bash
+python3 scripts/audit_team_logo_sources.py --output artifacts/team-logo-source-audit
+```
+
+The script writes:
+
+- `candidate-summary.csv` / `candidate-summary.json`: official, KBO CDN, Google/Pinterest-discovered reference candidates.
+- `zip-entries.csv`: dimensions and file types for image files inside official ZIP packages.
+- `current-ios-team-logo-sizes.csv`: current `TeamLogo_*` bundle dimensions.
+- `README.md`: a human-readable report that shows which candidate is meaningfully better than the current bundled logo.
+
+The script uses official/high-resolution URLs from this audit, keeps Pinterest as discovery-only metadata, and falls back to `curl` when Python certificate validation fails on a team site.
+
 ## Next Step
 
 The most practical next pass is a native-logo replacement pipeline:
