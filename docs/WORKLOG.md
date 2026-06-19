@@ -74,8 +74,8 @@
 - [x] 전체 변경 범위 `cd app && fvm flutter analyze --no-pub` (`No issues found`)
 - [x] 관련 Flutter widget/model tests 통과 (`settings/push/router/news/home/game_detail/home_aggregate` 44 passed, `notifications/notification_inbox/push` 20 passed)
 - [x] backend 전체 tests 통과: `backend/.venv/bin/pytest -q` (`159 passed`)
-- [ ] `0.0.58 (58)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인
-- [ ] `0.0.58 (58)` TestFlight upload 성공 확인
+- [x] `0.0.58 (58)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인 (`CFBundleShortVersionString=0.0.58`, `CFBundleVersion=58`, `com.kbofans.kboFans`, widget `0.0.58/58`, Firebase project `kbo-fans-47189`, `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `casual_*.webp` 175개, reference team logo PNG 10개, reference status PNG 1개, `onboarding_stadium_hero.png` 포함)
+- [x] `0.0.58 (58)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`; 기존 `objective_c.framework` dSYM warning은 남음)
 - [ ] `0.0.58` backend deploy workflow 성공 및 운영 `/api/health` 확인
 - [ ] topic 재등록 성공 확인
 - [x] push 경로: `cd backend && .venv/bin/pytest -q tests/test_push_service.py tests/test_live_activity_sync_loop.py` (`43 passed`)
