@@ -38,14 +38,22 @@
 
 - `cd app && fvm flutter analyze --no-pub lib/features/news/news_screen.dart test/features/news/news_screen_test.dart`
 - `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart -r expanded`
-- `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8012/api`
+- `python3 -m py_compile scripts/kbo-reference-api.py`
+- `cd app && fvm flutter build web --release --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8014/api --dart-define=SHOW_DEV_CONSOLE=false --output /tmp/kbo-news-web-clean`
 - Browser 390x844 capture:
   - `/tmp/kbo-news-tab-qa/news-mobile-initial.png`
   - `/tmp/kbo-news-tab-qa/news-mobile-records-filter.png`
-  - pending diverse follow-up capture
+  - `/tmp/kbo-news-tab-qa/news-diverse-clean-initial.png`
+  - `/tmp/kbo-news-tab-qa/news-diverse-clean-rank-filter.png`
+  - `/tmp/kbo-news-tab-qa/news-diverse-clean-player-mix-filter.png`
+  - `/tmp/kbo-news-tab-qa/news-diverse-clean-records-scroll.png`
 
 ## Visual Notes
 
 - First viewport shows date, title, refresh, editorial lead, filter chips, signal grid, and the first card without text overlap.
 - `기록` signal tile changes selected state and narrows the section header to `기록 브리프`.
+- `순위` state narrows the section header to `순위 브리프` and shows standings-derived cards.
+- `선수` mix uses the records filter path, so player and record stories stay in the same dense reading lane.
+- Clean release capture uses `SHOW_DEV_CONSOLE=false`, so no local Dev Console affordance overlaps the cards.
+- QA network trace returned `/api/home` and visible KBO player image requests as HTTP 200; the broken `66710` image fixture was removed so that card uses fallback initials.
 - Bottom navigation remains fixed and the list scrolls underneath as expected.

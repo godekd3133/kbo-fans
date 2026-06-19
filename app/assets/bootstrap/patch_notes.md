@@ -1,5 +1,13 @@
 # 패치노트
 
+## 0.0.59+59 - Records Premium And Push Receipt
+
+- 기록 탭을 headline 리더, 지표 spotlight, 탭형 TOP3 리더보드 table 중심으로 더 조밀하게 다듬었습니다.
+- 2026 기록 overview bootstrap과 snapshot을 최신 기록 기준으로 갱신했습니다.
+- 온보딩 시작 버튼을 레퍼런스 톤의 red gradient CTA로 정리했습니다.
+- 알림함이 깨진 저장 데이터를 만나도 빈 상태로 복구되도록 안정화했습니다.
+- 운영 push receipt 확인용 `scripts/push-test-notification.sh` 경로를 추가했습니다.
+
 ## 0.0.58+58 - News Records More Polish
 
 - 뉴스 탭을 `오늘 읽을 순서`, 경기/순위/기록/마이팀 신호 grid, 편집형 브리프 카드 중심으로 재구성했습니다.

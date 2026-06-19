@@ -140,31 +140,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       },
                     ),
                     const SizedBox(height: 20),
-                    SizedBox(
+                    _OnboardingPrimaryButton(
                       width: double.infinity,
                       height: 52,
-                      child: ElevatedButton(
-                        onPressed: effectiveSelectedTeamId != null
-                            ? _saveAndProceed
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              selectedTeam?.primaryColor ?? AppColors.cardSub,
-                          disabledBackgroundColor: AppColors.divider,
-                          foregroundColor: AppColors.textPrimary,
-                          disabledForegroundColor: AppColors.textDisabled,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          widget.isEditMode ? '선택 완료' : '시작하기',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
+                      enabled: effectiveSelectedTeamId != null,
+                      label: widget.isEditMode ? '선택 완료' : '시작하기',
+                      onTap: _saveAndProceed,
                     ),
                     const SizedBox(height: 14),
                     AppPressable(
@@ -373,6 +354,63 @@ class _PreviewDivider extends StatelessWidget {
   }
 }
 
+class _OnboardingPrimaryButton extends StatelessWidget {
+  final double width;
+  final double height;
+  final bool enabled;
+  final String label;
+  final VoidCallback onTap;
+
+  const _OnboardingPrimaryButton({
+    required this.width,
+    required this.height,
+    required this.enabled,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPressable(
+      onTap: enabled ? onTap : null,
+      pressedScale: 0.982,
+      child: Container(
+        width: width,
+        height: height,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: enabled
+              ? const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFFFF1F2F), Color(0xFFE90023)],
+                )
+              : null,
+          color: enabled ? null : AppColors.divider,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: AppColors.live.withValues(alpha: 0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            color: enabled ? AppColors.textPrimary : AppColors.textDisabled,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _OnboardingTeamCard extends StatelessWidget {
   final KboTeam team;
   final bool isSelected;
@@ -499,6 +537,21 @@ class _TeamLogoCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onboardingAsset = _onboardingReferenceLogoAsset(teamId);
+    if (onboardingAsset != null) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: ClipOval(
+          child: Image.asset(
+            onboardingAsset,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.high,
+          ),
+        ),
+      );
+    }
+
     return Container(
       width: size,
       height: size,
@@ -516,4 +569,21 @@ class _TeamLogoCircle extends StatelessWidget {
       ),
     );
   }
+}
+
+String? _onboardingReferenceLogoAsset(String? teamId) {
+  final normalized = (teamId ?? '').trim().toUpperCase();
+  return switch (normalized) {
+    'LG' ||
+    'KT' ||
+    'SK' ||
+    'SS' ||
+    'NC' ||
+    'HH' ||
+    'LT' ||
+    'HT' ||
+    'OB' ||
+    'WO' => 'assets/visuals/onboarding_reference_team_logos/$normalized.png',
+    _ => null,
+  };
 }

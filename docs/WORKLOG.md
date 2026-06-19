@@ -2,6 +2,108 @@
 
 ---
 
+## 2026-06-19: 0.0.59 기록 프리미엄/푸시 receipt 릴리즈
+
+### 완료
+- [x] 최신 tester-facing build를 `0.0.59+59`로 승격
+- [x] 기록탭 첫 화면을 headline 리더, 지표 spotlight, 탭형 TOP3 리더보드 table 중심으로 더 조밀하게 조정
+- [x] 2026 records overview bootstrap/snapshot을 최신 기록 기준으로 갱신
+- [x] 온보딩 시작 CTA를 red gradient 고정 버튼으로 정리
+- [x] `SHOW_DEV_CONSOLE=false` dart define으로 Dev Console overlay를 숨길 수 있게 release/web QA 경로 보강
+- [x] 알림함 malformed stored payload 복구와 로드 실패 fallback을 추가
+- [x] `/api/push/test` receipt 확인용 `scripts/push-test-notification.sh` 추가
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.59` 기준으로 동기화
+
+### 검증
+- [x] 전체 변경 범위 format: `cd app && fvm dart format ...` (10 files, 0 changed)
+- [x] 전체 변경 범위 `cd app && fvm flutter analyze --no-pub`: No issues found
+- [x] 관련 Flutter widget/model/service tests 통과: bootstrap/records/notification/home 30 tests passed
+- [x] backend tests 통과: `backend/.venv/bin/pytest -q` 159 passed
+- [x] `scripts/push-test-notification.sh` syntax/safety check 통과: `bash -n`, missing secret guard, HTTP guard, fake-secret 401 확인
+- [ ] `0.0.59 (59)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인
+- [ ] `0.0.59 (59)` TestFlight upload 성공 확인
+- [ ] `0.0.59` backend deploy workflow 성공 및 운영 `/api/health` 확인
+- [ ] topic 재등록 성공 확인
+
+---
+
+## 2026-06-19: 기록탭 프리미엄 레퍼런스 기반 재가공
+
+### 원인
+- 기존 기록탭 개선은 리그 리더 정보를 더 보여주기 시작했지만, 생성 레퍼런스 대비 첫 화면 시각 계층과 정보 밀도가 아직 평평했다.
+- 사장님 요청은 기록탭에서 더 많은 정보, 더 양질의 정보, 더 좋은 가공 정보를 픽셀 레퍼런스에 가깝게 보여주는 것이었다.
+
+### 완료
+- [x] `image_gen`으로 기록탭 프리미엄 390x844 레퍼런스를 다시 생성하고 `docs/design_refs/2026-06-19-records-tab-premium-reference.png`로 보존
+- [x] 레퍼런스/구현 매핑을 `docs/design_refs/2026-06-19-records-tab-premium-design-qa.md`에 기록
+- [x] 기록실 상단을 stadium backdrop, 큰 `기록실` title, 시즌 selector, `오늘 읽을 기록` premium briefing card 순서로 재구성
+- [x] headline leader에 선수 사진, 팀 로고, metric chip, active metric/TOP5/source 요약, 해석 문장 2~3개를 묶어 표시
+- [x] AVG/HR/OPS/wRC+/ERA spotlight rail에 rank badge, 선수/팀/값, 2위와의 gap text를 추가
+- [x] 리그 리더보드 preview를 지표 tab + TOP3 table row + 전체 리더보드 CTA 구조로 바꿔 첫 화면 정보량을 높임
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`, `docs/design_refs/2026-06-19-ui-image-reference.md`에 기록탭 방향 반영
+
+### 검증
+- [x] 레퍼런스 이미지 크기 확인: `853x1844`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/records/records_screen.dart test/data/bootstrap_repository_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/data/bootstrap_repository_test.dart test/data/models/records_overview_test.dart -r expanded` (`8 passed`)
+- [x] `cd app && fvm flutter build web --release --no-wasm-dry-run --dart-define=USE_BACKEND_API=false --dart-define=APP_ENV=local` (`✓ Built build/web`; 기존 Cupertino icon font 경고는 남음)
+- [x] 390x844 Chromium 캡처: `output/playwright/kbo-records-premium/records-390x844-final-table.png`
+
+### 남은 리스크
+- Chromium 캡처 로그에 외부 KBO 선수 이미지 일부 `403`이 남을 수 있으나, 최종 캡처의 headline 선수 이미지는 표시되고 나머지는 fallback 가능한 경로다.
+
+---
+
+## 2026-06-19: 푸시 실기기 receipt 테스트 경로 정리
+
+### 원인
+- 앱 최소화/백그라운드/종료 상태 알림은 코드 경로와 backend readiness만으로는 완료 판정할 수 없고, 실제 설치 단말에서 receipt를 확인해야 한다.
+- 현재 환경에서는 iPhone/iPad가 Xcode 기준 offline이라, 앱 설치 후 foreground/background/terminated receipt는 TestFlight 단말에서 별도 확인해야 한다.
+
+### 완료
+- [x] `/api/push/test`를 안전하게 호출하는 `scripts/push-test-notification.sh` 추가
+- [x] script는 `PUSH_SYNC_SECRET` 없이는 실행하지 않고, topic/token 중 하나만 받으며, token/secret 원문을 출력하지 않는다.
+- [x] HTTP smoke backend는 `ALLOW_INSECURE_PUSH_TEST=true`를 명시해야만 허용하도록 제한
+- [x] `docs/APP_SPEC.md`, `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`에 반복 receipt 확인용 script 경로 반영
+
+### 검증
+- [x] `bash -n scripts/push-test-notification.sh`
+- [x] `./scripts/push-test-notification.sh --topic game_start_LG`는 `PUSH_SYNC_SECRET` 누락으로 발송 전 실패해야 한다.
+- [x] `PUSH_SYNC_SECRET=fake ALLOW_INSECURE_PUSH_TEST=false ./scripts/push-test-notification.sh --base-url http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api --topic game_start_LG`는 HTTP smoke backend allow flag 누락으로 발송 전 실패
+- [x] `PUSH_SYNC_SECRET=fake ALLOW_INSECURE_PUSH_TEST=true ./scripts/push-test-notification.sh --base-url http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api --topic game_start_LG`는 backend 401 `Invalid push sync secret`으로 실패해 실제 알림 미발송
+- [ ] 실제 receipt 확인: 최신 TestFlight 설치 단말에서 foreground/background/terminated 상태별 `/api/push/test` 또는 scheduler moment 수신 확인 필요
+
+---
+
+## 2026-06-19: 경기 상세 사진/로고 기반 탭 보강
+
+### 원인
+- 박스스코어 dense row가 선수 이미지를 일부 핵심 카드에만 쓰고 일반 타자/투수 row에는 충분히 노출하지 않아, 공식 선수 사진이 떠야 하는 위치가 비어 보일 수 있었다.
+- 경기 상세 scorebug/라인업/문자중계의 팀 로고가 각 화면에서 직접 네트워크 이미지를 렌더해 일부 로고가 좁은 컨테이너에서 잘려 보일 수 있었다.
+
+### 완료
+- [x] `image_gen`으로 선수 사진과 로고가 강조된 경기 상세 390x844 레퍼런스를 재생성하고 `docs/design_refs/2026-06-19-game-detail-photo-rich-reference.png`로 보존
+- [x] 공용 `KboTeamLogoImage`를 추가해 bundled reference logo를 먼저 쓰고, 네트워크 fallback도 `BoxFit.contain`과 padding으로 잘리지 않게 정리
+- [x] 박스스코어 핵심 타자/투수뿐 아니라 타자 기록/투수 기록 dense row에도 `imageUrl` 기반 선수 아바타를 표시하도록 변경
+- [x] 라인업/문자중계/경기 상세 scorebug의 팀 로고 렌더링을 공용 이미지 위젯으로 통일
+- [x] API 선수 repository와 reference API fixture가 시즌 fallback 및 실제 KBO player id/imageUrl을 내려주도록 보강
+- [x] 웹 빌드를 막던 진행 중 `records_screen.dart`의 중복 `_rankBadge`와 `_selectedPreviewMetric` 누락을 최소 수정
+
+### 검증
+- [x] `python3 -m py_compile scripts/kbo-reference-api.py`
+- [x] `cd app && fvm dart format lib/core/widgets/kbo_team_logo_image.dart lib/data/repositories/api_player_repository.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/boxscore_tab_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/widgets/kbo_team_logo_image.dart lib/data/repositories/api_player_repository.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/boxscore_tab_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/relay_tab_test.dart -r expanded` (`10 passed`)
+- [x] `cd app && fvm flutter build web --release --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8011/api` (`✓ Built build/web`; 기존 Cupertino icon font 경고는 남음)
+- [x] 390x844 Playwright 탭 클릭 캡처: `output/playwright/game-detail-tabs-final/score.png`, `relay.png`, `boxscore-top.png`, `boxscore-scroll.png`, `lineup.png`
+- [x] 캡처 네트워크 로그에서 `GET /api/game/20260619SSLG0/relay`, `/boxscore`, `/lineup`, 양 팀 `/players`, KBO player image URL 요청 확인
+
+### 남은 리스크
+- `fvm flutter analyze --no-pub lib/features/records/records_screen.dart`는 최신 재검증 기준 `No issues found`로 복구됐다.
+- 현재 reference backend 포트는 local preview 포트 생성 상태에 따라 8011/8013/8037이 섞일 수 있어, 시각 QA는 서비스워커 차단과 reference API 포트 확인 후 수행해야 한다.
+
+---
+
 ## 2026-06-19: 온보딩 이미지 레퍼런스 기반 재정렬
 
 ### 원인
@@ -34,7 +136,8 @@
 - [x] `HomeAggregate.myTeamBrief.recentSummaries`를 최근 경기 카드로 변환
 - [x] `HomeAggregate.standingsPreview` 각 행을 순위 뉴스 카드로 변환해 top team/rank 흐름이 더 많이 노출되도록 확장
 - [x] `HomeKboBriefItem` / `HomeQuickItem`의 `imageUrl` / `fallbackLabel`을 뉴스 카드 우측 visual mark로 표시
-- [x] reference API `/home`의 뉴스 QA 데이터에 선수 이미지 route, 선수 집중, 불펜 체크 quick item 보강
+- [x] reference API `/home`의 뉴스 QA 데이터에 유효한 선수 이미지 route, fallback mark, 선수 집중, 불펜 체크 quick item 보강
+- [x] 깨진 `66710` 선수 이미지 fixture는 제거해 홈런 레이스 카드가 fallback mark로 안정 렌더링되도록 조정
 - [x] `docs/APP_SPEC.md`, `docs/design_refs/2026-06-19-news-tab-design-qa.md`, `CHANGELOG.md`에 다양성 기준 반영
 
 ### 검증
@@ -42,7 +145,13 @@
 - [x] `cd app && fvm flutter analyze --no-pub lib/features/news/news_screen.dart test/features/news/news_screen_test.dart` (`No issues found`)
 - [x] `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart -r expanded` (`3 passed`)
 - [x] `python3 -m py_compile scripts/kbo-reference-api.py`
-- [ ] Browser 390x844 diverse 뉴스탭 캡처/상호작용 확인
+- [x] release web build: `cd app && fvm flutter build web --release --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8014/api --dart-define=SHOW_DEV_CONSOLE=false --output /tmp/kbo-news-web-clean` (`✓ Built`; 기존 Cupertino icon font 경고는 남음)
+- [x] Browser 390x844 diverse 뉴스탭 캡처/상호작용 확인:
+  - `/tmp/kbo-news-tab-qa/news-diverse-clean-initial.png`
+  - `/tmp/kbo-news-tab-qa/news-diverse-clean-rank-filter.png`
+  - `/tmp/kbo-news-tab-qa/news-diverse-clean-player-mix-filter.png`
+  - `/tmp/kbo-news-tab-qa/news-diverse-clean-records-scroll.png`
+- [x] QA network trace: `/api/home?date=2026-06-19&myTeam=LG`, `68525.jpg`, `62415.jpg` 모두 HTTP 200. 앱 콘솔 오류 없음.
 
 ---
 
@@ -53,6 +162,8 @@
 - [x] 뉴스 탭을 편집형 브리프와 경기/순위/기록/마이팀 signal grid 중심으로 재구성
 - [x] 기록 탭을 리그 브리핑, 지표 spotlight rail, 지표별 TOP 3 preview, 팀 기록실 흐름으로 재구성
 - [x] 더보기 탭을 `KBO 팬 허브`로 재구성해 마이팀 요약, 오늘 챙길 정보, 빠른 이동, 앱 밖 표면, 알림 플레이북 순서로 정보 흐름을 정리
+- [x] Sofascore/theScore 계열 dark sports app 레퍼런스에서 작은 icon well, 단색 glyph, 제한적 상태색 규칙을 추출해 `docs/design_refs/2026-06-19-more-tab-icon-reference.md`로 기록
+- [x] 더보기 탭의 경기/순위/기록/뉴스/푸시/라이브 액티비티/브리프/마이팀 glyph를 custom painter 기반 `_MoreIconKind` 세트로 교체
 - [x] 온보딩과 더보기 화면을 KBO 팬 허브 톤에 맞춰 조밀한 정보 카드 중심으로 보강
 - [x] 경기 상세/박스스코어/라인업/중계 화면의 팀 로고와 선수 이미지 표시를 공통 위젯/row 구조로 정리
 - [x] home brief 기록 레이더에 선수 이미지/fallback label을 포함하고 off-day CTA를 `/schedule`로 연결
@@ -68,6 +179,7 @@
 - [x] backend home route 계약: `PYTHONPATH=backend/src backend/.venv/bin/pytest backend/tests/test_home.py -q` (`14 passed`)
 - [x] API-backed 웹 빌드: `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8011/api` (`✓ Built build/web`; 기존 Cupertino icon font 경고는 남음)
 - [x] 더보기 탭 390x844 Playwright 캡처: `output/playwright/kbo-more-reference/more-tab-final-top.png`, `output/playwright/kbo-more-reference/more-tab-final-scroll-1.png`, `output/playwright/kbo-more-reference/more-tab-final-scroll-2.png`
+- [x] 더보기 custom icon 390x844 캡처: `output/playwright/kbo-more-reference/more-tab-icons-top.png`, `output/playwright/kbo-more-reference/more-tab-icons-scroll-1.png`, `output/playwright/kbo-more-reference/more-tab-icons-scroll-2.png`
 
 ### 남은 전체 릴리즈 검증
 - [x] 전체 변경 범위 format: `cd app && fvm dart format ...` (`settings_screen.dart` 1건 재포맷, 이후 알림함 파일 변경 없음)

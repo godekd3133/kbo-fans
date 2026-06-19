@@ -390,7 +390,7 @@ iOS release/TestFlight 앱은 아래가 필요하다.
 - `PUSH_SYNC_SECRET=<...> ./scripts/push-readiness-check.sh https://api.kbofans.com/api` 통과
 - `POST /api/push/live-activity/sync-scoreboard`가 등록된 live game에 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff와 relay diff 기반 FCM moment push를 보냄
 - iPhone 실기기에서 앱을 종료한 뒤에도 Live Activity `updatedAt`이 서버 sync 주기에 맞춰 변경
-- 일반 push는 Firebase Console, `X-Kbo-Push-Sync-Secret`이 포함된 `/api/push/test`, 또는 scheduler의 `pushedMoments` 응답으로 수신 확인
+- 일반 push는 Firebase Console, `X-Kbo-Push-Sync-Secret`이 포함된 `/api/push/test`, `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>`, 또는 scheduler의 `pushedMoments` 응답으로 수신 확인
 
 ## 현재 코드 기준 주의
 

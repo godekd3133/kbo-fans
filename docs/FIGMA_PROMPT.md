@@ -526,17 +526,19 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 - 라벨: "오늘 챙길 정보" 15px #FFFFFF
 - home aggregate brief를 4개 row로 가공해 경기, 순위, 기록, 마이팀 문맥을 먼저 보여줌
 - 각 row: label pill 10px, title 13px, summary 11px, chevron
+- 아이콘: 38px well, 8px radius, custom glyph 20px. Material 기본 아이콘을 그대로 쓰지 말고 baseball seam, standings bars, records trend, news document 형태를 같은 선 두께로 그림
 
 **섹션 3 — 빠른 이동**:
 
 - 2x2 shortcut grid: 경기 일정, 순위표, 기록실, 뉴스
-- 각 카드: #1A1A1A, 8px radius, 82px 내외 높이, icon circle 34px, title 14px, subtitle 11px
+- 각 카드: #1A1A1A, 8px radius, 82px 내외 높이, custom glyph 21px, title 14px, subtitle 11px
 
 **섹션 4 — 앱 밖 표면** (상단 마진 20px):
 
 - 라벨: "앱 밖 표면" 14px #B0B0B0, 하단 마진 8px
 - 3개 row: 푸시, 라이브 액티비티, 브리프
 - 내부 구현명 설명이 아니라 사용자가 받는 경험을 설명: "득점/홈런/역전", "따라가는 경기", "비경기일 정보"
+- 아이콘: 34px well, border 없이 11% 색면. 푸시는 outline bell, 라이브 액티비티는 phone outline, 브리프는 stacked summary lines
 
 **섹션 5 — 마이팀** (상단 마진 20px):
 

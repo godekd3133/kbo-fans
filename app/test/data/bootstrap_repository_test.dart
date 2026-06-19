@@ -42,7 +42,7 @@ void main() {
     'current records overview bootstrap uses fresh exact season snapshot',
     () async {
       final repository = BootstrapRepository(
-        now: () => DateTime.utc(2026, 5, 20, 5),
+        now: () => DateTime.utc(2026, 6, 19, 10),
       );
       final overview = await repository.loadRecordsOverview(2026);
       final leaders = overview?['leaders'] as Map<String, dynamic>? ?? const {};
@@ -54,7 +54,7 @@ void main() {
 
   test('stale current records overview bootstrap is not exposed', () async {
     final repository = BootstrapRepository(
-      now: () => DateTime.utc(2026, 5, 21, 5),
+      now: () => DateTime.utc(2026, 6, 19, 16),
     );
 
     expect(await repository.loadRecordsOverview(2026), isNull);

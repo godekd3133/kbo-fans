@@ -41,18 +41,29 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
   }
 
   Future<void> _load() async {
-    final results = await Future.wait<Object>([
-      NotificationInboxService.instance.loadEntries(),
-      PushNotificationService.instance.loadSettings(),
-    ]);
-    if (!mounted) {
-      return;
+    try {
+      final results = await Future.wait<Object>([
+        NotificationInboxService.instance.loadEntries(),
+        PushNotificationService.instance.loadSettings(),
+      ]);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _entries = results[0] as List<NotificationInboxEntry>;
+        _settings = results[1] as PushNotificationSettings;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _entries = const <NotificationInboxEntry>[];
+        _settings = const PushNotificationSettings.defaults();
+        _loading = false;
+      });
     }
-    setState(() {
-      _entries = results[0] as List<NotificationInboxEntry>;
-      _settings = results[1] as PushNotificationSettings;
-      _loading = false;
-    });
   }
 
   Future<void> _markAllRead() async {

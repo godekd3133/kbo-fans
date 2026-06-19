@@ -109,7 +109,12 @@ class NotificationInboxService {
     if (raw == null || raw.isEmpty) {
       return const <NotificationInboxEntry>[];
     }
-    final decoded = jsonDecode(raw);
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } catch (_) {
+      return const <NotificationInboxEntry>[];
+    }
     if (decoded is! List) {
       return const <NotificationInboxEntry>[];
     }

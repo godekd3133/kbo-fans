@@ -256,7 +256,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       routerConfig: router,
       debugShowCheckedModeBanner: !AppConfig.instance.isRelease,
       builder: (context, child) {
-        if (AppConfig.instance.isRelease) {
+        if (!AppConfig.instance.shouldShowDevConsole) {
           return child ?? const SizedBox.shrink();
         }
 

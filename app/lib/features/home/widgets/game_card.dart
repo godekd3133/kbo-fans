@@ -150,5 +150,4 @@ class GameCard extends StatelessWidget {
       padding: 0,
     );
   }
-
 }

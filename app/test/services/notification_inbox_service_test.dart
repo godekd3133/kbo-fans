@@ -97,4 +97,14 @@ void main() {
     expect(entries.first.id, 'message-54');
     expect(entries.last.id, 'message-5');
   });
+
+  test('push inbox ignores malformed stored payloads', () async {
+    SharedPreferences.setMockInitialValues({
+      NotificationInboxService.storageKey: 'not-json',
+    });
+
+    final entries = await NotificationInboxService.instance.loadEntries();
+
+    expect(entries, isEmpty);
+  });
 }

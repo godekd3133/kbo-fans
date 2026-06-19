@@ -260,5 +260,4 @@ class LeaderboardScreen extends ConsumerWidget {
       ),
     );
   }
-
 }

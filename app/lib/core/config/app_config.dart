@@ -14,6 +14,7 @@ class AppConfig {
   final bool hasApiBaseUrlOverride;
   final bool preferDirectScrape;
   final bool useBackendApi;
+  final bool showDevConsole;
 
   AppConfig._({
     required this.environment,
@@ -21,6 +22,7 @@ class AppConfig {
     required this.hasApiBaseUrlOverride,
     required this.preferDirectScrape,
     required this.useBackendApi,
+    required this.showDevConsole,
   });
 
   /// `--dart-define=APP_ENV=local|dev|release` 로 빌드 시 환경 결정
@@ -42,6 +44,10 @@ class AppConfig {
       'USE_BACKEND_API',
       defaultValue: false,
     );
+    const showDevConsoleFlag = String.fromEnvironment(
+      'SHOW_DEV_CONSOLE',
+      defaultValue: 'true',
+    );
     final env = AppEnvironment.values.firstWhere(
       (e) => e.name == envString,
       orElse: () => AppEnvironment.local,
@@ -57,6 +63,7 @@ class AppConfig {
       hasApiBaseUrlOverride: apiBaseUrlOverride.isNotEmpty,
       preferDirectScrape: preferDirectScrape,
       useBackendApi: useBackendApi,
+      showDevConsole: showDevConsoleFlag != 'false',
     );
   }
 
@@ -82,6 +89,7 @@ class AppConfig {
   bool get isDev => environment == AppEnvironment.dev;
   bool get isRelease => environment == AppEnvironment.release;
   bool get isProduction => environment == AppEnvironment.release;
+  bool get shouldShowDevConsole => !isRelease && showDevConsole;
   bool get shouldUseBackendApi => useBackendApi;
   bool get shouldUseDirectData => !useBackendApi;
   bool get shouldPreferLocalNativeData => shouldUseDirectData && !kIsWeb;

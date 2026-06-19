@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-20T05:31:34.011793+00:00",
+  "generatedAt": "2026-06-19T09:23:14.100005+00:00",
   "source": "backend/data/snapshots/records_overview/{season}.json",
   "policy": "exact-season-only; current season requires freshness; unverified seasons stay empty",
   "seasons": {
@@ -876,51 +876,66 @@
         "avg": [
           {
             "rank": 1,
-            "playerId": "67893",
-            "playerType": "hitter",
-            "metricKey": "AVG",
-            "name": "박성한",
-            "teamId": "SK",
-            "value": "0.379"
-          },
-          {
-            "rank": 2,
-            "playerId": "53123",
-            "playerType": "hitter",
-            "metricKey": "AVG",
-            "name": "오스틴",
-            "teamId": "LG",
-            "value": "0.356"
-          },
-          {
-            "rank": 3,
-            "playerId": "72443",
-            "playerType": "hitter",
-            "metricKey": "AVG",
-            "name": "최형우",
-            "teamId": "SS",
-            "value": "0.354"
-          },
-          {
-            "rank": 4,
-            "playerId": "63260",
-            "playerType": "hitter",
-            "metricKey": "AVG",
-            "name": "이우성",
-            "teamId": "NC",
-            "value": "0.353"
-          },
-          {
-            "rank": 5,
             "playerId": "66606",
             "playerType": "hitter",
             "metricKey": "AVG",
             "name": "최원준",
             "teamId": "KT",
-            "value": "0.351"
+            "value": "0.381",
+            "isRetired": false
+          },
+          {
+            "rank": 2,
+            "playerId": "54529",
+            "playerType": "hitter",
+            "metricKey": "AVG",
+            "name": "레이예스",
+            "teamId": "LT",
+            "value": "0.353",
+            "isRetired": false
+          },
+          {
+            "rank": 3,
+            "playerId": "53123",
+            "playerType": "hitter",
+            "metricKey": "AVG",
+            "name": "오스틴",
+            "teamId": "LG",
+            "value": "0.352",
+            "isRetired": false
+          },
+          {
+            "rank": 28,
+            "playerId": "62947",
+            "playerType": "hitter",
+            "metricKey": "AVG",
+            "name": "나성범",
+            "teamId": "HT",
+            "value": "0.278",
+            "isRetired": false
+          },
+          {
+            "rank": 30,
+            "playerId": "68205",
+            "playerType": "hitter",
+            "metricKey": "AVG",
+            "name": "전민재",
+            "teamId": "LT",
+            "value": "0.276",
+            "isRetired": false
           }
         ],
         "hr": [
+          {
+            "rank": 1,
+            "playerId": "53123",
+            "playerType": "hitter",
+            "metricKey": "HR",
+            "name": "오스틴",
+            "teamId": "LG",
+            "value": "20",
+            "isRetired": false
+          },
           {
             "rank": 1,
             "playerId": "52605",
@@ -928,25 +943,8 @@
             "metricKey": "HR",
             "name": "김도영",
             "teamId": "HT",
-            "value": "13"
-          },
-          {
-            "rank": 2,
-            "playerId": "56034",
-            "playerType": "hitter",
-            "metricKey": "HR",
-            "name": "힐리어드",
-            "teamId": "KT",
-            "value": "12"
-          },
-          {
-            "rank": 3,
-            "playerId": "53123",
-            "playerType": "hitter",
-            "metricKey": "HR",
-            "name": "오스틴",
-            "teamId": "LG",
-            "value": "11"
+            "value": "20",
+            "isRetired": false
           },
           {
             "rank": 3,
@@ -955,16 +953,28 @@
             "metricKey": "HR",
             "name": "최정",
             "teamId": "SK",
-            "value": "11"
+            "value": "17",
+            "isRetired": false
           },
           {
-            "rank": 5,
+            "rank": 4,
             "playerId": "68050",
             "playerType": "hitter",
             "metricKey": "HR",
             "name": "강백호",
             "teamId": "HH",
-            "value": "10"
+            "value": "16",
+            "isRetired": false
+          },
+          {
+            "rank": 5,
+            "playerId": "56034",
+            "playerType": "hitter",
+            "metricKey": "HR",
+            "name": "힐리어드",
+            "teamId": "KT",
+            "value": "14",
+            "isRetired": false
           }
         ],
         "ops": [
@@ -975,43 +985,48 @@
             "metricKey": "OPS",
             "name": "오스틴",
             "teamId": "LG",
-            "value": "1.073"
+            "value": "1.082",
+            "isRetired": false
           },
           {
             "rank": 2,
-            "playerId": "72443",
+            "playerId": "75847",
             "playerType": "hitter",
             "metricKey": "OPS",
-            "name": "최형우",
-            "teamId": "SS",
-            "value": "1.030"
+            "name": "최정",
+            "teamId": "SK",
+            "value": "1.010",
+            "isRetired": false
           },
           {
             "rank": 3,
-            "playerId": "53764",
+            "playerId": "66606",
             "playerType": "hitter",
             "metricKey": "OPS",
-            "name": "문현빈",
-            "teamId": "HH",
-            "value": "1.002"
+            "name": "최원준",
+            "teamId": "KT",
+            "value": "0.986",
+            "isRetired": false
           },
           {
             "rank": 4,
-            "playerId": "67893",
+            "playerId": "68050",
             "playerType": "hitter",
             "metricKey": "OPS",
-            "name": "박성한",
-            "teamId": "SK",
-            "value": "0.989"
+            "name": "강백호",
+            "teamId": "HH",
+            "value": "0.983",
+            "isRetired": false
           },
           {
             "rank": 5,
-            "playerId": "52605",
+            "playerId": "54529",
             "playerType": "hitter",
             "metricKey": "OPS",
-            "name": "김도영",
-            "teamId": "HT",
-            "value": "0.975"
+            "name": "레이예스",
+            "teamId": "LT",
+            "value": "0.949",
+            "isRetired": false
           }
         ],
         "opsPlus": [
@@ -1022,123 +1037,133 @@
             "metricKey": "OPSPLUS",
             "name": "오스틴",
             "teamId": "LG",
-            "value": "121"
+            "value": "124",
+            "isRetired": false
           },
           {
             "rank": 2,
-            "playerId": "72443",
+            "playerId": "75847",
             "playerType": "hitter",
             "metricKey": "OPSPLUS",
-            "name": "최형우",
-            "teamId": "SS",
-            "value": "116"
+            "name": "최정",
+            "teamId": "SK",
+            "value": "116",
+            "isRetired": false
           },
           {
             "rank": 3,
-            "playerId": "53764",
+            "playerId": "66606",
             "playerType": "hitter",
             "metricKey": "OPSPLUS",
-            "name": "문현빈",
-            "teamId": "HH",
-            "value": "113"
+            "name": "최원준",
+            "teamId": "KT",
+            "value": "113",
+            "isRetired": false
           },
           {
             "rank": 4,
-            "playerId": "67893",
+            "playerId": "68050",
             "playerType": "hitter",
             "metricKey": "OPSPLUS",
-            "name": "박성한",
-            "teamId": "SK",
-            "value": "111"
+            "name": "강백호",
+            "teamId": "HH",
+            "value": "113",
+            "isRetired": false
           },
           {
             "rank": 5,
-            "playerId": "52605",
+            "playerId": "54529",
             "playerType": "hitter",
             "metricKey": "OPSPLUS",
-            "name": "김도영",
-            "teamId": "HT",
-            "value": "110"
+            "name": "레이예스",
+            "teamId": "LT",
+            "value": "109",
+            "isRetired": false
           }
         ],
         "era": [
           {
             "rank": 1,
-            "playerId": "55268",
-            "playerType": "pitcher",
-            "metricKey": "ERA",
-            "name": "최민석",
-            "teamId": "OB",
-            "value": "2.17"
-          },
-          {
-            "rank": 2,
-            "playerId": "53375",
-            "playerType": "pitcher",
-            "metricKey": "ERA",
-            "name": "후라도",
-            "teamId": "SS",
-            "value": "2.33"
-          },
-          {
-            "rank": 3,
             "playerId": "55633",
             "playerType": "pitcher",
             "metricKey": "ERA",
             "name": "올러",
             "teamId": "HT",
-            "value": "2.72"
+            "value": "2.58",
+            "isRetired": false
+          },
+          {
+            "rank": 2,
+            "playerId": "76715",
+            "playerType": "pitcher",
+            "metricKey": "ERA",
+            "name": "류현진",
+            "teamId": "HH",
+            "value": "2.74",
+            "isRetired": false
+          },
+          {
+            "rank": 3,
+            "playerId": "55268",
+            "playerType": "pitcher",
+            "metricKey": "ERA",
+            "name": "최민석",
+            "teamId": "OB",
+            "value": "2.77",
+            "isRetired": false
           },
           {
             "rank": 4,
-            "playerId": "56719",
+            "playerId": "53375",
             "playerType": "pitcher",
             "metricKey": "ERA",
-            "name": "왕옌청",
-            "teamId": "HH",
-            "value": "2.74"
+            "name": "후라도",
+            "teamId": "SS",
+            "value": "2.96",
+            "isRetired": false
           },
           {
             "rank": 5,
-            "playerId": "67539",
+            "playerId": "69045",
             "playerType": "pitcher",
             "metricKey": "ERA",
-            "name": "나균안",
-            "teamId": "LT",
-            "value": "2.96"
+            "name": "알칸타라",
+            "teamId": "WO",
+            "value": "2.96",
+            "isRetired": false
           }
         ]
       },
       "featured": {
         "todayHitter": {
           "label": "시즌 타율 리더",
-          "playerId": "67893",
+          "playerId": "66606",
           "playerType": "hitter",
-          "name": "박성한",
-          "teamId": "SK",
-          "headline": "타율 0.379",
+          "name": "최원준",
+          "teamId": "KT",
+          "headline": "타율 0.381",
           "summary": "2026 시즌 KBO 공식 기록 기준",
-          "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/67893.jpg"
+          "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66606.jpg"
         },
         "todayPitcher": {
           "label": "시즌 ERA 리더",
-          "playerId": "55268",
+          "playerId": "55633",
           "playerType": "pitcher",
-          "name": "최민석",
-          "teamId": "OB",
-          "headline": "ERA 2.17",
+          "name": "올러",
+          "teamId": "HT",
+          "headline": "ERA 2.58",
           "summary": "2026 시즌 KBO 공식 기록 기준",
-          "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55268.jpg"
+          "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/55633.jpg"
         },
         "monthHitter": {
           "label": "시즌 홈런왕",
-          "playerId": "52605",
+          "playerId": "53123",
           "playerType": "hitter",
-          "name": "김도영",
-          "teamId": "HT",
-          "headline": "홈런 13",
+          "name": "오스틴",
+          "teamId": "LG",
+          "headline": "홈런 20",
           "summary": "2026 시즌 KBO 공식 기록 기준",
-          "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/52605.jpg"
+          "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53123.jpg"
         },
         "monthPitcher": {
           "label": "시즌 OPS 리더",
@@ -1146,7 +1171,7 @@
           "playerType": "hitter",
           "name": "오스틴",
           "teamId": "LG",
-          "headline": "OPS 1.073",
+          "headline": "OPS 1.082",
           "summary": "2026 시즌 KBO 공식 기록 기준",
           "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53123.jpg"
         }

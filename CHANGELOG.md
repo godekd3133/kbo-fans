@@ -10,6 +10,17 @@
 
 ## [Unreleased]
 
+## [0.0.59] - 2026-06-19
+
+### Changed
+
+- 기록 탭 리그 진입 화면을 생성형 프리미엄 레퍼런스 기준으로 다시 다듬어 headline 리더, 지표 spotlight, 탭형 TOP3 리더보드 table, 팀 기록실 진입 순서로 더 많은 기록 정보를 첫 화면에서 읽히도록 개선
+- 2026 기록 overview bootstrap/snapshot을 최신 KBO 기록 기준으로 갱신하고 stale current-season bootstrap guard 테스트 기준도 함께 갱신
+- 온보딩 시작 CTA를 레퍼런스 톤의 고정 red gradient 버튼으로 바꿔 선택 상태를 더 명확하게 표시
+- Dev Console overlay를 `SHOW_DEV_CONSOLE=false` dart define으로 끌 수 있게 해 release/web QA 캡처에서 개발 UI가 섞이지 않도록 개선
+- 알림함이 깨진 로컬 저장 payload를 만나도 빈 상태로 복구되도록 방어하고, 로드 실패 시 기본 push 설정으로 화면을 유지
+- `/api/push/test` receipt 확인을 위한 `scripts/push-test-notification.sh`를 추가해 topic/token 대상 테스트 푸시를 secret-safe하게 반복 실행할 수 있게 정리
+
 ## [0.0.58] - 2026-06-19
 
 ### Changed
@@ -17,6 +28,7 @@
 - 기록 탭 리그 진입 화면을 `오늘 읽을 기록`, 지표 spotlight rail, 지표별 TOP 3 preview, 팀 기록실 섹션으로 재구성해 시즌 리더 정보를 더 많이 보여주되 먼저 해석된 순서로 읽히도록 개선
 - 뉴스 탭을 생성 레퍼런스 기준의 편집형 브리프 화면으로 강화해 `오늘 읽을 순서`, `뉴스 믹스`, 경기/순위/기록/마이팀 신호 grid, quick item/순위 preview/최근 경기 기반 카드와 선수 이미지/fallback mark까지 함께 보여주도록 개선
 - 더보기 탭을 `KBO 팬 허브`로 재구성해 마이팀 요약, 오늘 챙길 정보, 빠른 이동, 앱 밖 표면, 알림 플레이북을 한 화면 흐름으로 정리
+- 더보기 탭의 경기/순위/기록/뉴스/푸시/라이브 액티비티/브리프 아이콘을 레퍼런스 기반 custom glyph 세트로 교체해 Material 기본 아이콘 혼용을 줄임
 - 온보딩, 더보기, 경기 상세/박스스코어/라인업/중계 화면에서 팀 로고와 선수 이미지가 더 안정적으로 보이도록 공통 팀 로고 위젯과 이미지 기반 row를 보강
 - home brief의 기록 레이더 항목에 선수 이미지와 fallback label을 포함하고, off-day CTA를 일정 화면으로 연결
 - 홈 인사이트/빠른 정보의 넓은 CTA를 뉴스 브리프로 연결하고, backend/app aggregate에서 들어온 동적 내부 route를 검증해 잘못된 링크가 기록실 등 엉뚱한 화면으로 튀지 않도록 보강

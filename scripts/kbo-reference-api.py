@@ -461,7 +461,6 @@ def _home_payload(date: str, my_team: Optional[str]) -> dict:
                     "route": "/records/player/66710?season=2026",
                     "gameId": None,
                     "teamIds": ["HH"],
-                    "imageUrl": f"{PLAYER_IMAGE_BASE}/2026/66710.jpg",
                     "fallbackLabel": "노시환",
                 },
                 {

@@ -298,9 +298,9 @@ GET /api/scoreboard?date=2026-03-28
 **핵심 구성**:
 | 요소 | 설명 |
 |------|------|
-| 오늘 읽을 기록 | 리그 overview 응답의 AVG/HR/OPS/wRC+/ERA 선두를 조합해 가장 강한 1위 선수, 활성 지표 수, TOP5 선수 수, 핵심 브리프 문장 2~3개를 먼저 노출 |
-| 지표 spotlight | AVG/HR/OPS/wRC+/ERA를 가로 rail로 보여주고, 각 카드에 1위 선수/팀/값/2위와 격차를 표시 |
-| 리그 리더보드 preview | 핵심 지표별 TOP 3 row와 `공식`/`계산` source badge를 표시하고 전체 리더보드 화면으로 연결 |
+| 오늘 읽을 기록 | 리그 overview 응답의 AVG/HR/OPS/wRC+/ERA 선두를 조합해 가장 강한 1위 선수, 선수 이미지, 활성 지표 수, TOP5 선수 수, source confidence, 핵심 브리프 문장 2~3개를 먼저 노출 |
+| 지표 spotlight | AVG/HR/OPS/wRC+/ERA를 가로 rail로 보여주고, 각 카드에 1위 순위 badge, 선수/팀/값/2위와 격차를 표시 |
+| 리그 리더보드 preview | 핵심 지표를 tab으로 전환하며 TOP 3 table row와 `공식`/`계산` source badge를 표시하고 전체 리더보드 화면으로 연결 |
 | 팀 기록실 진입 | 검색 전 `팀 기록실` 섹션 헤더를 두고 마이팀을 우선 정렬한 팀 목록으로 연결 |
 | 상단 요약 | 엔트리 수 / 엔트리 제외 수 |
 | 선수 탭 | `야수` / `투수` 전환 |
@@ -316,6 +316,7 @@ GET /api/scoreboard?date=2026-03-28
 
 **인터랙션**:
 - 리그 지표 카드 탭 → 지표별 전체 리더보드 화면 이동
+- 리그 리더보드 preview 지표 탭 → 같은 화면 안에서 해당 지표 TOP3 table 전환
 - 팀 카드 탭 → 팀 기록실 화면 이동
 - 선수 카드 탭 → 선수 상세 화면 이동
 
@@ -400,6 +401,7 @@ GET /api/player/{playerId}?season=2026
 - 상단 경기 상태는 모든 탭에서 sticky 유지한다.
 - 문자중계의 주요 이벤트는 스코어 탭 요약과 박스스코어 핵심 카드에 연결된다.
 - 박스스코어/라인업 선수 카드는 기록실 또는 선수 상세 진입점으로 사용한다.
+- 경기 상세의 팀 로고는 scorebug/문자중계/박스스코어/라인업 모두 공용 이미지 위젯을 사용하고, `BoxFit.contain` + padding으로 로고가 잘리지 않게 표시한다. 선수 row는 가능한 경우 API/player lookup의 `imageUrl`을 우선 표시한다.
 - 종료 경기 첫 화면은 스코어 탭 상단에 결과 요약 섹션을 먼저 둔다. 별도 `요약` 탭은 MVP 이후 검토한다.
 - 종료/과거 경기의 박스스코어, 라인업, 문자중계는 완성된 backend snapshot을 우선 사용하고, snapshot이 비었거나 현재/미래 경기일 때만 live 원천 조회로 넘어간다.
 - 이미 표시 중인 경기 상세에서 앱 복귀/주기 refresh가 실패하면 전체 화면 오류로 전환하지 않고 마지막 정상 경기 상세를 유지한다. 처음부터 단건 경기를 불러오지 못한 경우에만 오류/미존재 상태를 표시한다.
@@ -541,8 +543,8 @@ GET /api/game/{gameId}/relay
 | 팀 토글 | 어웨이/홈 팀 전환 버튼. 58px 높이의 compact segment로 두고 선택된 팀만 팀 컬러 border를 사용 |
 | 오늘 기록 요약 | 상단 summary surface. 팀 로고, `오늘 기록 요약`, 타수/득점/안타/타점/팀 타율을 5분할로 노출하고 `boxscore_analytics` 생성 이미지를 낮은 opacity 배경으로 사용 |
 | 핵심 기록 행 | 핵심 타자 / 핵심 투수를 큰 카드 대신 record row로 표시. 선수 프로필 이미지, 역할 tag, 오늘 경기 수치, `생산 +N`/`효율 +N`, 매칭 시 `선수 기록 보기` CTA를 포함 |
-| 타자 기록 | 타순 정렬 dense row. 선수명/포지션/타순 + 타수/안타/타점/득점/오늘 타율 |
-| 투수 기록 | 등판 순서 dense row. 선수명 + 이닝/피안타/자책/삼진/결과 |
+| 타자 기록 | 타순 정렬 dense row. 선수 사진, 등번호 badge, 선수명/포지션/타순 + 타수/안타/타점/득점/오늘 타율 |
+| 투수 기록 | 등판 순서 dense row. 선수 사진, 등번호 badge, 선수명 + 이닝/피안타/자책/삼진/결과 |
 | 기록 진입 | 매칭된 선수만 row와 핵심 기록 행에 `선수 기록 보기`를 보여주고 `/records/player/{playerId}?season={YYYY}`로 이동. 미매칭 선수는 CTA와 chevron을 숨긴다 |
 
 **상태 처리**:
@@ -895,6 +897,12 @@ GET /api/standings?season=2026
 - 더보기 화면의 `앱 밖 표면`은 내부 구현 설명이 아니라 `푸시`, `라이브 액티비티`, `브리프`가 맡는 사용자 경험을 짧게 설명한다.
 - 전달 방식 picker와 경기 상세의 `경기 따라가기` CTA에서 필요한 만큼만 사용자 언어로 안내한다.
 - 패치노트 화면은 버전별 섹션으로 표시하고 현재 설치 버전과 일치하는 섹션에 `현재 설치됨` 상태를 표시한다.
+
+**아이콘 원칙**:
+- 더보기 상단 정보 row, 빠른 이동, 앱 밖 표면은 Material 기본 아이콘을 섞지 않고 custom glyph set을 사용한다.
+- 기본 icon well은 38px, secondary surface row는 34px이며 radius는 8px로 고정한다.
+- glyph는 20-21px, rounded cap/join, 상태색 16% fill과 35% border를 기본값으로 쓴다.
+- 경기/푸시는 live red, 순위/라이브 액티비티는 action blue, 기록/브리프는 positive green, 뉴스는 ball yellow를 사용한다.
 
 **기본 플레이북**:
 | Moment | 기본 전달 방식 | 범위 | UX 원칙 |
@@ -1564,7 +1572,7 @@ GET /api/push/config-status
 - `register`: 앱/iOS native가 `gameId`, `activityId`, `activityPushToken`을 등록한다.
 - `update`: 내부 운영 도구나 worker가 특정 `gameId`의 `content-state`를 APNs로 발송한다.
 - `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon`, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. `date` 생략 시 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
-- `test`: 운영자가 특정 FCM token 또는 topic으로 테스트 알림을 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `test`: 운영자가 특정 FCM token 또는 topic으로 테스트 알림을 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다. 반복 receipt 확인은 `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>` 또는 `--token <fcm-token>`으로 수행한다.
 - `baseball-info`: 운영자가 `weekly_check`, `off_day`, `game_day`, `records_check`, `lineup_day`, `rival_watch` 같은 야구 정보 확인 push를 보낸다. topic/token/teamId를 지정할 수 있고, 지정하지 않으면 10개 구단 `baseball_info_<팀>` topic과 `baseball_info_ALL`로 발송한다. `teamId`를 지정하면 알림 copy는 `LG 트윈스 기록실`, `LG 트윈스 경기일 체크`처럼 팀 이름 기준으로 구체화한다. `dryRun=true`이면 Firebase 발송 없이 title/body/data/targets 미리보기만 반환한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `python -m kbo_fans_backend.scheduler.baseball_info`: scheduled worker/cron용 CLI다. `--date`만 주면 KBO 경기일 기준 월요일에는 `weekly_check`를 발송하고, 다른 요일에는 자동 발송하지 않는다. `--kind records_check`처럼 명시하면 요일과 무관하게 해당 야구 브리프를 보낸다. 운영 전에는 `--dry-run`으로 topic과 copy를 확인한다. `--smart-daily`를 쓰면 해당 날짜 scoreboard를 읽어 팀별로 오늘 경기가 있으면 `game_day`, `--now-time HH:MM` 기준 경기 시작 3시간 이내이면 `lineup_day`, 이미 종료된 경기만 있으면 `records_check`, 마이팀 경기는 없지만 리그 경기가 있으면 `rival_watch`, 전체 리그가 쉬면 `off_day`를 자동 선택하고, 리그 전체 구독자용 `baseball_info_ALL`도 함께 계획한다.
 - `resubscribe-topics`: registry에 저장된 FCM device registration을 현재 push schema로 다시 해석해 Firebase topic을 재구독한다. `at_bat`, `game_start_soon`, `hit`처럼 새 moment topic을 추가한 뒤 기존 TestFlight 설치자의 topic membership을 보정할 때 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.

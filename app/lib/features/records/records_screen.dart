@@ -173,9 +173,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     _seasonSelector(),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     overviewAsync.when(
                       loading: () => const SizedBox.shrink(),
                       error: (error, stackTrace) =>
@@ -183,14 +183,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       data: (overview) => Column(
                         children: [
                           _recordsBriefingPanel(overview),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _metricSpotlightRail(overview),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 10),
                           _recordsSectionHeader(
                             title: '리그 리더보드',
                             subtitle: '핵심 지표별 TOP 5를 빠르게 비교합니다.',
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
                           _metricHub(overview),
                           const SizedBox(height: 18),
                           _recordsSectionHeader(
@@ -1020,7 +1020,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       child: Text(
         '$number',
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: FontWeight.w700,
           color: team?.primaryColor ?? AppColors.textSecondary,
         ),
@@ -1336,7 +1336,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -1364,20 +1364,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         children: [
           Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.query_stats_rounded,
-                  color: AppColors.accent,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 10),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1389,7 +1375,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    SizedBox(height: 3),
+                    SizedBox(height: 2),
                     Text(
                       '리그 주요 지표 리더를 먼저 확인하세요.',
                       style: TextStyle(
@@ -1410,7 +1396,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 11),
           if (headline == null)
             const Text(
               '현재 표시할 기록 리더가 없습니다.',
@@ -1418,7 +1404,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             )
           else
             _headlineLeaderBlock(overview, headline),
-          const SizedBox(height: 16),
+          const SizedBox(height: 9),
           Row(
             children: [
               Expanded(child: _briefStat('활성 지표', '$activeMetricCount/5')),
@@ -1429,12 +1415,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             ],
           ),
           if (briefLines.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            Container(height: 1, color: AppColors.divider),
-            const SizedBox(height: 12),
+            const SizedBox(height: 7),
             for (final line in briefLines)
               Padding(
-                padding: const EdgeInsets.only(bottom: 7),
+                padding: const EdgeInsets.only(bottom: 3),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1448,8 +1432,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       child: Text(
                         line,
                         style: const TextStyle(
-                          fontSize: 12,
-                          height: 1.35,
+                          fontSize: 10,
+                          height: 1.2,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -1465,12 +1449,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _headlineLeaderBlock(RecordsOverview overview, RecordLeader leader) {
     final team = KboTeams.byId(leader.teamId);
-    final metricLabels = _leaderMetricLabels(overview, leader);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _leaderPhoto(leader, width: 86, height: 104),
-        const SizedBox(width: 16),
+        _leaderPhoto(leader, width: 70, height: 78),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1492,7 +1475,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 29,
+                        fontSize: 26,
                         fontWeight: FontWeight.w900,
                         height: 1.05,
                       ),
@@ -1500,9 +1483,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 7),
+              const SizedBox(height: 5),
               Text(
-                '${team?.name ?? leader.teamId} · ${metricLabels.join(' / ')} 선두',
+                team?.name ?? leader.teamId,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -1511,10 +1494,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   height: 1.3,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 9),
               Wrap(
-                spacing: 10,
-                runSpacing: 8,
+                spacing: 7,
+                runSpacing: 6,
                 children: _metricSnapshots(overview)
                     .where(
                       (snapshot) =>
@@ -1538,8 +1521,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _briefStat(String label, String value) {
     return Container(
-      height: 72,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.28),
         borderRadius: BorderRadius.circular(8),
@@ -1565,7 +1548,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
           ),
         ],
       ),
@@ -1575,13 +1558,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _metricSpotlightRail(RecordsOverview overview) {
     final snapshots = _metricSnapshots(overview);
     return SizedBox(
-      height: 172,
+      height: 116,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: snapshots.length,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) =>
-            SizedBox(width: 154, child: _metricSpotlightCard(snapshots[index])),
+            SizedBox(width: 120, child: _metricSpotlightCard(snapshots[index])),
       ),
     );
   }
@@ -1595,7 +1578,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       ),
       pressedScale: 0.97,
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -1615,7 +1598,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               children: [
                 Container(
                   width: 7,
-                  height: 24,
+                  height: 20,
                   decoration: BoxDecoration(
                     color: snapshot.color,
                     borderRadius: BorderRadius.circular(99),
@@ -1628,7 +1611,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1652,14 +1635,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 3),
             Text(
               leader == null ? '공식 소스 확인 중' : team?.shortName ?? leader.teamId,
               maxLines: 1,
@@ -1669,18 +1652,18 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 color: AppColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 9),
+            const SizedBox(height: 5),
             Text(
               leader?.value ?? '-',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 28,
+                fontSize: 23,
                 fontWeight: FontWeight.w900,
                 height: 1,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               _leaderGapText(snapshot.metric, snapshot.leaders),
               maxLines: 1,
@@ -1804,7 +1787,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         width: 78,
-        height: 58,
+        height: 50,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected
@@ -1831,7 +1814,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _leaderboardHeader() {
     return Container(
-      height: 40,
+      height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: const Row(
         children: [
@@ -1971,7 +1954,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _miniMetricPill(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
@@ -2098,9 +2081,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final headline = _headlineLeader(overview);
     if (headline != null) {
       final labels = _leaderMetricLabels(overview, headline).join('/');
-      lines.add(
-        '${headline.name}이 $labels 선두입니다. ${KboTeams.byId(headline.teamId)?.shortName ?? headline.teamId} 기록을 같이 보면 흐름이 빠르게 잡힙니다.',
-      );
+      lines.add('${headline.name}이 $labels 선두입니다.');
     }
 
     final hr = snapshots
@@ -2109,7 +2090,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         .topLeader;
     if (hr != null) {
       lines.add(
-        '홈런 경쟁은 ${hr.name} ${hr.value}개, ${_leaderGapText(LeaderboardMetric.hr, overview.hrLeaders)}입니다.',
+        '홈런 ${hr.name} ${hr.value}개, ${_leaderGapText(LeaderboardMetric.hr, overview.hrLeaders)}',
       );
     }
 
@@ -2119,7 +2100,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         .topLeader;
     if (era != null) {
       lines.add(
-        '마운드는 ${era.name} ERA ${era.value}, ${_leaderGapText(LeaderboardMetric.era, overview.eraLeaders)}입니다.',
+        'ERA ${era.name} ${era.value}, ${_leaderGapText(LeaderboardMetric.era, overview.eraLeaders)}',
       );
     }
 
