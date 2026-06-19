@@ -20,8 +20,9 @@
 - [x] `0.0.57 (57)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, WebP/PNG asset count 확인 (`CFBundleShortVersionString=0.0.57`, `CFBundleVersion=57`, `com.kbofans.kboFans`, Firebase project `kbo-fans-47189`, `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `casual_*.webp` 175개, reference team logo PNG 7개, reference status PNG 1개)
 - [x] `0.0.57 (57)` TestFlight upload 성공 확인 (`Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`)
 - [x] TestFlight upload warning: `objective_c.framework` dSYM warning은 남음
-- [ ] `0.0.57` backend deploy workflow 성공 및 운영 `/api/health` 확인
-- [ ] topic 재등록 성공 확인
+- [x] `0.0.57` backend deploy workflow `27815325814` 성공 확인 (`KBO_BACKEND_IMAGE_TAG=0.0.57`, ECR image push, CloudFormation deploy, scheduler ok)
+- [x] 운영 `/api/health` 200 및 `/api/home?date=2026-06-19&myTeam=LG` 응답의 `standingsPreview` 5개, `kboBrief.items` 3개, `LG` 행 포함 확인
+- [x] topic 재등록 성공 확인 (`registeredDevices=3`, `eligibleDevices=3`, `subscriptionsAttempted=28`, `unsubscriptionsAttempted=0`)
 
 ---
 
