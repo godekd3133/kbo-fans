@@ -6,6 +6,7 @@ import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/home/home_screen.dart';
+import 'package:kbo_fans/features/home/widgets/game_card.dart';
 import 'package:kbo_fans/services/live_activity_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -102,6 +103,76 @@ void main() {
     expect(find.text('따라가는 중'), findsOneWidget);
   });
 
+  testWidgets('shows other games only in the dedicated game list', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final myTeamGame = _scheduledGame(
+      gameId: '20260611HTLG0',
+      awayTeamId: 'HT',
+      awayShortName: 'KIA',
+      homeTeamId: 'LG',
+      homeShortName: 'LG',
+      stadium: '잠실',
+    );
+    final otherGame = _scheduledGame(
+      gameId: '20260611NCOB0',
+      awayTeamId: 'NC',
+      awayShortName: 'NC',
+      homeTeamId: 'OB',
+      homeShortName: '두산',
+      stadium: '창원',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scoreboardProvider.overrideWith((ref, date) async {
+            return [myTeamGame, otherGame, otherGame];
+          }),
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: 'LG',
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: MaterialApp(
+          builder: (context, child) {
+            final data = MediaQuery.of(
+              context,
+            ).copyWith(disableAnimations: true);
+            return MediaQuery(data: data, child: child!);
+          },
+          home: const HomeScreen(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final otherGameCardFinder = find.byWidgetPredicate(
+      (widget) => widget is GameCard && widget.game.gameId == otherGame.gameId,
+    );
+
+    expect(find.text('NC vs 두산'), findsNothing);
+    await tester.scrollUntilVisible(otherGameCardFinder, 300);
+    expect(otherGameCardFinder, findsOneWidget);
+  });
+
   test('진행 중인 경기 상세 route는 기본으로 중계 탭을 지정한다', () {
     final liveGame = _liveGame(
       gameId: '20260611XXYY0',
@@ -113,6 +184,26 @@ void main() {
 
     expect(uri.path, '/game/${liveGame.gameId}');
     expect(uri.queryParameters['tab'], 'relay');
+  });
+
+  test('홈 경기 박스 route는 진행 중 경기만 중계 탭을 지정한다', () {
+    final liveUri = Uri.parse(
+      gameDetailLocationForGameId(
+        gameId: '20260611XXYY0',
+        status: GameStatus.live,
+      ),
+    );
+    final scheduledUri = Uri.parse(
+      gameDetailLocationForGameId(
+        gameId: '20260612XXYY0',
+        status: GameStatus.scheduled,
+      ),
+    );
+
+    expect(liveUri.path, '/game/20260611XXYY0');
+    expect(liveUri.queryParameters['tab'], 'relay');
+    expect(scheduledUri.path, '/game/20260612XXYY0');
+    expect(scheduledUri.queryParameters.containsKey('tab'), isFalse);
   });
 
   test('마이팀 중계 보기 route는 중계 본문 focus 신호를 포함한다', () {
@@ -175,6 +266,37 @@ Game _liveGame({
       innings: const [],
     ),
     stadium: '잠실',
+    startTime: '18:30',
+  );
+}
+
+Game _scheduledGame({
+  required String gameId,
+  required String awayTeamId,
+  required String awayShortName,
+  required String homeTeamId,
+  required String homeShortName,
+  required String stadium,
+}) {
+  return Game(
+    gameId: gameId,
+    status: GameStatus.scheduled,
+    inning: '18:30 예정',
+    away: TeamScore(
+      teamId: awayTeamId,
+      teamName: awayShortName,
+      shortName: awayShortName,
+      score: 0,
+      innings: const [],
+    ),
+    home: TeamScore(
+      teamId: homeTeamId,
+      teamName: homeShortName,
+      shortName: homeShortName,
+      score: 0,
+      innings: const [],
+    ),
+    stadium: stadium,
     startTime: '18:30',
   );
 }

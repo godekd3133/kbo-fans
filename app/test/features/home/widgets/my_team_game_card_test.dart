@@ -85,6 +85,45 @@ void main() {
     expect(find.text('3-2'), findsOneWidget);
   });
 
+  testWidgets('opens relay when tapping the live card body', (tester) async {
+    var detailTaps = 0;
+    var relayTaps = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Scaffold(
+          body: MyTeamGameCard(
+            game: _game(
+              away: const TeamScore(
+                teamId: 'XX',
+                teamName: '원정',
+                shortName: '원정',
+                score: 2,
+                innings: [],
+              ),
+              home: const TeamScore(
+                teamId: 'YY',
+                teamName: '홈',
+                shortName: '홈',
+                score: 1,
+                innings: [],
+              ),
+            ),
+            onOpenDetail: () => detailTaps++,
+            onOpenRelay: () => relayTaps++,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byType(MyTeamGameCard));
+    await tester.pump();
+
+    expect(relayTaps, 1);
+    expect(detailTaps, 0);
+  });
+
   testWidgets('marks live follow action when the game is already followed', (
     tester,
   ) async {

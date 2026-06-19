@@ -44,9 +44,10 @@ class MyTeamGameCard extends StatelessWidget {
     final primaryAction = _primaryAction();
     final secondaryAction = _secondaryAction();
     final scoreText = _scoreboardText();
+    final cardTap = isLive ? onOpenRelay ?? onOpenDetail : onOpenDetail;
 
     return AppPressable(
-      onTap: onOpenDetail,
+      onTap: cardTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(

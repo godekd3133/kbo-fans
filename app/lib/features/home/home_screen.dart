@@ -7,7 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
@@ -25,21 +27,46 @@ import '../../services/widget_sync_service.dart';
 import 'widgets/game_card.dart';
 import 'widgets/my_team_game_card.dart';
 
-String gameDetailLocationFor(
-  Game game, {
+String gameDetailLocationForGameId({
+  required String gameId,
+  GameStatus? status,
   String? tab,
   bool focusRelay = false,
 }) {
-  final resolvedTab = tab ?? (game.status == GameStatus.live ? 'relay' : null);
+  final resolvedTab = tab ?? (status == GameStatus.live ? 'relay' : null);
   final queryParameters = <String, String>{
     'tab': ?resolvedTab,
     if (focusRelay && resolvedTab == 'relay') 'focus': 'relay',
   };
 
   return Uri(
-    path: '/game/${game.gameId}',
+    path: '/game/$gameId',
     queryParameters: queryParameters.isEmpty ? null : queryParameters,
   ).toString();
+}
+
+String gameDetailLocationFor(
+  Game game, {
+  String? tab,
+  bool focusRelay = false,
+}) {
+  return gameDetailLocationForGameId(
+    gameId: game.gameId,
+    status: game.status,
+    tab: tab,
+    focusRelay: focusRelay,
+  );
+}
+
+List<Game> _uniqueGamesById(List<Game> games) {
+  final seen = <String>{};
+  final unique = <Game>[];
+  for (final game in games) {
+    if (seen.add(game.gameId)) {
+      unique.add(game);
+    }
+  }
+  return unique;
 }
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -130,14 +157,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             data: (games) {
-              _scheduleRefresh(games, myTeamId);
-              _syncWidget(games, myTeamId);
-              _processGameEventAlerts(games, myTeamId);
-              _ensureMyTeamAutoFollow(games, myTeamId);
+              final displayGames = _uniqueGamesById(games);
+              _scheduleRefresh(displayGames, myTeamId);
+              _syncWidget(displayGames, myTeamId);
+              _processGameEventAlerts(displayGames, myTeamId);
+              _ensureMyTeamAutoFollow(displayGames, myTeamId);
               _enableSecondarySections();
               return KeyedSubtree(
-                key: ValueKey('home-data-$today-${games.length}'),
-                child: _buildContent(context, games, myTeamId, today),
+                key: ValueKey('home-data-$today-${displayGames.length}'),
+                child: _buildContent(context, displayGames, myTeamId, today),
               );
             },
           ),
@@ -327,9 +355,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         }
       }
     }
-    final others = myGame != null
-        ? games.where((g) => g.gameId != myGame!.gameId).toList()
-        : games;
+    final others = _uniqueGamesById(
+      myGame != null
+          ? games.where((g) => g.gameId != myGame!.gameId).toList()
+          : games,
+    );
     final hasLive = games.any((g) => g.status == GameStatus.live);
     final todayBrief = _buildTodayBrief(
       games: games,
@@ -487,12 +517,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     child: Column(
                       children: [
-                        Icon(
-                          Icons.sports_baseball,
-                          size: 52,
-                          color: AppColors.divider,
+                        const AppArtworkCard(
+                          assetName: VisualAssets.homeEmptyStadium,
+                          height: 128,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         const Text(
                           '오늘은 경기가 없습니다',
                           style: TextStyle(
@@ -522,11 +551,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 itemBuilder: (context, index) {
                   final game = others[index];
                   return AppMotionListItem(
-                    key: ValueKey('home-game-${game.gameId}'),
+                    key: ValueKey('home-game-motion-${game.gameId}-$index'),
                     index: index,
-                    child: GameCard(
-                      game: game,
-                      onTap: () => _openGameDetail(game),
+                    child: KeyedSubtree(
+                      key: ValueKey('home-game-${game.gameId}'),
+                      child: GameCard(
+                        game: game,
+                        onTap: () => _openGameDetail(game),
+                      ),
                     ),
                   );
                 },
@@ -723,29 +755,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         : myTeamId != null && myGame != null
         ? '마이팀 ${myGame.away.teamId == myTeamId ? myGame.away.shortName : myGame.home.shortName} 경기부터 확인하세요.'
         : '${spotlight.away.shortName} vs ${spotlight.home.shortName} · ${spotlight.stadium}';
-    final summaries = games
-        .where((game) => game.gameId != spotlight?.gameId)
-        .take(3)
-        .map(
-          (game) => _TodayGameSummaryData(
-            gameId: game.gameId,
-            awayTeamId: game.away.teamId,
-            homeTeamId: game.home.teamId,
-            awayShortName: game.away.shortName,
-            homeShortName: game.home.shortName,
-            stadium: game.stadium,
-            status: game.status,
-            statusLabel: game.statusLabel,
-            timeLabel: game.inning.isNotEmpty ? game.inning : game.startTime,
-            awayScore: game.away.score,
-            homeScore: game.home.score,
-            isMyTeamGame:
-                myTeamId != null &&
-                (game.away.teamId == myTeamId || game.home.teamId == myTeamId),
-          ),
-        )
-        .toList();
-
     return _TodayBaseballBriefData(
       headline: headline,
       detail: detail,
@@ -754,7 +763,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       scheduledGames: scheduledGames,
       finalGames: finalGames,
       spotlight: spotlight,
-      summaries: summaries,
     );
   }
 
@@ -1136,20 +1144,37 @@ class _MyTeamBriefCard extends StatelessWidget {
             GameStatus.final_ => '경기 기록',
             _ => '경기 상세',
           };
+    final secondaryLabel = todayGame?.status == GameStatus.scheduled
+        ? '알림 설정'
+        : '순위 보기';
+    final accent = team?.primaryColor ?? AppColors.accent;
+    final view = _MyTeamBriefViewModel.resolve(
+      myTeamId: myTeamId!,
+      teamName: team?.name ?? myTeamId!,
+      todayGame: todayGame,
+      nextGame: nextGame,
+      opponent: opponent,
+      standing: standing,
+    );
     void openPrimaryDestination() {
       if (todayGame != null) {
-        final route = todayGame!.status == GameStatus.live
-            ? '/game/${todayGame!.gameId}?tab=relay'
-            : '/game/${todayGame!.gameId}';
-        context.push(route, extra: todayGame);
+        context.push(gameDetailLocationFor(todayGame!), extra: todayGame);
       } else {
         context.go('/schedule');
       }
     }
 
+    void openSecondaryDestination() {
+      if (todayGame?.status == GameStatus.scheduled) {
+        context.go('/settings');
+        return;
+      }
+      context.go('/standings');
+    }
+
     return _sectionCard(
       padding: const EdgeInsets.all(14),
-      accentColor: team?.primaryColor ?? AppColors.accent,
+      accentColor: accent,
       child: AppPressable(
         onTap: openPrimaryDestination,
         pressedScale: 0.99,
@@ -1158,63 +1183,107 @@ class _MyTeamBriefCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.background.withValues(alpha: 0.88),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: (team?.primaryColor ?? AppColors.live).withValues(
-                        alpha: 0.55,
-                      ),
-                    ),
-                  ),
-                  child: Text(
-                    '마이팀 브리프',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
+                _BriefStatusPill(
+                  label: view.statusLabel,
+                  color: view.statusColor,
                 ),
                 const Spacer(),
                 if (standing != null)
                   Text(
-                    '${standing.rank}위 · ${standing.gb == '0' ? '선두권' : '${standing.gb}G차'}',
+                    _standingMeta(standing),
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 9),
-            Text(
-              team?.name ?? myTeamId!,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _BriefTeamMark(
+                  team: team,
+                  fallbackLabel: team?.shortName ?? myTeamId!,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '마이팀 브리프',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textDisabled,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        view.headline,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          height: 1.18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        view.subline,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              todayGame == null && nextGame == null
-                  ? '다음 경기 정보가 아직 없습니다.'
-                  : todayGame != null
-                  ? '${todayGame!.startTime} · ${todayGame!.stadium} · vs ${opponent?.name ?? '-'}'
-                  : '다음 경기 ${nextGame!.time} · ${nextGame.stadium} · vs ${opponent?.name ?? '-'}',
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: view.statusColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: view.statusColor.withValues(alpha: 0.24),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(view.icon, size: 18, color: view.statusColor),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      view.situation,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        height: 1.35,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
                   child: _metricColumn(
-                    '최근 흐름',
+                    '최근 3경기',
                     brief == null || brief!.recentGamesCount == 0
                         ? '최근 결과 없음'
                         : '${brief!.recentWins}승 ${brief!.recentLosses}패 ${brief!.recentDraws}무',
@@ -1229,14 +1298,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: _metricColumn(
-                    todayGame != null ? '경기 상태' : '다음 경기',
-                    todayGame != null
-                        ? todayGame!.inning
-                        : nextGame == null
-                        ? '-'
-                        : '${nextGame.time} vs ${opponent?.shortName ?? '-'}',
-                  ),
+                  child: _metricColumn(view.metricLabel, view.metricValue),
                 ),
               ],
             ),
@@ -1266,28 +1328,37 @@ class _MyTeamBriefCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: ElevatedButton.icon(
                     onPressed: openPrimaryDestination,
-                    style: OutlinedButton.styleFrom(
+                    icon: Icon(view.primaryIcon, size: 18),
+                    label: Text(primaryLabel, overflow: TextOverflow.ellipsis),
+                    style: ElevatedButton.styleFrom(
                       minimumSize: const Size.fromHeight(44),
+                      backgroundColor: accent,
+                      foregroundColor: AppColors.textPrimary,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: Text(primaryLabel),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => context.go('/standings'),
-                    style: ElevatedButton.styleFrom(
+                  child: OutlinedButton.icon(
+                    onPressed: openSecondaryDestination,
+                    icon: Icon(view.secondaryIcon, size: 17),
+                    label: Text(
+                      secondaryLabel,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(44),
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.divider),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('순위 보기'),
                   ),
                 ),
               ],
@@ -1315,6 +1386,12 @@ class _MyTeamBriefCard extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _standingMeta(TeamStanding standing) {
+    final gb = standing.gb.trim();
+    final gapText = gb == '0' || gb == '0.0' ? '선두권' : '${standing.gb}G차';
+    return '${standing.rank}위 · $gapText';
   }
 
   Widget _recentGameChip(BuildContext context, _RecentGameSummaryData summary) {
@@ -1440,6 +1517,233 @@ Widget _teamMarkFallback(String shortName, double size) {
   );
 }
 
+class _BriefStatusPill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _BriefStatusPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.36)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MyTeamBriefViewModel {
+  final String statusLabel;
+  final Color statusColor;
+  final IconData icon;
+  final String headline;
+  final String subline;
+  final String situation;
+  final String metricLabel;
+  final String metricValue;
+  final IconData primaryIcon;
+  final IconData secondaryIcon;
+
+  const _MyTeamBriefViewModel({
+    required this.statusLabel,
+    required this.statusColor,
+    required this.icon,
+    required this.headline,
+    required this.subline,
+    required this.situation,
+    required this.metricLabel,
+    required this.metricValue,
+    required this.primaryIcon,
+    required this.secondaryIcon,
+  });
+
+  static _MyTeamBriefViewModel resolve({
+    required String myTeamId,
+    required String teamName,
+    required Game? todayGame,
+    required ScheduleGame? nextGame,
+    required KboTeam? opponent,
+    required TeamStanding? standing,
+  }) {
+    final opponentName = opponent?.name ?? '상대팀';
+    final standingText = standing == null
+        ? '순위 집계 중'
+        : '${standing.rank}위 · ${standing.wins}승 ${standing.losses}패';
+
+    if (todayGame != null) {
+      final isAway = todayGame.away.teamId == myTeamId;
+      final myScore = isAway ? todayGame.away.score : todayGame.home.score;
+      final opponentScore = isAway
+          ? todayGame.home.score
+          : todayGame.away.score;
+      final scoreText = '$myScore:$opponentScore';
+      final timeText = todayGame.inning.isNotEmpty
+          ? todayGame.inning
+          : todayGame.startTime;
+      final liveState = myScore > opponentScore
+          ? '리드'
+          : myScore < opponentScore
+          ? '추격'
+          : '동점';
+      final finalState = myScore > opponentScore
+          ? '승리'
+          : myScore < opponentScore
+          ? '패배'
+          : '무승부';
+      final finalColor = myScore > opponentScore
+          ? AppColors.positive
+          : myScore < opponentScore
+          ? AppColors.live
+          : AppColors.accent;
+
+      return switch (todayGame.status) {
+        GameStatus.live => _MyTeamBriefViewModel(
+          statusLabel: 'LIVE',
+          statusColor: AppColors.live,
+          icon: Icons.sports_baseball_rounded,
+          headline: '$timeText $scoreText $liveState',
+          subline: '${todayGame.stadium} · vs $opponentName',
+          situation: liveState == '동점'
+              ? '경기가 팽팽합니다. 문자중계에서 직전 플레이와 다음 타석을 바로 확인하세요.'
+              : '지금은 스코어보다 흐름이 중요합니다. 문자중계에서 직전 플레이를 바로 확인하세요.',
+          metricLabel: '경기 상태',
+          metricValue: timeText,
+          primaryIcon: Icons.chevron_right_rounded,
+          secondaryIcon: Icons.leaderboard_rounded,
+        ),
+        GameStatus.final_ => _MyTeamBriefViewModel(
+          statusLabel: '경기 종료',
+          statusColor: finalColor,
+          icon: Icons.check_circle_outline_rounded,
+          headline: '$scoreText $finalState',
+          subline: '${todayGame.stadium} · vs $opponentName',
+          situation: finalState == '승리'
+              ? '승리로 마무리했습니다. 박스스코어에서 핵심 기록을 확인하세요.'
+              : '최종 결과가 확정됐습니다. 박스스코어와 순위 변화를 확인하세요.',
+          metricLabel: '최종',
+          metricValue: scoreText,
+          primaryIcon: Icons.insert_chart_outlined_rounded,
+          secondaryIcon: Icons.leaderboard_rounded,
+        ),
+        GameStatus.scheduled => _MyTeamBriefViewModel(
+          statusLabel: '경기 전',
+          statusColor: AppColors.ballYellow,
+          icon: Icons.notifications_active_outlined,
+          headline:
+              '오늘 ${todayGame.startTime} vs ${opponent?.shortName ?? '상대'}',
+          subline: todayGame.stadium,
+          situation: '시작 알림을 켜두면 플레이볼과 라인업 타이밍을 놓치지 않습니다.',
+          metricLabel: '시작',
+          metricValue: todayGame.startTime.isEmpty ? '예정' : todayGame.startTime,
+          primaryIcon: Icons.info_outline_rounded,
+          secondaryIcon: Icons.notifications_outlined,
+        ),
+        GameStatus.cancelled || GameStatus.suspended => _MyTeamBriefViewModel(
+          statusLabel: labelForGameStatus(
+            todayGame.status,
+            statusLabel: todayGame.statusLabel,
+          ),
+          statusColor: AppColors.textSecondary,
+          icon: Icons.info_outline_rounded,
+          headline: '오늘 경기는 진행되지 않습니다',
+          subline: '${todayGame.stadium} · vs $opponentName',
+          situation: '취소나 중단 사유를 확인하고 다음 일정을 이어서 보세요.',
+          metricLabel: '상태',
+          metricValue: timeText.isEmpty
+              ? labelForGameStatus(
+                  todayGame.status,
+                  statusLabel: todayGame.statusLabel,
+                )
+              : timeText,
+          primaryIcon: Icons.info_outline_rounded,
+          secondaryIcon: Icons.leaderboard_rounded,
+        ),
+      };
+    }
+
+    if (nextGame != null) {
+      return _MyTeamBriefViewModel(
+        statusLabel: '다음 경기',
+        statusColor: AppColors.accent,
+        icon: Icons.calendar_today_rounded,
+        headline: '오늘은 $teamName 경기 없음',
+        subline: '${nextGame.time} · ${nextGame.stadium} · vs $opponentName',
+        situation: '다음 경기 전까지 최근 흐름과 현재 순위를 먼저 확인하세요.',
+        metricLabel: '다음 경기',
+        metricValue: '${nextGame.time} vs ${opponent?.shortName ?? '상대'}',
+        primaryIcon: Icons.calendar_month_rounded,
+        secondaryIcon: Icons.leaderboard_rounded,
+      );
+    }
+
+    return _MyTeamBriefViewModel(
+      statusLabel: '마이팀',
+      statusColor: AppColors.accent,
+      icon: Icons.calendar_today_rounded,
+      headline: '오늘은 $teamName 경기 없음',
+      subline: standingText,
+      situation: '다음 경기와 순위 정보가 들어오면 이 카드에서 먼저 보여줍니다.',
+      metricLabel: '상태',
+      metricValue: '-',
+      primaryIcon: Icons.calendar_month_rounded,
+      secondaryIcon: Icons.leaderboard_rounded,
+    );
+  }
+}
+
+class _BriefTeamMark extends StatelessWidget {
+  final KboTeam? team;
+  final String fallbackLabel;
+
+  const _BriefTeamMark({required this.team, required this.fallbackLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = team?.primaryColor ?? AppColors.accent;
+    return Container(
+      width: 50,
+      height: 50,
+      padding: const EdgeInsets.all(7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.36)),
+      ),
+      child: CachedNetworkImage(
+        imageUrl: team?.logoUrl ?? '',
+        fit: BoxFit.contain,
+        memCacheWidth: 150,
+        memCacheHeight: 150,
+        errorWidget: (_, _, _) => _teamMarkFallback(fallbackLabel, 36),
+        placeholder: (_, _) => _teamMarkFallback(fallbackLabel, 36),
+      ),
+    );
+  }
+}
+
 class _TodayBaseballCard extends StatelessWidget {
   final _TodayBaseballBriefData brief;
 
@@ -1467,16 +1771,7 @@ class _TodayBaseballCard extends StatelessWidget {
             _spotlightMatchupCard(context, spotlight),
             const SizedBox(height: 12),
           ],
-          if (brief.summaries.isNotEmpty)
-            Column(
-              children: [
-                for (final item in brief.summaries) ...[
-                  _todayGameSummaryRow(context, item),
-                  if (item != brief.summaries.last) const SizedBox(height: 8),
-                ],
-              ],
-            ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 2),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -1516,7 +1811,8 @@ class _TodayBaseballCard extends StatelessWidget {
 
   Widget _spotlightMatchupCard(BuildContext context, Game game) {
     return AppPressable(
-      onTap: () => context.push('/game/${game.gameId}', extra: game),
+      key: ValueKey('today-spotlight-game-${game.gameId}'),
+      onTap: () => context.push(gameDetailLocationFor(game), extra: game),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
@@ -1650,117 +1946,6 @@ class _TodayBaseballCard extends StatelessWidget {
     );
   }
 
-  Widget _todayGameSummaryRow(
-    BuildContext context,
-    _TodayGameSummaryData item,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: AppPressable(
-        onTap: () => context.push('/game/${item.gameId}'),
-        pressedScale: 0.975,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: item.isMyTeamGame
-                ? AppColors.accent.withValues(alpha: 0.08)
-                : AppColors.cardSub,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: item.isMyTeamGame ? AppColors.accent : AppColors.divider,
-            ),
-          ),
-          child: Row(
-            children: [
-              _teamMarkIcon(item.awayTeamId, item.awayShortName),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${item.awayShortName} vs ${item.homeShortName}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        if (item.isMyTeamGame)
-                          const Text(
-                            'MY',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${labelForGameStatus(item.status, statusLabel: item.statusLabel)} · ${item.timeLabel} · ${item.stadium}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                children: [
-                  Text(
-                    item.status == GameStatus.scheduled ||
-                            item.status == GameStatus.cancelled
-                        ? 'vs'
-                        : '${item.awayScore} : ${item.homeScore}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (item.isMyTeamGame)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.background.withValues(alpha: 0.82),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: AppColors.accent.withValues(alpha: 0.5),
-                        ),
-                      ),
-                      child: const Text(
-                        '마이팀',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(width: 8),
-              _teamMarkIcon(item.homeTeamId, item.homeShortName),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _metaPill(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -1775,39 +1960,6 @@ class _TodayBaseballCard extends StatelessWidget {
           fontSize: 11,
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _teamMarkIcon(String teamId, String shortName) {
-    final team = KboTeams.byId(teamId);
-    return CachedNetworkImage(
-      imageUrl: team?.logoUrl ?? '',
-      width: 28,
-      height: 28,
-      fit: BoxFit.contain,
-      errorWidget: (_, _, _) => _teamMarkFallback(shortName, 28),
-      placeholder: (_, _) => _teamMarkFallback(shortName, 28),
-    );
-  }
-
-  Widget _teamMarkFallback(String shortName, double size) {
-    final initial = shortName.isNotEmpty ? shortName.substring(0, 1) : '?';
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        initial,
-        style: TextStyle(
-          fontSize: size * 0.45,
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -2536,7 +2688,6 @@ class _TodayBaseballBriefData {
   final int scheduledGames;
   final int finalGames;
   final Game? spotlight;
-  final List<_TodayGameSummaryData> summaries;
 
   const _TodayBaseballBriefData({
     required this.headline,
@@ -2546,37 +2697,6 @@ class _TodayBaseballBriefData {
     required this.scheduledGames,
     required this.finalGames,
     required this.spotlight,
-    required this.summaries,
-  });
-}
-
-class _TodayGameSummaryData {
-  final String gameId;
-  final String awayTeamId;
-  final String homeTeamId;
-  final String awayShortName;
-  final String homeShortName;
-  final String stadium;
-  final GameStatus status;
-  final String? statusLabel;
-  final String timeLabel;
-  final int awayScore;
-  final int homeScore;
-  final bool isMyTeamGame;
-
-  const _TodayGameSummaryData({
-    required this.gameId,
-    required this.awayTeamId,
-    required this.homeTeamId,
-    required this.awayShortName,
-    required this.homeShortName,
-    required this.stadium,
-    required this.status,
-    required this.statusLabel,
-    required this.timeLabel,
-    required this.awayScore,
-    required this.homeScore,
-    required this.isMyTeamGame,
   });
 }
 
