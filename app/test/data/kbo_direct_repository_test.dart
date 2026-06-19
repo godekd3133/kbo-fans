@@ -96,6 +96,31 @@ void main() {
     expect(repository.scheduleStatusLabelForTesting(status, '우천취소'), '우천취소');
   });
 
+  test('direct standings parser preserves streak column', () {
+    final repository = KboDirectRepository();
+    final standings = repository.parseStandingsHtmlForTesting('''
+      <table>
+        <thead>
+          <tr>
+            <th>순위</th><th>팀명</th><th>경기</th><th>승</th><th>패</th>
+            <th>무</th><th>승률</th><th>게임차</th><th>최근10경기</th>
+            <th>연속</th><th>홈</th><th>방문</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td><td>LG</td><td>43</td><td>25</td><td>17</td>
+            <td>1</td><td>0.595</td><td>0</td><td>7승0무3패</td>
+            <td>3승</td><td>13-1-9</td><td>12-0-8</td>
+          </tr>
+        </tbody>
+      </table>
+    ''');
+
+    expect(standings.single.streak, '3승');
+    expect(standings.single.streakLabel, '3연승');
+  });
+
   test('direct lineup analysis parser preserves live lineup stats', () {
     final repository = KboDirectRepository();
     final lineup = repository.parseLineupAnalysisForTesting(

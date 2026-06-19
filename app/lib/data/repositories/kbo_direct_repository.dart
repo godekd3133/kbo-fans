@@ -808,6 +808,7 @@ class KboDirectRepository implements GameRepository {
             draws: int.tryParse(cells[5]) ?? 0,
             pct: cells.length > 6 ? cells[6] : '.000',
             gb: cells.length > 7 && cells[7].isNotEmpty ? cells[7] : '-',
+            streak: cells.length > 9 ? cells[9] : '',
           ),
         );
       }
@@ -1783,6 +1784,11 @@ class KboDirectRepository implements GameRepository {
       return null;
     }
     return text;
+  }
+
+  @visibleForTesting
+  List<TeamStanding> parseStandingsHtmlForTesting(String html) {
+    return _parseStandingsHtml(html);
   }
 
   @visibleForTesting

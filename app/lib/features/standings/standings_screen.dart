@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/api/api_client.dart';
+import '../../data/models/schedule.dart';
 import '../../data/providers.dart';
 
 class StandingsScreen extends ConsumerStatefulWidget {
@@ -151,7 +152,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
     );
   }
 
-  Widget _myTeamSummaryCard(List standings, String myTeamId) {
+  Widget _myTeamSummaryCard(List<TeamStanding> standings, String myTeamId) {
     final current = standings
         .where((item) => item.teamId == myTeamId)
         .firstOrNull;
@@ -165,6 +166,10 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
       teamColor.withValues(alpha: 0.16),
       AppColors.card,
     );
+    final streakLabel = current.streakLabel;
+    final recordText =
+        '${current.rank}위 · ${current.wins}승 ${current.losses}패 ${current.draws}무'
+        '${streakLabel == '-' ? '' : ' · $streakLabel'}';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -195,7 +200,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${current.rank}위 · ${current.wins}승 ${current.losses}패 ${current.draws}무',
+                  recordText,
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -225,7 +230,11 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
     );
   }
 
-  Widget _buildList(WidgetRef ref, List standings, String? myTeamId) {
+  Widget _buildList(
+    WidgetRef ref,
+    List<TeamStanding> standings,
+    String? myTeamId,
+  ) {
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(standingsProvider(_selectedSeason));
@@ -388,6 +397,22 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                       ),
                     ),
                   ),
+                  SizedBox(
+                    width: 50,
+                    child: Center(
+                      child: Text(
+                        s.streakLabel,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _streakColor(s.streakLabel, isMyTeam),
+                          fontWeight: isMyTeam
+                              ? FontWeight.w800
+                              : FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -433,9 +458,23 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
             width: 42,
             child: Center(child: Text('차', style: style)),
           ),
+          SizedBox(
+            width: 50,
+            child: Center(child: Text('연속', style: style)),
+          ),
         ],
       ),
     );
+  }
+
+  Color _streakColor(String label, bool isMyTeam) {
+    if (label.contains('연승')) {
+      return AppColors.positive;
+    }
+    if (label.contains('연패')) {
+      return AppColors.live;
+    }
+    return isMyTeam ? AppColors.textPrimary : AppColors.textSecondary;
   }
 
   String _gbText(String gb) {

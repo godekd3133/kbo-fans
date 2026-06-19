@@ -265,6 +265,7 @@ class ApiGameRepository implements GameRepository {
         draws: sm['draws'] as int? ?? 0,
         pct: sm['pct'] as String? ?? '.000',
         gb: sm['gb'] as String? ?? '-',
+        streak: sm['streak'] as String? ?? '',
       );
     }).toList();
   }

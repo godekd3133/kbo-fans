@@ -18,6 +18,7 @@ void main() {
       expect(standings, hasLength(10));
       expect(first?['teamId'], 'SS');
       expect(first?['games'], 43);
+      expect(first?['streak'], '1승');
     },
   );
 

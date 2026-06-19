@@ -122,6 +122,7 @@ class ApiHomeRepository {
       draws: json['draws'] as int? ?? 0,
       pct: json['pct'] as String? ?? '.000',
       gb: json['gb'] as String? ?? '-',
+      streak: json['streak'] as String? ?? '',
     );
   }
 
