@@ -10,6 +10,7 @@ from kbo_fans_backend.schemas.push import (
     LiveActivityRegisterRequest,
     LiveActivityUnregisterRequest,
     LiveActivityUpdateRequest,
+    PushBaseballInfoRequest,
     PushRegisterRequest,
     PushTestRequest,
 )
@@ -39,6 +40,23 @@ def send_test_push(
 ) -> ApiEnvelope[dict]:
     _ensure_sync_allowed(x_kbo_push_sync_secret)
     return ApiEnvelope.success_response(service.send_test(payload))
+
+
+@router.post("/baseball-info", response_model=ApiEnvelope[dict])
+def send_baseball_info_push(
+    payload: PushBaseballInfoRequest,
+    x_kbo_push_sync_secret: Optional[str] = Header(default=None),
+) -> ApiEnvelope[dict]:
+    _ensure_sync_allowed(x_kbo_push_sync_secret)
+    return ApiEnvelope.success_response(
+        service.send_baseball_info(
+            kind=payload.kind,
+            date=payload.date,
+            topic=payload.topic,
+            token=payload.token,
+            team_id=payload.teamId,
+        )
+    )
 
 
 @router.post("/resubscribe-topics", response_model=ApiEnvelope[dict])

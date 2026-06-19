@@ -9,7 +9,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/providers.dart';
@@ -41,6 +43,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   PushNotificationDelivery _inningChangeDelivery =
       PushNotificationDelivery.liveOnly;
   PushNotificationDelivery _atBatDelivery = PushNotificationDelivery.immediate;
+  PushNotificationDelivery _baseballInfoDelivery =
+      PushNotificationDelivery.immediate;
   bool _notifAllGames = false;
   bool _pushLoaded = false;
   bool _permissionBusy = false;
@@ -87,6 +91,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _lineupOpenedDelivery = settings.lineupOpenedDelivery;
       _inningChangeDelivery = settings.inningChangeDelivery;
       _atBatDelivery = settings.atBatDelivery;
+      _baseballInfoDelivery = settings.baseballInfoDelivery;
       _notifAllGames = settings.allGames;
       _pushLoaded = true;
     });
@@ -105,6 +110,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         lineupOpened: _isEnabled(_lineupOpenedDelivery),
         inningChange: _isEnabled(_inningChangeDelivery),
         atBat: _isEnabled(_atBatDelivery),
+        baseballInfo: _isEnabled(_baseballInfoDelivery),
         allGames: _notifAllGames,
         gameStartDelivery: _gameStartDelivery,
         scoringDelivery: _scoringDelivery,
@@ -115,6 +121,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         lineupOpenedDelivery: _lineupOpenedDelivery,
         inningChangeDelivery: _inningChangeDelivery,
         atBatDelivery: _atBatDelivery,
+        baseballInfoDelivery: _baseballInfoDelivery,
       ),
       myTeam: teamId,
     );
@@ -148,6 +155,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _lineupOpenedDelivery = PushNotificationDelivery.summary;
       _inningChangeDelivery = PushNotificationDelivery.liveOnly;
       _atBatDelivery = PushNotificationDelivery.immediate;
+      _baseballInfoDelivery = PushNotificationDelivery.immediate;
       _notifAllGames = false;
     });
     await _savePushSettings();
@@ -280,6 +288,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 6),
+              const AppArtworkCard(
+                assetName: VisualAssets.notificationPlaybook,
+                height: 96,
+                alignment: Alignment.centerLeft,
+              ),
+              const SizedBox(height: 8),
               _PlaybookPreviewCard(
                 teamName: team?.shortName ?? '마이팀',
                 teamColor: teamColor,
@@ -402,6 +416,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         title: '타석',
                         current: _atBatDelivery,
                         update: (value) => _atBatDelivery = value,
+                      ),
+                    ),
+                    _divider(),
+                    _momentRow(
+                      label: '야구 브리프',
+                      description: '월요일과 비경기일에 일정, 순위, 기록 확인을 알려줍니다',
+                      delivery: _baseballInfoDelivery,
+                      teamColor: teamColor,
+                      onTap: () => _showDeliveryPicker(
+                        title: '야구 브리프',
+                        current: _baseballInfoDelivery,
+                        update: (value) => _baseballInfoDelivery = value,
                       ),
                     ),
                     if (!_pushLoaded)

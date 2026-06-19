@@ -16,6 +16,8 @@ from kbo_fans_backend.schemas.push import (
 from kbo_fans_backend.services.apns_live_activity import ApnsLiveActivitySender
 from kbo_fans_backend.services.push_registry import PushRegistry
 
+KBO_TEAM_IDS = ("LG", "KT", "SK", "SS", "NC", "HH", "LT", "HT", "OB", "WO")
+
 
 class PushService:
     def __init__(
@@ -124,6 +126,58 @@ class PushService:
         )
         response = messaging.send(message)
         return {"sent": True, "target": "token", "messageId": response}
+
+    def send_baseball_info(
+        self,
+        *,
+        kind: str = "weekly_check",
+        date: str = "",
+        topic: Optional[str] = None,
+        token: Optional[str] = None,
+        team_id: Optional[str] = None,
+    ) -> dict[str, Any]:
+        if token and topic:
+            raise ValueError("only one of token or topic is allowed")
+
+        messaging = self._get_messaging()
+        title, body = _baseball_info_copy(kind=kind, team_id=team_id)
+        notification = messaging.Notification(title=title, body=body)
+        visible_options = _visible_push_options(messaging, title=title, body=body)
+        data = {
+            "type": "baseball_info",
+            "kind": kind,
+            "date": date,
+            "teamId": team_id or "",
+            "route": "/home",
+        }
+
+        if token:
+            message = messaging.Message(
+                notification=notification,
+                data=data,
+                token=token,
+                **visible_options,
+            )
+            response = messaging.send(message)
+            return {
+                "sent": True,
+                "kind": kind,
+                "target": "token",
+                "messages": [{"target": "token", "messageId": response}],
+            }
+
+        targets = _baseball_info_topics(topic=topic, team_id=team_id)
+        sent = []
+        for target_topic in targets:
+            message = messaging.Message(
+                notification=notification,
+                data=data,
+                topic=target_topic,
+                **visible_options,
+            )
+            message_id = messaging.send(message)
+            sent.append({"topic": target_topic, "messageId": message_id})
+        return {"sent": True, "kind": kind, "messages": sent}
 
     def register_live_activity(self, payload: LiveActivityRegisterRequest) -> dict[str, Any]:
         registration = self.registry.save_live_activity(payload)
@@ -326,6 +380,10 @@ class PushService:
                 payload.notifications.atBat,
                 delivery_modes.atBat if delivery_modes else None,
             ),
+            "baseball_info": _sends_immediately(
+                payload.notifications.baseballInfo,
+                delivery_modes.baseballInfo if delivery_modes else None,
+            ),
         }
 
         for topic_name, enabled in topic_flags.items():
@@ -395,6 +453,9 @@ def _game_moment_copy(
         suffix = f" {start_detail}" if start_detail else ""
         return "경기 곧 시작", f"{matchup} 경기가 곧 시작됩니다.{suffix}"
     if moment == "scoring":
+        if play_text:
+            situation = f" · {situation_text}" if situation_text else ""
+            return "득점 장면", f"{inning} {play_text}{situation} · 현재 {score}"
         return "득점 발생", f"{inning} {matchup} 현재 스코어 {score}"
     if moment == "hit":
         actor = f"{batter_name} " if batter_name else ""
@@ -417,6 +478,35 @@ def _game_moment_copy(
             return "타석 알림", f"{inning} {batter_name} 타석"
         return "타석 알림", f"{matchup} {inning} 현재 {score}"
     return "경기 알림", f"{matchup} {inning} 현재 {score}"
+
+
+def _baseball_info_topics(
+    *,
+    topic: Optional[str],
+    team_id: Optional[str],
+) -> list[str]:
+    if topic:
+        return [topic]
+    if team_id:
+        return [f"baseball_info_{team_id}"]
+    return [f"baseball_info_{team_id}" for team_id in KBO_TEAM_IDS] + [
+        "baseball_info_ALL"
+    ]
+
+
+def _baseball_info_copy(*, kind: str, team_id: Optional[str] = None) -> tuple[str, str]:
+    team_prefix = f"{team_id} " if team_id else ""
+    if kind == "weekly_check":
+        return "월요일 야구 체크", "이번 주 KBO 일정, 순위, 기록 흐름을 확인해 보세요."
+    if kind == "off_day":
+        return "오늘의 야구 브리프", "경기가 없는 날에는 순위표와 다음 일정을 가볍게 확인해 보세요."
+    if kind == "records_check":
+        return "기록실 업데이트", f"{team_prefix}타자와 투수 기록 흐름을 확인해 보세요."
+    if kind == "lineup_day":
+        return "경기 전 체크", "선발 라인업과 예매 정보를 경기 전에 확인해 보세요."
+    if kind == "rival_watch":
+        return "라이벌 경기 체크", "순위에 영향을 줄 수 있는 주요 경기를 확인해 보세요."
+    return "야구 브리프", "오늘의 KBO 일정, 순위, 기록 정보를 확인해 보세요."
 
 
 def _firebase_certificate_source(

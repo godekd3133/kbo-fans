@@ -17,6 +17,7 @@ class NotificationDeliveryModes(BaseModel):
     lineupOpened: Optional[NotificationDelivery] = None
     inningChange: Optional[NotificationDelivery] = None
     atBat: Optional[NotificationDelivery] = None
+    baseballInfo: Optional[NotificationDelivery] = None
 
 
 class NotificationSettings(BaseModel):
@@ -29,6 +30,7 @@ class NotificationSettings(BaseModel):
     lineupOpened: bool = True
     inningChange: bool = False
     atBat: bool = True
+    baseballInfo: bool = True
     allGames: bool
     deliveryModes: Optional[NotificationDeliveryModes] = None
 
@@ -48,6 +50,20 @@ class PushTestRequest(BaseModel):
     token: Optional[str] = None
 
 
+class PushBaseballInfoRequest(BaseModel):
+    kind: Literal[
+        "weekly_check",
+        "off_day",
+        "records_check",
+        "lineup_day",
+        "rival_watch",
+    ] = "weekly_check"
+    date: str = ""
+    topic: Optional[str] = None
+    token: Optional[str] = None
+    teamId: Optional[str] = None
+
+
 class LiveActivityContentState(BaseModel):
     awayTeamId: str
     awayTeam: str
@@ -64,6 +80,8 @@ class LiveActivityContentState(BaseModel):
     outs: int = 0
     stadium: str
     updatedAt: str
+    situationText: str = ""
+    playText: str = ""
 
 
 class LiveActivityRegisterRequest(BaseModel):

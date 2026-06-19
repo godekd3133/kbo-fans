@@ -22,6 +22,7 @@ void main() {
     expect(topics, contains('game_start_soon_LG'));
     expect(topics, contains('hit_LG'));
     expect(topics, contains('at_bat_LG'));
+    expect(topics, contains('baseball_info_LG'));
     expect(topics, isNot(contains('game_end_LG')));
     expect(topics, isNot(contains('game_start_ALL')));
     expect(topics, isNot(contains('all_games_enabled')));
@@ -41,6 +42,7 @@ void main() {
     expect(topics, contains('game_start_soon_ALL'));
     expect(topics, contains('hit_ALL'));
     expect(topics, contains('at_bat_ALL'));
+    expect(topics, contains('baseball_info_ALL'));
     expect(topics, contains('all_games_enabled'));
     expect(topics, isNot(contains('scoring_LG')));
   });
@@ -94,6 +96,7 @@ void main() {
       homerunDelivery: PushNotificationDelivery.liveOnly,
       reversalDelivery: PushNotificationDelivery.off,
       gameEndDelivery: PushNotificationDelivery.immediate,
+      baseballInfoDelivery: PushNotificationDelivery.off,
     );
 
     final topics = buildPushTopics(settings: settings, myTeam: 'LG');
@@ -103,6 +106,7 @@ void main() {
     expect(topics, isNot(contains('hit_LG')));
     expect(topics, isNot(contains('homerun_LG')));
     expect(topics, isNot(contains('reversal_LG')));
+    expect(topics, isNot(contains('baseball_info_LG')));
   });
 
   test('push 등록 payload는 현재 따라가는 경기 id를 포함한다', () {
@@ -118,6 +122,11 @@ void main() {
 
     expect(payload['deviceToken'], 'fcm-token');
     expect(payload['myTeam'], 'LG');
+    expect(payload['notifications']['baseballInfo'], isTrue);
+    expect(
+      payload['notifications']['deliveryModes']['baseballInfo'],
+      'immediate',
+    );
     expect(payload['followedGameIds'], ['20260612KTLG0']);
   });
 

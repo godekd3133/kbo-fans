@@ -240,6 +240,8 @@ class LiveActivityScoreboardSyncService:
             outs=_int_value(current.get("outs")),
             stadium=str(game.get("stadium") or "KBO"),
             updatedAt=now.astimezone().strftime("%H:%M:%S"),
+            situationText=str(current.get("situationText") or ""),
+            playText=str(current.get("playText") or ""),
         )
         return LiveActivityUpdateRequest(
             gameId=game_id,
@@ -465,6 +467,10 @@ def _current_payload(game: dict[str, Any]) -> dict[str, Any]:
         "pitchCount": current.get("pitchCount"),
         "batterName": str(current.get("batterName") or "").strip(),
         "pitcherName": str(current.get("pitcherName") or "").strip(),
+        "situationText": str(
+            current.get("situationText") or current.get("baseState") or ""
+        ).strip(),
+        "playText": str(current.get("playText") or "").strip(),
     }
 
 

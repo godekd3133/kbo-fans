@@ -194,6 +194,8 @@ class LiveActivityService {
             'outs': 0,
             'stadium': targetGame.stadium,
             'updatedAt': _updatedAtText(),
+            'situationText': '',
+            'playText': '',
             'apiBaseUrl': AppConfig.instance.apiBaseUrl,
           });
       await _registerLiveActivityFromNativeResponse(response);

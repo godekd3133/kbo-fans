@@ -157,7 +157,9 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
       strikes: arguments["strikes"] as? Int ?? 0,
       outs: arguments["outs"] as? Int ?? 0,
       stadium: stadium,
-      updatedAt: updatedAt
+      updatedAt: updatedAt,
+      situationText: arguments["situationText"] as? String,
+      playText: arguments["playText"] as? String
     )
 
     Task {

@@ -99,6 +99,7 @@ def test_build_topics_respects_delivery_modes() -> None:
                 lineupOpened="summary",
                 inningChange="live_only",
                 atBat="summary",
+                baseballInfo="off",
             ),
         ),
     )
@@ -134,6 +135,7 @@ def test_register_persists_device_token(tmp_path) -> None:
     assert "hit_LG" in response["subscribedTopics"]
     assert "game_start_soon_LG" in response["subscribedTopics"]
     assert "at_bat_LG" in response["subscribedTopics"]
+    assert "baseball_info_LG" in response["subscribedTopics"]
 
 
 def test_register_persists_followed_game_ids(tmp_path) -> None:
@@ -245,6 +247,69 @@ def test_send_game_moment_start_soon_includes_start_time_payload(tmp_path) -> No
     assert first_message.data["type"] == "game_start_soon"
     assert first_message.data["startTime"] == "18:30"
     assert first_message.data["stadium"] == "수원"
+
+
+def test_send_game_moment_scoring_uses_play_text_for_varied_copy(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=4,
+        home_score=3,
+        inning="8회초",
+        batter_name="문보경",
+        situation_text="2사 1,3루",
+        play_text="문보경 우전 적시타",
+    )
+
+    assert response["sent"] is True
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "득점 장면"
+    assert first_message.notification.body == "8회초 문보경 우전 적시타 · 2사 1,3루 · 현재 4:3"
+    assert first_message.data["type"] == "scoring"
+    assert first_message.data["playText"] == "문보경 우전 적시타"
+
+
+def test_send_baseball_info_weekly_check_targets_all_team_topics(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_baseball_info(
+        kind="weekly_check",
+        date="2026-06-22",
+    )
+
+    assert response["sent"] is True
+    assert response["kind"] == "weekly_check"
+    assert [message.topic for message in messaging.sent_messages] == [
+        "baseball_info_LG",
+        "baseball_info_KT",
+        "baseball_info_SK",
+        "baseball_info_SS",
+        "baseball_info_NC",
+        "baseball_info_HH",
+        "baseball_info_LT",
+        "baseball_info_HT",
+        "baseball_info_OB",
+        "baseball_info_WO",
+        "baseball_info_ALL",
+    ]
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "월요일 야구 체크"
+    assert first_message.notification.body == "이번 주 KBO 일정, 순위, 기록 흐름을 확인해 보세요."
+    assert first_message.data["type"] == "baseball_info"
+    assert first_message.data["kind"] == "weekly_check"
+    assert first_message.data["date"] == "2026-06-22"
 
 
 def test_send_test_push_uses_visible_notification_options(tmp_path) -> None:
@@ -1137,6 +1202,36 @@ def test_send_test_push_endpoint_uses_sync_secret(monkeypatch) -> None:
     assert allowed.json()["data"]["sent"] is True
 
 
+def test_send_baseball_info_endpoint_uses_sync_secret(monkeypatch) -> None:
+    class SecretSettings:
+        push_sync_secret = "secret"
+
+    captured = {}
+
+    class FakeService:
+        def send_baseball_info(self, **kwargs) -> dict:
+            captured.update(kwargs)
+            return {"sent": True, "kind": kwargs["kind"]}
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: SecretSettings())
+    monkeypatch.setattr(push_routes, "service", FakeService())
+    client = TestClient(app)
+    body = {"kind": "weekly_check", "date": "2026-06-22"}
+
+    denied = client.post("/api/push/baseball-info", json=body)
+    allowed = client.post(
+        "/api/push/baseball-info",
+        json=body,
+        headers={"X-Kbo-Push-Sync-Secret": "secret"},
+    )
+
+    assert denied.status_code == 401
+    assert allowed.status_code == 200
+    assert captured["kind"] == "weekly_check"
+    assert captured["date"] == "2026-06-22"
+    assert allowed.json()["data"]["sent"] is True
+
+
 def test_sync_scoreboard_endpoint_defaults_to_kbo_game_day(monkeypatch) -> None:
     class SecretSettings:
         push_sync_secret = "secret"
@@ -1217,6 +1312,8 @@ def test_apns_live_activity_payload_matches_ios_content_state_contract(tmp_path)
         "outs",
         "stadium",
         "updatedAt",
+        "situationText",
+        "playText",
     }
     assert content_state["awayScore"] == 4
     assert content_state["homeScore"] == 3
