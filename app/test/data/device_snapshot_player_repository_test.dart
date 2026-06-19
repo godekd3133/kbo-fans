@@ -269,6 +269,62 @@ void main() {
 
     expect(leaders, isEmpty);
   });
+
+  test('unsupported 2001 device snapshots are ignored', () async {
+    SharedPreferences.setMockInitialValues({
+      _snapshotKey('recordsOverview:2001'): jsonEncode({
+        'savedAt': DateTime.utc(2026, 5, 20, 11, 50).toIso8601String(),
+        'payload': {
+          'season': 2001,
+          'avgLeaders': [_leaderJson(metricKey: 'AVG')],
+          'hrLeaders': [_leaderJson(metricKey: 'HR')],
+          'opsLeaders': [_leaderJson(metricKey: 'OPS', value: '1.000')],
+          'opsPlusLeaders': const [],
+          'eraLeaders': [_leaderJson(metricKey: 'ERA', value: '2.88')],
+          'todayHitter': {'label': '오늘의 타자'},
+          'todayPitcher': {'label': '오늘의 투수'},
+          'monthHitter': {'label': '이달의 타자'},
+          'monthPitcher': {'label': '이달의 투수'},
+        },
+      }),
+      _snapshotKey('leaderboard:avg:2001'): jsonEncode({
+        'savedAt': DateTime.utc(2026, 5, 20, 11, 50).toIso8601String(),
+        'payload': {
+          'season': 2001,
+          'leaders': [_leaderJson(metricKey: 'AVG')],
+        },
+      }),
+      _snapshotKey('teamStats:LG:2001'): jsonEncode({
+        'teamId': 'LG',
+        'season': 2001,
+        'hitting': {'AVG': '0.300'},
+        'pitching': {'ERA': '3.00'},
+      }),
+    });
+    final repository = DeviceSnapshotPlayerRepository(
+      primary: _ThrowingPlayerRepository(),
+      fallback: _FallbackPlayerRepository(
+        teamStats: _emptyStats(teamId: 'LG', season: 2001),
+      ),
+      now: () => DateTime.utc(2026, 5, 20, 12),
+    );
+
+    final overview = await repository.getRecordsOverview(season: 2001);
+    final leaders = await repository.getLeaderboard(
+      season: 2001,
+      metric: LeaderboardMetric.avg,
+    );
+    final stats = await repository.getTeamStats('LG', season: 2001);
+
+    expect(overview.avgLeaders, isEmpty);
+    expect(overview.hrLeaders, isEmpty);
+    expect(overview.opsLeaders, isEmpty);
+    expect(overview.eraLeaders, isEmpty);
+    expect(leaders, isEmpty);
+    expect(stats.season, 2001);
+    expect(stats.hitting, isEmpty);
+    expect(stats.pitching, isEmpty);
+  });
 }
 
 TeamStats _emptyStats({required String teamId, required int season}) =>

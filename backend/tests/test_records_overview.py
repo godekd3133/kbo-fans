@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+
 from kbo_fans_backend.crawlers.records_overview import RecordsOverviewCrawler
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.storage import JsonSnapshotStore
@@ -51,6 +52,14 @@ class _FreshRecordsCrawler:
                 "value": ".500",
             }
         ]
+
+
+class _UnexpectedRecordsCrawler:
+    def get_overview(self, season: int):
+        raise AssertionError("unsupported records season should not crawl")
+
+    def get_leaderboard(self, season: int, metric: str):
+        raise AssertionError("unsupported records season should not crawl")
 
 
 class _UnsortedRecordsCrawler:
@@ -190,6 +199,50 @@ def test_historical_leaderboard_snapshots_include_retired_top_leaders() -> None:
     assert hr_2013["payload"]["leaders"][0]["name"] == "박병호"
     assert hr_2013["payload"]["leaders"][0]["value"] == "37"
     assert hr_2013["payload"]["leaders"][0]["isRetired"] is True
+
+
+def test_unsupported_2001_overview_does_not_reuse_current_rows_or_snapshot(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    store.save(
+        "records_overview",
+        "2001",
+        {
+            "season": 2001,
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 1,
+                        "playerId": "current",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Current Season",
+                        "teamId": "KT",
+                        "value": ".400",
+                    }
+                ],
+                "hr": [],
+                "ops": [],
+                "era": [],
+            },
+            "featured": {},
+        },
+    )
+    service = RecordsOverviewService(
+        crawler=_UnexpectedRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    payload = service.get_overview(2001)
+
+    assert payload == RecordsOverviewCrawler.empty_overview(2001)
+
+
+def test_unsupported_2001_leaderboard_does_not_crawl() -> None:
+    service = RecordsOverviewService(crawler=_UnexpectedRecordsCrawler())
+
+    payload = service.get_leaderboard(2001, "avg")
+
+    assert payload == {"season": 2001, "metric": "avg", "leaders": []}
 
 
 def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:

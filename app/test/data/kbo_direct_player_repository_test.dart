@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/data/models/player.dart';
+import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/repositories/kbo_direct_player_repository.dart';
 
 void main() {
@@ -27,6 +28,38 @@ void main() {
     );
 
     expect(name, '김테스트');
+  });
+
+  test('direct player records treat 2001 as unsupported', () async {
+    final repository = KboDirectPlayerRepository();
+
+    expect(
+      repository.isSupportedOfficialPlayerRecordSeasonForTesting(2001),
+      isFalse,
+    );
+    expect(
+      repository.isSupportedOfficialPlayerRecordSeasonForTesting(2002),
+      isTrue,
+    );
+
+    final overview = await repository.getRecordsOverview(season: 2001);
+    final leaderboard = await repository.getLeaderboard(
+      season: 2001,
+      metric: LeaderboardMetric.avg,
+    );
+    final players = await repository.getTeamPlayers('LG', season: 2001);
+    final stats = await repository.getTeamStats('LG', season: 2001);
+
+    expect(overview.avgLeaders, isEmpty);
+    expect(overview.hrLeaders, isEmpty);
+    expect(overview.opsLeaders, isEmpty);
+    expect(overview.opsPlusLeaders, isEmpty);
+    expect(overview.eraLeaders, isEmpty);
+    expect(leaderboard, isEmpty);
+    expect(players, isEmpty);
+    expect(stats.season, 2001);
+    expect(stats.hitting, isEmpty);
+    expect(stats.pitching, isEmpty);
   });
 }
 

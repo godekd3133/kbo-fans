@@ -27,6 +27,9 @@ class RecordsOverviewService:
         )
 
     def get_overview(self, season: int) -> Dict[str, Any]:
+        if not RecordsOverviewCrawler.is_supported_season(season):
+            return RecordsOverviewCrawler.empty_overview(season)
+
         cached = self._overview_cache.get(season)
         if cached is not None:
             return self._normalize_overview_payload(cached, season)
@@ -49,6 +52,9 @@ class RecordsOverviewService:
         return payload
 
     def get_leaderboard(self, season: int, metric: str) -> Dict[str, Any]:
+        if not RecordsOverviewCrawler.is_supported_season(season):
+            return {"season": season, "metric": metric, "leaders": []}
+
         cache_key = f"{season}:{metric}"
         cached = self._leaderboard_cache.get(cache_key)
         if cached is not None:

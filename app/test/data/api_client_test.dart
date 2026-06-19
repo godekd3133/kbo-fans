@@ -161,6 +161,48 @@ void main() {
     expect(overview.eraLeaders.first.rank, 1);
   });
 
+  test('API player repository ignores unsupported 2001 cache', () async {
+    SharedPreferences.setMockInitialValues({
+      'api_cache:recordsOverview:v4:2001': _cachedApiPayload(
+        _recordsOverviewPayload(season: 2001, firstAvgRank: 1, firstEraRank: 1),
+        age: const Duration(days: 3),
+      ),
+      'api_cache:leaderboard:v3:avg:2001': _cachedApiPayload({
+        'season': 2001,
+        'metric': 'avg',
+        'leaders': [_leader(rank: 1, metricKey: 'AVG', value: '0.350')],
+      }, age: const Duration(days: 3)),
+      'api_cache:teamStats:v2:LG:2001': _cachedApiPayload({
+        'teamId': 'LG',
+        'season': 2001,
+        'hitting': {'AVG': '0.300'},
+        'pitching': {'ERA': '3.00'},
+      }, age: const Duration(days: 3)),
+    });
+    final repository = ApiPlayerRepository(
+      ApiClient(
+        dio: _dioWithAdapter(_FailingAdapter()),
+        enableRequestTiming: false,
+      ),
+    );
+
+    final overview = await repository.getRecordsOverview(season: 2001);
+    final leaderboard = await repository.getLeaderboard(
+      season: 2001,
+      metric: LeaderboardMetric.avg,
+    );
+    final stats = await repository.getTeamStats('LG', season: 2001);
+
+    expect(overview.avgLeaders, isEmpty);
+    expect(overview.hrLeaders, isEmpty);
+    expect(overview.opsLeaders, isEmpty);
+    expect(overview.eraLeaders, isEmpty);
+    expect(leaderboard, isEmpty);
+    expect(stats.season, 2001);
+    expect(stats.hitting, isEmpty);
+    expect(stats.pitching, isEmpty);
+  });
+
   test(
     'current scoreboard API failure is not masked by fresh API cache',
     () async {
@@ -251,6 +293,38 @@ void main() {
     expect(games.single.hasTeamStats, isFalse);
     expect(games.single.away.hits, 0);
     expect(games.single.home.walks, 0);
+  });
+
+  test('standings parser preserves team streak', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ApiGameRepository(
+      ApiClient(
+        dio: _dioWithAdapter(
+          _SuccessAdapter({
+            'season': 2026,
+            'standings': [
+              {
+                'rank': 1,
+                'teamId': 'LG',
+                'teamName': 'LG 트윈스',
+                'wins': 3,
+                'losses': 0,
+                'draws': 0,
+                'pct': '1.000',
+                'gb': '0',
+                'streak': 'W3',
+              },
+            ],
+          }),
+        ),
+        enableRequestTiming: false,
+      ),
+    );
+
+    final standings = await repository.getStandings(2026);
+
+    expect(standings.single.streak, 'W3');
+    expect(standings.single.streakLabel, '3연승');
   });
 
   test(

@@ -12,6 +12,7 @@ import '../models/team_stats.dart';
 import 'player_repository.dart';
 
 class KboDirectPlayerRepository implements PlayerRepository {
+  static const _minSupportedOfficialPlayerRecordSeason = 2002;
   static const _kboBase = 'https://www.koreabaseball.com';
   static const _corsProxy = 'https://corsproxy.io/?';
   static const _playerSearchUrl =
@@ -105,6 +106,10 @@ class KboDirectPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return const <PlayerProfile>[];
+    }
+
     if (season < DateTime.now().year) {
       return _fetchHistoricalTeamPlayers(teamId, season);
     }
@@ -190,6 +195,10 @@ class KboDirectPlayerRepository implements PlayerRepository {
 
   @override
   Future<TeamStats> getTeamStats(String teamId, {required int season}) {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return Future.value(_emptyTeamStats(teamId, season));
+    }
+
     return _fetchTeamStats(teamId, season);
   }
 
@@ -210,6 +219,10 @@ class KboDirectPlayerRepository implements PlayerRepository {
 
   @override
   Future<RecordsOverview> getRecordsOverview({required int season}) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return _emptyRecordsOverview(season);
+    }
+
     final results = await Future.wait([
       _fetchLeaders(_hitterAvgUrl, season, 'AVG', 'hitter'),
       _fetchLeaders(_hitterHrUrl, season, 'HR', 'hitter'),
@@ -267,6 +280,10 @@ class KboDirectPlayerRepository implements PlayerRepository {
     required int season,
     required LeaderboardMetric metric,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return const <RecordLeader>[];
+    }
+
     if (metric == LeaderboardMetric.opsPlus) {
       final opsLeaders = await _fetchLeaderboard(
         _hitterOpsUrl,
@@ -294,6 +311,36 @@ class KboDirectPlayerRepository implements PlayerRepository {
       options: Options(responseType: ResponseType.plain),
     );
     return response.data ?? '';
+  }
+
+  bool isSupportedOfficialPlayerRecordSeasonForTesting(int season) =>
+      _isSupportedOfficialPlayerRecordSeason(season);
+
+  bool _isSupportedOfficialPlayerRecordSeason(int season) =>
+      season >= _minSupportedOfficialPlayerRecordSeason;
+
+  RecordsOverview _emptyRecordsOverview(int season) {
+    return RecordsOverview(
+      season: season,
+      avgLeaders: const [],
+      hrLeaders: const [],
+      opsLeaders: const [],
+      opsPlusLeaders: const [],
+      eraLeaders: const [],
+      todayHitter: const FeaturedPlayerCard(label: '오늘의 타자'),
+      todayPitcher: const FeaturedPlayerCard(label: '오늘의 투수'),
+      monthHitter: const FeaturedPlayerCard(label: '이달의 타자'),
+      monthPitcher: const FeaturedPlayerCard(label: '이달의 투수'),
+    );
+  }
+
+  TeamStats _emptyTeamStats(String teamId, int season) {
+    return TeamStats(
+      teamId: teamId,
+      season: season,
+      hitting: const {},
+      pitching: const {},
+    );
   }
 
   Future<String> _postText(

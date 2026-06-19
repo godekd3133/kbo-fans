@@ -11,6 +11,7 @@ class ApiPlayerRepository implements PlayerRepository {
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
   static const _stableCacheAge = Duration(minutes: 5);
   static const _playerCacheVersion = 'v2';
+  static const _minSupportedOfficialPlayerRecordSeason = 2002;
 
   ApiPlayerRepository(this._client);
 
@@ -19,6 +20,10 @@ class ApiPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return const <PlayerProfile>[];
+    }
+
     final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/team/$teamId/players',
@@ -39,6 +44,10 @@ class ApiPlayerRepository implements PlayerRepository {
     String playerId, {
     required int season,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      throw StateError('Player detail unavailable before 2002: $playerId');
+    }
+
     final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/player/$playerId',
@@ -53,6 +62,10 @@ class ApiPlayerRepository implements PlayerRepository {
 
   @override
   Future<TeamStats> getTeamStats(String teamId, {required int season}) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return _emptyTeamStats(teamId, season);
+    }
+
     final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/team/$teamId/stats',
@@ -74,6 +87,13 @@ class ApiPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return TeamRecordsBundle(
+        players: const [],
+        teamStats: _emptyTeamStats(teamId, season),
+      );
+    }
+
     final isHistoricalSeason = _isHistoricalSeason(season);
     final data = await _client.getCached(
       '/team/$teamId/records',
@@ -115,6 +135,10 @@ class ApiPlayerRepository implements PlayerRepository {
 
   @override
   Future<RecordsOverview> getRecordsOverview({required int season}) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return _emptyRecordsOverview(season);
+    }
+
     final isHistoricalSeason = _isHistoricalSeason(season);
     Map<String, dynamic> data;
     try {
@@ -170,6 +194,10 @@ class ApiPlayerRepository implements PlayerRepository {
     required int season,
     required LeaderboardMetric metric,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return const <RecordLeader>[];
+    }
+
     if (!metric.supportedByOfficialSource) {
       return const [];
     }
@@ -224,6 +252,33 @@ class ApiPlayerRepository implements PlayerRepository {
     }
     final direct = leaders[metric.key] as List<dynamic>?;
     return direct != null && direct.isNotEmpty ? direct : null;
+  }
+
+  bool _isSupportedOfficialPlayerRecordSeason(int season) =>
+      season >= _minSupportedOfficialPlayerRecordSeason;
+
+  RecordsOverview _emptyRecordsOverview(int season) {
+    return RecordsOverview(
+      season: season,
+      avgLeaders: const [],
+      hrLeaders: const [],
+      opsLeaders: const [],
+      opsPlusLeaders: const [],
+      eraLeaders: const [],
+      todayHitter: const FeaturedPlayerCard(label: '오늘의 타자'),
+      todayPitcher: const FeaturedPlayerCard(label: '오늘의 투수'),
+      monthHitter: const FeaturedPlayerCard(label: '이달의 타자'),
+      monthPitcher: const FeaturedPlayerCard(label: '이달의 투수'),
+    );
+  }
+
+  TeamStats _emptyTeamStats(String teamId, int season) {
+    return TeamStats(
+      teamId: teamId,
+      season: season,
+      hitting: const {},
+      pitching: const {},
+    );
   }
 
   bool _isValidRecordsOverviewPayload(Map<String, dynamic> data) {

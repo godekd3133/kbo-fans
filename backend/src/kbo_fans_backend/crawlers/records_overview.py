@@ -10,6 +10,7 @@ from kbo_fans_backend.utils.player_images import kbo_player_image_url
 
 
 class RecordsOverviewCrawler(BaseCrawler):
+    MIN_SUPPORTED_SEASON = 2002
     _HITTER_AVG_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HRA_RT"
     _HITTER_HR_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HR_CN"
     _HITTER_OPS_URL = "/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT"
@@ -28,6 +29,9 @@ class RecordsOverviewCrawler(BaseCrawler):
     )
 
     def get_overview(self, season: int) -> Dict[str, Any]:
+        if not self.is_supported_season(season):
+            return self.empty_overview(season)
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             avg_future = executor.submit(
                 self._fetch_leaders, self._HITTER_AVG_URL, season, "AVG", "hitter"
@@ -109,6 +113,9 @@ class RecordsOverviewCrawler(BaseCrawler):
         return leaders
 
     def get_leaderboard(self, season: int, metric: str) -> List[Dict[str, Any]]:
+        if not self.is_supported_season(season):
+            return []
+
         metric_info = self._LEADERBOARD_METRICS.get(metric)
         if metric_info is None:
             return []
@@ -267,6 +274,18 @@ class RecordsOverviewCrawler(BaseCrawler):
         if player_id:
             payload["imageUrl"] = kbo_player_image_url(season, player_id)
         return payload
+
+    @classmethod
+    def is_supported_season(cls, season: int) -> bool:
+        return season >= cls.MIN_SUPPORTED_SEASON
+
+    @staticmethod
+    def empty_overview(season: int) -> Dict[str, Any]:
+        return {
+            "season": season,
+            "leaders": {"avg": [], "hr": [], "ops": [], "opsPlus": [], "era": []},
+            "featured": {},
+        }
 
     def _feature_reason(
         self,

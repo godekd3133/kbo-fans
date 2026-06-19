@@ -12,6 +12,7 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
   static const _prefix = 'player_snapshot:';
   static const _snapshotVersion = 'v3';
   static const _currentSeasonSnapshotMaxAge = Duration(hours: 6);
+  static const _minSupportedOfficialPlayerRecordSeason = 2002;
 
   final PlayerRepository primary;
   final PlayerRepository fallback;
@@ -28,6 +29,10 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return const <PlayerProfile>[];
+    }
+
     final cacheKey = 'teamPlayers:$teamId:$season';
     final fresh = await _tryPrimary(
       cacheKey,
@@ -51,6 +56,10 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     String playerId, {
     required int season,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      throw StateError('Player detail unavailable before 2002: $playerId');
+    }
+
     final cacheKey = 'playerDetail:$playerId:$season';
     final fresh = await _tryPrimary(
       cacheKey,
@@ -67,6 +76,10 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
 
   @override
   Future<TeamStats> getTeamStats(String teamId, {required int season}) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return _emptyTeamStats(teamId, season);
+    }
+
     final cacheKey = 'teamStats:$teamId:$season';
     final fresh = await _tryPrimary(
       cacheKey,
@@ -93,6 +106,13 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     String teamId, {
     required int season,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return TeamRecordsBundle(
+        players: const [],
+        teamStats: _emptyTeamStats(teamId, season),
+      );
+    }
+
     final cacheKey = 'teamRecords:$teamId:$season';
     final fresh = await _tryPrimary(
       cacheKey,
@@ -116,6 +136,10 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
 
   @override
   Future<RecordsOverview> getRecordsOverview({required int season}) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return _emptyRecordsOverview(season);
+    }
+
     final cacheKey = 'recordsOverview:$season';
     final fresh = await _tryPrimary(
       cacheKey,
@@ -142,6 +166,10 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     required int season,
     required LeaderboardMetric metric,
   }) async {
+    if (!_isSupportedOfficialPlayerRecordSeason(season)) {
+      return const <RecordLeader>[];
+    }
+
     final cacheKey = 'leaderboard:${metric.key}:$season';
     final fresh = await _tryPrimary(
       cacheKey,
@@ -159,6 +187,33 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     if (cached != null && _isValidLeaders(cached)) return cached;
 
     return fallback.getLeaderboard(season: season, metric: metric);
+  }
+
+  bool _isSupportedOfficialPlayerRecordSeason(int season) =>
+      season >= _minSupportedOfficialPlayerRecordSeason;
+
+  TeamStats _emptyTeamStats(String teamId, int season) {
+    return TeamStats(
+      teamId: teamId,
+      season: season,
+      hitting: const {},
+      pitching: const {},
+    );
+  }
+
+  RecordsOverview _emptyRecordsOverview(int season) {
+    return RecordsOverview(
+      season: season,
+      avgLeaders: const [],
+      hrLeaders: const [],
+      opsLeaders: const [],
+      opsPlusLeaders: const [],
+      eraLeaders: const [],
+      todayHitter: const FeaturedPlayerCard(label: '오늘의 타자'),
+      todayPitcher: const FeaturedPlayerCard(label: '오늘의 투수'),
+      monthHitter: const FeaturedPlayerCard(label: '이달의 타자'),
+      monthPitcher: const FeaturedPlayerCard(label: '이달의 투수'),
+    );
   }
 
   Future<T?> _tryPrimary<T>(

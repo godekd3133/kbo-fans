@@ -6,7 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
@@ -20,6 +22,8 @@ import '../../data/providers.dart';
 enum PlayerListFilter { all, entryOnly, reserveOnly }
 
 enum PlayerSortOption { name, avg, ops, era, whip }
+
+const firstSupportedRecordsSeason = 2002;
 
 class RecordsScreen extends ConsumerStatefulWidget {
   final String? teamId;
@@ -161,7 +165,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
+                const AppArtworkCard(
+                  assetName: VisualAssets.recordsStats,
+                  height: 112,
+                  alignment: Alignment.centerRight,
+                ),
+                const SizedBox(height: 14),
                 _seasonSelector(),
                 const SizedBox(height: 14),
                 overviewAsync.when(
@@ -1195,7 +1205,12 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _seasonSelector() {
     final seasons = [
-      for (int year = DateTime.now().year; year >= 2001; year--) year,
+      for (
+        int year = DateTime.now().year;
+        year >= firstSupportedRecordsSeason;
+        year--
+      )
+        year,
     ];
     return Container(
       height: 42,
