@@ -2,6 +2,78 @@
 
 ---
 
+## 2026-06-19: 0.0.44 175개 캐주얼 비주얼 리소스 릴리즈/TestFlight 재업로드
+
+### 완료
+- [x] 리얼/시네마틱 톤으로 생성된 시트는 적용 대상에서 제외하고, 캐주얼 2.5D 스티커형 야구 일러스트 방향으로 재생성
+- [x] `image_gen` 내장 경로로 홈, 경기 상세, 일정, 순위, 기록실, 알림, 온보딩용 5×5 리소스 시트 7장을 생성
+- [x] 각 시트를 25개씩 분할해 `app/assets/visuals/casual_*.webp` 175개를 480×270 WebP로 저장
+- [x] `VisualAssets`에 화면별 25개 asset sequence와 전체 175개 `casualAll` 목록을 추가
+- [x] `AppVisualResourceRail` 공통 위젯을 추가하고 홈, 경기 상세, 일정, 순위, 기록실, 설정, 온보딩에 각 카테고리별 가로 레일로 반영
+- [x] 큰 대표 artwork 상수도 캐주얼 WebP 대표 이미지로 돌리고, 최근 릴리즈의 asset manifest guardrail을 유지하기 위해 `app/pubspec.yaml`에 175개 WebP만 명시 등록
+- [x] `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 캐주얼 2.5D 리소스 레일 기준 반영
+- [x] `0.0.42` / `0.0.43` TestFlight 처리 빌드는 최신 소스와 분리되어, Git tag와 배포 바이너리 기준을 맞추기 위해 `0.0.44+44`로 재업로드하기로 정리
+
+### 검증
+- [x] `find app/assets/visuals -maxdepth 1 -type f -name 'casual_*.webp' -print | sort | wc -l` (`175`)
+- [x] `du -ch app/assets/visuals/casual_*.webp | tail -n 1` (`1.6M total`)
+- [x] `cd app && fvm dart format lib/core/constants/visual_assets.dart lib/core/widgets/app_visual_resource_rail.dart lib/features/home/home_screen.dart lib/features/onboarding/onboarding_screen.dart lib/features/game_detail/game_detail_screen.dart lib/features/schedule/schedule_screen.dart lib/features/standings/standings_screen.dart lib/features/records/records_screen.dart lib/features/settings/settings_screen.dart` (`0 changed`)
+- [x] `cd app && fvm dart format lib/features/schedule/schedule_screen.dart test/features/settings/settings_screen_test.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart test/features/settings/settings_screen_test.dart test/features/schedule/schedule_screen_test.dart -r expanded` (`13 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub` (`137 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`156 passed`)
+- [x] `0.0.43 (43)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, casual webp 번들 확인 (`casual_*.webp` IPA 번들 175개)
+- [x] `0.0.43 (43)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [x] `0.0.44 (44)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, casual webp 번들 확인 (`casual_*.webp` 175개, PNG 대표 이미지 0개)
+- [x] `0.0.44 (44)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+- [x] 운영 API health 확인 (`/api/health` `status=ok`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 0.0.42 통합 비주얼 헤더 릴리즈/TestFlight 업로드
+
+### 완료
+- [x] `0.0.41` 이후 남아 있던 일정/순위 통합 비주얼 변경과 보조 화면 모션 보강을 새 tester-facing build `0.0.42+42`로 분리
+- [x] 일정 화면의 별도 `scheduleTicketing` 이미지 스트립을 제거하고 월 헤더 배경으로 통합
+- [x] 순위 화면의 별도 `standingsRace` 이미지 스트립을 제거하고 `1위 경쟁` / `마이팀` / `연승` 요약 rail 배경으로 통합
+- [x] 통합 비주얼 UI mockup `docs/assets/mockups/integrated-visual-ui-2026-06-19.png`를 문서 자산으로 보존
+- [x] release IPA가 untracked `app/assets/visuals/casual_*.webp` 실험 파일을 번들하지 않도록 `pubspec.yaml` visual asset manifest를 참조 중인 PNG 명시 목록으로 고정
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`, `docs/APP_SPEC.md`를 `0.0.42` 기준으로 동기화
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/schedule/schedule_screen.dart lib/features/standings/standings_screen.dart` (`0 changed`)
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub` (`137 passed`; 1차 실행에서 schedule header overflow를 잡고 header 구조를 compact하게 보정 후 재실행)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`156 passed`)
+- [x] `file docs/assets/mockups/integrated-visual-ui-2026-06-19.png` (`853 x 1844`, RGB PNG)
+- [x] `git diff --check`
+- [x] `0.0.42 (42)` archive/IPA metadata, patch notes, Firebase plist, push entitlements 확인 (`casual_*.webp` IPA 번들 0개)
+- [x] `0.0.42 (42)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+
+---
+
+## 2026-06-19: 생성 비주얼 UI 통합 레이어 정리
+
+### 완료
+- [x] `image_gen`으로 독립 배너가 아닌 단일 홈 UI 통합 목업을 재생성하고 `docs/assets/mockups/integrated-visual-ui-2026-06-19.png`에 보관
+- [x] 최신 앱 코드의 `AppArtworkLayer` / `AppArtworkBackdrop` 기준으로 생성 비주얼을 기존 카드/표/헤더 배경으로 낮게 까는 surface-background 경로 확인
+- [x] 홈 `마이팀 브리프`가 별도 이미지 strip 없이 미선택/선택 상태 모두 `_sectionCard` 내부 background layer를 쓰는지 확인
+- [x] 경기 상세 상단 스코어, 스코어 탭 이닝표, 박스스코어 요약, 라인업 매치업이 정상 상태 독립 이미지 배너 없이 해당 정보 surface 내부에 비주얼을 흡수하는지 확인
+- [x] 일정 상단 이미지는 월 헤더 배경으로, 순위 상단 이미지는 `1위 경쟁/마이팀/연승` 요약 rail 배경으로 통합
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 정상 데이터 화면의 생성 비주얼 사용 원칙을 독립 배너가 아닌 surface background layer로 동기화
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/widgets/app_artwork_card.dart lib/features/home/home_screen.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/schedule/schedule_screen.dart lib/features/standings/standings_screen.dart`
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/game_detail_navigation_test.dart test/features/schedule/schedule_screen_test.dart test/features/standings/standings_screen_test.dart -r expanded` (`19 passed`)
+- [x] `git diff --check`
+
+---
+
 ## 2026-06-19: 보조 화면 누락 모션 보강
 
 ### 완료
@@ -26,6 +98,7 @@
 - [x] `image_gen` 내장 경로로 홈 scoreboard, 순위표, 경기 상세 live screen reference mock 3장을 생성하고 `docs/design_refs/`에 보존
 - [x] 순위 화면에 `1위 경쟁` / `마이팀` / `연승` compact rail을 추가해 표를 읽기 전 리그 흐름을 먼저 보이도록 정리
 - [x] 순위 데이터가 빈 배열일 때 헤더만 남는 화면 대신 `standings_race` 기반 artwork empty state와 `다시 확인` CTA를 노출
+- [x] Playwright 캡처에서 empty state가 화면 중앙까지 밀려 내려가는 것을 확인하고, 헤더 바로 아래에서 이미지 상태가 보이도록 상단 정렬로 조정
 - [x] 온보딩 모바일 팀 그리드의 logo/hero/card 비율과 CTA 전 여백을 조정해 390x844 화면에서 팀 카드와 버튼이 답답하게 붙지 않도록 정리
 - [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 순위 요약 rail, 순위 empty state, 온보딩 모바일 그리드 기준 반영
 
@@ -33,7 +106,9 @@
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/features/standings/standings_screen.dart lib/features/onboarding/onboarding_screen.dart test/features/standings/standings_screen_test.dart`
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/standings/standings_screen_test.dart -r expanded` (`3 passed`)
 - [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
-- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`136 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`137 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build web --release --dart-define=APP_ENV=local` (`Built build/web`; Wasm dry-run / Cupertino icon 경고는 기존 의존성/아이콘 경고)
+- [x] Playwright 390x844 캡처: `output/playwright/kbo-ui-image-ref/onboarding.png`, `output/playwright/kbo-ui-image-ref/standings.png`
 - [x] `file docs/design_refs/*.png` (`3개 reference mock 모두 RGB PNG`)
 - [x] `git diff --check`
 

@@ -62,12 +62,25 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('앱 정보 및 지원'), 500);
+    final mainScroll = find.byWidgetPredicate(
+      (widget) =>
+          widget is Scrollable && widget.axisDirection == AxisDirection.down,
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('앱 정보 및 지원'),
+      500,
+      scrollable: mainScroll.first,
+    );
 
     expect(find.text('0.1.0+1'), findsOneWidget);
     expect(find.text('문의하기'), findsOneWidget);
 
-    await tester.scrollUntilVisible(find.text('이용약관'), 200);
+    await tester.scrollUntilVisible(
+      find.text('이용약관'),
+      200,
+      scrollable: mainScroll.first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('이용약관'));
     await tester.pumpAndSettle();
@@ -77,7 +90,11 @@ void main() {
     await tester.tap(find.byTooltip('닫기'));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('개인정보처리방침'), 200);
+    await tester.scrollUntilVisible(
+      find.text('개인정보처리방침'),
+      200,
+      scrollable: mainScroll.first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('개인정보처리방침'));
     await tester.pumpAndSettle();
@@ -87,7 +104,11 @@ void main() {
     await tester.tap(find.byTooltip('닫기'));
     await tester.pumpAndSettle();
 
-    await tester.scrollUntilVisible(find.text('오픈소스 라이선스'), 200);
+    await tester.scrollUntilVisible(
+      find.text('오픈소스 라이선스'),
+      200,
+      scrollable: mainScroll.first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('오픈소스 라이선스'));
     await tester.pumpAndSettle();

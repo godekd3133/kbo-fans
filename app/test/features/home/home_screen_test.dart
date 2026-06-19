@@ -236,7 +236,17 @@ void main() {
     );
 
     expect(find.text('NC vs 두산'), findsNothing);
-    await tester.scrollUntilVisible(otherGameCardFinder, 300);
+    await tester.scrollUntilVisible(
+      otherGameCardFinder,
+      300,
+      scrollable: find
+          .byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                widget.axisDirection == AxisDirection.down,
+          )
+          .first,
+    );
     expect(otherGameCardFinder, findsOneWidget);
   });
 

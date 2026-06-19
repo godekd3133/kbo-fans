@@ -12,6 +12,7 @@ import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
@@ -181,7 +182,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           child: Column(
             children: [
               _buildMonthHeader(),
-              _buildScheduleArtwork(),
+              if (MediaQuery.sizeOf(context).height >= 760) ...[
+                AppVisualResourceRail(
+                  assets: VisualAssets.casualSchedule,
+                  semanticLabel: '일정 캐주얼 야구 비주얼',
+                ),
+                const SizedBox(height: 10),
+              ],
               Expanded(child: _buildBody(scheduleAsync)),
             ],
           ),
@@ -190,65 +197,65 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildScheduleArtwork() {
-    if (MediaQuery.sizeOf(context).height < 760) {
-      return const SizedBox.shrink();
-    }
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: AppArtworkCard(
-        assetName: VisualAssets.scheduleTicketing,
-        height: 78,
-        alignment: Alignment.centerRight,
-      ),
-    );
-  }
-
   Widget _buildMonthHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          children: [
+            const Positioned.fill(
+              child: AppArtworkLayer(
+                assetName: VisualAssets.scheduleTicketing,
+                alignment: Alignment.centerRight,
+                opacity: 0.18,
+              ),
+            ),
+            Row(
               children: [
-                Text(
-                  DateFormat(
-                    'MMM yyyy',
-                    'en_US',
-                  ).format(_currentMonth).toUpperCase(),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textDisabled,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        DateFormat(
+                          'MMM yyyy',
+                          'en_US',
+                        ).format(_currentMonth).toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textDisabled,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '일정',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          height: 1.05,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  '일정',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    height: 1.05,
-                  ),
+                _HeaderIconButton(
+                  icon: Icons.chevron_left_rounded,
+                  onTap: () => _changeMonth(-1),
                 ),
+                const SizedBox(width: 8),
+                _HeaderIconButton(
+                  icon: Icons.chevron_right_rounded,
+                  onTap: () => _changeMonth(1),
+                ),
+                const SizedBox(width: 8),
+                _HeaderIconButton(icon: Icons.today_rounded, onTap: _goToToday),
               ],
             ),
-          ),
-          _HeaderIconButton(
-            icon: Icons.chevron_left_rounded,
-            onTap: () => _changeMonth(-1),
-          ),
-          const SizedBox(width: 8),
-          _HeaderIconButton(
-            icon: Icons.chevron_right_rounded,
-            onTap: () => _changeMonth(1),
-          ),
-          const SizedBox(width: 8),
-          _HeaderIconButton(icon: Icons.today_rounded, onTap: _goToToday),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -284,7 +291,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       children: [
         _buildControls(),
         if (_viewMode == ScheduleViewMode.calendar) ...[
-          _buildCalendarPager(),
+          _buildCalendarPager(context),
           const Divider(color: AppColors.divider, height: 1),
           Expanded(
             child: scheduleAsync.when(
@@ -542,9 +549,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildCalendarPager() {
+  Widget _buildCalendarPager(BuildContext context) {
     return SizedBox(
-      height: 308,
+      height: _calendarPagerHeight(context),
       child: PageView.builder(
         controller: _calendarPageController,
         onPageChanged: (page) {
@@ -584,6 +591,17 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         },
       ),
     );
+  }
+
+  double _calendarPagerHeight(BuildContext context) {
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    if (viewportHeight < 700) {
+      return 252;
+    }
+    if (viewportHeight < 780) {
+      return 280;
+    }
+    return 308;
   }
 
   Widget _buildStadiumPager() {

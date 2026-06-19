@@ -16,6 +16,7 @@ import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/models/game.dart';
 import '../../data/models/highlight_info.dart';
@@ -469,6 +470,15 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                         ),
                         const SizedBox(width: 48),
                       ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 0, 0, 4),
+                    child: AppVisualResourceRail(
+                      assets: VisualAssets.casualGame,
+                      semanticLabel: '경기 상세 캐주얼 야구 비주얼',
                     ),
                   ),
                 ),

@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
 import '../../data/providers.dart';
@@ -68,7 +69,11 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              _buildStandingsArtwork(),
+              AppVisualResourceRail(
+                assets: VisualAssets.casualStandings,
+                semanticLabel: '순위 캐주얼 야구 비주얼',
+              ),
+              const SizedBox(height: 10),
               Expanded(
                 child: AppMotionSwitcher(
                   child: standingsAsync.when(
@@ -178,20 +183,6 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildStandingsArtwork() {
-    if (MediaQuery.sizeOf(context).height < 760) {
-      return const SizedBox.shrink();
-    }
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: AppArtworkCard(
-        assetName: VisualAssets.standingsRace,
-        height: 82,
-        alignment: Alignment.centerRight,
       ),
     );
   }
@@ -484,7 +475,8 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
+    return Align(
+      alignment: Alignment.topCenter,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: AppArtworkCard(
@@ -541,45 +533,61 @@ class _StandingsPulseRail extends StatelessWidget {
     final streakLeader = _streakLeader(standings);
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Expanded(
-            child: _StandingsPulseItem(
-              title: '1위 경쟁',
-              value: topRaceLabel,
-              icon: Icons.flag_rounded,
-              color: AppColors.accent,
+          const Positioned.fill(
+            child: AppArtworkLayer(
+              assetName: VisualAssets.standingsRace,
+              alignment: Alignment.centerRight,
+              opacity: 0.18,
             ),
           ),
-          const _PulseDivider(),
-          Expanded(
-            child: _StandingsPulseItem(
-              title: '마이팀',
-              value: myTeam == null ? '팀 선택 전' : '${myTeam.rank}위',
-              detail: myTeam == null
-                  ? '설정에서 선택'
-                  : '${myTeam.wins}-${myTeam.losses}-${myTeam.draws}',
-              icon: Icons.push_pin_rounded,
-              color: myTeam == null
-                  ? AppColors.textSecondary
-                  : (KboTeams.byId(myTeam.teamId)?.primaryColor ??
-                        AppColors.live),
-            ),
-          ),
-          const _PulseDivider(),
-          Expanded(
-            child: _StandingsPulseItem(
-              title: '연승',
-              value: streakLeader == null ? '-' : streakLeader.streakLabel,
-              detail: streakLeader?.teamName,
-              icon: Icons.trending_up_rounded,
-              color: AppColors.positive,
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _StandingsPulseItem(
+                    title: '1위 경쟁',
+                    value: topRaceLabel,
+                    icon: Icons.flag_rounded,
+                    color: AppColors.accent,
+                  ),
+                ),
+                const _PulseDivider(),
+                Expanded(
+                  child: _StandingsPulseItem(
+                    title: '마이팀',
+                    value: myTeam == null ? '팀 선택 전' : '${myTeam.rank}위',
+                    detail: myTeam == null
+                        ? '설정에서 선택'
+                        : '${myTeam.wins}-${myTeam.losses}-${myTeam.draws}',
+                    icon: Icons.push_pin_rounded,
+                    color: myTeam == null
+                        ? AppColors.textSecondary
+                        : (KboTeams.byId(myTeam.teamId)?.primaryColor ??
+                              AppColors.live),
+                  ),
+                ),
+                const _PulseDivider(),
+                Expanded(
+                  child: _StandingsPulseItem(
+                    title: '연승',
+                    value: streakLeader == null
+                        ? '-'
+                        : streakLeader.streakLabel,
+                    detail: streakLeader?.teamName,
+                    icon: Icons.trending_up_rounded,
+                    color: AppColors.positive,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

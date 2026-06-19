@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.41+41`
-- Current release tag: `0.0.41`
+- Flutter app version: `0.0.44+44`
+- Current release tag: `0.0.44`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -89,6 +89,9 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.39`: release/TestFlight apps no longer backfill local scoreboard/relay event notifications when the app is opened or focused; app-outside notifications are left to backend FCM/APNs, with current app build `0.0.39+39`.
 - `0.0.40`: home resume refresh keeps the last valid scoreboard on transient failure, live relay/backend sync cadence moves to 5 seconds, off-day home CTAs, smoother tab/native swipe transitions, season standings, expanded generated baseball visuals, Pretendard font, my-team brief polish, and baseball-info push smart daily planning ship with current app build `0.0.40+40`.
 - `0.0.41`: tab transitions now follow actual tab order direction, schedule month jumps use smoother ease-in-out PageView motion, generated visual/retry-state docs are reinforced, and current app build `0.0.41+41`.
+- `0.0.42`: schedule and standings generated baseball visuals are integrated into the functional header/summary rail instead of separate strips, secondary-screen motion is reinforced for diagnostics/patch notes/lineup, integrated visual UI mockup docs are preserved, and current app build `0.0.42+42`.
+- `0.0.43`: common visual resource rail ships across home, game detail, schedule, standings, records, notifications, and onboarding; `casual_*.webp` assets are explicitly included in the release manifest; `0.0.42` TestFlight processing build is superseded by the current source-aligned `0.0.43+43` build.
+- `0.0.44`: representative artwork constants are cut over to casual WebP assets, the release manifest drops the older PNG representative artwork entries, and `0.0.43` TestFlight processing build is superseded by the current source-aligned `0.0.44+44` build.
 
 ## GitHub Release Note Template
 

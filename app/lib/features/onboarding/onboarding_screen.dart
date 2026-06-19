@@ -10,6 +10,7 @@ import '../../core/router/app_router.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/app_visual_resource_rail.dart';
 import '../../data/providers.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -104,6 +105,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               AppArtworkCard(
                 assetName: VisualAssets.onboardingHero,
                 height: viewportWidth >= 900 ? 176 : 104,
+              ),
+              const SizedBox(height: 10),
+              AppVisualResourceRail(
+                assets: VisualAssets.casualOnboarding,
+                height: viewportWidth >= 900 ? 62 : 48,
+                padding: EdgeInsets.zero,
+                semanticLabel: '온보딩 캐주얼 야구 비주얼',
               ),
               const SizedBox(height: 16),
               Expanded(
