@@ -82,9 +82,9 @@
     },
     "PushSyncIntervalSeconds": {
       "Type": "Number",
-      "Default": 8,
-      "MinValue": 8,
-      "Description": "Sync worker polling interval. Use 8 seconds for live sports demos."
+      "Default": 5,
+      "MinValue": 5,
+      "Description": "Sync worker polling interval. Use 5 seconds for live sports demos."
     },
     "HealthCheckPath": {
       "Type": "String",

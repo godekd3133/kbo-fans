@@ -13,10 +13,10 @@ import 'package:kbo_fans/data/repositories/game_repository.dart';
 import 'package:kbo_fans/features/game_detail/game_detail_screen.dart';
 
 void main() {
-  test('라이브 경기 상세는 8초 refresh cadence를 사용한다', () {
+  test('라이브 경기 상세는 relay 탭 5초, 그 외 탭 8초 refresh cadence를 사용한다', () {
     expect(
       gameDetailRefreshIntervalFor(GameStatus.live, selectedTabIndex: 1),
-      const Duration(seconds: 8),
+      const Duration(seconds: 5),
     );
     expect(
       gameDetailRefreshIntervalFor(GameStatus.live, selectedTabIndex: 0),

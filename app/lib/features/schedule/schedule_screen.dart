@@ -783,14 +783,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(
-              height: 320,
-              child: Center(
-                child: Text(
-                  '날짜를 탭해 경기 일정을 보세요',
-                  style: TextStyle(color: AppColors.textDisabled),
-                ),
-              ),
+            _buildScheduleEmptyArtwork(
+              title: '일정 선택',
+              message: '날짜를 탭해 경기 일정을 보세요',
             ),
           ],
         ),
@@ -804,24 +799,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            SizedBox(
-              height: 320,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.event_busy, size: 48, color: AppColors.divider),
-                    const SizedBox(height: 12),
-                    Text(
-                      '선택한 날짜에 경기가 없습니다',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textDisabled,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            _buildScheduleEmptyArtwork(
+              title: '경기 없음',
+              message: '선택한 날짜에 경기가 없습니다',
             ),
           ],
         ),
@@ -878,6 +858,38 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
+  Widget _buildScheduleEmptyArtwork({
+    required String title,
+    required String message,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+      child: AppArtworkCard(
+        assetName: VisualAssets.scheduleEmptyCalendar,
+        height: 178,
+        alignment: Alignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildGameListLoading() {
     return const Center(
       child: CircularProgressIndicator(color: AppColors.live),
@@ -891,29 +903,35 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          SizedBox(
-            height: 320,
-            child: Center(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
+            child: AppArtworkCard(
+              assetName: VisualAssets.dataRetry,
+              height: 184,
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   const Text(
                     '일정을 불러올 수 없습니다',
-                    style: TextStyle(color: AppColors.textDisabled),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   Text(
                     describeAsyncError(error),
-                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
-                      color: AppColors.textDisabled,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _refreshSchedule,
-                    child: const Text('다시 시도'),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      onPressed: _refreshSchedule,
+                      child: const Text('다시 시도'),
+                    ),
                   ),
                 ],
               ),
@@ -937,10 +955,17 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
     final stadiums = stadiumMap.keys.toList()..sort();
     if (stadiums.isEmpty) {
-      return Center(
-        child: Text(
-          '표시할 경기가 없습니다',
-          style: TextStyle(color: AppColors.textDisabled),
+      return RefreshIndicator(
+        onRefresh: _refreshSchedule,
+        color: AppColors.live,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            _buildScheduleEmptyArtwork(
+              title: '구장별 일정 없음',
+              message: '표시할 경기가 없습니다',
+            ),
+          ],
         ),
       );
     }

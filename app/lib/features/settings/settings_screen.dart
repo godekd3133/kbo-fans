@@ -131,6 +131,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return delivery != PushNotificationDelivery.off;
   }
 
+  bool get _isCorePlaybookActive {
+    return _gameStartDelivery == PushNotificationDelivery.immediate &&
+        _scoringDelivery == PushNotificationDelivery.immediate &&
+        _hitDelivery == PushNotificationDelivery.immediate &&
+        _homerunDelivery == PushNotificationDelivery.immediate &&
+        _reversalDelivery == PushNotificationDelivery.immediate &&
+        _gameEndDelivery == PushNotificationDelivery.summary &&
+        _lineupOpenedDelivery == PushNotificationDelivery.summary &&
+        _inningChangeDelivery == PushNotificationDelivery.liveOnly &&
+        _atBatDelivery == PushNotificationDelivery.immediate &&
+        _baseballInfoDelivery == PushNotificationDelivery.immediate &&
+        !_notifAllGames;
+  }
+
+  String get _presetLabel {
+    if (!_pushLoaded) {
+      return '설정 불러오는 중';
+    }
+    return _isCorePlaybookActive ? '내 팀 집중' : '커스텀';
+  }
+
   Future<void> _setDelivery({
     required PushNotificationDelivery delivery,
     required ValueChanged<PushNotificationDelivery> update,
@@ -208,6 +229,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final myTeamId = ref.watch(myTeamProvider);
     final team = myTeamId != null ? KboTeams.byId(myTeamId) : null;
     final teamColor = team?.primaryColor ?? AppColors.live;
+    final isCorePlaybookActive = _pushLoaded && _isCorePlaybookActive;
 
     return Scaffold(
       body: SafeArea(
@@ -242,6 +264,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ),
                   Container(
+                    constraints: const BoxConstraints(maxWidth: 176),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 6,
@@ -251,8 +274,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(color: AppColors.divider),
                     ),
-                    child: const Text(
-                      '현재 프리셋: 내 팀 집중',
+                    child: Text(
+                      '현재 프리셋: $_presetLabel',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -297,6 +322,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _PlaybookPreviewCard(
                 teamName: team?.shortName ?? '마이팀',
                 teamColor: teamColor,
+                isApplied: isCorePlaybookActive,
                 onApply: _applyCorePlaybook,
                 onPermissionCheck: _permissionBusy
                     ? null
@@ -1048,12 +1074,14 @@ class _MyTeamCard extends StatelessWidget {
 class _PlaybookPreviewCard extends StatelessWidget {
   final String teamName;
   final Color teamColor;
+  final bool isApplied;
   final VoidCallback onApply;
   final VoidCallback? onPermissionCheck;
 
   const _PlaybookPreviewCard({
     required this.teamName,
     required this.teamColor,
+    required this.isApplied,
     required this.onApply,
     required this.onPermissionCheck,
   });
@@ -1110,9 +1138,12 @@ class _PlaybookPreviewCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: onApply,
-                  icon: const Icon(Icons.tune, size: 16),
-                  label: const Text('프리셋 적용'),
+                  onPressed: isApplied ? null : onApply,
+                  icon: Icon(
+                    isApplied ? Icons.check_circle_outline_rounded : Icons.tune,
+                    size: 16,
+                  ),
+                  label: Text(isApplied ? '적용됨' : '프리셋 적용'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textPrimary,
                     side: const BorderSide(color: AppColors.divider),

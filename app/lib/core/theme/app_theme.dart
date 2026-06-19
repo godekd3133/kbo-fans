@@ -18,6 +18,7 @@ class AppColors {
 class AppTheme {
   static ThemeData get dark => ThemeData(
     brightness: Brightness.dark,
+    splashFactory: InkRipple.splashFactory,
     fontFamily: 'Pretendard',
     fontFamilyFallback: const ['Apple SD Gothic Neo', 'Noto Sans KR'],
     scaffoldBackgroundColor: AppColors.background,

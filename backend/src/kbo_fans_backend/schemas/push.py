@@ -54,6 +54,7 @@ class PushBaseballInfoRequest(BaseModel):
     kind: Literal[
         "weekly_check",
         "off_day",
+        "game_day",
         "records_check",
         "lineup_day",
         "rival_watch",
@@ -62,6 +63,7 @@ class PushBaseballInfoRequest(BaseModel):
     topic: Optional[str] = None
     token: Optional[str] = None
     teamId: Optional[str] = None
+    dryRun: bool = False
 
 
 class LiveActivityContentState(BaseModel):

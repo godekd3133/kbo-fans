@@ -894,6 +894,11 @@ String? pushNotificationRouteForData(Map<String, dynamic> data) {
     return deepLinkRoute;
   }
 
+  final type = (_pushString(data['type']) ?? '').toLowerCase();
+  if (type == 'baseball_info') {
+    return '/home';
+  }
+
   final gameId =
       _pushString(data['gameId']) ??
       _pushString(data['game_id']) ??
@@ -903,7 +908,6 @@ String? pushNotificationRouteForData(Map<String, dynamic> data) {
   }
 
   final explicitTab = _normalizePushTab(_pushString(data['tab']));
-  final type = (_pushString(data['type']) ?? '').toLowerCase();
   final tab = explicitTab ?? _tabForPushType(type);
   final encodedGameId = Uri.encodeComponent(gameId);
   if (tab == null) {

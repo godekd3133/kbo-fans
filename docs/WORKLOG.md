@@ -2,6 +2,191 @@
 
 ---
 
+## 2026-06-19: 전체 검증 중 앱 병렬 테스트 shader 실패 수정
+
+### 완료
+- [x] 원인 확인: Flutter 3.41 `ThemeData` 기본값이 Android non-web에서 `InkSparkle.splashFactory`를 선택해, 전체 widget test 병렬 실행 중 `shaders/ink_sparkle.frag` asset 로딩 실패가 발생할 수 있었음
+- [x] `AppTheme.dark`가 `InkRipple.splashFactory`를 명시하도록 변경해 앱 공통 theme가 shader asset splash에 의존하지 않도록 정리
+- [x] theme 회귀 테스트를 추가해 다크 테마가 non-shader splash factory를 유지하는지 확인
+- [x] 백엔드 전체 ruff gate에서 발견된 기존 테스트 파일 import 정렬 실패 10건을 ruff 기준으로 정리
+
+### 검증
+- [x] RED: `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/core/theme/app_theme_test.dart -r expanded`가 `_InkSparkleFactory`로 실패하는 것 확인
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/theme/app_theme.dart test/core/theme/app_theme_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/core/theme/app_theme_test.dart -r expanded` (`1 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub -r expanded` (`136 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub` (`No issues found`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src backend/tests` (`All checks passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests` (`156 passed`)
+- [x] `python3 -m compileall -q backend/src`
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 생성 비주얼 추가 제작 및 상세/에러 상태 적용
+
+### 완료
+- [x] `image_gen` 내장 경로로 스코어 이닝표, 박스스코어 분석, 라인업 매치업, 데이터 재시도 상태용 16:9 야구 비주얼 4장을 추가 생성
+- [x] 원본은 Codex generated image 경로에 보존하고, 앱 번들용으로 `score_linescore.png`, `boxscore_analytics.png`, `lineup_matchup.png`, `data_retry.png`를 `app/assets/visuals/`에 1200×675 RGB PNG로 저장
+- [x] `VisualAssets`에 새 asset key를 추가하고, 스코어 탭 상단, 라인업 정상 상단, 홈 cold error 재시도 카드에 실제 `Image.asset` 경로로 적용
+- [x] 기존 박스스코어 요약/미공개 상태의 `boxscore_analytics` 적용과 합쳐 경기 상세 4개 탭 모두 생성 비주얼을 갖도록 정리
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 홈 재시도/스코어/라인업 생성 비주얼 노출 규칙 반영
+
+### 검증
+- [ ] `file app/assets/visuals/*.png`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/constants/visual_assets.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/game_detail_navigation_test.dart -r expanded`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build web --release --dart-define=APP_ENV=local`
+- [ ] `find app/build/web/assets/assets/visuals -maxdepth 1 -type f -print | sort`
+- [ ] `git diff --check`
+
+---
+
+## 2026-06-19: 생성 비주얼 앱 적용 범위 추가 확장
+
+### 완료
+- [x] `image_gen` 내장 경로로 홈 마이팀 브리프, 박스스코어, 라인업, 일정 빈 상태용 16:9 야구 비주얼 4장을 추가 생성
+- [x] 원본은 Codex generated image 경로에 보존하고, 앱 번들용으로 `my_team_brief_command.png`, `boxscore_analytics.png`, `lineup_dugout.png`, `schedule_empty_calendar.png`를 `app/assets/visuals/`에 1200×675 RGB PNG로 저장
+- [x] 홈 마이팀 브리프 선택 전/후 카드에 `my_team_brief_command` visual strip을 실제 `Image.asset` 경로로 적용
+- [x] 경기 상세 박스스코어/라인업 탭의 정상 요약 상단과 미공개/빈 상태에 `boxscore_analytics`, `lineup_dugout` 생성 이미지를 적용
+- [x] 일정 화면의 날짜 미선택, 선택일 경기 없음, 구장별 일정 없음 상태에 `schedule_empty_calendar` 생성 이미지를 적용
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 홈 브리프/박스스코어/라인업/일정 빈 상태 생성 비주얼 노출 규칙 반영
+
+### 검증
+- [ ] `file app/assets/visuals/*.png`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/constants/visual_assets.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/schedule/schedule_screen.dart`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/schedule/schedule_screen.dart`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart -r expanded`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/schedule/schedule_screen_test.dart -r expanded`
+- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart -r expanded`
+- [ ] `git diff --check -- app/lib/core/constants/visual_assets.dart app/lib/features/home/home_screen.dart app/lib/features/game_detail/tabs/boxscore_tab.dart app/lib/features/game_detail/tabs/lineup_tab.dart app/lib/features/schedule/schedule_screen.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md app/assets/visuals/my_team_brief_command.png app/assets/visuals/boxscore_analytics.png app/assets/visuals/lineup_dugout.png app/assets/visuals/schedule_empty_calendar.png`
+
+---
+
+## 2026-06-19: 0.0.40 릴리즈/TestFlight 업로드
+
+### 완료
+- [x] 원격 `0.0.39` 태그가 이미 존재하므로 다음 TestFlight build를 `0.0.40+40`으로 결정
+- [x] `CHANGELOG.md`의 `Unreleased` 사용자-visible 변경을 `0.0.40` 릴리즈 항목으로 마감
+- [x] `app/pubspec.yaml`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.40+40` 기준으로 동기화
+- [x] TestFlight 릴리즈 범위에는 앱/백엔드/문서/infra 변경과 앱에서 참조하는 `app/assets/visuals/*.png`만 포함하고, 루트 발표 산출물(`.pages`, `.pptx`, `output/`)은 제외하기로 정리
+
+### 검증
+- [x] topic 재등록 workflow `27803440937` 성공: `registeredDevices=1`, `eligibleDevices=1`, `subscriptionsAttempted=12`, `unsubscriptionsAttempted=0`
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `cd app && fvm flutter test --no-pub` (`135 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`156 passed`)
+- [x] touched backend files ruff: `backend/.venv/bin/ruff check --select E,F,I,B ...`
+- [x] `bash -n scripts/aws-push-cloudformation.sh`
+- [x] `jq empty infra/aws/cloudformation/push-demo-stack.json infra/aws/ecs-fargate/task-definition-sync-worker.json`
+- [x] `ALLOW_INSECURE_RELEASE_API=true API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api scripts/release-api-health-check.sh`
+- [x] `git diff --check`
+- [x] `0.0.40 (40)` archive/IPA에 Firebase plist, visual assets, patch notes 포함 확인
+- [x] exported IPA entitlements 확인: `aps-environment=production`, `get-task-allow=false`
+- [x] `0.0.40 (40)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`)
+- [x] export 중 `objective_c.framework` dSYM 누락 warning이 있었으나 `Upload succeeded` / `EXPORT SUCCEEDED`로 완료됨
+
+---
+
+## 2026-06-19: 홈 백그라운드 복귀 refresh 실패 화면 유지
+
+### 완료
+- [x] 원인 확인: 앱 루트 resumed sync와 홈 자동 refresh가 `scoreboardProvider(today)`를 invalidate한 뒤 첫 요청이 실패하면, 홈이 마지막 정상 스코어보드를 버리고 전체 오류/`다시 시도` 화면으로 전환될 수 있었음
+- [x] `HomeScreen`이 같은 날짜의 마지막 정상 스코어보드 스냅샷을 state에 보관하고, loading/error refresh 중에는 기존 홈 콘텐츠를 유지하도록 보정
+- [x] 첫 진입부터 데이터가 없는 cold 실패는 기존처럼 오류/재시도 상태를 유지해 current 데이터 실패를 숨기지 않도록 분리
+- [x] refresh 실패는 Dev Console 경고로 1회 기록하고, 화면에는 기존 스코어보드가 유지되도록 회귀 테스트 추가
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 홈 resume refresh 상태 원칙 반영
+
+### 검증
+- [x] RED: `cd app && fvm flutter test test/features/home/home_screen_test.dart --plain-name 'keeps the last home scoreboard when resume refresh fails'`가 기존 `다시 시도` 노출로 실패하는 것 확인
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart` (`7 passed`)
+- [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart test/features/home/home_screen_test.dart --no-fatal-infos` (`No issues found`)
+
+---
+
+## 2026-06-19: 화면 전환 연출/스와이프 백 강화
+
+### 완료
+- [x] 1차로 하단 5탭 전환을 기존 220ms/0.03 horizontal slide에서 300ms/0.10 horizontal slide + opacity 0.72 + scale 0.985로 키워 화면 이동 체감을 강화
+- [x] 후속 조정: 탭 전환을 360ms/0.06 horizontal slide + opacity 0.86 + scale 0.992로 완화하고, outgoing 화면에 약한 parallax/fade를 추가해 더 부드럽게 연결
+- [x] 경기 상세, 선수 상세, 리더보드, API 진단, 패치노트 root push 화면을 공통 `_swipeBackPage`로 정리하고 `CupertinoPage` 기반 native slide/parallax 전환으로 변경
+- [x] root push 화면이 이전 route 위에 쌓였을 때 iOS edge-swipe pop이 가능한 route 타입을 사용하도록 라우터 테스트 추가
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 화면 전환/스와이프 백 UX 기준 반영
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/router/app_router.dart test/core/router/app_router_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/core/router/app_router_test.dart -r expanded` (`2 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/core/router/app_router_test.dart test/features/game_detail/game_detail_navigation_test.dart -r expanded` (`5 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/router/app_router.dart test/core/router/app_router_test.dart` (`No issues found`)
+- [x] `git diff --check -- app/lib/core/router/app_router.dart app/test/core/router/app_router_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+- [ ] 실제 iPhone edge-swipe 체감은 다음 실기기 실행에서 확인 필요
+
+---
+
+## 2026-06-19: 홈 오프데이 CTA 및 알림 프리셋 상태 표시 개선
+
+### 완료
+- [x] 편의성/UX 관점에서 홈 경기 없음 상태와 설정 알림 플레이북의 다음 행동/상태 표시를 재검토
+- [x] 홈 경기 없음 카드에 `일정 보기` / `기록실` CTA를 추가해 비경기일에도 다음 탐색 동선이 끊기지 않도록 보강
+- [x] 알림 설정 상단의 현재 프리셋 라벨을 실제 Moment 전달 방식 기준으로 `내 팀 집중` / `커스텀`으로 분기
+- [x] 기본 플레이북과 동일한 상태에서는 `프리셋 적용` 버튼을 `적용됨` 상태로 표시해 반복 적용 affordance를 줄임
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 홈 빈 상태 CTA와 설정 프리셋 상태 규칙 반영
+
+### 검증
+- [x] `/Users/kimminkyu/fvm/versions/3.41.6/bin/dart format app/lib/features/home/home_screen.dart app/lib/features/settings/settings_screen.dart app/test/features/home/home_screen_test.dart app/test/features/settings/settings_screen_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`All tests passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/settings/settings_screen_test.dart -r expanded` (`All tests passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/home/home_screen.dart lib/features/settings/settings_screen.dart test/features/home/home_screen_test.dart test/features/settings/settings_screen_test.dart` (`No issues found`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/lib/features/settings/settings_screen.dart app/test/features/home/home_screen_test.dart app/test/features/settings/settings_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-19: 생성 비주얼 실제 화면 적용 확장
+
+### 완료
+- [x] 기존 앱 번들 이미지 적용처가 온보딩/홈/일정/기록실/설정/부트 스플래시에 제한되어 있던 상태 확인
+- [x] `standings_race.png`와 `game_detail_scoreboard.png`를 `app/assets/visuals/`에 1200×675 RGB PNG로 추가하고 `VisualAssets`에 연결
+- [x] 순위 화면 상단, 경기 상세 상단, 문자중계 빈 상태와 fallback 요약에 생성 이미지를 실제 `Image.asset` 경로로 적용
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 순위/문자중계 생성 비주얼 노출 규칙 반영
+
+### 검증
+- [x] `file app/assets/visuals/*.png` (`1200 x 675`, RGB PNG)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/constants/visual_assets.dart lib/features/standings/standings_screen.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/relay_tab.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/features/standings/standings_screen.dart lib/features/game_detail/game_detail_screen.dart lib/features/game_detail/tabs/relay_tab.dart` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/standings/standings_screen_test.dart -r expanded` (`2 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart -r expanded` (`3 passed`)
+- [x] `cd app && fvm flutter test test/features/standings test/features/game_detail/relay_tab_test.dart test/core/utils/game_status_label_test.dart` (`All tests passed`)
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=local` (`✓ Built build/web`; wasm dry-run / Cupertino icon 경고는 기존 의존성/아이콘 경고)
+- [x] `find app/build/web/assets/assets/visuals -maxdepth 1 -type f -print`로 8개 visual asset 번들 포함 확인
+- [x] Playwright 390×844 캡처: `output/playwright/kbo-visuals/onboarding.png`, `output/playwright/kbo-visuals/standings.png`
+- [x] Playwright network 확인: `GET /assets/assets/visuals/standings_race.png => 200 OK`
+- [x] `git diff --check -- app/lib/core/constants/visual_assets.dart app/lib/features/standings/standings_screen.dart app/lib/features/game_detail/game_detail_screen.dart app/lib/features/game_detail/tabs/relay_tab.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md app/assets/visuals/standings_race.png app/assets/visuals/game_detail_scoreboard.png`
+
+---
+
+## 2026-06-19: 문자중계 실시간 갱신 5초 조정
+
+### 완료
+- [x] 현재 기준 확인: 경기 상세 live relay foreground는 8초, backend sync worker 기본값/하한도 8초였음
+- [x] 문자중계 탭 foreground refresh를 5초로 낮추고, 다른 경기 상세 live 탭은 기존 8초 cadence 유지
+- [x] backend scoreboard/relay sync worker의 기본값과 하한을 5초로 낮춰 relay diff push / Live Activity sync 체감 주기를 함께 단축
+- [x] AWS CloudFormation/Fargate 기본값과 README/spec/운영 문서의 sync cadence를 5초 기준으로 동기화
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart` (`3 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_live_activity_sync_loop.py` (`2 passed`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/scheduler/live_activity_sync_loop.py backend/tests/test_live_activity_sync_loop.py`
+- [x] `python3 -m compileall -q backend/src`
+- [x] `git diff --check`
+- [ ] 실제 KBO live 경기에서 5초 relay 반영과 배포 worker 수신은 별도 실기기/운영 확인 필요
+
+---
+
 ## 2026-06-19: 순위탭 시즌별 조회 연결
 
 ### 완료
@@ -78,15 +263,24 @@
 - [x] backend `PushService`에 `weekly_check`, `off_day`, `records_check`, `lineup_day`, `rival_watch` copy catalog와 `send_baseball_info` 발송 경로 추가
 - [x] 운영 보호 endpoint `POST /api/push/baseball-info`를 추가해 월요일 주간 체크 같은 야구 정보 push를 직접 발송할 수 있게 구성
 - [x] `python -m kbo_fans_backend.scheduler.baseball_info` CLI를 추가해 월요일에는 `weekly_check`를 자동 선택하고, 다른 요일은 명시 kind가 없으면 발송하지 않도록 구성
+- [x] `dryRun` / `--dry-run` 미리보기를 추가해 실제 Firebase 발송 전에 title/body/data/topic target을 확인할 수 있게 보강
+- [x] 팀별 야구 브리프는 `LG 트윈스 기록실`처럼 teamId 대신 팀 이름 기반 copy를 쓰도록 구체화
+- [x] 앱 push 클릭 라우팅은 `type=baseball_info`만 있어도 홈으로 진입하도록 fallback 추가
+- [x] 더 좋은 알림 아이디어로 `--smart-daily` 모드를 추가: 해당 날짜 scoreboard를 보고 팀별로 `game_day` / `records_check` / `off_day`를 자동 선택
+- [x] `game_day` copy를 추가해 오늘 경기가 있는 팀은 `LG 트윈스 경기일 체크`처럼 일정/라인업/중계 진입을 유도
+- [x] `--now-time HH:MM`를 추가해 경기 시작 3시간 이내 scheduled 경기는 `lineup_day`로 자동 전환
+- [x] 마이팀 경기는 없지만 리그 경기가 있는 팀은 `rival_watch`로 자동 전환해 순위 경쟁 확인을 유도
 - [x] 득점 moment가 `playText` / `situationText`를 받으면 고정 문구 대신 실제 플레이 중심 문구를 쓰도록 보강
-- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 `야구 브리프` 설정과 backend push API 계약 반영
+- [x] `docs/APP_SPEC.md`, `README.md`, `CHANGELOG.md`에 `야구 브리프` 설정과 backend push API 계약 반영
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_register_persists_device_token backend/tests/test_push_service.py::test_build_topics_respects_delivery_modes backend/tests/test_push_service.py::test_send_game_moment_scoring_uses_play_text_for_varied_copy backend/tests/test_push_service.py::test_send_baseball_info_weekly_check_targets_all_team_topics backend/tests/test_push_service.py::test_send_baseball_info_endpoint_uses_sync_secret` (`5 passed`)
-- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/services/push_notification_service_test.dart` (`14 passed`)
-- [x] `backend/.venv/bin/pytest -q backend/tests/test_baseball_info_scheduler.py backend/tests/test_push_service.py` (`41 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/services/push_notification_service_test.dart` (`15 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_baseball_info_scheduler.py backend/tests/test_push_service.py` (`50 passed`)
 - [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/scheduler/baseball_info.py backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/api/routes/push.py backend/src/kbo_fans_backend/services/push.py backend/tests/test_baseball_info_scheduler.py backend/tests/test_push_service.py`
 - [x] `python3 -m compileall -q backend/src`
+- [x] `PYTHONPATH=backend/src python3 -m kbo_fans_backend.scheduler.baseball_info --date 2026-06-22 --team-id LG --dry-run` (`LG 트윈스 주간 체크`, `baseball_info_LG`, `sent=false`)
+- [x] `PYTHONPATH=backend/src python3 - <<'PY' ... build_smart_daily_plan(..., now_time='16:00')` (`LG`/`KT`는 `lineup_day`, 미경기 팀은 `rival_watch`, `baseball_info_ALL`은 `lineup_day`)
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/services/push_notification_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart`
 - [x] `git diff --check`
 
@@ -1323,7 +1517,7 @@
 - [ ] GitHub Actions workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`와 `--dry-run false --watch` 순서로 실행해야 한다. 이 CLI의 config check는 필수 secrets/variables 누락 시 dispatch 전에 실패해야 한다.
 - [ ] release TestFlight/Android artifact에는 운영 `API_BASE_URL`이 push / Live Activity token registration endpoint로 주입되어야 한다.
 - [ ] API task와 scheduler task가 분리되면 `PUSH_REGISTRY_PATH`는 EFS/EBS/DynamoDB 등 공유 영속 저장소를 바라봐야 한다.
-- [ ] ECS long-running sync worker 또는 cron이 live 경기 중 8초 간격으로 scoreboard sync를 실행해야 한다.
+- [ ] ECS long-running sync worker 또는 cron이 live 경기 중 5초 간격으로 scoreboard/relay sync를 실행해야 한다.
 - [ ] 운영 확인 시 `GET /api/push/config-status`의 `scheduler.lastSyncAt`이 최근 시각으로 갱신되어야 한다.
 - [ ] 실기기 TestFlight/release 검증에는 Firebase plist, Push Notifications capability, APNs production profile이 필요하다.
 

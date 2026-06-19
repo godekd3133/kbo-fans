@@ -2,6 +2,7 @@ from datetime import date as date_type
 from datetime import timedelta
 
 import pytest
+
 from kbo_fans_backend.services.boxscore import BoxscoreService
 from kbo_fans_backend.storage import JsonSnapshotStore
 

@@ -3,7 +3,7 @@ import pytest
 from kbo_fans_backend.scheduler import live_activity_sync_loop
 
 
-def test_live_activity_sync_loop_defaults_to_8_seconds(monkeypatch, capsys) -> None:
+def test_live_activity_sync_loop_defaults_to_5_seconds(monkeypatch, capsys) -> None:
     sleep_intervals = []
 
     monkeypatch.delenv("PUSH_SYNC_INTERVAL_SECONDS", raising=False)
@@ -31,12 +31,12 @@ def test_live_activity_sync_loop_defaults_to_8_seconds(monkeypatch, capsys) -> N
     finally:
         live_activity_sync_loop._SHOULD_STOP = False
 
-    assert sleep_intervals == [8]
+    assert sleep_intervals == [5]
     assert '"date": "2026-06-18"' in capsys.readouterr().out
 
 
-def test_live_activity_sync_loop_rejects_sub_8_second_interval(monkeypatch) -> None:
+def test_live_activity_sync_loop_rejects_sub_5_second_interval(monkeypatch) -> None:
     monkeypatch.setattr(live_activity_sync_loop, "_SHOULD_STOP", False)
 
-    with pytest.raises(SystemExit, match="interval-seconds must be at least 8"):
-        live_activity_sync_loop.main(["--interval-seconds", "7"])
+    with pytest.raises(SystemExit, match="interval-seconds must be at least 5"):
+        live_activity_sync_loop.main(["--interval-seconds", "4"])

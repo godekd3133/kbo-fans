@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/team_data.dart';
+import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_artwork_card.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
@@ -117,13 +119,30 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     };
 
     return _buildRefreshPlaceholder(
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.sports_baseball, size: 48, color: AppColors.divider),
-          const SizedBox(height: 12),
-          Text(message, style: const TextStyle(color: AppColors.textDisabled)),
-        ],
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: AppArtworkCard(
+          assetName: VisualAssets.liveRelayField,
+          height: 178,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              const Text(
+                '문자중계',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -710,16 +729,13 @@ class _RelayFallbackNotice extends StatelessWidget {
       _ => '문자중계 데이터가 아직 준비되지 않았습니다',
     };
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
+    return AppArtworkCard(
+      assetName: VisualAssets.liveRelayField,
+      height: 156,
+      alignment: Alignment.center,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
           const Text(
             '문자중계 요약',

@@ -192,7 +192,7 @@ aws cloudformation deploy \
     PushSyncSecretArn="$SECRET_ARN_PUSH_SYNC_SECRET" \
     ApiDesiredCount="${API_DESIRED_COUNT:-1}" \
     SyncWorkerDesiredCount="${SYNC_WORKER_DESIRED_COUNT:-1}" \
-    PushSyncIntervalSeconds="${PUSH_SYNC_INTERVAL_SECONDS:-8}"
+    PushSyncIntervalSeconds="${PUSH_SYNC_INTERVAL_SECONDS:-5}"
 deploy_status=$?
 set -e
 

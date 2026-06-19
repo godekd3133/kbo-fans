@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/team_data.dart';
+import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_artwork_card.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/player.dart';
@@ -136,6 +138,12 @@ class LineupTab extends ConsumerWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const AppArtworkCard(
+                          assetName: VisualAssets.lineupMatchup,
+                          height: 112,
+                          alignment: Alignment.center,
+                        ),
+                        const SizedBox(height: 14),
                         _MatchupCompareSection(
                           data: compareData,
                           awayAccent:
@@ -196,14 +204,30 @@ class LineupTab extends ConsumerWidget {
   }
 
   Widget _buildUnavailableState(String message) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.groups_2_outlined, size: 48, color: AppColors.divider),
-          const SizedBox(height: 12),
-          Text(message, style: const TextStyle(color: AppColors.textDisabled)),
-        ],
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: AppArtworkCard(
+        assetName: VisualAssets.lineupDugout,
+        height: 178,
+        alignment: Alignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            const Text(
+              '선발 라인업',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

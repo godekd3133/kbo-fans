@@ -151,8 +151,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/records/player/:playerId',
         parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => CupertinoPage(
-          key: state.pageKey,
+        pageBuilder: (context, state) => _swipeBackPage(
+          state,
           child: PlayerDetailScreen(
             playerId: state.pathParameters['playerId']!,
             season:
@@ -164,8 +164,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/records/leaderboard/:metric',
         parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => CupertinoPage(
-          key: state.pageKey,
+        pageBuilder: (context, state) => _swipeBackPage(
+          state,
           child: LeaderboardScreen(
             metric:
                 LeaderboardMetricX.fromKey(
@@ -181,7 +181,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/game/:gameId',
         parentNavigatorKey: _rootNavigatorKey,
-        pageBuilder: (context, state) => _drillInTransitionPage(
+        pageBuilder: (context, state) => _swipeBackPage(
           state,
           child: GameDetailScreen(
             gameId: state.pathParameters['gameId']!,
@@ -195,13 +195,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/diagnostics',
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) =>
-            _drillInTransitionPage(state, child: const ApiDiagnosticsScreen()),
+            _swipeBackPage(state, child: const ApiDiagnosticsScreen()),
       ),
       GoRoute(
         path: '/patch-notes',
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) =>
-            _drillInTransitionPage(state, child: const PatchNotesScreen()),
+            _swipeBackPage(state, child: const PatchNotesScreen()),
       ),
     ],
   );
@@ -262,22 +262,25 @@ CustomTransitionPage<void> _tabTransitionPage(
   return _animatedPage(
     state,
     child: child,
-    beginOffset: const Offset(0.03, 0),
-    transitionDuration: const Duration(milliseconds: 220),
-    reverseTransitionDuration: const Duration(milliseconds: 170),
+    beginOffset: const Offset(0.06, 0),
+    beginOpacity: 0.86,
+    beginScale: 0.992,
+    outgoingOffset: const Offset(-0.018, 0),
+    outgoingOpacity: 0.96,
+    outgoingScale: 0.996,
+    transitionDuration: const Duration(milliseconds: 360),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
   );
 }
 
-CustomTransitionPage<void> _drillInTransitionPage(
+CupertinoPage<void> _swipeBackPage(
   GoRouterState state, {
   required Widget child,
 }) {
-  return _animatedPage(
-    state,
+  return CupertinoPage<void>(
+    key: state.pageKey,
+    name: state.uri.toString(),
     child: child,
-    beginOffset: const Offset(0.08, 0),
-    transitionDuration: const Duration(milliseconds: 260),
-    reverseTransitionDuration: const Duration(milliseconds: 200),
   );
 }
 
@@ -285,6 +288,11 @@ CustomTransitionPage<void> _animatedPage(
   GoRouterState state, {
   required Widget child,
   required Offset beginOffset,
+  double beginOpacity = 0.88,
+  double beginScale = 1,
+  Offset outgoingOffset = Offset.zero,
+  double outgoingOpacity = 1,
+  double outgoingScale = 1,
   required Duration transitionDuration,
   required Duration reverseTransitionDuration,
 }) {
@@ -300,21 +308,54 @@ CustomTransitionPage<void> _animatedPage(
 
       final curvedAnimation = CurvedAnimation(
         parent: animation,
+        curve: Curves.easeOutQuart,
+        reverseCurve: Curves.easeInOutCubic,
+      );
+      final curvedSecondaryAnimation = CurvedAnimation(
+        parent: secondaryAnimation,
         curve: Curves.easeOutCubic,
-        reverseCurve: Curves.easeInCubic,
+        reverseCurve: Curves.easeInOutCubic,
       );
       final fadeAnimation = Tween<double>(
-        begin: beginOffset == Offset.zero ? 0.92 : 0.88,
+        begin: beginOffset == Offset.zero ? 0.92 : beginOpacity,
         end: 1,
       ).animate(curvedAnimation);
       final slideAnimation = Tween<Offset>(
         begin: beginOffset,
         end: Offset.zero,
       ).animate(curvedAnimation);
+      final scaleAnimation = Tween<double>(
+        begin: beginScale,
+        end: 1,
+      ).animate(curvedAnimation);
+      final outgoingFadeAnimation = Tween<double>(
+        begin: 1,
+        end: outgoingOpacity,
+      ).animate(curvedSecondaryAnimation);
+      final outgoingSlideAnimation = Tween<Offset>(
+        begin: Offset.zero,
+        end: outgoingOffset,
+      ).animate(curvedSecondaryAnimation);
+      final outgoingScaleAnimation = Tween<double>(
+        begin: 1,
+        end: outgoingScale,
+      ).animate(curvedSecondaryAnimation);
 
       return FadeTransition(
-        opacity: fadeAnimation,
-        child: SlideTransition(position: slideAnimation, child: child),
+        opacity: outgoingFadeAnimation,
+        child: SlideTransition(
+          position: outgoingSlideAnimation,
+          child: ScaleTransition(
+            scale: outgoingScaleAnimation,
+            child: FadeTransition(
+              opacity: fadeAnimation,
+              child: SlideTransition(
+                position: slideAnimation,
+                child: ScaleTransition(scale: scaleAnimation, child: child),
+              ),
+            ),
+          ),
+        ),
       );
     },
   );

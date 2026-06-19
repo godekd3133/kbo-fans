@@ -10,8 +10,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/game_status_label.dart';
+import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
@@ -34,7 +36,7 @@ const _kboImageHeaders = {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
 };
 
-const gameDetailLiveRelayRefreshInterval = Duration(seconds: 8);
+const gameDetailLiveRelayRefreshInterval = Duration(seconds: 5);
 const gameDetailLiveDefaultRefreshInterval = Duration(seconds: 8);
 const gameDetailScheduledRefreshInterval = Duration(minutes: 5);
 const _relayTabIndex = 1;
@@ -470,6 +472,16 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     ),
                   ),
                 ),
+                if (MediaQuery.sizeOf(context).height >= 760)
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: AppArtworkCard(
+                        assetName: VisualAssets.gameDetailScoreboard,
+                        height: 78,
+                      ),
+                    ),
+                  ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),

@@ -10,6 +10,8 @@ from typing import Optional
 from kbo_fans_backend.scheduler.live_activity_sync import current_kbo_date, sync_once
 
 _SHOULD_STOP = False
+_MIN_INTERVAL_SECONDS = 5
+_DEFAULT_INTERVAL_SECONDS = 5
 
 
 def _handle_stop(signum, frame) -> None:
@@ -32,12 +34,16 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--interval-seconds",
         type=int,
-        default=int(os.getenv("PUSH_SYNC_INTERVAL_SECONDS", "8")),
+        default=int(
+            os.getenv("PUSH_SYNC_INTERVAL_SECONDS", str(_DEFAULT_INTERVAL_SECONDS))
+        ),
     )
     args = parser.parse_args(argv)
 
-    if args.interval_seconds < 8:
-        raise SystemExit("interval-seconds must be at least 8")
+    if args.interval_seconds < _MIN_INTERVAL_SECONDS:
+        raise SystemExit(
+            f"interval-seconds must be at least {_MIN_INTERVAL_SECONDS}"
+        )
 
     signal.signal(signal.SIGTERM, _handle_stop)
     signal.signal(signal.SIGINT, _handle_stop)

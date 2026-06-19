@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.39+39`
-- Current release tag: `0.0.39`
+- Flutter app version: `0.0.40+40`
+- Current release tag: `0.0.40`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -87,6 +87,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.37`: release/dev apps with a selected my-team now run one-time notification permission plus FCM registration sync automatically, live push/Live Activity cadence is aligned to 8 seconds, `game_start_soon` and `hit` moments are included in push topics, push registry preserves current followed game ids, Live Activity / Dynamic Island visual structure is aligned with the home score card, and current app build `0.0.37+37`.
 - `0.0.38`: push moment routing polish for `game_start_soon`, explicit app/backend tests for `game_start_soon` and `hit` topic contracts, and current app build `0.0.38+38`.
 - `0.0.39`: release/TestFlight apps no longer backfill local scoreboard/relay event notifications when the app is opened or focused; app-outside notifications are left to backend FCM/APNs, with current app build `0.0.39+39`.
+- `0.0.40`: home resume refresh keeps the last valid scoreboard on transient failure, live relay/backend sync cadence moves to 5 seconds, off-day home CTAs, smoother tab/native swipe transitions, season standings, expanded generated baseball visuals, Pretendard font, my-team brief polish, and baseball-info push smart daily planning ship with current app build `0.0.40+40`.
 
 ## GitHub Release Note Template
 

@@ -55,6 +55,7 @@ def send_baseball_info_push(
             topic=payload.topic,
             token=payload.token,
             team_id=payload.teamId,
+            dry_run=payload.dryRun,
         )
     )
 

@@ -48,11 +48,78 @@ void main() {
     await tester.pump();
 
     expect(find.text('홈 첫 화면을 먼저 띄우는 중입니다.'), findsOneWidget);
+    expect(find.text('일정 보기'), findsAtLeastNWidgets(1));
+    expect(find.text('기록실'), findsAtLeastNWidgets(1));
     expect(aggregateCalls, 0);
 
     await tester.pump();
 
     expect(aggregateCalls, 1);
+  });
+
+  testWidgets('keeps the last home scoreboard when resume refresh fails', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({});
+    final game = _scheduledGame(
+      gameId: '20260619AABB0',
+      awayTeamId: 'AA',
+      awayShortName: 'A',
+      homeTeamId: 'BB',
+      homeShortName: 'B',
+      stadium: '잠실',
+    );
+    var scoreboardCalls = 0;
+    final container = ProviderContainer(
+      retry: (_, _) => null,
+      overrides: [
+        scoreboardProvider.overrideWith((ref, date) async {
+          scoreboardCalls++;
+          if (scoreboardCalls > 1) {
+            throw Exception('network unavailable after resume');
+          }
+          return [game];
+        }),
+        homeAggregateProvider.overrideWith((ref, key) async {
+          return HomeAggregate(
+            date: key.split('|').first,
+            myTeam: null,
+            myTeamBrief: null,
+            kboBrief: null,
+            quickItems: const [],
+          );
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    final gameCardFinder = find.byWidgetPredicate(
+      (widget) => widget is GameCard && widget.game.gameId == game.gameId,
+    );
+    expect(gameCardFinder, findsAtLeastNWidgets(1));
+    expect(find.text('다시 시도'), findsNothing);
+
+    container.invalidate(scoreboardProvider(_todayKey()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(gameCardFinder, findsAtLeastNWidgets(1));
+    expect(find.text('다시 시도'), findsNothing);
   });
 
   testWidgets('auto follows a live my team game on home', (tester) async {
@@ -221,6 +288,11 @@ void main() {
     expect(uri.queryParameters['tab'], 'relay');
     expect(uri.queryParameters['focus'], 'relay');
   });
+}
+
+String _todayKey() {
+  final now = DateTime.now();
+  return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 }
 
 var _appConfigInitialized = false;

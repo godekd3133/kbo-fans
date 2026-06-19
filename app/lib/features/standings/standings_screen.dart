@@ -4,7 +4,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/api/api_client.dart';
@@ -66,6 +68,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 ),
               ),
               const SizedBox(height: 6),
+              _buildStandingsArtwork(),
               Expanded(
                 child: AppMotionSwitcher(
                   child: standingsAsync.when(
@@ -78,30 +81,44 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     error: (e, _) => KeyedSubtree(
                       key: ValueKey('standings-error-$_selectedSeason'),
                       child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '순위를 불러올 수 없습니다',
-                              style: TextStyle(color: AppColors.textDisabled),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: AppArtworkCard(
+                            assetName: VisualAssets.dataRetry,
+                            height: 184,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                const Text(
+                                  '순위를 불러올 수 없습니다',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  describeAsyncError(e),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    height: 1.35,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton(
+                                    onPressed: () => ref.invalidate(
+                                      standingsProvider(_selectedSeason),
+                                    ),
+                                    child: const Text('다시 시도'),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              describeAsyncError(e),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textDisabled,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: () => ref.invalidate(
-                                standingsProvider(_selectedSeason),
-                              ),
-                              child: const Text('다시 시도'),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -148,6 +165,20 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStandingsArtwork() {
+    if (MediaQuery.sizeOf(context).height < 760) {
+      return const SizedBox.shrink();
+    }
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: AppArtworkCard(
+        assetName: VisualAssets.standingsRace,
+        height: 82,
+        alignment: Alignment.centerRight,
       ),
     );
   }

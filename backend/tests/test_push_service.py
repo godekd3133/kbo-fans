@@ -312,6 +312,73 @@ def test_send_baseball_info_weekly_check_targets_all_team_topics(tmp_path) -> No
     assert first_message.data["date"] == "2026-06-22"
 
 
+def test_send_baseball_info_team_records_copy_uses_team_name(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_baseball_info(
+        kind="records_check",
+        date="2026-06-24",
+        team_id="LG",
+    )
+
+    assert response["sent"] is True
+    assert response["kind"] == "records_check"
+    assert [message.topic for message in messaging.sent_messages] == ["baseball_info_LG"]
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "LG 트윈스 기록실"
+    assert first_message.notification.body == "LG 트윈스 타자와 투수 기록 흐름을 확인해 보세요."
+    assert first_message.data["teamId"] == "LG"
+
+
+def test_send_baseball_info_game_day_copy_uses_team_name(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_baseball_info(
+        kind="game_day",
+        date="2026-06-24",
+        team_id="LG",
+        dry_run=True,
+    )
+
+    assert response["sent"] is False
+    assert response["notification"] == {
+        "title": "LG 트윈스 경기일 체크",
+        "body": "오늘 LG 트윈스 경기 일정, 선발 라인업, 중계 상황을 확인해 보세요.",
+    }
+    assert messaging.sent_messages == []
+
+
+def test_send_baseball_info_dry_run_previews_without_firebase_send(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_baseball_info(
+        kind="off_day",
+        date="2026-06-23",
+        team_id="LG",
+        dry_run=True,
+    )
+
+    assert response["sent"] is False
+    assert response["dryRun"] is True
+    assert response["kind"] == "off_day"
+    assert response["notification"] == {
+        "title": "LG 트윈스 야구 브리프",
+        "body": "경기가 없는 날에는 순위표와 다음 일정을 가볍게 확인해 보세요.",
+    }
+    assert response["targets"] == [{"topic": "baseball_info_LG"}]
+    assert response["messages"] == []
+    assert messaging.sent_messages == []
+
+
 def test_send_test_push_uses_visible_notification_options(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
@@ -1216,7 +1283,7 @@ def test_send_baseball_info_endpoint_uses_sync_secret(monkeypatch) -> None:
     monkeypatch.setattr(push_routes, "get_settings", lambda: SecretSettings())
     monkeypatch.setattr(push_routes, "service", FakeService())
     client = TestClient(app)
-    body = {"kind": "weekly_check", "date": "2026-06-22"}
+    body = {"kind": "weekly_check", "date": "2026-06-22", "dryRun": True}
 
     denied = client.post("/api/push/baseball-info", json=body)
     allowed = client.post(
@@ -1229,6 +1296,7 @@ def test_send_baseball_info_endpoint_uses_sync_secret(monkeypatch) -> None:
     assert allowed.status_code == 200
     assert captured["kind"] == "weekly_check"
     assert captured["date"] == "2026-06-22"
+    assert captured["dry_run"] is True
     assert allowed.json()["data"]["sent"] is True
 
 

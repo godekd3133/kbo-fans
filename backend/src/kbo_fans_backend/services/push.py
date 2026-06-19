@@ -17,6 +17,18 @@ from kbo_fans_backend.services.apns_live_activity import ApnsLiveActivitySender
 from kbo_fans_backend.services.push_registry import PushRegistry
 
 KBO_TEAM_IDS = ("LG", "KT", "SK", "SS", "NC", "HH", "LT", "HT", "OB", "WO")
+KBO_TEAM_NAMES = {
+    "LG": "LG 트윈스",
+    "KT": "KT 위즈",
+    "SK": "SSG 랜더스",
+    "SS": "삼성 라이온즈",
+    "NC": "NC 다이노스",
+    "HH": "한화 이글스",
+    "LT": "롯데 자이언츠",
+    "HT": "KIA 타이거즈",
+    "OB": "두산 베어스",
+    "WO": "키움 히어로즈",
+}
 
 
 class PushService:
@@ -135,14 +147,12 @@ class PushService:
         topic: Optional[str] = None,
         token: Optional[str] = None,
         team_id: Optional[str] = None,
+        dry_run: bool = False,
     ) -> dict[str, Any]:
         if token and topic:
             raise ValueError("only one of token or topic is allowed")
 
-        messaging = self._get_messaging()
         title, body = _baseball_info_copy(kind=kind, team_id=team_id)
-        notification = messaging.Notification(title=title, body=body)
-        visible_options = _visible_push_options(messaging, title=title, body=body)
         data = {
             "type": "baseball_info",
             "kind": kind,
@@ -150,6 +160,24 @@ class PushService:
             "teamId": team_id or "",
             "route": "/home",
         }
+        if dry_run:
+            return {
+                "sent": False,
+                "dryRun": True,
+                "kind": kind,
+                "notification": {"title": title, "body": body},
+                "data": data,
+                "targets": _baseball_info_target_preview(
+                    topic=topic,
+                    token=token,
+                    team_id=team_id,
+                ),
+                "messages": [],
+            }
+
+        messaging = self._get_messaging()
+        notification = messaging.Notification(title=title, body=body)
+        visible_options = _visible_push_options(messaging, title=title, body=body)
 
         if token:
             message = messaging.Message(
@@ -494,19 +522,59 @@ def _baseball_info_topics(
     ]
 
 
+def _baseball_info_target_preview(
+    *,
+    topic: Optional[str],
+    token: Optional[str],
+    team_id: Optional[str],
+) -> list[dict[str, str]]:
+    if token:
+        return [{"target": "token"}]
+    return [{"topic": target} for target in _baseball_info_topics(topic=topic, team_id=team_id)]
+
+
 def _baseball_info_copy(*, kind: str, team_id: Optional[str] = None) -> tuple[str, str]:
-    team_prefix = f"{team_id} " if team_id else ""
+    team_name = _team_display_name(team_id)
     if kind == "weekly_check":
+        if team_name:
+            return (
+                f"{team_name} 주간 체크",
+                f"이번 주 {team_name} 일정, 순위, 기록 흐름을 확인해 보세요.",
+            )
         return "월요일 야구 체크", "이번 주 KBO 일정, 순위, 기록 흐름을 확인해 보세요."
     if kind == "off_day":
+        if team_name:
+            return (
+                f"{team_name} 야구 브리프",
+                "경기가 없는 날에는 순위표와 다음 일정을 가볍게 확인해 보세요.",
+            )
         return "오늘의 야구 브리프", "경기가 없는 날에는 순위표와 다음 일정을 가볍게 확인해 보세요."
+    if kind == "game_day":
+        if team_name:
+            return (
+                f"{team_name} 경기일 체크",
+                f"오늘 {team_name} 경기 일정, 선발 라인업, 중계 상황을 확인해 보세요.",
+            )
+        return "오늘 경기 체크", "오늘 KBO 일정, 선발 라인업, 중계 상황을 확인해 보세요."
     if kind == "records_check":
-        return "기록실 업데이트", f"{team_prefix}타자와 투수 기록 흐름을 확인해 보세요."
+        if team_name:
+            return f"{team_name} 기록실", f"{team_name} 타자와 투수 기록 흐름을 확인해 보세요."
+        return "기록실 업데이트", "타자와 투수 기록 흐름을 확인해 보세요."
     if kind == "lineup_day":
+        if team_name:
+            return f"{team_name} 경기 전 체크", "선발 라인업과 예매 정보를 경기 전에 확인해 보세요."
         return "경기 전 체크", "선발 라인업과 예매 정보를 경기 전에 확인해 보세요."
     if kind == "rival_watch":
+        if team_name:
+            return f"{team_name} 순위 경쟁", "순위에 영향을 줄 수 있는 주요 경기를 확인해 보세요."
         return "라이벌 경기 체크", "순위에 영향을 줄 수 있는 주요 경기를 확인해 보세요."
     return "야구 브리프", "오늘의 KBO 일정, 순위, 기록 정보를 확인해 보세요."
+
+
+def _team_display_name(team_id: Optional[str]) -> str:
+    if not team_id:
+        return ""
+    return KBO_TEAM_NAMES.get(team_id, team_id)
 
 
 def _firebase_certificate_source(

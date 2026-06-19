@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/team_data.dart';
+import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_artwork_card.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
@@ -132,14 +134,29 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   }
 
   Widget _buildUnavailableState(String message) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.sports_baseball, size: 48, color: AppColors.divider),
-          const SizedBox(height: 12),
-          Text(message, style: const TextStyle(color: AppColors.textDisabled)),
-        ],
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: AppArtworkCard(
+        assetName: VisualAssets.boxscoreAnalytics,
+        height: 178,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            const Text(
+              '박스스코어',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              message,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -215,6 +232,11 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const AppArtworkCard(
+          assetName: VisualAssets.boxscoreAnalytics,
+          height: 112,
+        ),
+        const SizedBox(height: 14),
         _SummaryHeader(
           teamId: _selectedTeamId,
           teamName: _selectedTeamName,

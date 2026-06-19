@@ -5,6 +5,7 @@ from datetime import date as date_type
 from pathlib import Path
 
 import pytest
+
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
 

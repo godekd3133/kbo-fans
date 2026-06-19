@@ -49,4 +49,4 @@
 - `PUSH_SYNC_SECRET=<...> ./scripts/codex-run.sh push-readiness` 통과
 - Android/iOS/Web `APP_ENV=release` 빌드가 no-backend direct data mode와 운영 push `API_BASE_URL`을 함께 포함해 생성됨
 - 실기기 release 설치 후 홈/일정/순위/기록실은 direct data 기준으로 로딩되고, push / Live Activity token registration은 production API 기준으로 성공함
-- 노트북이 꺼진 상태에서도 push / Live Activity를 시연하려면 운영 backend의 sync worker 또는 `/api/push/live-activity/sync-scoreboard` trigger가 8초 간격으로 실행됨
+- 노트북이 꺼진 상태에서도 push / Live Activity를 시연하려면 운영 backend의 sync worker 또는 `/api/push/live-activity/sync-scoreboard` trigger가 5초 간격으로 실행됨

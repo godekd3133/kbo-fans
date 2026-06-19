@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 
 import pytest
+
 from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.services.scoreboard import ScoreboardService

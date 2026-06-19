@@ -178,6 +178,15 @@ void main() {
     expect(route, '/game/20260612KTLG0?tab=relay');
   });
 
+  test('야구 브리프 push data는 route가 없어도 홈으로 변환한다', () {
+    final route = pushNotificationRouteForData({
+      'type': 'baseball_info',
+      'kind': 'weekly_check',
+    });
+
+    expect(route, '/home');
+  });
+
   test('잘못된 push route는 앱 내부 route로 사용하지 않는다', () {
     final route = pushNotificationRouteForData({
       'route': 'https://example.com/game/20260612KTLG0',

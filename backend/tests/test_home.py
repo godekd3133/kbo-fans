@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+
 from kbo_fans_backend.api.routes import (
     games,
     home,

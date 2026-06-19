@@ -30,7 +30,7 @@
 - 앱이 꺼진 뒤에도 알림이나 Dynamic Island가 바뀌려면 앱 direct KBO 경로가 아니라 운영 백엔드가 상태 변화를 읽어야 한다.
   - FCM은 일반 push notification 전달 채널이다.
   - iOS Live Activity / Dynamic Island 원격 갱신은 ActivityKit push token + APNs `liveactivity` push 채널이다.
-  - backend scheduler가 live 경기 중 8초 간격으로 scoreboard를 갱신하고, 등록된 ActivityKit token에는 update/end payload를 보낸다.
+  - backend scheduler가 live 경기 중 5초 간격으로 scoreboard/relay sync를 실행하고, 등록된 ActivityKit token에는 update/end payload를 보낸다.
   - 같은 scheduler가 이전 scoreboard state와 비교해 FCM topic push용 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` moment를 발행한다.
   - 일반 FCM message의 iOS APNs config는 `apns-push-type=alert`, app bundle `apns-topic`, `aps.alert`, `apns-priority=10`, default sound를 명시한다. 앱 실행 시점에 몰려 보이는 증상이 재현되면 이 alert-class payload가 운영 image에 배포됐는지 먼저 확인한다.
   - `GameEventAlertService`의 scoreboard/relay diff 기반 local notification은 local 개발 모드에서만 처리한다. release/dev에서 이 경로가 켜져 있으면 앱 resume/focus 시 지난 이벤트가 몰아서 표시될 수 있으므로 backend remote push와 역할을 섞지 않는다.
@@ -46,10 +46,10 @@
   - CloudFormation deploy 후 `./scripts/aws-push-stack-outputs.sh`가 stack output `ApiBaseUrl`을 `RELEASE_API_BASE_URL` / `API_BASE_URL`로 저장한다.
   - 전체 시연 배포는 `./scripts/aws-push-demo-deploy.sh`를 우선 사용한다. 이 스크립트는 secret upload, ECR image push, CloudFormation deploy, stack output export, push readiness 순서로 실행한다.
   - scoreboard sync 기본 날짜는 AWS UTC가 아니라 KBO 경기일 기준인 `Asia/Seoul`로 계산해야 한다.
-  - 8초 시연에는 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` long-running worker가 EventBridge 1분 one-shot보다 예측 가능하다.
+  - 5초 시연에는 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` long-running worker가 EventBridge 1분 one-shot보다 예측 가능하다.
   - `config-status.scheduler.lastSyncAt`은 sync worker가 실제로 registry에 heartbeat를 남겼는지 보는 운영 신호다. secret readiness와 worker activity를 구분해서 판단한다.
 - 홈 scoreboard 자동 refresh cadence는 live 8초, scheduled 5분, terminal 정지로 둔다.
-- 경기 상세는 live 탭 전체와 문자중계 foreground 원천 갱신을 8초 cadence로 맞춘다.
+- 경기 상세는 live 기본 탭 8초, 문자중계 foreground 원천 갱신은 5초 cadence로 맞춘다.
 
 ## Backend Lint / Compatibility
 
@@ -77,7 +77,7 @@
 - local iPhone debug에서는 `home_widget` / App Group / Workmanager 경로가 런타임 안정성을 해칠 수 있다.
   - `APP_ENV=local` + iOS 에서는 widget sync / periodic refresh 등록을 no-op 처리하는 편이 안전하다.
 - foreground 기준 잠금화면 체감 갱신은 홈 scoreboard invalidate 주기에 의해 사실상 상한이 결정된다.
-  - live game polling 간격은 현재 8초 기준으로 맞춘다.
+  - live game polling 간격은 홈 scoreboard 8초, 문자중계 foreground/sync worker 5초 기준으로 맞춘다.
   - static widget timeline은 1분 단위 재로드를 요청한다.
   - Live Activity / widget `updatedAt` 에는 초 단위 시각을 넣어 실제 갱신 여부를 구분한다.
 - widget/live sync signature는 점수/이닝이 안 바뀌더라도 live 중에는 일정 주기로 다시 흘려보내야 체감 갱신이 유지된다.

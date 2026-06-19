@@ -1,4 +1,5 @@
 import pytest
+
 from kbo_fans_backend.services.lineup import LineupService
 from kbo_fans_backend.storage import JsonSnapshotStore
 

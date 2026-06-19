@@ -92,6 +92,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _followStateLoaded = false;
   bool _followActionInFlight = false;
   String? _lastAutoMyTeamFollowKey;
+  List<Game>? _lastScoreboardGames;
+  String? _lastScoreboardDate;
+  String? _lastScoreboardRefreshErrorLogKey;
 
   @override
   void initState() {
@@ -113,64 +116,147 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final scoreboardAsync = ref.watch(scoreboardProvider(today));
     final myTeamId = ref.watch(myTeamProvider);
     _logHomeLoad(scoreboardAsync, today);
+    final fallbackGames = _lastScoreboardGamesFor(today);
 
     return Scaffold(
       body: SafeArea(
         child: AppMotionSwitcher(
           child: scoreboardAsync.when(
-            loading: () => KeyedSubtree(
-              key: const ValueKey('home-loading'),
-              child: _buildLoadingShell(context),
-            ),
-            error: (error, _) => KeyedSubtree(
-              key: const ValueKey('home-error'),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: AppColors.live,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      '데이터를 불러올 수 없습니다',
-                      style: TextStyle(color: AppColors.textDisabled),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      describeAsyncError(error),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textDisabled,
+            loading: () {
+              if (fallbackGames != null) {
+                return KeyedSubtree(
+                  key: ValueKey(
+                    'home-scoreboard-$today-${fallbackGames.length}',
+                  ),
+                  child: _buildScoreboardContent(
+                    context,
+                    fallbackGames,
+                    myTeamId,
+                    today,
+                    isFresh: false,
+                  ),
+                );
+              }
+              return KeyedSubtree(
+                key: const ValueKey('home-loading'),
+                child: _buildLoadingShell(context),
+              );
+            },
+            error: (error, _) {
+              if (fallbackGames != null) {
+                _logScoreboardRefreshFailure(today, error);
+                return KeyedSubtree(
+                  key: ValueKey(
+                    'home-scoreboard-$today-${fallbackGames.length}',
+                  ),
+                  child: _buildScoreboardContent(
+                    context,
+                    fallbackGames,
+                    myTeamId,
+                    today,
+                    isFresh: false,
+                  ),
+                );
+              }
+              return KeyedSubtree(
+                key: const ValueKey('home-error'),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: AppArtworkCard(
+                      assetName: VisualAssets.dataRetry,
+                      height: 184,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '데이터를 불러올 수 없습니다',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            describeAsyncError(error),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              height: 1.35,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(
+                              onPressed: _invalidateTodayScoreboard,
+                              child: const Text('다시 시도'),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: _invalidateTodayScoreboard,
-                      child: const Text('다시 시도'),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
             data: (games) {
               final displayGames = _uniqueGamesById(games);
-              _scheduleRefresh(displayGames, myTeamId);
-              _syncWidget(displayGames, myTeamId);
-              _processGameEventAlerts(displayGames, myTeamId);
-              _ensureMyTeamAutoFollow(displayGames, myTeamId);
-              _enableSecondarySections();
+              _lastScoreboardDate = today;
+              _lastScoreboardGames = displayGames;
+              _lastScoreboardRefreshErrorLogKey = null;
               return KeyedSubtree(
-                key: ValueKey('home-data-$today-${displayGames.length}'),
-                child: _buildContent(context, displayGames, myTeamId, today),
+                key: ValueKey('home-scoreboard-$today-${displayGames.length}'),
+                child: _buildScoreboardContent(
+                  context,
+                  displayGames,
+                  myTeamId,
+                  today,
+                  isFresh: true,
+                ),
               );
             },
           ),
         ),
       ),
+    );
+  }
+
+  List<Game>? _lastScoreboardGamesFor(String today) {
+    if (_lastScoreboardDate != today) {
+      return null;
+    }
+    return _lastScoreboardGames;
+  }
+
+  Widget _buildScoreboardContent(
+    BuildContext context,
+    List<Game> displayGames,
+    String? myTeamId,
+    String today, {
+    required bool isFresh,
+  }) {
+    if (isFresh) {
+      _scheduleRefresh(displayGames, myTeamId);
+      _syncWidget(displayGames, myTeamId);
+      _processGameEventAlerts(displayGames, myTeamId);
+      _ensureMyTeamAutoFollow(displayGames, myTeamId);
+      _enableSecondarySections();
+    }
+    return _buildContent(context, displayGames, myTeamId, today);
+  }
+
+  void _logScoreboardRefreshFailure(String today, Object error) {
+    final key = '$today|${error.runtimeType}|$error';
+    if (_lastScoreboardRefreshErrorLogKey == key) {
+      return;
+    }
+    _lastScoreboardRefreshErrorLogKey = key;
+    DevConsole.instance.warn(
+      'HOME scoreboard refresh failed; keeping last snapshot: $error',
     );
   }
 
@@ -537,6 +623,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             fontSize: 13,
                             color: AppColors.textSecondary,
                           ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => context.go('/schedule'),
+                                icon: const Icon(
+                                  Icons.calendar_month_rounded,
+                                  size: 16,
+                                ),
+                                label: const Text('일정 보기'),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(44),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => context.go('/records'),
+                                icon: const Icon(
+                                  Icons.leaderboard_rounded,
+                                  size: 16,
+                                ),
+                                label: const Text('기록실'),
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(44),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1088,6 +1212,8 @@ class _MyTeamBriefCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const _MyTeamBriefArtworkStrip(),
+            const SizedBox(height: 12),
             const Text(
               '마이팀 브리프',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -1181,6 +1307,8 @@ class _MyTeamBriefCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const _MyTeamBriefArtworkStrip(),
+            const SizedBox(height: 12),
             Row(
               children: [
                 _BriefStatusPill(
@@ -1515,6 +1643,46 @@ Widget _teamMarkFallback(String shortName, double size) {
       ),
     ),
   );
+}
+
+class _MyTeamBriefArtworkStrip extends StatelessWidget {
+  const _MyTeamBriefArtworkStrip();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: double.infinity,
+        height: 82,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              VisualAssets.myTeamBriefCommand,
+              fit: BoxFit.cover,
+              alignment: Alignment.centerRight,
+              filterQuality: FilterQuality.medium,
+              errorBuilder: (_, _, _) =>
+                  const ColoredBox(color: AppColors.cardSub),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    AppColors.background.withValues(alpha: 0.28),
+                    AppColors.background.withValues(alpha: 0.08),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _BriefStatusPill extends StatelessWidget {

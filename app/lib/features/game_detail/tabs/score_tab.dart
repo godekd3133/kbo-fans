@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/app_artwork_card.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/relay.dart';
@@ -30,6 +32,11 @@ class ScoreTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const AppArtworkCard(
+              assetName: VisualAssets.scoreLinescore,
+              height: 108,
+            ),
+            const SizedBox(height: 14),
             _buildInningTable(context, const <RelayItem>[]),
             if (footer != null) ...[const SizedBox(height: 12), footer!],
           ],

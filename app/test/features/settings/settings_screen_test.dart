@@ -18,6 +18,39 @@ void main() {
     );
   });
 
+  testWidgets('기본 알림 상태는 내 팀 집중 프리셋 적용 상태로 보인다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('현재 프리셋: 내 팀 집중'), findsOneWidget);
+    expect(find.text('적용됨'), findsOneWidget);
+  });
+
+  testWidgets('알림 항목이 기본값과 다르면 커스텀 프리셋으로 보인다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    SharedPreferences.setMockInitialValues({
+      'push_notifications.scoring.delivery': 'off',
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('현재 프리셋: 커스텀'), findsOneWidget);
+    expect(find.text('프리셋 적용'), findsOneWidget);
+  });
+
   testWidgets('앱 정보 및 지원 항목이 실제 동작한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
