@@ -30,9 +30,11 @@
 - [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 순위 요약 rail, 순위 empty state, 온보딩 모바일 그리드 기준 반영
 
 ### 검증
-- [x] `cd app && git -C .. diff --name-only -- app | sed 's#^app/##' | rg '\.dart$' | xargs fvm dart format` (`13 files`, `0 changed`)
-- [x] `cd app && fvm flutter test --no-pub` (`136 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/features/standings/standings_screen.dart lib/features/onboarding/onboarding_screen.dart test/features/standings/standings_screen_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/standings/standings_screen_test.dart -r expanded` (`3 passed`)
 - [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub` (`136 passed`)
+- [x] `file docs/design_refs/*.png` (`3개 reference mock 모두 RGB PNG`)
 - [x] `git diff --check`
 
 ---
