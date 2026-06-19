@@ -472,21 +472,11 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     ),
                   ),
                 ),
-                if (MediaQuery.sizeOf(context).height >= 760)
-                  const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: AppArtworkCard(
-                        assetName: VisualAssets.gameDetailScoreboard,
-                        height: 78,
-                      ),
-                    ),
-                  ),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                     child: Container(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(8),
@@ -502,104 +492,120 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                           ],
                         ),
                       ),
-                      child: Column(
+                      child: Stack(
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 9,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.live.withValues(
-                                    alpha: isLive ? 0.18 : 0.08,
-                                  ),
-                                  borderRadius: BorderRadius.circular(999),
-                                  border: Border.all(
-                                    color: AppColors.live.withValues(
-                                      alpha: isLive ? 0.45 : 0.18,
-                                    ),
-                                  ),
-                                ),
-                                child: Text(
-                                  isLive
-                                      ? 'LIVE'
-                                      : labelForGameStatus(
-                                          game.status,
-                                          statusLabel: game.statusLabel,
-                                        ),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isLive
-                                        ? AppColors.live
-                                        : AppColors.textSecondary,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ),
-                              const Spacer(),
-                              Text(
-                                _stateMetaText(game),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
+                          const Positioned.fill(
+                            child: AppArtworkLayer(
+                              assetName: VisualAssets.gameDetailScoreboard,
+                              alignment: Alignment.centerRight,
+                              opacity: 0.16,
+                            ),
                           ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _teamSection(
-                                  game.away.teamId,
-                                  game.away.shortName,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                children: [
-                                  AppMotionValue(
-                                    value:
-                                        '${game.away.score}:${game.home.score}',
-                                    child: Text(
-                                      '${game.away.score}:${game.home.score}',
-                                      style: const TextStyle(
-                                        fontSize: 38,
-                                        height: 1,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 0,
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 9,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.live.withValues(
+                                          alpha: isLive ? 0.18 : 0.08,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        border: Border.all(
+                                          color: AppColors.live.withValues(
+                                            alpha: isLive ? 0.45 : 0.18,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        isLive
+                                            ? 'LIVE'
+                                            : labelForGameStatus(
+                                                game.status,
+                                                statusLabel: game.statusLabel,
+                                              ),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: isLive
+                                              ? AppColors.live
+                                              : AppColors.textSecondary,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 7),
-                                  Text(
-                                    secondaryTextForGameStatus(
-                                      game.status,
-                                      inning: game.inning,
-                                      startTime: game.startTime,
-                                      statusLabel: game.statusLabel,
+                                    const Spacer(),
+                                    Text(
+                                      _stateMetaText(game),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isLive
-                                          ? AppColors.textPrimary
-                                          : AppColors.textSecondary,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _teamSection(
-                                  game.home.teamId,
-                                  game.home.shortName,
+                                  ],
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 14),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _teamSection(
+                                        game.away.teamId,
+                                        game.away.shortName,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Column(
+                                      children: [
+                                        AppMotionValue(
+                                          value:
+                                              '${game.away.score}:${game.home.score}',
+                                          child: Text(
+                                            '${game.away.score}:${game.home.score}',
+                                            style: const TextStyle(
+                                              fontSize: 38,
+                                              height: 1,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 0,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 7),
+                                        Text(
+                                          secondaryTextForGameStatus(
+                                            game.status,
+                                            inning: game.inning,
+                                            startTime: game.startTime,
+                                            statusLabel: game.statusLabel,
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isLive
+                                                ? AppColors.textPrimary
+                                                : AppColors.textSecondary,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _teamSection(
+                                        game.home.teamId,
+                                        game.home.shortName,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

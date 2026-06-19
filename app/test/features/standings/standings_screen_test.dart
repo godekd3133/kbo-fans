@@ -94,6 +94,35 @@ void main() {
     await tester.pump();
 
     expect(find.text('연속'), findsOneWidget);
+    expect(find.text('1위 경쟁'), findsOneWidget);
     expect(find.text('3연승'), findsOneWidget);
+  });
+
+  testWidgets('standings empty response shows artwork empty state', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          standingsProvider.overrideWith((ref, season) async {
+            return const [];
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const StandingsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('순위 데이터가 아직 없습니다'), findsOneWidget);
+    expect(find.text('다시 확인'), findsOneWidget);
+    expect(find.text('연속'), findsNothing);
   });
 }

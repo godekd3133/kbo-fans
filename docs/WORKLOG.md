@@ -2,6 +2,61 @@
 
 ---
 
+## 2026-06-19: 보조 화면 누락 모션 보강
+
+### 완료
+- [x] `rg` 기준으로 주요 사용자 화면 중 공통 `app_motion` 적용이 빠진 API 진단, 패치노트, 경기 상세 라인업 탭을 확인
+- [x] API 진단 화면의 loading/ready 상태 전환과 health/scoreboard/schedule/push 진단 카드에 `AppMotionSwitcher` / `AppMotionListItem` 적용
+- [x] 패치노트 화면의 loading/error/ready 상태 전환과 현재 버전 배너/릴리즈 카드에 공통 모션 적용
+- [x] 라인업 탭의 loading/error/unavailable/data 상태 전환, 상단 매치업/라인업 섹션, 선발 라인업/불펜 행에 공통 등장 모션 적용
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 보조 화면 상태/카드 등장 모션 기준 반영
+
+### 검증
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/features/settings/api_diagnostics_screen.dart lib/features/settings/patch_notes_screen.dart lib/features/game_detail/tabs/lineup_tab.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/features/settings/api_diagnostics_screen.dart lib/features/settings/patch_notes_screen.dart lib/features/game_detail/tabs/lineup_tab.dart` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/game_detail/lineup_tab_test.dart test/features/game_detail/game_detail_navigation_test.dart test/features/settings/settings_screen_test.dart -r expanded` (`8 passed`)
+- [x] `git diff --check -- app/lib/features/settings/api_diagnostics_screen.dart app/lib/features/settings/patch_notes_screen.dart app/lib/features/game_detail/tabs/lineup_tab.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-19: 이미지 레퍼런스 기반 순위/온보딩 UI polish
+
+### 완료
+- [x] Apple Sports, MLB App Live Activities, SofaScore home update, 스포츠 모바일 UI concept를 이미지/제품 레퍼런스로 확인하고 `docs/design_refs/2026-06-19-ui-image-reference.md`에 판단 기준 기록
+- [x] `image_gen` 내장 경로로 홈 scoreboard, 순위표, 경기 상세 live screen reference mock 3장을 생성하고 `docs/design_refs/`에 보존
+- [x] 순위 화면에 `1위 경쟁` / `마이팀` / `연승` compact rail을 추가해 표를 읽기 전 리그 흐름을 먼저 보이도록 정리
+- [x] 순위 데이터가 빈 배열일 때 헤더만 남는 화면 대신 `standings_race` 기반 artwork empty state와 `다시 확인` CTA를 노출
+- [x] 온보딩 모바일 팀 그리드의 logo/hero/card 비율과 CTA 전 여백을 조정해 390x844 화면에서 팀 카드와 버튼이 답답하게 붙지 않도록 정리
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 순위 요약 rail, 순위 empty state, 온보딩 모바일 그리드 기준 반영
+
+### 검증
+- [x] `cd app && git -C .. diff --name-only -- app | sed 's#^app/##' | rg '\.dart$' | xargs fvm dart format` (`13 files`, `0 changed`)
+- [x] `cd app && fvm flutter test --no-pub` (`136 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-19: 0.0.41 모션 polish 릴리즈/TestFlight 업로드
+
+### 완료
+- [x] `0.0.40` 이후 남아 있던 탭 방향/일정 월 이동 polish 변경을 새 tester-facing build `0.0.41+41`로 분리
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.41` 기준으로 동기화
+- [x] 하단 탭 전환 방향을 실제 탭 순서 기준으로 계산하고, 일정 화면 월 이동 애니메이션을 380ms `easeInOutCubic`으로 정리
+- [x] 생성 비주얼/재시도 상태 문서와 기존 worklog 검증 상태를 최신 적용 범위에 맞게 보정
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/router/app_router.dart lib/features/schedule/schedule_screen.dart` (`0 changed`)
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub` (`136 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`156 passed`)
+- [x] `git diff --check`
+- [x] `0.0.41 (41)` archive/IPA metadata, patch notes, Firebase plist, push entitlements 확인
+- [x] `0.0.41 (41)` TestFlight upload 성공 확인 (`Upload succeeded`, `Uploaded package is processing`; `objective_c.framework` dSYM warning은 남음)
+
+---
+
 ## 2026-06-19: 전체 검증 중 앱 병렬 테스트 shader 실패 수정
 
 ### 완료
@@ -28,18 +83,18 @@
 ### 완료
 - [x] `image_gen` 내장 경로로 스코어 이닝표, 박스스코어 분석, 라인업 매치업, 데이터 재시도 상태용 16:9 야구 비주얼 4장을 추가 생성
 - [x] 원본은 Codex generated image 경로에 보존하고, 앱 번들용으로 `score_linescore.png`, `boxscore_analytics.png`, `lineup_matchup.png`, `data_retry.png`를 `app/assets/visuals/`에 1200×675 RGB PNG로 저장
-- [x] `VisualAssets`에 새 asset key를 추가하고, 스코어 탭 상단, 라인업 정상 상단, 홈 cold error 재시도 카드에 실제 `Image.asset` 경로로 적용
+- [x] `VisualAssets`에 새 asset key를 추가하고, 스코어 탭 상단, 라인업 정상 상단, 홈/일정/순위 cold error 재시도 카드에 실제 `Image.asset` 경로로 적용
 - [x] 기존 박스스코어 요약/미공개 상태의 `boxscore_analytics` 적용과 합쳐 경기 상세 4개 탭 모두 생성 비주얼을 갖도록 정리
-- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 홈 재시도/스코어/라인업 생성 비주얼 노출 규칙 반영
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 홈/일정/순위 재시도, 스코어, 라인업 생성 비주얼 노출 규칙 반영
 
 ### 검증
-- [ ] `file app/assets/visuals/*.png`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/constants/visual_assets.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/game_detail_navigation_test.dart -r expanded`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build web --release --dart-define=APP_ENV=local`
-- [ ] `find app/build/web/assets/assets/visuals -maxdepth 1 -type f -print | sort`
-- [ ] `git diff --check`
+- [x] `file app/assets/visuals/*.png` (`15개 visual asset 모두 1200 x 675`, RGB PNG)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/constants/visual_assets.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/game_detail/tabs/relay_tab.dart lib/features/schedule/schedule_screen.dart lib/features/standings/standings_screen.dart lib/features/game_detail/game_detail_screen.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/game_detail/tabs/relay_tab.dart lib/features/schedule/schedule_screen.dart lib/features/standings/standings_screen.dart lib/features/game_detail/game_detail_screen.dart` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/relay_tab_test.dart test/features/game_detail/game_detail_navigation_test.dart test/features/schedule/schedule_screen_test.dart test/features/standings/standings_screen_test.dart -r expanded` (`23 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build web --release --dart-define=APP_ENV=local` (`Built build/web`; wasm dry-run / Cupertino icon 경고는 기존 의존성/아이콘 경고)
+- [x] `find app/build/web/assets/assets/visuals -maxdepth 1 -type f -print | sort` (`15개 visual asset 번들 포함 확인`)
+- [x] `git diff --check`
 
 ---
 
@@ -50,17 +105,17 @@
 - [x] 원본은 Codex generated image 경로에 보존하고, 앱 번들용으로 `my_team_brief_command.png`, `boxscore_analytics.png`, `lineup_dugout.png`, `schedule_empty_calendar.png`를 `app/assets/visuals/`에 1200×675 RGB PNG로 저장
 - [x] 홈 마이팀 브리프 선택 전/후 카드에 `my_team_brief_command` visual strip을 실제 `Image.asset` 경로로 적용
 - [x] 경기 상세 박스스코어/라인업 탭의 정상 요약 상단과 미공개/빈 상태에 `boxscore_analytics`, `lineup_dugout` 생성 이미지를 적용
-- [x] 일정 화면의 날짜 미선택, 선택일 경기 없음, 구장별 일정 없음 상태에 `schedule_empty_calendar` 생성 이미지를 적용
-- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 홈 브리프/박스스코어/라인업/일정 빈 상태 생성 비주얼 노출 규칙 반영
+- [x] 일정 화면의 날짜 미선택, 선택일 경기 없음, 구장별 일정 없음 상태에 `schedule_empty_calendar` 생성 이미지를 적용하고, 일정/순위 오류 상태는 `data_retry`로 통일
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 홈 브리프/박스스코어/라인업/일정 빈 상태/재시도 상태 생성 비주얼 노출 규칙 반영
 
 ### 검증
-- [ ] `file app/assets/visuals/*.png`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/constants/visual_assets.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/schedule/schedule_screen.dart`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/schedule/schedule_screen.dart`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart -r expanded`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/schedule/schedule_screen_test.dart -r expanded`
-- [ ] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart -r expanded`
-- [ ] `git diff --check -- app/lib/core/constants/visual_assets.dart app/lib/features/home/home_screen.dart app/lib/features/game_detail/tabs/boxscore_tab.dart app/lib/features/game_detail/tabs/lineup_tab.dart app/lib/features/schedule/schedule_screen.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md app/assets/visuals/my_team_brief_command.png app/assets/visuals/boxscore_analytics.png app/assets/visuals/lineup_dugout.png app/assets/visuals/schedule_empty_calendar.png`
+- [x] `file app/assets/visuals/*.png` (`15개 visual asset 모두 1200 x 675`, RGB PNG)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/constants/visual_assets.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/game_detail/tabs/relay_tab.dart lib/features/schedule/schedule_screen.dart lib/features/standings/standings_screen.dart lib/features/game_detail/game_detail_screen.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/constants/visual_assets.dart lib/core/widgets/app_artwork_card.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/score_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/game_detail/tabs/relay_tab.dart lib/features/schedule/schedule_screen.dart lib/features/standings/standings_screen.dart lib/features/game_detail/game_detail_screen.dart` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/relay_tab_test.dart test/features/game_detail/game_detail_navigation_test.dart test/features/schedule/schedule_screen_test.dart test/features/standings/standings_screen_test.dart -r expanded` (`23 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter build web --release --dart-define=APP_ENV=local` (`Built build/web`; wasm dry-run / Cupertino icon 경고는 기존 의존성/아이콘 경고)
+- [x] `find app/build/web/assets/assets/visuals -maxdepth 1 -type f -print | sort` (`15개 visual asset 번들 포함 확인`)
+- [x] `git diff --check`
 
 ---
 
@@ -112,16 +167,22 @@
 ### 완료
 - [x] 1차로 하단 5탭 전환을 기존 220ms/0.03 horizontal slide에서 300ms/0.10 horizontal slide + opacity 0.72 + scale 0.985로 키워 화면 이동 체감을 강화
 - [x] 후속 조정: 탭 전환을 360ms/0.06 horizontal slide + opacity 0.86 + scale 0.992로 완화하고, outgoing 화면에 약한 parallax/fade를 추가해 더 부드럽게 연결
+- [x] 좌우 슬라이드 후속 조정: 하단 탭 이동 방향을 실제 탭 순서 기준으로 맞추고, 탭 slide를 380ms/0.052 horizontal slide + opacity 0.88 + 더 약한 outgoing parallax로 완화
+- [x] 일정 화면 월 이동 버튼/오늘 버튼의 `PageView.animateToPage`를 380ms `easeInOutCubic`으로 조정해 좌우 월 전환이 덜 급하게 멈추도록 보강
 - [x] 경기 상세, 선수 상세, 리더보드, API 진단, 패치노트 root push 화면을 공통 `_swipeBackPage`로 정리하고 `CupertinoPage` 기반 native slide/parallax 전환으로 변경
 - [x] root push 화면이 이전 route 위에 쌓였을 때 iOS edge-swipe pop이 가능한 route 타입을 사용하도록 라우터 테스트 추가
 - [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 화면 전환/스와이프 백 UX 기준 반영
 
 ### 검증
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/router/app_router.dart test/core/router/app_router_test.dart`
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/dart format lib/core/router/app_router.dart lib/features/schedule/schedule_screen.dart test/core/router/app_router_test.dart`
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/core/router/app_router_test.dart -r expanded` (`2 passed`)
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/core/router/app_router_test.dart test/features/game_detail/game_detail_navigation_test.dart -r expanded` (`5 passed`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter test --no-pub test/core/router/app_router_test.dart test/features/schedule/schedule_screen_test.dart test/features/game_detail/game_detail_navigation_test.dart -r expanded` (`8 passed`)
 - [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/router/app_router.dart test/core/router/app_router_test.dart` (`No issues found`)
+- [x] `cd app && /Users/kimminkyu/fvm/versions/3.41.6/bin/flutter analyze --no-pub lib/core/router/app_router.dart lib/features/schedule/schedule_screen.dart test/core/router/app_router_test.dart` (`No issues found`)
 - [x] `git diff --check -- app/lib/core/router/app_router.dart app/test/core/router/app_router_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+- [x] `git diff --check -- app/lib/core/router/app_router.dart app/lib/features/schedule/schedule_screen.dart app/test/core/router/app_router_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
 - [ ] 실제 iPhone edge-swipe 체감은 다음 실기기 실행에서 확인 필요
 
 ---

@@ -6,6 +6,7 @@ import '../../../core/constants/team_data.dart';
 import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_artwork_card.dart';
+import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/player.dart';
@@ -74,126 +75,138 @@ class LineupTab extends ConsumerWidget {
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                child: gameLineupAsync.when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(28),
-                    child: Center(
-                      child: CircularProgressIndicator(color: AppColors.live),
+                child: AppMotionSwitcher(
+                  child: gameLineupAsync.when(
+                    loading: () => const Padding(
+                      key: ValueKey('lineup-loading'),
+                      padding: EdgeInsets.all(28),
+                      child: Center(
+                        child: CircularProgressIndicator(color: AppColors.live),
+                      ),
                     ),
-                  ),
-                  error: (error, _) => Text(
-                    '라인업 데이터 로딩 실패: $error',
-                    style: const TextStyle(color: AppColors.textDisabled),
-                  ),
-                  data: (gameLineup) {
-                    if (gameStatus == GameStatus.scheduled &&
-                        !_hasPublishedLineup(gameLineup)) {
-                      return _buildUnavailableState('라인업 공개 전입니다');
-                    }
-                    final awayImageMap = _buildPlayerImageMap(
-                      allImageMap: allImageMap,
-                      teamPlayers:
-                          awayPlayersAsync.asData?.value ??
-                          const <PlayerProfile>[],
-                      season: season,
-                      relayData: null,
-                    );
-                    final homeImageMap = _buildPlayerImageMap(
-                      allImageMap: allImageMap,
-                      teamPlayers:
-                          homePlayersAsync.asData?.value ??
-                          const <PlayerProfile>[],
-                      season: season,
-                      relayData: null,
-                    );
-                    final compareData = _buildMatchupCompareData(
-                      awayTeamId: awayTeamId,
-                      awayName: awayName,
-                      homeTeamId: homeTeamId,
-                      homeName: homeName,
-                      standings: const [],
-                      scheduleDays: const [],
-                      awayTeamStats: null,
-                      homeTeamStats: null,
-                      awayStarter: null,
-                      homeStarter: null,
-                      awayStarterName: gameLineup.away.starterName,
-                      homeStarterName: gameLineup.home.starterName,
-                      awayStarterImageUrl: _resolveStarterImageUrl(
-                        awayImageMap,
-                        name: gameLineup.away.starterName ?? '',
-                        starterId: gameLineup.away.starterId,
-                        starterImageUrl: gameLineup.away.starterImageUrl,
+                    error: (error, _) => Text(
+                      '라인업 데이터 로딩 실패: $error',
+                      key: const ValueKey('lineup-error'),
+                      style: const TextStyle(color: AppColors.textDisabled),
+                    ),
+                    data: (gameLineup) {
+                      if (gameStatus == GameStatus.scheduled &&
+                          !_hasPublishedLineup(gameLineup)) {
+                        return KeyedSubtree(
+                          key: const ValueKey('lineup-unavailable'),
+                          child: _buildUnavailableState('라인업 공개 전입니다'),
+                        );
+                      }
+                      final awayImageMap = _buildPlayerImageMap(
+                        allImageMap: allImageMap,
+                        teamPlayers:
+                            awayPlayersAsync.asData?.value ??
+                            const <PlayerProfile>[],
                         season: season,
-                      ),
-                      homeStarterImageUrl: _resolveStarterImageUrl(
-                        homeImageMap,
-                        name: gameLineup.home.starterName ?? '',
-                        starterId: gameLineup.home.starterId,
-                        starterImageUrl: gameLineup.home.starterImageUrl,
+                        relayData: null,
+                      );
+                      final homeImageMap = _buildPlayerImageMap(
+                        allImageMap: allImageMap,
+                        teamPlayers:
+                            homePlayersAsync.asData?.value ??
+                            const <PlayerProfile>[],
                         season: season,
-                      ),
-                    );
+                        relayData: null,
+                      );
+                      final compareData = _buildMatchupCompareData(
+                        awayTeamId: awayTeamId,
+                        awayName: awayName,
+                        homeTeamId: homeTeamId,
+                        homeName: homeName,
+                        standings: const [],
+                        scheduleDays: const [],
+                        awayTeamStats: null,
+                        homeTeamStats: null,
+                        awayStarter: null,
+                        homeStarter: null,
+                        awayStarterName: gameLineup.away.starterName,
+                        homeStarterName: gameLineup.home.starterName,
+                        awayStarterImageUrl: _resolveStarterImageUrl(
+                          awayImageMap,
+                          name: gameLineup.away.starterName ?? '',
+                          starterId: gameLineup.away.starterId,
+                          starterImageUrl: gameLineup.away.starterImageUrl,
+                          season: season,
+                        ),
+                        homeStarterImageUrl: _resolveStarterImageUrl(
+                          homeImageMap,
+                          name: gameLineup.home.starterName ?? '',
+                          starterId: gameLineup.home.starterId,
+                          starterImageUrl: gameLineup.home.starterImageUrl,
+                          season: season,
+                        ),
+                      );
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const AppArtworkCard(
-                          assetName: VisualAssets.lineupMatchup,
-                          height: 112,
-                          alignment: Alignment.center,
+                      return Column(
+                        key: ValueKey(
+                          'lineup-data-${gameLineup.away.lineup.length}-${gameLineup.home.lineup.length}',
                         ),
-                        const SizedBox(height: 14),
-                        _MatchupCompareSection(
-                          data: compareData,
-                          awayAccent:
-                              KboTeams.byId(awayTeamId)?.primaryColor ??
-                              AppColors.live,
-                          homeAccent:
-                              KboTeams.byId(homeTeamId)?.primaryColor ??
-                              AppColors.accent,
-                        ),
-                        const SizedBox(height: 16),
-                        _CompareSection(
-                          title: '선발 라인업',
-                          left: _LineupColumn(
-                            teamId: awayTeamId,
-                            teamName: awayName,
-                            sideLabel: 'AWAY',
-                            season: season,
-                            starterId: gameLineup.away.starterId,
-                            starterName: gameLineup.away.starterName,
-                            starterImageUrl: gameLineup.away.starterImageUrl,
-                            lineup: gameLineup.away.lineup,
-                            batterFallback: const <BatterRecord>[],
-                            pitchers: const <PitcherRecord>[],
-                            relayData: null,
-                            imageMap: awayImageMap,
-                            showBullpen: false,
-                            isLive: gameStatus == GameStatus.live,
-                            isAwayTeam: true,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          AppMotionListItem(
+                            index: 0,
+                            child: _MatchupCompareSection(
+                              data: compareData,
+                              awayAccent:
+                                  KboTeams.byId(awayTeamId)?.primaryColor ??
+                                  AppColors.live,
+                              homeAccent:
+                                  KboTeams.byId(homeTeamId)?.primaryColor ??
+                                  AppColors.accent,
+                            ),
                           ),
-                          right: _LineupColumn(
-                            teamId: homeTeamId,
-                            teamName: homeName,
-                            sideLabel: 'HOME',
-                            season: season,
-                            starterId: gameLineup.home.starterId,
-                            starterName: gameLineup.home.starterName,
-                            starterImageUrl: gameLineup.home.starterImageUrl,
-                            lineup: gameLineup.home.lineup,
-                            batterFallback: const <BatterRecord>[],
-                            pitchers: const <PitcherRecord>[],
-                            relayData: null,
-                            imageMap: homeImageMap,
-                            showBullpen: false,
-                            isLive: gameStatus == GameStatus.live,
-                            isAwayTeam: false,
+                          const SizedBox(height: 16),
+                          AppMotionListItem(
+                            index: 1,
+                            child: _CompareSection(
+                              title: '선발 라인업',
+                              left: _LineupColumn(
+                                teamId: awayTeamId,
+                                teamName: awayName,
+                                sideLabel: 'AWAY',
+                                season: season,
+                                starterId: gameLineup.away.starterId,
+                                starterName: gameLineup.away.starterName,
+                                starterImageUrl:
+                                    gameLineup.away.starterImageUrl,
+                                lineup: gameLineup.away.lineup,
+                                batterFallback: const <BatterRecord>[],
+                                pitchers: const <PitcherRecord>[],
+                                relayData: null,
+                                imageMap: awayImageMap,
+                                showBullpen: false,
+                                isLive: gameStatus == GameStatus.live,
+                                isAwayTeam: true,
+                              ),
+                              right: _LineupColumn(
+                                teamId: homeTeamId,
+                                teamName: homeName,
+                                sideLabel: 'HOME',
+                                season: season,
+                                starterId: gameLineup.home.starterId,
+                                starterName: gameLineup.home.starterName,
+                                starterImageUrl:
+                                    gameLineup.home.starterImageUrl,
+                                lineup: gameLineup.home.lineup,
+                                batterFallback: const <BatterRecord>[],
+                                pitchers: const <PitcherRecord>[],
+                                relayData: null,
+                                imageMap: homeImageMap,
+                                showBullpen: false,
+                                isLive: gameStatus == GameStatus.live,
+                                isAwayTeam: false,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -415,28 +428,42 @@ class _MatchupCompareSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.divider),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          _MatchupHeader(data: data),
-          const SizedBox(height: 22),
-          _RecentTrendSection(
-            away: data.away,
-            home: data.home,
-            awayAccent: awayAccent,
-            homeAccent: homeAccent,
+          const Positioned.fill(
+            child: AppArtworkLayer(
+              assetName: VisualAssets.lineupMatchup,
+              alignment: Alignment.center,
+              opacity: 0.2,
+            ),
           ),
-          const SizedBox(height: 28),
-          _StarterDuelSection(
-            away: data.away.starter,
-            home: data.home.starter,
-            awayAccent: awayAccent,
-            homeAccent: homeAccent,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
+            child: Column(
+              children: [
+                _MatchupHeader(data: data),
+                const SizedBox(height: 22),
+                _RecentTrendSection(
+                  away: data.away,
+                  home: data.home,
+                  awayAccent: awayAccent,
+                  homeAccent: homeAccent,
+                ),
+                const SizedBox(height: 28),
+                _StarterDuelSection(
+                  away: data.away.starter,
+                  home: data.home.starter,
+                  awayAccent: awayAccent,
+                  homeAccent: homeAccent,
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1283,11 +1310,19 @@ class _LineupColumn extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   for (int index = 0; index < bullpenNames.length; index++) ...[
-                    _BullpenNameRow(
-                      name: bullpenNames[index],
-                      accent: accent,
-                      orderLabel: '${index + 1}',
-                      imageUrl: _resolveImageUrl(imageMap, bullpenNames[index]),
+                    AppMotionListItem(
+                      index: index,
+                      beginYOffset: 8,
+                      beginScale: 0.994,
+                      child: _BullpenNameRow(
+                        name: bullpenNames[index],
+                        accent: accent,
+                        orderLabel: '${index + 1}',
+                        imageUrl: _resolveImageUrl(
+                          imageMap,
+                          bullpenNames[index],
+                        ),
+                      ),
                     ),
                     if (index != bullpenNames.length - 1)
                       const Divider(color: AppColors.divider, height: 14),
@@ -1300,13 +1335,21 @@ class _LineupColumn extends StatelessWidget {
             _EmptyLabel(label: isLive ? '실시간 타자 라인업 집계 중' : '타자 라인업 데이터 없음'),
           ],
           const SizedBox(height: 14),
-          for (final entry in displayedLineup) ...[
-            _LineupRow(
-              entry: entry,
-              accent: accent,
-              imageUrl: _resolveImageUrl(imageMap, entry.name),
+          for (int index = 0; index < displayedLineup.length; index++) ...[
+            AppMotionListItem(
+              index: index,
+              beginYOffset: 8,
+              beginScale: 0.994,
+              child: _LineupRow(
+                entry: displayedLineup[index],
+                accent: accent,
+                imageUrl: _resolveImageUrl(
+                  imageMap,
+                  displayedLineup[index].name,
+                ),
+              ),
             ),
-            if (entry != displayedLineup.last)
+            if (index != displayedLineup.length - 1)
               const Divider(color: AppColors.divider, height: 14),
           ],
         ],

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_motion.dart';
 
 class PatchNotesScreen extends StatefulWidget {
   const PatchNotesScreen({super.key});
@@ -53,36 +54,49 @@ class _PatchNotesScreenState extends State<PatchNotesScreen> {
       body: FutureBuilder<_PatchNotesData>(
         future: _future,
         builder: (context, snapshot) {
+          Widget child;
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(
+            child = const Center(
+              key: ValueKey('patch-notes-loading'),
               child: CircularProgressIndicator(color: AppColors.live),
             );
+            return AppMotionSwitcher(child: child);
           }
           if (snapshot.hasError || !snapshot.hasData) {
-            return const _PatchNotesError();
+            child = const _PatchNotesError(key: ValueKey('patch-notes-error'));
+            return AppMotionSwitcher(child: child);
           }
 
           final data = snapshot.data!;
           if (data.releases.isEmpty) {
-            return const _PatchNotesError();
+            child = const _PatchNotesError(key: ValueKey('patch-notes-empty'));
+            return AppMotionSwitcher(child: child);
           }
 
-          return ListView.separated(
+          child = ListView.separated(
+            key: const ValueKey('patch-notes-ready'),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             itemBuilder: (context, index) {
               if (index == 0) {
-                return _CurrentVersionBanner(version: data.currentVersion);
+                return AppMotionListItem(
+                  index: 0,
+                  child: _CurrentVersionBanner(version: data.currentVersion),
+                );
               }
 
               final release = data.releases[index - 1];
-              return _ReleaseCard(
-                release: release,
-                isCurrent: _isCurrentRelease(release, data.currentVersion),
+              return AppMotionListItem(
+                index: index,
+                child: _ReleaseCard(
+                  release: release,
+                  isCurrent: _isCurrentRelease(release, data.currentVersion),
+                ),
               );
             },
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemCount: data.releases.length + 1,
           );
+          return AppMotionSwitcher(child: child);
         },
       ),
     );
@@ -360,7 +374,7 @@ class _PatchBullet extends StatelessWidget {
 }
 
 class _PatchNotesError extends StatelessWidget {
-  const _PatchNotesError();
+  const _PatchNotesError({super.key});
 
   @override
   Widget build(BuildContext context) {

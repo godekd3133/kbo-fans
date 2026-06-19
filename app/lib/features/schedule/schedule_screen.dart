@@ -132,8 +132,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           unawaited(
             _calendarPageController.animateToPage(
               targetPage,
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutCubic,
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeInOutCubic,
             ),
           );
         } else {

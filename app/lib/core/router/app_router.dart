@@ -20,6 +20,7 @@ import '../widgets/boot_splash_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
+int? _lastTabIndex;
 
 class OnboardingDoneNotifier extends Notifier<bool?> {
   @override
@@ -46,6 +47,7 @@ final _onboardingDoneRefreshProvider = Provider<ValueNotifier<bool?>>((ref) {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final onboardingDoneRefresh = ref.watch(_onboardingDoneRefreshProvider);
+  _lastTabIndex = null;
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -116,35 +118,51 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/home',
-            pageBuilder: (context, state) =>
-                _tabTransitionPage(state, child: const HomeScreen()),
+            pageBuilder: (context, state) => _tabTransitionPage(
+              state,
+              tabIndex: 0,
+              child: const HomeScreen(),
+            ),
           ),
           GoRoute(
             path: '/schedule',
-            pageBuilder: (context, state) =>
-                _tabTransitionPage(state, child: const ScheduleScreen()),
+            pageBuilder: (context, state) => _tabTransitionPage(
+              state,
+              tabIndex: 1,
+              child: const ScheduleScreen(),
+            ),
           ),
           GoRoute(
             path: '/standings',
-            pageBuilder: (context, state) =>
-                _tabTransitionPage(state, child: const StandingsScreen()),
+            pageBuilder: (context, state) => _tabTransitionPage(
+              state,
+              tabIndex: 2,
+              child: const StandingsScreen(),
+            ),
           ),
           GoRoute(
             path: '/records',
-            pageBuilder: (context, state) =>
-                _tabTransitionPage(state, child: const RecordsScreen()),
+            pageBuilder: (context, state) => _tabTransitionPage(
+              state,
+              tabIndex: 3,
+              child: const RecordsScreen(),
+            ),
           ),
           GoRoute(
             path: '/records/team/:teamId',
             pageBuilder: (context, state) => _tabTransitionPage(
               state,
+              tabIndex: 3,
               child: RecordsScreen(teamId: state.pathParameters['teamId']!),
             ),
           ),
           GoRoute(
             path: '/settings',
-            pageBuilder: (context, state) =>
-                _tabTransitionPage(state, child: const SettingsScreen()),
+            pageBuilder: (context, state) => _tabTransitionPage(
+              state,
+              tabIndex: 4,
+              child: const SettingsScreen(),
+            ),
           ),
         ],
       ),
@@ -205,7 +223,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-  ref.onDispose(router.dispose);
+  ref.onDispose(() {
+    _lastTabIndex = null;
+    router.dispose();
+  });
   return router;
 });
 
@@ -257,20 +278,34 @@ CustomTransitionPage<void> _fadeTransitionPage(
 
 CustomTransitionPage<void> _tabTransitionPage(
   GoRouterState state, {
+  required int tabIndex,
   required Widget child,
 }) {
+  final slideDirection = _consumeTabSlideDirection(tabIndex);
+  final incomingOffset = Offset(0.052 * slideDirection, 0);
+  final outgoingOffset = Offset(-0.016 * slideDirection, 0);
+
   return _animatedPage(
     state,
     child: child,
-    beginOffset: const Offset(0.06, 0),
-    beginOpacity: 0.86,
-    beginScale: 0.992,
-    outgoingOffset: const Offset(-0.018, 0),
-    outgoingOpacity: 0.96,
-    outgoingScale: 0.996,
-    transitionDuration: const Duration(milliseconds: 360),
-    reverseTransitionDuration: const Duration(milliseconds: 260),
+    beginOffset: incomingOffset,
+    beginOpacity: 0.88,
+    beginScale: 0.994,
+    outgoingOffset: outgoingOffset,
+    outgoingOpacity: 0.97,
+    outgoingScale: 0.998,
+    transitionDuration: const Duration(milliseconds: 380),
+    reverseTransitionDuration: const Duration(milliseconds: 280),
   );
+}
+
+int _consumeTabSlideDirection(int nextIndex) {
+  final previousIndex = _lastTabIndex;
+  _lastTabIndex = nextIndex;
+  if (previousIndex == null || previousIndex == nextIndex) {
+    return 1;
+  }
+  return nextIndex > previousIndex ? 1 : -1;
 }
 
 CupertinoPage<void> _swipeBackPage(

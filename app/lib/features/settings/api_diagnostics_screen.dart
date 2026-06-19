@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/app_motion.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
 import '../../services/push_notification_service.dart';
@@ -95,23 +96,36 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
       body: FutureBuilder<List<_DiagnosticResult>>(
         future: _future,
         builder: (context, snapshot) {
+          Widget child;
           if (!snapshot.hasData) {
-            return const Center(
+            child = const Center(
+              key: ValueKey('api-diagnostics-loading'),
               child: CircularProgressIndicator(color: AppColors.live),
             );
+            return AppMotionSwitcher(child: child);
           }
 
           final results = snapshot.data!;
-          return ListView(
+          child = ListView(
+            key: const ValueKey('api-diagnostics-ready'),
             padding: const EdgeInsets.all(16),
             children: [
-              const Text(
-                'health / scoreboard / schedule 상태를 한 번에 확인합니다.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              const AppMotionListItem(
+                index: 0,
+                child: Text(
+                  'health / scoreboard / schedule 상태를 한 번에 확인합니다.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
-              for (final result in results) ...[
-                _DiagnosticCard(result: result),
+              for (int index = 0; index < results.length; index++) ...[
+                AppMotionListItem(
+                  index: index + 1,
+                  child: _DiagnosticCard(result: results[index]),
+                ),
                 const SizedBox(height: 10),
               ],
               FutureBuilder<Map<String, dynamic>>(
@@ -127,19 +141,22 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                   final reason = data['reason'] as String?;
                   final isLocalSkipped =
                       AppConfig.instance.isLocal && status == 'skipped';
-                  return _DiagnosticCard(
-                    result: _DiagnosticResult(
-                      key: 'push',
-                      ok: data['initialized'] == true,
-                      muted: isLocalSkipped,
-                      elapsedMs: 0,
-                      detail:
-                          '${_pushDetailPrefix(status)} initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
-                          '${topics.isNotEmpty ? ' topics=$topics' : ''}',
-                      note: _pushReasonLabel(
-                        status: status,
-                        reason: reason,
-                        isLocalSkipped: isLocalSkipped,
+                  return AppMotionListItem(
+                    index: results.length + 1,
+                    child: _DiagnosticCard(
+                      result: _DiagnosticResult(
+                        key: 'push',
+                        ok: data['initialized'] == true,
+                        muted: isLocalSkipped,
+                        elapsedMs: 0,
+                        detail:
+                            '${_pushDetailPrefix(status)} initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
+                            '${topics.isNotEmpty ? ' topics=$topics' : ''}',
+                        note: _pushReasonLabel(
+                          status: status,
+                          reason: reason,
+                          isLocalSkipped: isLocalSkipped,
+                        ),
                       ),
                     ),
                   );
@@ -156,6 +173,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
               ),
             ],
           );
+          return AppMotionSwitcher(child: child);
         },
       ),
     );

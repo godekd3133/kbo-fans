@@ -232,16 +232,13 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppArtworkCard(
-          assetName: VisualAssets.boxscoreAnalytics,
-          height: 112,
-        ),
-        const SizedBox(height: 14),
         _SummaryHeader(
           teamId: _selectedTeamId,
           teamName: _selectedTeamName,
           accent: accent,
           title: '타격 요약',
+          artworkAssetName: VisualAssets.boxscoreAnalytics,
+          artworkAlignment: Alignment.centerRight,
           statTiles: [
             _StatTile(label: '타수', value: '$totalAtBats'),
             _StatTile(label: '득점', value: '$totalRuns'),
@@ -590,6 +587,8 @@ class _SummaryHeader extends StatelessWidget {
   final String teamName;
   final Color accent;
   final String title;
+  final String? artworkAssetName;
+  final Alignment artworkAlignment;
   final List<Widget> statTiles;
 
   const _SummaryHeader({
@@ -597,6 +596,8 @@ class _SummaryHeader extends StatelessWidget {
     required this.teamName,
     required this.accent,
     required this.title,
+    this.artworkAssetName,
+    this.artworkAlignment = Alignment.center,
     required this.statTiles,
   });
 
@@ -605,6 +606,7 @@ class _SummaryHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(18),
@@ -615,39 +617,51 @@ class _SummaryHeader extends StatelessWidget {
           colors: [accent.withValues(alpha: 0.16), AppColors.card],
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              _TeamLogo(teamId: teamId, fallback: teamName),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      teamName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
+          if (artworkAssetName != null)
+            Positioned.fill(
+              child: AppArtworkLayer(
+                assetName: artworkAssetName!,
+                alignment: artworkAlignment,
+                opacity: 0.18,
               ),
+            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _TeamLogo(teamId: teamId, fallback: teamName),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          teamName,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(spacing: 10, runSpacing: 10, children: statTiles),
             ],
           ),
-          const SizedBox(height: 16),
-          Wrap(spacing: 10, runSpacing: 10, children: statTiles),
         ],
       ),
     );

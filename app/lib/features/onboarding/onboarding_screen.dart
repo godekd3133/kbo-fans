@@ -53,7 +53,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final viewportWidth = MediaQuery.of(context).size.width;
     final contentMaxWidth = viewportWidth >= 900 ? 560.0 : 460.0;
     final crossAxisCount = viewportWidth >= 900 ? 3 : 2;
-    final logoSize = viewportWidth >= 900 ? 72.0 : 84.0;
+    final logoSize = viewportWidth >= 900 ? 72.0 : 66.0;
+    final teamCardAspectRatio = viewportWidth >= 900 ? 0.9 : 1.08;
 
     return Scaffold(
       body: SafeArea(
@@ -102,16 +103,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               const SizedBox(height: 14),
               AppArtworkCard(
                 assetName: VisualAssets.onboardingHero,
-                height: viewportWidth >= 900 ? 176 : 124,
+                height: viewportWidth >= 900 ? 176 : 104,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Expanded(
                 child: GridView.builder(
+                  padding: const EdgeInsets.only(bottom: 10),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
                     crossAxisSpacing: 14,
                     mainAxisSpacing: 14,
-                    childAspectRatio: viewportWidth >= 900 ? 0.9 : 0.95,
+                    childAspectRatio: teamCardAspectRatio,
                   ),
                   itemCount: KboTeams.teams.length,
                   itemBuilder: (context, index) {
@@ -217,6 +219,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   },
                 ),
               ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 height: 52,

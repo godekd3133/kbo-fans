@@ -32,11 +32,6 @@ class ScoreTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AppArtworkCard(
-              assetName: VisualAssets.scoreLinescore,
-              height: 108,
-            ),
-            const SizedBox(height: 14),
             _buildInningTable(context, const <RelayItem>[]),
             if (footer != null) ...[const SizedBox(height: 12), footer!],
           ],
@@ -91,59 +86,76 @@ class ScoreTab extends StatelessWidget {
             ),
           ),
         Container(
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: AppColors.card,
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider),
           ),
-          child: Table(
-            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            columnWidths: const {0: FixedColumnWidth(48)},
+          child: Stack(
             children: [
-              TableRow(
-                children: headers.asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final text = entry.value;
-                  final inningNo = idx >= 1 && idx <= 9 ? idx : null;
-                  final isCurrentInning =
-                      inningNo != null && inningNo == currentInning;
-                  return _tableCell(
+              const Positioned.fill(
+                child: AppArtworkLayer(
+                  assetName: VisualAssets.scoreLinescore,
+                  alignment: Alignment.centerRight,
+                  opacity: 0.18,
+                ),
+              ),
+              Table(
+                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                columnWidths: const {0: FixedColumnWidth(48)},
+                children: [
+                  TableRow(
+                    children: headers.asMap().entries.map((entry) {
+                      final idx = entry.key;
+                      final text = entry.value;
+                      final inningNo = idx >= 1 && idx <= 9 ? idx : null;
+                      final isCurrentInning =
+                          inningNo != null && inningNo == currentInning;
+                      return _tableCell(
+                        context,
+                        text,
+                        headerStyle,
+                        isHighlight: isCurrentInning,
+                        onTap: inningNo == null || relayItems.isEmpty
+                            ? null
+                            : () => _openInningSheet(
+                                context,
+                                inningNo,
+                                relayItems,
+                              ),
+                      );
+                    }).toList(),
+                  ),
+                  TableRow(
+                    children: List.generate(
+                      14,
+                      (_) => const Divider(height: 1, color: AppColors.divider),
+                    ),
+                  ),
+                  _scoreRow(
                     context,
-                    text,
-                    headerStyle,
-                    isHighlight: isCurrentInning,
-                    onTap: inningNo == null || relayItems.isEmpty
-                        ? null
-                        : () => _openInningSheet(context, inningNo, relayItems),
-                  );
-                }).toList(),
-              ),
-              TableRow(
-                children: List.generate(
-                  14,
-                  (_) => const Divider(height: 1, color: AppColors.divider),
-                ),
-              ),
-              _scoreRow(
-                context,
-                game.away,
-                currentInning,
-                dataStyle,
-                boldStyle,
-                relayItems,
-              ),
-              TableRow(
-                children: List.generate(
-                  14,
-                  (_) => const Divider(height: 1, color: AppColors.divider),
-                ),
-              ),
-              _scoreRow(
-                context,
-                game.home,
-                currentInning,
-                dataStyle,
-                boldStyle,
-                relayItems,
+                    game.away,
+                    currentInning,
+                    dataStyle,
+                    boldStyle,
+                    relayItems,
+                  ),
+                  TableRow(
+                    children: List.generate(
+                      14,
+                      (_) => const Divider(height: 1, color: AppColors.divider),
+                    ),
+                  ),
+                  _scoreRow(
+                    context,
+                    game.home,
+                    currentInning,
+                    dataStyle,
+                    boldStyle,
+                    relayItems,
+                  ),
+                ],
               ),
             ],
           ),

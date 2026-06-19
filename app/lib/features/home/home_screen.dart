@@ -1209,11 +1209,12 @@ class _MyTeamBriefCard extends StatelessWidget {
     if (myTeamId == null || myTeamId!.isEmpty) {
       return _sectionCard(
         accentColor: AppColors.accent,
+        backgroundAssetName: VisualAssets.myTeamBriefCommand,
+        backgroundAlignment: Alignment.centerRight,
+        backgroundOpacity: 0.28,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _MyTeamBriefArtworkStrip(),
-            const SizedBox(height: 12),
             const Text(
               '마이팀 브리프',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -1301,14 +1302,15 @@ class _MyTeamBriefCard extends StatelessWidget {
     return _sectionCard(
       padding: const EdgeInsets.all(14),
       accentColor: accent,
+      backgroundAssetName: VisualAssets.myTeamBriefCommand,
+      backgroundAlignment: Alignment.centerRight,
+      backgroundOpacity: 0.22,
       child: AppPressable(
         onTap: openPrimaryDestination,
         pressedScale: 0.99,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _MyTeamBriefArtworkStrip(),
-            const SizedBox(height: 12),
             Row(
               children: [
                 _BriefStatusPill(
@@ -1643,46 +1645,6 @@ Widget _teamMarkFallback(String shortName, double size) {
       ),
     ),
   );
-}
-
-class _MyTeamBriefArtworkStrip extends StatelessWidget {
-  const _MyTeamBriefArtworkStrip();
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: double.infinity,
-        height: 82,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset(
-              VisualAssets.myTeamBriefCommand,
-              fit: BoxFit.cover,
-              alignment: Alignment.centerRight,
-              filterQuality: FilterQuality.medium,
-              errorBuilder: (_, _, _) =>
-                  const ColoredBox(color: AppColors.cardSub),
-            ),
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: [
-                    AppColors.background.withValues(alpha: 0.28),
-                    AppColors.background.withValues(alpha: 0.08),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _BriefStatusPill extends StatelessWidget {
@@ -2706,6 +2668,9 @@ Widget _sectionCard({
   required Widget child,
   EdgeInsetsGeometry padding = const EdgeInsets.all(16),
   Color? accentColor,
+  String? backgroundAssetName,
+  Alignment backgroundAlignment = Alignment.center,
+  double backgroundOpacity = 0.22,
 }) {
   return Container(
     clipBehavior: Clip.antiAlias,
@@ -2718,6 +2683,14 @@ Widget _sectionCard({
     ),
     child: Stack(
       children: [
+        if (backgroundAssetName != null)
+          Positioned.fill(
+            child: AppArtworkLayer(
+              assetName: backgroundAssetName,
+              alignment: backgroundAlignment,
+              opacity: backgroundOpacity,
+            ),
+          ),
         if (accentColor != null)
           Positioned(
             left: 0,
