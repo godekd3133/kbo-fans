@@ -22,8 +22,8 @@
 - [x] `scripts/push-test-notification.sh` syntax/safety check 통과: `bash -n`, missing secret guard, HTTP guard, fake-secret 401 확인
 - [x] `0.0.59 (59)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인: Runner/KboFansWidget `0.0.59/59`, Firebase `kbo-fans-47189`, Runner IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, visual assets casual 25/team logo 10/onboarding logo 10/status 1
 - [x] `0.0.59 (59)` TestFlight upload 성공 확인: App Store Connect upload complete, `Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`; `objective_c.framework` dSYM warning만 남음
-- [ ] `0.0.59` backend deploy workflow 성공 및 운영 `/api/health` 확인
-- [ ] topic 재등록 성공 확인
+- [x] `0.0.59` backend deploy workflow 성공 및 운영 `/api/health` 확인: GitHub Actions `Push Demo Deploy` run `27819296747` success, image tag `0.0.59`, `readyForIphoneOnlyDemo=true`, scheduler age 0s, `ALLOW_INSECURE_RELEASE_API=true ... release-api-health-check.sh` date `2026-06-20` 통과
+- [x] topic 재등록 성공 확인: `registeredDevices=4`, `eligibleDevices=4`, `subscriptionsAttempted=35`, `unsubscriptionsAttempted=0`
 
 ---
 
