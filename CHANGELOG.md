@@ -19,6 +19,14 @@
 - 진행 중 경기 박스스코어가 공식 rows 업데이트 전이어도 KBO 실시간 현재 타자/투수 context를 `실시간 기록 추적`으로 표시하도록 보강
 - 기록 탭 첫 화면의 spotlight 카드 하단 텍스트와 리더보드 `ERA` 탭이 390px 폭에서 잘리지 않도록 레이아웃 폭/높이를 보정
 
+## [0.0.62] - 2026-06-20
+
+### Changed
+
+- `0.0.61`의 backend API 기본 모드, Live Activity 실시간 AVG, live 박스스코어 context, 푸쉬 중계 CTA 보강을 새 TestFlight build `0.0.62 (62)` 기준으로 다시 맞춤
+- Push / Live Activity preflight가 현재 `LiveActivityService`의 API base URL handoff 구조를 정확히 확인하도록 배포 gate 문자열을 보정
+- GitHub Release, backend deploy, topic 재등록, release API health 기준을 새 numeric release checkpoint로 재정렬
+
 ## [0.0.61] - 2026-06-20
 
 ### Changed

@@ -1,5 +1,11 @@
 # 패치노트
 
+## 0.0.62+62 - Release Sync Checkpoint
+
+- 0.0.61의 backend API 기본 모드, Live Activity 실시간 AVG, live 박스스코어 context, 푸쉬 중계 CTA 보강을 새 TestFlight build number로 다시 올렸습니다.
+- Live Activity API URL handoff preflight가 현재 코드 구조를 정확히 확인하도록 배포 gate를 보정했습니다.
+- backend worker deploy, topic 재등록, release API health 기준을 0.0.62 릴리즈 기준으로 다시 맞춘 checkpoint입니다.
+
 ## 0.0.61+61 - Backend API Default
 
 - 모든 일반 빌드의 화면 데이터 라우팅을 backend API mode 기본값으로 맞췄습니다.

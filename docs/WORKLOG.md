@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-06-20: 0.0.62 release sync checkpoint
+
+### 완료
+- [x] 최신 tester-facing build를 `0.0.62+62`로 승격
+- [x] `0.0.61`의 backend API 기본 모드, Live Activity 실시간 AVG, live 박스스코어 context, 푸쉬 중계 CTA 보강을 새 build number 기준으로 재릴리즈
+- [x] Push / Live Activity preflight의 Live Activity API base URL handoff 체크를 현재 `LiveActivityService` 구조에 맞게 보정
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.62` 기준으로 동기화
+
+### 검증
+- [x] `0.0.61` backend deploy 완료 기준 확인: GitHub Actions `Push Demo Deploy` run `27866271496` success, image tag `0.0.61`, topic 재등록 `subscriptionsAttempted=80`, release API health gate passed
+- [x] `0.0.62` app/backend pre-release 검증: `git diff --check`, `./scripts/push-live-preflight.sh --app-only` (`status=ok checks=29 warnings=1 failures=0`), `cd app && fvm flutter analyze --no-pub` (`No issues found`), `cd app && fvm flutter test --no-pub` (`165 tests passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q` (`164 passed`)
+- [ ] `0.0.62 (62)` TestFlight archive/upload 성공 확인
+- [ ] `0.0.62` GitHub Release 생성
+- [ ] `0.0.62` backend deploy workflow 및 topic 재등록 성공 확인
+
+---
+
 ## 2026-06-20: 기록탭 no-clip 레퍼런스 픽셀 보정
 
 ### 원인
