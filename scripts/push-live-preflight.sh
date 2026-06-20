@@ -269,7 +269,7 @@ check_flutter_push_code() {
   require_text "Firebase background handler registration" "FirebaseMessaging.onBackgroundMessage" "$APP_DIR/lib/main.dart"
   require_text "FCM dependency" "firebase_messaging:" "$APP_DIR/pubspec.yaml"
   require_text "Firebase Core dependency" "firebase_core:" "$APP_DIR/pubspec.yaml"
-  require_text "Live Activity API base URL handoff" "'apiBaseUrl': AppConfig.instance.apiBaseUrl" "$APP_DIR/lib/services/live_activity_service.dart"
+  require_text "Live Activity API base URL handoff" "apiBaseUrl: AppConfig.instance.apiBaseUrl" "$APP_DIR/lib/services/live_activity_service.dart"
   require_text "Codex release push backend URL define" '--dart-define=API_BASE_URL=$(release_api_base_url)' "$ROOT_DIR/scripts/codex-run.sh"
   require_text "CI release push backend URL input" "release_api_base_url:" "$ROOT_DIR/.github/workflows/app-build-artifacts.yml"
   require_text "CI release API_BASE_URL dart define" '--dart-define=API_BASE_URL=${push_api_base_url}' "$ROOT_DIR/.github/workflows/app-build-artifacts.yml"
