@@ -23,8 +23,8 @@
 - [x] RED/GREEN: `cd app && fvm flutter test test/features/game_detail/relay_tab_test.dart --plain-name '중계 베이스 다이아몬드는 1,2루 주자를 모두 채운다'` (`Expected: <2>, Actual: <1>` 확인 후 pass)
 - [x] relay tab widget tests: `cd app && fvm flutter test test/features/game_detail/relay_tab_test.dart` (`6 tests passed`)
 - [x] relay tab scoped analyze: `cd app && fvm flutter analyze lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart` (`No issues found`)
-- [ ] `0.0.60 (60)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인
-- [ ] `0.0.60 (60)` TestFlight upload 성공 확인
+- [x] `0.0.60 (60)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인: Runner/KboFansWidget `0.0.60/60`, Firebase `kbo-fans-47189`, Runner IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, visual assets casual 25/team logo 10/onboarding logo 10/status 1, records stadium backdrop 포함
+- [x] `0.0.60 (60)` TestFlight upload 성공 확인: App Store Connect upload complete, `Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`; `objective_c.framework` dSYM warning만 남음
 - [ ] `0.0.60` backend deploy workflow 성공 및 운영 release API health 확인
 - [ ] topic 재등록 성공 확인
 
