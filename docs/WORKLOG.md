@@ -72,7 +72,7 @@
 - [x] `0.0.63` backend deploy workflow 성공 확인: GitHub Actions `Push Demo Deploy` run `27867590924` success, head `86af591`, image tag `0.0.63`, `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `readyForIphoneOnlyDemo=true`, `registeredDevices=10`, `followedGames=1`, `activeLiveActivityGames=2`, scheduler age 13s
 - [x] `0.0.63` topic 재등록 성공 확인: `registeredDevices=10`, `eligibleDevices=10`, `subscriptionsAttempted=80`, `unsubscriptionsAttempted=0`
 - [x] `0.0.63` 배포 후 운영 release API health gate 재통과: `/health`, `/scoreboard/home`, `/game/20260620OBLG0/relay` (`relay_items=366`, `current_at_bat=true`), `/home`, `/schedule`, `/standings`, `/records/overview` 200
-- [ ] `0.0.63 (63)` TestFlight archive/upload 성공 확인
+- [x] `0.0.63 (63)` TestFlight archive/upload 성공 확인: release worktree `/tmp/kbo_fans_release_0_0_63`, commit `cdacf00`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.0.63/63`, production APNs entitlement, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, patch notes 포함 확인, App Store Connect `Upload succeeded` / `Uploaded package is processing`
 - [ ] `0.0.63` GitHub Release 생성
 
 ---
