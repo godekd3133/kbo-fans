@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-06-20: 외부 TestFlight 테스터 최신 빌드 배정
+
+### 완료
+- [x] App Store Connect API로 `KBO Fans` 앱 id `6779130075` 인증 확인
+- [x] 최신 TestFlight build `0.0.63 (63)` 처리 완료 확인: build id `a8f8b1b4-34fd-4107-832c-fcb2f0b1bc71`, `processingState=VALID`, `usesNonExemptEncryption=false`, expiration `2026-09-18`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `63` 연결
+- [x] 외부 그룹 빌드 목록 재확인: build `63` `VALID`, 기존 build `57` 유지
+- [x] 외부 그룹 테스터 1명 확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
+- [x] build `63` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`, `submittedDate=2026-06-20T03:30:09-07:00`
+
+### 남은 확인
+- [ ] Apple Beta App Review 승인 후 외부 테스터에게 `0.0.63 (63)` 설치 가능 상태가 노출되는지 확인
+
+---
+
 ## 2026-06-20: 로컬 backend LAN 접근 실패 보정
 
 ### 원인
