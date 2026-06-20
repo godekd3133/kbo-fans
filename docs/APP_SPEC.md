@@ -474,7 +474,7 @@ GET /api/player/{playerId}?season=2026
 **UI 요소**:
 | 요소 | 설명 |
 |------|------|
-| 현재 타석 스코어버그 | Live Activity 예제와 같은 방송형 레이아웃. 좌우 팀명/타자/투수, 중앙 점수/베이스 다이아몬드/이닝 pill, B-S-OUT 점, 하단 직전 플레이 pill 표시 |
+| 현재 타석 스코어버그 | Live Activity 예제와 같은 방송형 레이아웃. 좌우 팀명/타자/투수, 타율/ERA/투구수, 중앙 점수/베이스 다이아몬드/이닝 pill, B-S-OUT 점, 하단 직전 플레이 pill 표시 |
 | 현재 타석 카드 | 스코어버그 아래에 이닝/주자/타자/투수/투구수/볼카운트(B/S/O) 실시간 표시, 타자는 라인업 기준 `타순 이름 포지션` 형식으로 노출, 타자/투수 프로필 이미지와 색상별 B/S/O 요약 포함 |
 | 최근 상태 요약 | 현재 타석 카드 하단에 직전 플레이와 최근 교체(대타/대주자/투수교체 포함) 노출 |
 | 이닝 구분선 | `─── N회 초/말 ───` 형태 |
@@ -992,7 +992,7 @@ GET /api/standings?season=2026
 - 경기 종료/취소/서스펜디드 상태에서는 APNs `end` event와 final content state를 보내고 token registry에서 세션을 제거한다.
 - FCM은 일반 push notification과 topic subscription에 사용한다. Backend가 보내는 일반 FCM message는 iOS APNs `apns-push-type=alert`, `apns-topic`, `aps.alert`, `apns-priority=10`, default sound와 Android high priority / default sound를 함께 지정해 background/locked 상태에서 알림으로 즉시 노출되도록 한다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다.
 - 홈 화면의 앱 내부 경기 이벤트 로컬 알림은 local 개발 모드에서만 처리한다. release/dev/TestFlight에서는 앱을 열거나 포커스했을 때 과거 scoreboard/relay diff를 로컬 알림으로 backfill하지 않고, 앱 밖 알림은 backend FCM/APNs 경로가 단독 책임진다.
-- Live Activity content-state는 `situationText`와 `playText`를 optional로 받을 수 있다. `playText`가 있으면 하단 pill에 우선 표시하고, 없으면 `situationText`, 타자명, 구장명 순서로 fallback한다.
+- Live Activity content-state는 `batterAverage`, `pitcherEra`, `situationText`, `playText`를 optional로 받을 수 있다. `playText`가 있으면 하단 pill에 우선 표시하고, 없으면 `situationText`, 타자명, 구장명 순서로 fallback한다. 타자/투수 보조 라인은 relay currentAtBat에서 온 타율, ERA, 투구수를 우선 사용한다.
 
 **따라가기 화면 원칙**:
 - 마이팀 live 경기는 홈에서 기본 follow target 으로 자동 선택한다.
@@ -1256,8 +1256,8 @@ GET /api/game/{gameId}/relay?after={seqNo}
     "gameId": "20260328KTLG0",
     "status": "LIVE",
     "currentAtBat": {
-      "batter": {"number": 33, "name": "이정훈", "hand": "좌타"},
-      "pitcher": {"number": 31, "name": "이정용", "hand": "우투", "pitchCount": 19},
+      "batter": {"number": 33, "name": "이정훈", "hand": "좌타", "average": "0.281"},
+      "pitcher": {"number": 31, "name": "이정용", "hand": "우투", "pitchCount": 19, "era": "3.52"},
       "ballCount": {"balls": 3, "strikes": 2, "outs": 2},
       "inningText": "4회초",
       "baseState": "주자1,2루"

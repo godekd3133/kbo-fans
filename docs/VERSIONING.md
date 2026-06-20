@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-06-19
+> Updated: 2026-06-20
 
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.59+59`
-- Current release tag: `0.0.59`
+- Flutter app version: `0.0.60+60`
+- Current release tag: `0.0.60`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -107,6 +107,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.57`: home lower information flow is reordered to standings, insight pack, quick info, and recent flow; includes the `0.0.56` KBO brief strip/card ordering checkpoint and aligns TestFlight, Git tag, GitHub Release, backend deploy, and topic resubscribe on build `0.0.57+57`.
 - `0.0.58`: news and records tabs are rebuilt around editorial brief/signals and league briefing flows; onboarding, more/settings, game detail, boxscore, lineup, and relay surfaces share bundled team logo imagery and richer player image rows; backend/home brief record items carry player image fallback data and off-day CTA routes to schedule; current app build `0.0.58+58`.
 - `0.0.59`: records tab premium data-room polish tightens headline leader, metric spotlight, and tabbed TOP3 leaderboard density; 2026 records overview bootstrap/snapshots are refreshed; onboarding CTA, Dev Console capture flag, notification inbox malformed-payload recovery, and push receipt test script are reinforced; current app build `0.0.59+59`.
+- `0.0.60`: Live Activity current-at-bat mapping is corrected for top/bottom half innings, relay-driven batter average / pitcher ERA / pitch count / B-S-O is included on the Lock Screen surface, release/direct builds with `API_BASE_URL` keep remote push registration enabled, relay base diamonds parse compact base-state strings, records tab stadium bitmap backdrop ships, and 2026 records overview bootstrap/snapshot data is refreshed again; current app build `0.0.60+60`.
 
 ## GitHub Release Note Template
 

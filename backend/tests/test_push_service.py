@@ -206,10 +206,7 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
     assert first_message.apns.headers["apns-push-type"] == "alert"
     assert first_message.apns.headers["apns-topic"] == "com.kbofans.kboFans"
     assert first_message.apns.payload.aps.alert.title == "안타"
-    assert (
-        first_message.apns.payload.aps.alert.body
-        == "7회말 장성우 : 좌전 안타 · 1사 1,2루"
-    )
+    assert first_message.apns.payload.aps.alert.body == "7회말 장성우 : 좌전 안타 · 1사 1,2루"
     assert first_message.apns.payload.aps.sound == "default"
     assert first_message.android.priority == "high"
     assert first_message.android.notification.channel_id == "remote_push_foreground"
@@ -450,9 +447,7 @@ def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
     subscribed_topics = {call["topic"] for call in messaging.subscribe_calls}
     unsubscribed_topics = {call["topic"] for call in messaging.unsubscribe_calls}
     stored_topics = registry._load()["devices"]["fcm-token"]["topics"]
-    stored_followed_game_ids = registry._load()["devices"]["fcm-token"][
-        "followedGameIds"
-    ]
+    stored_followed_game_ids = registry._load()["devices"]["fcm-token"]["followedGameIds"]
 
     assert response["resubscribed"] is True
     assert response["eligibleDevices"] == 1
@@ -687,6 +682,55 @@ def test_live_activity_scoreboard_sync_updates_registered_live_games(tmp_path) -
     assert sender.calls[0]["event"] == "update"
     assert sender.calls[0]["state"].inning == "7회말"
     assert registry.sync_heartbeat()["checkedGames"] == 1
+
+
+def test_live_activity_scoreboard_sync_enriches_current_at_bat_from_relay(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardService(),
+        push_service=push_service,
+        relay_service=FakeRelaySequenceService(
+            [[]],
+            [
+                {
+                    "inningText": "2회 초",
+                    "batter": {"name": "디아즈", "average": "0.249"},
+                    "pitcher": {
+                        "name": "박준영",
+                        "pitchCount": 38,
+                        "era": "4.13",
+                    },
+                    "ballCount": {"balls": 1, "strikes": 2, "outs": 2},
+                    "baseState": "주자2루",
+                }
+            ],
+        ),
+    )
+
+    sync_service.sync_date("2026-06-04")
+
+    state = sender.calls[0]["state"]
+    assert state.inning == "2회 초"
+    assert state.batter == "디아즈"
+    assert state.batterAverage == "0.249"
+    assert state.pitcher == "박준영"
+    assert state.pitcherEra == "4.13"
+    assert state.pitchCount == 38
+    assert state.balls == 1
+    assert state.strikes == 2
+    assert state.outs == 2
+    assert state.situationText == "2사 2루"
 
 
 def test_scoreboard_sync_pushes_score_moments_after_baseline(tmp_path) -> None:
@@ -1019,9 +1063,7 @@ def test_scoreboard_sync_pushes_game_start_soon_once_within_ten_minutes(tmp_path
     first_response = sync_service.sync_date("2026-06-04")
     second_response = sync_service.sync_date("2026-06-04")
 
-    assert [call["moment"] for call in push_service.moment_calls] == [
-        "game_start_soon"
-    ]
+    assert [call["moment"] for call in push_service.moment_calls] == ["game_start_soon"]
     assert push_service.moment_calls[0]["start_time"] == "18:30"
     assert push_service.moment_calls[0]["stadium"] == "수원"
     assert first_response["pushedMoments"][0]["moment"] == "game_start_soon"
@@ -1348,7 +1390,9 @@ def test_apns_live_activity_payload_matches_ios_content_state_contract(tmp_path)
         homeScore=3,
         inning="8회초",
         batter="김현수",
+        batterAverage="0.312",
         pitcher="고영표",
+        pitcherEra="3.21",
         pitchCount=84,
         balls=2,
         strikes=1,
@@ -1375,7 +1419,9 @@ def test_apns_live_activity_payload_matches_ios_content_state_contract(tmp_path)
         "homeScore",
         "inning",
         "batter",
+        "batterAverage",
         "pitcher",
+        "pitcherEra",
         "pitchCount",
         "balls",
         "strikes",
@@ -1387,6 +1433,8 @@ def test_apns_live_activity_payload_matches_ios_content_state_contract(tmp_path)
     }
     assert content_state["awayScore"] == 4
     assert content_state["homeScore"] == 3
+    assert content_state["batterAverage"] == "0.312"
+    assert content_state["pitcherEra"] == "3.21"
     assert content_state["pitchCount"] == 84
     assert content_state["updatedAt"] == "21:20:30"
     assert payload["aps"]["event"] == "update"
@@ -1461,9 +1509,7 @@ class FakeFcmAndroidNotification:
 
 
 class FakeFcmAndroidConfig:
-    def __init__(
-        self, *, priority: str, notification: FakeFcmAndroidNotification
-    ) -> None:
+    def __init__(self, *, priority: str, notification: FakeFcmAndroidNotification) -> None:
         self.priority = priority
         self.notification = notification
 

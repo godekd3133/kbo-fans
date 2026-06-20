@@ -2,6 +2,58 @@
 
 ---
 
+## 2026-06-20: 0.0.60 Live Activity 현재 타석/기록탭 stadium 릴리즈
+
+### 완료
+- [x] 최신 tester-facing build를 `0.0.60+60`으로 승격
+- [x] iOS Live Activity 현재 타자/투수 표시를 KBO 초/말 기준으로 보정
+- [x] relay 기반 `batterAverage`, `pitcherEra`, `pitchCount`, B/S/O를 Live Activity content-state와 Lock Screen 보조 라인에 연결
+- [x] `API_BASE_URL`이 있는 direct/local 빌드에서도 remote push 초기화, 자동 권한 요청, `/push/register` 토큰 등록이 스킵되지 않도록 보정
+- [x] relay base-state가 `주자1,2루` 또는 KBO `ground_base*` 코드로 들어와도 베이스 다이아몬드를 정확히 채우도록 보정
+- [x] 기록탭 상단에 stadium bitmap backdrop asset을 추가하고 release asset manifest에 포함
+- [x] 2026 records overview bootstrap/snapshot을 최신 crawler 결과로 재갱신
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.60` 기준으로 동기화
+
+### 검증
+- [x] 전체 변경 범위 format: `cd app && fvm dart format ...` (5 files, 0 changed)
+- [x] app analyze: `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] 관련 Flutter tests 통과: push notification/relay/bootstrap/records/live activity service 34 tests passed
+- [x] backend tests 통과: `backend/.venv/bin/pytest -q` 162 passed
+- [x] push 회귀 targeted 검증: `cd app && fvm flutter test test/services/push_notification_service_test.dart` (`16 passed`), `cd app && fvm flutter analyze lib/main.dart lib/services/push_notification_service.dart lib/features/settings/api_diagnostics_screen.dart test/services/push_notification_service_test.dart`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`42 passed`)
+- [x] RED/GREEN: `cd app && fvm flutter test test/features/game_detail/relay_tab_test.dart --plain-name '중계 베이스 다이아몬드는 1,2루 주자를 모두 채운다'` (`Expected: <2>, Actual: <1>` 확인 후 pass)
+- [x] relay tab widget tests: `cd app && fvm flutter test test/features/game_detail/relay_tab_test.dart` (`6 tests passed`)
+- [x] relay tab scoped analyze: `cd app && fvm flutter analyze lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart` (`No issues found`)
+- [ ] `0.0.60 (60)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인
+- [ ] `0.0.60 (60)` TestFlight upload 성공 확인
+- [ ] `0.0.60` backend deploy workflow 성공 및 운영 release API health 확인
+- [ ] topic 재등록 성공 확인
+
+---
+
+## 2026-06-19: Live Activity 현재 타석 역할/통계 표시 보정
+
+### 원인
+- KBO main-list의 `T_P_NM` / `B_P_NM`은 타자/투수 고정 필드가 아니라 top/bottom 선수 필드라, `2회초` 같은 초 공격에서 타자와 투수가 뒤집혀 Live Activity에 표시될 수 있었다.
+- relay currentAtBat parser도 `awayBox=투수`, `homeBox=타자`, `li.supervision` 고정 가정에 묶여 `supervision2` 및 초 공격 playerBox 역할을 잘못 읽었다.
+- Live Activity APNs content-state에는 타율/ERA 필드가 없어 iOS Lock Screen에서 선수 시즌 지표를 표시할 수 없었다.
+
+### 완료
+- [x] `ScoreboardService`의 main-list current player 매핑을 `GAME_TB_SC_NM` 초/말 기준으로 보정
+- [x] relay parser가 초/말 기준으로 batter/pitcher playerBox를 선택하고 `supervision*` current batter class를 읽도록 수정
+- [x] relay playerBox 시즌 표에서 타자 `average`, 투수 `era`, 투수 `pitchCount`를 currentAtBat 계약에 포함
+- [x] Live Activity backend sync가 등록된 live game update 시 relay currentAtBat로 `batter`, `pitcher`, `pitchCount`, B/S/O, `situationText`, `batterAverage`, `pitcherEra`를 보강
+- [x] iOS Lock Screen Live Activity를 더 낮은 높이로 압축하고 보조 라인에 `타율`, `ERA · N구`를 표시
+
+### 검증
+- [x] RED/GREEN: `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_live_fallback.py::test_full_scoreboard_maps_current_players_by_inning_half_for_top backend/tests/test_relay_crawler.py::test_parse_current_at_bat_from_live_text_view backend/tests/test_relay_crawler.py::test_parse_current_at_bat_uses_top_half_player_boxes_and_stats backend/tests/test_push_service.py::test_live_activity_scoreboard_sync_enriches_current_at_bat_from_relay backend/tests/test_push_service.py::test_apns_live_activity_payload_matches_ios_content_state_contract`
+- [x] 실 relay 확인: `RelayService().get_relay('20260619SSHH0')`가 현재 시점 기준 `허인서` 타석, `후라도 26구`, `타율 0.283`, `ERA 2.96` 형태로 반환
+- [x] backend 전체 테스트: `backend/.venv/bin/pytest -q` (`162 passed`)
+- [x] app 전체 analyze: `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] iOS simulator debug build: `cd app && fvm flutter build ios --simulator --debug --no-pub` (`✓ Built build/ios/iphonesimulator/Runner.app`)
+- [ ] iPhone Lock Screen 실기기 갱신 확인은 최신 backend deploy/TestFlight 설치 후 필요
+
+---
+
 ## 2026-06-19: 0.0.59 기록 프리미엄/푸시 receipt 릴리즈
 
 ### 완료
@@ -35,6 +87,7 @@
 
 ### 완료
 - [x] `image_gen`으로 기록탭 프리미엄 390x844 레퍼런스를 다시 생성하고 `docs/design_refs/2026-06-19-records-tab-premium-reference.png`로 보존
+- [x] `image_gen`으로 기록탭 상단 stadium bitmap backdrop을 추가 생성하고 `docs/design_refs/2026-06-19-records-stadium-backdrop.png`, `app/assets/visuals/records_stadium_backdrop.png`로 보존
 - [x] 레퍼런스/구현 매핑을 `docs/design_refs/2026-06-19-records-tab-premium-design-qa.md`에 기록
 - [x] 기록실 상단을 stadium backdrop, 큰 `기록실` title, 시즌 selector, `오늘 읽을 기록` premium briefing card 순서로 재구성
 - [x] headline leader에 선수 사진, 팀 로고, metric chip, active metric/TOP5/source 요약, 해석 문장 2~3개를 묶어 표시
@@ -46,8 +99,12 @@
 - [x] 레퍼런스 이미지 크기 확인: `853x1844`
 - [x] `cd app && fvm flutter analyze --no-pub lib/features/records/records_screen.dart test/data/bootstrap_repository_test.dart` (`No issues found`)
 - [x] `cd app && fvm flutter test --no-pub test/data/bootstrap_repository_test.dart test/data/models/records_overview_test.dart -r expanded` (`8 passed`)
-- [x] `cd app && fvm flutter build web --release --no-wasm-dry-run --dart-define=USE_BACKEND_API=false --dart-define=APP_ENV=local` (`✓ Built build/web`; 기존 Cupertino icon font 경고는 남음)
-- [x] 390x844 Chromium 캡처: `output/playwright/kbo-records-premium/records-390x844-final-table.png`
+- [x] `PYTHONPATH=backend/src backend/.venv/bin/python - <<'PY' ... RecordsOverviewService().get_overview(2026) ... PY`로 2026 records overview를 실제 crawler 경로에서 재생성
+- [x] 2026 records overview bootstrap `generatedAt`을 `2026-06-20T02:01:34.135791+00:00`로 갱신하고 기존 과거 records/standings churn은 제외
+- [x] `cd app && fvm flutter build web --release --no-wasm-dry-run --dart-define=USE_BACKEND_API=false --dart-define=APP_ENV=local --dart-define=SHOW_DEV_CONSOLE=false` (`✓ Built build/web`; 기존 Cupertino icon font 경고는 남음)
+- [x] 390x844 Chromium 제품 캡처: `output/playwright/kbo-records-premium/records-390x844-product-final.png`
+- [x] 추가 밀도 보정 후 390x844 캡처: `output/playwright/kbo-records-premium/records-390x844-final-tighter.png`, `output/playwright/kbo-records-premium/records-390x844-product-final.png`
+- [x] stadium bitmap backdrop 적용 후 390x844 제품 캡처 재확인: `output/playwright/kbo-records-premium/records-390x844-product-stadium-bitmap-fresh.png`
 
 ### 남은 리스크
 - Chromium 캡처 로그에 외부 KBO 선수 이미지 일부 `403`이 남을 수 있으나, 최종 캡처의 headline 선수 이미지는 표시되고 나머지는 fallback 가능한 경로다.
@@ -113,15 +170,16 @@
 - [x] `image_gen`으로 390x844 온보딩 레퍼런스를 생성하고 `docs/assets/mockups/kbo-onboarding-reference-2026-06-19.png`로 보존
 - [x] 레퍼런스 히어로를 앱 자산 `assets/visuals/onboarding_stadium_hero.png`로 잘라 넣고 `VisualAssets.onboardingStadiumHero`로 연결
 - [x] 온보딩을 레퍼런스처럼 제목, 히어로, MY TEAM 카드, 2열 팀 로고 카드, 시작 CTA, 스킵 순서로 재배치
-- [x] 팀 선택 카드를 image-logo 기반으로 바꾸고 selected border/check state를 레퍼런스 톤으로 조정
+- [x] 팀 선택 카드를 레퍼런스에서 잘라낸 raster logo 기반으로 바꾸고 selected border/check state를 레퍼런스 톤으로 조정
 - [x] `design-qa.md`, `docs/design_refs/2026-06-19-onboarding-design-qa.md`, `CHANGELOG.md`에 QA 결과와 남은 리스크 기록
 
 ### 검증
 - [x] `cd app && fvm dart format lib/features/onboarding/onboarding_screen.dart lib/core/constants/visual_assets.dart`
-- [x] `cd app && fvm flutter analyze --no-pub lib/features/onboarding/onboarding_screen.dart lib/core/constants/visual_assets.dart` (`No issues found`)
-- [x] `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=APP_ENV=local` (`✓ Built build/web`; 기존 font 경고는 남음)
-- [x] 390x844 Chrome CDP 캡처: `output/playwright/kbo-onboarding-reference/onboarding-selected-lg-final.png`
-- [ ] release web capture: 기존 dirty `records_screen.dart` 중복 class 상태 때문에 차단
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/onboarding/onboarding_screen.dart lib/core/constants/visual_assets.dart lib/core/config/app_config.dart lib/main.dart` (`No issues found`)
+- [x] `cd app && fvm flutter build web --no-wasm-dry-run --dart-define=APP_ENV=release` (`✓ Built build/web`; 기존 MaterialIcons/Cupertino font 경고는 남음)
+- [x] 390x844 Chrome CDP release 캡처: `output/playwright/kbo-onboarding-reference/onboarding-selected-lg-release.png`
+- [x] 레퍼런스/구현 비교판: `output/playwright/kbo-onboarding-reference/onboarding-reference-vs-implementation-release.png`
+- [x] 남은 차이는 P3로 분리: 웹 캡처에는 iOS status bar가 없고, Flutter text anti-aliasing은 생성 bitmap과 완전 동일할 수 없음
 
 ---
 

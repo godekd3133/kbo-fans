@@ -10,13 +10,26 @@
 
 ## [Unreleased]
 
+## [0.0.60] - 2026-06-20
+
+### Changed
+
+- 기록 탭 상단 배경을 생성형 stadium bitmap asset으로 교체해 프리미엄 레퍼런스의 실제 야구장 질감에 더 가깝게 조정
+- 2026 기록 overview bootstrap/snapshot을 최신 KBO 기록 기준으로 다시 갱신하고 stale current-season bootstrap guard 테스트 기준도 함께 갱신
+- direct/local 데이터 모드라도 `API_BASE_URL`이 주입된 release 빌드에서는 remote push 등록과 자동 권한 요청을 유지하도록 정리
+
+### Fixed
+
+- iOS Live Activity에서 초/말에 따라 현재 타자/투수가 뒤바뀌던 표시를 보정하고, relay 기반 타율/ERA/투구수/B-S-O 정보를 Lock Screen 표면에 함께 표시하도록 개선
+- 문자중계 주자 상태가 `주자1,2루` 또는 KBO `ground_base*` 코드로 들어와도 베이스 다이아몬드가 올바르게 채워지도록 보정
+
 ## [0.0.59] - 2026-06-19
 
 ### Changed
 
 - 기록 탭 리그 진입 화면을 생성형 프리미엄 레퍼런스 기준으로 다시 다듬어 headline 리더, 지표 spotlight, 탭형 TOP3 리더보드 table, 팀 기록실 진입 순서로 더 많은 기록 정보를 첫 화면에서 읽히도록 개선
 - 2026 기록 overview bootstrap/snapshot을 최신 KBO 기록 기준으로 갱신하고 stale current-season bootstrap guard 테스트 기준도 함께 갱신
-- 온보딩 시작 CTA를 레퍼런스 톤의 고정 red gradient 버튼으로 바꿔 선택 상태를 더 명확하게 표시
+- 온보딩을 이미지 레퍼런스형 구조로 재정렬하고 시작 CTA, MY TEAM 카드, reference-cropped 팀 로고를 적용해 첫 팀 선택 화면을 더 촘촘한 스포츠 앱 톤으로 개선
 - Dev Console overlay를 `SHOW_DEV_CONSOLE=false` dart define으로 끌 수 있게 해 release/web QA 캡처에서 개발 UI가 섞이지 않도록 개선
 - 알림함이 깨진 로컬 저장 payload를 만나도 빈 상태로 복구되도록 방어하고, 로드 실패 시 기본 push 설정으로 화면을 유지
 - `/api/push/test` receipt 확인을 위한 `scripts/push-test-notification.sh`를 추가해 topic/token 대상 테스트 푸시를 secret-safe하게 반복 실행할 수 있게 정리

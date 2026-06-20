@@ -35,10 +35,86 @@ def test_parse_current_at_bat_from_live_text_view() -> None:
     current_at_bat = RelayCrawler()._parse_current_at_bat(html)
 
     assert current_at_bat == {
-        "batter": {"name": "김지찬", "number": 58, "hand": "좌타", "recent": "땅볼|4구|2루타|"},
-        "pitcher": {"name": "김원중", "number": 34, "hand": "우투", "pitchCount": 15},
+        "batter": {
+            "name": "김지찬",
+            "number": 58,
+            "hand": "좌타",
+            "recent": "땅볼|4구|2루타|",
+            "average": "",
+        },
+        "pitcher": {
+            "name": "김원중",
+            "number": 34,
+            "hand": "우투",
+            "pitchCount": 15,
+            "era": "",
+        },
         "ballCount": {"balls": 1, "strikes": 1, "outs": 3},
         "inningText": "9회 말",
+        "baseState": "주자2루",
+    }
+
+
+def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
+    html = """
+    <div class="playerBox awayBox">
+      <div class="batter">
+        <div class="player-info-wrap">
+          <strong class="who">삼성<br><span class="no">No.61 디아즈</span><span>(좌타)</span></strong>
+          <p class="today"><span>- </span></p>
+        </div>
+        <table>
+          <thead><tr><th>2026</th><th>타율</th><th>타점</th></tr></thead>
+          <tbody><tr><th>시즌</th><td>0.249</td><td>31</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="playerBox homeBox">
+      <div class="pitcher">
+        <div class="player-info-wrap">
+          <strong class="who">한화<br><span class="no">No.68 박준영</span><span>(우투)</span></strong>
+          <p class="today"><span>38투구 | 13B | 25S</span></p>
+        </div>
+        <table>
+          <thead><tr><th>2026</th><th>ERA</th><th>경기</th></tr></thead>
+          <tbody><tr><th>시즌</th><td>4.13</td><td>7</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <p class="present">
+      <span class="base">
+        <strong>2회 초</strong>
+        <img id="imgThisGameBase" src="//example.com/ground_base2.png" alt="주자">
+        <strong>1-2 2out</strong>
+      </span>
+    </p>
+    <div class="playerName">
+      <ul>
+        <li class="pitcher">박준영</li>
+        <li class="supervision2">디아즈</li>
+      </ul>
+    </div>
+    """
+
+    current_at_bat = RelayCrawler()._parse_current_at_bat(html)
+
+    assert current_at_bat == {
+        "batter": {
+            "name": "디아즈",
+            "number": 61,
+            "hand": "좌타",
+            "recent": "",
+            "average": "0.249",
+        },
+        "pitcher": {
+            "name": "박준영",
+            "number": 68,
+            "hand": "우투",
+            "pitchCount": 38,
+            "era": "4.13",
+        },
+        "ballCount": {"balls": 1, "strikes": 2, "outs": 2},
+        "inningText": "2회 초",
         "baseState": "주자2루",
     }
 

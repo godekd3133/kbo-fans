@@ -656,14 +656,35 @@ class ScoreboardService:
             "statusLabel": self._status_label_for_main_game(status, main_game),
             "inning": inning,
             "startTime": main_game.get("G_TM"),
-            "current": {
-                "balls": main_game.get("BALL_CN"),
-                "strikes": main_game.get("STRIKE_CN"),
-                "outs": main_game.get("OUT_CN"),
-                "batterName": main_game.get("B_P_NM"),
-                "pitcherName": main_game.get("T_P_NM"),
-            },
+            "current": self._current_player_payload_for_main_game(main_game),
         }
+
+    @staticmethod
+    def _current_player_payload_for_main_game(main_game: dict[str, Any]) -> dict[str, Any]:
+        half = str(main_game.get("GAME_TB_SC_NM") or "").strip()
+        if half == "초":
+            batter_name = main_game.get("T_P_NM")
+            pitcher_name = main_game.get("B_P_NM")
+            batter_id = main_game.get("T_P_ID")
+            pitcher_id = main_game.get("B_P_ID")
+        else:
+            batter_name = main_game.get("B_P_NM")
+            pitcher_name = main_game.get("T_P_NM")
+            batter_id = main_game.get("B_P_ID")
+            pitcher_id = main_game.get("T_P_ID")
+
+        payload = {
+            "balls": main_game.get("BALL_CN"),
+            "strikes": main_game.get("STRIKE_CN"),
+            "outs": main_game.get("OUT_CN"),
+            "batterName": batter_name,
+            "pitcherName": pitcher_name,
+        }
+        if batter_id not in (None, ""):
+            payload["batterId"] = str(batter_id)
+        if pitcher_id not in (None, ""):
+            payload["pitcherId"] = str(pitcher_id)
+        return payload
 
     @staticmethod
     def _map_status(game_state: Any) -> str:

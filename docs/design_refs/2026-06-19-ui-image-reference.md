@@ -25,6 +25,7 @@
 - `2026-06-19-game-news-records-more-reference.png`: 경기 상세 박스스코어, 하단 `홈/경기/기록/뉴스/더보기` 탭, 기록 CTA를 한 화면에서 맞춘 생성 레퍼런스
 - `2026-06-19-game-detail-photo-rich-reference.png`: 박스스코어/라인업 dense row에 선수 사진과 잘리지 않는 팀 로고를 더 적극적으로 쓰는 경기 상세 레퍼런스
 - `2026-06-19-records-tab-premium-reference.png`: 기록탭 첫 화면을 headline 리더, 지표 spotlight, tabbed TOP3 리더보드 table, 팀 기록실 진입 순서로 재가공한 프리미엄 레퍼런스
+- `2026-06-19-records-stadium-backdrop.png`: 기록탭 상단에 실제 야구장 질감을 주기 위한 generated bitmap backdrop
 
 ## Decisions Applied
 
@@ -34,5 +35,5 @@
 - 온보딩 모바일 팀 그리드는 390x844에서 CTA와 붙어 보이지 않도록 팀 카드와 hero strip 높이를 줄인다.
 - 경기 상세 탭은 pill container보다 얇은 underline 탭을 우선하고, 박스스코어는 큰 카드 대신 `오늘 기록 요약`, 핵심 선수 record row, 타자/투수 dense row, `선수 기록 보기` CTA로 정리한다.
 - 경기 상세 팀 로고는 각 탭에서 개별 네트워크 이미지로 직접 렌더하지 않고 공용 이미지 위젯으로 통일한다. 박스스코어 일반 타자/투수 row도 가능한 경우 공식 선수 사진을 보여준다.
-- 기록탭은 큰 장식 카드보다 공식 기록 리더를 해석한 premium data room 방향을 따른다. `오늘 읽을 기록`은 headline player image와 metric chip을 쓰고, 리그 리더보드는 지표 tab + TOP3 table로 첫 화면 정보량을 높인다.
+- 기록탭은 큰 장식 카드보다 공식 기록 리더를 해석한 premium data room 방향을 따른다. `오늘 읽을 기록`은 headline player image와 metric chip을 쓰고, 리그 리더보드는 지표 tab + TOP3 table로 첫 화면 정보량을 높인다. 상단 배경은 generated stadium bitmap을 써서 레퍼런스의 실제 야구장 질감에 맞춘다.
 - 하단 탭은 `홈 / 경기 / 기록 / 뉴스 / 더보기` 5개를 유지하고 선택 상태만 compact 원형 accent로 표시한다.

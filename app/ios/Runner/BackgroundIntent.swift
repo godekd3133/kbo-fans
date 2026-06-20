@@ -11,7 +11,9 @@ struct KboFansScoreAttributes: ActivityAttributes {
     var homeScore: Int
     var inning: String
     var batter: String
+    var batterAverage: String?
     var pitcher: String
+    var pitcherEra: String?
     var pitchCount: Int
     var balls: Int
     var strikes: Int

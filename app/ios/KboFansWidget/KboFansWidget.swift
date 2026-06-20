@@ -177,13 +177,13 @@ struct KboFansLiveActivityView: View {
 
   var body: some View {
     ZStack {
-      RoundedRectangle(cornerRadius: 32, style: .continuous)
+      RoundedRectangle(cornerRadius: 28, style: .continuous)
         .fill(cardGradient)
-      RoundedRectangle(cornerRadius: 32, style: .continuous)
+      RoundedRectangle(cornerRadius: 28, style: .continuous)
         .stroke(Color.white.opacity(0.12), lineWidth: 1)
 
-      VStack(spacing: 14) {
-        HStack(alignment: .top, spacing: 12) {
+      VStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
           LiveActivitySidePanel(
             team: displayTeamName(
               teamId: context.state.awayTeamId,
@@ -194,23 +194,23 @@ struct KboFansLiveActivityView: View {
             alignment: .leading,
             frameAlignment: .leading
           )
-          .frame(width: 78, alignment: .leading)
+          .frame(width: 74, alignment: .leading)
 
-          VStack(spacing: 8) {
-            HStack(alignment: .center, spacing: 14) {
+          VStack(spacing: 6) {
+            HStack(alignment: .center, spacing: 12) {
               scoreView(context.state.awayScore)
               BaseballDiamondView(occupiedBases: occupiedBases)
-                .frame(width: 90, height: 58)
+                .frame(width: 82, height: 52)
               scoreView(context.state.homeScore)
             }
 
             Text(statusText)
-              .font(.system(size: 16, weight: .bold, design: .rounded))
+              .font(.system(size: 14, weight: .bold, design: .rounded))
               .foregroundStyle(.white)
               .lineLimit(1)
               .minimumScaleFactor(0.76)
-              .padding(.horizontal, 14)
-              .padding(.vertical, 6)
+              .padding(.horizontal, 12)
+              .padding(.vertical, 5)
               .background(
                 Capsule()
                   .fill(Color.white.opacity(0.22))
@@ -234,26 +234,26 @@ struct KboFansLiveActivityView: View {
             alignment: .trailing,
             frameAlignment: .trailing
           )
-          .frame(width: 78, alignment: .trailing)
+          .frame(width: 74, alignment: .trailing)
         }
 
         Text(bottomSituationText)
-          .font(.system(size: 17, weight: .semibold, design: .rounded))
+          .font(.system(size: 15, weight: .semibold, design: .rounded))
           .foregroundStyle(.white.opacity(0.92))
           .lineLimit(1)
           .minimumScaleFactor(0.72)
           .frame(maxWidth: .infinity)
-          .padding(.vertical, 8)
+          .padding(.vertical, 6)
           .padding(.horizontal, 12)
           .background(
             Capsule()
               .fill(Color.white.opacity(0.13))
           )
       }
-      .padding(.horizontal, 22)
-      .padding(.vertical, 19)
+      .padding(.horizontal, 18)
+      .padding(.vertical, 13)
     }
-    .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     .activityBackgroundTint(Color.clear)
     .activitySystemActionForegroundColor(.white)
     .widgetURL(launchURL(gameId: context.attributes.gameId, tab: "relay"))
@@ -280,12 +280,12 @@ struct KboFansLiveActivityView: View {
 
   private func scoreView(_ score: Int) -> some View {
     Text("\(score)")
-      .font(.system(size: 46, weight: .black, design: .rounded))
+      .font(.system(size: 42, weight: .black, design: .rounded))
       .foregroundStyle(.white)
       .monospacedDigit()
       .lineLimit(1)
       .minimumScaleFactor(0.72)
-      .frame(width: 45)
+      .frame(width: 42)
   }
 
   private var leftDetailPrimary: String {
@@ -294,6 +294,10 @@ struct KboFansLiveActivityView: View {
   }
 
   private var leftDetailSecondary: String {
+    let average = trimmed(context.state.batterAverage)
+    if !average.isEmpty {
+      return "타율 \(average)"
+    }
     let situation = trimmed(context.state.situationText)
     return situation.isEmpty ? "타석" : situation
   }
@@ -304,8 +308,15 @@ struct KboFansLiveActivityView: View {
   }
 
   private var rightDetailSecondary: String {
+    let era = trimmed(context.state.pitcherEra)
     if context.state.pitchCount > 0 {
+      if !era.isEmpty {
+        return "ERA \(era) · \(context.state.pitchCount)구"
+      }
       return "\(context.state.pitchCount)구"
+    }
+    if !era.isEmpty {
+      return "ERA \(era)"
     }
     return trimmed(context.state.stadium).isEmpty ? "KBO" : trimmed(context.state.stadium)
   }
@@ -348,21 +359,21 @@ private struct LiveActivitySidePanel: View {
   let frameAlignment: Alignment
 
   var body: some View {
-    VStack(alignment: alignment, spacing: 10) {
+    VStack(alignment: alignment, spacing: 7) {
       Text(team)
-        .font(.system(size: 28, weight: .black, design: .rounded))
+        .font(.system(size: 25, weight: .black, design: .rounded))
         .foregroundStyle(.white)
         .lineLimit(1)
         .minimumScaleFactor(0.58)
 
-      VStack(alignment: alignment, spacing: 4) {
+      VStack(alignment: alignment, spacing: 3) {
         Text(primary)
-          .font(.system(size: 18, weight: .medium, design: .rounded))
+          .font(.system(size: 15, weight: .medium, design: .rounded))
           .foregroundStyle(.white.opacity(0.9))
           .lineLimit(1)
           .minimumScaleFactor(0.62)
         Text(secondary)
-          .font(.system(size: 15, weight: .regular, design: .rounded))
+          .font(.system(size: 13, weight: .regular, design: .rounded))
           .foregroundStyle(.white.opacity(0.62))
           .lineLimit(1)
           .minimumScaleFactor(0.62)
@@ -410,7 +421,7 @@ private struct CountDotsRow: View {
   let outs: Int
 
   var body: some View {
-    HStack(spacing: 12) {
+    HStack(spacing: 9) {
       CountDotsGroup(label: "B", value: balls, max: 3, color: Color(red: 0.18, green: 0.82, blue: 0.36))
       CountDotsGroup(label: "S", value: strikes, max: 2, color: Color(red: 1.0, green: 0.78, blue: 0.10))
       CountDotsGroup(label: "OUT", value: outs, max: 2, color: Color(red: 1.0, green: 0.24, blue: 0.25))
@@ -427,14 +438,14 @@ private struct CountDotsGroup: View {
   let color: Color
 
   var body: some View {
-    HStack(spacing: 5) {
+    HStack(spacing: 4) {
       Text(label)
-        .font(.system(size: 16, weight: .black, design: .rounded))
+        .font(.system(size: 14, weight: .black, design: .rounded))
         .foregroundStyle(.white)
       ForEach(0..<max, id: \.self) { index in
         Circle()
           .fill(index < clampedValue ? color : Color.white.opacity(0.38))
-          .frame(width: 8, height: 8)
+          .frame(width: 7, height: 7)
       }
     }
   }

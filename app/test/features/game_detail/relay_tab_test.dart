@@ -184,6 +184,89 @@ void main() {
     expect(find.textContaining('39번 김성윤'), findsNothing);
   });
 
+  testWidgets('중계 베이스 다이아몬드는 1,2루 주자를 모두 채운다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const game = Game(
+      gameId: '20260611SSLG0',
+      status: GameStatus.live,
+      inning: '7회초',
+      away: TeamScore(
+        teamId: 'SS',
+        teamName: '삼성 라이온즈',
+        shortName: '삼성',
+        score: 3,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 2,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith((ref, gameId) async {
+            return const RelayData(
+              currentAtBat: CurrentAtBat(
+                batterName: '김성윤',
+                batterNumber: 39,
+                batterHand: '좌타',
+                pitcherName: '임찬규',
+                pitcherNumber: 1,
+                pitcherHand: '우투',
+                pitchCount: 12,
+                inningText: '7회초',
+                baseState: '주자1,2루',
+                balls: 1,
+                strikes: 2,
+                outs: 1,
+              ),
+              relayItems: [],
+            );
+          }),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260611SSLG0',
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260611SSLG0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('주자1,2루'), findsWidgets);
+    expect(_filledLargeRelayBaseCount(tester), 2);
+  });
+
   testWidgets('중계 주요 장면 필터는 선택한 이벤트 카드만 남긴다', (tester) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
@@ -484,6 +567,30 @@ Finder _cachedImage(String imageUrl) {
   return find.byWidgetPredicate(
     (widget) => widget is CachedNetworkImage && widget.imageUrl == imageUrl,
   );
+}
+
+int _filledLargeRelayBaseCount(WidgetTester tester) {
+  return tester.widgetList<Container>(find.byType(Container)).where((
+    container,
+  ) {
+    final decoration = container.decoration;
+    if (decoration is! BoxDecoration) {
+      return false;
+    }
+    final border = decoration.border;
+    if (border is! Border) {
+      return false;
+    }
+    final constraints = container.constraints;
+    final isRelayBaseTile =
+        constraints?.minWidth == 24 &&
+        constraints?.maxWidth == 24 &&
+        constraints?.minHeight == 24 &&
+        constraints?.maxHeight == 24 &&
+        border.top.width == 1.8 &&
+        border.top.color == AppColors.textPrimary;
+    return isRelayBaseTile && decoration.color == AppColors.textPrimary;
+  }).length;
 }
 
 PlayerProfile _playerProfile({

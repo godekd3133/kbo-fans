@@ -197,8 +197,8 @@ class RelayCrawler(BaseCrawler):
         soup = BeautifulSoup(html, "html.parser")
         present = soup.select_one("p.present")
         players = soup.select_one("div.playerName")
-        pitcher_box = soup.select_one(".playerBox.awayBox .player-info-wrap")
-        batter_box = soup.select_one(".playerBox.homeBox .player-info-wrap")
+        away_box = soup.select_one(".playerBox.awayBox")
+        home_box = soup.select_one(".playerBox.homeBox")
         if present is None or players is None:
             return None
 
@@ -210,8 +210,15 @@ class RelayCrawler(BaseCrawler):
             present.select_one("img")
         ) or self._base_state_from_runner_names(runner_names)
 
+        if "초" in inning_text:
+            batter_box = away_box
+            pitcher_box = home_box
+        else:
+            batter_box = home_box
+            pitcher_box = away_box
+
         pitcher = self._player_text(players.select_one("li.pitcher"))
-        batter = self._player_text(players.select_one("li.supervision"))
+        batter = self._current_batter_name(players)
         balls, strikes, outs = self._parse_count_text(count_text)
         pitcher_meta = self._parse_player_info_box(pitcher_box)
         batter_meta = self._parse_player_info_box(batter_box)
@@ -225,12 +232,14 @@ class RelayCrawler(BaseCrawler):
                 "number": batter_meta["number"],
                 "hand": batter_meta["hand"],
                 "recent": batter_meta["recent"],
+                "average": batter_meta["average"],
             },
             "pitcher": {
                 "name": pitcher or pitcher_meta["name"],
                 "number": pitcher_meta["number"],
                 "hand": pitcher_meta["hand"],
                 "pitchCount": pitcher_meta["pitch_count"],
+                "era": pitcher_meta["era"],
             },
             "ballCount": {
                 "balls": balls,
@@ -295,6 +304,14 @@ class RelayCrawler(BaseCrawler):
         return RelayCrawler._normalize_text(element.get_text(" ", strip=True))
 
     @staticmethod
+    def _current_batter_name(players: Any) -> str:
+        for item in players.select("li"):
+            classes = item.get("class") or []
+            if any(str(class_name).startswith("supervision") for class_name in classes):
+                return RelayCrawler._player_text(item)
+        return ""
+
+    @staticmethod
     def _parse_count_text(text: str) -> tuple[int, int, int]:
         match = re.search(r"(\d+)-(\d+)\s+(\d+)out", text)
         if not match:
@@ -313,19 +330,22 @@ class RelayCrawler(BaseCrawler):
                 "hand": "",
                 "pitch_count": 0,
                 "recent": "",
+                "average": "",
+                "era": "",
             }
 
-        number_text = RelayCrawler._player_text(element.select_one(".no"))
+        player_wrap = element.select_one(".player-info-wrap") or element
+        number_text = RelayCrawler._player_text(player_wrap.select_one(".no"))
         hand_text = ""
-        who = element.select_one(".who")
+        who = player_wrap.select_one(".who")
         if who is not None:
             spans = who.select("span")
             if spans:
-                hand_text = RelayCrawler._normalize_text(
-                    spans[-1].get_text(" ", strip=True)
-                ).strip("()")
+                hand_text = RelayCrawler._normalize_text(spans[-1].get_text(" ", strip=True)).strip(
+                    "()"
+                )
 
-        today_text = RelayCrawler._player_text(element.select_one(".today span"))
+        today_text = RelayCrawler._player_text(player_wrap.select_one(".today span"))
         pitch_count_match = re.search(r"(\d+)투구", today_text)
 
         name = number_text
@@ -341,8 +361,36 @@ class RelayCrawler(BaseCrawler):
             "number": number,
             "hand": hand_text,
             "pitch_count": int(pitch_count_match.group(1)) if pitch_count_match else 0,
-            "recent": today_text if not pitch_count_match else "",
+            "recent": "" if pitch_count_match or today_text == "-" else today_text,
+            "average": RelayCrawler._parse_season_stat(element, ("타율", "AVG")),
+            "era": RelayCrawler._parse_season_stat(element, ("ERA", "평균자책", "평균자책점")),
         }
+
+    @staticmethod
+    def _parse_season_stat(element: Any, header_candidates: tuple[str, ...]) -> str:
+        for table in element.select("table"):
+            headers = [
+                RelayCrawler._normalize_text(header.get_text(" ", strip=True))
+                for header in table.select("thead th")
+            ]
+            stat_index = next(
+                (index for index, header in enumerate(headers) if header in header_candidates),
+                -1,
+            )
+            if stat_index < 0:
+                continue
+
+            for row in table.select("tbody tr"):
+                cells = row.find_all(["th", "td"])
+                if not cells:
+                    continue
+                label = RelayCrawler._normalize_text(cells[0].get_text(" ", strip=True))
+                if label != "시즌" or stat_index >= len(cells):
+                    continue
+                value = RelayCrawler._normalize_text(cells[stat_index].get_text(" ", strip=True))
+                if value and value != "-":
+                    return value
+        return ""
 
     @staticmethod
     def _parse_base_state(element: Optional[Any]) -> str:

@@ -223,7 +223,7 @@ class LiveActivityScoreboardSyncService:
 
         now = datetime.now(timezone.utc)
         event = "end" if status in {"FINAL", "CANCELLED", "SUSPENDED"} else "update"
-        current = _current_payload(game)
+        current = self._live_activity_current_payload(game, status)
         state = LiveActivityContentState(
             awayTeamId=str(away.get("teamId") or ""),
             awayTeam=str(away.get("shortName") or away.get("name") or ""),
@@ -231,9 +231,11 @@ class LiveActivityScoreboardSyncService:
             homeTeam=str(home.get("shortName") or home.get("name") or ""),
             awayScore=_int_value(away.get("score")),
             homeScore=_int_value(home.get("score")),
-            inning=_inning_text(game, status),
+            inning=str(current.get("inning") or _inning_text(game, status)),
             batter=current["batterName"],
+            batterAverage=str(current.get("batterAverage") or ""),
             pitcher=current["pitcherName"],
+            pitcherEra=str(current.get("pitcherEra") or ""),
             pitchCount=_int_value(current.get("pitchCount")),
             balls=_int_value(current.get("balls")),
             strikes=_int_value(current.get("strikes")),
@@ -251,6 +253,24 @@ class LiveActivityScoreboardSyncService:
             dismissalDate=int((now + timedelta(hours=1)).timestamp()) if event == "end" else None,
             relevanceScore=100 if event == "update" else 50,
         )
+
+    def _live_activity_current_payload(
+        self,
+        game: dict[str, Any],
+        status: str,
+    ) -> dict[str, Any]:
+        current = _current_payload(game)
+        game_id = str(game.get("gameId") or "")
+        if self.relay_service is None or status != "LIVE" or not game_id:
+            return current
+
+        try:
+            relay = self.relay_service.get_relay(game_id)
+        except Exception:
+            return current
+
+        relay_current = _relay_current_state(relay.get("currentAtBat"), current)
+        return {**current, **relay_current}
 
 
 def _is_homerun_relay_item(item: dict[str, Any]) -> bool:
@@ -297,6 +317,12 @@ def _relay_current_state(
             "inning": fallback_state["inning"],
             "batterName": fallback_state["batterName"],
             "pitcherName": fallback_state["pitcherName"],
+            "batterAverage": fallback_state.get("batterAverage", ""),
+            "pitcherEra": fallback_state.get("pitcherEra", ""),
+            "pitchCount": fallback_state.get("pitchCount", 0),
+            "balls": fallback_state.get("balls", 0),
+            "strikes": fallback_state.get("strikes", 0),
+            "outs": fallback_state.get("outs", 0),
             "situationText": "",
         }
 
@@ -305,12 +331,36 @@ def _relay_current_state(
     ball_count = current_at_bat.get("ballCount") or {}
     inning = str(current_at_bat.get("inningText") or fallback_state["inning"])
     base_state = str(current_at_bat.get("baseState") or "")
+    pitch_count = _int_value(
+        pitcher.get("pitchCount")
+        if pitcher.get("pitchCount") is not None
+        else fallback_state.get("pitchCount")
+    )
+    balls = _int_value(
+        ball_count.get("balls")
+        if ball_count.get("balls") is not None
+        else fallback_state.get("balls")
+    )
+    strikes = _int_value(
+        ball_count.get("strikes")
+        if ball_count.get("strikes") is not None
+        else fallback_state.get("strikes")
+    )
+    outs = _int_value(
+        ball_count.get("outs") if ball_count.get("outs") is not None else fallback_state.get("outs")
+    )
     return {
         "inning": inning,
         "batterName": str(batter.get("name") or fallback_state["batterName"]),
         "pitcherName": str(pitcher.get("name") or fallback_state["pitcherName"]),
+        "batterAverage": str(batter.get("average") or fallback_state.get("batterAverage", "")),
+        "pitcherEra": str(pitcher.get("era") or fallback_state.get("pitcherEra", "")),
+        "pitchCount": pitch_count,
+        "balls": balls,
+        "strikes": strikes,
+        "outs": outs,
         "situationText": _situation_text(
-            outs=_int_value(ball_count.get("outs")),
+            outs=outs,
             base_state=base_state,
         ),
     }
@@ -467,6 +517,8 @@ def _current_payload(game: dict[str, Any]) -> dict[str, Any]:
         "pitchCount": current.get("pitchCount"),
         "batterName": str(current.get("batterName") or "").strip(),
         "pitcherName": str(current.get("pitcherName") or "").strip(),
+        "batterAverage": str(current.get("batterAverage") or "").strip(),
+        "pitcherEra": str(current.get("pitcherEra") or "").strip(),
         "situationText": str(
             current.get("situationText") or current.get("baseState") or ""
         ).strip(),

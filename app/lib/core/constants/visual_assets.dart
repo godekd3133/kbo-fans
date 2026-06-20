@@ -2,6 +2,8 @@ class VisualAssets {
   static const onboardingHero = 'assets/visuals/casual_onboarding_01.webp';
   static const onboardingStadiumHero =
       'assets/visuals/onboarding_stadium_hero.png';
+  static const recordsStadiumBackdrop =
+      'assets/visuals/records_stadium_backdrop.png';
   static const homeEmptyStadium = 'assets/visuals/casual_home_03.webp';
   static const scheduleTicketing = 'assets/visuals/casual_schedule_01.webp';
   static const liveRelayField = 'assets/visuals/casual_game_02.webp';

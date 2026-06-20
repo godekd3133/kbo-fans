@@ -140,7 +140,13 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                   final status = data['status'] as String? ?? 'idle';
                   final reason = data['reason'] as String?;
                   final isLocalSkipped =
-                      AppConfig.instance.isLocal && status == 'skipped';
+                      !shouldUseRemotePushServices(
+                        isWeb: false,
+                        isLocal: AppConfig.instance.isLocal,
+                        hasApiBaseUrlOverride:
+                            AppConfig.instance.hasApiBaseUrlOverride,
+                      ) &&
+                      status == 'skipped';
                   return AppMotionListItem(
                     index: results.length + 1,
                     child: _DiagnosticCard(

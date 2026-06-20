@@ -1,5 +1,14 @@
 # 패치노트
 
+## 0.0.60+60 - Live Activity Current At Bat
+
+- Live Activity에서 초/말에 따라 현재 타자와 투수가 뒤바뀌던 표시를 보정했습니다.
+- relay 기반 타율, ERA, 투구수, B-S-O 정보를 Lock Screen 표면에 함께 표시하도록 보강했습니다.
+- `API_BASE_URL`이 들어간 release/direct 빌드에서도 remote push 등록과 자동 권한 요청이 유지되도록 정리했습니다.
+- 문자중계 주자 상태가 `주자1,2루`처럼 축약돼도 베이스 다이아몬드가 정확히 채워지도록 보정했습니다.
+- 기록 탭 상단에 stadium bitmap backdrop을 적용해 프리미엄 기록실 질감을 강화했습니다.
+- 2026 기록 overview bootstrap과 backend snapshot을 최신 기록 기준으로 다시 갱신했습니다.
+
 ## 0.0.59+59 - Records Premium And Push Receipt
 
 - 기록 탭을 headline 리더, 지표 spotlight, 탭형 TOP3 리더보드 table 중심으로 더 조밀하게 다듬었습니다.

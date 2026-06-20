@@ -3042,13 +3042,27 @@ Set<int> _occupiedBasesForBaseState(String baseState) {
       normalized.contains('주자무')) {
     return <int>{};
   }
+  final imageMatch = RegExp(r'ground_base(\d+)').firstMatch(normalized);
+  if (imageMatch != null) {
+    return switch (imageMatch.group(1)) {
+      '1' => {1},
+      '2' => {2},
+      '3' => {1, 2},
+      '4' => {3},
+      '5' => {1, 3},
+      '6' => {2, 3},
+      '7' => {1, 2, 3},
+      _ => <int>{},
+    };
+  }
   if (normalized.contains('만루')) {
     return {1, 2, 3};
   }
+  final state = normalized.replaceFirst('주자', '');
   return {
-    if (normalized.contains('1루')) 1,
-    if (normalized.contains('2루')) 2,
-    if (normalized.contains('3루')) 3,
+    if (RegExp(r'1(?=루|[,/·ㆍ-]|$)').hasMatch(state)) 1,
+    if (RegExp(r'2(?=루|[,/·ㆍ-]|$)').hasMatch(state)) 2,
+    if (RegExp(r'3(?=루|[,/·ㆍ-]|$)').hasMatch(state)) 3,
   };
 }
 

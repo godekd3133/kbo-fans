@@ -75,7 +75,9 @@ class LiveActivityContentState(BaseModel):
     homeScore: int
     inning: str
     batter: str = ""
+    batterAverage: str = ""
     pitcher: str = ""
+    pitcherEra: str = ""
     pitchCount: int = 0
     balls: int = 0
     strikes: int = 0

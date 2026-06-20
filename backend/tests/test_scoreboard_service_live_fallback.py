@@ -115,6 +115,43 @@ def test_full_scoreboard_uses_view1_fallback_for_totals_and_main_inning(
     assert game["home"]["balls"] == 1
 
 
+def test_full_scoreboard_maps_current_players_by_inning_half_for_top(
+    tmp_path: Path,
+) -> None:
+    class _TopMainCrawler(_StubMainCrawler):
+        def get_kbo_game_list(self, date: str):
+            return [
+                {
+                    "G_ID": "20260331OBSS0",
+                    "G_TM": "18:30",
+                    "GAME_STATE_SC": "2",
+                    "GAME_INN_NO": 2,
+                    "GAME_TB_SC_NM": "초",
+                    "T_SCORE_CN": "0",
+                    "B_SCORE_CN": "1",
+                    "BALL_CN": 1,
+                    "STRIKE_CN": 2,
+                    "OUT_CN": 2,
+                    "T_P_NM": "디아즈",
+                    "B_P_NM": "박준영",
+                }
+            ]
+
+    service = ScoreboardService(
+        main_crawler=_TopMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    payload = service.get_scoreboard("2026-03-31")
+    game = payload["games"][0]
+
+    assert game["inning"] == "2회초"
+    assert game["current"]["batterName"] == "디아즈"
+    assert game["current"]["pitcherName"] == "박준영"
+
+
 class _FinalMainCrawler:
     def get_kbo_game_list(self, date: str):
         return [

@@ -1,5 +1,5 @@
 {
-  "savedAt": "2026-06-19T09:47:04.415008+00:00",
+  "savedAt": "2026-06-20T02:01:34.135791+00:00",
   "payload": {
     "season": 2026,
     "leaders": {
@@ -11,7 +11,7 @@
           "metricKey": "AVG",
           "name": "최원준",
           "teamId": "KT",
-          "value": "0.381",
+          "value": "0.380",
           "isRetired": false
         },
         {
@@ -21,7 +21,7 @@
           "metricKey": "AVG",
           "name": "레이예스",
           "teamId": "LT",
-          "value": "0.353",
+          "value": "0.348",
           "isRetired": false
         },
         {
@@ -31,7 +31,7 @@
           "metricKey": "AVG",
           "name": "오스틴",
           "teamId": "LG",
-          "value": "0.352",
+          "value": "0.347",
           "isRetired": false
         },
         {
@@ -51,7 +51,7 @@
           "metricKey": "AVG",
           "name": "이우성",
           "teamId": "NC",
-          "value": "0.344",
+          "value": "0.346",
           "isRetired": false
         }
       ],
@@ -115,7 +115,7 @@
           "metricKey": "OPS",
           "name": "오스틴",
           "teamId": "LG",
-          "value": "1.082",
+          "value": "1.067",
           "isRetired": false
         },
         {
@@ -125,7 +125,7 @@
           "metricKey": "OPS",
           "name": "최정",
           "teamId": "SK",
-          "value": "1.010",
+          "value": "1.012",
           "isRetired": false
         },
         {
@@ -145,17 +145,17 @@
           "metricKey": "OPS",
           "name": "강백호",
           "teamId": "HH",
-          "value": "0.983",
+          "value": "0.971",
           "isRetired": false
         },
         {
           "rank": 5,
-          "playerId": "54529",
+          "playerId": "52605",
           "playerType": "hitter",
           "metricKey": "OPS",
-          "name": "레이예스",
-          "teamId": "LT",
-          "value": "0.949",
+          "name": "김도영",
+          "teamId": "HT",
+          "value": "0.947",
           "isRetired": false
         }
       ],
@@ -167,7 +167,7 @@
           "metricKey": "OPSPLUS",
           "name": "오스틴",
           "teamId": "LG",
-          "value": "124",
+          "value": "122",
           "isRetired": false
         },
         {
@@ -197,16 +197,16 @@
           "metricKey": "OPSPLUS",
           "name": "강백호",
           "teamId": "HH",
-          "value": "113",
+          "value": "111",
           "isRetired": false
         },
         {
           "rank": 5,
-          "playerId": "54529",
+          "playerId": "52605",
           "playerType": "hitter",
           "metricKey": "OPSPLUS",
-          "name": "레이예스",
-          "teamId": "LT",
+          "name": "김도영",
+          "teamId": "HT",
           "value": "109",
           "isRetired": false
         }
@@ -249,7 +249,7 @@
           "metricKey": "ERA",
           "name": "후라도",
           "teamId": "SS",
-          "value": "2.96",
+          "value": "2.86",
           "isRetired": false
         },
         {
@@ -259,7 +259,7 @@
           "metricKey": "ERA",
           "name": "알칸타라",
           "teamId": "WO",
-          "value": "2.96",
+          "value": "2.93",
           "isRetired": false
         }
       ]
@@ -271,7 +271,7 @@
         "playerType": "hitter",
         "name": "최원준",
         "teamId": "KT",
-        "headline": "타율 0.381",
+        "headline": "타율 0.380",
         "summary": "2026 시즌 KBO 공식 기록 기준",
         "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/66606.jpg"
       },
@@ -301,7 +301,7 @@
         "playerType": "hitter",
         "name": "오스틴",
         "teamId": "LG",
-        "headline": "OPS 1.082",
+        "headline": "OPS 1.067",
         "summary": "2026 시즌 KBO 공식 기록 기준",
         "imageUrl": "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/53123.jpg"
       }

@@ -70,6 +70,14 @@ bool _shouldSkipPlatformServices() {
   return kIsWeb;
 }
 
+bool _shouldUseRemotePushServices() {
+  return shouldUseRemotePushServices(
+    isWeb: kIsWeb,
+    isLocal: AppConfig.instance.isLocal,
+    hasApiBaseUrlOverride: AppConfig.instance.hasApiBaseUrlOverride,
+  );
+}
+
 Future<void> _initializePlatformServices() async {
   if (_shouldSkipPlatformServices()) {
     DevConsole.instance.info('Platform services skipped for local/web startup');
@@ -95,13 +103,13 @@ Future<void> _initializePlatformServices() async {
   }
 
   try {
-    if (!AppConfig.instance.isLocal) {
+    if (_shouldUseRemotePushServices()) {
       final prefs = await SharedPreferences.getInstance();
       await PushNotificationService.instance.initialize(
         myTeam: prefs.getString('myTeam'),
       );
     } else {
-      DevConsole.instance.info('Push init skipped for local startup');
+      DevConsole.instance.info('Push init skipped: no remote push endpoint');
     }
   } catch (error) {
     DevConsole.instance.error('Push init failed: $error');

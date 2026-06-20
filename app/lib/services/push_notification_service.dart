@@ -362,6 +362,11 @@ class PushNotificationService {
     if (_initialized || kIsWeb) {
       return;
     }
+    if (!_shouldUseRemotePushServices()) {
+      await _saveDebugInitState(status: 'skipped', reason: null);
+      DevConsole.instance.info('Push init skipped: no remote push endpoint');
+      return;
+    }
     final pending = _initializing;
     if (pending != null) {
       await pending;
@@ -423,11 +428,12 @@ class PushNotificationService {
       await syncRegistration(myTeam: myTeam);
     } catch (error) {
       final reason = error.toString();
+      final remotePushAvailable = _shouldUseRemotePushServices();
       await _saveDebugInitState(
-        status: AppConfig.instance.isLocal ? 'skipped' : 'failed',
+        status: remotePushAvailable ? 'failed' : 'skipped',
         reason: reason,
       );
-      if (AppConfig.instance.isLocal) {
+      if (!remotePushAvailable) {
         DevConsole.instance.info('Push init skipped (local): $error');
       } else {
         DevConsole.instance.warn('Push init skipped: $error');
@@ -439,12 +445,16 @@ class PushNotificationService {
     if (kIsWeb) {
       return;
     }
+    final remotePushAvailable = _shouldUseRemotePushServices();
+    if (!remotePushAvailable) {
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     final alreadyRequested =
         prefs.getBool(_autoPermissionRequestedKey) ?? false;
     if (!shouldAutoRequestPushPermission(
       isWeb: kIsWeb,
-      isLocal: AppConfig.instance.isLocal,
+      remotePushAvailable: remotePushAvailable,
       alreadyRequested: alreadyRequested,
       myTeam: myTeam,
     )) {
@@ -643,11 +653,14 @@ class PushNotificationService {
   }
 
   Future<bool> requestPermissionAndSync({String? myTeam}) async {
-    if (kIsWeb) {
+    if (kIsWeb || !_shouldUseRemotePushServices()) {
       return false;
     }
     if (!_initialized) {
       await initialize(myTeam: myTeam);
+    }
+    if (!_initialized) {
+      return false;
     }
     try {
       final notificationSettings = await FirebaseMessaging.instance
@@ -664,7 +677,7 @@ class PushNotificationService {
   }
 
   Future<void> syncRegistration({String? myTeam, String? forceToken}) async {
-    if (kIsWeb || !_initialized) {
+    if (kIsWeb || !_initialized || !_shouldUseRemotePushServices()) {
       return;
     }
 
@@ -722,9 +735,10 @@ class PushNotificationService {
 
   Future<Map<String, dynamic>> debugState() async {
     final prefs = await SharedPreferences.getInstance();
+    final remotePushAvailable = _shouldUseRemotePushServices();
     return {
       'initialized': _initialized,
-      'localOnlyMode': false,
+      'localOnlyMode': !remotePushAvailable,
       'tokenReady': (_lastToken ?? '').isNotEmpty,
       'status':
           prefs.getString(_debugLastInitStatusKey) ??
@@ -876,6 +890,14 @@ class PushNotificationService {
       _ => 'flutter',
     };
   }
+
+  bool _shouldUseRemotePushServices() {
+    return shouldUseRemotePushServices(
+      isWeb: kIsWeb,
+      isLocal: AppConfig.instance.isLocal,
+      hasApiBaseUrlOverride: AppConfig.instance.hasApiBaseUrlOverride,
+    );
+  }
 }
 
 @visibleForTesting
@@ -903,15 +925,26 @@ Map<String, dynamic> buildPushRegistrationPayload({
   };
 }
 
+bool shouldUseRemotePushServices({
+  required bool isWeb,
+  required bool isLocal,
+  required bool hasApiBaseUrlOverride,
+}) {
+  if (isWeb) {
+    return false;
+  }
+  return !isLocal || hasApiBaseUrlOverride;
+}
+
 @visibleForTesting
 bool shouldAutoRequestPushPermission({
   required bool isWeb,
-  required bool isLocal,
+  required bool remotePushAvailable,
   required bool alreadyRequested,
   required String? myTeam,
 }) {
   return !isWeb &&
-      !isLocal &&
+      remotePushAvailable &&
       !alreadyRequested &&
       myTeam != null &&
       myTeam.trim().isNotEmpty;

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
+import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
@@ -125,7 +126,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 color: AppColors.live,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
                   children: [
                     Row(
                       children: [
@@ -146,12 +147,12 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                               Text(
                                 '기록실',
                                 style: TextStyle(
-                                  fontSize: 34,
+                                  fontSize: 32,
                                   fontWeight: FontWeight.w900,
                                   height: 1.05,
                                 ),
                               ),
-                              SizedBox(height: 8),
+                              SizedBox(height: 6),
                               Text(
                                 '한눈에 보는 리그 리더와 팀&선수 기록',
                                 style: TextStyle(
@@ -173,9 +174,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     _seasonSelector(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     overviewAsync.when(
                       loading: () => const SizedBox.shrink(),
                       error: (error, stackTrace) =>
@@ -183,14 +184,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       data: (overview) => Column(
                         children: [
                           _recordsBriefingPanel(overview),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
                           _metricSpotlightRail(overview),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 8),
                           _recordsSectionHeader(
                             title: '리그 리더보드',
                             subtitle: '핵심 지표별 TOP 5를 빠르게 비교합니다.',
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           _metricHub(overview),
                           const SizedBox(height: 18),
                           _recordsSectionHeader(
@@ -1202,7 +1203,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         year,
     ];
     return Container(
-      height: 42,
+      height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -1213,7 +1214,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         children: [
           const Text(
             '시즌',
-            style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+            style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
           ),
           const Spacer(),
           DropdownButton<int>(
@@ -1226,7 +1227,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     value: season,
                     child: Text(
                       '$season',
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ),
                 )
@@ -1336,7 +1337,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -1371,15 +1372,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     Text(
                       '오늘 읽을 기록',
                       style: TextStyle(
-                        fontSize: 21,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    SizedBox(height: 1),
                     Text(
                       '리그 주요 지표 리더를 먼저 확인하세요.',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -1389,14 +1390,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               Text(
                 '$_selectedSeason',
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: AppColors.textDisabled,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 11),
+          const SizedBox(height: 9),
           if (headline == null)
             const Text(
               '현재 표시할 기록 리더가 없습니다.',
@@ -1404,7 +1405,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             )
           else
             _headlineLeaderBlock(overview, headline),
-          const SizedBox(height: 9),
+          const SizedBox(height: 7),
           Row(
             children: [
               Expanded(child: _briefStat('활성 지표', '$activeMetricCount/5')),
@@ -1415,25 +1416,25 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             ],
           ),
           if (briefLines.isNotEmpty) ...[
-            const SizedBox(height: 7),
+            const SizedBox(height: 5),
             for (final line in briefLines)
               Padding(
-                padding: const EdgeInsets.only(bottom: 3),
+                padding: const EdgeInsets.only(bottom: 2),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Icon(
                       Icons.arrow_right_rounded,
-                      size: 18,
+                      size: 15,
                       color: AppColors.accent,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 3),
                     Expanded(
                       child: Text(
                         line,
                         style: const TextStyle(
                           fontSize: 10,
-                          height: 1.2,
+                          height: 1.15,
                           color: AppColors.textSecondary,
                         ),
                       ),
@@ -1452,7 +1453,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _leaderPhoto(leader, width: 70, height: 78),
+        _leaderPhoto(leader, width: 64, height: 72),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -1475,7 +1476,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 26,
+                        fontSize: 25,
                         fontWeight: FontWeight.w900,
                         height: 1.05,
                       ),
@@ -1483,7 +1484,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 4),
               Text(
                 team?.name ?? leader.teamId,
                 maxLines: 2,
@@ -1491,13 +1492,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
-                  height: 1.3,
+                  height: 1.2,
                 ),
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 7),
               Wrap(
                 spacing: 7,
-                runSpacing: 6,
+                runSpacing: 5,
                 children: _metricSnapshots(overview)
                     .where(
                       (snapshot) =>
@@ -1521,8 +1522,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _briefStat(String label, String value) {
     return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.28),
         borderRadius: BorderRadius.circular(8),
@@ -1544,11 +1545,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             ),
           ),
           const Spacer(),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
           ),
         ],
       ),
@@ -1558,13 +1562,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _metricSpotlightRail(RecordsOverview overview) {
     final snapshots = _metricSnapshots(overview);
     return SizedBox(
-      height: 116,
+      height: 104,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: snapshots.length,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) =>
-            SizedBox(width: 120, child: _metricSpotlightCard(snapshots[index])),
+            SizedBox(width: 116, child: _metricSpotlightCard(snapshots[index])),
       ),
     );
   }
@@ -1578,7 +1582,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       ),
       pressedScale: 0.97,
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -1598,20 +1602,20 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               children: [
                 Container(
                   width: 7,
-                  height: 20,
+                  height: 18,
                   decoration: BoxDecoration(
                     color: snapshot.color,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     snapshot.metric.shortLabel,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1635,7 +1639,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1644,33 +1648,25 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             ),
             const SizedBox(height: 3),
             Text(
-              leader == null ? '공식 소스 확인 중' : team?.shortName ?? leader.teamId,
+              leader == null
+                  ? '공식 소스 확인 중'
+                  : '${team?.shortName ?? leader.teamId} · ${_leaderGapText(snapshot.metric, snapshot.leaders)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 10,
                 color: AppColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Text(
               leader?.value ?? '-',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 23,
+                fontSize: 22,
                 fontWeight: FontWeight.w900,
                 height: 1,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _leaderGapText(snapshot.metric, snapshot.leaders),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textDisabled,
               ),
             ),
           ],
@@ -1859,7 +1855,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
         pressedScale: 0.992,
         child: SizedBox(
-          height: 58,
+          height: 52,
           child: Row(
             children: [
               SizedBox(
@@ -1867,7 +1863,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 child: Text(
                   '${leader.rank}',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: color,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1881,7 +1877,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1894,7 +1890,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       KboTeamLogoImage(
                         teamId: team.id,
                         fallback: team.shortName,
-                        size: 24,
+                        size: 22,
                         padding: 0,
                       ),
                       const SizedBox(width: 6),
@@ -1921,7 +1917,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1954,7 +1950,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _miniMetricPill(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
@@ -1963,7 +1959,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       child: Text(
         '$label $value',
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 10,
           color: color,
           fontWeight: FontWeight.w900,
         ),
@@ -2204,24 +2200,29 @@ class _RecordsBackdrop extends StatelessWidget {
             left: 0,
             top: 0,
             right: 0,
-            height: 235,
-            child: CustomPaint(painter: _StadiumBackdropPainter()),
+            height: 280,
+            child: Image.asset(
+              VisualAssets.recordsStadiumBackdrop,
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
           ),
           Positioned(
             left: 0,
             top: 0,
             right: 0,
-            height: 260,
+            height: 320,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.12),
-                    Colors.black.withValues(alpha: 0.62),
+                    Colors.black.withValues(alpha: 0.18),
+                    Colors.black.withValues(alpha: 0.48),
                     AppColors.background,
                   ],
+                  stops: [0, 0.52, 1],
                 ),
               ),
             ),
@@ -2230,44 +2231,6 @@ class _RecordsBackdrop extends StatelessWidget {
       ),
     );
   }
-}
-
-class _StadiumBackdropPainter extends CustomPainter {
-  const _StadiumBackdropPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final arcPaint = Paint()
-      ..color = AppColors.textSecondary.withValues(alpha: 0.09)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    final glowPaint = Paint()
-      ..color = AppColors.textSecondary.withValues(alpha: 0.08)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 7
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
-    for (var i = 0; i < 4; i++) {
-      final y = 58.0 + (i * 22);
-      final path = Path()
-        ..moveTo(-20, y + 24)
-        ..quadraticBezierTo(size.width / 2, y - 28, size.width + 20, y + 24);
-      canvas.drawPath(path, i == 0 ? glowPaint : arcPaint);
-      canvas.drawPath(path, arcPaint);
-    }
-
-    final lightPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.08)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    for (var i = 0; i < 10; i++) {
-      final x = (size.width / 9) * i;
-      canvas.drawLine(Offset(x, 54), Offset(x + 18, 138), lightPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _MetricSnapshot {

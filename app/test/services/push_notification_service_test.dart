@@ -51,7 +51,7 @@ void main() {
     expect(
       shouldAutoRequestPushPermission(
         isWeb: false,
-        isLocal: false,
+        remotePushAvailable: true,
         alreadyRequested: false,
         myTeam: 'LG',
       ),
@@ -59,11 +59,31 @@ void main() {
     );
   });
 
-  test('local 또는 마이팀 없음 또는 이미 요청한 경우 자동 푸시 권한을 요청하지 않는다', () {
+  test('API URL이 있으면 local direct 빌드도 remote push 등록 대상이다', () {
+    expect(
+      shouldUseRemotePushServices(
+        isWeb: false,
+        isLocal: true,
+        hasApiBaseUrlOverride: true,
+      ),
+      isTrue,
+    );
     expect(
       shouldAutoRequestPushPermission(
         isWeb: false,
-        isLocal: true,
+        remotePushAvailable: true,
+        alreadyRequested: false,
+        myTeam: 'LG',
+      ),
+      isTrue,
+    );
+  });
+
+  test('remote push 불가 또는 마이팀 없음 또는 이미 요청한 경우 자동 푸시 권한을 요청하지 않는다', () {
+    expect(
+      shouldAutoRequestPushPermission(
+        isWeb: false,
+        remotePushAvailable: false,
         alreadyRequested: false,
         myTeam: 'LG',
       ),
@@ -72,7 +92,7 @@ void main() {
     expect(
       shouldAutoRequestPushPermission(
         isWeb: false,
-        isLocal: false,
+        remotePushAvailable: true,
         alreadyRequested: false,
         myTeam: null,
       ),
@@ -81,7 +101,7 @@ void main() {
     expect(
       shouldAutoRequestPushPermission(
         isWeb: false,
-        isLocal: false,
+        remotePushAvailable: true,
         alreadyRequested: true,
         myTeam: 'LG',
       ),
