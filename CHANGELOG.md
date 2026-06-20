@@ -19,6 +19,17 @@
 - 진행 중 경기 박스스코어가 공식 rows 업데이트 전이어도 KBO 실시간 현재 타자/투수 context를 `실시간 기록 추적`으로 표시하도록 보강
 - 기록 탭 첫 화면의 spotlight 카드 하단 텍스트와 리더보드 `ERA` 탭이 390px 폭에서 잘리지 않도록 레이아웃 폭/높이를 보정
 
+## [0.0.63] - 2026-06-20
+
+### Changed
+
+- `0.0.62`의 backend API 기본 모드, Live Activity 실시간 AVG, live 박스스코어 context, 푸쉬 중계 CTA, 배포 gate 보정 기준을 새 TestFlight build `0.0.63 (63)`로 다시 맞춤
+
+### Fixed
+
+- 로컬 backend 실행 액션이 iPhone 실기기용 LAN health 체크와 맞지 않게 localhost에만 바인딩되던 문제를 보정
+- AWS backend API/worker task definition, Secrets Manager upload, GitHub Actions deploy workflow에 `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD` secret 주입을 추가해 live relay API runtime 500 경로를 보정
+
 ## [0.0.62] - 2026-06-20
 
 ### Changed

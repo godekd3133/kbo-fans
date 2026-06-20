@@ -1,5 +1,11 @@
 # 패치노트
 
+## 0.0.63+63 - TestFlight Rebuild Checkpoint
+
+- 0.0.62의 backend API 기본 모드, Live Activity 실시간 AVG, live 박스스코어 context, 푸쉬 중계 CTA, 배포 gate 보정 기준을 새 TestFlight build number로 다시 올렸습니다.
+- AWS backend API/worker에 KBO 문자중계 credential secret을 주입해 live relay API가 500으로 떨어질 수 있던 runtime 경로를 막았습니다.
+- TestFlight, GitHub Release, backend deploy, topic 재등록, release API health 기준을 0.0.63으로 다시 맞춘 checkpoint입니다.
+
 ## 0.0.62+62 - Release Sync Checkpoint
 
 - 0.0.61의 backend API 기본 모드, Live Activity 실시간 AVG, live 박스스코어 context, 푸쉬 중계 CTA 보강을 새 TestFlight build number로 다시 올렸습니다.

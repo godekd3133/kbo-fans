@@ -55,7 +55,7 @@ Commands:
   web-dev  Run the Flutter app in Chrome for a debug session
   web-static  Build web release and serve it locally on port 7357
   web-release  Build web release with backend API data and serve it locally
-  backend  Run the FastAPI backend with a local virtualenv
+  backend  Run the FastAPI backend with a local virtualenv on a LAN-reachable host
   release-api-health  Check the production API DNS/TLS and release-critical endpoints
   push-live-preflight  Check local Firebase/APNs/Live Activity/AWS prerequisites
   push-readiness  Check production push/Live Activity backend readiness
@@ -608,7 +608,26 @@ run_flutter() {
 }
 
 release_api_base_url() {
-  echo "${RELEASE_API_BASE_URL:-${API_BASE_URL:-https://api.kbofans.com/api}}"
+  if [[ -n "${RELEASE_API_BASE_URL:-}" ]]; then
+    echo "$RELEASE_API_BASE_URL"
+    return
+  fi
+  if [[ -n "${API_BASE_URL:-}" ]]; then
+    echo "$API_BASE_URL"
+    return
+  fi
+
+  local stack_env="$ROOT_DIR/outputs/aws/cloudformation/stack.env"
+  local line
+  if [[ -f "$stack_env" ]]; then
+    line="$(grep -E '^export RELEASE_API_BASE_URL=' "$stack_env" | tail -n 1 || true)"
+    if [[ -n "$line" ]]; then
+      echo "${line#export RELEASE_API_BASE_URL=}"
+      return
+    fi
+  fi
+
+  echo "https://api.kbofans.com/api"
 }
 
 run_release_api_health() {
@@ -744,7 +763,7 @@ EOF
         cat >&2 <<'EOF'
 No LAN-reachable local backend was found for the connected iOS device.
 
-Start the backend first:
+Start the LAN-reachable backend first:
   ./scripts/codex-run.sh backend
 
 Or provide an explicit API URL:
@@ -962,6 +981,8 @@ run_web_release_static() {
 
 run_backend() {
   require_cmd python3
+  local backend_host="${BACKEND_HOST:-0.0.0.0}"
+  local backend_port="${BACKEND_PORT:-8000}"
 
   (
     cd "$BACKEND_DIR"
@@ -973,7 +994,8 @@ run_backend() {
     # shellcheck disable=SC1091
     source .venv/bin/activate
     pip install -e ".[dev]"
-    uvicorn kbo_fans_backend.main:app --reload
+    echo "Starting FastAPI backend on ${backend_host}:${backend_port}"
+    uvicorn kbo_fans_backend.main:app --host "$backend_host" --port "$backend_port" --reload
   )
 }
 

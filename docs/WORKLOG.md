@@ -2,6 +2,73 @@
 
 ---
 
+## 2026-06-20: 로컬 backend LAN 접근 실패 보정
+
+### 원인
+- 18:45 KST 기준 `uvicorn` / `kbo_fans_backend` 프로세스와 `8000` listen이 없어 `localhost:8000` health 연결 자체가 실패했다.
+- 공식 backend 실행 액션은 기본 uvicorn host를 지정하지 않아 `127.0.0.1`에만 바인딩했고, iPhone 실기기 실행 경로는 Mac LAN IP의 `/api/health`를 확인하므로 실기기 기준에서는 backend가 떠 있어도 발견되지 않을 수 있었다.
+
+### 완료
+- [x] `./scripts/codex-run.sh backend`가 기본 `0.0.0.0:8000`으로 backend를 띄우도록 보정
+- [x] 필요 시 `BACKEND_HOST` / `BACKEND_PORT`로 override 가능하게 유지
+- [x] README / CHANGELOG에 로컬 backend 실행 기준 반영
+
+### 검증
+- [x] `bash -n scripts/codex-run.sh`
+- [x] `./scripts/codex-run.sh backend` startup complete
+- [x] `curl -sS --max-time 3 http://127.0.0.1:8000/api/health`
+- [x] `curl -sS --max-time 3 http://192.168.1.166:8000/api/health`
+- [x] `curl -sS --max-time 10 http://127.0.0.1:8000/api/scoreboard/home`
+- [x] `lsof -nP -iTCP:8000 -sTCP:LISTEN`에서 `*:8000` listen 확인
+
+---
+
+## 2026-06-20: 운영 스코어보드/문자중계 미노출 원인 보정
+
+### 원인
+- `https://api.kbofans.com/api`는 현재 DNS `NXDOMAIN`이라 default release URL로 빌드/실행하면 홈 스코어보드가 cold error로 떨어질 수 있음을 확인
+- 실제 `0.0.62` TestFlight에 주입된 ALB API(`http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`)는 `/scoreboard/home?date=2026-06-20`에서 5경기를 200으로 반환했지만, `/game/{gameId}/relay`는 모든 라이브 경기에서 500을 반환
+- 로컬 backend `.env`의 `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD`로 같은 `20260620OBLG0` relay를 호출하면 303개 relay item과 현재 타석이 정상 파싱되어, KBO 마크업/코드 파손이 아니라 AWS runtime secret 주입 누락이 root cause임을 확인
+
+### 완료
+- [x] AWS ECS/Fargate task definition, execution-role secret policy, CloudFormation template, secret 생성/검증/배포 스크립트에 `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD` Secrets Manager 주입을 추가
+- [x] GitHub Actions push demo deploy, GitHub secret 업로드, setup/audit/bootstrap 스크립트가 KBO relay credential을 필수 secret으로 다루도록 보정
+- [x] release API health gate가 `/scoreboard/home`의 `gameId`를 기준으로 `/game/{gameId}/relay`까지 확인하도록 보강
+- [x] 로컬 release 실행 스크립트가 `outputs/aws/cloudformation/stack.env`의 `RELEASE_API_BASE_URL`을 기본 release API로 우선 사용하도록 보정
+- [x] README / 배포 문서 / Engineering notes / Changelog에 relay credential runtime 계약을 반영
+
+### 검증
+- [x] RED: `backend/.venv/bin/pytest -q backend/tests/test_release_runtime_contract.py`가 relay secret/gate 누락으로 실패 확인
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_release_runtime_contract.py` (`3 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_release_runtime_contract.py backend/tests/test_relay_service.py backend/tests/test_relay_crawler.py` (`14 passed`)
+- [x] `bash -n` 대상 배포/검증 scripts 통과
+- [x] `python3 -m json.tool` 대상 AWS template JSON 통과
+- [x] `AWS_REGION=... SECRET_ARN_KBO_RELAY_USER_ID=... SECRET_ARN_KBO_RELAY_PASSWORD=... ./scripts/aws-push-task-definitions.sh --validate-only` (`aws_ecs_templates=status=ok`)
+- [x] `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-06-20 ./scripts/release-api-health-check.sh http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` 현재 배포의 relay 500을 `release_health_exit=1`로 잡는 것 확인
+- [x] `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-06-20 ./scripts/codex-run.sh release-api-health`가 `outputs/aws/cloudformation/stack.env`의 ALB URL을 사용하고 relay 500을 잡는 것 확인
+- [x] `git diff --check`
+
+---
+
+## 2026-06-20: 0.0.63 TestFlight / live relay runtime checkpoint
+
+### 완료
+- [x] 최신 tester-facing build를 `0.0.63+63`으로 승격
+- [x] `0.0.62`의 backend API 기본 모드, Live Activity 실시간 AVG, live 박스스코어 context, 푸쉬 중계 CTA, 배포 gate 보정 기준을 새 build number로 재업로드하기로 정리
+- [x] AWS backend API/worker task definition, Secrets Manager upload, GitHub Actions deploy workflow에 `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD` secret 주입을 추가
+- [x] GitHub Actions secrets `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD` 등록 확인
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.63` 기준으로 동기화
+
+### 검증
+- [x] 원인 확인: 운영 `/api/game/20260620OBLG0/relay` 등 live relay endpoint는 500, 로컬 backend `RelayCrawler` / `RelayService`는 같은 gameId에서 `322` relay items와 `currentAtBat` 반환. 차이는 ECS runtime KBO relay credential secret 주입 누락으로 판단
+- [x] release runtime contract test: `backend/.venv/bin/pytest -q backend/tests/test_release_runtime_contract.py` (`3 passed`)
+- [x] `0.0.63` pre-deploy 검증: `git diff --check`, `cd app && fvm flutter analyze --no-pub` (`No issues found`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q` (`167 passed`)
+- [ ] `0.0.63` backend deploy 후 release API health 재확인
+- [ ] `0.0.63 (63)` TestFlight archive/upload 성공 확인
+- [ ] `0.0.63` GitHub Release 생성
+
+---
+
 ## 2026-06-20: 0.0.62 release sync checkpoint
 
 ### 완료

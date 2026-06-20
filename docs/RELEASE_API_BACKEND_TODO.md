@@ -28,8 +28,8 @@
    - KBO 로그인 또는 protected relay가 필요하면 운영 서버 시크릿으로만 주입
    - repo 문서나 코드에 plaintext credential 기록 금지
    - snapshot 저장 경로, cache TTL, CORS 허용 origin 확인
-   - 앱 종료 후 push / Live Activity 시연이 필요하면 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md` 기준으로 Firebase Admin, APNs Auth Key, `PUSH_SYNC_SECRET`도 같이 설정
-   - AWS ECS/Fargate에서는 Secrets Manager 값을 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` 환경변수로 주입
+   - 앱 종료 후 push / Live Activity / 문자중계 시연이 필요하면 `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md` 기준으로 Firebase Admin, APNs Auth Key, `PUSH_SYNC_SECRET`, `KBO_RELAY_USER_ID`, `KBO_RELAY_PASSWORD`도 같이 설정
+   - AWS ECS/Fargate에서는 Secrets Manager 값을 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET`, `KBO_RELAY_USER_ID`, `KBO_RELAY_PASSWORD` 환경변수로 주입
 
 5. release health endpoint 통과
    - `GET /api/health`

@@ -293,6 +293,8 @@ source outputs/aws/cloudformation/stack.env
 
 통합 스크립트는 secret 업로드, backend image ECR push, CloudFormation deploy, stack output 추출, push readiness를 순서대로 실행한다. 실행 전에 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 로컬 앱 설정과 배포 env 형태를 확인한다. stack output의 `ApiBaseUrl`을 release `API_BASE_URL`로 사용한다. `aws-push-stack-outputs.sh`는 이 값을 `outputs/aws/cloudformation/stack.env`에 `RELEASE_API_BASE_URL` / `API_BASE_URL`로 저장한다. 커스텀 도메인(`https://api.kbofans.com/api`)을 쓸 경우 Route53 alias/CNAME을 output `LoadBalancerDnsName`으로 연결한 뒤 해당 도메인을 앱 release build에 주입한다.
 
+KBO 문자중계는 `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD`가 API service와 sync worker 양쪽에 주입되어야 한다. 이 값이 빠지면 `/api/game/{gameId}/relay`가 live game에서 500으로 실패하고, relay 기반 홈런/타석 push도 동작하지 않는다.
+
 로컬 Mac에서 배포할 때는 먼저 AWS CLI credential과 Docker daemon 상태를 확인한다.
 
 ```bash
@@ -313,6 +315,8 @@ GitHub Actions에 넣을 값:
 - `APNS_KEY_ID`
 - `APNS_TEAM_ID`
 - `PUSH_SYNC_SECRET`
+- `KBO_RELAY_USER_ID`
+- `KBO_RELAY_PASSWORD`
 - `ECR_REPOSITORY_URI`
 - `VPC_ID`
 - `PUBLIC_SUBNET_A_ID`
