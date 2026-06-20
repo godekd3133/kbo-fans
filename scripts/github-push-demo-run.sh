@@ -148,7 +148,11 @@ check_github_inputs() {
     enable_https="true"
   fi
 
-  for name in FIREBASE_SERVICE_ACCOUNT_JSON APNS_AUTH_KEY_P8; do
+  for name in \
+    FIREBASE_SERVICE_ACCOUNT_JSON \
+    APNS_AUTH_KEY_P8 \
+    KBO_RELAY_USER_ID \
+    KBO_RELAY_PASSWORD; do
     if ! name_exists "$name" "$secret_names"; then
       missing+=("secret:$name")
     fi

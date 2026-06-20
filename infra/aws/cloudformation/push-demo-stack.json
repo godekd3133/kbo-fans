@@ -68,6 +68,14 @@
       "Type": "String",
       "Description": "Secrets Manager ARN containing the scheduler sync secret."
     },
+    "KboRelayUserIdSecretArn": {
+      "Type": "String",
+      "Description": "Secrets Manager ARN containing the KBO relay crawler login id."
+    },
+    "KboRelayPasswordSecretArn": {
+      "Type": "String",
+      "Description": "Secrets Manager ARN containing the KBO relay crawler login password."
+    },
     "ApiDesiredCount": {
       "Type": "Number",
       "Default": 1,
@@ -298,6 +306,12 @@
                     },
                     {
                       "Ref": "PushSyncSecretArn"
+                    },
+                    {
+                      "Ref": "KboRelayUserIdSecretArn"
+                    },
+                    {
+                      "Ref": "KboRelayPasswordSecretArn"
                     }
                   ]
                 }
@@ -518,6 +532,18 @@
                 "ValueFrom": {
                   "Ref": "PushSyncSecretArn"
                 }
+              },
+              {
+                "Name": "KBO_RELAY_USER_ID",
+                "ValueFrom": {
+                  "Ref": "KboRelayUserIdSecretArn"
+                }
+              },
+              {
+                "Name": "KBO_RELAY_PASSWORD",
+                "ValueFrom": {
+                  "Ref": "KboRelayPasswordSecretArn"
+                }
               }
             ],
             "MountPoints": [
@@ -658,6 +684,18 @@
                 "Name": "PUSH_SYNC_SECRET",
                 "ValueFrom": {
                   "Ref": "PushSyncSecretArn"
+                }
+              },
+              {
+                "Name": "KBO_RELAY_USER_ID",
+                "ValueFrom": {
+                  "Ref": "KboRelayUserIdSecretArn"
+                }
+              },
+              {
+                "Name": "KBO_RELAY_PASSWORD",
+                "ValueFrom": {
+                  "Ref": "KboRelayPasswordSecretArn"
                 }
               }
             ],

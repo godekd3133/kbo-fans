@@ -354,12 +354,27 @@ check_apns_key() {
   fi
 }
 
+check_kbo_relay_credentials() {
+  if [[ -n "${KBO_RELAY_USER_ID:-}" ]]; then
+    pass "KBO_RELAY_USER_ID present"
+  else
+    fail "KBO_RELAY_USER_ID missing"
+  fi
+
+  if [[ -n "${KBO_RELAY_PASSWORD:-}" ]]; then
+    pass "KBO_RELAY_PASSWORD present"
+  else
+    fail "KBO_RELAY_PASSWORD missing"
+  fi
+}
+
 check_backend_env() {
   require_env FIREBASE_PROJECT_ID
   check_service_account_file
   require_env APNS_KEY_ID
   require_env APNS_TEAM_ID
   check_apns_key
+  check_kbo_relay_credentials
 
   local bundle="${APNS_BUNDLE_ID:-$IOS_BUNDLE_ID}"
   if [[ "$bundle" == "$IOS_BUNDLE_ID" ]]; then
@@ -388,6 +403,8 @@ check_backend_env() {
   fail_placeholder_env APNS_KEY_ID
   fail_placeholder_env APNS_TEAM_ID
   fail_placeholder_env PUSH_SYNC_SECRET
+  fail_placeholder_env KBO_RELAY_USER_ID
+  fail_placeholder_env KBO_RELAY_PASSWORD
 }
 
 check_aws_env() {
@@ -439,6 +456,12 @@ check_aws_env() {
   fi
   if [[ -z "${SECRET_ARN_PUSH_SYNC_SECRET:-}" ]]; then
     warn "SECRET_ARN_PUSH_SYNC_SECRET not set yet; aws-push-secrets.sh will create outputs/aws/ecs-fargate/secrets.env"
+  fi
+  if [[ -z "${SECRET_ARN_KBO_RELAY_USER_ID:-}" ]]; then
+    warn "SECRET_ARN_KBO_RELAY_USER_ID not set yet; aws-push-secrets.sh will create outputs/aws/ecs-fargate/secrets.env"
+  fi
+  if [[ -z "${SECRET_ARN_KBO_RELAY_PASSWORD:-}" ]]; then
+    warn "SECRET_ARN_KBO_RELAY_PASSWORD not set yet; aws-push-secrets.sh will create outputs/aws/ecs-fargate/secrets.env"
   fi
 
   fail_placeholder_env AWS_REGION

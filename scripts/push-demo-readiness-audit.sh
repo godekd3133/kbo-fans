@@ -371,6 +371,24 @@ audit_github() {
       APNS_AUTH_KEY_FILE \
       "" \
       "apple-apns-key: create/download an Apple APNs .p8 key, set APNS_AUTH_KEY_FILE, APNS_KEY_ID, and APNS_TEAM_ID in the env file, then run github-push-secrets.sh --apply")"
+  check_github_secret \
+    KBO_RELAY_USER_ID \
+    "$secret_names" \
+    "$(github_secret_action \
+      "kbo-relay-user" \
+      KBO_RELAY_USER_ID \
+      KBO_RELAY_USER_ID \
+      "" \
+      "kbo-relay-user: set KBO_RELAY_USER_ID in the env file from local secure storage, then run github-push-secrets.sh --apply")"
+  check_github_secret \
+    KBO_RELAY_PASSWORD \
+    "$secret_names" \
+    "$(github_secret_action \
+      "kbo-relay-password" \
+      KBO_RELAY_PASSWORD \
+      KBO_RELAY_PASSWORD \
+      "" \
+      "kbo-relay-password: set KBO_RELAY_PASSWORD in the env file from local secure storage, then run github-push-secrets.sh --apply")"
 
   if name_exists AWS_ROLE_TO_ASSUME "$secret_names"; then
     pass "GitHub AWS auth configured: AWS_ROLE_TO_ASSUME"

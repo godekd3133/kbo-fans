@@ -9,7 +9,7 @@
 - ECR: Docker image repository
 - ALB: HTTP endpoint for temporary AWS smoke deploys, and ACM-backed HTTPS endpoint such as `https://api.kbofans.com/api` for real iPhone/release use
 - EFS: shared runtime registry for FCM device tokens and ActivityKit push tokens
-- Secrets Manager: Firebase Admin JSON, APNs `.p8`, sync secret
+- Secrets Manager: Firebase Admin JSON, APNs `.p8`, sync secret, KBO relay credentials
 - IAM: ECS task execution role with ECR/log permissions plus push secret read access
 
 This is the recommended iPhone-only demo path. The same Docker image is used for
@@ -24,6 +24,8 @@ Create these secrets before registering the ECS task definitions.
 | `/kbo-fans/firebase-service-account-json` | `FIREBASE_SERVICE_ACCOUNT_JSON` | Exact Firebase Admin service account JSON |
 | `/kbo-fans/apns-auth-key-p8` | `APNS_AUTH_KEY_P8` | Exact Apple APNs Auth Key `.p8` content |
 | `/kbo-fans/push-sync-secret` | `PUSH_SYNC_SECRET` | Long random secret string |
+| `/kbo-fans/kbo-relay-user-id` | `KBO_RELAY_USER_ID` | KBO login id for LiveText relay crawling |
+| `/kbo-fans/kbo-relay-password` | `KBO_RELAY_PASSWORD` | KBO login password for LiveText relay crawling |
 
 Keep these as AWS secrets. Do not write the values into repository files.
 
@@ -33,10 +35,12 @@ Create or update those secrets from local files:
 AWS_REGION=<AWS_REGION> \
 FIREBASE_SERVICE_ACCOUNT_FILE=/path/firebase-service-account.json \
 APNS_AUTH_KEY_FILE=/path/AuthKey_<KEY_ID>.p8 \
+KBO_RELAY_USER_ID=<kbo-login-id> \
+KBO_RELAY_PASSWORD=<kbo-login-password> \
 ./scripts/aws-push-secrets.sh
 ```
 
-The script prints the three `SECRET_ARN_*` exports needed by the task definition
+The script prints the `SECRET_ARN_*` exports needed by the task definition
 renderer and writes them to `outputs/aws/ecs-fargate/secrets.env`.
 
 Build and push the backend image:
@@ -90,6 +94,8 @@ Replace placeholders before `aws ecs register-task-definition`:
 - `<SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON>`
 - `<SECRET_ARN_APNS_AUTH_KEY_P8>`
 - `<SECRET_ARN_PUSH_SYNC_SECRET>`
+- `<SECRET_ARN_KBO_RELAY_USER_ID>`
+- `<SECRET_ARN_KBO_RELAY_PASSWORD>`
 
 Use `deploy.env.example` as the checklist for values that must exist before the
 task definitions can be registered. Copy it to a local untracked env file and

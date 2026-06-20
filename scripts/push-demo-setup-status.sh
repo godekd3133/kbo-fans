@@ -109,17 +109,22 @@ required_value[5]=Push sync secret
   put_in_env: PUSH_SYNC_SECRET=<64-hex-secret>
   github_target: secret PUSH_SYNC_SECRET
   aws_runtime_target: Secrets Manager value injected as PUSH_SYNC_SECRET
-required_value[6]=AWS deploy targets
+required_value[6]=KBO relay credentials
+  get_from: local secure KBO login storage
+  put_in_env: KBO_RELAY_USER_ID=<kbo-login-id>, KBO_RELAY_PASSWORD=<kbo-login-password>
+  github_target: secrets KBO_RELAY_USER_ID and KBO_RELAY_PASSWORD
+  aws_runtime_target: Secrets Manager values injected as KBO_RELAY_USER_ID / KBO_RELAY_PASSWORD
+required_value[7]=AWS deploy targets
   get_from: AWS Console/CLI for ap-northeast-2 ECR, VPC, two public subnets, ACM certificate
   put_in_env: AWS_REGION, ECR_REPOSITORY_URI, VPC_ID, PUBLIC_SUBNET_A_ID, PUBLIC_SUBNET_B_ID, ACM_CERTIFICATE_ARN
   github_target: GitHub Actions variables/secrets with the same names
   aws_runtime_target: CloudFormation creates ALB, ECS API service, ECS sync worker, EFS registry, IAM, CloudWatch logs
-required_value[7]=GitHub Actions AWS auth
+required_value[8]=GitHub Actions AWS auth
   get_from: ./scripts/aws-github-oidc-role.sh --env-file <env> --repo <owner/repo> --update-env-file
   put_in_env: AWS_ROLE_TO_ASSUME=<role-arn>
   github_target: secret AWS_ROLE_TO_ASSUME
   fallback: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY only if OIDC cannot be created
-required_value[8]=Release app API base URL
+required_value[9]=Release app API base URL
   get_from: ./scripts/aws-push-stack-outputs.sh after CloudFormation deploy
   put_in_env: RELEASE_API_BASE_URL or API_BASE_URL=<stack ApiBaseUrl>
   app_runtime_target: token registration endpoint only; USE_BACKEND_API=true is still required to switch app data routing

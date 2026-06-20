@@ -2,7 +2,24 @@
 
 set -euo pipefail
 
-BASE_URL="${1:-${RELEASE_API_BASE_URL:-${API_BASE_URL:-https://api.kbofans.com/api}}}"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+default_release_api_base_url() {
+  local stack_env="$ROOT_DIR/outputs/aws/cloudformation/stack.env"
+  local line
+
+  if [[ -f "$stack_env" ]]; then
+    line="$(grep -E '^export RELEASE_API_BASE_URL=' "$stack_env" | tail -n 1 || true)"
+    if [[ -n "$line" ]]; then
+      echo "${line#export RELEASE_API_BASE_URL=}"
+      return
+    fi
+  fi
+
+  echo "https://api.kbofans.com/api"
+}
+
+BASE_URL="${1:-${RELEASE_API_BASE_URL:-${API_BASE_URL:-$(default_release_api_base_url)}}}"
 BASE_URL="${BASE_URL%/}"
 TIMEOUT_SECONDS="${RELEASE_API_HEALTH_TIMEOUT_SECONDS:-20}"
 TODAY="${RELEASE_API_HEALTH_DATE:-$(date +%Y-%m-%d)}"
@@ -157,6 +174,63 @@ PY
 
 check_endpoint "/api/health" "/health"
 check_endpoint "/api/scoreboard/home" "/scoreboard/home?date=$TODAY"
+
+check_relay_endpoint_from_scoreboard() {
+  python3 - "$BASE_URL" "$TODAY" "$TIMEOUT_SECONDS" <<'PY'
+import json
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+base_url, today, timeout_raw = sys.argv[1], sys.argv[2], sys.argv[3]
+timeout = int(timeout_raw)
+
+
+def fetch_json(path):
+    url = f"{base_url}{path}"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            status = response.status
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        print(f"endpoint=relay status=fail http={exc.code} url={url}", file=sys.stderr)
+        print(body[:800], file=sys.stderr)
+        raise SystemExit(1)
+    except Exception as exc:
+        print(f"endpoint=relay status=fail url={url} detail={exc}", file=sys.stderr)
+        raise SystemExit(1)
+
+    if not 200 <= status < 300:
+        print(f"endpoint=relay status=fail http={status} url={url}", file=sys.stderr)
+        raise SystemExit(1)
+    if isinstance(payload, dict) and payload.get("success") is False:
+        print(f"endpoint=relay status=fail reason=api-envelope-false payload={payload}", file=sys.stderr)
+        raise SystemExit(1)
+    return payload
+
+
+scoreboard = fetch_json(f"/scoreboard/home?date={urllib.parse.quote(today)}")
+games = ((scoreboard.get("data") or {}).get("games") or []) if isinstance(scoreboard, dict) else []
+game_id = next((game.get("gameId") for game in games if game.get("gameId")), "")
+
+if not game_id:
+    print("endpoint=/api/game/{gameId}/relay status=skip reason=no-scoreboard-games")
+    raise SystemExit(0)
+
+relay = fetch_json(f"/game/{urllib.parse.quote(game_id)}/relay")
+data = relay.get("data") or {}
+relay_items = data.get("relayItems") or []
+current_at_bat = data.get("currentAtBat") is not None
+print(
+    f"endpoint=/api/game/{game_id}/relay status=ok "
+    f"relay_items={len(relay_items)} current_at_bat={str(current_at_bat).lower()}"
+)
+PY
+}
+
+check_relay_endpoint_from_scoreboard
 check_endpoint "/api/home" "/home?date=$TODAY"
 check_endpoint "/api/schedule" "/schedule?month=$MONTH"
 check_endpoint "/api/standings" "/standings?season=$SEASON"

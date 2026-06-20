@@ -206,6 +206,12 @@ write_section "Scheduler secret"
 write_comment "Generated locally for the backend sync trigger. Rotate if it was exposed."
 write_export PUSH_SYNC_SECRET "$push_sync_secret"
 
+write_section "KBO relay credentials"
+write_comment "Source: local secure storage only. Target: GitHub secrets and AWS Secrets Manager."
+write_comment "Required for /game/{gameId}/relay and relay-based push moments."
+write_export KBO_RELAY_USER_ID "replace_with_kbo_login_id"
+write_export KBO_RELAY_PASSWORD "replace_with_kbo_login_password"
+
 write_section "GitHub Actions AWS auth"
 write_comment "Preferred: run aws-github-oidc-role.sh --update-env-file and upload AWS_ROLE_TO_ASSUME."
 write_comment "Fallback: use AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY only if OIDC cannot be created."
@@ -236,6 +242,8 @@ write_comment "Leave empty until the local secret files above contain real value
 write_export SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON ""
 write_export SECRET_ARN_APNS_AUTH_KEY_P8 ""
 write_export SECRET_ARN_PUSH_SYNC_SECRET ""
+write_export SECRET_ARN_KBO_RELAY_USER_ID ""
+write_export SECRET_ARN_KBO_RELAY_PASSWORD ""
 
 mv "$TMP_FILE" "$OUTPUT_FILE"
 trap - EXIT

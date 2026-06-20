@@ -8,6 +8,8 @@ SECRET_PREFIX="${AWS_PUSH_SECRET_PREFIX:-/kbo-fans}"
 FIREBASE_SECRET_NAME="${FIREBASE_SECRET_NAME:-$SECRET_PREFIX/firebase-service-account-json}"
 APNS_SECRET_NAME="${APNS_SECRET_NAME:-$SECRET_PREFIX/apns-auth-key-p8}"
 SYNC_SECRET_NAME="${SYNC_SECRET_NAME:-$SECRET_PREFIX/push-sync-secret}"
+KBO_RELAY_USER_SECRET_NAME="${KBO_RELAY_USER_SECRET_NAME:-$SECRET_PREFIX/kbo-relay-user-id}"
+KBO_RELAY_PASSWORD_SECRET_NAME="${KBO_RELAY_PASSWORD_SECRET_NAME:-$SECRET_PREFIX/kbo-relay-password}"
 DRY_RUN=false
 WRITE_ENV_FILE=true
 
@@ -17,6 +19,8 @@ Usage:
   AWS_REGION=<region> \
   FIREBASE_SERVICE_ACCOUNT_FILE=/path/firebase-service-account.json \
   APNS_AUTH_KEY_FILE=/path/AuthKey_XXXX.p8 \
+  KBO_RELAY_USER_ID=<kbo-login-id> \
+  KBO_RELAY_PASSWORD=<kbo-login-password> \
   ./scripts/aws-push-secrets.sh
 
 Optional:
@@ -30,6 +34,8 @@ Outputs:
   export SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON=...
   export SECRET_ARN_APNS_AUTH_KEY_P8=...
   export SECRET_ARN_PUSH_SYNC_SECRET=...
+  export SECRET_ARN_KBO_RELAY_USER_ID=...
+  export SECRET_ARN_KBO_RELAY_PASSWORD=...
 EOF
 }
 
@@ -79,6 +85,16 @@ fi
 
 if [[ -z "${APNS_AUTH_KEY_FILE:-}" ]]; then
   echo "APNS_AUTH_KEY_FILE is required." >&2
+  exit 2
+fi
+
+if [[ -z "${KBO_RELAY_USER_ID:-}" ]]; then
+  echo "KBO_RELAY_USER_ID is required." >&2
+  exit 2
+fi
+
+if [[ -z "${KBO_RELAY_PASSWORD:-}" ]]; then
+  echo "KBO_RELAY_PASSWORD is required." >&2
   exit 2
 fi
 
@@ -194,6 +210,14 @@ SYNC_ARN="$(put_secret \
   "$SYNC_SECRET_NAME" \
   "$PUSH_SYNC_SECRET" \
   "KBO Fans push scheduler sync secret")"
+KBO_RELAY_USER_ARN="$(put_secret \
+  "$KBO_RELAY_USER_SECRET_NAME" \
+  "$KBO_RELAY_USER_ID" \
+  "KBO Fans relay crawler login id")"
+KBO_RELAY_PASSWORD_ARN="$(put_secret \
+  "$KBO_RELAY_PASSWORD_SECRET_NAME" \
+  "$KBO_RELAY_PASSWORD" \
+  "KBO Fans relay crawler login password")"
 
 mkdir -p "$OUTPUT_DIR"
 ENV_FILE="$OUTPUT_DIR/secrets.env"
@@ -202,6 +226,8 @@ if [[ "$WRITE_ENV_FILE" == "true" ]]; then
 export SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON=$FIREBASE_ARN
 export SECRET_ARN_APNS_AUTH_KEY_P8=$APNS_ARN
 export SECRET_ARN_PUSH_SYNC_SECRET=$SYNC_ARN
+export SECRET_ARN_KBO_RELAY_USER_ID=$KBO_RELAY_USER_ARN
+export SECRET_ARN_KBO_RELAY_PASSWORD=$KBO_RELAY_PASSWORD_ARN
 EOF
 fi
 
@@ -209,6 +235,8 @@ echo "aws_push_secrets=status=ok dry_run=$DRY_RUN"
 echo "export SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON=$FIREBASE_ARN"
 echo "export SECRET_ARN_APNS_AUTH_KEY_P8=$APNS_ARN"
 echo "export SECRET_ARN_PUSH_SYNC_SECRET=$SYNC_ARN"
+echo "export SECRET_ARN_KBO_RELAY_USER_ID=$KBO_RELAY_USER_ARN"
+echo "export SECRET_ARN_KBO_RELAY_PASSWORD=$KBO_RELAY_PASSWORD_ARN"
 if [[ "$WRITE_ENV_FILE" == "true" ]]; then
   echo "$ENV_FILE"
 fi

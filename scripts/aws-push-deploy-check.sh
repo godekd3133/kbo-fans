@@ -112,7 +112,9 @@ require_env \
   APNS_TEAM_ID \
   SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON \
   SECRET_ARN_APNS_AUTH_KEY_P8 \
-  SECRET_ARN_PUSH_SYNC_SECRET
+  SECRET_ARN_PUSH_SYNC_SECRET \
+  SECRET_ARN_KBO_RELAY_USER_ID \
+  SECRET_ARN_KBO_RELAY_PASSWORD
 
 "$ROOT_DIR/scripts/aws-push-task-definitions.sh" --validate-only
 
@@ -153,6 +155,16 @@ aws_check secret_sync \
   aws secretsmanager describe-secret \
   --region "$AWS_REGION" \
   --secret-id "$SECRET_ARN_PUSH_SYNC_SECRET"
+
+aws_check secret_kbo_relay_user \
+  aws secretsmanager describe-secret \
+  --region "$AWS_REGION" \
+  --secret-id "$SECRET_ARN_KBO_RELAY_USER_ID"
+
+aws_check secret_kbo_relay_password \
+  aws secretsmanager describe-secret \
+  --region "$AWS_REGION" \
+  --secret-id "$SECRET_ARN_KBO_RELAY_PASSWORD"
 
 aws_check execution_role \
   aws iam get-role \

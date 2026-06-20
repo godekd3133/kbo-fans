@@ -76,6 +76,14 @@
         {
           "name": "PUSH_SYNC_SECRET",
           "valueFrom": "<SECRET_ARN_PUSH_SYNC_SECRET>"
+        },
+        {
+          "name": "KBO_RELAY_USER_ID",
+          "valueFrom": "<SECRET_ARN_KBO_RELAY_USER_ID>"
+        },
+        {
+          "name": "KBO_RELAY_PASSWORD",
+          "valueFrom": "<SECRET_ARN_KBO_RELAY_PASSWORD>"
         }
       ],
       "mountPoints": [

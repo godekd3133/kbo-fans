@@ -28,6 +28,8 @@ Required secret inputs:
   - ANDROID_GOOGLE_SERVICES_JSON or ANDROID_GOOGLE_SERVICES_JSON_FILE
   - FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_FILE
   - APNS_AUTH_KEY_P8 or APNS_AUTH_KEY_FILE
+  - KBO_RELAY_USER_ID
+  - KBO_RELAY_PASSWORD
   - PUSH_SYNC_SECRET (generated when missing)
   - AWS_ROLE_TO_ASSUME, or AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY
 
@@ -266,12 +268,22 @@ android_google_services_json="$(
 )"
 firebase_json="$(read_secret_value FIREBASE_SERVICE_ACCOUNT_JSON FIREBASE_SERVICE_ACCOUNT_FILE "Firebase Admin service account JSON")"
 apns_key_p8="$(read_secret_value APNS_AUTH_KEY_P8 APNS_AUTH_KEY_FILE "APNs .p8 key")"
+kbo_relay_user_id="${KBO_RELAY_USER_ID:-}"
+kbo_relay_password="${KBO_RELAY_PASSWORD:-}"
 
 printf '%s' "$ios_google_plist" | python3 -c 'import plistlib,sys; plistlib.loads(sys.stdin.buffer.read())' >/dev/null
 printf '%s' "$android_google_services_json" | python3 -m json.tool >/dev/null
 printf '%s' "$firebase_json" | python3 -m json.tool >/dev/null
 if ! grep -q "BEGIN PRIVATE KEY" <<<"$apns_key_p8"; then
   echo "APNs key does not look like a .p8 private key." >&2
+  exit 2
+fi
+if [[ -z "$kbo_relay_user_id" ]]; then
+  echo "KBO_RELAY_USER_ID is required." >&2
+  exit 2
+fi
+if [[ -z "$kbo_relay_password" ]]; then
+  echo "KBO_RELAY_PASSWORD is required." >&2
   exit 2
 fi
 
@@ -313,6 +325,8 @@ reject_placeholder_env \
   PUBLIC_SUBNET_A_ID \
   PUBLIC_SUBNET_B_ID \
   PUSH_SYNC_SECRET \
+  KBO_RELAY_USER_ID \
+  KBO_RELAY_PASSWORD \
   AWS_ROLE_TO_ASSUME \
   AWS_ACCESS_KEY_ID \
   AWS_SECRET_ACCESS_KEY
@@ -361,6 +375,8 @@ set_secret ANDROID_GOOGLE_SERVICES_JSON "$android_google_services_json" "$repo"
 set_secret FIREBASE_SERVICE_ACCOUNT_JSON "$firebase_json" "$repo"
 set_secret APNS_AUTH_KEY_P8 "$apns_key_p8" "$repo"
 set_secret PUSH_SYNC_SECRET "$PUSH_SYNC_SECRET" "$repo"
+set_secret KBO_RELAY_USER_ID "$kbo_relay_user_id" "$repo"
+set_secret KBO_RELAY_PASSWORD "$kbo_relay_password" "$repo"
 
 if [[ -n "${AWS_ROLE_TO_ASSUME:-}" ]]; then
   set_secret AWS_ROLE_TO_ASSUME "$AWS_ROLE_TO_ASSUME" "$repo"

@@ -45,6 +45,8 @@ jobs:
       ANDROID_GOOGLE_SERVICES_JSON_SECRET: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
       FIREBASE_SERVICE_ACCOUNT_JSON_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
       APNS_AUTH_KEY_P8_SECRET: ${{ secrets.APNS_AUTH_KEY_P8 }}
+      KBO_RELAY_USER_ID_SECRET: ${{ secrets.KBO_RELAY_USER_ID }}
+      KBO_RELAY_PASSWORD_SECRET: ${{ secrets.KBO_RELAY_PASSWORD }}
       APNS_KEY_ID: ${{ vars.APNS_KEY_ID || secrets.APNS_KEY_ID }}
       APNS_TEAM_ID: ${{ vars.APNS_TEAM_ID || secrets.APNS_TEAM_ID }}
       APNS_BUNDLE_ID: com.kbofans.kboFans
@@ -87,6 +89,14 @@ jobs:
             echo "Missing GitHub secret: APNS_AUTH_KEY_P8" >&2
             exit 2
           fi
+          if [[ -z "${KBO_RELAY_USER_ID_SECRET}" ]]; then
+            echo "Missing GitHub secret: KBO_RELAY_USER_ID" >&2
+            exit 2
+          fi
+          if [[ -z "${KBO_RELAY_PASSWORD_SECRET}" ]]; then
+            echo "Missing GitHub secret: KBO_RELAY_PASSWORD" >&2
+            exit 2
+          fi
 
           firebase_file="$RUNNER_TEMP/firebase-service-account.json"
           ios_firebase_file="$GITHUB_WORKSPACE/app/ios/Runner/GoogleService-Info.plist"
@@ -110,6 +120,10 @@ jobs:
 
           echo "FIREBASE_SERVICE_ACCOUNT_FILE=$firebase_file" >> "$GITHUB_ENV"
           echo "APNS_AUTH_KEY_FILE=$apns_file" >> "$GITHUB_ENV"
+          echo "::add-mask::${KBO_RELAY_USER_ID_SECRET}"
+          echo "::add-mask::${KBO_RELAY_PASSWORD_SECRET}"
+          echo "KBO_RELAY_USER_ID=${KBO_RELAY_USER_ID_SECRET}" >> "$GITHUB_ENV"
+          echo "KBO_RELAY_PASSWORD=${KBO_RELAY_PASSWORD_SECRET}" >> "$GITHUB_ENV"
 
           if [[ -n "${PUSH_SYNC_SECRET_INPUT}" ]]; then
             echo "::add-mask::${PUSH_SYNC_SECRET_INPUT}"
