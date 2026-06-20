@@ -46,6 +46,12 @@
 - [x] `AWS_REGION=... SECRET_ARN_KBO_RELAY_USER_ID=... SECRET_ARN_KBO_RELAY_PASSWORD=... ./scripts/aws-push-task-definitions.sh --validate-only` (`aws_ecs_templates=status=ok`)
 - [x] `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-06-20 ./scripts/release-api-health-check.sh http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` 현재 배포의 relay 500을 `release_health_exit=1`로 잡는 것 확인
 - [x] `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-06-20 ./scripts/codex-run.sh release-api-health`가 `outputs/aws/cloudformation/stack.env`의 ALB URL을 사용하고 relay 500을 잡는 것 확인
+- [x] GitHub secrets `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD` 등록
+- [x] 커밋/푸시: `733b542 문자중계 배포 시크릿 주입 보정`
+- [x] GitHub Actions `Push Demo Deploy` dry-run `27867526255` 통과
+- [x] GitHub Actions `Push Demo Deploy` 실제 배포 `27867538164` 성공 (`aws_push_demo_deploy=status=ok dry_run=false`, push readiness passed)
+- [x] 배포 후 `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-06-20 ./scripts/release-api-health-check.sh http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` 통과: `/scoreboard/home` 200, `/game/20260620OBLG0/relay` 200, `relay_items=349`, `current_at_bat=true`
+- [x] 직접 API 확인: `/scoreboard/home?date=2026-06-20` 5경기, `/game/20260620OBLG0/relay` 349개 item / 현재 타석 있음
 - [x] `git diff --check`
 
 ---
@@ -63,7 +69,9 @@
 - [x] 원인 확인: 운영 `/api/game/20260620OBLG0/relay` 등 live relay endpoint는 500, 로컬 backend `RelayCrawler` / `RelayService`는 같은 gameId에서 `322` relay items와 `currentAtBat` 반환. 차이는 ECS runtime KBO relay credential secret 주입 누락으로 판단
 - [x] release runtime contract test: `backend/.venv/bin/pytest -q backend/tests/test_release_runtime_contract.py` (`3 passed`)
 - [x] `0.0.63` pre-deploy 검증: `git diff --check`, `cd app && fvm flutter analyze --no-pub` (`No issues found`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q` (`167 passed`)
-- [ ] `0.0.63` backend deploy 후 release API health 재확인
+- [x] `0.0.63` backend deploy workflow 성공 확인: GitHub Actions `Push Demo Deploy` run `27867590924` success, head `86af591`, image tag `0.0.63`, `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `readyForIphoneOnlyDemo=true`, `registeredDevices=10`, `followedGames=1`, `activeLiveActivityGames=2`, scheduler age 13s
+- [x] `0.0.63` topic 재등록 성공 확인: `registeredDevices=10`, `eligibleDevices=10`, `subscriptionsAttempted=80`, `unsubscriptionsAttempted=0`
+- [x] `0.0.63` 배포 후 운영 release API health gate 재통과: `/health`, `/scoreboard/home`, `/game/20260620OBLG0/relay` (`relay_items=366`, `current_at_bat=true`), `/home`, `/schedule`, `/standings`, `/records/overview` 200
 - [ ] `0.0.63 (63)` TestFlight archive/upload 성공 확인
 - [ ] `0.0.63` GitHub Release 생성
 
