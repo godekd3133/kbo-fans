@@ -14,8 +14,10 @@
 - [x] `0.0.61` backend deploy 완료 기준 확인: GitHub Actions `Push Demo Deploy` run `27866271496` success, image tag `0.0.61`, topic 재등록 `subscriptionsAttempted=80`, release API health gate passed
 - [x] `0.0.62` app/backend pre-release 검증: `git diff --check`, `./scripts/push-live-preflight.sh --app-only` (`status=ok checks=29 warnings=1 failures=0`), `cd app && fvm flutter analyze --no-pub` (`No issues found`), `cd app && fvm flutter test --no-pub` (`165 tests passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q` (`164 passed`)
 - [x] `0.0.62 (62)` TestFlight archive/upload 성공 확인: release worktree `/tmp/kbo_fans_release_0_0_62`, commit `cead9ad`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.0.62/62`, production APNs entitlement, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, patch notes 포함 확인, App Store Connect `Upload succeeded` / `Uploaded package is processing`
-- [ ] `0.0.62` GitHub Release 생성
-- [ ] `0.0.62` backend deploy workflow 및 topic 재등록 성공 확인
+- [x] `0.0.62` GitHub Release 생성: `https://github.com/godekd3133/kbo-fans/releases/tag/0.0.62`
+- [x] `0.0.62` backend deploy workflow 및 topic 재등록 성공 확인: GitHub Actions `Push Demo Deploy` run `27866630991` success, head `1d7710a`, image tag `0.0.62`, `push_live_preflight=status=ok checks=44 warnings=5 failures=0`, `readyForIphoneOnlyDemo=true`, `registeredDevices=10`, `followedGames=1`, `activeLiveActivityGames=2`, scheduler age 1s
+- [x] `0.0.62` topic 재등록 성공 확인: `registeredDevices=10`, `eligibleDevices=10`, `subscriptionsAttempted=80`, `unsubscriptionsAttempted=0`
+- [x] `0.0.62` 배포 후 운영 release API health gate 재통과: `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200
 
 ---
 
