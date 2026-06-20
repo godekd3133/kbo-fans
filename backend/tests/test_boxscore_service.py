@@ -212,3 +212,47 @@ def test_boxscore_service_does_not_use_snapshot_for_current_game_failure(tmp_pat
 
     with pytest.raises(RuntimeError, match="boxscore unavailable"):
         service.get_boxscore("29990101KTLG0")
+
+
+def test_boxscore_service_does_not_snapshot_live_context_payload(tmp_path) -> None:
+    class LiveContextCrawler:
+        def get_boxscore(self, game_id: str):
+            return {
+                "gameId": game_id,
+                "officialAvailable": False,
+                "liveContextAvailable": True,
+                "away": {
+                    "teamId": "OB",
+                    "batters": [
+                        {
+                            "name": "양석환",
+                            "liveContext": True,
+                            "contextLabel": "3회초 현재 타자",
+                        }
+                    ],
+                    "pitchers": [],
+                },
+                "home": {
+                    "teamId": "LG",
+                    "batters": [],
+                    "pitchers": [
+                        {
+                            "name": "임찬규",
+                            "liveContext": True,
+                            "decision": "LIVE",
+                            "contextLabel": "3회초 현재 투수",
+                        }
+                    ],
+                },
+            }
+
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
+    service = BoxscoreService(
+        crawler=LiveContextCrawler(),
+        snapshot_store=snapshot_store,
+    )
+
+    payload = service.get_boxscore("20260620OBLG0")
+
+    assert payload["liveContextAvailable"] is True
+    assert snapshot_store.load_payload("boxscore", "20260620OBLG0") is None

@@ -75,10 +75,10 @@ kbo_fans/
 
 ## 런타임 / 운영 메모
 - 백엔드는 active runtime component다. 데이터 라우팅, push, Live Activity, snapshot, release routing, API 계약을 건드리면 `app/`과 `backend/`를 함께 본다
-- Flutter provider routing은 여전히 명시적이다. 화면 데이터를 backend-backed로 검증할 때는 `USE_BACKEND_API=true` 를 주입한다. `API_BASE_URL` 단독 지정은 push / Live Activity token registration endpoint를 알려줄 수 있지만 provider routing을 자동으로 API 모드로 바꾸지 않는다
-- direct KBO mode는 local/offline/web preview와 resilience 검증을 위한 지원 경로로 유지한다. backend-backed 동작이 과제인 경우 no-backend를 기본 전제로 삼지 않는다
+- Flutter provider routing은 모든 빌드에서 backend API가 기본이다. 스크립트/CI에는 예측 가능성을 위해 `USE_BACKEND_API=true` 를 명시하고, `USE_BACKEND_API=false` 는 direct KBO parser/debug 세션에서만 사용한다
+- direct KBO mode는 명시적 parser parity/debug 경로로만 유지한다. 일반 local/dev/release/web/native 빌드나 tester-facing artifact의 기본값으로 쓰지 않는다
 - 앱 종료 후 일반 푸시와 iOS Live Activity / Dynamic Island를 계속 갱신하는 기능은 운영 백엔드가 KBO 상태를 polling하고 FCM/APNs로 발송해야 한다
-- release build가 direct data mode를 쓰더라도 push / Live Activity token registration용 운영 `API_BASE_URL`은 주입한다. backend-backed 화면 데이터 release 검증은 `USE_BACKEND_API=true`와 backend health check를 분리해서 확인한다
+- release build는 화면 데이터와 push / Live Activity token registration 모두 운영 backend API 기준으로 검증한다. 운영 `API_BASE_URL`과 backend health/readiness를 함께 확인한다
 - AWS ECS/Fargate 시연 배포는 `infra/aws/ecs-fargate/`의 API service + sync worker service 템플릿을 기준으로 한다. Secrets Manager 값은 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` env로 주입한다
 - 시연 배포 전에는 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 앱 Firebase 파일, APNs/Live Activity capability, release `API_BASE_URL` token-registration handoff, backend secret env, AWS env 형태를 secret 출력 없이 점검한다
 - `infra/aws/ecs-fargate/deploy.env.example`를 push preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드의 단일 checklist로 사용한다. untracked env 파일로 복사한 뒤 파일 안 주석을 따라 placeholder를 모두 실제 값으로 바꾸고 `--apply`를 실행한다
@@ -130,11 +130,11 @@ kbo_fans/
   - 연결된 iOS 실기기 우선 실행 액션, `flutter devices`/`xcodebuild` destination 불일치 점검 가이드
 
 ## 최근 구현 인사이트
-- 실기기 디버그 환경에서 `localhost` 백엔드는 직접 닿지 않는다. app-only 확인은 direct mode로, backend-backed 확인은 `USE_BACKEND_API=true` 와 LAN 접근 가능한 `API_BASE_URL` 을 함께 주입한다.
+- 실기기 디버그 환경에서 `localhost` 백엔드는 직접 닿지 않는다. `USE_BACKEND_API=true` 와 LAN 접근 가능한 `API_BASE_URL` 을 함께 주입한다.
 - 데이터 소스 혼선은 실제 장애처럼 보이므로 화면별로 다른 저장소를 보게 두지 않는다.
 - 현재 backend 방향:
   - FastAPI는 API-backed data, snapshot generation, push, Live Activity / Dynamic Island sync의 active component다.
-  - direct KBO는 local/offline/web preview와 resilience 검증을 위한 명시적 지원 경로다.
+  - direct KBO는 명시적 parser parity/debug 경로다.
 - 기록실 선수 상세/엔트리 전체는 direct source 또는 생성된 snapshot 기준으로 유지한다.
 - 순위/기록실 요약/리더보드는 요청 시즌과 정확히 맞는 검증된 snapshot 만 사용한다. 검증되지 않은 과거 순위는 빈 exact snapshot 으로 둔다.
 - 명시적 API-backed 앱 모드에서는 current-season standings / records overview / leaderboard / team players / team stats / player detail API 실패를 앱 번들 bootstrap, 구형/fresh API cache, backend current snapshot 으로 숨기지 않는다.

@@ -1,5 +1,5 @@
 {
-  "savedAt": "2026-06-19T09:47:04.487671+00:00",
+  "savedAt": "2026-06-20T08:39:42.827256+00:00",
   "payload": {
     "month": "2026-06",
     "days": [
@@ -1155,102 +1155,67 @@
             "awayScore": 2,
             "homeId": "LG",
             "homeName": "LG",
-            "homeScore": 0,
+            "homeScore": 3,
             "stadium": "잠실",
-            "status": "LIVE",
+            "status": "FINAL",
             "statusLabel": null,
-            "ticketInfo": {
-              "vendorKey": "interpark",
-              "vendorName": "인터파크 티켓",
-              "vendorUrl": "https://tickets.interpark.com",
-              "openAt": "2026-06-12T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "ticketInfo": null
           },
           {
             "gameId": "20260619HTKT0",
             "time": "18:30",
             "awayId": "HT",
             "awayName": "KIA",
-            "awayScore": 0,
+            "awayScore": 11,
             "homeId": "KT",
             "homeName": "KT",
-            "homeScore": 0,
+            "homeScore": 3,
             "stadium": "수원",
-            "status": "LIVE",
+            "status": "FINAL",
             "statusLabel": null,
-            "ticketInfo": {
-              "vendorKey": "interpark",
-              "vendorName": "인터파크 티켓",
-              "vendorUrl": "https://tickets.interpark.com",
-              "openAt": "2026-06-12T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "ticketInfo": null
           },
           {
             "gameId": "20260619SKNC0",
             "time": "18:30",
             "awayId": "SK",
             "awayName": "SSG",
-            "awayScore": 0,
+            "awayScore": 3,
             "homeId": "NC",
             "homeName": "NC",
-            "homeScore": 0,
+            "homeScore": 9,
             "stadium": "창원",
-            "status": "LIVE",
+            "status": "FINAL",
             "statusLabel": null,
-            "ticketInfo": {
-              "vendorKey": "ticketlink",
-              "vendorName": "티켓링크",
-              "vendorUrl": "https://www.ticketlink.co.kr",
-              "openAt": "2026-06-12T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "ticketInfo": null
           },
           {
             "gameId": "20260619SSHH0",
             "time": "18:30",
             "awayId": "SS",
             "awayName": "삼성",
-            "awayScore": 0,
+            "awayScore": null,
             "homeId": "HH",
             "homeName": "한화",
-            "homeScore": 1,
+            "homeScore": null,
             "stadium": "대전",
-            "status": "LIVE",
+            "status": "FINAL",
             "statusLabel": null,
-            "ticketInfo": {
-              "vendorKey": "ticketlink",
-              "vendorName": "티켓링크",
-              "vendorUrl": "https://www.ticketlink.co.kr",
-              "openAt": "2026-06-12T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "ticketInfo": null
           },
           {
             "gameId": "20260619LTWO0",
             "time": "18:30",
             "awayId": "LT",
             "awayName": "롯데",
-            "awayScore": 0,
+            "awayScore": 2,
             "homeId": "WO",
             "homeName": "키움",
-            "homeScore": 0,
+            "homeScore": 1,
             "stadium": "고척",
-            "status": "LIVE",
+            "status": "FINAL",
             "statusLabel": null,
-            "ticketInfo": {
-              "vendorKey": "ticketlink",
-              "vendorName": "티켓링크",
-              "vendorUrl": "https://www.ticketlink.co.kr",
-              "openAt": "2026-06-12T11:00:00",
-              "source": "inferred",
-              "note": "홈팀 기본 예매 정책 기준 추정값"
-            }
+            "ticketInfo": null
           }
         ]
       },
@@ -1263,12 +1228,12 @@
             "time": "17:00",
             "awayId": "OB",
             "awayName": "두산",
-            "awayScore": null,
+            "awayScore": 0,
             "homeId": "LG",
             "homeName": "LG",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "잠실",
-            "status": "SCHEDULED",
+            "status": "LIVE",
             "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
@@ -1284,12 +1249,12 @@
             "time": "17:00",
             "awayId": "HT",
             "awayName": "KIA",
-            "awayScore": null,
+            "awayScore": 2,
             "homeId": "KT",
             "homeName": "KT",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "수원",
-            "status": "SCHEDULED",
+            "status": "LIVE",
             "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "interpark",
@@ -1305,12 +1270,12 @@
             "time": "17:00",
             "awayId": "SK",
             "awayName": "SSG",
-            "awayScore": null,
+            "awayScore": 2,
             "homeId": "NC",
             "homeName": "NC",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "창원",
-            "status": "SCHEDULED",
+            "status": "LIVE",
             "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
@@ -1326,12 +1291,12 @@
             "time": "17:00",
             "awayId": "SS",
             "awayName": "삼성",
-            "awayScore": null,
+            "awayScore": 1,
             "homeId": "HH",
             "homeName": "한화",
-            "homeScore": null,
+            "homeScore": 1,
             "stadium": "대전",
-            "status": "SCHEDULED",
+            "status": "LIVE",
             "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",
@@ -1347,12 +1312,12 @@
             "time": "17:00",
             "awayId": "LT",
             "awayName": "롯데",
-            "awayScore": null,
+            "awayScore": 2,
             "homeId": "WO",
             "homeName": "키움",
-            "homeScore": null,
+            "homeScore": 0,
             "stadium": "고척",
-            "status": "SCHEDULED",
+            "status": "LIVE",
             "statusLabel": null,
             "ticketInfo": {
               "vendorKey": "ticketlink",

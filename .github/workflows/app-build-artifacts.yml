@@ -125,11 +125,11 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Configure no-backend data mode
+      - name: Configure backend API data mode
         run: |
           set -euo pipefail
 
-          api_dart_define="--dart-define=PREFER_DIRECT_SCRAPE=true"
+          api_dart_define="--dart-define=USE_BACKEND_API=true"
           push_api_base_url=""
           if [[ "${{ matrix.app_environment }}" == "release" ]]; then
             push_api_base_url="${RELEASE_API_BASE_URL}"
@@ -137,7 +137,7 @@ jobs:
           fi
 
           echo "API_DART_DEFINE=${api_dart_define}" >> "$GITHUB_ENV"
-          echo "DATA_MODE=no-backend-direct" >> "$GITHUB_ENV"
+          echo "DATA_MODE=backend-api" >> "$GITHUB_ENV"
           echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Configure Android signing
@@ -228,11 +228,11 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Configure no-backend data mode
+      - name: Configure backend API data mode
         run: |
           set -euo pipefail
 
-          api_dart_define="--dart-define=PREFER_DIRECT_SCRAPE=true"
+          api_dart_define="--dart-define=USE_BACKEND_API=true"
           push_api_base_url=""
           if [[ "${{ matrix.app_environment }}" == "release" ]]; then
             push_api_base_url="${RELEASE_API_BASE_URL}"
@@ -240,7 +240,7 @@ jobs:
           fi
 
           echo "API_DART_DEFINE=${api_dart_define}" >> "$GITHUB_ENV"
-          echo "DATA_MODE=no-backend-direct" >> "$GITHUB_ENV"
+          echo "DATA_MODE=backend-api" >> "$GITHUB_ENV"
           echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Build Web
@@ -311,11 +311,11 @@ jobs:
         working-directory: app/ios
         run: pod install
 
-      - name: Configure no-backend data mode
+      - name: Configure backend API data mode
         run: |
           set -euo pipefail
 
-          api_dart_define="--dart-define=PREFER_DIRECT_SCRAPE=true"
+          api_dart_define="--dart-define=USE_BACKEND_API=true"
           push_api_base_url=""
           if [[ "${{ matrix.app_environment }}" == "release" ]]; then
             push_api_base_url="${RELEASE_API_BASE_URL}"
@@ -323,7 +323,7 @@ jobs:
           fi
 
           echo "API_DART_DEFINE=${api_dart_define}" >> "$GITHUB_ENV"
-          echo "DATA_MODE=no-backend-direct" >> "$GITHUB_ENV"
+          echo "DATA_MODE=backend-api" >> "$GITHUB_ENV"
           echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Build iOS simulator app
@@ -489,11 +489,11 @@ jobs:
           printf '%s' "${IOS_GOOGLE_SERVICE_INFO_PLIST}" > ios/Runner/GoogleService-Info.plist
           python3 -c 'import plistlib; plistlib.load(open("ios/Runner/GoogleService-Info.plist", "rb"))'
 
-      - name: Configure no-backend data mode
+      - name: Configure backend API data mode
         run: |
           set -euo pipefail
 
-          api_dart_define="--dart-define=PREFER_DIRECT_SCRAPE=true"
+          api_dart_define="--dart-define=USE_BACKEND_API=true"
           push_api_base_url=""
           if [[ "${{ matrix.app_environment }}" == "release" ]]; then
             push_api_base_url="${RELEASE_API_BASE_URL}"
@@ -501,7 +501,7 @@ jobs:
           fi
 
           echo "API_DART_DEFINE=${api_dart_define}" >> "$GITHUB_ENV"
-          echo "DATA_MODE=no-backend-direct" >> "$GITHUB_ENV"
+          echo "DATA_MODE=backend-api" >> "$GITHUB_ENV"
           echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Build signed iOS IPA

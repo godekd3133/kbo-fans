@@ -62,4 +62,26 @@ void main() {
     expect(byInnings.hasDisplayableLine, isTrue);
     expect(byStats.hasDisplayableLine, isTrue);
   });
+
+  test('live context 투수 row는 공식 누적 지표가 없어도 표시 가능하다', () {
+    const team = TeamBoxscoreData(
+      teamId: 'LG',
+      batters: [],
+      pitchers: [
+        PitcherRecord(
+          name: '임찬규',
+          innings: '',
+          hits: 0,
+          strikeouts: 0,
+          walks: 0,
+          earnedRuns: 0,
+          decision: 'LIVE',
+          liveContext: true,
+          contextLabel: '3회초 현재 투수',
+        ),
+      ],
+    );
+
+    expect(team.hasDisplayableRecords, isTrue);
+  });
 }

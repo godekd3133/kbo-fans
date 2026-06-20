@@ -623,7 +623,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         _followedGameId = game.gameId;
       });
       try {
-        await LiveActivityService.instance.syncFollowedGame(game);
+        await LiveActivityService.instance.syncFollowedGame(
+          game,
+          repository: ref.read(gameRepositoryProvider),
+        );
       } catch (error) {
         DevConsole.instance.warn(
           'HOME my team auto-follow sync skipped: $error',
@@ -754,6 +757,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       WidgetSyncService.instance.syncScoreboard(
         games: games,
         myTeamId: myTeamId,
+        repository: ref.read(gameRepositoryProvider),
       ),
     );
   }
@@ -1104,8 +1108,7 @@ class _MyTeamBriefCard extends StatelessWidget {
                       _BriefTeamMark(
                         team: team,
                         fallbackLabel: team?.shortName ?? myTeamId!,
-                        size: 66,
-                        visualScale: 1.24,
+                        size: 76,
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1530,13 +1533,11 @@ class _BriefTeamMark extends StatelessWidget {
   final KboTeam? team;
   final String fallbackLabel;
   final double size;
-  final double visualScale;
 
   const _BriefTeamMark({
     required this.team,
     required this.fallbackLabel,
     required this.size,
-    this.visualScale = 1,
   });
 
   @override
@@ -1544,14 +1545,11 @@ class _BriefTeamMark extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: Transform.scale(
-        scale: visualScale,
-        child: KboTeamLogoImage(
-          teamId: team?.id,
-          fallback: fallbackLabel,
-          size: size,
-          padding: 0,
-        ),
+      child: KboTeamLogoImage(
+        teamId: team?.id,
+        fallback: fallbackLabel,
+        size: size,
+        padding: 0,
       ),
     );
   }
@@ -2302,11 +2300,12 @@ class _StandingsSnapshotCard extends StatelessWidget {
                 const _StandingsHeaderRow(),
                 for (final standing in visibleStandings)
                   _StandingSnapshotRow(
+                    key: ValueKey('home-standings-row-${standing.teamId}'),
                     standing: standing,
                     highlighted: standing.teamId == myTeamId,
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      context.push('/records/team/${standing.teamId}');
+                      context.go('/standings');
                     },
                   ),
               ],
@@ -2375,6 +2374,7 @@ class _StandingSnapshotRow extends StatelessWidget {
   final VoidCallback onTap;
 
   const _StandingSnapshotRow({
+    super.key,
     required this.standing,
     required this.highlighted,
     required this.onTap,
@@ -2387,7 +2387,7 @@ class _StandingSnapshotRow extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '${team?.shortName ?? standing.teamName} 팀 기록 보기',
+      label: '${team?.shortName ?? standing.teamName} 순위 전체 보기',
       child: AppPressable(
         onTap: onTap,
         pressedScale: 0.99,

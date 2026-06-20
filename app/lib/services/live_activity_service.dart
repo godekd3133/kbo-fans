@@ -11,6 +11,8 @@ import '../core/utils/game_status_label.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
 import '../data/models/game.dart';
+import '../data/models/relay.dart';
+import '../data/repositories/game_repository.dart';
 import 'push_notification_service.dart';
 
 @pragma('vm:entry-point')
@@ -102,6 +104,7 @@ class LiveActivityService {
   Future<void> syncCurrentScore({
     required List<Game> games,
     required String? myTeamId,
+    GameRepository? repository,
   }) async {
     if (!_supportsFollowSurface) {
       return;
@@ -122,7 +125,7 @@ class LiveActivityService {
       DevConsole.instance.info(
         'Live Activity auto-follow my team game: ${autoTarget.gameId}',
       );
-      await syncFollowedGame(autoTarget);
+      await syncFollowedGame(autoTarget, repository: repository);
       return;
     }
 
@@ -133,10 +136,14 @@ class LiveActivityService {
       return;
     }
 
-    await syncFollowedGame(targetGame);
+    await syncFollowedGame(targetGame, repository: repository);
   }
 
-  Future<void> syncFollowedGame(Game game) async {
+  Future<void> syncFollowedGame(
+    Game game, {
+    GameRepository? repository,
+    CurrentAtBat? currentAtBat,
+  }) async {
     if (!_supportsFollowSurface) {
       return;
     }
@@ -158,10 +165,31 @@ class LiveActivityService {
       return;
     }
 
-    await _syncGame(game);
+    final atBat = currentAtBat ?? await _fetchCurrentAtBat(game, repository);
+    await _syncGame(game, currentAtBat: atBat);
   }
 
-  Future<void> _syncGame(Game targetGame) async {
+  Future<CurrentAtBat?> _fetchCurrentAtBat(
+    Game game,
+    GameRepository? repository,
+  ) async {
+    if (game.status != GameStatus.live || repository == null) {
+      return null;
+    }
+
+    try {
+      return await repository
+          .getCurrentAtBat(game.gameId)
+          .timeout(const Duration(seconds: 4));
+    } catch (error) {
+      DevConsole.instance.warn(
+        'Live Activity current at-bat fetch skipped: $error',
+      );
+      return null;
+    }
+  }
+
+  Future<void> _syncGame(Game targetGame, {CurrentAtBat? currentAtBat}) async {
     if (defaultTargetPlatform == TargetPlatform.android) {
       await _showAndroidOngoingScore(targetGame);
       return;
@@ -169,35 +197,15 @@ class LiveActivityService {
 
     try {
       _ensureChannelHandler();
-      final response = await _channel
-          .invokeMapMethod<String, dynamic>('syncCurrentScore', {
-            'gameId': targetGame.gameId,
-            'awayTeamId': targetGame.away.teamId,
-            'awayTeam': targetGame.away.shortName,
-            'homeTeamId': targetGame.home.teamId,
-            'homeTeam': targetGame.home.shortName,
-            'awayScore': targetGame.away.score,
-            'homeScore': targetGame.home.score,
-            'inning': targetGame.status == GameStatus.scheduled
-                ? '경기전'
-                : secondaryTextForGameStatus(
-                    targetGame.status,
-                    inning: targetGame.inning,
-                    startTime: targetGame.startTime,
-                    statusLabel: targetGame.statusLabel,
-                  ),
-            'batter': '',
-            'pitcher': '',
-            'pitchCount': 0,
-            'balls': 0,
-            'strikes': 0,
-            'outs': 0,
-            'stadium': targetGame.stadium,
-            'updatedAt': _updatedAtText(),
-            'situationText': '',
-            'playText': '',
-            'apiBaseUrl': AppConfig.instance.apiBaseUrl,
-          });
+      final response = await _channel.invokeMapMethod<String, dynamic>(
+        'syncCurrentScore',
+        _scorePayloadForGame(
+          targetGame,
+          currentAtBat: currentAtBat,
+          updatedAt: _updatedAtText(),
+          apiBaseUrl: AppConfig.instance.apiBaseUrl,
+        ),
+      );
       await _registerLiveActivityFromNativeResponse(response);
       DevConsole.instance.info(
         'Live Activity sync sent: ${targetGame.gameId} ${targetGame.away.score}:${targetGame.home.score} ${targetGame.inning}',
@@ -209,6 +217,87 @@ class LiveActivityService {
       // iOS native channel may be unavailable in some debug/background cases.
       DevConsole.instance.warn('Live Activity sync failed: missing plugin');
     }
+  }
+
+  Map<String, dynamic> _scorePayloadForGame(
+    Game targetGame, {
+    required String updatedAt,
+    required String apiBaseUrl,
+    CurrentAtBat? currentAtBat,
+  }) {
+    return {
+      'gameId': targetGame.gameId,
+      'awayTeamId': targetGame.away.teamId,
+      'awayTeam': targetGame.away.shortName,
+      'homeTeamId': targetGame.home.teamId,
+      'homeTeam': targetGame.home.shortName,
+      'awayScore': targetGame.away.score,
+      'homeScore': targetGame.home.score,
+      'inning': _inningTextForLiveActivity(targetGame, currentAtBat),
+      'batter': currentAtBat?.batterName ?? '',
+      'batterAverage': currentAtBat?.batterAverage ?? '',
+      'pitcher': currentAtBat?.pitcherName ?? '',
+      'pitcherEra': currentAtBat?.pitcherEra ?? '',
+      'pitchCount': currentAtBat?.pitchCount ?? 0,
+      'balls': currentAtBat?.balls ?? 0,
+      'strikes': currentAtBat?.strikes ?? 0,
+      'outs': currentAtBat?.outs ?? 0,
+      'stadium': targetGame.stadium,
+      'updatedAt': updatedAt,
+      'situationText': _situationText(currentAtBat),
+      'playText': '',
+      'apiBaseUrl': apiBaseUrl,
+    };
+  }
+
+  String _inningTextForLiveActivity(
+    Game targetGame,
+    CurrentAtBat? currentAtBat,
+  ) {
+    final atBatInning = currentAtBat?.inningText.trim() ?? '';
+    if (atBatInning.isNotEmpty) {
+      return atBatInning;
+    }
+    if (targetGame.status == GameStatus.scheduled) {
+      return '경기전';
+    }
+    return secondaryTextForGameStatus(
+      targetGame.status,
+      inning: targetGame.inning,
+      startTime: targetGame.startTime,
+      statusLabel: targetGame.statusLabel,
+    );
+  }
+
+  String _situationText(CurrentAtBat? currentAtBat) {
+    if (currentAtBat == null) {
+      return '';
+    }
+    final outs = switch (currentAtBat.outs) {
+      0 => '무사',
+      1 => '1사',
+      2 => '2사',
+      _ => '',
+    };
+    final base = _baseStateLabel(currentAtBat.baseState);
+    if (outs.isNotEmpty && base.isNotEmpty) {
+      return '$outs $base';
+    }
+    return outs.isNotEmpty ? outs : base;
+  }
+
+  String _baseStateLabel(String baseState) {
+    final text = baseState.trim();
+    if (text.isEmpty) {
+      return '';
+    }
+    if (text == '주자없음') {
+      return '주자 없음';
+    }
+    if (text.startsWith('주자')) {
+      return text.substring(2).trim();
+    }
+    return text;
   }
 
   Future<void> endCurrentScore() async {
@@ -508,4 +597,19 @@ Game? selectAutoLiveActivityGame({
     }
   }
   return null;
+}
+
+@visibleForTesting
+Map<String, dynamic> buildLiveActivityScorePayloadForTesting({
+  required Game game,
+  CurrentAtBat? currentAtBat,
+  String updatedAt = '12:34:56',
+  String apiBaseUrl = 'https://api.example.test',
+}) {
+  return LiveActivityService.instance._scorePayloadForGame(
+    game,
+    currentAtBat: currentAtBat,
+    updatedAt: updatedAt,
+    apiBaseUrl: apiBaseUrl,
+  );
 }

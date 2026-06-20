@@ -358,7 +358,10 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         await PushNotificationService.instance.requestPermissionAndSync(
           myTeam: ref.read(myTeamProvider),
         );
-        await LiveActivityService.instance.syncFollowedGame(game);
+        await LiveActivityService.instance.syncFollowedGame(
+          game,
+          repository: ref.read(gameRepositoryProvider),
+        );
       }
 
       if (!mounted) {
@@ -370,9 +373,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            _isFollowingGame ? '경기 따라가기를 시작했습니다' : '경기 따라가기를 종료했습니다',
-          ),
+          content: Text(_isFollowingGame ? '푸쉬 중계를 시작했습니다' : '푸쉬 중계를 종료했습니다'),
         ),
       );
     } catch (error) {
@@ -385,7 +386,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('경기 따라가기 설정에 실패했습니다')));
+      ).showSnackBar(const SnackBar(content: Text('푸쉬 중계 설정에 실패했습니다')));
     }
   }
 
@@ -482,11 +483,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
                       child: _FollowGameCard(
-                        game: game,
                         isFollowing: _isFollowingGame,
                         isLoading: !_followStateLoaded,
                         onPressed: () => unawaited(_toggleFollowGame(game)),
-                        onSecondaryPressed: _showRelayOnly,
                       ),
                     ),
                   ),
@@ -554,13 +553,6 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       return;
     }
     context.go('/home');
-  }
-
-  void _showRelayOnly() {
-    if (_tabController.index != _relayTabIndex) {
-      _tabController.animateTo(_relayTabIndex);
-    }
-    _scheduleRelayFocusScroll();
   }
 
   void _scheduleRelayFocusScroll() {
@@ -944,222 +936,55 @@ class _ScorebugInfoPill extends StatelessWidget {
 }
 
 class _FollowGameCard extends StatelessWidget {
-  final Game game;
   final bool isFollowing;
   final bool isLoading;
   final VoidCallback onPressed;
-  final VoidCallback onSecondaryPressed;
 
   const _FollowGameCard({
-    required this.game,
     required this.isFollowing,
     required this.isLoading,
     required this.onPressed,
-    required this.onSecondaryPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    final accent = isFollowing ? AppColors.positive : AppColors.accent;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: accent,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  '이 경기를 따라가면',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: accent.withValues(alpha: 0.5)),
-                ),
-                child: Text(
-                  isFollowing ? '따라가는 중' : '권한 요청 전',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: accent,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Row(
-            children: [
-              Expanded(
-                child: _FollowSurfaceTile(
-                  title: '따라가기 화면',
-                  description: '스코어, 이닝, 주자',
-                  icon: Icons.phone_iphone_rounded,
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _FollowSurfaceTile(
-                  title: '바로 알림',
-                  description: '득점과 역전만',
-                  icon: Icons.notifications_active_outlined,
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: _FollowSurfaceTile(
-                  title: '홈 위젯',
-                  description: '상태판 갱신',
-                  icon: Icons.widgets_outlined,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : onPressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isFollowing
-                        ? AppColors.cardSub
-                        : AppColors.accent,
-                    foregroundColor: AppColors.textPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: isLoading
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(isFollowing ? '그만 보기' : '경기 따라가기'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onSecondaryPressed,
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('중계만 보기'),
-                ),
-              ),
-            ],
-          ),
-          if (!isFollowing) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.live,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'KBO',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      '${game.away.shortName} ${game.inning} ${game.away.score}:${game.home.score} ${game.home.shortName}\n득점권, 득점, 최종 결과만 보냅니다.',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
+    final backgroundColor = isFollowing ? AppColors.cardSub : AppColors.accent;
+    final icon = isFollowing
+        ? Icons.notifications_off_outlined
+        : Icons.notifications_active_outlined;
+    final label = isLoading
+        ? '푸쉬 중계 확인 중'
+        : isFollowing
+        ? '푸쉬 중계 끄기'
+        : '푸쉬 중계 받기';
 
-class _FollowSurfaceTile extends StatelessWidget {
-  final String title;
-  final String description;
-  final IconData icon;
-
-  const _FollowSurfaceTile({
-    required this.title,
-    required this.description,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 76),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.cardSub,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 16, color: AppColors.textSecondary),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            description,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 10,
-              height: 1.25,
-              color: AppColors.textDisabled,
-            ),
-          ),
-        ],
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: isLoading ? null : onPressed,
+        icon: isLoading
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.textSecondary,
+                  ),
+                ),
+              )
+            : Icon(icon, size: 18),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,
+          disabledBackgroundColor: AppColors.cardSub,
+          foregroundColor: AppColors.textPrimary,
+          disabledForegroundColor: AppColors.textSecondary,
+          minimumSize: const Size.fromHeight(48),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
       ),
     );
   }

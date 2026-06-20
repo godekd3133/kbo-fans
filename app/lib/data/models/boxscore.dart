@@ -6,6 +6,8 @@ class BatterRecord {
   final int runs;
   final int hits;
   final int rbi;
+  final bool liveContext;
+  final String? contextLabel;
 
   const BatterRecord({
     required this.order,
@@ -15,6 +17,8 @@ class BatterRecord {
     required this.runs,
     required this.hits,
     required this.rbi,
+    this.liveContext = false,
+    this.contextLabel,
   });
 }
 
@@ -38,12 +42,14 @@ class TeamBoxscoreData {
 class GameBoxscoreData {
   final String gameId;
   final bool officialAvailable;
+  final bool liveContextAvailable;
   final TeamBoxscoreData away;
   final TeamBoxscoreData home;
 
   const GameBoxscoreData({
     required this.gameId,
     this.officialAvailable = true,
+    this.liveContextAvailable = false,
     required this.away,
     required this.home,
   });
@@ -57,6 +63,8 @@ class PitcherRecord {
   final int walks;
   final int earnedRuns;
   final String? decision; // "W", "L", "S", "H", null
+  final bool liveContext;
+  final String? contextLabel;
 
   const PitcherRecord({
     required this.name,
@@ -66,13 +74,16 @@ class PitcherRecord {
     required this.walks,
     required this.earnedRuns,
     this.decision,
+    this.liveContext = false,
+    this.contextLabel,
   });
 
   bool get hasDisplayableLine {
     final normalizedInnings = innings.trim();
     final normalizedDecision = decision?.trim().toUpperCase();
     return name.trim().isNotEmpty &&
-        (normalizedInnings.isNotEmpty && normalizedInnings != '0.0' ||
+        (liveContext ||
+            normalizedInnings.isNotEmpty && normalizedInnings != '0.0' ||
             hits > 0 ||
             strikeouts > 0 ||
             walks > 0 ||

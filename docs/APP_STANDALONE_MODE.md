@@ -1,28 +1,27 @@
 # 앱 단독 모드 전환 현황
 
-> 최종 수정: 2026-06-04
+> 최종 수정: 2026-06-20
 
-> 현재 정책: 앱 standalone/no-backend 모드가 기본이다. 일반 local/dev/release/web/native 실행은 direct KBO source와 허용된 snapshot을 사용하고, backend API는 `USE_BACKEND_API=true` 명시 opt-in에서만 사용한다.
+> 현재 정책: 일반 local/dev/release/web/native 실행은 backend API mode가 기본이다. standalone/no-backend direct KBO mode는 `USE_BACKEND_API=false`를 명시한 parser/debug 세션에서만 사용한다. 아래 문서는 direct mode의 범위와 한계를 보존하기 위한 참고 문서이며, 기본 실행 정책 문서가 아니다.
 
 ## 목적
 
-이 문서는 KBO Fans 앱이 노트북/로컬 FastAPI 없이도 iOS/Android/Web에서 동작하도록 유지하는 범위와 한계를 정리한다.
+이 문서는 KBO Fans 앱이 direct KBO mode로 동작할 때의 범위와 한계를 정리한다.
 
 ## 현재 결론
 
-- 모바일(iOS/Android)과 웹 모두 일반 실행의 기본 데이터 경로는 no-backend direct mode다.
-- 로컬 iOS/Android/Web 실행 스크립트는 backend health를 요구하지 않고 direct KBO + snapshot 경로를 주입한다.
-- backend API는 legacy/reference 경로이며, `USE_BACKEND_API=true` 를 명시한 검증 세션에서만 사용한다.
-- `API_BASE_URL` 단독 지정은 정상 앱 실행을 API mode로 바꾸지 않는다.
-- release build에서는 `API_BASE_URL`을 push / Live Activity token registration endpoint로 함께 주입할 수 있다. 이 값만으로 데이터 provider routing은 backend mode로 바뀌지 않는다.
-- API 실패 후 direct fallback으로 내려가는 구조가 아니라, direct 경로가 기본 primary source다.
+- 모바일(iOS/Android)과 웹 모두 일반 실행의 기본 데이터 경로는 backend API mode다.
+- 로컬 iOS/Android/Web 실행 스크립트는 가능한 local backend API를 찾아 `USE_BACKEND_API=true`와 `API_BASE_URL`을 주입한다.
+- direct KBO는 legacy fallback이 아니라 `USE_BACKEND_API=false`를 명시한 parser parity/debug 경로다.
+- release build에서는 화면 데이터와 push / Live Activity token registration 모두 운영 `API_BASE_URL` 기준으로 검증한다.
+- API 실패 후 direct fallback으로 내려가는 구조를 만들지 않는다.
 
 ## 완료된 전환 범위
 
 ### 경기 데이터
 
-- 일반 빌드에서는 `KboDirectRepository`를 사용한다.
-- 명시적 backend mode에서만 `ApiGameRepository`를 사용한다.
+- 일반 빌드에서는 `ApiGameRepository`를 사용한다.
+- 명시적 direct debug mode에서만 `KboDirectRepository`를 사용한다.
 - direct source:
   - scoreboard
   - schedule
@@ -34,8 +33,8 @@
 
 ### 홈 aggregate
 
-- 일반 빌드에서는 `/api/home` 의존을 제거하고 앱 내부에서 조합한다.
-- 명시적 backend mode에서만 `/api/home` 을 사용한다.
+- 일반 빌드에서는 `/api/home` backend aggregate를 사용한다.
+- 명시적 direct debug mode에서만 앱 내부 조합 경로를 사용한다.
 - 입력 데이터:
   - scoreboard
   - schedule
@@ -44,8 +43,8 @@
 
 ### 기록실 / 팀 기록 / 리더보드
 
-- 일반 빌드에서는 records/player 경로가 direct KBO를 먼저 시도하고, 실패 시 local asset snapshot repository로 내려간다.
-- 명시적 backend mode에서는 records/player 경로가 API를 먼저 사용한다.
+- 일반 빌드에서는 records/player 경로가 API를 먼저 사용한다.
+- 명시적 direct debug mode에서는 direct KBO와 local asset snapshot repository를 parser parity 확인에 사용한다.
 - direct 기록실은 KBO WebForms 세션 cookie와 전체 form field를 유지해 시즌 변경 POST를 수행한다.
 - 2025/2024 같은 과거 시즌의 리더보드, 팀 타격/투구 스탯, 팀별 야수/투수 기록은 KBO 기록 테이블의 시즌/팀 filter 결과로 구성한다.
 - asset source:
@@ -57,7 +56,7 @@
 ### 알림
 
 - 경기 이벤트 알림은 로컬 알림 중심으로 동작한다.
-- 모바일에서는 push registration / FCM topic sync를 local-only 모드에서 비활성화한다.
+- backend API mode에서는 push registration / FCM topic sync를 활성화한다.
 - local-only 모드에서도 홈 스코어보드 polling 기준의 로컬 알림은 동작한다.
   - 경기 시작
   - 득점

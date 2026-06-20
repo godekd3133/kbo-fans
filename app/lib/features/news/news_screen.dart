@@ -8,6 +8,7 @@ import '../../core/router/app_route_sanitizer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/models/home_aggregate.dart';
 import '../../data/models/schedule.dart';
 import '../../data/providers.dart';
@@ -161,43 +162,69 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _NewsFilter.values.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final filter = _NewsFilter.values[index];
-          final isSelected = filter == selected;
-          return AppPressable(
-            onTap: isSelected ? null : () => onChanged(filter),
-            pressedScale: 0.96,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.textPrimary : AppColors.card,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isSelected ? AppColors.textPrimary : AppColors.divider,
+      height: 44,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          children: [
+            for (final filter in _NewsFilter.values)
+              Expanded(
+                child: AppPressable(
+                  onTap: filter == selected ? null : () => onChanged(filter),
+                  pressedScale: 0.98,
+                  child: _FilterTab(
+                    filter: filter,
+                    selected: filter == selected,
+                  ),
                 ),
               ),
-              alignment: Alignment.center,
-              child: Text(
-                filter.label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  color: isSelected
-                      ? AppColors.background
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ),
-          );
-        },
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _FilterTab extends StatelessWidget {
+  final _NewsFilter filter;
+  final bool selected;
+
+  const _FilterTab({required this.filter, required this.selected});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Text(
+          filter.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+          ),
+        ),
+        Positioned(
+          left: 16,
+          right: 16,
+          bottom: 6,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            height: 2,
+            decoration: BoxDecoration(
+              color: selected ? AppColors.textPrimary : Colors.transparent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -218,7 +245,9 @@ class _NewsContent extends StatelessWidget {
     final allItems = _newsItems(aggregate);
     final leadItems = _editorialLeadItems(allItems);
     final visibleItems = filter == _NewsFilter.all
-        ? allItems.where((item) => !leadItems.contains(item)).toList()
+        ? allItems.length > leadItems.length
+              ? allItems.where((item) => !leadItems.contains(item)).toList()
+              : allItems
         : allItems.where((item) => item.filter == filter).toList();
 
     return Column(
@@ -226,19 +255,10 @@ class _NewsContent extends StatelessWidget {
       children: [
         _EditorialLead(aggregate: aggregate, items: leadItems),
         const SizedBox(height: 12),
-        _NewsMixRail(items: allItems, onSelected: onFilterChanged),
-        const SizedBox(height: 12),
         _FilterBar(selected: filter, onChanged: onFilterChanged),
         const SizedBox(height: 14),
-        _SignalGrid(
-          aggregate: aggregate,
-          items: allItems,
-          selected: filter,
-          onSelected: onFilterChanged,
-        ),
-        const SizedBox(height: 16),
         _NewsSectionHeader(
-          title: filter == _NewsFilter.all ? '핵심 브리프' : '${filter.label} 브리프',
+          title: filter == _NewsFilter.all ? '최신 뉴스' : '${filter.label} 뉴스',
           count: visibleItems.length,
         ),
         const SizedBox(height: 10),
@@ -270,11 +290,11 @@ class _EditorialLead extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final brief = aggregate.kboBrief;
-    final leadItems = _editorialLeadItems(items);
+    final leadItems = items;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(8),
@@ -285,36 +305,24 @@ class _EditorialLead extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: AppColors.live.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.bolt_rounded,
-                  color: AppColors.live,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
+              Container(width: 3, height: 44, color: AppColors.live),
+              const SizedBox(width: 11),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      brief?.title ?? '오늘 읽을 순서',
+                      brief?.title ?? '오늘 읽을 KBO',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 5),
                     Text(
-                      brief?.subtitle ?? '경기, 순위, 기록 흐름을 편집해 보여줍니다.',
+                      brief?.subtitle ?? '경기, 순위, 기록 흐름을 짧게 정리했습니다.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -333,7 +341,7 @@ class _EditorialLead extends StatelessWidget {
             Container(height: 1, color: AppColors.divider),
             const SizedBox(height: 10),
             const Text(
-              '오늘 읽을 순서',
+              '오늘의 3분 브리핑',
               style: TextStyle(
                 fontSize: 11,
                 color: AppColors.textDisabled,
@@ -367,251 +375,57 @@ class _LeadRow extends StatelessWidget {
       pressedScale: 0.985,
       child: Row(
         children: [
-          Container(
-            width: 24,
-            height: 24,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: item.accent.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(7),
-            ),
+          SizedBox(
+            width: 20,
             child: Text(
               '$rank',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                color: item.accent,
-              ),
-            ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              item.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                height: 1.25,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: AppColors.live,
+                fontFeatures: [FontFeature.tabularFigures()],
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            item.actionLabel,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textDisabled,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NewsMixRail extends StatelessWidget {
-  final List<_NewsCardData> items;
-  final ValueChanged<_NewsFilter> onSelected;
-
-  const _NewsMixRail({required this.items, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    final mixes = _mixData(items);
-    if (mixes.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          '뉴스 믹스',
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.textDisabled,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 36,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: mixes.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final mix = mixes[index];
-              return AppPressable(
-                onTap: () => onSelected(mix.filter),
-                pressedScale: 0.96,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: mix.accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: mix.accent.withValues(alpha: 0.42),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(mix.icon, size: 15, color: mix.accent),
-                      const SizedBox(width: 6),
-                      Text(
-                        mix.label,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${mix.count}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: mix.accent,
-                          fontWeight: FontWeight.w900,
-                          fontFeatures: const [FontFeature.tabularFigures()],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _NewsMixData {
-  final String label;
-  final int count;
-  final _NewsFilter filter;
-  final IconData icon;
-  final Color accent;
-
-  const _NewsMixData({
-    required this.label,
-    required this.count,
-    required this.filter,
-    required this.icon,
-    required this.accent,
-  });
-}
-
-class _SignalGrid extends StatelessWidget {
-  final HomeAggregate aggregate;
-  final List<_NewsCardData> items;
-  final _NewsFilter selected;
-  final ValueChanged<_NewsFilter> onSelected;
-
-  const _SignalGrid({
-    required this.aggregate,
-    required this.items,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final signals = _signalData(aggregate, items);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tileWidth = (constraints.maxWidth - 10) / 2;
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            for (final signal in signals)
-              SizedBox(
-                width: tileWidth,
-                child: _SignalTile(
-                  signal: signal,
-                  selected: selected == signal.filter,
-                  onTap: () => onSelected(signal.filter),
-                ),
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _SignalTile extends StatelessWidget {
-  final _NewsSignalData signal;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _SignalTile({
-    required this.signal,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return AppPressable(
-      onTap: onTap,
-      pressedScale: 0.97,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: selected
-              ? signal.accent.withValues(alpha: 0.14)
-              : AppColors.card,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? signal.accent : AppColors.divider,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          const SizedBox(width: 10),
+          _NewsCardVisual(item: item, size: 34),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(signal.icon, size: 16, color: signal.accent),
-                const Spacer(),
                 Text(
-                  signal.value,
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
-                    fontFeatures: [FontFeature.tabularFigures()],
+                    height: 1.25,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${_labelForStoryKind(item.storyKind)} · ${item.sourceLabel}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textDisabled,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              signal.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              signal.caption,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 10,
-                color: AppColors.textDisabled,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: AppColors.textDisabled.withValues(alpha: 0.8),
+          ),
+        ],
       ),
     );
   }
@@ -666,106 +480,84 @@ class _NewsCard extends StatelessWidget {
             color: AppColors.card,
             border: Border.all(color: AppColors.divider),
           ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(width: 4, color: item.accent),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.fromLTRB(12, 11, 10, 11),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _NewsCardVisual(item: item, size: 52),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            _NewsIcon(filter: item.filter),
-                            const SizedBox(width: 9),
-                            Expanded(
-                              child: Text(
-                                item.label,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textDisabled,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              item.sourceLabel,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textDisabled,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          _labelForStoryKind(item.storyKind),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: item.accent,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                        const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.title,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w900,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 7),
-                                  Text(
-                                    item.subtitle,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                      height: 1.35,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            '${item.sourceLabel} · ${item.label}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textDisabled,
+                              fontWeight: FontWeight.w700,
                             ),
-                            if (item.hasVisual) ...[
-                              const SizedBox(width: 12),
-                              _NewsCardVisual(item: item),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.arrow_forward_rounded,
-                              size: 15,
-                              color: item.accent,
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              item.actionLabel,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      item.subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      item.actionLabel,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textDisabled,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: AppColors.textDisabled.withValues(alpha: 0.8),
+              ),
+            ],
           ),
         ),
       ),
@@ -797,34 +589,36 @@ class _NewsIcon extends StatelessWidget {
 
 class _NewsCardVisual extends StatelessWidget {
   final _NewsCardData item;
+  final double size;
 
-  const _NewsCardVisual({required this.item});
+  const _NewsCardVisual({required this.item, this.size = 48});
 
   @override
   Widget build(BuildContext context) {
-    final fallback = _VisualFallback(label: item.fallbackLabel ?? item.label);
     final imageUrl = item.imageUrl;
+    final radius = BorderRadius.circular(size * 0.18);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: radius,
       child: Container(
-        width: 48,
-        height: 48,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
-          color: item.accent.withValues(alpha: 0.12),
-          border: Border.all(color: item.accent.withValues(alpha: 0.34)),
+          color: item.accent.withValues(alpha: 0.1),
+          border: Border.all(color: item.accent.withValues(alpha: 0.24)),
         ),
         child: imageUrl == null || imageUrl.isEmpty
-            ? fallback
+            ? _TeamOrFallbackVisual(item: item, size: size)
             : Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => fallback,
+                errorBuilder: (_, _, _) =>
+                    _TeamOrFallbackVisual(item: item, size: size),
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) {
                     return child;
                   }
-                  return fallback;
+                  return _TeamOrFallbackVisual(item: item, size: size);
                 },
               ),
       ),
@@ -832,45 +626,30 @@ class _NewsCardVisual extends StatelessWidget {
   }
 }
 
-class _VisualFallback extends StatelessWidget {
-  final String label;
+class _TeamOrFallbackVisual extends StatelessWidget {
+  final _NewsCardData item;
+  final double size;
 
-  const _VisualFallback({required this.label});
+  const _TeamOrFallbackVisual({required this.item, required this.size});
 
   @override
   Widget build(BuildContext context) {
-    final letters = _visualLetters(label);
-    return Center(
-      child: Text(
-        letters,
-        maxLines: 1,
-        overflow: TextOverflow.clip,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w900,
-          color: AppColors.textPrimary,
-        ),
+    final fallback = item.fallbackLabel?.trim().isNotEmpty == true
+        ? item.fallbackLabel!.trim()
+        : item.label;
+    if (fallback.trim().isEmpty && (item.teamId ?? '').isEmpty) {
+      return Center(child: _NewsIcon(filter: item.filter));
+    }
+    return Padding(
+      padding: EdgeInsets.all(size <= 36 ? 3 : 4),
+      child: KboTeamLogoImage(
+        teamId: item.teamId,
+        fallback: fallback,
+        size: size,
+        padding: 0,
       ),
     );
   }
-}
-
-class _NewsSignalData {
-  final _NewsFilter filter;
-  final String label;
-  final String value;
-  final String caption;
-  final IconData icon;
-  final Color accent;
-
-  const _NewsSignalData({
-    required this.filter,
-    required this.label,
-    required this.value,
-    required this.caption,
-    required this.icon,
-    required this.accent,
-  });
 }
 
 class _NewsLoadingList extends StatelessWidget {
@@ -1076,56 +855,6 @@ int _leadPriority(_NewsCardData item) {
   };
 }
 
-List<_NewsSignalData> _signalData(
-  HomeAggregate aggregate,
-  List<_NewsCardData> items,
-) {
-  int countFor(_NewsFilter filter) =>
-      items.where((item) => item.filter == filter).length;
-
-  final recentCount = aggregate.myTeamBrief?.recentGamesCount ?? 0;
-  final standingsCount = aggregate.standingsPreview.isEmpty
-      ? countFor(_NewsFilter.standings)
-      : aggregate.standingsPreview.length;
-
-  return [
-    _NewsSignalData(
-      filter: _NewsFilter.game,
-      label: '경기 흐름',
-      value: '${countFor(_NewsFilter.game)}',
-      caption: '스코어·일정',
-      icon: _iconForFilter(_NewsFilter.game),
-      accent: _accentForFilter(_NewsFilter.game),
-    ),
-    _NewsSignalData(
-      filter: _NewsFilter.standings,
-      label: '순위 변동',
-      value: '$standingsCount',
-      caption: '상위권·마이팀',
-      icon: _iconForFilter(_NewsFilter.standings),
-      accent: _accentForFilter(_NewsFilter.standings),
-    ),
-    _NewsSignalData(
-      filter: _NewsFilter.records,
-      label: '기록 신호',
-      value: '${countFor(_NewsFilter.records)}',
-      caption: '선수·리더보드',
-      icon: _iconForFilter(_NewsFilter.records),
-      accent: _accentForFilter(_NewsFilter.records),
-    ),
-    _NewsSignalData(
-      filter: _NewsFilter.myTeam,
-      label: '마이팀',
-      value: recentCount > 0
-          ? '$recentCount'
-          : '${countFor(_NewsFilter.myTeam)}',
-      caption: recentCount > 0 ? '최근 경기' : '개인화 브리프',
-      icon: _iconForFilter(_NewsFilter.myTeam),
-      accent: _accentForFilter(_NewsFilter.myTeam),
-    ),
-  ];
-}
-
 class _NewsCardData {
   final _NewsFilter filter;
   final String label;
@@ -1135,6 +864,7 @@ class _NewsCardData {
   final String actionLabel;
   final String route;
   final String storyKind;
+  final String? teamId;
   final String? imageUrl;
   final String? fallbackLabel;
 
@@ -1147,16 +877,12 @@ class _NewsCardData {
     required this.actionLabel,
     required this.route,
     required this.storyKind,
+    this.teamId,
     this.imageUrl,
     this.fallbackLabel,
   });
 
   Color get accent => _accentForFilter(filter);
-
-  bool get hasVisual {
-    final label = fallbackLabel?.trim() ?? '';
-    return (imageUrl != null && imageUrl!.isNotEmpty) || label.isNotEmpty;
-  }
 
   factory _NewsCardData.fromMyTeamBrief(HomeMyTeamBrief brief) {
     final hasRecent = brief.recentGamesCount > 0;
@@ -1183,6 +909,7 @@ class _NewsCardData {
       actionLabel: '마이팀 보기',
       route: route,
       storyKind: 'my_team',
+      teamId: brief.teamId,
       fallbackLabel: brief.teamLabel,
     );
   }
@@ -1208,6 +935,7 @@ class _NewsCardData {
       actionLabel: summary.gameId.isEmpty ? '팀 기록 보기' : '경기 보기',
       route: route,
       storyKind: 'my_team',
+      teamId: brief.teamId,
       fallbackLabel: brief.teamLabel,
     );
   }
@@ -1223,6 +951,7 @@ class _NewsCardData {
       actionLabel: _actionLabelForRoute(item.route),
       route: item.route,
       storyKind: _storyKindForBriefType(item.type, item.route),
+      teamId: _firstTeamId(item.teamIds),
       imageUrl: item.imageUrl,
       fallbackLabel: item.fallbackLabel,
     );
@@ -1243,6 +972,7 @@ class _NewsCardData {
       actionLabel: _actionLabelForRoute(item.route),
       route: item.route,
       storyKind: _storyKindForRoute(item.route, filter: filter),
+      teamId: item.teamId,
       imageUrl: item.imageUrl,
       fallbackLabel: item.fallbackLabel,
     );
@@ -1268,6 +998,7 @@ class _NewsCardData {
       actionLabel: '순위 보기',
       route: '/standings',
       storyKind: 'standings',
+      teamId: leader.teamId,
       fallbackLabel: leader.teamName,
     );
   }
@@ -1289,56 +1020,10 @@ class _NewsCardData {
       actionLabel: '순위 보기',
       route: '/standings',
       storyKind: 'standings',
+      teamId: standing.teamId,
       fallbackLabel: standing.teamName,
     );
   }
-}
-
-List<_NewsMixData> _mixData(List<_NewsCardData> items) {
-  final counts = <String, int>{};
-  for (final item in items) {
-    counts[item.storyKind] = (counts[item.storyKind] ?? 0) + 1;
-  }
-
-  _NewsMixData? build(String kind) {
-    final count = counts[kind] ?? 0;
-    if (count == 0) {
-      return null;
-    }
-    final filter = _filterForStoryKind(kind);
-    return _NewsMixData(
-      label: _labelForStoryKind(kind),
-      count: count,
-      filter: filter,
-      icon: _iconForStoryKind(kind),
-      accent: _accentForStoryKind(kind),
-    );
-  }
-
-  final mixes = <_NewsMixData>[];
-  for (final kind in const [
-    'live',
-    'player',
-    'standings',
-    'record',
-    'schedule',
-    'my_team',
-  ]) {
-    final mix = build(kind);
-    if (mix != null) {
-      mixes.add(mix);
-    }
-  }
-  return mixes;
-}
-
-_NewsFilter _filterForStoryKind(String kind) {
-  return switch (kind) {
-    'standings' => _NewsFilter.standings,
-    'record' || 'player' => _NewsFilter.records,
-    'my_team' => _NewsFilter.myTeam,
-    _ => _NewsFilter.game,
-  };
 }
 
 String _labelForStoryKind(String kind) {
@@ -1350,30 +1035,6 @@ String _labelForStoryKind(String kind) {
     'schedule' => '일정',
     'my_team' => '마이팀',
     _ => '경기',
-  };
-}
-
-IconData _iconForStoryKind(String kind) {
-  return switch (kind) {
-    'live' => Icons.sports_baseball_rounded,
-    'player' => Icons.person_search_rounded,
-    'standings' => Icons.leaderboard_rounded,
-    'record' => Icons.bar_chart_rounded,
-    'schedule' => Icons.calendar_month_rounded,
-    'my_team' => Icons.shield_rounded,
-    _ => Icons.article_outlined,
-  };
-}
-
-Color _accentForStoryKind(String kind) {
-  return switch (kind) {
-    'live' => AppColors.live,
-    'player' => AppColors.positive,
-    'standings' => AppColors.accent,
-    'record' => AppColors.positive,
-    'schedule' => AppColors.ballYellow,
-    'my_team' => AppColors.ballYellow,
-    _ => AppColors.textSecondary,
   };
 }
 
@@ -1407,20 +1068,14 @@ String _storyKindForRoute(String route, {required _NewsFilter filter}) {
   return 'live';
 }
 
-String _visualLetters(String value) {
-  final trimmed = value.trim();
-  if (trimmed.isEmpty) {
-    return 'K';
+String? _firstTeamId(List<String> teamIds) {
+  for (final teamId in teamIds) {
+    final normalized = teamId.trim();
+    if (normalized.isNotEmpty) {
+      return normalized;
+    }
   }
-  final parts = trimmed
-      .split(RegExp(r'\s+'))
-      .where((part) => part.trim().isNotEmpty)
-      .toList();
-  if (parts.length >= 2) {
-    return parts.take(2).map((part) => part.characters.first).join();
-  }
-  final chars = trimmed.characters.toList();
-  return chars.take(chars.length >= 2 ? 2 : 1).join();
+  return null;
 }
 
 _NewsFilter _filterForBriefType(String type) {

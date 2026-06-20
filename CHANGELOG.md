@@ -10,6 +10,36 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 경기 탭 일정 화면을 새 생성 레퍼런스 기준으로 재정렬해 월 헤더, 필터, 범례, 캘린더 경기일 outline/dot, 선택 날짜, 경기 카드 밀도를 더 실제 다크 스포츠 앱 화면에 가깝게 조정
+
+### Fixed
+
+- 진행 중 경기 박스스코어가 공식 rows 업데이트 전이어도 KBO 실시간 현재 타자/투수 context를 `실시간 기록 추적`으로 표시하도록 보강
+- 기록 탭 첫 화면의 spotlight 카드 하단 텍스트와 리더보드 `ERA` 탭이 390px 폭에서 잘리지 않도록 레이아웃 폭/높이를 보정
+
+## [0.0.61] - 2026-06-20
+
+### Changed
+
+- 모든 일반 local/dev/release/web/native 빌드의 화면 데이터 라우팅을 backend API mode 기본값으로 고정하고, direct KBO는 `USE_BACKEND_API=false` 명시 parser/debug 경로로 제한
+- release/web/iOS/Android 실행 스크립트와 GitHub Actions 앱 산출물을 backend API data mode 기준으로 정리
+- 경기 상세 라이브 follow 영역을 설명 카드 대신 `푸쉬 중계 받기` / `푸쉬 중계 끄기` 단일 버튼으로 단순화
+- 뉴스 탭의 필터/브리프 구성을 더 조밀한 스포츠 정보 화면으로 재정리하고, 일정/기록 탭의 버튼/카드 밀도를 보정
+- 뉴스 탭을 새 레퍼런스 시안 기준의 기사형 row 구조로 다시 조정해 반복 큰 카드, `뉴스 믹스` rail, 2x2 signal grid를 줄이고 팀 로고/선수 이미지 중심으로 더 실제 스포츠 뉴스 앱처럼 보이게 개선
+- 공식 박스스코어가 아직 비어 있는 LIVE 경기는 backend main-list 현재 타자/투수 context를 임시 live 기록으로 표시하고, 이 payload는 historical snapshot으로 저장하지 않도록 정리
+- 2026년 6월 schedule snapshot과 records overview fixture를 최신 경기/기록 상태로 갱신
+
+### Fixed
+
+- 뉴스 카드 visual fallback이 `삼성 라이온즈`를 `삼라`처럼 임의 축약해 표시하던 문제를 없애고, 팀 관련 row는 공통 reference team logo를 우선 표시하도록 수정
+- 홈 마이팀 브리프의 팀 로고가 아래로 잘려 보이던 배치를 고치고, 삼성 로고 reference asset을 공식 원본 기반 고해상도 PNG로 교체
+- 두산 베어스 팀 로고를 공식 2025 현재 엠블럼 기준으로 교체해 온보딩, 앱 공용 팀 로고, iOS 위젯/Live Activity 자산에서 구형 로고가 보이지 않도록 수정
+- 홈 순위 프리뷰의 팀 행을 눌러도 팀 기록실로 튀지 않고 `전체 보기`와 같은 전체 순위 화면으로 이동하도록 수정
+- iOS Live Activity가 앱 direct/resume/widget sync로 갱신될 때도 현재 타석의 타율, ERA, 투구수, B-S-O를 보존하도록 보강하고, 초/말 공격 방향에 맞춰 타자·투수 표시와 베이스 다이아몬드/중앙 레이아웃을 조정
+- Live Activity 타자 타율을 시즌 타율 그대로가 아니라 오늘 경기 완료 타석의 안타/타수까지 더한 실시간 AVG로 계산하도록 수정
+
 ## [0.0.60] - 2026-06-20
 
 ### Changed

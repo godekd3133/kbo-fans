@@ -142,9 +142,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                   final isLocalSkipped =
                       !shouldUseRemotePushServices(
                         isWeb: false,
-                        isLocal: AppConfig.instance.isLocal,
-                        hasApiBaseUrlOverride:
-                            AppConfig.instance.hasApiBaseUrlOverride,
+                        useBackendApi: AppConfig.instance.shouldUseBackendApi,
                       ) &&
                       status == 'skipped';
                   return AppMotionListItem(

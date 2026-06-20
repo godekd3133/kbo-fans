@@ -191,7 +191,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   Widget _buildMonthHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 10),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 34),
       child: Row(
         children: [
           Expanded(
@@ -214,7 +214,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 const Text(
                   '일정',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 25,
                     fontWeight: FontWeight.w900,
                     height: 1.05,
                   ),
@@ -464,17 +464,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _legendRow() {
-    final myTeamColor =
-        KboTeams.byId(ref.watch(myTeamProvider) ?? '')?.primaryColor ??
-        AppColors.live;
-
     return Align(
       alignment: Alignment.centerLeft,
       child: Wrap(
         spacing: 12,
         runSpacing: 8,
         children: [
-          _legendItem(myTeamColor, '마이팀 경기일'),
+          _legendItem(AppColors.accent, '마이팀 경기일'),
           _legendItem(AppColors.textDisabled, '일반 경기일'),
           _legendItem(AppColors.textPrimary, '선택한 날짜'),
         ],
@@ -518,8 +514,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
             color: selected ? AppColors.textPrimary : AppColors.textSecondary,
           ),
         ),
@@ -541,7 +537,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           color: selected ? AppColors.cardSub : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppColors.textSecondary : AppColors.divider,
+            color: selected
+                ? AppColors.textSecondary
+                : AppColors.divider.withValues(alpha: 0.72),
           ),
         ),
         child: Text(
@@ -549,7 +547,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           style: TextStyle(
             fontSize: 12,
             color: selected ? AppColors.textPrimary : AppColors.textDisabled,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
           ),
         ),
       ),
@@ -603,12 +601,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   double _calendarPagerHeight(BuildContext context) {
     final viewportHeight = MediaQuery.sizeOf(context).height;
     if (viewportHeight < 700) {
-      return 252;
+      return 286;
     }
     if (viewportHeight < 780) {
-      return 280;
+      return 310;
     }
-    return 308;
+    return 322;
   }
 
   Widget _buildStadiumPager() {
@@ -656,15 +654,23 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final totalCells = ((leadingDays + lastDay.day + 6) ~/ 7) * 7;
     final firstVisibleDay = firstDay.subtract(Duration(days: leadingDays));
     final today = DateTime.now();
+    final isCompactViewport = MediaQuery.sizeOf(context).height < 700;
+    final cellHeight = isCompactViewport ? 39.0 : 44.0;
+    final dateBoxSize = isCompactViewport ? 30.0 : 34.0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
+        padding: EdgeInsets.fromLTRB(
+          10,
+          isCompactViewport ? 12 : 14,
+          10,
+          isCompactViewport ? 6 : 8,
+        ),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: AppColors.card.withValues(alpha: 0.88),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: AppColors.divider.withValues(alpha: 0.88)),
         ),
         child: Column(
           children: [
@@ -679,13 +685,17 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   child: Center(
                     child: Text(
                       d,
-                      style: TextStyle(fontSize: 12, color: color),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 );
               }).toList(),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: isCompactViewport ? 6 : 8),
             ...List.generate(totalCells ~/ 7, (week) {
               return Row(
                 children: List.generate(7, (weekday) {
@@ -708,33 +718,35 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   final isPast = date.isBefore(
                     DateTime(today.year, today.month, today.day),
                   );
+                  final isSaturday = date.weekday == DateTime.saturday;
+                  final isSunday = date.weekday == DateTime.sunday;
 
                   return Expanded(
                     child: AppPressable(
                       onTap: () => _selectDate(date),
                       pressedScale: 0.92,
                       child: SizedBox(
-                        height: 40,
+                        height: cellHeight,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
-                              width: 34,
-                              height: 30,
+                              width: dateBoxSize,
+                              height: dateBoxSize,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(7),
                                 color: isSelected
-                                    ? AppColors.live.withValues(alpha: 0.58)
+                                    ? AppColors.live.withValues(alpha: 0.62)
                                     : isToday
                                     ? AppColors.cardSub
                                     : null,
-                                border: hasGame
+                                border: hasGame || isToday
                                     ? Border.all(
-                                        color: isMyTeam
+                                        color: hasGame
                                             ? AppColors.live.withValues(
-                                                alpha: 0.75,
+                                                alpha: isSelected ? 0.82 : 0.62,
                                               )
                                             : AppColors.divider,
                                       )
@@ -752,10 +764,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                         )
                                       : isPast
                                       ? AppColors.textDisabled
+                                      : isSaturday
+                                      ? AppColors.accent
+                                      : isSunday
+                                      ? AppColors.live
                                       : AppColors.textPrimary,
                                   fontWeight: isSelected || isToday
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
+                                      ? FontWeight.w900
+                                      : FontWeight.w800,
                                 ),
                               ),
                             ),
@@ -763,14 +779,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                               Container(
                                 width: 4,
                                 height: 4,
-                                margin: const EdgeInsets.only(top: 2),
+                                margin: const EdgeInsets.only(top: 3),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: isMyTeam
-                                      ? (KboTeams.byId(
-                                              ref.watch(myTeamProvider) ?? '',
-                                            )?.primaryColor ??
-                                            AppColors.live)
+                                      ? AppColors.accent
                                       : AppColors.textDisabled,
                                 ),
                               ),
@@ -782,7 +795,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 }),
               );
             }),
-            const SizedBox(height: 6),
+            SizedBox(height: isCompactViewport ? 6 : 8),
           ],
         ),
       ),
@@ -829,10 +842,10 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         : dateLabel;
     return [
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
         child: Text(
           label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
         ),
       ),
       ...schedule.games.asMap().entries.map(

@@ -61,11 +61,11 @@ def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
       <div class="batter">
         <div class="player-info-wrap">
           <strong class="who">삼성<br><span class="no">No.61 디아즈</span><span>(좌타)</span></strong>
-          <p class="today"><span>- </span></p>
+          <p class="today"><span>땅볼|4구|2루타|</span></p>
         </div>
         <table>
-          <thead><tr><th>2026</th><th>타율</th><th>타점</th></tr></thead>
-          <tbody><tr><th>시즌</th><td>0.249</td><td>31</td></tr></tbody>
+          <thead><tr><th>2026</th><th>타수</th><th>안타</th><th>타율</th><th>타점</th></tr></thead>
+          <tbody><tr><th>시즌</th><td>100</td><td>24</td><td>0.240</td><td>31</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -103,8 +103,8 @@ def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
             "name": "디아즈",
             "number": 61,
             "hand": "좌타",
-            "recent": "",
-            "average": "0.249",
+            "recent": "땅볼|4구|2루타|",
+            "average": "0.245",
         },
         "pitcher": {
             "name": "박준영",

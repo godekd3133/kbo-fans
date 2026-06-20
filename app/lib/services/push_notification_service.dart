@@ -894,8 +894,7 @@ class PushNotificationService {
   bool _shouldUseRemotePushServices() {
     return shouldUseRemotePushServices(
       isWeb: kIsWeb,
-      isLocal: AppConfig.instance.isLocal,
-      hasApiBaseUrlOverride: AppConfig.instance.hasApiBaseUrlOverride,
+      useBackendApi: AppConfig.instance.shouldUseBackendApi,
     );
   }
 }
@@ -927,13 +926,12 @@ Map<String, dynamic> buildPushRegistrationPayload({
 
 bool shouldUseRemotePushServices({
   required bool isWeb,
-  required bool isLocal,
-  required bool hasApiBaseUrlOverride,
+  required bool useBackendApi,
 }) {
   if (isWeb) {
     return false;
   }
-  return !isLocal || hasApiBaseUrlOverride;
+  return useBackendApi;
 }
 
 @visibleForTesting

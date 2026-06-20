@@ -29,11 +29,11 @@ class ScheduleGameCard extends StatelessWidget {
     return AppPressable(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: AppColors.card.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: AppColors.divider.withValues(alpha: 0.86)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,6 +46,7 @@ class ScheduleGameCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 12,
                       color: AppColors.textDisabled,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -55,6 +56,7 @@ class ScheduleGameCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -62,6 +64,11 @@ class ScheduleGameCard extends StatelessWidget {
                   GameStatusBadge.forSchedule(
                     game.status,
                     statusLabel: game.statusLabel,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    fontSize: 11,
                   ),
                 const Spacer(),
                 Text(
@@ -69,11 +76,12 @@ class ScheduleGameCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textDisabled,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 13),
             Row(
               children: [
                 Expanded(
@@ -158,16 +166,16 @@ class _TeamInfo extends StatelessWidget {
             child: Text(
               shortName,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(width: 8),
         ],
-        if (showLogo) _TeamLogo(teamId: teamId, size: 34),
+        if (showLogo) _TeamLogo(teamId: teamId, size: 38),
         if (!showLogo)
           Container(
-            width: 34,
-            height: 34,
+            width: 38,
+            height: 38,
             decoration: const BoxDecoration(
               color: AppColors.cardSub,
               shape: BoxShape.circle,
@@ -189,7 +197,7 @@ class _TeamInfo extends StatelessWidget {
             child: Text(
               shortName,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -247,21 +255,25 @@ class _ScoreOrVersus extends StatelessWidget {
           value: 'away-$awayScore',
           child: Text(
             '$awayScore',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
           ),
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text(
             ':',
-            style: TextStyle(fontSize: 16, color: AppColors.textDisabled),
+            style: TextStyle(
+              fontSize: 18,
+              color: AppColors.textDisabled,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
         AppMotionValue(
           value: 'home-$homeScore',
           child: Text(
             '$homeScore',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
           ),
         ),
       ],

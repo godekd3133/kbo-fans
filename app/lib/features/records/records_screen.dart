@@ -190,6 +190,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                           _recordsSectionHeader(
                             title: '리그 리더보드',
                             subtitle: '핵심 지표별 TOP 5를 빠르게 비교합니다.',
+                            actionLabel: '전체 보기',
+                            onActionTap: () => context.push(
+                              '/records/leaderboard/${_selectedPreviewMetric.key}?season=$_selectedSeason',
+                            ),
                           ),
                           const SizedBox(height: 6),
                           _metricHub(overview),
@@ -1561,15 +1565,27 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _metricSpotlightRail(RecordsOverview overview) {
     final snapshots = _metricSnapshots(overview);
-    return SizedBox(
-      height: 104,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: snapshots.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, index) =>
-            SizedBox(width: 116, child: _metricSpotlightCard(snapshots[index])),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const gap = 10.0;
+        final cardWidth = ((constraints.maxWidth - (gap * 2)) / 3)
+            .clamp(108.0, 124.0)
+            .toDouble();
+
+        return SizedBox(
+          height: 116,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.hardEdge,
+            itemCount: snapshots.length,
+            separatorBuilder: (_, _) => const SizedBox(width: gap),
+            itemBuilder: (context, index) => SizedBox(
+              width: cardWidth,
+              child: _metricSpotlightCard(snapshots[index]),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1597,6 +1613,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
@@ -1627,7 +1644,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 ),
               ],
             ),
-            const Spacer(),
             Row(
               children: [
                 if (leader != null)
@@ -1659,14 +1675,20 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
             ),
             const SizedBox(height: 4),
-            Text(
-              leader?.value ?? '-',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                height: 1,
+            SizedBox(
+              height: 27,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  leader?.value ?? '-',
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    height: 1,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1699,16 +1721,22 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       ),
       child: Column(
         children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final snapshot in snapshots)
-                  _leaderboardTab(
-                    snapshot,
-                    selected: snapshot.metric == selected.metric,
-                  ),
-              ],
+          SizedBox(
+            height: 50,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final tabWidth = constraints.maxWidth / snapshots.length;
+                return Row(
+                  children: [
+                    for (final snapshot in snapshots)
+                      _leaderboardTab(
+                        snapshot,
+                        width: tabWidth,
+                        selected: snapshot.metric == selected.metric,
+                      ),
+                  ],
+                );
+              },
             ),
           ),
           Container(height: 1, color: AppColors.divider),
@@ -1773,7 +1801,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     );
   }
 
-  Widget _leaderboardTab(_MetricSnapshot snapshot, {required bool selected}) {
+  Widget _leaderboardTab(
+    _MetricSnapshot snapshot, {
+    required double width,
+    required bool selected,
+  }) {
     return AppPressable(
       onTap: selected
           ? null
@@ -1782,7 +1814,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        width: 78,
+        width: width,
         height: 50,
         alignment: Alignment.center,
         decoration: BoxDecoration(
@@ -2006,9 +2038,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _recordsSectionHeader({
     required String title,
     required String subtitle,
+    String? actionLabel,
+    VoidCallback? onActionTap,
   }) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
           child: Column(
@@ -2032,6 +2066,41 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             ],
           ),
         ),
+        if (actionLabel != null && onActionTap != null) ...[
+          const SizedBox(width: 12),
+          AppPressable(
+            onTap: onActionTap,
+            pressedScale: 0.97,
+            child: Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: AppColors.card.withValues(alpha: 0.86),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    actionLabel,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 17,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

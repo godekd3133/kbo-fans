@@ -44,10 +44,10 @@
 
 ## Runtime Notes
 - Backend is now a first-class runtime surface. When a task touches live data delivery, push, Live Activity, snapshots, release routing, or API contracts, inspect both `app/` and `backend/` before deciding scope.
-- Flutter provider routing is still explicit: use `USE_BACKEND_API=true` when validating API-backed screen data. `API_BASE_URL` alone supplies endpoint configuration, especially for push / Live Activity token registration, but must not silently change provider routing.
-- Direct KBO mode remains supported for local/offline/web preview and resilience checks. Do not assume it is the product-wide policy when backend-backed behavior is the task.
+- Flutter provider routing is API-backed by default in every build. Keep `USE_BACKEND_API=true` explicit in scripts/CI for predictability; use `USE_BACKEND_API=false` only for a deliberate direct-KBO parser/debug session.
+- Direct KBO mode remains supported only as an explicit parser parity/debug path. Do not use it as a normal app build or release artifact path.
 - App-closed push and Live Activity updates still require operating backend infrastructure. For AWS ECS/Fargate demo deployment, use `infra/aws/ecs-fargate/` API service + sync worker templates.
-- Release builds that use direct data mode should still inject the production `API_BASE_URL` for push / Live Activity token registration. For release validation of backend-backed screen data, pass `USE_BACKEND_API=true` deliberately and verify backend health separately.
+- Release builds must use backend API screen data and inject the production `API_BASE_URL` for both provider routing and push / Live Activity token registration.
 - AWS ECS/Fargate push secrets should be injected through Secrets Manager as `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, and `PUSH_SYNC_SECRET`. Local/EC2 file deployments may use `FIREBASE_SERVICE_ACCOUNT_PATH` and `APNS_AUTH_KEY_PATH`.
 - Before demo deployment, run `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws` to check app Firebase files, APNs/Live Activity capability, release `API_BASE_URL` token-registration handoff, backend secret env, and AWS env shape without printing secrets.
 - Use `infra/aws/ecs-fargate/deploy.env.example` as the single local checklist for push preflight, local AWS deploy, and GitHub Actions secret/variable upload. Copy it to an untracked env file and replace every placeholder before `--apply`; its comments document where each value comes from and where it is uploaded.
@@ -82,11 +82,11 @@
 
 ## Implementation Insights
 - Keep app data sources consistent by domain. Do not let one screen use mock data while another uses live API for the same product surface.
-- For mobile debug builds on real devices, do not assume `localhost` reaches the backend. Use direct mode for local app-only checks, or inject a LAN-reachable `API_BASE_URL` together with `USE_BACKEND_API=true` for backend-backed validation.
+- For mobile debug builds on real devices, do not assume `localhost` reaches the backend. Inject a LAN-reachable `API_BASE_URL` together with `USE_BACKEND_API=true`.
 - Current fallback policy:
-  - Backend API and app-side direct KBO are explicit runtime modes. Do not mix sources silently within one product surface.
+  - Backend API is the default runtime mode for all builds. Do not mix sources silently within one product surface.
   - Backend-backed work is active product scope. Check FastAPI routes, services, scheduler, snapshot policy, and deployment inputs when the feature depends on server behavior.
-  - Direct KBO remains the local/offline/resilience path and parser parity reference, not a hidden fallback after API failure.
+  - Direct KBO remains an explicit parser parity/debug path, not a hidden fallback after API failure or a normal build mode.
   - Records must stay direct-source-backed or generated snapshot-backed. Do not silently fall back to incomplete mock data there.
   - In explicit API-backed mode, current-season standings / records overview / leaderboard failures must surface as API failures instead of being masked by app-bundled bootstrap data or backend current snapshots.
   - Standings and records overview bootstrap fallback must be exact-season-only. Current-season standings and records overview require a fresh `generatedAt`, and unverified historical seasons must stay empty instead of repeating another season.

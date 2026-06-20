@@ -14,8 +14,8 @@
 
 - 앱: Flutter + Dart
 - 백엔드: legacy/reference FastAPI 코드가 남아 있지만 기본 런타임 의존성은 아님
-- 웹 실행: 가능 (`./scripts/codex-run-web.sh`, no-backend direct data mode)
-- 웹 정적 프리뷰: 가능 (`./scripts/codex-run-web-static.sh`, no-backend direct data mode)
+- 웹 실행: 가능 (`./scripts/codex-run-web.sh`, backend API mode)
+- 웹 정적 프리뷰: 가능 (`./scripts/codex-run-web-static.sh`, backend API mode)
 - iOS 실행: Xcode / iOS platform support 상태에 영향 받음
 - Android 실행: 에뮬레이터 또는 실제 기기 준비 필요
 
@@ -44,10 +44,9 @@
 - Android 는 서명 시크릿이 없으면 debug signing fallback 이 적용된 release 빌드가 생성된다.
 - iOS 는 기본값으로 unsigned simulator 빌드만 생성된다.
 - 실제 TestFlight 업로드용 IPA 는 iOS 인증서/프로비저닝 시크릿이 준비된 경우에만 CI에서 뽑는다.
-- Android / iOS / Web artifact는 기본적으로 `PREFER_DIRECT_SCRAPE=true` 를 주입해 no-backend direct KBO + snapshot 경로로 빌드한다.
-- `APP_ENV=release` artifact는 데이터 경로는 direct로 유지하되, push / Live Activity token 등록을 위해 `release_api_base_url` 또는 `RELEASE_API_BASE_URL` 값을 `API_BASE_URL`로 함께 주입한다.
-- `APP_ENV=release` 도 backend API health gate를 artifact 생성 blocker로 보지 않는다.
-- backend API 점검이 필요하면 `scripts/release-api-health-check.sh` 를 별도 legacy/reference 확인으로 직접 실행한다.
+- Android / iOS / Web artifact는 기본적으로 `USE_BACKEND_API=true` 를 주입해 backend API 경로로 빌드한다.
+- `APP_ENV=release` artifact는 화면 데이터와 push / Live Activity token 등록을 위해 `release_api_base_url` 또는 `RELEASE_API_BASE_URL` 값을 `API_BASE_URL`로 함께 주입한다.
+- release-facing 검증 전에는 backend API health/readiness를 확인한다.
 
 남은 수작업 TODO:
 
@@ -301,13 +300,13 @@ Play Console에서:
 
 GitHub Actions 의 `web-<env>` 아티팩트를 내려받으면 정적 웹 빌드 결과를 바로 확인할 수 있다.
 
-- `release`: no-backend direct data 기준 정적 빌드
-- `dev`: no-backend direct data 기준 정적 빌드
-- `local`: no-backend direct data 기준 정적 빌드
+- `release`: backend API 기준 정적 빌드
+- `dev`: backend API 기준 정적 빌드
+- `local`: backend API 기준 정적 빌드
 
 설치가 아니라 빠른 확인이 목적이면 웹이 가장 쉽다.
 
-no-backend release 기준 실행:
+backend API release 기준 실행:
 
 ```bash
 ./scripts/codex-run-web.sh
@@ -377,7 +376,7 @@ Codex 앱에서 플랫폼별 실행 경로는 아래 스크립트로 분리되�
 
 메모:
 
-- release 계열 실행은 no-backend direct data mode를 유지한다. 단, push / Live Activity token 등록을 위해 운영 `API_BASE_URL`은 주입한다.
+- release 계열 실행은 backend API mode를 사용하며, 화면 데이터와 push / Live Activity token 등록 모두 운영 `API_BASE_URL` 기준으로 확인한다.
 - static preview는 화면 구조 확인용이다. 현재 경기/기록/순위 데이터 검증 경로로 취급하지 않는다.
 
 ## 메모

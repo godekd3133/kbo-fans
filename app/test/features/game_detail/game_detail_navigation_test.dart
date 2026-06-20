@@ -11,6 +11,7 @@ import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/data/repositories/game_repository.dart';
 import 'package:kbo_fans/features/game_detail/game_detail_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   test('라이브 경기 상세는 relay 탭 5초, 그 외 탭 8초 refresh cadence를 사용한다', () {
@@ -121,6 +122,53 @@ void main() {
 
     expect(find.text('KT'), findsWidgets);
     expect(find.text('최신 경기 정보를 불러올 수 없습니다'), findsNothing);
+  });
+
+  testWidgets('라이브 경기 상세 follow CTA는 푸쉬 중계 버튼만 노출한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('푸쉬 중계 받기'), findsOneWidget);
+    expect(find.text('이 경기를 따라가면'), findsNothing);
+    expect(find.text('따라가기 화면'), findsNothing);
+    expect(find.text('바로 알림'), findsNothing);
+    expect(find.text('홈 위젯'), findsNothing);
+    expect(find.text('경기 따라가기'), findsNothing);
+    expect(find.text('중계만 보기'), findsNothing);
   });
 }
 

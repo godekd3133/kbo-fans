@@ -50,11 +50,11 @@ Commands:
   ios-local-release  Run a release-mode local build on a connected iPhone
   ios-release  Run the Flutter app on a connected iPhone in production release mode
   android  Run the Flutter app on Android device/emulator
-  android-release  Run Android in release mode with no-backend direct data
-  web      Build web release with no-backend direct data and serve it locally
+  android-release  Run Android in release mode with backend API data
+  web      Build web release with backend API data and serve it locally
   web-dev  Run the Flutter app in Chrome for a debug session
   web-static  Build web release and serve it locally on port 7357
-  web-release  Build web release with no-backend direct data and serve it locally
+  web-release  Build web release with backend API data and serve it locally
   backend  Run the FastAPI backend with a local virtualenv
   release-api-health  Check the production API DNS/TLS and release-critical endpoints
   push-live-preflight  Check local Firebase/APNs/Live Activity/AWS prerequisites
@@ -679,9 +679,9 @@ run_github_push_demo_run() {
   bash "$ROOT_DIR/scripts/github-push-demo-run.sh" "$@"
 }
 
-release_direct_api_define() {
+backend_api_define() {
   local app_env="$1"
-  local api_define=" --dart-define=PREFER_DIRECT_SCRAPE=true"
+  local api_define=" --dart-define=USE_BACKEND_API=true"
 
   if [[ "$app_env" == "release" ]]; then
     api_define="$api_define --dart-define=API_BASE_URL=$(release_api_base_url)"
@@ -693,7 +693,7 @@ release_direct_api_define() {
 run_ios() {
   local flutter_mode="${1:-profile}"
   local app_env="${2:-local}"
-  local data_mode="${3:-direct}"
+  local data_mode="${3:-api}"
   local device_id
   local device_name
   local destination_issue
@@ -706,9 +706,9 @@ run_ios() {
   if [[ "$data_mode" == "api" && "$app_env" == "release" ]]; then
     release_api_url="$(release_api_base_url)"
     run_release_api_health
-    api_define=" --dart-define=API_BASE_URL=$release_api_url"
+    api_define=" --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=$release_api_url"
   elif [[ "$data_mode" == "direct" ]]; then
-    api_define="$(release_direct_api_define "$app_env")"
+    api_define="$(backend_api_define "$app_env")"
   fi
 
   if [[ -n "$device_id" && "$device_id" != "ios" && "$device_id" != "iphone" ]]; then
@@ -735,12 +735,10 @@ EOF
 
     echo "Running on connected iOS device: ${device_name:-$device_id} ($device_id)"
     echo "Using ${flutter_mode} mode for iOS device."
-    if [[ "$app_env" != "release" && "$data_mode" == "direct" ]]; then
-      echo "Using no-backend iOS data mode: direct KBO + bundled snapshots"
-    elif [[ "$app_env" != "release" ]]; then
+    if [[ "$app_env" != "release" ]]; then
       local_api_url="$(local_backend_api_url_for_lan || true)"
       if [[ -n "$local_api_url" ]]; then
-        api_define=" --dart-define=API_BASE_URL=$local_api_url"
+        api_define=" --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=$local_api_url"
         echo "Using local backend for iOS device: $local_api_url"
       else
         cat >&2 <<'EOF'
@@ -757,8 +755,7 @@ EOF
     elif [[ "$data_mode" == "api" ]]; then
       echo "Using release API for iOS device: $release_api_url"
     else
-      echo "Using no-backend iOS release data mode: direct KBO + bundled snapshots"
-      echo "Using release push backend: $(release_api_base_url)"
+      echo "Using release API for iOS device: $(release_api_base_url)"
     fi
     run_flutter run --"$flutter_mode" -d "$device_id" --dart-define=APP_ENV="$app_env"$api_define
     return
@@ -783,12 +780,10 @@ EOF
   fi
 
   echo "Running on iOS Simulator"
-  if [[ "$app_env" != "release" && "$data_mode" == "direct" ]]; then
-    echo "Using no-backend iOS simulator data mode: direct KBO + bundled snapshots"
-  elif [[ "$app_env" != "release" ]]; then
+  if [[ "$app_env" != "release" ]]; then
     local_api_url="$(local_backend_api_url_for_localhost || true)"
     if [[ -n "$local_api_url" ]]; then
-      api_define=" --dart-define=API_BASE_URL=$local_api_url"
+      api_define=" --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=$local_api_url"
       echo "Using local backend for iOS simulator: $local_api_url"
     else
       cat >&2 <<'EOF'
@@ -805,8 +800,7 @@ EOF
   elif [[ "$data_mode" == "api" ]]; then
     echo "Using release API for iOS simulator: $release_api_url"
   else
-    echo "Using no-backend iOS release simulator data mode: direct KBO + bundled snapshots"
-    echo "Using release push backend: $(release_api_base_url)"
+    echo "Using release API for iOS simulator: $(release_api_base_url)"
   fi
   run_flutter run -d ios --dart-define=APP_ENV="$app_env"$api_define
 }
@@ -816,6 +810,7 @@ run_android() {
   local serial
   local adb_bin
   local api_define=""
+  local local_api_url
 
   java_home="$(android_java_home)"
   if [[ -z "$java_home" ]]; then
@@ -851,8 +846,21 @@ EOF
       echo "Flutter or FVM is not installed or not on PATH." >&2
       exit 1
     fi
-    api_define=" --dart-define=PREFER_DIRECT_SCRAPE=true"
-    echo "Using no-backend Android data mode: direct KBO + bundled snapshots"
+    local_api_url="$(local_backend_api_url_for_android_emulator || true)"
+    if [[ -z "$local_api_url" ]]; then
+      cat >&2 <<'EOF'
+No local backend was found for Android.
+
+Start the backend first:
+  ./scripts/codex-run.sh backend
+
+Or provide an explicit API URL:
+  API_BASE_URL=http://10.0.2.2:8000/api ./scripts/codex-run.sh android
+EOF
+      exit 1
+    fi
+    api_define=" --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=$local_api_url"
+    echo "Using local backend for Android: $local_api_url"
     echo "Cleaning Flutter build outputs"
     eval "$flutter clean"
     eval "$flutter pub get"
@@ -881,7 +889,7 @@ EOF
 
   serial="$(ensure_android_runtime)"
   adb_bin="$(android_adb_bin)"
-  echo "Running Android release with no-backend direct data"
+  echo "Running Android release with backend API data"
 
   if [[ -n "$adb_bin" ]]; then
     "$adb_bin" -s "$serial" uninstall "$ANDROID_APPLICATION_ID" >/dev/null 2>&1 || true
@@ -900,7 +908,7 @@ EOF
     fi
     eval "$flutter clean"
     eval "$flutter pub get"
-    eval "$flutter run --release --uninstall-first -d $serial --dart-define=APP_ENV=release$(release_direct_api_define release)"
+    eval "$flutter run --release --uninstall-first -d $serial --dart-define=APP_ENV=release$(backend_api_define release)"
   )
 }
 
@@ -922,7 +930,7 @@ run_web_static() {
   (
     cd "$APP_DIR"
     eval "$flutter pub get"
-    eval "$flutter build web --release"
+    eval "$flutter build web --release --dart-define=USE_BACKEND_API=true"
     cd build/web
     echo "Serving Flutter web release build at http://localhost:7357"
     python3 -m http.server 7357
@@ -944,10 +952,10 @@ run_web_release_static() {
   (
     cd "$APP_DIR"
     eval "$flutter pub get"
-    eval "$flutter build web --release --dart-define=APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true"
+    eval "$flutter build web --release --dart-define=APP_ENV=release$(backend_api_define release)"
     cd build/web
     echo "Serving Flutter web release build at http://localhost:7357"
-    echo "Using no-backend web release data mode: direct KBO + bundled snapshots"
+    echo "Using backend API web release data mode"
     python3 -m http.server 7357
   )
 }

@@ -8,17 +8,16 @@
 ## Local / Dev Data Behavior
 
 - Backend는 active runtime component다. API-backed data, snapshot generation, push notification, Live Activity / Dynamic Island sync를 다루는 작업은 `app/`과 `backend/`를 함께 본다.
-- `local` 앱 실행은 백엔드가 항상 떠 있다고 가정하지 않는다. local/offline/web preview는 direct KBO mode로도 검증할 수 있다.
-- Flutter provider routing은 `USE_BACKEND_API=true` 로 명시한다. `API_BASE_URL` 단독 지정은 provider routing을 API 모드로 바꾸지 않지만, push / Live Activity token registration endpoint로는 사용된다.
-- release build가 direct data mode를 사용하더라도 push / Live Activity token registration에는 운영 backend URL이 필요하다. backend-backed 화면 데이터 검증은 `USE_BACKEND_API=true`와 backend readiness를 분리해서 확인한다.
+- 모든 일반 local/dev/release/web/native 앱 실행은 backend API mode를 기본으로 사용한다.
+- Flutter provider routing은 `USE_BACKEND_API` 미지정 시에도 API mode다. 스크립트/CI에는 `USE_BACKEND_API=true`를 명시하고, direct KBO는 `USE_BACKEND_API=false`를 명시한 parser/debug 세션에서만 사용한다.
+- release build는 화면 데이터와 push / Live Activity token registration 모두 운영 backend URL 기준으로 검증한다.
 - 앱 startup은 원격 API prefetch를 소유하지 않는다. local onboarding/my-team 상태 확인 후 첫 route로 넘기고, scoreboard/home/records/schedule 요청은 각 화면 provider가 소유한다.
 - noisy fallback 로그가 과하면 `local` / 테스트 바인딩에서 prefetch, metric, push init을 완화하는 방향이 안전하다.
-- local, dev, release API base URL은 backend endpoint 설정값이다. push registration에는 단독으로 쓰일 수 있고, 화면 provider API-backed 검증에는 `USE_BACKEND_API=true`가 함께 필요하다.
-- 웹 빌드는 `APP_ENV=local` / `APP_ENV=release`에서 direct preview 경로를 유지할 수 있지만, backend-backed 화면 검증이 과제라면 별도로 `USE_BACKEND_API=true`를 주입한다.
+- local, dev, release API base URL은 화면 provider와 push registration이 함께 쓰는 backend endpoint 설정값이다.
+- 웹 빌드도 `APP_ENV=local` / `APP_ENV=release`에서 backend API를 기본으로 사용한다.
 - iPhone local debug에서 `localhost` API는 실기기에서 직접 닿지 않는다.
-  - backend-backed mode를 검증할 때는 Mac LAN IP를 `API_BASE_URL`로 주입하고 `USE_BACKEND_API=true` 를 함께 지정해야 한다.
-  - 기본 `scripts/codex-run.sh ios` 는 backend health를 요구하지 않는 direct mode 실행 경로로 남길 수 있다.
-- direct KBO source는 local/offline/resilience 경로이자 backend parser parity 확인 기준이다.
+  - Mac LAN IP를 `API_BASE_URL`로 주입하고 `USE_BACKEND_API=true` 를 함께 지정해야 한다.
+- direct KBO source는 backend parser parity/debug 확인 기준이다.
   - scoreboard live status는 `Main.asmx/GetKboGameList` 를 우선 참고한다.
   - 일정 파서는 `GetScheduleList`의 빈 action cell에서도 `gameId`를 날짜+팀 코드로 복원해야 한다.
   - relay는 `LiveTextView2.aspx` markup(`#numCont*`, `p.present`, `.playerBox`) 기준으로 파싱한다.

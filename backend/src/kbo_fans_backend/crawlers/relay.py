@@ -362,9 +362,27 @@ class RelayCrawler(BaseCrawler):
             "hand": hand_text,
             "pitch_count": int(pitch_count_match.group(1)) if pitch_count_match else 0,
             "recent": "" if pitch_count_match or today_text == "-" else today_text,
-            "average": RelayCrawler._parse_season_stat(element, ("타율", "AVG")),
+            "average": RelayCrawler._parse_live_batting_average(element, today_text),
             "era": RelayCrawler._parse_season_stat(element, ("ERA", "평균자책", "평균자책점")),
         }
+
+    @staticmethod
+    def _parse_live_batting_average(element: Any, today_text: str) -> str:
+        season_average = RelayCrawler._parse_season_stat(element, ("타율", "AVG"))
+        season_at_bats = RelayCrawler._parse_season_stat_int(element, ("타수", "AB"))
+        season_hits = RelayCrawler._parse_season_stat_int(element, ("안타", "H"))
+        today_at_bats, today_hits = RelayCrawler._parse_today_batting_line(today_text)
+
+        if (
+            season_at_bats is None
+            or season_hits is None
+            or today_at_bats <= 0
+            or season_at_bats + today_at_bats <= 0
+        ):
+            return season_average
+
+        average = (season_hits + today_hits) / (season_at_bats + today_at_bats)
+        return f"{average:.3f}"
 
     @staticmethod
     def _parse_season_stat(element: Any, header_candidates: tuple[str, ...]) -> str:
@@ -391,6 +409,79 @@ class RelayCrawler(BaseCrawler):
                 if value and value != "-":
                     return value
         return ""
+
+    @staticmethod
+    def _parse_season_stat_int(element: Any, header_candidates: tuple[str, ...]) -> Optional[int]:
+        value = RelayCrawler._parse_season_stat(element, header_candidates)
+        if not value:
+            return None
+        match = re.search(r"\d+", value.replace(",", ""))
+        if not match:
+            return None
+        return int(match.group(0))
+
+    @staticmethod
+    def _parse_today_batting_line(today_text: str) -> tuple[int, int]:
+        at_bats = 0
+        hits = 0
+        for raw_result in today_text.split("|"):
+            result = RelayCrawler._normalize_text(raw_result)
+            if not result or result == "-":
+                continue
+            if RelayCrawler._is_non_at_bat_result(result):
+                continue
+            if RelayCrawler._is_hit_result(result):
+                at_bats += 1
+                hits += 1
+                continue
+            if RelayCrawler._is_at_bat_result(result):
+                at_bats += 1
+        return at_bats, hits
+
+    @staticmethod
+    def _is_non_at_bat_result(result: str) -> bool:
+        return any(
+            keyword in result
+            for keyword in (
+                "4구",
+                "볼넷",
+                "고의",
+                "사구",
+                "몸에 맞",
+                "희생",
+                "희비",
+                "희번",
+                "타격방해",
+                "포수방해",
+            )
+        )
+
+    @staticmethod
+    def _is_hit_result(result: str) -> bool:
+        if any(keyword in result for keyword in ("안타", "1루타", "2루타", "3루타", "홈런")):
+            return True
+        return bool(re.search(r"(좌|중|우|내야|번트).*(안|홈)$", result))
+
+    @staticmethod
+    def _is_at_bat_result(result: str) -> bool:
+        if any(
+            keyword in result
+            for keyword in (
+                "삼진",
+                "땅볼",
+                "플라이",
+                "파울플라이",
+                "직선타",
+                "라인드라이브",
+                "병살",
+                "실책",
+                "야수선택",
+                "야선",
+                "아웃",
+            )
+        ):
+            return True
+        return result.endswith(("땅", "비", "직"))
 
     @staticmethod
     def _parse_base_state(element: Optional[Any]) -> str:

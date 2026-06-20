@@ -1221,6 +1221,12 @@ class KboDirectRepository implements GameRepository {
     );
     final hasOfficialRows =
         parsedAway.hasDisplayableRecords || parsedHome.hasDisplayableRecords;
+    if (!hasOfficialRows) {
+      final liveContext = _buildLiveContextBoxscore(gameId, mainGame);
+      if (liveContext != null) {
+        return liveContext;
+      }
+    }
 
     final enrichedPitchers = hasOfficialRows
         ? await _enrichLivePitchers(
@@ -1243,6 +1249,138 @@ class KboDirectRepository implements GameRepository {
         batters: homeBatters,
         pitchers: enrichedPitchers.$2,
       ),
+    );
+  }
+
+  GameBoxscoreData? _buildLiveContextBoxscore(
+    String gameId,
+    Map<String, dynamic>? mainGame,
+  ) {
+    if (mainGame?['GAME_STATE_SC']?.toString() != '2') {
+      return null;
+    }
+
+    final inningText = _formatMainGameInning(mainGame);
+    final isTop = _isTopInning(inningText, mainGame);
+    final awayBatters = <BatterRecord>[];
+    final homeBatters = <BatterRecord>[];
+    final awayPitchers = <PitcherRecord>[];
+    final homePitchers = <PitcherRecord>[];
+    String? mainGameValue(String key) =>
+        mainGame == null ? null : mainGame[key] as String?;
+    final currentBatter = _cleanPlayerName(
+      isTop ? mainGameValue('T_P_NM') : mainGameValue('B_P_NM'),
+    );
+    final currentPitcher = _cleanPlayerName(
+      isTop ? mainGameValue('B_P_NM') : mainGameValue('T_P_NM'),
+    );
+    final starterNames = _starterNamesFromMainGame(mainGame);
+    final batterLabel = inningText.isEmpty ? '현재 타자' : '$inningText 현재 타자';
+    final pitcherLabel = inningText.isEmpty ? '현재 투수' : '$inningText 현재 투수';
+
+    if (currentBatter != null) {
+      final record = BatterRecord(
+        order: 0,
+        position: '타자',
+        name: currentBatter,
+        atBats: 0,
+        runs: 0,
+        hits: 0,
+        rbi: 0,
+        liveContext: true,
+        contextLabel: batterLabel,
+      );
+      if (isTop) {
+        awayBatters.add(record);
+      } else {
+        homeBatters.add(record);
+      }
+    }
+
+    void addPitcher(
+      List<PitcherRecord> pitchers,
+      String? name, {
+      required String label,
+      String? decision,
+    }) {
+      final cleaned = _cleanPlayerName(name);
+      if (cleaned == null) {
+        return;
+      }
+      final existingIndex = pitchers.indexWhere(
+        (pitcher) => _cleanPlayerName(pitcher.name) == cleaned,
+      );
+      if (existingIndex >= 0) {
+        if (decision != null) {
+          final existing = pitchers[existingIndex];
+          pitchers[existingIndex] = PitcherRecord(
+            name: existing.name,
+            innings: existing.innings,
+            hits: existing.hits,
+            strikeouts: existing.strikeouts,
+            walks: existing.walks,
+            earnedRuns: existing.earnedRuns,
+            decision: decision,
+            liveContext: true,
+            contextLabel: label,
+          );
+        }
+        return;
+      }
+      pitchers.add(
+        PitcherRecord(
+          name: cleaned,
+          innings: '',
+          hits: 0,
+          strikeouts: 0,
+          walks: 0,
+          earnedRuns: 0,
+          decision: decision,
+          liveContext: true,
+          contextLabel: label,
+        ),
+      );
+    }
+
+    addPitcher(awayPitchers, starterNames.$1, label: '선발 투수');
+    addPitcher(homePitchers, starterNames.$2, label: '선발 투수');
+    if (isTop) {
+      addPitcher(
+        homePitchers,
+        currentPitcher,
+        label: pitcherLabel,
+        decision: 'LIVE',
+      );
+    } else {
+      addPitcher(
+        awayPitchers,
+        currentPitcher,
+        label: pitcherLabel,
+        decision: 'LIVE',
+      );
+    }
+
+    final away = TeamBoxscoreData(
+      teamId: gameId.substring(8, 10),
+      batters: awayBatters,
+      pitchers: awayPitchers,
+    );
+    final home = TeamBoxscoreData(
+      teamId: gameId.substring(10, 12),
+      batters: homeBatters,
+      pitchers: homePitchers,
+    );
+    final hasLiveContext =
+        away.hasDisplayableRecords || home.hasDisplayableRecords;
+    if (!hasLiveContext) {
+      return null;
+    }
+    return GameBoxscoreData(
+      gameId: gameId,
+      officialAvailable: false,
+      liveContextAvailable: true,
+      away: away,
+      home: home,
     );
   }
 
@@ -1800,6 +1938,11 @@ class KboDirectRepository implements GameRepository {
   }
 
   @visibleForTesting
+  CurrentAtBat? parseCurrentAtBatHtmlForTesting(String source) {
+    return _parseCurrentAtBat(source);
+  }
+
+  @visibleForTesting
   GameLineupData? parseLineupAnalysisForTesting(
     String gameId,
     Object? payload, {
@@ -2269,17 +2412,15 @@ class KboDirectRepository implements GameRepository {
         .toList();
     final inningText = strongs.isNotEmpty ? strongs.first : '';
     final countText = strongs.length > 1 ? strongs[1] : '';
-    final batterText = _normalizeText(
-      playerNames.querySelector('li.supervision')?.text ?? '',
-    );
+    final batterText = _currentBatterText(playerNames);
     final pitcherText = _normalizeText(
       playerNames.querySelector('li.pitcher')?.text ?? '',
     );
     final batterMeta = _parsePlayerInfoBox(
-      document.querySelector('.playerBox .batter .player-info-wrap'),
+      _currentBatterBox(document, inningText),
     );
     final pitcherMeta = _parsePlayerInfoBox(
-      document.querySelector('.playerBox .pitcher .player-info-wrap'),
+      _currentPitcherBox(document, inningText),
     );
     final counts = _parseCountText(countText);
     final runnerNames = _parseRunnerNames(document);
@@ -2298,16 +2439,18 @@ class KboDirectRepository implements GameRepository {
     }
 
     return CurrentAtBat(
-      batterName: batterText.isNotEmpty ? batterText : batterMeta.$1,
-      batterImageUrl: batterMeta.$6,
-      batterNumber: batterMeta.$2,
-      batterHand: batterMeta.$3,
-      batterRecent: batterMeta.$5,
-      pitcherName: pitcherText.isNotEmpty ? pitcherText : pitcherMeta.$1,
-      pitcherImageUrl: pitcherMeta.$6,
-      pitcherNumber: pitcherMeta.$2,
-      pitcherHand: pitcherMeta.$3,
-      pitchCount: pitcherMeta.$4,
+      batterName: batterText.isNotEmpty ? batterText : batterMeta.name,
+      batterImageUrl: batterMeta.imageUrl,
+      batterNumber: batterMeta.number,
+      batterHand: batterMeta.hand,
+      batterRecent: batterMeta.recent,
+      batterAverage: batterMeta.average,
+      pitcherName: pitcherText.isNotEmpty ? pitcherText : pitcherMeta.name,
+      pitcherImageUrl: pitcherMeta.imageUrl,
+      pitcherNumber: pitcherMeta.number,
+      pitcherHand: pitcherMeta.hand,
+      pitcherEra: pitcherMeta.era,
+      pitchCount: pitcherMeta.pitchCount,
       inningText: inningText,
       baseState: baseState,
       firstRunnerName: runnerNames.$1,
@@ -2317,6 +2460,40 @@ class KboDirectRepository implements GameRepository {
       strikes: counts.$2,
       outs: counts.$3,
     );
+  }
+
+  String _currentBatterText(dom.Element playerNames) {
+    for (final selector in ['li.supervision', 'li.supervision2']) {
+      final text = _normalizeText(
+        playerNames.querySelector(selector)?.text ?? '',
+      );
+      if (text.isNotEmpty) {
+        return text;
+      }
+    }
+    return '';
+  }
+
+  dom.Element? _currentBatterBox(dom.Document document, String inningText) {
+    final explicit = document.querySelector('.playerBox .batter');
+    if (explicit != null) {
+      return explicit;
+    }
+    final isTop = _isTopInning(inningText, null);
+    return isTop
+        ? document.querySelector('.playerBox.awayBox')
+        : document.querySelector('.playerBox.homeBox');
+  }
+
+  dom.Element? _currentPitcherBox(dom.Document document, String inningText) {
+    final explicit = document.querySelector('.playerBox .pitcher');
+    if (explicit != null) {
+      return explicit;
+    }
+    final isTop = _isTopInning(inningText, null);
+    return isTop
+        ? document.querySelector('.playerBox.homeBox')
+        : document.querySelector('.playerBox.awayBox');
   }
 
   (String, String, String) _parseRunnerNames(dom.Document document) {
@@ -2426,22 +2603,43 @@ class KboDirectRepository implements GameRepository {
     );
   }
 
-  (String, int, String, int, String, String) _parsePlayerInfoBox(
-    dom.Element? element,
-  ) {
+  ({
+    String name,
+    int number,
+    String hand,
+    int pitchCount,
+    String recent,
+    String average,
+    String era,
+    String imageUrl,
+  })
+  _parsePlayerInfoBox(dom.Element? element) {
     if (element == null) {
-      return ('', 0, '', 0, '', '');
+      return (
+        name: '',
+        number: 0,
+        hand: '',
+        pitchCount: 0,
+        recent: '',
+        average: '',
+        era: '',
+        imageUrl: '',
+      );
     }
-    final numberText = _normalizeText(element.querySelector('.no')?.text ?? '');
+    final playerInfo = element.querySelector('.player-info-wrap') ?? element;
+    final numberText = _normalizeText(
+      playerInfo.querySelector('.no')?.text ?? '',
+    );
     final hand = _normalizeText(
-      element.querySelector('.who span:last-child')?.text ?? '',
+      playerInfo.querySelector('.who span:last-child')?.text ?? '',
     ).replaceAll(RegExp(r'^\(|\)$'), '');
     final todayText = _normalizeText(
-      element.querySelector('.today span')?.text ?? '',
+      playerInfo.querySelector('.today span')?.text ?? '',
     );
     final pitchCountMatch = RegExp(r'(\d+)\s*투구').firstMatch(todayText);
     final imageSrc =
-        element.querySelector('.player-img img.pic')?.attributes['src'] ?? '';
+        playerInfo.querySelector('.player-img img.pic')?.attributes['src'] ??
+        '';
     final imageUrl = _normalizeRelayPlayerImageUrl(imageSrc);
 
     var name = numberText;
@@ -2452,13 +2650,135 @@ class KboDirectRepository implements GameRepository {
       name = match.group(2) ?? '';
     }
     return (
-      name,
-      number,
-      hand,
-      int.tryParse(pitchCountMatch?.group(1) ?? '') ?? 0,
-      pitchCountMatch == null ? todayText : '',
-      imageUrl,
+      name: name,
+      number: number,
+      hand: hand,
+      pitchCount: int.tryParse(pitchCountMatch?.group(1) ?? '') ?? 0,
+      recent: pitchCountMatch != null || todayText == '-' ? '' : todayText,
+      average: _parseLiveBattingAverage(element, todayText),
+      era: _parseSeasonStat(element, const ['ERA', '평균자책', '평균자책점']),
+      imageUrl: imageUrl,
     );
+  }
+
+  String _parseLiveBattingAverage(dom.Element element, String todayText) {
+    final seasonAverage = _parseSeasonStat(element, const ['타율', 'AVG']);
+    final seasonAtBats = _parseSeasonStatInt(element, const ['타수', 'AB']);
+    final seasonHits = _parseSeasonStatInt(element, const ['안타', 'H']);
+    final todayLine = _parseTodayBattingLine(todayText);
+
+    if (seasonAtBats == null ||
+        seasonHits == null ||
+        todayLine.atBats <= 0 ||
+        seasonAtBats + todayLine.atBats <= 0) {
+      return seasonAverage;
+    }
+
+    final average =
+        (seasonHits + todayLine.hits) / (seasonAtBats + todayLine.atBats);
+    return average.toStringAsFixed(3);
+  }
+
+  String _parseSeasonStat(dom.Element element, List<String> headerCandidates) {
+    for (final table in element.querySelectorAll('table')) {
+      final headers = table
+          .querySelectorAll('thead th')
+          .map((header) => _normalizeText(header.text))
+          .toList();
+      final statIndex = headers.indexWhere(headerCandidates.contains);
+      if (statIndex < 0) {
+        continue;
+      }
+
+      for (final row in table.querySelectorAll('tbody tr')) {
+        final cells = row.querySelectorAll('th, td');
+        if (cells.isEmpty || statIndex >= cells.length) {
+          continue;
+        }
+        final label = _normalizeText(cells.first.text);
+        if (label != '시즌') {
+          continue;
+        }
+        final value = _normalizeText(cells[statIndex].text);
+        if (value.isNotEmpty && value != '-') {
+          return value;
+        }
+      }
+    }
+    return '';
+  }
+
+  int? _parseSeasonStatInt(dom.Element element, List<String> headerCandidates) {
+    final value = _parseSeasonStat(element, headerCandidates);
+    if (value.isEmpty) {
+      return null;
+    }
+    final match = RegExp(r'\d+').firstMatch(value.replaceAll(',', ''));
+    return int.tryParse(match?.group(0) ?? '');
+  }
+
+  ({int atBats, int hits}) _parseTodayBattingLine(String todayText) {
+    var atBats = 0;
+    var hits = 0;
+    for (final rawResult in todayText.split('|')) {
+      final result = _normalizeText(rawResult);
+      if (result.isEmpty || result == '-') {
+        continue;
+      }
+      if (_isNonAtBatResult(result)) {
+        continue;
+      }
+      if (_isHitResult(result)) {
+        atBats += 1;
+        hits += 1;
+        continue;
+      }
+      if (_isAtBatResult(result)) {
+        atBats += 1;
+      }
+    }
+    return (atBats: atBats, hits: hits);
+  }
+
+  bool _isNonAtBatResult(String result) {
+    return const [
+      '4구',
+      '볼넷',
+      '고의',
+      '사구',
+      '몸에 맞',
+      '희생',
+      '희비',
+      '희번',
+      '타격방해',
+      '포수방해',
+    ].any(result.contains);
+  }
+
+  bool _isHitResult(String result) {
+    if (const ['안타', '1루타', '2루타', '3루타', '홈런'].any(result.contains)) {
+      return true;
+    }
+    return RegExp(r'(좌|중|우|내야|번트).*(안|홈)$').hasMatch(result);
+  }
+
+  bool _isAtBatResult(String result) {
+    if (const [
+      '삼진',
+      '땅볼',
+      '플라이',
+      '파울플라이',
+      '직선타',
+      '라인드라이브',
+      '병살',
+      '실책',
+      '야수선택',
+      '야선',
+      '아웃',
+    ].any(result.contains)) {
+      return true;
+    }
+    return result.endsWith('땅') || result.endsWith('비') || result.endsWith('직');
   }
 
   String _parseBaseState(dom.Element? element) {
@@ -3018,10 +3338,12 @@ class KboDirectRepository implements GameRepository {
       batterNumber: atBat.batterNumber,
       batterHand: atBat.batterHand,
       batterRecent: atBat.batterRecent,
+      batterAverage: atBat.batterAverage,
       pitcherName: atBat.pitcherName,
       pitcherImageUrl: pitcherImageUrl,
       pitcherNumber: atBat.pitcherNumber,
       pitcherHand: atBat.pitcherHand,
+      pitcherEra: atBat.pitcherEra,
       pitchCount: atBat.pitchCount,
       inningText: atBat.inningText,
       baseState: atBat.baseState,

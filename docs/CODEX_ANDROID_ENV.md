@@ -1,6 +1,6 @@
 # Codex Android 실행 환경
 
-최종 업데이트: 2026-06-04
+최종 업데이트: 2026-06-20
 
 ## 목적
 
@@ -10,8 +10,8 @@ Codex에서 안드로이드 앱을 실행할 때 아래를 자동으로 맞추�
 - Android SDK 경로 고정
 - AVD 자동 부팅
 - `flutter run` 전 `pub get`
-- no-backend direct data 기준 `APP_ENV=local`
-- release 검증도 backend API 없이 `APP_ENV=release`
+- backend API data 기준 `APP_ENV=local`
+- release 검증도 backend API 기준 `APP_ENV=release`
 
 ## 권장 실행 명령
 
@@ -25,7 +25,7 @@ Codex에서 안드로이드 앱을 실행할 때 아래를 자동으로 맞추�
 ./scripts/codex-run.sh android
 ```
 
-no-backend release 경로로 검증할 때:
+release backend API 경로로 검증할 때:
 
 ```bash
 ./scripts/codex-run-android-release.sh
@@ -50,9 +50,9 @@ no-backend release 경로로 검증할 때:
    - 우선값: `Medium_Phone_API_36`
 6. `sys.boot_completed=1` 대기
 7. macOS에서 Gradle/JDK spawn helper 문제가 재발하지 않도록 `GRADLE_OPTS=-Djdk.lang.Process.launchMechanism=FORK` 주입
-8. `fvm flutter run -d <serial> --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true`
+8. local backend API URL 탐색 후 `fvm flutter run -d <serial> --dart-define=APP_ENV=local --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=<local-api-url>`
 
-release 경로도 backend API health gate 없이 `APP_ENV=release --dart-define=PREFER_DIRECT_SCRAPE=true` 로 실행한다. 단, push 등록을 위해 운영 `API_BASE_URL`은 함께 주입한다.
+release 경로는 운영 backend API health/readiness를 확인한 뒤 `APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=<release-api-url>` 로 실행한다.
 
 ## 현재 기본 가정
 

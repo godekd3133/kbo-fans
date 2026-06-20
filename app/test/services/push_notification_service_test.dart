@@ -59,13 +59,9 @@ void main() {
     );
   });
 
-  test('API URL이 있으면 local direct 빌드도 remote push 등록 대상이다', () {
+  test('API mode이면 local 빌드도 remote push 등록 대상이다', () {
     expect(
-      shouldUseRemotePushServices(
-        isWeb: false,
-        isLocal: true,
-        hasApiBaseUrlOverride: true,
-      ),
+      shouldUseRemotePushServices(isWeb: false, useBackendApi: true),
       isTrue,
     );
     expect(

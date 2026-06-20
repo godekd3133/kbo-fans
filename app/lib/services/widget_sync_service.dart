@@ -197,6 +197,7 @@ class WidgetSyncService {
     await LiveActivityService.instance.syncCurrentScore(
       games: games,
       myTeamId: myTeamId,
+      repository: repository ?? createRepositoryForBackground(),
     );
     DevConsole.instance.info('Widget sync complete: ${selected.gameId}');
   }

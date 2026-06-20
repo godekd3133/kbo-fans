@@ -31,7 +31,9 @@ class BoxscoreCrawler(BaseCrawler):
         hitters_payload = payload.get("arrHitter")
         pitchers_payload = payload.get("arrPitcher")
         if not hitters_payload or not pitchers_payload:
-            return self._empty_boxscore(game_id, away_id, home_id)
+            return self._live_context_boxscore(game_id) or self._empty_boxscore(
+                game_id, away_id, home_id
+            )
 
         away_hitters = self._parse_hitter_team(hitters_payload[0])
         home_hitters = self._parse_hitter_team(hitters_payload[1])
@@ -44,11 +46,14 @@ class BoxscoreCrawler(BaseCrawler):
             home_hitters["batters"],
             home_pitchers["pitchers"],
         ):
-            return self._empty_boxscore(game_id, away_id, home_id)
+            return self._live_context_boxscore(game_id) or self._empty_boxscore(
+                game_id, away_id, home_id
+            )
 
         return {
             "gameId": game_id,
             "officialAvailable": True,
+            "liveContextAvailable": False,
             "away": {
                 "teamId": away_id,
                 "batters": away_hitters["batters"],
@@ -84,6 +89,7 @@ class BoxscoreCrawler(BaseCrawler):
         return {
             "gameId": game_id,
             "officialAvailable": False,
+            "liveContextAvailable": False,
             "away": {
                 "teamId": away_id,
                 "batters": [],
@@ -97,6 +103,186 @@ class BoxscoreCrawler(BaseCrawler):
                 "totals": empty_totals,
             },
         }
+
+    def _live_context_boxscore(self, game_id: str) -> Optional[dict[str, Any]]:
+        main_game = self._main_game_for_game(game_id)
+        if not main_game or str(main_game.get("GAME_STATE_SC") or "") != "2":
+            return None
+
+        away_id, home_id = self._derive_team_ids(game_id)
+        inning_text = self._format_inning(main_game)
+        is_top = self._is_top_inning(main_game, inning_text)
+        away_batters: list[dict[str, Any]] = []
+        home_batters: list[dict[str, Any]] = []
+        away_pitchers: list[dict[str, Any]] = []
+        home_pitchers: list[dict[str, Any]] = []
+
+        current_batter = self._clean_name(
+            main_game.get("T_P_NM") if is_top else main_game.get("B_P_NM")
+        )
+        current_pitcher = self._clean_name(
+            main_game.get("B_P_NM") if is_top else main_game.get("T_P_NM")
+        )
+        batter_label = f"{inning_text} 현재 타자" if inning_text else "현재 타자"
+        pitcher_label = f"{inning_text} 현재 투수" if inning_text else "현재 투수"
+
+        if current_batter:
+            batter = self._live_batter(current_batter, batter_label)
+            if is_top:
+                away_batters.append(batter)
+            else:
+                home_batters.append(batter)
+
+        self._add_live_pitcher(
+            away_pitchers,
+            self._clean_name(main_game.get("T_PIT_P_NM")),
+            "선발 투수",
+        )
+        self._add_live_pitcher(
+            home_pitchers,
+            self._clean_name(main_game.get("B_PIT_P_NM")),
+            "선발 투수",
+        )
+        if is_top:
+            self._add_live_pitcher(
+                home_pitchers, current_pitcher, pitcher_label, decision="LIVE"
+            )
+        else:
+            self._add_live_pitcher(
+                away_pitchers, current_pitcher, pitcher_label, decision="LIVE"
+            )
+
+        if not self._has_displayable_records(away_batters, away_pitchers) and not (
+            self._has_displayable_records(home_batters, home_pitchers)
+        ):
+            return None
+
+        return {
+            "gameId": game_id,
+            "officialAvailable": False,
+            "liveContextAvailable": True,
+            "source": "live_context",
+            "away": {
+                "teamId": away_id,
+                "batters": away_batters,
+                "pitchers": away_pitchers,
+                "totals": self._empty_totals(),
+            },
+            "home": {
+                "teamId": home_id,
+                "batters": home_batters,
+                "pitchers": home_pitchers,
+                "totals": self._empty_totals(),
+            },
+        }
+
+    def _main_game_for_game(self, game_id: str) -> Optional[dict[str, Any]]:
+        if len(game_id) < 8:
+            return None
+        date = game_id[:8]
+        try:
+            payload = self._post_json(
+                f"{self.base_url}/ws/Main.asmx/GetKboGameList",
+                breaker_key="kbo:main_game_list",
+                data={
+                    "leId": "1",
+                    "srId": self._series_for_date(date),
+                    "date": date,
+                },
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            )
+        except Exception:
+            return None
+        games = payload.get("game") or []
+        return next((game for game in games if game.get("G_ID") == game_id), None)
+
+    @staticmethod
+    def _empty_totals() -> dict[str, Any]:
+        return {
+            "batting": {"atBats": 0, "runs": 0, "hits": 0, "rbi": 0},
+            "pitching": {
+                "innings": "0.0",
+                "hits": 0,
+                "strikeouts": 0,
+                "walks": 0,
+                "earnedRuns": 0,
+            },
+        }
+
+    @staticmethod
+    def _live_batter(name: str, context_label: str) -> dict[str, Any]:
+        return {
+            "order": 0,
+            "position": "타자",
+            "name": name,
+            "atBats": 0,
+            "runs": 0,
+            "hits": 0,
+            "rbi": 0,
+            "liveContext": True,
+            "contextLabel": context_label,
+        }
+
+    @classmethod
+    def _add_live_pitcher(
+        cls,
+        pitchers: list[dict[str, Any]],
+        name: Optional[str],
+        context_label: str,
+        *,
+        decision: Optional[str] = None,
+    ) -> None:
+        if not name:
+            return
+        for pitcher in pitchers:
+            if cls._clean_name(pitcher.get("name")) != name:
+                continue
+            if decision:
+                pitcher["decision"] = decision
+                pitcher["contextLabel"] = context_label
+            return
+        pitchers.append(
+            {
+                "name": name,
+                "innings": "",
+                "hits": 0,
+                "strikeouts": 0,
+                "walks": 0,
+                "earnedRuns": 0,
+                "decision": decision,
+                "liveContext": True,
+                "contextLabel": context_label,
+            }
+        )
+
+    @staticmethod
+    def _clean_name(value: Any) -> Optional[str]:
+        text = str(value or "").replace("\xa0", " ").strip()
+        return text or None
+
+    @staticmethod
+    def _format_inning(main_game: dict[str, Any]) -> str:
+        inning = main_game.get("GAME_INN_NO")
+        half = main_game.get("GAME_TB_SC_NM")
+        if inning and half:
+            return f"{inning}회{half}"
+        return ""
+
+    @staticmethod
+    def _is_top_inning(main_game: dict[str, Any], inning_text: str) -> bool:
+        return "회초" in inning_text or str(main_game.get("GAME_TB_SC") or "") == "T"
+
+    @staticmethod
+    def _series_for_date(date: str) -> str:
+        compact = date.replace("-", "")
+        if compact >= "20241026":
+            return "0,1,3,4,5,6,7,8,9"
+        if compact[:4] >= "2021":
+            return "0,1,3,4,5,6,7,9"
+        return "0,1,3,4,5,7,9"
 
     def _parse_hitter_team(self, team_payload: dict[str, Any]) -> dict[str, Any]:
         table1 = json.loads(team_payload["table1"])
@@ -174,6 +360,8 @@ class BoxscoreCrawler(BaseCrawler):
         name = (pitcher.get("name") or "").strip()
         if not name:
             return False
+        if pitcher.get("liveContext") is True:
+            return True
         innings = str(pitcher.get("innings") or "").strip()
         decision = str(pitcher.get("decision") or "").strip().upper()
         return (

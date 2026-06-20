@@ -118,12 +118,12 @@ void main() {
         ...overview.eraLeaders.map((leader) => leader.name),
       ];
 
-      expect(overview.avgLeaders.first.name, '박성한');
-      expect(overview.avgLeaders.first.value, '0.379');
-      expect(overview.hrLeaders.first.name, '김도영');
-      expect(overview.hrLeaders.first.value, '13');
-      expect(overview.eraLeaders.first.name, '최민석');
-      expect(overview.eraLeaders.first.value, '2.17');
+      expect(overview.avgLeaders.first.name, '최원준');
+      expect(overview.avgLeaders.first.value, '0.380');
+      expect(overview.hrLeaders.first.name, '오스틴');
+      expect(overview.hrLeaders.first.value, '20');
+      expect(overview.eraLeaders.first.name, '올러');
+      expect(overview.eraLeaders.first.value, '2.58');
       expect(leaderNames, isNot(contains('허경민')));
       expect(leaderNames, isNot(contains('함덕주')));
     },

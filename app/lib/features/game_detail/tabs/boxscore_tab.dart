@@ -73,7 +73,10 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       error: (error, _) => _buildUnavailableState('박스스코어 로딩 실패: $error'),
       data: (boxscore) {
         final selected = _showAway ? boxscore.away : boxscore.home;
-        if (!boxscore.officialAvailable || !selected.hasDisplayableRecords) {
+        final isLiveContext =
+            !boxscore.officialAvailable && boxscore.liveContextAvailable;
+        if ((!boxscore.officialAvailable && !isLiveContext) ||
+            !selected.hasDisplayableRecords) {
           return _buildUnavailableState('공식 박스스코어 업데이트 전입니다');
         }
 
@@ -82,15 +85,23 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
             : ref.watch(teamPlayersProvider('$_selectedTeamId|$season'));
         return playersAsync.when(
-          loading: () =>
-              _buildContent(selected.batters, selected.pitchers, const {}),
-          error: (_, _) =>
-              _buildContent(selected.batters, selected.pitchers, const {}),
+          loading: () => _buildContent(
+            selected.batters,
+            selected.pitchers,
+            const {},
+            isLiveContext: isLiveContext,
+          ),
+          error: (_, _) => _buildContent(
+            selected.batters,
+            selected.pitchers,
+            const {},
+            isLiveContext: isLiveContext,
+          ),
           data: (players) =>
               _buildContent(selected.batters, selected.pitchers, {
                 for (final player in players)
                   if (player.name.isNotEmpty) player.name: player,
-              }),
+              }, isLiveContext: isLiveContext),
         );
       },
     );
@@ -191,37 +202,34 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   Widget _buildContent(
     List<BatterRecord> batters,
     List<PitcherRecord> pitchers,
-    Map<String, PlayerProfile> playersByName,
-  ) {
+    Map<String, PlayerProfile> playersByName, {
+    required bool isLiveContext,
+  }) {
     final team = KboTeams.byId(_selectedTeamId);
     final accent = team?.primaryColor ?? AppColors.accent;
 
-    final totalAtBats = batters.fold<int>(
+    final officialBatters = batters.where((batter) => !batter.liveContext);
+    final totalAtBats = officialBatters.fold<int>(
       0,
       (sum, batter) => sum + batter.atBats,
     );
-    final totalRuns = batters.fold<int>(0, (sum, batter) => sum + batter.runs);
-    final totalHits = batters.fold<int>(0, (sum, batter) => sum + batter.hits);
-    final totalRbi = batters.fold<int>(0, (sum, batter) => sum + batter.rbi);
+    final totalRuns = officialBatters.fold<int>(
+      0,
+      (sum, batter) => sum + batter.runs,
+    );
+    final totalHits = officialBatters.fold<int>(
+      0,
+      (sum, batter) => sum + batter.hits,
+    );
+    final totalRbi = officialBatters.fold<int>(
+      0,
+      (sum, batter) => sum + batter.rbi,
+    );
     final teamBattingAverage = totalAtBats > 0
         ? (totalHits / totalAtBats)
         : 0.0;
-    final keyBatter = batters.isEmpty
-        ? null
-        : batters.reduce((a, b) {
-            final aScore = (a.hits * 3) + (a.rbi * 2) + a.runs;
-            final bScore = (b.hits * 3) + (b.rbi * 2) + b.runs;
-            return aScore >= bScore ? a : b;
-          });
-    final keyPitcher = pitchers.isEmpty
-        ? null
-        : pitchers.reduce((a, b) {
-            final aScore =
-                (a.strikeouts * 2) - (a.walks * 2) - (a.earnedRuns * 3);
-            final bScore =
-                (b.strikeouts * 2) - (b.walks * 2) - (b.earnedRuns * 3);
-            return aScore >= bScore ? a : b;
-          });
+    final keyBatter = _keyBatter(batters, isLiveContext: isLiveContext);
+    final keyPitcher = _keyPitcher(pitchers, isLiveContext: isLiveContext);
     final playerImageMap = _playerImageMap(playersByName);
     final keyBatterPlayer = keyBatter == null
         ? null
@@ -243,21 +251,30 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           teamId: _selectedTeamId,
           teamName: _selectedTeamName,
           accent: accent,
-          metrics: [
-            _SummaryMetric(label: '타수', value: '$totalAtBats'),
-            _SummaryMetric(label: '득점', value: '$totalRuns'),
-            _SummaryMetric(label: '안타', value: '$totalHits'),
-            _SummaryMetric(label: '타점', value: '$totalRbi'),
-            _SummaryMetric(
-              label: '팀 타율',
-              value: teamBattingAverage.toStringAsFixed(3),
-            ),
-          ],
+          title: isLiveContext ? '실시간 기록 추적' : '오늘 기록 요약',
+          metrics: isLiveContext
+              ? [
+                  const _SummaryMetric(label: '상태', value: 'LIVE'),
+                  _SummaryMetric(label: '타자', value: '${batters.length}'),
+                  _SummaryMetric(label: '투수', value: '${pitchers.length}'),
+                  const _SummaryMetric(label: '출처', value: '실시간'),
+                  const _SummaryMetric(label: '기록', value: '집계중'),
+                ]
+              : [
+                  _SummaryMetric(label: '타수', value: '$totalAtBats'),
+                  _SummaryMetric(label: '득점', value: '$totalRuns'),
+                  _SummaryMetric(label: '안타', value: '$totalHits'),
+                  _SummaryMetric(label: '타점', value: '$totalRbi'),
+                  _SummaryMetric(
+                    label: '팀 타율',
+                    value: teamBattingAverage.toStringAsFixed(3),
+                  ),
+                ],
         ),
         if (keyBatter != null || keyPitcher != null) ...[
           const SizedBox(height: 20),
           _SectionTitle(
-            title: '오늘 기록 요약',
+            title: isLiveContext ? 'LIVE 추적' : '오늘 기록 요약',
             actionLabel: _selectedTeamId.isEmpty ? null : '팀 기록 보기',
             onAction: _selectedTeamId.isEmpty
                 ? null
@@ -275,12 +292,17 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
               children: [
                 if (keyBatter != null)
                   _RecordHighlightRow(
-                    tag: '결승타',
+                    tag: keyBatter.liveContext ? '현재 타자' : '결승타',
                     name: keyBatter.name,
-                    role: '${keyBatter.position}  ${keyBatter.order}번',
-                    summary:
-                        '${keyBatter.atBats}타수 ${keyBatter.hits}안타  ${keyBatter.rbi}타점  ${keyBatter.runs}득점',
-                    metricLabel: '생산 +$productionScore',
+                    role: keyBatter.liveContext
+                        ? keyBatter.contextLabel ?? '현재 타자'
+                        : '${keyBatter.position}  ${keyBatter.order}번',
+                    summary: keyBatter.liveContext
+                        ? '공식 누적 기록 집계 전'
+                        : '${keyBatter.atBats}타수 ${keyBatter.hits}안타  ${keyBatter.rbi}타점  ${keyBatter.runs}득점',
+                    metricLabel: keyBatter.liveContext
+                        ? 'LIVE'
+                        : '생산 +$productionScore',
                     accent: accent,
                     imageUrl:
                         keyBatterPlayer?.imageUrl ??
@@ -295,14 +317,21 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                   ),
                 if (keyPitcher != null)
                   _RecordHighlightRow(
-                    tag: '호투',
+                    tag: keyPitcher.liveContext
+                        ? (keyPitcher.decision == 'LIVE' ? '현재 투수' : '선발 투수')
+                        : '호투',
                     name: keyPitcher.name,
-                    role: keyPitcher.decision == null
+                    role: keyPitcher.liveContext
+                        ? keyPitcher.contextLabel ?? '투수 정보'
+                        : keyPitcher.decision == null
                         ? '투수'
                         : '투수  ${keyPitcher.decision}',
-                    summary:
-                        '${keyPitcher.innings}이닝  ${keyPitcher.hits}피안타  ${keyPitcher.earnedRuns}자책  ${keyPitcher.strikeouts}탈삼진',
-                    metricLabel: '효율 +$efficiencyScore',
+                    summary: keyPitcher.liveContext
+                        ? '공식 누적 기록 집계 전'
+                        : '${keyPitcher.innings}이닝  ${keyPitcher.hits}피안타  ${keyPitcher.earnedRuns}자책  ${keyPitcher.strikeouts}탈삼진',
+                    metricLabel: keyPitcher.liveContext
+                        ? (keyPitcher.decision ?? 'LIVE')
+                        : '효율 +$efficiencyScore',
                     accent: AppColors.live,
                     imageUrl:
                         keyPitcherPlayer?.imageUrl ??
@@ -371,20 +400,30 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       imageUrl: player?.imageUrl,
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
       name: batter.name,
-      meta: '${batter.position}  ${batter.order}번',
+      meta: batter.liveContext
+          ? batter.contextLabel ?? '현재 타자'
+          : '${batter.position}  ${batter.order}번',
       actionLabel: player == null ? null : '선수 기록 보기',
       accent: accent,
-      values: [
-        _RecordCell(value: '${batter.atBats}', width: 38),
-        _RecordCell(value: '${batter.hits}', width: 38),
-        _RecordCell(value: '${batter.rbi}', width: 38),
-        _RecordCell(value: '${batter.runs}', width: 38),
-        _RecordCell(
-          value: todayAvg.toStringAsFixed(3),
-          width: 54,
-          color: accent,
-        ),
-      ],
+      values: batter.liveContext
+          ? const [
+              _RecordCell(value: '-', width: 38),
+              _RecordCell(value: '-', width: 38),
+              _RecordCell(value: '-', width: 38),
+              _RecordCell(value: '-', width: 38),
+              _RecordCell(value: '-', width: 54),
+            ]
+          : [
+              _RecordCell(value: '${batter.atBats}', width: 38),
+              _RecordCell(value: '${batter.hits}', width: 38),
+              _RecordCell(value: '${batter.rbi}', width: 38),
+              _RecordCell(value: '${batter.runs}', width: 38),
+              _RecordCell(
+                value: todayAvg.toStringAsFixed(3),
+                width: 54,
+                color: accent,
+              ),
+            ],
     );
   }
 
@@ -399,21 +438,77 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       imageUrl: player?.imageUrl,
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
       name: pitcher.name,
-      meta: '투수 기록',
+      meta: pitcher.liveContext ? pitcher.contextLabel ?? '투수 정보' : '투수 기록',
       actionLabel: player == null ? null : '선수 기록 보기',
       accent: AppColors.live,
-      values: [
-        _RecordCell(value: pitcher.innings, width: 42),
-        _RecordCell(value: '${pitcher.hits}', width: 42),
-        _RecordCell(value: '${pitcher.earnedRuns}', width: 38),
-        _RecordCell(value: '${pitcher.strikeouts}', width: 38),
-        _RecordCell(
-          value: pitcher.decision ?? '-',
-          width: 42,
-          color: pitcher.decision == null ? AppColors.textDisabled : accent,
-        ),
-      ],
+      values: pitcher.liveContext
+          ? [
+              const _RecordCell(value: '-', width: 42),
+              const _RecordCell(value: '-', width: 42),
+              const _RecordCell(value: '-', width: 38),
+              const _RecordCell(value: '-', width: 38),
+              _RecordCell(
+                value: pitcher.decision ?? '-',
+                width: 42,
+                color: pitcher.decision == null
+                    ? AppColors.textDisabled
+                    : accent,
+              ),
+            ]
+          : [
+              _RecordCell(value: pitcher.innings, width: 42),
+              _RecordCell(value: '${pitcher.hits}', width: 42),
+              _RecordCell(value: '${pitcher.earnedRuns}', width: 38),
+              _RecordCell(value: '${pitcher.strikeouts}', width: 38),
+              _RecordCell(
+                value: pitcher.decision ?? '-',
+                width: 42,
+                color: pitcher.decision == null
+                    ? AppColors.textDisabled
+                    : accent,
+              ),
+            ],
     );
+  }
+
+  BatterRecord? _keyBatter(
+    List<BatterRecord> batters, {
+    required bool isLiveContext,
+  }) {
+    if (batters.isEmpty) {
+      return null;
+    }
+    if (isLiveContext) {
+      return batters.firstWhere(
+        (batter) => batter.liveContext,
+        orElse: () => batters.first,
+      );
+    }
+    return batters.reduce((a, b) {
+      final aScore = (a.hits * 3) + (a.rbi * 2) + a.runs;
+      final bScore = (b.hits * 3) + (b.rbi * 2) + b.runs;
+      return aScore >= bScore ? a : b;
+    });
+  }
+
+  PitcherRecord? _keyPitcher(
+    List<PitcherRecord> pitchers, {
+    required bool isLiveContext,
+  }) {
+    if (pitchers.isEmpty) {
+      return null;
+    }
+    if (isLiveContext) {
+      return pitchers.firstWhere(
+        (pitcher) => pitcher.liveContext && pitcher.decision == 'LIVE',
+        orElse: () => pitchers.first,
+      );
+    }
+    return pitchers.reduce((a, b) {
+      final aScore = (a.strikeouts * 2) - (a.walks * 2) - (a.earnedRuns * 3);
+      final bScore = (b.strikeouts * 2) - (b.walks * 2) - (b.earnedRuns * 3);
+      return aScore >= bScore ? a : b;
+    });
   }
 
   int _batterProductionScore(BatterRecord batter) {
@@ -505,12 +600,14 @@ class _BoxscoreSummaryPanel extends StatelessWidget {
   final String teamId;
   final String teamName;
   final Color accent;
+  final String title;
   final List<_SummaryMetric> metrics;
 
   const _BoxscoreSummaryPanel({
     required this.teamId,
     required this.teamName,
     required this.accent,
+    required this.title,
     required this.metrics,
   });
 
@@ -549,7 +646,7 @@ class _BoxscoreSummaryPanel extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '오늘 기록 요약',
+                            title,
                             style: const TextStyle(
                               fontSize: 19,
                               fontWeight: FontWeight.w900,

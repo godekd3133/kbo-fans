@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.60+60`
-- Current release tag: `0.0.60`
+- Flutter app version: `0.0.61+61`
+- Current release tag: `0.0.61`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -43,7 +43,7 @@ Every version or release change must update these surfaces in the same work unit
 - When historical releases are rewritten, update this release map, GitHub releases, in-app patch notes, and changelog in the same pass.
 - GitHub releases should be normal releases, not prereleases, under the current no-preview policy.
 - Mark only the newest numeric release as `Latest`.
-- `APP_ENV=release` artifacts default to no-backend direct data mode and must not require the release API health gate. They should still carry the production `API_BASE_URL` for push / Live Activity token registration. Run `scripts/release-api-health-check.sh` only for explicit legacy/backend verification.
+- `APP_ENV=release` artifacts default to backend API data mode and must carry the production `API_BASE_URL` for screen data, push, and Live Activity token registration. Run `scripts/release-api-health-check.sh` before release-facing validation.
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app patch notes change.
 
 ## Numeric Release Map
@@ -108,6 +108,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.58`: news and records tabs are rebuilt around editorial brief/signals and league briefing flows; onboarding, more/settings, game detail, boxscore, lineup, and relay surfaces share bundled team logo imagery and richer player image rows; backend/home brief record items carry player image fallback data and off-day CTA routes to schedule; current app build `0.0.58+58`.
 - `0.0.59`: records tab premium data-room polish tightens headline leader, metric spotlight, and tabbed TOP3 leaderboard density; 2026 records overview bootstrap/snapshots are refreshed; onboarding CTA, Dev Console capture flag, notification inbox malformed-payload recovery, and push receipt test script are reinforced; current app build `0.0.59+59`.
 - `0.0.60`: Live Activity current-at-bat mapping is corrected for top/bottom half innings, relay-driven batter average / pitcher ERA / pitch count / B-S-O is included on the Lock Screen surface, release/direct builds with `API_BASE_URL` keep remote push registration enabled, relay base diamonds parse compact base-state strings, records tab stadium bitmap backdrop ships, and 2026 records overview bootstrap/snapshot data is refreshed again; current app build `0.0.60+60`.
+- `0.0.61`: backend API data mode becomes the default for local/dev/release/web/native builds and scripts/CI artifacts; direct KBO remains an explicit parser/debug path; game-detail live follow uses a single push relay CTA; live boxscore can show current batter/pitcher context before official rows exist; Live Activity batting average folds today's completed at-bats into the season AVG, app resume/widget Live Activity sync preserves current-at-bat stats, the Lock Screen/Dynamic Island matchup layout is tightened, Doosan 2025 and Samsung high-resolution logo assets ship, home standings taps open the standings overview, schedule/news/records surfaces receive density polish, and June 2026 schedule / records fixtures are refreshed; current app build `0.0.61+61`.
 
 ## GitHub Release Note Template
 

@@ -73,8 +73,7 @@ bool _shouldSkipPlatformServices() {
 bool _shouldUseRemotePushServices() {
   return shouldUseRemotePushServices(
     isWeb: kIsWeb,
-    isLocal: AppConfig.instance.isLocal,
-    hasApiBaseUrlOverride: AppConfig.instance.hasApiBaseUrlOverride,
+    useBackendApi: AppConfig.instance.shouldUseBackendApi,
   );
 }
 

@@ -1,5 +1,18 @@
 # 패치노트
 
+## 0.0.61+61 - Backend API Default
+
+- 모든 일반 빌드의 화면 데이터 라우팅을 backend API mode 기본값으로 맞췄습니다.
+- release/web/iOS/Android 실행 스크립트와 CI 산출물도 `USE_BACKEND_API=true` 기준으로 정리했습니다.
+- 경기 상세 live follow 영역을 `푸쉬 중계 받기` 단일 CTA 중심으로 단순화했습니다.
+- 공식 박스스코어가 아직 비어 있는 LIVE 경기에서도 현재 타자/투수 context를 보여주도록 보강했습니다.
+- 두산 베어스 2025 엠블럼과 삼성 reference 팀 로고를 고해상도 공식 기준 자산으로 교체했습니다.
+- 홈 마이팀 브리프 로고 clipping과 홈 순위 프리뷰 탭 이동을 보정했습니다.
+- Live Activity가 앱 재개와 위젯 동기화에서도 현재 타석 지표를 보존하도록 보강했습니다.
+- Live Activity 타자 타율은 시즌 타율에 오늘 경기 완료 타석을 더한 실시간 AVG로 표시합니다.
+- 일정, 뉴스, 기록 탭의 정보 밀도와 버튼/카드 배치를 더 안정적으로 다듬었습니다.
+- 2026년 6월 일정 snapshot과 기록 overview fixture를 최신 경기/기록 상태로 갱신했습니다.
+
 ## 0.0.60+60 - Live Activity Current At Bat
 
 - Live Activity에서 초/말에 따라 현재 타자와 투수가 뒤바뀌던 표시를 보정했습니다.

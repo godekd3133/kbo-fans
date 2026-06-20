@@ -2,13 +2,215 @@
 
 ---
 
+## 2026-06-20: 기록탭 no-clip 레퍼런스 픽셀 보정
+
+### 원인
+- 사장님이 제공한 기록탭 캡처에서 spotlight 카드 하단 문구와 리더보드 metric tab이 390px 폭에서 잘려 보일 수 있었다.
+- 기존 spotlight rail은 카드 폭/높이가 고정값이라 실제 390x844 캡처에서 텍스트 스케일과 데이터 길이에 따라 하단 값/격차 문구 여유가 부족했다.
+- 리더보드 tab row는 78px 고정 폭 5개를 한 줄에 넣어 내부 카드 폭보다 넓어졌고, 오른쪽 `ERA` tab이 `ER`처럼 잘렸다.
+
+### 완료
+- [x] `image_gen`으로 no-clip 기준 기록탭 레퍼런스를 다시 생성하고 `docs/design_refs/2026-06-20-records-tab-no-clip-reference.png`로 보존
+- [x] `RecordsScreen` spotlight rail을 `LayoutBuilder` 기반 3-column 폭 계산으로 바꾸고 높이를 116으로 늘려 AVG/HR/OPS 카드의 이름, 팀/gap, 값이 잘리지 않도록 보정
+- [x] spotlight value를 고정 높이 `FittedBox`로 감싸 긴 기록값도 카드 안에 축소 표시되도록 보정
+- [x] 리더보드 header에 새 레퍼런스와 맞는 `전체 보기` CTA를 추가
+- [x] 리더보드 metric tabs를 고정 78px에서 카드 내부 폭 / 5개 동적 폭으로 바꿔 `AVG/HR/OPS/wRC+/ERA`가 한 화면에 모두 들어오도록 수정
+- [x] 전용 QA 문서 `docs/design_refs/2026-06-20-records-tab-no-clip-design-qa.md` 작성
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/records/records_screen.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/records/records_screen.dart` (`No issues found`)
+- [x] capture blocker였던 dirty 관련 파일 포함 scoped analyze: `cd app && fvm flutter analyze --no-pub lib/features/records/records_screen.dart lib/data/repositories/kbo_direct_repository.dart lib/features/news/news_screen.dart lib/features/game_detail/game_detail_screen.dart` (`No issues found`)
+- [x] API-backed capture build: `cd app && fvm flutter build web --release --no-wasm-dry-run --pwa-strategy=none --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8001/api --dart-define=APP_ENV=local --dart-define=SHOW_DEV_CONSOLE=false`
+- [x] 390x844 Playwright API 캡처 저장: `output/playwright/kbo-records-premium/records-390x844-no-clip-data-final.png`
+- [x] Playwright console error 0개, backend records overview smoke: `최원준 오스틴 1.067`
+
+---
+
+## 2026-06-20: 경기 탭 일정 화면 레퍼런스 정렬
+
+### 원인
+- 사장님이 제공한 일정 탭 레퍼런스는 월 헤더, 세그먼트, 필터, 범례, 캘린더 outline/dot, 경기 카드가 한 화면에서 조밀하게 읽히는 구조였고, 기존 Flutter 일정 탭은 골격은 같지만 날짜 셀/카드/상태 배지 밀도가 더 기본 UI에 가까웠다.
+- 정상 일정 화면은 정보 밀도 우선이라는 기존 기준 때문에, 새 생성 이미지는 앱 정상 화면에 추가하지 않고 레퍼런스/비교 산출물로만 보존하는 쪽이 맞았다.
+
+### 완료
+- [x] `image_gen` 내장 경로로 일정 탭 참고용 UI 레퍼런스 생성 후 `docs/design_refs/2026-06-20-schedule-tab-reference.png`에 보존
+- [x] 일정 캘린더를 레퍼런스형 live-red outline, action-blue 마이팀 dot, muted 일반 경기 dot, selected red fill 구조로 조정
+- [x] 일정 헤더/세그먼트/필터/범례/선택일 제목의 타이포그래피와 간격을 더 조밀한 다크 스포츠 앱 톤으로 보정
+- [x] 일정 경기 카드의 시간/상태/구장/팀명/로고/스코어 밀도를 레퍼런스 카드에 가깝게 조정하고 카드 골든 기준 갱신
+
+### 검증
+- [x] app format: `cd app && fvm dart format lib/features/schedule/schedule_screen.dart lib/features/schedule/widgets/schedule_game_card.dart`
+- [x] targeted Flutter tests: `cd app && fvm flutter test test/features/schedule/schedule_screen_test.dart test/features/schedule/widgets/schedule_game_card_test.dart test/features/schedule/widgets/schedule_game_card_golden_test.dart` (`12 tests passed`)
+- [x] scoped analyze: `cd app && fvm flutter analyze --no-pub lib/features/schedule/schedule_screen.dart lib/features/schedule/widgets/schedule_game_card.dart test/features/schedule/schedule_screen_test.dart test/features/schedule/widgets/schedule_game_card_test.dart test/features/schedule/widgets/schedule_game_card_golden_test.dart` (`No issues found`)
+- [x] web QA build/capture: `USE_BACKEND_API=true`, local `API_BASE_URL=http://127.0.0.1:8000/api`, `SHOW_DEV_CONSOLE=false`, 390x844 Playwright capture 저장 (`output/playwright/schedule-tab-reference-2026-06-20/schedule-final-no-dev-console.png`)
+- [x] 생성 레퍼런스와 Flutter 캡처 비교 이미지 저장: `output/playwright/schedule-tab-reference-2026-06-20/schedule-reference-comparison.png`
+
+---
+
+## 2026-06-20: live 경기 박스스코어 실시간 context 표시
+
+### 원인
+- KBO `GetBoxScoreScroll`은 `20260620OBLG0`처럼 진행 중인 경기에서 `arrHitter`/`arrPitcher`를 비워 반환할 수 있었다.
+- 기존 앱은 `officialAvailable=false` 또는 선택 팀의 `hasDisplayableRecords=false`면 박스스코어 탭을 `공식 박스스코어 업데이트 전입니다`로 막았다.
+- 선발/현재 투수 이름만 있는 placeholder 보호는 필요하지만, KBO main list가 제공하는 현재 타자/투수/선발투수 context까지 숨기면 live 경기 중 박스스코어 탭이 비어 보였다.
+
+### 완료
+- [x] backend boxscore crawler가 official boxscore rows가 비어 있고 main list 상태가 `LIVE`이면 `officialAvailable=false`, `liveContextAvailable=true`, `source=live_context` payload를 반환하도록 보강
+- [x] live context payload는 완료 박스스코어 snapshot으로 저장하지 않도록 `BoxscoreService` 저장 조건 보정
+- [x] app `GameBoxscoreData`, `BatterRecord`, `PitcherRecord`에 live context 신호를 추가하고 backend API/direct KBO parser에 연결
+- [x] `BoxscoreTab`이 live context를 `실시간 기록 추적` UI로 렌더하고, 누적 기록 셀은 fake 0값 대신 `-`로 표시하도록 보정
+- [x] 선발투수와 현재투수가 같은 경우 중복 제거 과정에서 `LIVE` decision/context label이 사라지지 않도록 backend/direct 병합 로직 보정
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 live context boxscore 계약 반영
+
+### 검증
+- [x] KBO 실측: `20260620OBLG0` LIVE 상태에서 `GetBoxScoreScroll`은 hitter/pitcher 배열이 비었고, 보강 후 backend crawler는 `liveContextAvailable=True`, `source=live_context` 반환
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_boxscore_crawler.py backend/tests/test_boxscore_service.py` (`9 passed`)
+- [x] `cd app && fvm flutter test --no-pub test/data/models/boxscore_test.dart test/features/game_detail/boxscore_tab_test.dart --reporter expanded` (`8 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/data/models/boxscore.dart lib/data/repositories/api_game_repository.dart lib/data/repositories/kbo_direct_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart test/data/models/boxscore_test.dart test/features/game_detail/boxscore_tab_test.dart` (`No issues found`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/crawlers/boxscore.py backend/src/kbo_fans_backend/services/boxscore.py backend/tests/test_boxscore_crawler.py backend/tests/test_boxscore_service.py` (`All checks passed`)
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/crawlers/boxscore.py backend/src/kbo_fans_backend/services/boxscore.py`
+
+---
+
+## 2026-06-20: 0.0.61 backend API 기본 모드 / Live Activity 보강 릴리즈
+
+### 완료
+- [x] 최신 tester-facing build를 `0.0.61+61`로 승격
+- [x] 모든 일반 local/dev/release/web/native 빌드의 화면 데이터 라우팅을 backend API 기본값으로 고정
+- [x] release/web/iOS/Android 실행 스크립트와 GitHub Actions 앱 산출물을 `USE_BACKEND_API=true` 기준으로 정리
+- [x] 경기 상세 live follow 영역을 `푸쉬 중계 받기` / `푸쉬 중계 끄기` 단일 CTA로 단순화
+- [x] 공식 박스스코어가 비어 있는 LIVE 경기에서 backend main-list 현재 타자/투수 context를 표시하고, live context payload는 snapshot 저장에서 제외
+- [x] Live Activity 타자 타율을 시즌 타수/안타에 오늘 경기 완료 타석의 안타/타수를 더한 실시간 AVG로 계산
+- [x] 앱 resume/widget Live Activity sync가 repository currentAtBat을 보강해 타율, ERA, 투구수, B-S-O, 주자상황을 native payload에 포함
+- [x] iOS Live Activity Lock Screen / Dynamic Island에서 타자·투수를 중앙 matchup 라인에 모아 초/말 공격·수비 방향과 위치가 일치하도록 조정
+- [x] 두산 베어스 2025 엠블럼과 삼성 reference 팀 로고를 공식 기준 고해상도 자산으로 교체
+- [x] 홈 마이팀 브리프 로고 clipping과 홈 순위 프리뷰 탭 이동을 보정
+- [x] 일정/뉴스/기록 탭의 카드, 필터, 전체 보기 버튼 밀도를 보정
+- [x] 2026년 6월 schedule snapshot과 records overview fixture를 최신 경기/기록 상태로 갱신
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.0.61` 기준으로 동기화
+
+### 검증
+- [x] 0.0.60 backend deploy workflow 성공 확인: GitHub Actions `Push Demo Deploy` run `27865563556` success, image tag `0.0.60`, `readyForIphoneOnlyDemo=true`, scheduler age 10s, registry devices 10
+- [x] 0.0.60 topic 재등록 성공 확인: `registeredDevices=10`, `eligibleDevices=10`, `subscriptionsAttempted=80`, `unsubscriptionsAttempted=0`
+- [x] 운영 release API health gate 통과: `ALLOW_INSECURE_RELEASE_API=true ... release-api-health-check.sh http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` (`/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200)
+- [x] `0.0.61` 전체 app/backend 검증: `cd app && fvm flutter analyze --no-pub` (`No issues found`), `cd app && fvm flutter test --no-pub` (`165 tests passed`), `backend/.venv/bin/pytest -q` (`164 passed`), `python3 -m compileall backend/src`
+- [ ] `0.0.61 (61)` TestFlight archive/upload 성공 확인
+- [ ] `0.0.61` backend deploy workflow 및 topic 재등록 성공 확인
+
+---
+
+## 2026-06-20: 경기 상세 푸쉬 중계 CTA 단순화
+
+### 원인
+- 라이브 경기 상세의 follow CTA가 `이 경기를 따라가면` 헤더, 따라가기 화면/바로 알림/홈 위젯 타일, `중계만 보기` 보조 버튼, 추가 안내 박스를 함께 보여줘 실제 사용자가 누를 액션이 흐려졌다.
+
+### 완료
+- [x] 라이브 경기 상세 follow 영역을 `푸쉬 중계 받기` / `푸쉬 중계 끄기` 단일 버튼으로 단순화
+- [x] 설명 타일, 상태 배지, `중계만 보기` 보조 버튼, 보조 안내 박스를 제거
+- [x] follow 시작/종료/실패 snackbar 문구를 `푸쉬 중계` 기준으로 맞춤
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 경기 상세 follow CTA 기준 반영
+
+### 검증
+- [x] RED/GREEN widget test: `cd app && fvm flutter test test/features/game_detail/game_detail_navigation_test.dart --plain-name '라이브 경기 상세 follow CTA는 푸쉬 중계 버튼만 노출한다'`
+- [x] app format: `cd app && fvm dart format lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart`
+- [x] 경기 상세 navigation widget tests: `cd app && fvm flutter test test/features/game_detail/game_detail_navigation_test.dart` (`4 tests passed`)
+- [x] scoped analyze: `cd app && fvm flutter analyze --no-pub lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart` (`No issues found`)
+- [ ] 실기기/웹 화면 육안 확인은 최신 빌드에서 필요
+
+---
+
+## 2026-06-20: 두산 베어스 2025 엠블럼 자산 교체
+
+### 원인
+- 온보딩 전용 `OB.png`가 2010~2024 구형 원형 BEARS 로고를 계속 사용하고 있었다.
+- 앱 공용/iOS native 두산 번들 로고도 2025 D 심볼 계열이라, 팀 로고 surface를 공식 2025 primary emblem 기준으로 맞출 필요가 있었다.
+- 공식 두산베어스 브랜드 페이지의 현재 탭에서 2025 엠블럼/심볼마크 원본을 확인했다.
+
+### 완료
+- [x] `app/assets/visuals/reference_team_logos/OB.png`를 2025 primary emblem 투명 PNG로 교체
+- [x] `app/assets/visuals/onboarding_reference_team_logos/OB.png`를 2025 primary emblem dark-background 카드로 교체
+- [x] `app/ios/Runner/Assets.xcassets/TeamLogo_OB.imageset/logo.png`를 2025 primary emblem 투명 256px PNG로 교체
+- [x] `CHANGELOG.md`에 사용자 체감 로고 보정 항목 추가
+
+### 검증
+- [x] 공식 출처 확인: `https://www.doosanbears.com/bears/brand` 현재 탭의 `img_emblem_2025_*`, `img_symbol_2025_*`
+- [x] asset size 확인: reference `236x235 RGBA`, onboarding `112x112 RGB`, iOS `256x256 RGBA`
+- [x] team logo URL 단위 테스트: `cd app && fvm flutter test --no-pub test/core/constants/team_data_test.dart` (`All tests passed`)
+- [ ] Flutter root widget smoke: `cd app && fvm flutter test test/widget_test.dart`는 `app/lib/features/news/news_screen.dart`의 기존 컴파일 오류(`_NewsMixData` 누락, `_NewsCardVisual(size:)` 파라미터 불일치)로 보류
+
+---
+
+## 2026-06-20: 뉴스탭 AI티 제거 / reference row 재시안 적용
+
+### 원인
+- 뉴스탭 카드 visual fallback이 `삼성 라이온즈` 같은 팀명을 단어 첫 글자 조합으로 줄여 `삼라`처럼 보이는 임의 약칭을 만들었다.
+- 본문이 좌측 컬러바와 우측 사각 visual mark를 가진 큰 카드 반복이라 실제 스포츠 뉴스 앱보다 생성형 템플릿처럼 느껴졌다.
+
+### 완료
+- [x] `image_gen`으로 뉴스탭 390x844 재시안을 생성하고 `docs/design_refs/2026-06-20-news-tab-reference-redraft.png`로 보존
+- [x] 뉴스탭에서 `뉴스 믹스` rail과 2x2 signal grid를 제거하고, editorial lead + segmented filter + 기사형 row 흐름으로 재구성
+- [x] `_NewsCardData`에 `teamId`를 연결해 `HomeKboBriefItem.teamIds`, `HomeQuickItem.teamId`, standings row, my-team brief가 공통 `KboTeamLogoImage` reference asset을 우선 사용하도록 수정
+- [x] `삼라`를 만들던 `_visualLetters` fallback 경로 제거
+- [x] `docs/APP_SPEC.md`, `docs/design_refs/2026-06-19-news-tab-design-qa.md`, `CHANGELOG.md`에 새 뉴스탭 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/news/news_screen.dart test/features/news/news_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/news/news_screen.dart test/features/news/news_screen_test.dart lib/data/repositories/kbo_direct_repository.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart -r expanded` (`3 passed`)
+- [x] `cd app && fvm flutter build web --release --no-wasm-dry-run --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://127.0.0.1:8014/api --dart-define=SHOW_DEV_CONSOLE=false --output /tmp/kbo-news-redraft-web` (`✓ Built`; 기존 Cupertino icon font 경고는 남음)
+- [x] 390x844 Playwright 캡처에서 `삼라` 미노출과 row형 뉴스 리스트 확인: `output/playwright/news-redraft/news-390x844.png`
+- [x] 최종 Playwright console 확인: errors 0, warnings 0
+
+---
+
+## 2026-06-20: 홈 마이팀 브리프 팀 로고 clipping / 품질 보정
+
+### 원인
+- 홈 `_MyTeamBriefCard`의 대표 팀 로고가 66px 레이아웃 박스 안에서 `Transform.scale(1.24)`로만 확대되어, `_sectionCard`의 clip 영역과 하단 텍스트 배치에 비해 실제 paint 크기가 더 컸다.
+- 삼성 reference team logo asset은 64x59 PNG라 홈 대표 로고 크기까지 확대하면 선명도가 떨어졌다.
+
+### 완료
+- [x] `_BriefTeamMark`에서 확대 transform을 제거하고 실제 로고 레이아웃 크기를 76px로 키워, 부모 카드가 로고 크기를 정확히 알고 배치하도록 수정
+- [x] 삼성 `reference_team_logos/SS.png`를 공식 Samsung Lions 원본 crop 기반 512x398 RGBA PNG로 교체
+- [x] 네트워크 로고 fallback에도 `FilterQuality.high`를 적용해 downscale 품질을 맞춤
+
+### 검증
+- [x] logo asset size 확인: `app/assets/visuals/reference_team_logos/SS.png` 512x398 RGBA
+- [x] app format: `cd app && fvm dart format lib/core/widgets/kbo_team_logo_image.dart lib/features/home/home_screen.dart`
+- [x] scoped analyze: `cd app && fvm flutter analyze --no-pub lib/core/widgets/kbo_team_logo_image.dart lib/features/home/home_screen.dart` (`No issues found`)
+- [ ] 실기기 홈 화면 최종 육안 확인은 최신 빌드 설치 후 필요
+
+---
+
+## 2026-06-20: Live Activity 잠금화면 clipping / 현재 타석 지표 보정
+
+### 원인
+- backend Live Activity scheduler는 relay currentAtBat의 `batterAverage` / `pitcherEra`를 보강하지만, 앱 direct/resume/widget sync가 시작하는 ActivityKit payload는 currentAtBat 조회 실패 또는 parser 누락 시 빈 보조 지표를 보낼 수 있었다.
+- Dart direct relay parser가 playerBox 시즌 표의 `타율` / `ERA`를 읽지 않고, currentAtBat 이미지 보강 재생성 시 이미 있는 평균/ERA 값을 복사하지 않았다.
+- 잠금화면 카드의 베이스 다이아몬드가 frame보다 큰 고정 base/offset으로 그려져 상단이 clipped 될 수 있었다.
+
+### 완료
+- [x] Dart direct relay parser가 `supervision2`, 초/말 playerBox, 시즌 `타율` / `ERA`를 currentAtBat에 보존하도록 보정
+- [x] 앱 direct/resume/widget Live Activity sync가 repository currentAtBat을 짧은 timeout으로 보강해 `batterAverage`, `pitcherEra`, `pitchCount`, B/S/O, 상황 텍스트를 payload에 포함
+- [x] iOS Lock Screen Live Activity 베이스 다이아몬드 크기와 offset을 줄이고 중앙 그룹을 아래로 내려 상단 clipping 여지를 낮춤
+
+### 검증
+- [x] app format: `cd app && fvm dart format lib/data/repositories/kbo_direct_repository.dart lib/services/live_activity_service.dart test/data/kbo_direct_repository_test.dart test/services/live_activity_service_test.dart`
+- [x] targeted Flutter tests: `cd app && fvm flutter test test/services/live_activity_service_test.dart test/data/kbo_direct_repository_test.dart` (`14 tests passed`)
+- [x] scoped analyze: `cd app && fvm flutter analyze --no-pub lib/services/live_activity_service.dart lib/data/repositories/kbo_direct_repository.dart test/services/live_activity_service_test.dart test/data/kbo_direct_repository_test.dart` (`No issues found`)
+- [x] iOS simulator debug build: `cd app && fvm flutter build ios --simulator --debug --no-pub` (`Built build/ios/iphonesimulator/Runner.app`)
+- [ ] iPhone Lock Screen 실기기 갱신 확인은 최신 빌드 설치 후 필요
+
+---
+
 ## 2026-06-20: 0.0.60 Live Activity 현재 타석/기록탭 stadium 릴리즈
 
 ### 완료
 - [x] 최신 tester-facing build를 `0.0.60+60`으로 승격
 - [x] iOS Live Activity 현재 타자/투수 표시를 KBO 초/말 기준으로 보정
 - [x] relay 기반 `batterAverage`, `pitcherEra`, `pitchCount`, B/S/O를 Live Activity content-state와 Lock Screen 보조 라인에 연결
-- [x] `API_BASE_URL`이 있는 direct/local 빌드에서도 remote push 초기화, 자동 권한 요청, `/push/register` 토큰 등록이 스킵되지 않도록 보정
+- [x] `API_BASE_URL`이 있는 direct/local release 빌드에서도 remote push 초기화, 자동 권한 요청, `/push/register` 토큰 등록이 스킵되지 않도록 보정
 - [x] relay base-state가 `주자1,2루` 또는 KBO `ground_base*` 코드로 들어와도 베이스 다이아몬드를 정확히 채우도록 보정
 - [x] 기록탭 상단에 stadium bitmap backdrop asset을 추가하고 release asset manifest에 포함
 - [x] 2026 records overview bootstrap/snapshot을 최신 crawler 결과로 재갱신
@@ -25,8 +227,8 @@
 - [x] relay tab scoped analyze: `cd app && fvm flutter analyze lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart` (`No issues found`)
 - [x] `0.0.60 (60)` archive/IPA metadata, patch notes, Firebase plist, push entitlements, visual asset count 확인: Runner/KboFansWidget `0.0.60/60`, Firebase `kbo-fans-47189`, Runner IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, visual assets casual 25/team logo 10/onboarding logo 10/status 1, records stadium backdrop 포함
 - [x] `0.0.60 (60)` TestFlight upload 성공 확인: App Store Connect upload complete, `Uploaded package is processing`, `Upload succeeded`, `EXPORT SUCCEEDED`; `objective_c.framework` dSYM warning만 남음
-- [ ] `0.0.60` backend deploy workflow 성공 및 운영 release API health 확인
-- [ ] topic 재등록 성공 확인
+- [x] `0.0.60` backend deploy workflow 성공 및 운영 release API health 확인: GitHub Actions `Push Demo Deploy` run `27865563556` success, image tag `0.0.60`, `readyForIphoneOnlyDemo=true`, scheduler age 10s, release API health gate 통과
+- [x] topic 재등록 성공 확인: `registeredDevices=10`, `eligibleDevices=10`, `subscriptionsAttempted=80`, `unsubscriptionsAttempted=0`
 
 ---
 
@@ -4636,3 +4838,13 @@ kbo_fans/
 - 반복 감사 도구 `scripts/audit_team_logo_sources.py`를 추가해 공식 후보, KBO CDN fallback, Pinterest/검색 reference 후보, ZIP 내부 이미지 해상도, 현재 iOS 번들 크기를 한 번에 리포트하도록 함.
 - 검증: `python3 -m py_compile scripts/audit_team_logo_sources.py`
 - 검증: `python3 scripts/audit_team_logo_sources.py --output /tmp/kbo-team-logo-source-audit-run`
+
+## 2026-06-20 iOS Live Activity 타석 정보/레이아웃 보정
+
+- 잠금화면 Live Activity의 팀/스코어 영역 폭을 줄이고 좌우 팀명을 중앙 쪽으로 정렬해 긴 팀/선수 텍스트가 가장자리에서 잘리는 위험을 낮춤.
+- 이닝 초/말을 기준으로 매치업 행 순서를 바꿔 `1회말`처럼 홈팀 공격 상황에서는 원정팀 쪽에 투수, 홈팀 쪽에 타자가 놓이도록 보정함.
+- Live Activity payload가 `CurrentAtBat`의 타자/투수 이름, 타율, ERA, 투구수, B/S/O, 주자상황을 native channel로 넘기도록 연결하고, foreground/home/widget sync 호출부가 repository를 전달하도록 수정함.
+- 다이아몬드 점유 계산은 `주자1,2루`, `1사 1, 2루`, `만루`, `주자없음` 형태를 안정적으로 해석하도록 정규화함.
+- 검증: `cd app && fvm flutter test test/services/live_activity_service_test.dart test/services/widget_sync_service_test.dart`
+- 검증: `cd app && fvm flutter analyze lib/services/live_activity_service.dart lib/services/widget_sync_service.dart lib/features/home/home_screen.dart lib/features/game_detail/game_detail_screen.dart test/services/live_activity_service_test.dart`
+- 검증: XcodeBuildMCP `build_sim` Runner Debug / iPhone 17 simulator / `CODE_SIGNING_ALLOWED=NO` 통과

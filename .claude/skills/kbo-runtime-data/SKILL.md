@@ -13,8 +13,8 @@ description: Use when changing KBO data-loading paths, backend-backed API usage,
 
 ## Rules
 - Backend is an active runtime component for API-backed data, snapshot generation, push notifications, and Live Activity / Dynamic Island sync.
-- Flutter provider routing is explicit. Use `USE_BACKEND_API=true` when validating backend-backed screen data. `API_BASE_URL` alone configures endpoints, especially push / Live Activity token registration, but must not silently switch provider routing.
-- Direct KBO crawling remains a supported local/offline/resilience path and parser parity reference, not a hidden fallback after API failure.
+- Flutter provider routing is backend API by default for every build. Keep `USE_BACKEND_API=true` explicit in scripts/CI for predictability; use `USE_BACKEND_API=false` only for deliberate direct-KBO parser/debug sessions.
+- Direct KBO crawling remains a parser parity/debug path, not a normal build mode and not a hidden fallback after API failure.
 - When a task touches live data delivery, snapshots, release routing, API contracts, push, or Live Activity, inspect both `app/` and `backend/` before deciding scope.
 - Slow detail-only payloads such as multi-highlight lookup should be lazy-loaded on a separate endpoint.
 - Historical standings, records, and completed-game data should prefer snapshots when available.

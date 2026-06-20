@@ -72,6 +72,60 @@ void main() {
     },
   );
 
+  test(
+    'direct relay current at-bat parser applies today results to batting average and preserves ERA',
+    () {
+      final atBat = KboDirectRepository().parseCurrentAtBatHtmlForTesting('''
+      <div class="playerBox awayBox">
+        <div class="batter">
+          <div class="player-info-wrap">
+            <strong class="who">삼성<br><span class="no">No.61 디아즈</span><span>(좌타)</span></strong>
+            <p class="today"><span>땅볼|4구|2루타|</span></p>
+          </div>
+          <table>
+            <thead><tr><th>2026</th><th>타수</th><th>안타</th><th>타율</th><th>타점</th></tr></thead>
+            <tbody><tr><th>시즌</th><td>100</td><td>24</td><td>0.240</td><td>31</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="playerBox homeBox">
+        <div class="pitcher">
+          <div class="player-info-wrap">
+            <strong class="who">한화<br><span class="no">No.68 박준영</span><span>(우투)</span></strong>
+            <p class="today"><span>38투구 | 13B | 25S</span></p>
+          </div>
+          <table>
+            <thead><tr><th>2026</th><th>ERA</th><th>경기</th></tr></thead>
+            <tbody><tr><th>시즌</th><td>4.13</td><td>7</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="present">
+        <span class="base">
+          <strong>2회 초</strong>
+          <img id="imgThisGameBase" src="//example.com/ground_base2.png" alt="주자">
+          <strong>1-2 2out</strong>
+        </span>
+      </p>
+      <div class="playerName">
+        <ul>
+          <li class="pitcher">박준영</li>
+          <li class="supervision2">디아즈</li>
+        </ul>
+      </div>
+    ''');
+
+      expect(atBat, isNotNull);
+      expect(atBat!.batterName, '디아즈');
+      expect(atBat.batterRecent, '땅볼|4구|2루타|');
+      expect(atBat.batterAverage, '0.245');
+      expect(atBat.pitcherName, '박준영');
+      expect(atBat.pitcherEra, '4.13');
+      expect(atBat.pitchCount, 38);
+      expect(atBat.baseState, '주자2루');
+    },
+  );
+
   test('direct relay classification marks passed ball events', () {
     final repository = KboDirectRepository();
 

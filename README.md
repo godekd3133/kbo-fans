@@ -107,7 +107,7 @@ flutter run -d android
 - `web/` 플랫폼은 추가되어 있으며 기본 웹 실행은 direct preview/data mode의 `./scripts/codex-run-web.sh` 로 실행합니다.
 - Chrome 디버그 세션이 필요하면 `./scripts/codex-run-web-dev.sh` 또는 `flutter run -d chrome` 을 사용합니다.
 - `macos/` 프로젝트는 아직 생성되지 않았습니다.
-- 데이터 정확성 검증은 과제의 runtime mode에 맞춰 수행합니다. backend-backed 기능은 FastAPI API/service/snapshot 경로를 확인하고, direct KBO mode는 local/offline/web preview와 resilience 검증에 사용합니다.
+- 데이터 정확성 검증은 기본적으로 FastAPI API/service/snapshot 경로에서 수행합니다. direct KBO mode는 `USE_BACKEND_API=false`를 명시한 parser/debug 세션에서만 사용합니다.
 - 예매 오픈 알림은 앱 로컬 예약 알림으로 동작합니다. 현재 예매처/오픈 시간은 홈팀 기본 정책 기준 추정값입니다.
 - 위젯 갱신은 앱 foreground에서는 라이브 8초 / 예정 5분 기준으로 반영되며, 백그라운드 주기는 OS 정책에 따라 제한됩니다.
 - 앱이 꺼진 뒤에도 일반 푸시와 iOS Live Activity를 갱신하려면 운영 백엔드가 KBO 상태를 polling하고 FCM/APNs로 발송해야 합니다. Firebase는 일반 푸시 전달 채널이고, Dynamic Island 갱신은 ActivityKit 전용 APNs liveactivity push token을 사용합니다. 같은 scheduler가 점수판 diff 기반 득점/역전/타석/종료와 relay diff 기반 홈런 FCM topic push도 발행합니다.
@@ -188,20 +188,19 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 
 참고:
 
-- `./scripts/codex-run-web.sh` 는 backend health gate 없이 direct data mode로 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
-- `./scripts/codex-run-web-static.sh` 도 backend health gate 없이 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 정적 프리뷰 경로입니다.
-- `./scripts/codex-run-web-release.sh` 는 `./scripts/codex-run-web.sh` 와 같은 direct 웹 release 실행 래퍼입니다.
+- `./scripts/codex-run-web.sh` 는 backend API mode로 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄웁니다.
+- `./scripts/codex-run-web-static.sh` 도 backend API mode로 `flutter build web --release` 후 `http://localhost:7357` 에 정적 서버를 띄우는 정적 프리뷰 경로입니다.
+- `./scripts/codex-run-web-release.sh` 는 운영 `API_BASE_URL`을 포함한 backend API release 웹 실행 래퍼입니다.
 - `./scripts/codex-run-web-dev.sh` 는 Chrome 디버그 세션을 직접 띄우는 개발용 경로입니다.
-- `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 `--profile --dart-define=APP_ENV=local` 로 direct data mode를 실행할 수 있습니다. local backend는 필요하지 않습니다.
+- `./scripts/codex-run-ios.sh` 는 연결된 iPhone 실기기에서는 LAN 접근 가능한 local backend API를 찾아 `USE_BACKEND_API=true`와 `API_BASE_URL`을 주입합니다.
 - `./scripts/codex-run-ios-debug.sh` 는 연결된 iPhone 실기기에서 `--debug` 로 실행합니다. 디버거 연결 상태에서 개발할 때만 쓰는 경로입니다.
 - `./scripts/codex-run-ios-profile.sh` 는 위 동작을 명시적으로 호출하는 iPhone local profile 테스트용 래퍼입니다.
-- `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 `--release --dart-define=APP_ENV=local --dart-define=PREFER_DIRECT_SCRAPE=true` 로 direct 경로를 설치합니다.
-- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 direct release data mode를 실행하되, push / Live Activity token 등록을 위해 `RELEASE_API_BASE_URL` 또는 기본 `https://api.kbofans.com/api`를 `API_BASE_URL`로 함께 주입합니다.
-- `./scripts/codex-run-android-release.sh` 도 release push 등록을 위해 같은 운영 `API_BASE_URL`을 주입합니다. `API_BASE_URL` 단독 지정은 `USE_BACKEND_API=true`가 아니므로 provider routing을 API mode로 바꾸지 않습니다.
-- `./scripts/codex-run.sh android-release`, `./scripts/codex-run.sh web`, `./scripts/codex-run.sh web-release` 는 direct KBO + snapshot 경로로 실행합니다.
-- 웹 `APP_ENV=local` / `APP_ENV=release` 빌드는 backend API를 기본값으로 사용하지 않습니다.
-- 모바일 local native 모드도 direct 경로로 실행할 수 있습니다. backend-backed 검증이 필요할 때는 `USE_BACKEND_API=true` 와 LAN 접근 가능한 `API_BASE_URL` 을 함께 지정합니다.
-- KBO direct scrape는 일반 fallback이 아니라 기본 primary source입니다.
+- `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 release mode로 local backend API를 사용합니다.
+- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 운영 backend API를 사용하고, `RELEASE_API_BASE_URL` 또는 기본 `https://api.kbofans.com/api`를 `API_BASE_URL`로 주입합니다.
+- `./scripts/codex-run-android-release.sh` 도 운영 backend API와 같은 `API_BASE_URL`을 사용합니다.
+- `./scripts/codex-run.sh android-release`, `./scripts/codex-run.sh web`, `./scripts/codex-run.sh web-release` 는 backend API 경로로 실행합니다.
+- 웹 `APP_ENV=local` / `APP_ENV=release` 빌드는 backend API를 기본값으로 사용합니다.
+- KBO direct scrape는 일반 fallback이나 기본 primary source가 아니라 `USE_BACKEND_API=false`를 명시한 parser/debug 전용 경로입니다.
 - `./scripts/codex-run-android.sh` 는 Android Studio JBR(Java 17), Android SDK, AVD 부팅, `APP_ENV=local` 기준까지 포함한 Codex용 안드로이드 실행 경로입니다.
 - 안드로이드 실행 환경 메모는 `docs/CODEX_ANDROID_ENV.md` 를 참고합니다.
 
@@ -218,10 +217,9 @@ GitHub Actions 에서 앱 빌드본을 바로 뽑을 수 있도록 수동 실행
 
 Release artifact data modes:
 
-- Android / iOS / Web artifact는 direct KBO + snapshot mode로 빌드할 수 있으며, 이 경로는 artifact 생성과 local/web preview 안정성을 위해 유지합니다.
-- `APP_ENV=release` artifact는 push / Live Activity token 등록을 위해 `release_api_base_url` workflow input, `RELEASE_API_BASE_URL` variable/secret, 또는 기본 `https://api.kbofans.com/api`를 `API_BASE_URL`로 함께 주입합니다. 이 값만으로 화면 provider의 backend data mode가 켜지지는 않습니다.
-- backend-backed 화면 데이터를 검증할 때는 `USE_BACKEND_API=true` 와 대상 `API_BASE_URL`을 함께 주입하고, backend health/readiness를 별도 확인합니다.
-- release artifact 생성 자체는 backend API health gate와 분리할 수 있지만, push / Live Activity 운영 검증은 backend readiness를 통과해야 합니다.
+- Android / iOS / Web artifact는 backend API mode로 빌드합니다.
+- `APP_ENV=release` artifact는 화면 provider와 push / Live Activity token 등록 모두를 위해 `release_api_base_url` workflow input, `RELEASE_API_BASE_URL` variable/secret, 또는 기본 `https://api.kbofans.com/api`를 `API_BASE_URL`로 함께 주입합니다.
+- backend API 화면 데이터와 push / Live Activity 운영 검증은 backend health/readiness를 함께 확인합니다.
 
 생성 아티팩트:
 
@@ -238,7 +236,7 @@ Release artifact data modes:
 
 - Android 는 서명 시크릿이 없으면 현재 Gradle 설정대로 debug signing fallback 으로 release 빌드를 만듭니다.
 - iOS 는 기본으로 simulator용 unsigned 앱만 만들고, 실제 IPA 는 인증서/프로비저닝 시크릿이 있어야 합니다.
-- `local` / `dev` / `release` 환경 빌드는 CI에서 direct data artifact로 컴파일할 수 있습니다. backend API는 artifact 생성 blocker와 분리하되, backend-backed behavior나 push / Live Activity 운영 검증에서는 별도 readiness를 확인합니다.
+- `local` / `dev` / `release` 환경 빌드는 CI에서 backend API artifact로 컴파일합니다. backend health/readiness는 화면 데이터, push, Live Activity 운영 검증의 완료 조건입니다.
 
 권장 시크릿:
 

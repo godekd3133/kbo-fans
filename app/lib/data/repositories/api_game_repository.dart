@@ -135,6 +135,7 @@ class ApiGameRepository implements GameRepository {
     return GameBoxscoreData(
       gameId: gameId,
       officialAvailable: data['officialAvailable'] as bool? ?? true,
+      liveContextAvailable: data['liveContextAvailable'] as bool? ?? false,
       away: _parseTeamBoxscore(
         data['away'] as Map<String, dynamic>? ?? const {},
       ),
@@ -370,6 +371,8 @@ class ApiGameRepository implements GameRepository {
       runs: json['runs'] as int? ?? 0,
       hits: json['hits'] as int? ?? 0,
       rbi: json['rbi'] as int? ?? 0,
+      liveContext: json['liveContext'] as bool? ?? false,
+      contextLabel: json['contextLabel'] as String?,
     );
   }
 
@@ -382,6 +385,8 @@ class ApiGameRepository implements GameRepository {
       walks: json['walks'] as int? ?? 0,
       earnedRuns: json['earnedRuns'] as int? ?? 0,
       decision: json['decision'] as String?,
+      liveContext: json['liveContext'] as bool? ?? false,
+      contextLabel: json['contextLabel'] as String?,
     );
   }
 

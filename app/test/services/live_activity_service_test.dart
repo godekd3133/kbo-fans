@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kbo_fans/data/models/game.dart';
+import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/services/live_activity_service.dart';
 
 void main() {
@@ -82,6 +83,48 @@ void main() {
 
     expect(selected, isNull);
   });
+
+  test(
+    'Live Activity payload includes current at-bat stats and base state',
+    () {
+      final payload = buildLiveActivityScorePayloadForTesting(
+        game: _game(
+          gameId: '20260620SSHH0',
+          awayTeamId: 'SS',
+          homeTeamId: 'HH',
+          status: GameStatus.live,
+          inning: '1회초',
+        ),
+        currentAtBat: const CurrentAtBat(
+          batterName: '페라자',
+          batterNumber: 30,
+          batterHand: '좌타',
+          batterAverage: '0.312',
+          pitcherName: '장찬희',
+          pitcherNumber: 19,
+          pitcherHand: '우투',
+          pitcherEra: '3.21',
+          pitchCount: 14,
+          inningText: '1회말',
+          baseState: '주자1,2루',
+          balls: 1,
+          strikes: 2,
+          outs: 1,
+        ),
+      );
+
+      expect(payload['inning'], '1회말');
+      expect(payload['batter'], '페라자');
+      expect(payload['batterAverage'], '0.312');
+      expect(payload['pitcher'], '장찬희');
+      expect(payload['pitcherEra'], '3.21');
+      expect(payload['pitchCount'], 14);
+      expect(payload['balls'], 1);
+      expect(payload['strikes'], 2);
+      expect(payload['outs'], 1);
+      expect(payload['situationText'], '1사 1,2루');
+    },
+  );
 }
 
 Game _game({
@@ -89,11 +132,12 @@ Game _game({
   required String awayTeamId,
   required String homeTeamId,
   required GameStatus status,
+  String? inning,
 }) {
   return Game(
     gameId: gameId,
     status: status,
-    inning: status == GameStatus.live ? '1회초' : '',
+    inning: inning ?? (status == GameStatus.live ? '1회초' : ''),
     away: TeamScore(
       teamId: awayTeamId,
       teamName: awayTeamId,

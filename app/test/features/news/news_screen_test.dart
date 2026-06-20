@@ -53,13 +53,13 @@ void main() {
 
     expect(find.text('뉴스'), findsOneWidget);
     expect(find.text('지금 KBO'), findsOneWidget);
-    expect(find.text('오늘 읽을 순서'), findsOneWidget);
-    expect(find.text('뉴스 믹스'), findsOneWidget);
-    expect(find.text('핵심 브리프'), findsOneWidget);
+    expect(find.text('오늘의 3분 브리핑'), findsOneWidget);
+    expect(find.text('최신 뉴스'), findsOneWidget);
     expect(find.text('LG 트윈스 1위 유지'), findsWidgets);
     expect(find.text('김도영 13개'), findsWidgets);
     expect(find.text('순위 보기'), findsWidgets);
     expect(find.text('기록 보기'), findsWidgets);
+    expect(find.text('삼라'), findsNothing);
   });
 
   testWidgets('derives diverse news from my team and standings preview', (
@@ -138,7 +138,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('선수'), findsWidgets);
-    expect(find.text('일정'), findsWidgets);
     expect(find.text('마이팀'), findsWidgets);
     expect(find.text('LG 트윈스 승 · 롯데전 5:2'), findsOneWidget);
     expect(find.text('KIA 타이거즈 1위'), findsWidgets);

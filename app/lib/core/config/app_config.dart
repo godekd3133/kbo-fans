@@ -42,7 +42,7 @@ class AppConfig {
     );
     const useBackendApiBool = bool.fromEnvironment(
       'USE_BACKEND_API',
-      defaultValue: false,
+      defaultValue: true,
     );
     const showDevConsoleFlag = String.fromEnvironment(
       'SHOW_DEV_CONSOLE',
@@ -55,7 +55,9 @@ class AppConfig {
     final preferDirectScrape = preferDirectScrapeFlag.isNotEmpty
         ? preferDirectScrapeFlag == 'true'
         : false;
-    final useBackendApi = useBackendApiBool || useBackendApiFlag == 'true';
+    final useBackendApi = useBackendApiFlag.isEmpty
+        ? true
+        : useBackendApiBool || useBackendApiFlag == 'true';
 
     _instance = AppConfig._(
       environment: env,
@@ -74,13 +76,10 @@ class AppConfig {
 
     switch (env) {
       case AppEnvironment.local:
-        // Legacy backend mode only. Normal app routing is no-backend direct data.
         return defaultLocalApiBaseUrl();
       case AppEnvironment.dev:
-        // Legacy backend mode only.
         return 'https://dev-api.kbofans.com/api';
       case AppEnvironment.release:
-        // Legacy backend mode only.
         return 'https://api.kbofans.com/api';
     }
   }

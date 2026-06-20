@@ -67,6 +67,11 @@ class BoxscoreService:
                 return snapshot
             return payload
 
+        if payload.get("liveContextAvailable") is True and not payload.get(
+            "officialAvailable", False
+        ):
+            return payload
+
         self.snapshot_store.save("boxscore", game_id, payload)
         return payload
 

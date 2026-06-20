@@ -272,7 +272,7 @@ void main() {
     expect(find.text('team-record-LG'), findsOneWidget);
   });
 
-  testWidgets('standings row opens team records with press interaction', (
+  testWidgets('standings row opens standings overview like View All', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -292,10 +292,12 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('KIA').last);
+    final standingsRow = find.byKey(const ValueKey('home-standings-row-HT'));
+    await tester.ensureVisible(standingsRow);
+    await tester.tap(standingsRow);
     await tester.pumpAndSettle();
 
-    expect(find.text('team-record-HT'), findsOneWidget);
+    expect(find.text('standings'), findsOneWidget);
   });
 
   testWidgets('KBO brief record item renders real player image URL', (

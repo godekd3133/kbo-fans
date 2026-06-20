@@ -85,6 +85,7 @@ class KboTeamLogoImage extends StatelessWidget {
       fit: BoxFit.contain,
       memCacheWidth: (size * 4).round(),
       memCacheHeight: (size * 4).round(),
+      filterQuality: FilterQuality.high,
       placeholder: (_, _) => _fallbackAvatar(team),
       errorWidget: (_, _, _) => _fallbackAvatar(team),
     );

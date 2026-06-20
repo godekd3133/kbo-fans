@@ -28,7 +28,7 @@ import '../services/ticket_alert_service.dart';
 const _kboPersonImageBase =
     'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
 
-/// API 클라이언트 (USE_BACKEND_API=true 에서만 실제 사용)
+/// API 클라이언트 (기본 backend API data mode에서 사용)
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 /// GameRepository — 환경에 따라 자동 전환

@@ -4,10 +4,10 @@
 
 ## 현재 결론
 
-- 현재 production API 도메인은 확정되지 않았다.
-- `APP_ENV=release` 빌드는 데이터 경로가 no-backend direct여도 push / Live Activity token 등록을 위해 `https://api.kbofans.com/api` 또는 `RELEASE_API_BASE_URL` 로 지정한 실제 운영 API가 필요하다.
-- 현재 artifact 생성은 backend data API health gate를 blocker로 보지 않는다. 앱 종료 후 push / Live Activity 시연은 `push-readiness`를 별도 gate로 본다.
-- API 미구현 영역의 iPhone release-mode 검증은 release API가 아니라 `APP_ENV=local + PREFER_DIRECT_SCRAPE=true` 임시 direct-primary 빌드로 진행한다.
+- production API는 현재 AWS ECS/Fargate smoke endpoint `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`를 release/tester 검증에 사용한다.
+- `APP_ENV=release` 빌드는 화면 데이터, push registration, Live Activity token 등록 모두 `RELEASE_API_BASE_URL` 로 지정한 실제 운영 API가 필요하다.
+- artifact 생성 전후에는 backend API health gate와 push readiness를 분리해서 확인한다.
+- API 미구현 영역은 release artifact에 숨기지 않고 backend route/snapshot 계약을 먼저 보강한다. direct KBO는 `USE_BACKEND_API=false` parser/debug 세션에서만 사용한다.
 
 ## 해야 할 일
 
@@ -47,6 +47,6 @@
 ## 완료 기준
 
 - `PUSH_SYNC_SECRET=<...> ./scripts/codex-run.sh push-readiness` 통과
-- Android/iOS/Web `APP_ENV=release` 빌드가 no-backend direct data mode와 운영 push `API_BASE_URL`을 함께 포함해 생성됨
-- 실기기 release 설치 후 홈/일정/순위/기록실은 direct data 기준으로 로딩되고, push / Live Activity token registration은 production API 기준으로 성공함
+- Android/iOS/Web `APP_ENV=release` 빌드가 backend API data mode와 운영 `API_BASE_URL`을 함께 포함해 생성됨
+- 실기기 release 설치 후 홈/일정/순위/기록실은 backend API 기준으로 로딩되고, push / Live Activity token registration도 production API 기준으로 성공함
 - 노트북이 꺼진 상태에서도 push / Live Activity를 시연하려면 운영 backend의 sync worker 또는 `/api/push/live-activity/sync-scoreboard` trigger가 5초 간격으로 실행됨

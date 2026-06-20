@@ -133,7 +133,7 @@ KBO Fans의 핵심 반복 사용 이유는 “오늘 내 팀이 어떻게 되고
 |------|------|------|
 | 화면 구현 | 온보딩/마이팀, 홈, 경기 상세 4탭, 일정, 순위, 기록실, 설정 화면을 발표 화면으로 사용 가능 | `docs/presentations/kbo_fans_8min_presentation.md` |
 | 서비스 준비 | 예매 오픈 local reminder, push moment, widget sync, Live Activity service는 앱 + backend 책임으로 준비 | 실제 기기와 운영 push backend readiness 검증은 별도 |
-| 데이터 경로 | backend-backed mode와 direct KBO mode를 명시적으로 분리 | 화면 데이터 API 검증은 `USE_BACKEND_API=true`, direct mode는 local/offline/web preview와 resilience 검증 |
+| 데이터 경로 | backend API mode를 일반 실행 기본값으로 사용하고 direct KBO mode를 명시적 parser/debug 경로로 분리 | 일반 검증은 `USE_BACKEND_API=true`, direct mode는 `USE_BACKEND_API=false` parser parity/debug 세션 |
 | 앱 밖 갱신 | 앱 종료 후 push / Live Activity / Dynamic Island 갱신은 FastAPI backend + scheduler + FCM/APNs가 담당 | backend readiness와 release `API_BASE_URL` 검증 필요 |
 
 ---
