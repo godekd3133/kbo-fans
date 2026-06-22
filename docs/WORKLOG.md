@@ -22,6 +22,11 @@
 - [x] 검증: `git diff --check`
 - [x] 검증: `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh` (`Release API health gate passed`)
 - [x] 원격 확인: `git ls-remote git@github-personal:godekd3133/kbo-fans.git refs/heads/main refs/tags/0.1.6`에서 `main`만 확인되고 `0.1.6` 태그 없음
+- [x] `0.1.6` backend API/worker deploy와 topic 재등록 재실행: GitHub Actions `Push Demo Deploy` run `27940548030`, `KBO_BACKEND_IMAGE_TAG=0.1.6`, image `303099472043.dkr.ecr.us-east-1.amazonaws.com/kbo-fans-backend:0.1.6`, `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=2`, `registeredDevices=19`, `eligibleDevices=19`, `subscriptionsAttempted=210`, `unsubscriptionsAttempted=0`
+- [x] `0.1.6` 재등록 후 주요 LG topic 확인: `baseball_info_LG`, `lineup_opened_LG`, `game_end_LG`, `inning_change_LG`, `at_bat_LG`, `hit_LG`, `homerun_LG`, `scoring_LG` 모두 `requested=3`, `success=3`, `failure=0`
+- [x] 배포 후 API health 직접 확인: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health` 200, `status=ok`
+- [x] receipt 상태 재조회: GitHub Actions `Push Receipt Status` run `27940690694`, `push_receipts count=0`, `recent=0`, `registeredDevices=19`, `followedGames=1`; 최신 APNs-ready registration `installation=k-x3ggcb`, `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`, `topicCount=12`, `topicsUpdatedAt=2026-06-22T08:45:58.477005+00:00`
+- [ ] 실제 iPhone 처리 receipt는 아직 미확인. backend 배포/worker/topic readiness와 실제 단말 수신 proof를 계속 분리한다.
 
 ---
 
