@@ -122,6 +122,7 @@
 - [x] backend push worker가 경기 순간/라인업 공개 발송에 경기별 토픽을 함께 포함하고, topic 재등록 시 followed game topics로 registry를 재계산하도록 보강
 - [x] API 진단 화면의 원격 푸시 self-test와 backend `/api/push/test-device` endpoint까지 0.0.64 최종 소스 범위에 포함
 - [x] 앱 내 `패치노트` 표기를 `업데이트 소식`으로 바꾸고, in-app notes를 사용자 체감 변화 중심 문구로 재정리
+- [x] iOS Widget extension target도 Flutter xcconfig를 base config로 물도록 보정해 `--build-name` / `--build-number`가 app과 widget에 같이 반영되도록 수정
 
 ### 진행 예정
 - [x] 릴리즈 전 검증 통과: `git diff --check`, `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub` (`173 passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`52 passed`), `backend/.venv/bin/pytest -q` (`178 passed`)
