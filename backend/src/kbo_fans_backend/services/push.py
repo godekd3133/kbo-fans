@@ -45,6 +45,7 @@ GAME_MOMENT_TOPIC_NAMES = {
     "at_bat",
 }
 
+
 class PushService:
     def __init__(
         self,
@@ -432,53 +433,58 @@ class PushService:
         delivery_modes = payload.notifications.deliveryModes
 
         topic_flags = {
-            "game_start": _sends_immediately(
+            "game_start": (
                 payload.notifications.gameStart,
                 delivery_modes.gameStart if delivery_modes else None,
             ),
-            "game_start_soon": _sends_immediately(
+            "game_start_soon": (
                 payload.notifications.gameStart,
                 delivery_modes.gameStart if delivery_modes else None,
             ),
-            "scoring": _sends_immediately(
+            "scoring": (
                 payload.notifications.scoring,
                 delivery_modes.scoring if delivery_modes else None,
             ),
-            "hit": _sends_immediately(
+            "hit": (
                 payload.notifications.hit,
                 delivery_modes.hit if delivery_modes else None,
             ),
-            "homerun": _sends_immediately(
+            "homerun": (
                 payload.notifications.homerun,
                 delivery_modes.homerun if delivery_modes else None,
             ),
-            "reversal": _sends_immediately(
+            "reversal": (
                 payload.notifications.reversal,
                 delivery_modes.reversal if delivery_modes else None,
             ),
-            "game_end": _sends_immediately(
+            "game_end": (
                 payload.notifications.gameEnd,
                 delivery_modes.gameEnd if delivery_modes else None,
             ),
-            "lineup_opened": _sends_immediately(
+            "lineup_opened": (
                 payload.notifications.lineupOpened,
                 delivery_modes.lineupOpened if delivery_modes else None,
             ),
-            "inning_change": _sends_immediately(
+            "inning_change": (
                 payload.notifications.inningChange,
                 delivery_modes.inningChange if delivery_modes else None,
             ),
-            "at_bat": _sends_immediately(
+            "at_bat": (
                 payload.notifications.atBat,
                 delivery_modes.atBat if delivery_modes else None,
             ),
-            "baseball_info": _sends_immediately(
+            "baseball_info": (
                 payload.notifications.baseballInfo,
                 delivery_modes.baseballInfo if delivery_modes else None,
             ),
         }
 
-        for topic_name, enabled in topic_flags.items():
+        for topic_name, (setting_enabled, delivery) in topic_flags.items():
+            enabled = (
+                _enabled_for_followed_game(setting_enabled, delivery)
+                if topic_name in GAME_MOMENT_TOPIC_NAMES and followed_game_ids
+                else _sends_immediately(setting_enabled, delivery)
+            )
             if not enabled:
                 continue
 
@@ -708,6 +714,12 @@ def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
     if delivery is None:
         return True
     return delivery == "immediate"
+
+
+def _enabled_for_followed_game(enabled: bool, delivery: Optional[str]) -> bool:
+    if not enabled:
+        return False
+    return delivery != "off"
 
 
 def _game_topic(moment: str, game_id: str) -> str:

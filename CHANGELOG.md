@@ -10,6 +10,17 @@
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-06-22
+
+### Changed
+
+- 특정 경기를 따라갈 때는 설정에서 켜진 경기 moment가 `summary` 또는 `liveOnly` 상태여도 해당 경기의 `*_GAME_<gameId>` 일반 push topic으로 구독되도록 보강
+- 팀/전체 push는 기존처럼 `immediate` 기준을 유지하고, 팔로우 경기만 selected-game GAME topic으로 더 촘촘하게 받도록 정리
+
+### Fixed
+
+- 팔로우 경기에서 경기 종료, 라인업 공개, 이닝 변경 같은 enabled moment가 delivery mode 때문에 일반 push topic에서 빠질 수 있던 문제를 보정
+
 ## [0.1.4] - 2026-06-22
 
 ### Changed

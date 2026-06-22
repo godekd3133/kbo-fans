@@ -337,6 +337,24 @@ class PushNotificationSettings {
     return deliveryFor(moment) == PushNotificationDelivery.immediate;
   }
 
+  bool enablesFollowedGamePush(PushNotificationMoment moment) {
+    if (deliveryFor(moment) == PushNotificationDelivery.off) {
+      return false;
+    }
+    return switch (moment) {
+      PushNotificationMoment.gameStart => gameStart,
+      PushNotificationMoment.scoring => scoring,
+      PushNotificationMoment.hit => hit,
+      PushNotificationMoment.homerun => homerun,
+      PushNotificationMoment.reversal => reversal,
+      PushNotificationMoment.gameEnd => gameEnd,
+      PushNotificationMoment.lineupOpened => lineupOpened,
+      PushNotificationMoment.inningChange => inningChange,
+      PushNotificationMoment.atBat => atBat,
+      PushNotificationMoment.baseballInfo => baseballInfo,
+    };
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'gameStart': gameStart,
@@ -1179,29 +1197,25 @@ Set<String> buildPushTopics({
   final followedGames = _cleanFollowedGameIds(followedGameIds);
   final hasFollowedGames = followedGames.isNotEmpty;
   final topics = <String>{};
-  final flags = <String, bool>{
-    'game_start': settings.sendsImmediately(PushNotificationMoment.gameStart),
-    'game_start_soon': settings.sendsImmediately(
-      PushNotificationMoment.gameStart,
-    ),
-    'scoring': settings.sendsImmediately(PushNotificationMoment.scoring),
-    'hit': settings.sendsImmediately(PushNotificationMoment.hit),
-    'homerun': settings.sendsImmediately(PushNotificationMoment.homerun),
-    'reversal': settings.sendsImmediately(PushNotificationMoment.reversal),
-    'game_end': settings.sendsImmediately(PushNotificationMoment.gameEnd),
-    'lineup_opened': settings.sendsImmediately(
-      PushNotificationMoment.lineupOpened,
-    ),
-    'inning_change': settings.sendsImmediately(
-      PushNotificationMoment.inningChange,
-    ),
-    'at_bat': settings.sendsImmediately(PushNotificationMoment.atBat),
-    'baseball_info': settings.sendsImmediately(
-      PushNotificationMoment.baseballInfo,
-    ),
+  final topicMoments = <String, PushNotificationMoment>{
+    'game_start': PushNotificationMoment.gameStart,
+    'game_start_soon': PushNotificationMoment.gameStart,
+    'scoring': PushNotificationMoment.scoring,
+    'hit': PushNotificationMoment.hit,
+    'homerun': PushNotificationMoment.homerun,
+    'reversal': PushNotificationMoment.reversal,
+    'game_end': PushNotificationMoment.gameEnd,
+    'lineup_opened': PushNotificationMoment.lineupOpened,
+    'inning_change': PushNotificationMoment.inningChange,
+    'at_bat': PushNotificationMoment.atBat,
+    'baseball_info': PushNotificationMoment.baseballInfo,
   };
 
-  flags.forEach((topicName, enabled) {
+  topicMoments.forEach((topicName, moment) {
+    final enabled =
+        _gameMomentTopicNames.contains(topicName) && hasFollowedGames
+        ? settings.enablesFollowedGamePush(moment)
+        : settings.sendsImmediately(moment);
     if (!enabled) {
       return;
     }

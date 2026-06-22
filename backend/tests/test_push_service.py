@@ -152,6 +152,40 @@ def test_build_topics_uses_game_topics_when_following_my_team_game() -> None:
     assert "baseball_info_GAME_20260612KTLG0" not in topics
 
 
+def test_build_topics_keeps_enabled_followed_game_moments_even_when_not_immediate() -> None:
+    service = PushService()
+    payload = PushRegisterRequest(
+        deviceToken="token",
+        platform="flutter",
+        myTeam="LG",
+        followedGameIds=["20260612KTLG0"],
+        notifications=NotificationSettings(
+            gameStart=True,
+            scoring=True,
+            homerun=True,
+            reversal=True,
+            gameEnd=True,
+            lineupOpened=True,
+            inningChange=True,
+            allGames=False,
+            deliveryModes=NotificationDeliveryModes(
+                gameEnd="summary",
+                lineupOpened="summary",
+                inningChange="live_only",
+            ),
+        ),
+    )
+
+    topics = service._build_topics(payload)
+
+    assert "game_end_GAME_20260612KTLG0" in topics
+    assert "lineup_opened_GAME_20260612KTLG0" in topics
+    assert "inning_change_GAME_20260612KTLG0" in topics
+    assert "game_end_LG" not in topics
+    assert "lineup_opened_LG" not in topics
+    assert "inning_change_LG" not in topics
+
+
 def test_build_topics_uses_game_topics_for_non_my_team_follow() -> None:
     service = PushService()
     payload = PushRegisterRequest(

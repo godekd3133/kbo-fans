@@ -1629,7 +1629,7 @@ GET /api/push/config-status
 - `register`: 앱/iOS native가 `gameId`, `activityId`, `activityPushToken`을 등록한다.
 - `update`: 내부 운영 도구나 worker가 특정 `gameId`의 `content-state`를 APNs로 발송한다.
 - `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon`, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. `date` 생략 시 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
-- 일반 경기 event push는 backend가 매 moment마다 원정팀 topic, 홈팀 topic, 리그 전체 topic, 경기별 topic(`{moment}_GAME_{gameId}`)으로 발송한다. 앱은 저장된 delivery 설정, `allGames`, `myTeam`, `followedGameIds`를 기준으로 필요한 topic만 구독한다. selected-game follow 중에는 같은 moment의 team topic을 추가하지 않고 GAME topic으로 좁힌다.
+- 일반 경기 event push는 backend가 매 moment마다 원정팀 topic, 홈팀 topic, 리그 전체 topic, 경기별 topic(`{moment}_GAME_{gameId}`)으로 발송한다. 앱은 저장된 delivery 설정, `allGames`, `myTeam`, `followedGameIds`를 기준으로 필요한 topic만 구독한다. selected-game follow 중에는 같은 moment의 team topic을 추가하지 않고 GAME topic으로 좁힌다. 이때 selected-game GAME topic은 사용자가 끈 `off` 항목만 제외하고, `summary` 또는 `liveOnly`로 저장된 enabled game moment도 포함해 팔로우 경기의 일반 push 범위를 빠뜨리지 않는다. 팀/전체 topic은 기존처럼 `immediate` delivery만 구독한다.
 - `test`: 운영자가 특정 FCM token 또는 topic으로 테스트 알림을 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다. `hit_GAME_20260620HTKT0`처럼 GAME topic으로 발송하면 receipt 확인을 위해 `type`, `gameId`, `topic`, 상세 `route` data를 함께 싣는다. 반복 push 발송 확인은 `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>` 또는 `--token <fcm-token>`으로 수행한다. 로컬에 secret을 두지 않는 경우 `Push Test Notification` GitHub Actions workflow 또는 `./scripts/github-push-test-notification-run.sh --topic <topic> --watch`로 GitHub secret 컨텍스트에서 실행한다.
 - `test-device`: 앱 API 진단 화면에서 자기 기기에 원격 테스트 push를 요청하는 self-test endpoint다. 앱은 먼저 FCM token을 `/push/register`로 등록한 뒤 `deviceToken`만 보낸다. backend는 registry에 이미 저장된 token에만 고정 문구와 `/diagnostics` route를 담아 발송하며, 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않는다.
 - `receipt`: 앱이 원격 push를 foreground/background/opened 상태로 처리하면 현재 FCM `deviceToken`, `messageId`, `source`, `type`, `gameId`, `route`, 제한된 data 단서를 backend에 보고한다. backend는 registry에 이미 저장된 token만 기록하고 token 원문은 최근 receipt 요약에 노출하지 않는다. 이 endpoint는 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않기 위해 secret을 요구하지 않는다.
@@ -1656,7 +1656,7 @@ GET /api/push/config-status
 - `installationId`는 앱 설치 단위의 stable id다. 같은 설치에서 FCM token이 바뀌면 backend는 같은 `installationId`를 가진 이전 token registration을 제거해 팔로우 경기 push 대상이 stale token에 남지 않도록 한다.
 - `momentPreferences` / `notifications.deliveryModes` 는 브리프, selected-game follow, 향후 운영 확장을 위한 선호 입력으로 유지하며, 즉시 원격 push topic 계산의 기준이다.
 - `followedGameIds` 는 알림 설정이 아니라 현재 "경기 따라가기" Live surface session 을 표현한다. 홈의 마이팀 live 경기 자동 follow target 과 사용자가 직접 시작한 selected-game follow 를 모두 포함하며, 앱은 follow 시작/종료 직후 `/push/register`를 다시 호출해 registry를 정리한다.
-- `followedGameIds`가 비어 있으면 `allGames=false` 사용자는 immediate delivery인 마이팀 event topic을 구독한다. `followedGameIds`가 있으면 일반 경기 event moment는 selected-game `*_GAME_{gameId}` 범위로 좁히고, 야구 브리프처럼 경기 단건에 속하지 않는 정보성 push는 팀/전체 범위를 따른다.
+- `followedGameIds`가 비어 있으면 `allGames=false` 사용자는 immediate delivery인 마이팀 event topic을 구독한다. `followedGameIds`가 있으면 일반 경기 event moment는 enabled 상태인 selected-game `*_GAME_{gameId}` 범위로 좁히고, `summary` / `liveOnly` delivery도 GAME topic에는 포함한다. 사용자가 `off`로 끈 항목은 GAME topic에도 포함하지 않는다. 야구 브리프처럼 경기 단건에 속하지 않는 정보성 push는 팀/전체 범위를 따른다.
 
 ### 5.8 경기 단건 조회
 

@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-06-22: 0.1.5 팔로우 경기 enabled moment GAME topic 보강
+
+### 결정
+- `0.1.3`에서 installation id 기반 stale token 정리는 들어갔고 `0.1.4`는 push runtime 변경 없는 디자인 레퍼런스 릴리즈였지만, fresh receipt 조회 run `27936248714` 기준 실제 receipt는 여전히 `count=0`이다.
+- run `27936248714`에서 새 앱 registration은 `installation=k-x3ggcb`, `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`로 확인됐지만 `followed=-`이고, 팔로우 경기 `20260620HTKT0`는 legacy registration `installation=-`에 남아 있다.
+- 코드 재점검 결과 selected-game follow topic 계산이 `summary` / `liveOnly` delivery를 immediate가 아니라고 보고 `game_end`, `lineup_opened`, `inning_change` 같은 enabled game moment를 GAME topic에서 제외할 수 있었다.
+- 사장님 목표가 "팔로우한 특정 경기만 일반 푸시로 정교하게, 모든 정보를" 받는 것이므로, `off`가 아닌 enabled game moment는 selected-game GAME topic에 포함하고 팀/전체 topic은 기존 immediate 기준을 유지한다.
+- 다음 TestFlight/backend 기준은 `0.1.5+72` / tag `0.1.5`로 올린다. 앱과 backend topic 계약이 모두 바뀌므로 새 numeric release가 필요하다.
+
+### 진행
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart --plain-name '따라가는 경기의 enabled moment는 summary/liveOnly여도 GAME 토픽에 포함한다'` 실패, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_build_topics_keeps_enabled_followed_game_moments_even_when_not_immediate` 실패
+- [x] 앱 `buildPushTopics`와 backend `PushService._build_topics`가 followed-game GAME topic에서는 `off`가 아닌 enabled moment를 포함하도록 변경
+- [ ] 검증, backend deploy, TestFlight upload
+- [ ] 새 build 설치 후 앱 실행/경기 follow로 현재 token과 followed-game registration 일치 확인
+- [ ] 팔로우 경기 원격 push receipt 재확인
+
+---
+
 ## 2026-06-22: 0.1.4 디자인 레퍼런스 정합성 릴리즈
 
 ### 결정
