@@ -14,7 +14,16 @@
 - [x] `GET /api/push/config-status` registry 진단에 `pushReceiptCount`, `recentPushReceipts` 추가
 - [x] API 계약 변경을 `docs/APP_SPEC.md`에 반영
 - [x] 검증: `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub` (`174 passed`), `backend/.venv/bin/pytest -q` (`181 passed`), `backend/.venv/bin/python -m ruff check ...`, `python3 -m compileall backend/src`
-- [ ] `0.1.1` backend deploy, topic resubscribe, TestFlight upload/external tester handoff, 실제 iPhone receipt 확인
+- [x] `0.1.1` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27930659850`, head `3840dbb`, conclusion `success`, `KBO_BACKEND_IMAGE_TAG=0.1.1`, image `303099472043.dkr.ecr.us-east-1.amazonaws.com/kbo-fans-backend:0.1.1`, `readyForIphoneOnlyDemo=true`, scheduler age 0초
+- [x] topic 재등록 결과 확인: `registeredDevices=17`, `eligibleDevices=17`, `subscriptionsAttempted=136`, `unsubscriptionsAttempted=0`
+- [x] 운영 release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; `2026-06-22`은 scoreboard game이 없어 relay endpoint는 skip
+- [x] 운영 `/api/push/receipt` endpoint 확인: unregistered token 요청은 HTTP 200 envelope로 `recorded=false`, `registered=false`, `reason=device token is not registered` 반환
+- [x] `0.1.1 (68)` IPA archive/upload 성공 확인: main commit `3840dbb`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.1/68`, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, 업로드 IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, App Store Connect `Upload succeeded` / `Uploaded package is processing`; `objective_c.framework` dSYM warning은 기존과 동일하게 남음
+- [x] App Store Connect build `68` 처리 완료 확인: build id `c8b2640f-ed15-40b4-8e98-17dbfba8f969`, `processingState=VALID`, `usesNonExemptEncryption=false`, expiration `2026-09-19T22:13:20-07:00`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `68` 연결, 이전 build `67` 관계 제거. 최종 그룹 build 목록은 `68` 단독 연결
+- [x] build `68` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
+- [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
+- [ ] 실제 iPhone receipt 확인: 최신 TestFlight build `0.1.1 (68)` 설치 후 foreground/background/opened remote push receipt가 `/api/push/config-status`의 `recentPushReceipts`에 기록되는지 확인 필요
 
 ---
 
