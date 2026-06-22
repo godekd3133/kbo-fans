@@ -24,6 +24,8 @@
 - [x] build `68` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
 - [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
 - [x] GitHub Release `0.1.1` 생성 완료: https://github.com/godekd3133/kbo-fans/releases/tag/0.1.1, tag `0.1.1`은 배포 증거 commit `84f87a1` 기준으로 고정
+- [x] 운영 secret 없이도 GitHub Actions secret 컨텍스트에서 receipt를 조회할 수 있도록 `scripts/push-receipt-status.sh`, `Push Receipt Status` workflow, `scripts/github-push-receipt-status-run.sh`, `codex-run.sh github-push-receipt-status-run` entrypoint 추가
+- [x] receipt 조회 스크립트는 `/api/push/config-status`의 `pushReceiptCount` / `recentPushReceipts`만 요약하고, `--expect-receipt --game-id <gameId> --type <type>` 조건이 맞지 않으면 실패하도록 구성. raw device token과 `PUSH_SYNC_SECRET`은 출력하지 않음
 - [ ] 실제 iPhone receipt 확인: 최신 TestFlight build `0.1.1 (68)` 설치 후 foreground/background/opened remote push receipt가 `/api/push/config-status`의 `recentPushReceipts`에 기록되는지 확인 필요
 
 ---

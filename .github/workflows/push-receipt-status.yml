@@ -1,0 +1,99 @@
+name: Push Receipt Status
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: API base URL. Empty uses RELEASE_API_BASE_URL variable.
+        required: false
+        default: ""
+        type: string
+      expect_receipt:
+        description: Fail when no recent receipt matches filters.
+        required: false
+        default: false
+        type: boolean
+      game_id:
+        description: Optional receipt gameId filter.
+        required: false
+        default: ""
+        type: string
+      type:
+        description: Optional receipt type filter.
+        required: false
+        default: ""
+        type: string
+      source:
+        description: Optional receipt source filter.
+        required: false
+        default: ""
+        type: string
+      since:
+        description: Optional ISO timestamp lower bound.
+        required: false
+        default: ""
+        type: string
+      allow_insecure:
+        description: Allow temporary HTTP smoke backend.
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_API_BASE_URL: ${{ vars.RELEASE_API_BASE_URL || secrets.RELEASE_API_BASE_URL }}
+      PUSH_SYNC_SECRET: ${{ secrets.PUSH_SYNC_SECRET }}
+      PUSH_RECEIPT_BASE_URL_INPUT: ${{ inputs.base_url }}
+      PUSH_RECEIPT_EXPECT_INPUT: ${{ inputs.expect_receipt }}
+      PUSH_RECEIPT_GAME_ID_INPUT: ${{ inputs.game_id }}
+      PUSH_RECEIPT_TYPE_INPUT: ${{ inputs.type }}
+      PUSH_RECEIPT_SOURCE_INPUT: ${{ inputs.source }}
+      PUSH_RECEIPT_SINCE_INPUT: ${{ inputs.since }}
+      ALLOW_INSECURE_PUSH_RECEIPT_STATUS: ${{ inputs.allow_insecure }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Inspect push receipt status
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${PUSH_SYNC_SECRET:-}" ]]; then
+            echo "Missing GitHub secret: PUSH_SYNC_SECRET" >&2
+            exit 2
+          fi
+
+          base_url="${PUSH_RECEIPT_BASE_URL_INPUT:-${RELEASE_API_BASE_URL:-}}"
+          if [[ -z "$base_url" ]]; then
+            echo "Missing API base URL. Set workflow input base_url or GitHub variable RELEASE_API_BASE_URL." >&2
+            exit 2
+          fi
+
+          args=(--base-url "$base_url" --allow-insecure "$ALLOW_INSECURE_PUSH_RECEIPT_STATUS")
+          if [[ "$PUSH_RECEIPT_EXPECT_INPUT" == "true" ]]; then
+            args+=(--expect-receipt)
+          fi
+          if [[ -n "${PUSH_RECEIPT_GAME_ID_INPUT:-}" ]]; then
+            args+=(--game-id "$PUSH_RECEIPT_GAME_ID_INPUT")
+          fi
+          if [[ -n "${PUSH_RECEIPT_TYPE_INPUT:-}" ]]; then
+            args+=(--type "$PUSH_RECEIPT_TYPE_INPUT")
+          fi
+          if [[ -n "${PUSH_RECEIPT_SOURCE_INPUT:-}" ]]; then
+            args+=(--source "$PUSH_RECEIPT_SOURCE_INPUT")
+          fi
+          if [[ -n "${PUSH_RECEIPT_SINCE_INPUT:-}" ]]; then
+            args+=(--since "$PUSH_RECEIPT_SINCE_INPUT")
+          fi
+
+          ./scripts/push-receipt-status.sh "${args[@]}"

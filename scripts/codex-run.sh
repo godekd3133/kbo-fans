@@ -42,6 +42,7 @@ Usage:
   ./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env [--apply]
   ./scripts/codex-run.sh github-push-demo-run [--dry-run true] [--watch]
   ./scripts/codex-run.sh github-push-test-notification-run [--topic baseball_info_ALL] [--watch]
+  ./scripts/codex-run.sh github-push-receipt-status-run [--expect-receipt] [--watch]
   ./scripts/codex-run.sh doctor
 
 Commands:
@@ -75,6 +76,7 @@ Commands:
   github-push-secrets  Validate or upload GitHub Actions secrets/variables for push deploy
   github-push-demo-run  Dispatch the GitHub Actions push demo deploy workflow
   github-push-test-notification-run  Dispatch the GitHub Actions push test notification workflow
+  github-push-receipt-status-run  Dispatch the GitHub Actions push receipt status workflow
   doctor   Check local Flutter/FVM and Python prerequisites
 EOF
 }
@@ -704,6 +706,10 @@ run_github_push_test_notification_run() {
   bash "$ROOT_DIR/scripts/github-push-test-notification-run.sh" "$@"
 }
 
+run_github_push_receipt_status_run() {
+  bash "$ROOT_DIR/scripts/github-push-receipt-status-run.sh" "$@"
+}
+
 backend_api_define() {
   local app_env="$1"
   local api_define=" --dart-define=USE_BACKEND_API=true"
@@ -1141,6 +1147,9 @@ main() {
       ;;
     github-push-test-notification-run)
       run_github_push_test_notification_run "${@:2}"
+      ;;
+    github-push-receipt-status-run)
+      run_github_push_receipt_status_run "${@:2}"
       ;;
     doctor)
       run_doctor
