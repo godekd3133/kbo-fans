@@ -133,11 +133,15 @@ class PushService:
             body=payload.body,
         )
         if payload.topic:
-            message = messaging.Message(
-                notification=notification,
-                topic=payload.topic,
+            message_kwargs = {
+                "notification": notification,
+                "topic": payload.topic,
                 **visible_options,
-            )
+            }
+            test_data = _test_push_data_for_topic(payload.topic)
+            if test_data:
+                message_kwargs["data"] = test_data
+            message = messaging.Message(**message_kwargs)
             response = messaging.send(message)
             return {"sent": True, "target": f"topic:{payload.topic}", "messageId": response}
 
@@ -705,6 +709,30 @@ def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
 
 def _game_topic(moment: str, game_id: str) -> str:
     return f"{moment}_GAME_{game_id}"
+
+
+def _test_push_data_for_topic(topic: str) -> dict[str, str]:
+    moment, separator, game_id = topic.partition("_GAME_")
+    if not separator or moment not in GAME_MOMENT_TOPIC_NAMES or not game_id:
+        return {}
+
+    data = {
+        "type": moment,
+        "gameId": game_id,
+        "topic": topic,
+    }
+    route = _push_route(moment, game_id)
+    if route:
+        data["route"] = route
+    return data
+
+
+def _push_route(moment: str, game_id: str) -> str:
+    if moment == "lineup_opened":
+        return f"/game/{game_id}?tab=lineup"
+    if moment in GAME_MOMENT_TOPIC_NAMES:
+        return f"/game/{game_id}?tab=relay"
+    return ""
 
 
 def _clean_followed_game_ids(game_ids: list[str]) -> list[str]:

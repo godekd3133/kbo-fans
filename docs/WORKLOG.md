@@ -26,6 +26,10 @@
 - [x] GitHub Release `0.1.1` 생성 완료: https://github.com/godekd3133/kbo-fans/releases/tag/0.1.1, tag `0.1.1`은 배포 증거 commit `84f87a1` 기준으로 고정
 - [x] 운영 secret 없이도 GitHub Actions secret 컨텍스트에서 receipt를 조회할 수 있도록 `scripts/push-receipt-status.sh`, `Push Receipt Status` workflow, `scripts/github-push-receipt-status-run.sh`, `codex-run.sh github-push-receipt-status-run` entrypoint 추가
 - [x] receipt 조회 스크립트는 `/api/push/config-status`의 `pushReceiptCount` / `recentPushReceipts`만 요약하고, `--expect-receipt --game-id <gameId> --type <type>` 조건이 맞지 않으면 실패하도록 구성. raw device token과 `PUSH_SYNC_SECRET`은 출력하지 않음
+- [x] `Push Receipt Status` workflow run `27931738134`로 운영 registry 조회 성공: `registeredDevices=18`, `followedGames=1`, `pushReceiptCount=0`, `recent=0`
+- [x] `Push Test Notification` workflow run `27931779585`로 팔로우 경기 topic `hit_GAME_20260620HTKT0` 테스트 발송 성공: Firebase message id `projects/kbo-fans-47189/messages/9176581524942835946`
+- [x] 같은 기준 시각 이후 receipt 기대 조회는 run `27931794786`, 재조회 run `27931841004` 모두 `push_receipt_match=status=missing`, `pushReceiptCount=0`, `recent=0`으로 실패. 즉 backend 등록/발송은 확인됐지만 실제 단말 처리 receipt는 아직 없음
+- [x] 다음 테스트부터 GAME topic receipt를 `gameId/type`으로 필터링할 수 있도록 `/push/test` GAME topic payload에 `type`, `gameId`, `topic`, 상세 `route` data를 포함하도록 보강
 - [ ] 실제 iPhone receipt 확인: 최신 TestFlight build `0.1.1 (68)` 설치 후 foreground/background/opened remote push receipt가 `/api/push/config-status`의 `recentPushReceipts`에 기록되는지 확인 필요
 
 ---

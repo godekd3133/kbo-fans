@@ -533,6 +533,30 @@ def test_send_test_push_uses_visible_notification_options(tmp_path) -> None:
     assert message.android.notification.sound == "default"
 
 
+def test_send_test_push_to_game_topic_includes_receipt_routing_data(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    service.send_test(
+        PushTestRequest(
+            title="테스트",
+            body="팔로우 경기 수신 확인",
+            topic="hit_GAME_20260620HTKT0",
+        )
+    )
+
+    message = messaging.sent_messages[0]
+    assert message.topic == "hit_GAME_20260620HTKT0"
+    assert message.data == {
+        "type": "hit",
+        "gameId": "20260620HTKT0",
+        "topic": "hit_GAME_20260620HTKT0",
+        "route": "/game/20260620HTKT0?tab=relay",
+    }
+
+
 def test_send_device_test_push_targets_registered_token_only(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())

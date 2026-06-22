@@ -42,6 +42,7 @@
   - 앱 내부 receipt 확인용 `/push/test-device`는 운영 secret을 요구하지 않는다. 대신 앱이 현재 FCM token을 `/push/register`로 먼저 저장해야 하며, backend는 registry에 없는 token에는 발송하지 않는다. 이 endpoint에는 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않기 위한 self-test 경계만 둔다.
   - 외부에서 `PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api`를 실행하면 `/health`와 push readiness를 같이 확인할 수 있다.
   - GitHub Actions secret 컨텍스트에서 원격 테스트 푸시를 보낼 때는 `Push Test Notification` workflow 또는 `./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch`를 사용한다. 이 helper는 secret/token 값을 출력하지 않는다.
+  - `Push Test Notification`을 `*_GAME_<gameId>` topic으로 보낼 때는 backend가 `type`, `gameId`, `topic`, 상세 `route` data를 함께 실어 receipt 조회에서 해당 팔로우 경기 수신 여부를 필터링할 수 있어야 한다.
   - 실제 단말이 remote push를 처리했는지 확인할 때는 `PUSH_SYNC_SECRET=<secret> ./scripts/push-receipt-status.sh --expect-receipt --game-id <gameId> --type <type>` 또는 GitHub Actions `Push Receipt Status` workflow / `./scripts/github-push-receipt-status-run.sh --expect-receipt --game-id <gameId> --type <type> --watch`를 사용한다. 이 경로는 `/push/config-status`의 `recentPushReceipts`만 요약하고 raw device token은 출력하지 않는다.
   - backend image는 `./scripts/aws-push-image.sh`로 ECR에 push하고, 출력되는 `CONTAINER_IMAGE_URI`를 CloudFormation 배포에 사용할 수 있다.
   - AWS ECS/Fargate에서는 Firebase Admin JSON, APNs `.p8`, KBO relay credential을 Secrets Manager에서 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `KBO_RELAY_USER_ID`, `KBO_RELAY_PASSWORD` env로 주입하는 것이 파일 mount보다 단순하다. 로컬/EC2 파일 배포는 `*_PATH`를 계속 쓸 수 있다.
