@@ -1078,39 +1078,24 @@ Set<String> buildPushTopics({
     ),
   };
 
-  flags.forEach((topicName, enabledBySettings) {
-    final alwaysOnForMyTeam =
-        hasMyTeam && _alwaysOnMyTeamGameTopicNames.contains(topicName);
+  flags.forEach((topicName, enabled) {
+    if (!enabled) {
+      return;
+    }
 
     if (settings.allGames) {
-      if (enabledBySettings) {
-        topics.add('${topicName}_ALL');
-        return;
-      }
-      if (!alwaysOnForMyTeam) {
-        return;
-      }
-    }
-
-    if (alwaysOnForMyTeam) {
-      topics.add('${topicName}_$myTeam');
-    }
-
-    if (!enabledBySettings) {
+      topics.add('${topicName}_ALL');
       return;
     }
 
     if (_gameMomentTopicNames.contains(topicName) && hasFollowedGames) {
       for (final gameId in followedGames) {
-        if (alwaysOnForMyTeam && _gameIdContainsTeam(gameId, myTeam)) {
-          continue;
-        }
         topics.add('${topicName}_GAME_$gameId');
       }
       return;
     }
 
-    if (hasMyTeam && !alwaysOnForMyTeam) {
+    if (hasMyTeam) {
       topics.add('${topicName}_$myTeam');
     }
   });
@@ -1135,18 +1120,6 @@ const _gameMomentTopicNames = <String>{
   'at_bat',
 };
 
-const _alwaysOnMyTeamGameTopicNames = <String>{
-  'game_start',
-  'game_start_soon',
-  'scoring',
-  'hit',
-  'homerun',
-  'reversal',
-  'game_end',
-  'lineup_opened',
-  'at_bat',
-};
-
 Set<String> _cleanFollowedGameIds(Iterable<String> followedGameIds) {
   final cleaned = <String>{};
   for (final gameId in followedGameIds) {
@@ -1156,14 +1129,6 @@ Set<String> _cleanFollowedGameIds(Iterable<String> followedGameIds) {
     }
   }
   return cleaned;
-}
-
-bool _gameIdContainsTeam(String gameId, String? teamId) {
-  if (teamId == null || teamId.isEmpty || gameId.length < 12) {
-    return false;
-  }
-  return gameId.substring(8, 10) == teamId ||
-      gameId.substring(10, 12) == teamId;
 }
 
 String? pushNotificationRouteForData(Map<String, dynamic> data) {

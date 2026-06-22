@@ -110,17 +110,11 @@ def test_build_topics_respects_delivery_modes() -> None:
     assert topics == [
         "game_start_LG",
         "game_start_soon_LG",
-        "scoring_LG",
-        "hit_LG",
-        "homerun_LG",
-        "reversal_LG",
         "game_end_LG",
-        "lineup_opened_LG",
-        "at_bat_LG",
     ]
 
 
-def test_build_topics_keeps_my_team_game_topics_when_following_my_team_game() -> None:
+def test_build_topics_uses_game_topics_when_following_my_team_game() -> None:
     service = PushService()
     payload = PushRegisterRequest(
         deviceToken="token",
@@ -141,21 +135,23 @@ def test_build_topics_keeps_my_team_game_topics_when_following_my_team_game() ->
 
     topics = service._build_topics(payload)
 
-    assert "scoring_LG" in topics
-    assert "homerun_LG" in topics
-    assert "game_start_LG" in topics
-    assert "game_start_soon_LG" in topics
-    assert "hit_LG" in topics
-    assert "at_bat_LG" in topics
-    assert "lineup_opened_LG" in topics
+    assert "scoring_GAME_20260612KTLG0" in topics
+    assert "homerun_GAME_20260612KTLG0" in topics
+    assert "game_start_GAME_20260612KTLG0" in topics
+    assert "game_start_soon_GAME_20260612KTLG0" in topics
+    assert "hit_GAME_20260612KTLG0" in topics
+    assert "at_bat_GAME_20260612KTLG0" in topics
+    assert "lineup_opened_GAME_20260612KTLG0" in topics
+    assert "game_end_GAME_20260612KTLG0" in topics
     assert "baseball_info_LG" in topics
-    assert "scoring_GAME_20260612KTLG0" not in topics
-    assert "homerun_GAME_20260612KTLG0" not in topics
-    assert "game_start_GAME_20260612KTLG0" not in topics
+    assert "scoring_LG" not in topics
+    assert "homerun_LG" not in topics
+    assert "game_start_LG" not in topics
+    assert "hit_LG" not in topics
     assert "baseball_info_GAME_20260612KTLG0" not in topics
 
 
-def test_build_topics_keeps_selected_game_topics_for_non_my_team_follow() -> None:
+def test_build_topics_uses_game_topics_for_non_my_team_follow() -> None:
     service = PushService()
     payload = PushRegisterRequest(
         deviceToken="token",
@@ -180,10 +176,10 @@ def test_build_topics_keeps_selected_game_topics_for_non_my_team_follow() -> Non
     assert "homerun_GAME_20260612KTOB0" in topics
     assert "at_bat_GAME_20260612KTOB0" in topics
     assert "baseball_info_LG" in topics
-    assert "scoring_LG" in topics
-    assert "homerun_LG" in topics
-    assert "game_end_LG" in topics
     assert "game_end_GAME_20260612KTOB0" in topics
+    assert "scoring_LG" not in topics
+    assert "homerun_LG" not in topics
+    assert "game_end_LG" not in topics
 
 
 def test_register_persists_device_token(tmp_path) -> None:
@@ -634,16 +630,18 @@ def test_resubscribe_registered_topics_rebuilds_followed_game_topics(tmp_path) -
 
     assert response["resubscribed"] is True
     assert response["eligibleDevices"] == 1
-    assert "at_bat_LG" in subscribed_topics
-    assert "hit_LG" in subscribed_topics
-    assert "game_start_soon_LG" in subscribed_topics
+    assert "at_bat_GAME_20260612KTLG0" in subscribed_topics
+    assert "hit_GAME_20260612KTLG0" in subscribed_topics
+    assert "game_start_soon_GAME_20260612KTLG0" in subscribed_topics
     assert "baseball_info_LG" in subscribed_topics
-    assert "game_start_LG" not in unsubscribed_topics
-    assert "scoring_LG" not in unsubscribed_topics
+    assert "game_start_LG" in unsubscribed_topics
+    assert "scoring_LG" in unsubscribed_topics
     assert "legacy_LG" in unsubscribed_topics
-    assert "at_bat_LG" in stored_topics
-    assert "game_start_LG" in stored_topics
-    assert "scoring_LG" in stored_topics
+    assert "at_bat_GAME_20260612KTLG0" in stored_topics
+    assert "game_start_GAME_20260612KTLG0" in stored_topics
+    assert "scoring_GAME_20260612KTLG0" in stored_topics
+    assert "game_start_LG" not in stored_topics
+    assert "scoring_LG" not in stored_topics
     assert "legacy_LG" not in stored_topics
     assert stored_followed_game_ids == ["20260612KTLG0"]
 
@@ -1389,10 +1387,10 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
 
     assert status["registry"]["registeredDeviceCount"] == 1
     assert status["registry"]["followedGameCount"] == 1
-    assert status["registry"]["topicCounts"]["game_start_soon_OB"] == 1
-    assert status["registry"]["topicCounts"]["hit_OB"] == 1
-    assert "game_start_soon_GAME_20260618KTOB0" not in status["registry"]["topicCounts"]
-    assert "hit_GAME_20260618KTOB0" not in status["registry"]["topicCounts"]
+    assert status["registry"]["topicCounts"]["game_start_soon_GAME_20260618KTOB0"] == 1
+    assert status["registry"]["topicCounts"]["hit_GAME_20260618KTOB0"] == 1
+    assert "game_start_soon_OB" not in status["registry"]["topicCounts"]
+    assert "hit_OB" not in status["registry"]["topicCounts"]
     assert "secret-fcm-token" not in str(status["registry"])
 
 

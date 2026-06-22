@@ -43,18 +43,6 @@ GAME_MOMENT_TOPIC_NAMES = {
     "inning_change",
     "at_bat",
 }
-ALWAYS_ON_MY_TEAM_GAME_TOPIC_NAMES = {
-    "game_start",
-    "game_start_soon",
-    "scoring",
-    "hit",
-    "homerun",
-    "reversal",
-    "game_end",
-    "lineup_opened",
-    "at_bat",
-}
-
 
 class PushService:
     def __init__(
@@ -470,33 +458,19 @@ class PushService:
             ),
         }
 
-        for topic_name, enabled_by_settings in topic_flags.items():
-            always_on_for_my_team = has_my_team and topic_name in ALWAYS_ON_MY_TEAM_GAME_TOPIC_NAMES
+        for topic_name, enabled in topic_flags.items():
+            if not enabled:
+                continue
 
             if payload.notifications.allGames:
-                if enabled_by_settings:
-                    topics.append(f"{topic_name}_ALL")
-                    continue
-                if not always_on_for_my_team:
-                    continue
-
-            if always_on_for_my_team:
-                topics.append(f"{topic_name}_{payload.myTeam}")
-
-            if not enabled_by_settings:
+                topics.append(f"{topic_name}_ALL")
                 continue
 
             if topic_name in GAME_MOMENT_TOPIC_NAMES and followed_game_ids:
-                topics.extend(
-                    _game_topic(topic_name, game_id)
-                    for game_id in followed_game_ids
-                    if not (
-                        always_on_for_my_team and _game_id_contains_team(game_id, payload.myTeam)
-                    )
-                )
+                topics.extend(_game_topic(topic_name, game_id) for game_id in followed_game_ids)
                 continue
 
-            if has_my_team and not always_on_for_my_team:
+            if has_my_team:
                 topics.append(f"{topic_name}_{payload.myTeam}")
 
         if payload.notifications.allGames:
@@ -715,12 +689,6 @@ def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
 
 def _game_topic(moment: str, game_id: str) -> str:
     return f"{moment}_GAME_{game_id}"
-
-
-def _game_id_contains_team(game_id: str, team_id: Optional[str]) -> bool:
-    if team_id is None or team_id == "" or len(game_id) < 12:
-        return False
-    return game_id[8:10] == team_id or game_id[10:12] == team_id
 
 
 def _clean_followed_game_ids(game_ids: list[str]) -> list[str]:

@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-06-22: 경기별 push topic 설정 존중 보정
+
+### 원인
+- active 목표는 "팔로우한 특정 경기만 일반 푸시로 정교하게 받기"와 "로컬 알림설정에 따른 원격 push"인데, 직전 always-on 보정은 마이팀 핵심 moment를 delivery 설정과 무관하게 team topic으로 유지했다.
+- 이 상태에서는 사용자가 특정 경기 follow를 시작해도 같은 moment의 마이팀 team topic이 함께 남을 수 있고, `summary` / `liveOnly` / `off` moment가 즉시 원격 push topic으로 다시 살아날 수 있었다.
+
+### 완료
+- [x] 앱 `buildPushTopics`를 `delivery immediate 확인 -> allGames -> followed GAME topic -> myTeam topic` 순서로 단순화해 selected-game follow가 team topic으로 넓어지지 않도록 수정
+- [x] backend `PushService._build_topics`도 같은 topic 계산 규칙으로 맞춰 registry 재구독 결과가 앱 계산과 일치하도록 수정
+- [x] `summary`, `liveOnly`, `off` delivery mode는 즉시 FCM topic을 만들지 않도록 앱/backend 테스트를 보강
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`에 경기별 topic 범위와 delivery 정책 반영
+
+### 검증
+- [x] RED: `cd app && fvm flutter test test/services/push_notification_service_test.dart --name "따라가는 경기가|summary 또는" -r expanded` 실패 확인
+- [x] RED: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "build_topics_respects_delivery_modes or build_topics_uses_game_topics"` 실패 확인
+- [x] GREEN: `cd app && fvm flutter test test/services/push_notification_service_test.dart --name "따라가는 경기가|summary 또는" -r expanded` (`4 passed`)
+- [x] GREEN: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "build_topics_respects_delivery_modes or build_topics_uses_game_topics"` (`3 passed, 49 deselected`)
+
+### 남은 확인
+- [x] 전체 Flutter/backend 회귀: `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub` (`173 passed`), `backend/.venv/bin/pytest -q` (`178 passed`)
+- [ ] backend 재배포와 topic 재등록 후 운영 registry topicCounts 확인
+- [ ] TestFlight build `0.0.65 (65)` 재업로드 후 사장님 iPhone에서 원격 push receipt 확인
+
+---
+
 ## 2026-06-22: 0.0.65 TestFlight/backend 재배포
 
 ### 결정

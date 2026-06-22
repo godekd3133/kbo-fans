@@ -16,10 +16,12 @@
 
 - `0.0.64`의 경기별 push topic, 라인업 공개 전 Live Activity, 원격 푸시 self-test, 업데이트 소식 정리 상태를 새 TestFlight build `0.0.65 (65)`로 다시 맞춤
 - iOS Widget extension도 앱과 같은 build name/build number를 사용하도록 Xcode build 설정을 보정해 TestFlight IPA의 Runner/Widget 버전 기준을 일치시킴
+- 따라가는 경기가 있으면 immediate 경기 moment는 팀 topic 대신 해당 경기의 `*_GAME_<gameId>` topic으로만 구독해 같은 팀의 다른 경기 push로 넓어지지 않도록 정리
 
 ### Fixed
 
 - App Store Connect에 이미 올라간 build `64`를 재업로드하려던 경로를 중단하고, 새 tester-facing build `65`로 승격
+- `summary`, `liveOnly`, `off`로 저장된 moment가 마이팀 자동 알림 보정 때문에 즉시 원격 push topic으로 다시 살아나던 계산을 앱/backend 양쪽에서 수정
 
 ## [0.0.64] - 2026-06-22
 
