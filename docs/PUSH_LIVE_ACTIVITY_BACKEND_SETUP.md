@@ -347,9 +347,11 @@ workflow 파일이 GitHub default branch에 올라간 뒤에는 CLI로 dispatch�
 ```bash
 ./scripts/github-push-demo-run.sh --dry-run true --watch
 ./scripts/github-push-demo-run.sh --dry-run false --watch
+./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch
 ```
 
 현재 원격에 `.github/workflows/push-demo-deploy.yml`가 없으면 이 스크립트는 실패하면서 커밋/푸시가 필요하다고 안내한다. 필수 GitHub secrets/variables가 없으면 workflow run을 만들기 전에 누락 목록을 출력하고 중단한다. 이미 별도 확인을 끝낸 경우에만 `--skip-config-check`로 우회한다.
+원격 테스트 푸시는 `.github/workflows/push-test-notification.yml`가 원격 default branch에 올라간 뒤 실행할 수 있다. 이 workflow는 GitHub secret `PUSH_SYNC_SECRET`과 variable `RELEASE_API_BASE_URL`을 사용하며, 로컬 CLI는 secret/token 값을 출력하지 않는다.
 
 전체 준비 상태를 한 번에 볼 때는 audit 스크립트를 쓴다. 이 명령은 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables, 최신 workflow run을 확인하지만 배포나 workflow dispatch는 하지 않는다.
 
@@ -394,7 +396,7 @@ iOS release/TestFlight 앱은 아래가 필요하다.
 - `PUSH_SYNC_SECRET=<...> ./scripts/push-readiness-check.sh https://api.kbofans.com/api` 통과
 - `POST /api/push/live-activity/sync-scoreboard`가 등록된 live game에 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff와 relay diff 기반 FCM moment push를 보냄
 - iPhone 실기기에서 앱을 종료한 뒤에도 Live Activity `updatedAt`이 서버 sync 주기에 맞춰 변경
-- 일반 push는 Firebase Console, `X-Kbo-Push-Sync-Secret`이 포함된 `/api/push/test`, `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>`, 또는 scheduler의 `pushedMoments` 응답으로 수신 확인
+- 일반 push는 Firebase Console, `X-Kbo-Push-Sync-Secret`이 포함된 `/api/push/test`, `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>`, GitHub Actions `Push Test Notification`, 또는 scheduler의 `pushedMoments` 응답으로 수신 확인
 
 ## 현재 코드 기준 주의
 

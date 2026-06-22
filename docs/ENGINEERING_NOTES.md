@@ -32,11 +32,13 @@
   - backend scheduler가 live 경기 중 5초 간격으로 scoreboard/relay sync를 실행하고, 등록된 ActivityKit token에는 update/end payload를 보낸다.
   - 같은 scheduler가 이전 scoreboard state와 비교해 FCM topic push용 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` moment를 발행한다.
   - 일반 FCM message의 iOS APNs config는 `apns-push-type=alert`, app bundle `apns-topic`, `aps.alert`, `apns-priority=10`, default sound를 명시한다. 앱 실행 시점에 몰려 보이는 증상이 재현되면 이 alert-class payload가 운영 image에 배포됐는지 먼저 확인한다.
-  - `GameEventAlertService`의 scoreboard/relay diff 기반 local notification은 local 개발 모드에서만 처리한다. release/dev에서 이 경로가 켜져 있으면 앱 resume/focus 시 지난 이벤트가 몰아서 표시될 수 있으므로 backend remote push와 역할을 섞지 않는다.
+  - `GameEventAlertService`의 scoreboard/relay diff 기반 local notification은 local 개발 모드에서만 처리한다. release/dev에서 이 경로가 켜져 있으면 앱 resume/focus 시 지난 이벤트가 몰아서 표시될 수 있으므로 backend remote push와 역할을 섞지 않는다. 회귀 확인용으로만 `--dart-define=ENABLE_LOCAL_GAME_EVENT_ALERTS=true`를 명시해 보조 로컬 알림 경로를 켤 수 있다.
   - scoreboard diff만으로 확정하기 어려운 `homerun` moment는 같은 scheduler가 live relay seq baseline을 저장하고, 새 relay item의 `HOMERUN` event 또는 `홈런` 텍스트를 감지해 발행한다.
   - 앱 종료/백그라운드 push가 안 오면 먼저 `/push/register`가 실제 기기에서 성공해 registry `devices`가 채워졌는지 확인한다. 앱은 마이팀 선택 후 non-local 환경에서 최초 1회 권한 요청과 FCM registration sync를 자동 시도해야 한다.
   - 배포 후 `GET /api/push/config-status` 또는 `python -m kbo_fans_backend.scheduler.push_config_status`로 Firebase/APNs/registry/scheduler secret 누락을 먼저 확인한다.
+  - local backend에서 `PUSH_SYNC_SECRET`이 없으면 `config-status`는 diagnostics 확인용으로 열어두지만, `/push/test`, `/push/baseball-info`, `/push/resubscribe-topics`, `/push/live-activity/sync-scoreboard` 같은 mutation endpoint는 Firebase/APNs까지 진행하지 않고 503으로 막아야 한다.
   - 외부에서 `PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api`를 실행하면 `/health`와 push readiness를 같이 확인할 수 있다.
+  - GitHub Actions secret 컨텍스트에서 원격 테스트 푸시를 보낼 때는 `Push Test Notification` workflow 또는 `./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch`를 사용한다. 이 helper는 secret/token 값을 출력하지 않는다.
   - backend image는 `./scripts/aws-push-image.sh`로 ECR에 push하고, 출력되는 `CONTAINER_IMAGE_URI`를 CloudFormation 배포에 사용할 수 있다.
   - AWS ECS/Fargate에서는 Firebase Admin JSON, APNs `.p8`, KBO relay credential을 Secrets Manager에서 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `KBO_RELAY_USER_ID`, `KBO_RELAY_PASSWORD` env로 주입하는 것이 파일 mount보다 단순하다. 로컬/EC2 파일 배포는 `*_PATH`를 계속 쓸 수 있다.
   - ECS task definition의 `secrets` env 주입은 task execution role 권한에 의존한다. `./scripts/aws-push-task-definitions.sh`가 생성한 `iam-task-execution-secrets-policy.rendered.json`를 execution role inline policy로 붙이고, AWS managed `AmazonECSTaskExecutionRolePolicy`도 함께 붙인다.

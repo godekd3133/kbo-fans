@@ -736,9 +736,19 @@ class PushNotificationService {
   Future<Map<String, dynamic>> debugState() async {
     final prefs = await SharedPreferences.getInstance();
     final remotePushAvailable = _shouldUseRemotePushServices();
+    final localGameEventAlertsEnabled =
+        !kIsWeb &&
+        (AppConfig.instance.isLocal ||
+            AppConfig.instance.enableLocalGameEventAlerts);
     return {
       'initialized': _initialized,
       'localOnlyMode': !remotePushAvailable,
+      'remotePushAvailable': remotePushAvailable,
+      'environment': AppConfig.instance.environment.name,
+      'apiBaseUrl': AppConfig.instance.apiBaseUrl,
+      'localGameEventAlertsEnabled': localGameEventAlertsEnabled,
+      'localGameEventAlertsForced':
+          AppConfig.instance.enableLocalGameEventAlerts,
       'tokenReady': (_lastToken ?? '').isNotEmpty,
       'status':
           prefs.getString(_debugLastInitStatusKey) ??

@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-06-22: 푸시 backend readiness / 로컬 경기 이벤트 알림 진단 보강
+
+### 원인
+- 로컬 Mac 기준 `8000` listen process가 없어 `http://127.0.0.1:8000/api/health`는 실패했지만, 운영 ALB backend는 `/api/health` 200으로 응답했다.
+- 원격 푸시 backend는 최신 배포/토픽 재구독 후 `push_config=ok`, `registeredDevices=13`, `scheduler.lastSyncAt` age 2초, `subscriptionsAttempted=104`로 정상 readiness를 확인했다.
+- 홈 화면의 `GameEventAlertService` 로컬 경기 이벤트 알림은 과거 앱 resume/focus 시 지난 이벤트가 몰아서 뜨던 문제를 막기 위해 release/dev/TestFlight 기본값에서 의도적으로 꺼져 있었다.
+
+### 완료
+- [x] GitHub Actions `Push Demo Deploy` dry-run과 실제 deploy/resubscribe를 `0.0.63` image 기준으로 재실행해 운영 backend push readiness를 재확인
+- [x] 로컬 backend를 `screen` detached 세션 `kbo-fans-backend`에서 `0.0.0.0:8000`으로 기동하고 localhost / LAN IP(`172.16.100.55`) health를 확인
+- [x] `ENABLE_LOCAL_GAME_EVENT_ALERTS=true` dart define으로 회귀 확인용 로컬 경기 이벤트 알림 경로를 명시 활성화할 수 있게 보강
+- [x] API 진단 화면에서 게임 diff 없이 OS 로컬 알림 경로를 즉시 확인할 수 있는 로컬 알림 테스트 action 추가
+- [x] local backend `PUSH_SYNC_SECRET` 누락 상태에서 `/push/test`가 Firebase 초기화 500으로 떨어지지 않고 설정 누락 503으로 멈추도록 backend guard 보강
+- [x] GitHub Actions secret 컨텍스트에서 topic/token 대상 원격 테스트 푸시를 보낼 수 있는 `Push Test Notification` workflow, dispatch helper, `codex-run.sh` wrapper 추가
+- [x] API 진단 화면의 push card에 remote push 가능 여부, local game alert 활성 여부, API base URL을 표시
+- [x] APP_SPEC / ENGINEERING_NOTES / CHANGELOG에 로컬 알림 정책과 명시 플래그 반영
+
+### 남은 확인
+- [ ] 실제 iPhone 기기에서 push 수신 확인. 현재 작업 Mac에는 iPhone/iPad device가 연결되어 있지 않아 device receipt는 직접 검증하지 못했다.
+
+---
+
 ## 2026-06-20: 외부 TestFlight 테스터 최신 빌드 배정
 
 ### 완료

@@ -1313,6 +1313,43 @@ def test_send_test_push_endpoint_uses_sync_secret(monkeypatch) -> None:
     assert allowed.json()["data"]["sent"] is True
 
 
+def test_send_test_push_endpoint_requires_configured_sync_secret(monkeypatch) -> None:
+    class LocalSettings:
+        push_sync_secret = ""
+
+    class FakeService:
+        def send_test(self, payload) -> dict:
+            raise AssertionError("send_test should not run without PUSH_SYNC_SECRET")
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: LocalSettings())
+    monkeypatch.setattr(push_routes, "service", FakeService())
+    client = TestClient(app)
+    body = {"title": "안타", "body": "테스트", "topic": "hit_OB"}
+
+    response = client.post("/api/push/test", json=body)
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Push sync secret is not configured"
+
+
+def test_push_config_status_allows_missing_sync_secret_for_diagnostics(monkeypatch) -> None:
+    class LocalSettings:
+        push_sync_secret = ""
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: LocalSettings())
+    monkeypatch.setattr(
+        push_routes.diagnostics_service,
+        "status",
+        lambda: {"ready": False, "missing": ["PUSH_SYNC_SECRET"]},
+    )
+    client = TestClient(app)
+
+    response = client.get("/api/push/config-status")
+
+    assert response.status_code == 200
+    assert response.json()["data"]["missing"] == ["PUSH_SYNC_SECRET"]
+
+
 def test_send_baseball_info_endpoint_uses_sync_secret(monkeypatch) -> None:
     class SecretSettings:
         push_sync_secret = "secret"

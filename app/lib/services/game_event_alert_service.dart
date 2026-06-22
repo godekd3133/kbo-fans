@@ -101,6 +101,25 @@ class GameEventAlertService {
     return _notificationsAllowed;
   }
 
+  Future<bool> showDiagnosticNotification() async {
+    if (kIsWeb) {
+      return false;
+    }
+
+    final allowed = await requestPermissions();
+    if (!allowed) {
+      return false;
+    }
+
+    await _showNow(
+      title: 'KBO Fans 알림 테스트',
+      body: '로컬 알림 경로가 연결되었습니다',
+      tag: 'diagnostic:local:${DateTime.now().millisecondsSinceEpoch}',
+      payload: '/diagnostics',
+    );
+    return true;
+  }
+
   Future<void> processGames({
     required List<Game> games,
     required String? myTeamId,
@@ -109,6 +128,7 @@ class GameEventAlertService {
     if (!shouldProcessLocalGameEventAlerts(
       isWeb: kIsWeb,
       isLocal: AppConfig.instance.isLocal,
+      forceEnabled: AppConfig.instance.enableLocalGameEventAlerts,
     )) {
       return;
     }
@@ -493,6 +513,7 @@ class GameEventAlertService {
     required String title,
     required String body,
     required String tag,
+    String? payload,
   }) async {
     try {
       await _plugin.show(
@@ -509,7 +530,7 @@ class GameEventAlertService {
           ),
           iOS: const DarwinNotificationDetails(),
         ),
-        payload: _payloadForTag(tag),
+        payload: payload ?? _payloadForTag(tag),
       );
     } catch (error) {
       DevConsole.instance.warn('Game event alert failed: $error');
@@ -739,6 +760,7 @@ class _LineupCheckResult {
 bool shouldProcessLocalGameEventAlerts({
   required bool isWeb,
   required bool isLocal,
+  required bool forceEnabled,
 }) {
-  return !isWeb && isLocal;
+  return !isWeb && (isLocal || forceEnabled);
 }

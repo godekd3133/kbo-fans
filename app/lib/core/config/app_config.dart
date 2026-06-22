@@ -15,6 +15,7 @@ class AppConfig {
   final bool preferDirectScrape;
   final bool useBackendApi;
   final bool showDevConsole;
+  final bool enableLocalGameEventAlerts;
 
   AppConfig._({
     required this.environment,
@@ -23,6 +24,7 @@ class AppConfig {
     required this.preferDirectScrape,
     required this.useBackendApi,
     required this.showDevConsole,
+    required this.enableLocalGameEventAlerts,
   });
 
   /// `--dart-define=APP_ENV=local|dev|release` 로 빌드 시 환경 결정
@@ -48,6 +50,10 @@ class AppConfig {
       'SHOW_DEV_CONSOLE',
       defaultValue: 'true',
     );
+    const enableLocalGameEventAlerts = bool.fromEnvironment(
+      'ENABLE_LOCAL_GAME_EVENT_ALERTS',
+      defaultValue: false,
+    );
     final env = AppEnvironment.values.firstWhere(
       (e) => e.name == envString,
       orElse: () => AppEnvironment.local,
@@ -66,6 +72,7 @@ class AppConfig {
       preferDirectScrape: preferDirectScrape,
       useBackendApi: useBackendApi,
       showDevConsole: showDevConsoleFlag != 'false',
+      enableLocalGameEventAlerts: enableLocalGameEventAlerts,
     );
   }
 

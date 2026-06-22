@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
+import '../../services/game_event_alert_service.dart';
 import '../../services/push_notification_service.dart';
 
 class ApiDiagnosticsScreen extends ConsumerStatefulWidget {
@@ -20,6 +23,7 @@ class ApiDiagnosticsScreen extends ConsumerStatefulWidget {
 class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
   late Future<List<_DiagnosticResult>> _future;
   late Future<Map<String, dynamic>> _pushFuture;
+  bool _localNotificationBusy = false;
 
   @override
   void initState() {
@@ -89,6 +93,31 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
     }
   }
 
+  Future<void> _sendLocalNotificationTest() async {
+    if (_localNotificationBusy) {
+      return;
+    }
+    setState(() {
+      _localNotificationBusy = true;
+    });
+    try {
+      final sent = await GameEventAlertService.instance
+          .showDiagnosticNotification();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(sent ? '로컬 알림 테스트를 보냈습니다' : '시스템 알림 권한이 필요합니다')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _localNotificationBusy = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,6 +168,13 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                       .join(', ');
                   final status = data['status'] as String? ?? 'idle';
                   final reason = data['reason'] as String?;
+                  final remotePushAvailable =
+                      data['remotePushAvailable'] == true;
+                  final localGameAlertsEnabled =
+                      data['localGameEventAlertsEnabled'] == true;
+                  final localGameAlertsForced =
+                      data['localGameEventAlertsForced'] == true;
+                  final apiBaseUrl = data['apiBaseUrl'] as String? ?? '-';
                   final isLocalSkipped =
                       !shouldUseRemotePushServices(
                         isWeb: false,
@@ -155,11 +191,15 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                         elapsedMs: 0,
                         detail:
                             '${_pushDetailPrefix(status)} initialized=${data['initialized']} tokenReady=${data['tokenReady']}'
+                            ' remote=${remotePushAvailable ? 'on' : 'off'}'
+                            ' localAlerts=${localGameAlertsEnabled ? 'on' : 'off'}'
                             '${topics.isNotEmpty ? ' topics=$topics' : ''}',
                         note: _pushReasonLabel(
                           status: status,
                           reason: reason,
                           isLocalSkipped: isLocalSkipped,
+                          localGameAlertsForced: localGameAlertsForced,
+                          apiBaseUrl: apiBaseUrl,
                         ),
                       ),
                     ),
@@ -168,12 +208,30 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
               ),
               const SizedBox(height: 10),
               const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => setState(() {
-                  _future = _load();
-                  _pushFuture = PushNotificationService.instance.debugState();
-                }),
-                child: const Text('다시 진단'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _localNotificationBusy
+                          ? null
+                          : () => unawaited(_sendLocalNotificationTest()),
+                      child: Text(
+                        _localNotificationBusy ? '확인 중' : '로컬 알림 테스트',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => setState(() {
+                        _future = _load();
+                        _pushFuture = PushNotificationService.instance
+                            .debugState();
+                      }),
+                      child: const Text('다시 진단'),
+                    ),
+                  ),
+                ],
               ),
             ],
           );
@@ -294,12 +352,21 @@ String? _pushReasonLabel({
   required String status,
   required String? reason,
   required bool isLocalSkipped,
+  required bool localGameAlertsForced,
+  required String apiBaseUrl,
 }) {
-  if (!isLocalSkipped && status != 'failed') {
-    return null;
+  final details = <String>[];
+  if (localGameAlertsForced) {
+    details.add('로컬 경기 이벤트 알림 강제 플래그가 켜져 있습니다.');
+  }
+  if (apiBaseUrl != '-') {
+    details.add('API $apiBaseUrl');
   }
   if (reason == null || reason.isEmpty) {
-    return isLocalSkipped ? '로컬 환경에서 푸시 초기화를 건너뛰었습니다.' : null;
+    if (isLocalSkipped) {
+      details.insert(0, '로컬 환경에서 푸시 초기화를 건너뛰었습니다.');
+    }
+    return details.isEmpty ? null : details.join(' ');
   }
   if (reason.contains('FirebaseOptions')) {
     return '로컬 Firebase 설정이 없어 푸시를 비활성 상태로 표시합니다.';

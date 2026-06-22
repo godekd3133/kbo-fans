@@ -1,0 +1,89 @@
+name: Push Test Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: API base URL. Empty uses RELEASE_API_BASE_URL variable.
+        required: false
+        default: ""
+        type: string
+      topic:
+        description: FCM topic target. Leave empty when token is provided.
+        required: false
+        default: "baseball_info_ALL"
+        type: string
+      token:
+        description: FCM device token target. Leave empty when topic is provided.
+        required: false
+        default: ""
+        type: string
+      title:
+        description: Visible notification title.
+        required: false
+        default: "KBO Fans Test"
+        type: string
+      body:
+        description: Visible notification body.
+        required: false
+        default: "Push delivery test"
+        type: string
+      allow_insecure:
+        description: Allow temporary HTTP smoke backend.
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_API_BASE_URL: ${{ vars.RELEASE_API_BASE_URL || secrets.RELEASE_API_BASE_URL }}
+      PUSH_SYNC_SECRET: ${{ secrets.PUSH_SYNC_SECRET }}
+      PUSH_TEST_BASE_URL_INPUT: ${{ inputs.base_url }}
+      PUSH_TEST_TOPIC_INPUT: ${{ inputs.topic }}
+      PUSH_TEST_TOKEN_INPUT: ${{ inputs.token }}
+      PUSH_TEST_TITLE: ${{ inputs.title }}
+      PUSH_TEST_BODY: ${{ inputs.body }}
+      ALLOW_INSECURE_PUSH_TEST: ${{ inputs.allow_insecure }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Send test notification
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${PUSH_SYNC_SECRET:-}" ]]; then
+            echo "Missing GitHub secret: PUSH_SYNC_SECRET" >&2
+            exit 2
+          fi
+
+          base_url="${PUSH_TEST_BASE_URL_INPUT:-${RELEASE_API_BASE_URL:-}}"
+          if [[ -z "$base_url" ]]; then
+            echo "Missing API base URL. Set workflow input base_url or GitHub variable RELEASE_API_BASE_URL." >&2
+            exit 2
+          fi
+
+          args=(--base-url "$base_url" --title "$PUSH_TEST_TITLE" --body "$PUSH_TEST_BODY")
+          if [[ -n "${PUSH_TEST_TOPIC_INPUT:-}" && -n "${PUSH_TEST_TOKEN_INPUT:-}" ]]; then
+            echo "Use only one of topic or token." >&2
+            exit 2
+          elif [[ -n "${PUSH_TEST_TOKEN_INPUT:-}" ]]; then
+            args+=(--token "$PUSH_TEST_TOKEN_INPUT")
+          elif [[ -n "${PUSH_TEST_TOPIC_INPUT:-}" ]]; then
+            args+=(--topic "$PUSH_TEST_TOPIC_INPUT")
+          else
+            echo "One target is required: topic or token." >&2
+            exit 2
+          fi
+
+          ./scripts/push-test-notification.sh "${args[@]}"

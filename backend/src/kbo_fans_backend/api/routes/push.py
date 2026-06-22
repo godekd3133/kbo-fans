@@ -38,7 +38,7 @@ def send_test_push(
     payload: PushTestRequest,
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
-    _ensure_sync_allowed(x_kbo_push_sync_secret)
+    _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
     return ApiEnvelope.success_response(service.send_test(payload))
 
 
@@ -47,7 +47,7 @@ def send_baseball_info_push(
     payload: PushBaseballInfoRequest,
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
-    _ensure_sync_allowed(x_kbo_push_sync_secret)
+    _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
     return ApiEnvelope.success_response(
         service.send_baseball_info(
             kind=payload.kind,
@@ -65,7 +65,7 @@ def resubscribe_push_topics(
     dry_run: bool = Query(default=False),
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
-    _ensure_sync_allowed(x_kbo_push_sync_secret)
+    _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
     return ApiEnvelope.success_response(
         service.resubscribe_registered_topics(dry_run=dry_run)
     )
@@ -99,12 +99,18 @@ def sync_live_activity_scoreboard(
     date: Optional[str] = Query(default=None),
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
-    _ensure_sync_allowed(x_kbo_push_sync_secret)
+    _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
     target_date = date or current_kbo_date()
     return ApiEnvelope.success_response(live_activity_sync_service.sync_date(target_date))
 
 
-def _ensure_sync_allowed(secret: Optional[str]) -> None:
+def _ensure_sync_allowed(
+    secret: Optional[str],
+    *,
+    require_configured: bool = False,
+) -> None:
     expected = get_settings().push_sync_secret
+    if not expected and require_configured:
+        raise HTTPException(status_code=503, detail="Push sync secret is not configured")
     if expected and secret != expected:
         raise HTTPException(status_code=401, detail="Invalid push sync secret")

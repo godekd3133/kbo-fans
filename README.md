@@ -168,6 +168,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - AWS/Docker 로컬 도구 점검 액션: `./scripts/codex-run.sh aws-push-tooling`
 - GitHub Actions push deploy secrets/variables 점검 또는 업로드 액션: `./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env`
 - GitHub Actions push deploy workflow 실행 액션: `./scripts/codex-run.sh github-push-demo-run --dry-run true`
+- GitHub Actions 원격 테스트 푸시 실행 액션: `./scripts/codex-run.sh github-push-test-notification-run --topic baseball_info_ALL --watch`
 - 환경 점검 액션: `./scripts/codex-run.sh doctor`
 
 플랫폼별 실행 환경을 분리한 Codex 액션용 래퍼:
@@ -296,6 +297,7 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 - `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env`: 앱 파일, env checklist, 로컬 AWS/Docker tooling, GitHub Actions workflow/secrets/variables 상태를 secret 값 없이 한 번에 점검하고, 누락된 Firebase/APNs/AWS/GitHub 설정을 `next_config[...]`로 안내합니다.
 - `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env`: GitHub Actions `Push Demo Deploy`에 필요한 secrets/variables를 dry-run으로 확인. `--apply`를 붙이면 `gh secret set` / `gh variable set`으로 실제 업로드합니다. obvious placeholder 값은 업로드 전에 실패합니다.
 - `./scripts/github-push-demo-run.sh --dry-run true`: GitHub Actions `Push Demo Deploy` workflow를 dispatch합니다. workflow 파일이 아직 원격 default branch에 없으면 커밋/푸시 필요 상태를 안내하고, 필수 secrets/variables가 누락되면 workflow run 생성 전에 목록을 출력하고 중단합니다.
+- `./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch`: GitHub Actions `Push Test Notification` workflow를 dispatch해 `PUSH_SYNC_SECRET`을 로컬에 두지 않고 원격 테스트 푸시를 보냅니다. FCM token 대상은 `--token <fcm-token>`으로 지정하며, 스크립트는 secret/token 값을 출력하지 않습니다.
 - `POST /api/push/live-activity/sync-scoreboard`: 운영 scheduler가 5초 간격으로 호출하는 scoreboard/relay sync trigger. 등록된 Live Activity에는 APNs update/end를 보내고, scoreboard diff 기반 득점/역전/타석/종료/이닝 변경과 relay diff 기반 홈런은 FCM topic push로 발행합니다.
 - AWS ECS/Fargate 시연 배포 템플릿은 `infra/aws/ecs-fargate/`와 `infra/aws/cloudformation/`에 있습니다. 권장 구조는 FastAPI API service 1개와 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` sync worker service 1개입니다.
 

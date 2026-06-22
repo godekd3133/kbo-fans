@@ -16,6 +16,10 @@
 
 ### Fixed
 
+- 로컬 경기 이벤트 알림이 release/dev/TestFlight 기본값에서는 중복 방지를 위해 꺼져 있음을 API 진단 화면에 노출하고, 회귀 확인용 `ENABLE_LOCAL_GAME_EVENT_ALERTS` 플래그로 명시 활성화할 수 있게 보강
+- API 진단 화면에서 OS 로컬 알림 경로를 즉시 확인할 수 있는 로컬 알림 테스트 action 추가
+- GitHub Actions secret 컨텍스트에서 topic/token 대상 원격 테스트 푸시를 발송하는 `Push Test Notification` workflow와 dispatch helper 추가
+- local backend에 `PUSH_SYNC_SECRET`이 없을 때 test push endpoint가 Firebase 초기화 500으로 떨어지지 않고 설정 누락 503을 반환하도록 보강
 - 진행 중 경기 박스스코어가 공식 rows 업데이트 전이어도 KBO 실시간 현재 타자/투수 context를 `실시간 기록 추적`으로 표시하도록 보강
 - 기록 탭 첫 화면의 spotlight 카드 하단 텍스트와 리더보드 `ERA` 탭이 390px 폭에서 잘리지 않도록 레이아웃 폭/높이를 보정
 
