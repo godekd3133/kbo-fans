@@ -762,6 +762,9 @@ def _registration_to_payload(registration: dict[str, Any]) -> PushRegisterReques
             myTeam=registration.get("myTeam"),
             notifications=notifications,
             followedGameIds=_stored_followed_game_ids(registration),
+            notificationsAllowed=_optional_bool(registration.get("notificationsAllowed")),
+            authorizationStatus=str(registration.get("authorizationStatus") or ""),
+            apnsTokenReady=_optional_bool(registration.get("apnsTokenReady")),
         )
     except Exception as error:
         raise ValueError(f"invalid registration: {error}") from error
@@ -788,6 +791,19 @@ def _stored_followed_game_ids(registration: dict[str, Any]) -> list[str]:
         seen.add(text)
         cleaned.append(text)
     return cleaned
+
+
+def _optional_bool(value: Any) -> Optional[bool]:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return None
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes"}:
+        return True
+    if text in {"0", "false", "no"}:
+        return False
+    return None
 
 
 def _planned_topic_results(groups: dict[str, list[str]]) -> list[dict[str, Any]]:

@@ -124,6 +124,7 @@ class PushConfigurationDiagnostics:
                 "followedGameCount": 0,
                 "topicCounts": {},
                 "myTeamCounts": {},
+                "deviceSummaries": [],
                 "pushReceiptCount": 0,
                 "recentPushReceipts": [],
             }
@@ -158,6 +159,7 @@ class PushConfigurationDiagnostics:
             "followedGameCount": len(followed_game_ids),
             "topicCounts": dict(sorted(topic_counts.items())),
             "myTeamCounts": dict(sorted(my_team_counts.items())),
+            "deviceSummaries": _device_summaries(registrations),
             "pushReceiptCount": len(recent_push_receipts),
             "recentPushReceipts": recent_push_receipts,
         }
@@ -243,6 +245,45 @@ def _nearest_existing_parent(path: Path) -> Optional[Path]:
         if current == current.parent:
             return None
         current = current.parent
+
+
+def _device_summaries(
+    registrations: list[dict[str, Any]], *, limit: int = 20
+) -> list[dict[str, Any]]:
+    summaries = []
+    for registration in registrations:
+        device_token = str(registration.get("deviceToken") or "")
+        topics = registration.get("topics")
+        followed = registration.get("followedGameIds")
+        summaries.append(
+            {
+                "deviceTokenSuffix": device_token[-8:] if device_token else "",
+                "platform": str(registration.get("platform") or ""),
+                "myTeam": str(registration.get("myTeam") or ""),
+                "followedGameIds": _clean_string_list(
+                    followed if isinstance(followed, list) else []
+                ),
+                "topicCount": len(topics) if isinstance(topics, list) else 0,
+                "updatedAt": str(registration.get("updatedAt") or ""),
+                "notificationsAllowed": registration.get("notificationsAllowed"),
+                "authorizationStatus": str(registration.get("authorizationStatus") or ""),
+                "apnsTokenReady": registration.get("apnsTokenReady"),
+            }
+        )
+    summaries.sort(key=lambda item: str(item.get("updatedAt") or ""), reverse=True)
+    return summaries[:limit]
+
+
+def _clean_string_list(values: list[Any]) -> list[str]:
+    cleaned = []
+    seen = set()
+    for value in values:
+        text = str(value).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned
 
 
 def _without_missing(payload: dict[str, Any]) -> dict[str, Any]:

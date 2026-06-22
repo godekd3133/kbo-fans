@@ -193,10 +193,16 @@ void main() {
       myTeam: 'LG',
       settings: settings,
       followedGameIds: const ['20260612KTLG0', '  ', '20260612KTLG0'],
+      notificationsAllowed: true,
+      authorizationStatus: 'authorized',
+      apnsTokenReady: true,
     );
 
     expect(payload['deviceToken'], 'fcm-token');
     expect(payload['myTeam'], 'LG');
+    expect(payload['notificationsAllowed'], isTrue);
+    expect(payload['authorizationStatus'], 'authorized');
+    expect(payload['apnsTokenReady'], isTrue);
     expect(payload['notifications']['baseballInfo'], isTrue);
     expect(
       payload['notifications']['deliveryModes']['baseballInfo'],

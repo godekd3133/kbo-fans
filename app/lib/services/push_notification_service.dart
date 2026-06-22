@@ -733,7 +733,12 @@ class PushNotificationService {
       final settings = await loadSettings();
       final resolvedMyTeam = myTeam ?? await _loadStoredMyTeam();
       final followedGameIds = await _loadFollowedGameIds();
-      await _waitForAppleApnsTokenIfNeeded();
+      final notificationSettings = await FirebaseMessaging.instance
+          .getNotificationSettings();
+      _notificationsAllowed = await _resolveNotificationsAllowed(
+        authorizationStatus: notificationSettings.authorizationStatus,
+      );
+      final apnsTokenReady = await _waitForAppleApnsTokenIfNeeded();
       final token =
           forceToken ??
           _lastToken ??
@@ -775,6 +780,9 @@ class PushNotificationService {
           myTeam: resolvedMyTeam,
           settings: settings,
           followedGameIds: followedGameIds,
+          notificationsAllowed: _notificationsAllowed,
+          authorizationStatus: notificationSettings.authorizationStatus.name,
+          apnsTokenReady: apnsTokenReady,
         ),
       );
       DevConsole.instance.info(
@@ -1000,20 +1008,21 @@ class PushNotificationService {
     );
   }
 
-  Future<void> _waitForAppleApnsTokenIfNeeded() async {
+  Future<bool?> _waitForAppleApnsTokenIfNeeded() async {
     if (defaultTargetPlatform != TargetPlatform.iOS &&
         defaultTargetPlatform != TargetPlatform.macOS) {
-      return;
+      return null;
     }
 
     for (var attempt = 0; attempt < 6; attempt += 1) {
       final token = await FirebaseMessaging.instance.getAPNSToken();
       if (token != null && token.isNotEmpty) {
-        return;
+        return true;
       }
       await Future<void>.delayed(const Duration(milliseconds: 500));
     }
     DevConsole.instance.warn('Push APNs token unavailable before FCM sync');
+    return false;
   }
 
   String _platformName() {
@@ -1040,6 +1049,9 @@ Map<String, dynamic> buildPushRegistrationPayload({
   required String? myTeam,
   required PushNotificationSettings settings,
   required Iterable<String> followedGameIds,
+  bool notificationsAllowed = false,
+  String authorizationStatus = '',
+  bool? apnsTokenReady,
 }) {
   final followed = <String>{};
   for (final gameId in followedGameIds) {
@@ -1049,13 +1061,19 @@ Map<String, dynamic> buildPushRegistrationPayload({
     }
   }
 
-  return {
+  final payload = {
     'deviceToken': deviceToken,
     'platform': platform,
     'myTeam': myTeam,
     'notifications': settings.toJson(),
     'followedGameIds': followed.toList()..sort(),
+    'notificationsAllowed': notificationsAllowed,
+    'authorizationStatus': authorizationStatus,
   };
+  if (apnsTokenReady != null) {
+    payload['apnsTokenReady'] = apnsTokenReady;
+  }
+  return payload;
 }
 
 @visibleForTesting

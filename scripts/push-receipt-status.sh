@@ -214,6 +214,10 @@ receipts = registry.get("recentPushReceipts")
 if not isinstance(receipts, list):
     receipts = []
 
+
+def text(value: Any) -> str:
+    return str(value or "").strip()
+
 print(
     "push_receipts=status=ok "
     f"count={registry.get('pushReceiptCount', len(receipts))} "
@@ -221,6 +225,31 @@ print(
     f"registeredDevices={registry.get('registeredDeviceCount')} "
     f"followedGames={registry.get('followedGameCount')}"
 )
+
+device_summaries = registry.get("deviceSummaries")
+if not isinstance(device_summaries, list):
+    device_summaries = []
+
+for device in device_summaries:
+    if not isinstance(device, dict):
+        continue
+    followed_ids = device.get("followedGameIds")
+    if isinstance(followed_ids, list):
+        followed_text = ",".join(text(game_id) for game_id in followed_ids if text(game_id))
+    else:
+        followed_text = ""
+    print(
+        "push_device="
+        f"platform={text(device.get('platform')) or '-'} "
+        f"suffix={text(device.get('deviceTokenSuffix')) or '-'} "
+        f"myTeam={text(device.get('myTeam')) or '-'} "
+        f"followed={followed_text or '-'} "
+        f"topicCount={device.get('topicCount', '-')} "
+        f"notificationsAllowed={device.get('notificationsAllowed')} "
+        f"authorizationStatus={text(device.get('authorizationStatus')) or '-'} "
+        f"apnsTokenReady={device.get('apnsTokenReady')} "
+        f"updatedAt={text(device.get('updatedAt')) or '-'}"
+    )
 
 since = None
 if since_raw:
@@ -231,10 +260,6 @@ if since_raw:
         raise SystemExit(1)
     if since.tzinfo is None:
         since = since.replace(tzinfo=timezone.utc)
-
-
-def text(value: Any) -> str:
-    return str(value or "").strip()
 
 
 def receipt_time(receipt: dict[str, Any]) -> datetime | None:

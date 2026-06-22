@@ -35,6 +35,19 @@ def test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter
             }
         ]
     )
+    payload["data"]["registry"]["deviceSummaries"] = [
+        {
+            "deviceTokenSuffix": "abcd1234",
+            "platform": "ios",
+            "myTeam": "OB",
+            "followedGameIds": ["GAME_20260620HTKT0"],
+            "topicCount": 8,
+            "updatedAt": "2026-06-22T06:10:00+00:00",
+            "notificationsAllowed": True,
+            "authorizationStatus": "authorized",
+            "apnsTokenReady": True,
+        }
+    ]
     with _mock_server(payload) as server:
         result = _run_status_script(
             server.base_url,
@@ -50,6 +63,11 @@ def test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter
     assert result.returncode == 0, result.stderr
     assert server.seen_secret == "secret"
     assert "push_receipts=status=ok count=1 recent=1" in result.stdout
+    assert (
+        "push_device=platform=ios suffix=abcd1234 myTeam=OB followed=GAME_20260620HTKT0 "
+        "topicCount=8 notificationsAllowed=True authorizationStatus=authorized "
+        "apnsTokenReady=True updatedAt=2026-06-22T06:10:00+00:00"
+    ) in result.stdout
     assert "push_receipt_match=status=ok matches=1" in result.stdout
     assert "gameId=GAME_20260620HTKT0" in result.stdout
     assert "deviceTokenSuffix=abcd1234" in result.stdout

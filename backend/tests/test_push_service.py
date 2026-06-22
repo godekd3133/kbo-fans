@@ -243,6 +243,39 @@ def test_register_persists_followed_game_ids(tmp_path) -> None:
     assert registration["followedGameIds"] == ["20260612KTLG0"]
 
 
+def test_register_persists_push_client_state_for_receipt_diagnostics(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+
+    service.register(
+        PushRegisterRequest(
+            deviceToken="secret-fcm-token",
+            platform="ios",
+            myTeam="LG",
+            followedGameIds=["20260612KTLG0"],
+            notificationsAllowed=True,
+            authorizationStatus="authorized",
+            apnsTokenReady=True,
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+
+    registration = registry.device_registrations()[0]
+
+    assert registration["notificationsAllowed"] is True
+    assert registration["authorizationStatus"] == "authorized"
+    assert registration["apnsTokenReady"] is True
+
+
 def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
@@ -1458,6 +1491,9 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
             platform="ios",
             myTeam="OB",
             followedGameIds=["20260618KTOB0"],
+            notificationsAllowed=True,
+            authorizationStatus="authorized",
+            apnsTokenReady=True,
             notifications=NotificationSettings(
                 gameStart=True,
                 scoring=True,
@@ -1498,6 +1534,19 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
     assert status["registry"]["topicCounts"]["hit_GAME_20260618KTOB0"] == 1
     assert "game_start_soon_OB" not in status["registry"]["topicCounts"]
     assert "hit_OB" not in status["registry"]["topicCounts"]
+    assert status["registry"]["deviceSummaries"] == [
+        {
+            "deviceTokenSuffix": "cm-token",
+            "platform": "ios",
+            "myTeam": "OB",
+            "followedGameIds": ["20260618KTOB0"],
+            "topicCount": 11,
+            "updatedAt": status["registry"]["deviceSummaries"][0]["updatedAt"],
+            "notificationsAllowed": True,
+            "authorizationStatus": "authorized",
+            "apnsTokenReady": True,
+        }
+    ]
     assert status["registry"]["pushReceiptCount"] == 1
     assert status["registry"]["recentPushReceipts"][0]["type"] == "hit"
     assert status["registry"]["recentPushReceipts"][0]["deviceTokenSuffix"] == "cm-token"

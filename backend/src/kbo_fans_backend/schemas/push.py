@@ -41,6 +41,9 @@ class PushRegisterRequest(BaseModel):
     myTeam: Optional[str] = None
     notifications: NotificationSettings
     followedGameIds: list[str] = Field(default_factory=list)
+    notificationsAllowed: Optional[bool] = None
+    authorizationStatus: Optional[str] = None
+    apnsTokenReady: Optional[bool] = None
 
 
 class PushTestRequest(BaseModel):
