@@ -107,7 +107,7 @@ class PushService:
 
         if not dry_run:
             for payload, topics in parsed:
-                self.registry.save_device_registration(payload, topics)
+                self.registry.save_device_topics(payload, topics)
 
         return {
             "dryRun": dry_run,

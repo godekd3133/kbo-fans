@@ -43,6 +43,7 @@ def test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter
             "followedGameIds": ["GAME_20260620HTKT0"],
             "topicCount": 8,
             "updatedAt": "2026-06-22T06:10:00+00:00",
+            "topicsUpdatedAt": "2026-06-22T06:11:00+00:00",
             "notificationsAllowed": True,
             "authorizationStatus": "authorized",
             "apnsTokenReady": True,
@@ -66,7 +67,8 @@ def test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter
     assert (
         "push_device=platform=ios suffix=abcd1234 myTeam=OB followed=GAME_20260620HTKT0 "
         "topicCount=8 notificationsAllowed=True authorizationStatus=authorized "
-        "apnsTokenReady=True updatedAt=2026-06-22T06:10:00+00:00"
+        "apnsTokenReady=True updatedAt=2026-06-22T06:10:00+00:00 "
+        "topicsUpdatedAt=2026-06-22T06:11:00+00:00"
     ) in result.stdout
     assert "push_receipt_match=status=ok matches=1" in result.stdout
     assert "gameId=GAME_20260620HTKT0" in result.stdout

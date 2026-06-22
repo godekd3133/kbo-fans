@@ -248,7 +248,8 @@ for device in device_summaries:
         f"notificationsAllowed={device.get('notificationsAllowed')} "
         f"authorizationStatus={text(device.get('authorizationStatus')) or '-'} "
         f"apnsTokenReady={device.get('apnsTokenReady')} "
-        f"updatedAt={text(device.get('updatedAt')) or '-'}"
+        f"updatedAt={text(device.get('updatedAt')) or '-'} "
+        f"topicsUpdatedAt={text(device.get('topicsUpdatedAt')) or '-'}"
     )
 
 since = None

@@ -265,6 +265,7 @@ def _device_summaries(
                 ),
                 "topicCount": len(topics) if isinstance(topics, list) else 0,
                 "updatedAt": str(registration.get("updatedAt") or ""),
+                "topicsUpdatedAt": str(registration.get("topicsUpdatedAt") or ""),
                 "notificationsAllowed": registration.get("notificationsAllowed"),
                 "authorizationStatus": str(registration.get("authorizationStatus") or ""),
                 "apnsTokenReady": registration.get("apnsTokenReady"),

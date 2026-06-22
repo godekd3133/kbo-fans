@@ -394,7 +394,7 @@ iOS release/TestFlight 앱은 아래가 필요하다.
 - `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`가 실패 0개로 통과
 - `GET /api/push/config-status`의 `readyForIphoneOnlyDemo`가 `true`
 - `GET /api/push/config-status`의 `registry.registeredDeviceCount`, `registry.topicCounts.game_start_soon_<팀>`, `registry.topicCounts.hit_<팀>`이 기대 단말/topic 등록과 일치
-- `GET /api/push/config-status`의 `registry.deviceSummaries`가 기대 단말의 `notificationsAllowed=true`, `authorizationStatus=authorized` 또는 `provisional`, iOS `apnsTokenReady=true`, 최신 `updatedAt`을 token 원문 없이 보여줌
+- `GET /api/push/config-status`의 `registry.deviceSummaries`가 기대 단말의 `notificationsAllowed=true`, `authorizationStatus=authorized` 또는 `provisional`, iOS `apnsTokenReady=true`, 최신 앱 등록 `updatedAt`, topic 재동기화 `topicsUpdatedAt`을 token 원문 없이 보여줌
 - `GET /api/push/config-status`의 `scheduler.lastSyncAt`이 sync worker 주기에 맞춰 갱신
 - `PUSH_SYNC_SECRET=<...> ./scripts/push-readiness-check.sh https://api.kbofans.com/api` 통과
 - `POST /api/push/live-activity/sync-scoreboard`가 등록된 live game에 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff와 relay diff 기반 FCM moment push를 보냄

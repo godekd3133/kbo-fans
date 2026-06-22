@@ -62,6 +62,27 @@ class PushRegistry:
             }
             return devices[payload.deviceToken]
 
+    def save_device_topics(
+        self,
+        payload: PushRegisterRequest,
+        topics: list[str],
+    ) -> dict[str, Any]:
+        with self._mutate_data() as data:
+            devices = data.setdefault("devices", {})
+            now = _now_iso()
+            existing = devices.get(payload.deviceToken, {})
+            if not isinstance(existing, dict):
+                existing = {}
+            devices[payload.deviceToken] = {
+                **existing,
+                "deviceToken": payload.deviceToken,
+                "followedGameIds": _clean_string_list(payload.followedGameIds),
+                "topics": topics,
+                "topicsUpdatedAt": now,
+                "createdAt": existing.get("createdAt", now),
+            }
+            return devices[payload.deviceToken]
+
     def save_live_activity(
         self,
         payload: LiveActivityRegisterRequest,

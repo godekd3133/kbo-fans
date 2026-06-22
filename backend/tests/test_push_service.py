@@ -736,6 +736,7 @@ def test_resubscribe_registered_topics_rebuilds_followed_game_topics(tmp_path) -
                         },
                         "followedGameIds": ["20260612KTLG0"],
                         "topics": ["game_start_LG", "scoring_LG", "legacy_LG"],
+                        "updatedAt": "2026-06-18T00:00:00+00:00",
                     }
                 },
                 "liveActivities": {},
@@ -757,6 +758,7 @@ def test_resubscribe_registered_topics_rebuilds_followed_game_topics(tmp_path) -
     unsubscribed_topics = {call["topic"] for call in messaging.unsubscribe_calls}
     stored_topics = registry._load()["devices"]["fcm-token"]["topics"]
     stored_followed_game_ids = registry._load()["devices"]["fcm-token"]["followedGameIds"]
+    stored_registration = registry._load()["devices"]["fcm-token"]
 
     assert response["resubscribed"] is True
     assert response["eligibleDevices"] == 1
@@ -774,6 +776,8 @@ def test_resubscribe_registered_topics_rebuilds_followed_game_topics(tmp_path) -
     assert "scoring_LG" not in stored_topics
     assert "legacy_LG" not in stored_topics
     assert stored_followed_game_ids == ["20260612KTLG0"]
+    assert stored_registration["updatedAt"] == "2026-06-18T00:00:00+00:00"
+    assert stored_registration["topicsUpdatedAt"] != "2026-06-18T00:00:00+00:00"
 
 
 def test_resubscribe_registered_topics_clears_missing_followed_game_ids(tmp_path) -> None:
@@ -1542,6 +1546,7 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
             "followedGameIds": ["20260618KTOB0"],
             "topicCount": 11,
             "updatedAt": status["registry"]["deviceSummaries"][0]["updatedAt"],
+            "topicsUpdatedAt": "",
             "notificationsAllowed": True,
             "authorizationStatus": "authorized",
             "apnsTokenReady": True,
