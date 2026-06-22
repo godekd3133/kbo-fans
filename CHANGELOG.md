@@ -10,6 +10,17 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-22
+
+### Changed
+
+- 사장님 요청으로 팔로우 경기 push topic 범위 보정 릴리즈를 `0.1.0 (67)` TestFlight build로 승격
+- `0.0.66`의 followed-game immediate topic 정리와 외부 테스터 handoff 기준을 `0.1.0` milestone으로 다시 맞춤
+
+### Fixed
+
+- 특정 경기를 따라갈 때 `summary`, `liveOnly`, `off` 설정이 즉시 원격 push topic으로 다시 확장되지 않는 기준을 최신 공개 빌드에 재반영
+
 ## [0.0.66] - 2026-06-22
 
 ### Changed

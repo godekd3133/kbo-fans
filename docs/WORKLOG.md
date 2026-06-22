@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-06-22: 0.1.0 팔로우 경기 push topic milestone 릴리즈
+
+### 결정
+- 사장님 요청에 따라 최신 공개 버전을 `0.1.0+67` / tag `0.1.0`으로 승격한다.
+- App Store Connect에는 이미 `0.0.66 (66)`이 업로드되어 있으므로, marketing version은 `0.1.0`, iOS build number는 다음 값인 `67`을 사용한다.
+- 이번 빌드는 `0.0.66`의 팔로우 경기별 immediate topic 범위 보정을 그대로 담고, backend image tag / TestFlight build / 외부 테스터 그룹 / GitHub Release 기준을 `0.1.0`으로 다시 맞춘다.
+
+### 완료
+- [x] 앱 버전과 릴리즈 문서를 `0.1.0+67` / tag `0.1.0` 기준으로 동기화
+
+### 진행 예정
+- [ ] `0.1.0` backend API/worker deploy와 topic 재등록 완료
+- [ ] `0.1.0 (67)` IPA archive/upload 완료
+- [ ] App Store Connect build `67` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
+- [ ] GitHub Release `0.1.0` 생성 및 최종 release evidence 기록
+
+---
+
 ## 2026-06-22: 0.0.66 팔로우 경기 push topic 최종 릴리즈
 
 ### 결정

@@ -5,9 +5,9 @@
 
 ## Current Baseline
 
-- Active release line: `0.0.x`
-- Flutter app version: `0.0.66+66`
-- Current release tag: `0.0.66`
+- Active release line: `0.1.x`
+- Flutter app version: `0.1.0+67`
+- Current release tag: `0.1.0`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -22,6 +22,7 @@
 - Pre-1.0 release checkpoints increment `PATCH` by one for every tester-facing or release-facing checkpoint.
 - Build number increments with the app release number while this project stays in `0.0.x`.
 - `MINOR` is reserved for a larger product milestone after the current early tester line is stable.
+- The Director may explicitly promote a release to a minor milestone; `0.1.0+67` is the first such tester-facing milestone after `0.0.66+66`.
 - `MAJOR` is reserved for post-1.0 product, data, or release contract changes that are incompatible with the previous stable line.
 - Do not use `-preview`, `-alpha`, `-beta`, or `-rc` suffixes unless the Director explicitly changes this policy.
 
@@ -115,6 +116,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.64`: followed-game push subscriptions prefer `*_GAME_<gameId>` topics for game moments, backend game moment and lineup push sends include matching game-specific topics, app diagnostics can request a registered-device remote push self-test without bundling `PUSH_SYNC_SECRET`, in-app update notes use user-facing wording, and backend deploy, topic resubscribe, TestFlight upload, external tester handoff, and GitHub Release evidence are realigned on current app build `0.0.64+64`.
 - `0.0.65`: reuploads the `0.0.64` 경기별 push topic / pregame Live Activity / remote push self-test release state as TestFlight build `0.0.65+65` because App Store Connect already had build `64`; the iOS Widget extension build settings now inherit Flutter `Generated.xcconfig` so Runner and Widget versions stay aligned.
 - `0.0.66`: includes the followed-game push topic scope correction after `0.0.65`, narrowing immediate game moments to selected-game `*_GAME_<gameId>` topics and keeping `summary` / `liveOnly` / `off` moments out of immediate remote push topic registration.
+- `0.1.0`: Director-requested minor milestone reupload of the `0.0.66` followed-game push topic scope correction as TestFlight build `0.1.0+67`, with backend deploy, topic resubscribe, external tester handoff, and GitHub Release evidence realigned on the new milestone tag.
 
 ## GitHub Release Note Template
 
