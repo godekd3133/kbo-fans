@@ -14,7 +14,13 @@
 ### 진행
 - [x] RED 확인: `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart --plain-name '따라가는 경기의 enabled moment는 summary/liveOnly여도 GAME 토픽에 포함한다'` 실패, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_build_topics_keeps_enabled_followed_game_moments_even_when_not_immediate` 실패
 - [x] 앱 `buildPushTopics`와 backend `PushService._build_topics`가 followed-game GAME topic에서는 `off`가 아닌 enabled moment를 포함하도록 변경
-- [ ] 검증, backend deploy, TestFlight upload
+- [x] 검증: `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`21 passed`), `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`62 passed`), `backend/.venv/bin/python -m ruff check ...`, `python3 -m compileall backend/src`, `bash -n scripts/push-receipt-status.sh scripts/github-push-receipt-status-run.sh scripts/codex-run.sh`, `git diff --check`, `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh`
+- [x] `0.1.5` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27936561962`, `KBO_BACKEND_IMAGE_TAG=0.1.5`, image `303099472043.dkr.ecr.us-east-1.amazonaws.com/kbo-fans-backend:0.1.5`, `readyForIphoneOnlyDemo=true`, `registeredDevices=19`, `eligibleDevices=19`, `subscriptionsAttempted=155`, `unsubscriptionsAttempted=0`
+- [x] backend `0.1.5` 배포 후 receipt/config 조회 run `27936833035`: `push_receipts count=0`, `registeredDevices=19`, `followedGames=1`, 팔로우 경기 `20260620HTKT0` registration topicCount가 `11`로 증가해 `game_end`, `lineup_opened`, `inning_change` GAME topic 보강 반영 확인
+- [x] `0.1.5 (72)` IPA archive/upload 성공 확인: main commit `18d74d7`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.5/72`, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, 업로드 IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, App Store Connect `UPLOAD SUCCEEDED`, delivery UUID `fcf85c40-efdb-485e-939d-94d13f36cc50`
+- [x] App Store Connect build `72` 처리 완료 확인: build id `fcf85c40-efdb-485e-939d-94d13f36cc50`, `processingState=VALID`, expiration `2026-09-20T00:37:30-07:00`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `72` 연결, 이전 build `70` 관계 제거. 최종 그룹 build 목록은 `72` 단독 연결
+- [ ] build `72` Beta App Review 제출: App Store Connect API `POST /v1/betaAppReviewSubmissions`가 `ENTITY_UNPROCESSABLE.SUBMISSION_LIMIT_REACHED`로 거부됨. 기존 pending Beta Review submission queue 정리가 필요
 - [ ] 새 build 설치 후 앱 실행/경기 follow로 현재 token과 followed-game registration 일치 확인
 - [ ] 팔로우 경기 원격 push receipt 재확인
 
