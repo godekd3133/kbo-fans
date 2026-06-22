@@ -30,6 +30,9 @@
 - [x] `Push Test Notification` workflow run `27931779585`로 팔로우 경기 topic `hit_GAME_20260620HTKT0` 테스트 발송 성공: Firebase message id `projects/kbo-fans-47189/messages/9176581524942835946`
 - [x] 같은 기준 시각 이후 receipt 기대 조회는 run `27931794786`, 재조회 run `27931841004` 모두 `push_receipt_match=status=missing`, `pushReceiptCount=0`, `recent=0`으로 실패. 즉 backend 등록/발송은 확인됐지만 실제 단말 처리 receipt는 아직 없음
 - [x] 다음 테스트부터 GAME topic receipt를 `gameId/type`으로 필터링할 수 있도록 `/push/test` GAME topic payload에 `type`, `gameId`, `topic`, 상세 `route` data를 포함하도록 보강
+- [x] GAME topic test payload 보강 backend를 image tag `6a3f846-receipt-data`로 운영 배포: GitHub Actions `Push Demo Deploy` run `27931970198`, `push_live_preflight=status=ok`, `readyForIphoneOnlyDemo=true`, `scheduler=status=ok`, `push_topic_resubscribe=status=ok registeredDevices=18 eligibleDevices=18 subscriptionsAttempted=144`
+- [x] 새 backend 배포 후 팔로우 경기 topic `hit_GAME_20260620HTKT0` 테스트 발송 성공: `Push Test Notification` run `27932175489`, Firebase message id `projects/kbo-fans-47189/messages/4865536141821725712`
+- [x] 새 backend 배포 후 `gameId=20260620HTKT0`, `type=hit`, `since=2026-06-22T05:44:06Z` receipt 기대 조회는 run `27932191922`, 재조회 run `27932237695` 모두 `push_receipt_match=status=missing`, `pushReceiptCount=0`, `recent=0`. 따라서 실제 iPhone 처리 receipt는 아직 미확인
 - [ ] 실제 iPhone receipt 확인: 최신 TestFlight build `0.1.1 (68)` 설치 후 foreground/background/opened remote push receipt가 `/api/push/config-status`의 `recentPushReceipts`에 기록되는지 확인 필요
 
 ---
