@@ -20,9 +20,10 @@
 - [x] `0.1.5 (72)` IPA archive/upload 성공 확인: main commit `18d74d7`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.5/72`, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, 업로드 IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, App Store Connect `UPLOAD SUCCEEDED`, delivery UUID `fcf85c40-efdb-485e-939d-94d13f36cc50`
 - [x] App Store Connect build `72` 처리 완료 확인: build id `fcf85c40-efdb-485e-939d-94d13f36cc50`, `processingState=VALID`, expiration `2026-09-20T00:37:30-07:00`
 - [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `72` 연결, 이전 build `70` 관계 제거. 최종 그룹 build 목록은 `72` 단독 연결
+- [x] build `72` App Store Connect 재확인: build `72`는 `VALID`, `APP_STORE_ELIGIBLE`, External Testers 그룹 단독 연결. build `65`, `66`, `67`, `68`, `69` Beta App Review submission이 여전히 `WAITING_FOR_REVIEW`라 build `72`에는 beta submission이 없는 상태
 - [ ] build `72` Beta App Review 제출: App Store Connect API `POST /v1/betaAppReviewSubmissions`가 `ENTITY_UNPROCESSABLE.SUBMISSION_LIMIT_REACHED`로 거부됨. 기존 pending Beta Review submission queue 정리가 필요
-- [ ] 새 build 설치 후 앱 실행/경기 follow로 현재 token과 followed-game registration 일치 확인
-- [ ] 팔로우 경기 원격 push receipt 재확인
+- [ ] 새 build 설치 후 앱 실행/경기 follow로 현재 token과 followed-game registration 일치 확인: fresh receipt/config run `27937404932` 기준 현재 APNs-ready registration `installation=k-x3ggcb`, `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`는 `followed=-`이고, 팔로우 경기 `20260620HTKT0`는 legacy registration `installation=-`에 남아 있음
+- [ ] 팔로우 경기 원격 push receipt 재확인: GitHub Actions `Push Test Notification` run `27937442793`로 `hit_GAME_20260620HTKT0` topic 발송 성공 (`messageId=projects/kbo-fans-47189/messages/2572897402367170980`), 이어서 `Push Receipt Status` run `27937466882`는 `push_receipt_match=status=missing gameId=20260620HTKT0 type=hit`, `push_receipts count=0`
 
 ---
 
