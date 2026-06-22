@@ -10,6 +10,19 @@
 
 ## [Unreleased]
 
+## [0.0.65] - 2026-06-22
+
+### Changed
+
+- `0.0.64`의 경기별 push topic, 라인업 공개 전 Live Activity, 원격 푸시 self-test, 업데이트 소식 정리 상태를 새 TestFlight build `0.0.65 (65)`로 다시 맞춤
+- iOS Widget extension도 앱과 같은 build name/build number를 사용하도록 Xcode build 설정을 보정해 TestFlight IPA의 Runner/Widget 버전 기준을 일치시킴
+
+### Fixed
+
+- App Store Connect에 이미 올라간 build `64`를 재업로드하려던 경로를 중단하고, 새 tester-facing build `65`로 승격
+
+## [0.0.64] - 2026-06-22
+
 ### Changed
 
 - 마이팀 경기 핵심 알림은 별도 알림 플레이북 설정 없이 자동 수신되도록 바꾸고, 더보기 화면의 알림 프리셋/플레이북/리그 전체 토글 노출을 제거
@@ -18,8 +31,6 @@
 ### Fixed
 
 - 기존 알림 delivery 설정이 꺼져 있거나 따라가는 경기가 있어도 마이팀 경기 시작/득점/안타/홈런/역전/종료/라인업/타석 topic이 유지되도록 앱과 backend topic 재계산 경로를 보정
-
-## [0.0.64] - 2026-06-22
 
 ### Added
 

@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-06-22: 0.0.65 TestFlight/backend 재배포
+
+### 결정
+- App Store Connect가 `0.0.64 (64)` 재업로드를 거부했다. 사유는 build `64`가 이미 업로드되어 있어 같은 bundle version을 다시 사용할 수 없기 때문이다.
+- 사장님 요청은 "새 버전으로 한 번 더"이므로 `0.0.65+65` / tag `0.0.65`로 승격해 backend image tag, TestFlight build, 외부 테스터 연결, GitHub Release 기준을 다시 맞춘다.
+
+### 완료
+- [x] 앱 버전과 릴리즈 문서를 `0.0.65+65` / tag `0.0.65` 기준으로 동기화
+- [x] iOS Widget extension target이 Flutter `Generated.xcconfig`를 base config로 사용하도록 보정해 Runner/Widget version/build가 함께 치환되도록 수정
+
+### 진행 예정
+- [ ] `0.0.65` backend API/worker deploy와 topic 재등록 완료
+- [ ] `0.0.65 (65)` IPA archive/upload 완료
+- [ ] App Store Connect build `65` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
+- [ ] GitHub Release `0.0.65` 생성 및 최종 release evidence 기록
+
+---
+
 ## 2026-06-22: 라인업 공개 경기전 Live Activity 시작/순위 표시
 
 ### 원인
