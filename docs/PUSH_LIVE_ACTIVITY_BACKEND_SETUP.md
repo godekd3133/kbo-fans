@@ -89,7 +89,7 @@ APNS_AUTH_KEY_FILE=/path/AuthKey_<KEY_ID>.p8 \
 5. Fargate sync worker 또는 cron으로 scoreboard/relay sync를 5초마다 실행
    - ActivityKit token이 등록된 경기는 APNs `liveactivity` update/end 발송
    - FCM device/topic 등록이 있으면 scoreboard diff 기준 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` topic push 발행
-   - 일반 FCM message에는 iOS APNs `apns-push-type=alert`, `apns-topic`, `aps.alert`, `apns-priority=10`, default sound와 Android high priority / default sound 옵션을 포함
+   - 일반 FCM message에는 iOS APNs `apns-push-type=alert`, `apns-topic`, `aps.alert`, `aps.content-available=1`, `apns-priority=10`, default sound와 Android high priority / default sound 옵션을 포함
    - `homerun`은 live relay seq diff 기준으로 새 `HOMERUN` event 또는 `홈런` 텍스트가 들어올 때 topic push 발행
 
 ```bash
@@ -399,6 +399,7 @@ iOS release/TestFlight 앱은 아래가 필요하다.
 - `POST /api/push/live-activity/sync-scoreboard`가 등록된 live game에 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff와 relay diff 기반 FCM moment push를 보냄
 - iPhone 실기기에서 앱을 종료한 뒤에도 Live Activity `updatedAt`이 서버 sync 주기에 맞춰 변경
 - 일반 push 발송은 Firebase Console, `X-Kbo-Push-Sync-Secret`이 포함된 `/api/push/test`, `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>`, GitHub Actions `Push Test Notification`, 또는 scheduler의 `pushedMoments` 응답으로 확인
+- 일반 visible push의 iOS APNs payload에는 alert/sound와 함께 `content-available=1`이 있어야 하며, 앱에는 `remote-notification` background mode와 Firebase background handler가 있어야 한다.
 - 실제 단말 처리 receipt는 `PUSH_SYNC_SECRET=<...> ./scripts/push-receipt-status.sh --expect-receipt --game-id <gameId> --type <type>` 또는 GitHub Actions `Push Receipt Status`로 `/api/push/config-status`의 `recentPushReceipts`에 기록됐는지 확인
 - 앱 안에서는 `설정 > API 진단 > 원격 푸시 테스트`가 현재 기기의 FCM token을 `/push/register`로 동기화한 뒤 `/push/test-device`로 self-test push를 요청
 

@@ -528,6 +528,7 @@ def test_send_test_push_uses_visible_notification_options(tmp_path) -> None:
     assert message.apns.payload.aps.alert.title == "테스트"
     assert message.apns.payload.aps.alert.body == "백그라운드 수신 확인"
     assert message.apns.payload.aps.sound == "default"
+    assert message.apns.payload.aps.content_available is True
     assert message.android.priority == "high"
     assert message.android.notification.channel_id == "remote_push_foreground"
     assert message.android.notification.sound == "default"
@@ -1915,8 +1916,9 @@ class FakeFcmApsAlert:
 
 
 class FakeFcmAps:
-    def __init__(self, *, sound: str, alert=None) -> None:
+    def __init__(self, *, sound: str, content_available: bool = False, alert=None) -> None:
         self.sound = sound
+        self.content_available = content_available
         self.alert = alert
 
 

@@ -677,7 +677,10 @@ def _visible_push_options(
         bundle_id = get_settings().apns_bundle_id
         if bundle_id:
             headers["apns-topic"] = bundle_id
-        aps_kwargs: dict[str, Any] = {"sound": "default"}
+        aps_kwargs: dict[str, Any] = {
+            "sound": "default",
+            "content_available": True,
+        }
         if hasattr(messaging, "ApsAlert"):
             aps_kwargs["alert"] = messaging.ApsAlert(title=title, body=body)
         options["apns"] = messaging.APNSConfig(

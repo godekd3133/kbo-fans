@@ -33,7 +33,7 @@
   - 같은 scheduler가 이전 scoreboard state와 비교해 FCM topic push용 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` moment를 발행한다.
   - 일반 경기 event FCM은 backend가 원정팀/홈팀/전체 topic과 함께 `*_GAME_{gameId}` 경기별 topic으로도 발송한다. 앱은 `followedGameIds`가 있으면 팀 경기 event topic 대신 경기별 topic을 구독해, 사용자가 따라가는 특정 경기만 일반 push로 정교하게 받는다.
   - `baseball_info`는 특정 경기 event가 아니므로 `followedGameIds`가 있어도 `baseball_info_<팀>` / `baseball_info_ALL` 범위를 유지한다.
-  - 일반 FCM message의 iOS APNs config는 `apns-push-type=alert`, app bundle `apns-topic`, `aps.alert`, `apns-priority=10`, default sound를 명시한다. 앱 실행 시점에 몰려 보이는 증상이 재현되면 이 alert-class payload가 운영 image에 배포됐는지 먼저 확인한다.
+  - 일반 FCM message의 iOS APNs config는 `apns-push-type=alert`, app bundle `apns-topic`, `aps.alert`, `aps.content-available=1`, `apns-priority=10`, default sound를 명시한다. 앱 쪽은 `remote-notification` background mode와 Firebase background handler를 유지해야 한다. 앱 실행 시점에 몰려 보이는 증상이 재현되면 이 alert-class payload가 운영 image에 배포됐는지 먼저 확인한다.
   - `GameEventAlertService`의 scoreboard/relay diff 기반 local notification은 local 개발 모드에서만 처리한다. release/dev에서 이 경로가 켜져 있으면 앱 resume/focus 시 지난 이벤트가 몰아서 표시될 수 있으므로 backend remote push와 역할을 섞지 않는다. 회귀 확인용으로만 `--dart-define=ENABLE_LOCAL_GAME_EVENT_ALERTS=true`를 명시해 보조 로컬 알림 경로를 켤 수 있다.
   - scoreboard diff만으로 확정하기 어려운 `homerun` moment는 같은 scheduler가 live relay seq baseline을 저장하고, 새 relay item의 `HOMERUN` event 또는 `홈런` 텍스트를 감지해 발행한다.
   - 앱 종료/백그라운드 push가 안 오면 먼저 `/push/register`가 실제 기기에서 성공해 registry `devices`가 채워졌는지 확인한다. 특정 경기 따라가기라면 registry의 `followedGameIds`와 `topicCounts`의 `scoring_GAME_{gameId}` / `hit_GAME_{gameId}` / `game_start_soon_GAME_{gameId}`도 같이 확인한다. 앱은 마이팀 선택 후 non-local 환경에서 최초 1회 권한 요청과 FCM registration sync를 자동 시도해야 한다.
