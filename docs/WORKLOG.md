@@ -15,7 +15,7 @@
 - [x] backend push worker가 경기 순간/라인업 공개 발송에 경기별 토픽을 함께 포함하고, topic 재등록 시 followed game topics로 registry를 재계산하도록 보강
 
 ### 진행 예정
-- [x] 릴리즈 전 검증 통과: `git diff --check`, `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`17 passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q` (`172 passed`)
+- [x] 릴리즈 전 검증 통과: `git diff --check`, `cd app && fvm flutter analyze`, `cd app && fvm flutter test` (`166 passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`47 passed`), `backend/.venv/bin/pytest -q` (`172 passed`)
 - [ ] 커밋/푸시 후 `0.0.64` backend API/worker deploy와 topic 재등록 완료
 - [ ] `0.0.64 (64)` IPA archive/upload 완료
 - [ ] App Store Connect build `64` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
