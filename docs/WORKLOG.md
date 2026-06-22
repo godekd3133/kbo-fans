@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-06-22: 외부 TestFlight 최신 빌드 재확인 및 release DoD 고정
+
+### 완료
+- [x] App Store Connect API로 최신 valid build 재확인: `0.0.63 (63)`, build id `a8f8b1b4-34fd-4107-832c-fcb2f0b1bc71`, `processingState=VALID`, expiration `2026-09-18`, `usesNonExemptEncryption=false`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 최신 build `63`이 이미 연결된 상태임을 재확인
+- [x] 외부 그룹 build 목록 재확인: build `63` `VALID`, 기존 build `57`가 함께 남아 있음을 확인
+- [x] `External Testers` 그룹에서 이전 build `57` 관계 제거. 최종 그룹 build 목록은 `63` 단독 연결
+- [x] build `63` Beta App Review 제출 상태 재확인: `betaReviewState=WAITING_FOR_REVIEW`, `submittedDate=2026-06-20T03:30:09-07:00`
+- [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
+- [x] 앞으로 tester-facing iOS TestFlight release는 upload에서 끝내지 않고 build `VALID` 확인, `External Testers` 연결, 이전 build 관계 제거, Beta App Review 제출까지 같은 closeout에 포함하도록 `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`, `.claude/SKILL_REFERENCE.md`, `docs/VERSIONING.md`, `docs/IOS_TESTFLIGHT_CHECKLIST.md`, `docs/DISTRIBUTION_GUIDE.md`에 고정
+
+### 남은 확인
+- [ ] Apple Beta App Review 승인 후 외부 테스터에게 `0.0.63 (63)` 설치 가능 상태가 노출되는지 확인
+
+---
+
 ## 2026-06-22: 푸시 backend readiness / 로컬 경기 이벤트 알림 진단 보강
 
 ### 원인

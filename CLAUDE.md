@@ -163,6 +163,7 @@ kbo_fans/
 - iOS WidgetKit / Live Activity / 기기 실행 트리아지: `.claude/skills/ios-live-activity-widget/SKILL.md`
 - 친구에게 가장 빨리 보여주는 경로는 웹이다
 - iPhone 친구 배포는 TestFlight를 기본 경로로 본다
+- 새 iOS TestFlight 빌드를 tester-facing release로 올릴 때는 외부 TestFlight 그룹도 즉시 최신 빌드로 갱신한다. 빌드가 `VALID`가 될 때까지 확인하고, `External Testers`에 최신 build를 연결한 뒤 이전 build 관계는 제거하며, Beta App Review가 없으면 바로 제출한다. 보고할 때는 upload 성공, Apple processing/VALID, 외부 그룹 연결, Beta App Review, 실제 installability를 분리해서 말한다.
 - Android 친구 배포는 release signing 설정 후 Google Play internal testing 을 기본 경로로 본다
 - Android release signing 비밀값은 `app/android/key.properties` 와 local keystore 로 관리하고 Git에는 올리지 않는다
 - iOS 실행/배포는 활성 Xcode 버전과 simulator/platform support 정합성에 크게 영향받는다

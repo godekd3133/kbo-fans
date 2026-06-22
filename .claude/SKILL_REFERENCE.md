@@ -62,6 +62,7 @@
   - legacy 배포 체크리스트, TestFlight / Android 배포 준비
 - `app-distribution`
   - 친구/테스터 배포, Android signing, Google Play internal testing, TestFlight 준비
+  - iOS TestFlight tester-facing release는 upload에서 끝내지 않고 최신 build `VALID` 확인, `External Testers` 연결, 이전 build 관계 제거, Beta App Review 제출까지 같이 확인
 
 ### Release 선택 기준
 - `kbo-release-flow`

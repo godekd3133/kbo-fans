@@ -44,6 +44,7 @@ Every version or release change must update these surfaces in the same work unit
 - GitHub releases should be normal releases, not prereleases, under the current no-preview policy.
 - Mark only the newest numeric release as `Latest`.
 - `APP_ENV=release` artifacts default to backend API data mode and must carry the production `API_BASE_URL` for screen data, push, and Live Activity token registration. Run `scripts/release-api-health-check.sh` before release-facing validation.
+- Tester-facing iOS TestFlight releases must include the external tester handoff in the same release closeout: wait for the uploaded build to become `VALID`, attach the newest build to the `External Testers` group, remove superseded older build relationships from that group, submit Beta App Review if no submission exists, and report external installability separately from upload/processing.
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app patch notes change.
 
 ## Numeric Release Map
