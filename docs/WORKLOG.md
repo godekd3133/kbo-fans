@@ -19,6 +19,8 @@
 - [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `67` 연결, 이전 build `66` 관계 제거. 최종 그룹 build 목록은 `67` 단독 연결
 - [x] build `67` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
 - [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
+- [x] 팔로우 경기 topic 원격 push 발송 확인: GitHub Actions `Push Test Notification` run `27930288701`, target `hit_GAME_20260620HTKT0`, `push_test_status=ok`, Firebase message id `projects/kbo-fans-47189/messages/8565774613501533378`
+- [ ] 실제 iPhone receipt 확인은 남음: 현재 작업 머신에서 `xcrun devicectl list devices`와 `fvm flutter devices --machine` 모두 8초 timeout이라 단말 foreground/background/terminated 수신 여부를 직접 볼 수 없음
 
 ### 진행 예정
 - [x] GitHub Release `0.1.0` 생성 및 최종 release evidence 기록: https://github.com/godekd3133/kbo-fans/releases/tag/0.1.0
