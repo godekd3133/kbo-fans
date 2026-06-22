@@ -23,6 +23,7 @@
 - [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `68` 연결, 이전 build `67` 관계 제거. 최종 그룹 build 목록은 `68` 단독 연결
 - [x] build `68` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
 - [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
+- [x] GitHub Release `0.1.1` 생성 완료: https://github.com/godekd3133/kbo-fans/releases/tag/0.1.1, tag `0.1.1`은 배포 증거 commit `84f87a1` 기준으로 고정
 - [ ] 실제 iPhone receipt 확인: 최신 TestFlight build `0.1.1 (68)` 설치 후 foreground/background/opened remote push receipt가 `/api/push/config-status`의 `recentPushReceipts`에 기록되는지 확인 필요
 
 ---
