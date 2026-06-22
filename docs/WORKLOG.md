@@ -17,8 +17,12 @@
 - [x] 앱 `/push/register` payload에 stable `installationId`를 추가하고, backend registry가 같은 installation id의 이전 FCM token registration을 제거하도록 변경
 - [x] `config-status`와 `push-receipt-status.sh`가 token 원문 없이 `installationIdSuffix`를 출력하도록 보강
 - [x] 검증: `cd app && fvm flutter analyze --no-pub lib/services/push_notification_service.dart test/services/push_notification_service_test.dart`, `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`20 passed`), `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`61 passed`), `backend/.venv/bin/python -m ruff check ...`, `bash -n scripts/push-receipt-status.sh`
-- [ ] `0.1.3` backend API/worker deploy와 topic 재등록
-- [ ] `0.1.3 (70)` IPA archive/upload와 외부 TestFlight 그룹 연결
+- [x] `0.1.3` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27935285898`, `KBO_BACKEND_IMAGE_TAG=0.1.3`, image `303099472043.dkr.ecr.us-east-1.amazonaws.com/kbo-fans-backend:0.1.3`, `readyForIphoneOnlyDemo=true`, `registeredDevices=19`, `eligibleDevices=19`, `subscriptionsAttempted=152`, `unsubscriptionsAttempted=0`
+- [x] backend `0.1.3` 배포 후 receipt/config 조회 run `27935551705`: `push_receipts count=0`, `registeredDevices=19`, `followedGames=1`, 새 진단 출력은 `installation=-`로 표시됨. 이는 아직 `0.1.3` 앱이 설치/실행되어 stable installation id를 등록하기 전 상태라 예상 범위
+- [x] `0.1.3 (70)` IPA archive/upload 성공 확인: main commit `499100b`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.3/70`, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, 업로드 IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, App Store Connect `UPLOAD SUCCEEDED`, delivery UUID `01b00120-3b15-4227-b572-62a8a5c90af1`
+- [x] App Store Connect build `70` 처리 완료 확인: build id `01b00120-3b15-4227-b572-62a8a5c90af1`, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-09-20T00:11:08-07:00`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `70` 연결, 이전 build `69` 관계 제거. 최종 그룹 build 목록은 `70` 단독 연결
+- [ ] build `70` Beta App Review 제출: App Store Connect API `POST /v1/betaAppReviewSubmissions`가 `ENTITY_UNPROCESSABLE.SUBMISSION_LIMIT_REACHED`로 거부됨. 기존 build `66`, `67`, `68`, `69`의 Beta App Review submission이 모두 `WAITING_FOR_REVIEW`라 Apple queue 제한에 걸린 상태. API로는 구 submission 삭제가 허용되지 않으므로 App Store Connect UI에서 pending Beta Review submission 정리가 필요
 - [ ] 새 build 설치 후 앱 실행으로 현재 token과 followed-game registration 일치 확인
 - [ ] 팔로우 경기 원격 push receipt 재확인
 
