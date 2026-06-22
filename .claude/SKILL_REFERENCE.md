@@ -56,7 +56,8 @@
 - `kbo-release-flow`
   - 현재 저장소의 커밋 / 푸시 / numeric release tag / release note 흐름
 - `kbo-version-release`
-  - 앱 버전 변경, GitHub 릴리즈/태그 정리, 앱 내 패치노트 갱신 루틴
+  - 앱 버전 변경, GitHub 릴리즈/태그 정리, 앱 내 업데이트 소식 갱신 루틴
+  - 앱 안 노트는 사용자 체감 변화 중심으로 쓰고, 배포/서버/검증 세부는 CHANGELOG/WORKLOG/GitHub Release에 분리
   - `이어서 해` 요청 시 실제 diff 기준으로 다음 숫자 버전 또는 기존 릴리즈 노트 보강을 자율 판단
 - `mobile-preview-release`
   - legacy 배포 체크리스트, TestFlight / Android 배포 준비
@@ -68,7 +69,7 @@
 - `kbo-release-flow`
   - 현재 저장소 기본 릴리즈 흐름
 - `kbo-version-release`
-  - 버전 번호, changelog, 앱 내 patch notes, GitHub release notes 를 같은 단위로 정리
+  - 버전 번호, changelog, 앱 내 update notes, GitHub release notes 를 같은 단위로 정리
 - `mobile-preview-release`
   - 과거 배포 체크리스트 참고용
 - `app-distribution`

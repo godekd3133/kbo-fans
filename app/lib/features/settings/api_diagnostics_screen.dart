@@ -24,6 +24,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
   late Future<List<_DiagnosticResult>> _future;
   late Future<Map<String, dynamic>> _pushFuture;
   bool _localNotificationBusy = false;
+  bool _remoteNotificationBusy = false;
 
   @override
   void initState() {
@@ -113,6 +114,34 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
       if (mounted) {
         setState(() {
           _localNotificationBusy = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _sendRemoteNotificationTest() async {
+    if (_remoteNotificationBusy) {
+      return;
+    }
+    setState(() {
+      _remoteNotificationBusy = true;
+    });
+    try {
+      final result = await PushNotificationService.instance
+          .sendRemoteDiagnosticTest(myTeam: ref.read(myTeamProvider));
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.message)));
+      setState(() {
+        _pushFuture = PushNotificationService.instance.debugState();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _remoteNotificationBusy = false;
         });
       }
     }
@@ -208,28 +237,32 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
               ),
               const SizedBox(height: 10),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _localNotificationBusy
-                          ? null
-                          : () => unawaited(_sendLocalNotificationTest()),
-                      child: Text(
-                        _localNotificationBusy ? '확인 중' : '로컬 알림 테스트',
-                      ),
-                    ),
+                  OutlinedButton.icon(
+                    onPressed: _localNotificationBusy
+                        ? null
+                        : () => unawaited(_sendLocalNotificationTest()),
+                    icon: const Icon(Icons.notifications_none_outlined),
+                    label: Text(_localNotificationBusy ? '확인 중' : '로컬 알림 테스트'),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => setState(() {
-                        _future = _load();
-                        _pushFuture = PushNotificationService.instance
-                            .debugState();
-                      }),
-                      child: const Text('다시 진단'),
-                    ),
+                  OutlinedButton.icon(
+                    onPressed: _remoteNotificationBusy
+                        ? null
+                        : () => unawaited(_sendRemoteNotificationTest()),
+                    icon: const Icon(Icons.notifications_active_outlined),
+                    label: Text(_remoteNotificationBusy ? '요청 중' : '원격 푸시 테스트'),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => setState(() {
+                      _future = _load();
+                      _pushFuture = PushNotificationService.instance
+                          .debugState();
+                    }),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('다시 진단'),
                   ),
                 ],
               ),

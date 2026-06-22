@@ -61,6 +61,7 @@ bool _validInternalRoute(String? route) {
       path == '/records' ||
       path == '/settings' ||
       path == '/diagnostics' ||
+      path == '/release-notes' ||
       path == '/patch-notes' ||
       path == '/notifications') {
     return true;

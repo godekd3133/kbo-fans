@@ -25,7 +25,7 @@ void main() {
 
     container.read(onboardingDoneProvider.notifier).setValue(true);
     final router = container.read(routerProvider);
-    router.go('/patch-notes');
+    router.go('/release-notes');
 
     await tester.pumpWidget(
       UncontrolledProviderScope(

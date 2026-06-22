@@ -10,6 +10,7 @@ from kbo_fans_backend.schemas.push import (
     LiveActivityRegisterRequest,
     LiveActivityUnregisterRequest,
     LiveActivityUpdateRequest,
+    PushDeviceTestRequest,
     PushRegisterRequest,
     PushTestRequest,
 )
@@ -40,6 +41,17 @@ GAME_MOMENT_TOPIC_NAMES = {
     "game_end",
     "lineup_opened",
     "inning_change",
+    "at_bat",
+}
+ALWAYS_ON_MY_TEAM_GAME_TOPIC_NAMES = {
+    "game_start",
+    "game_start_soon",
+    "scoring",
+    "hit",
+    "homerun",
+    "reversal",
+    "game_end",
+    "lineup_opened",
     "at_bat",
 }
 
@@ -114,12 +126,8 @@ class PushService:
             "registeredDevices": len(registrations),
             "eligibleDevices": len(parsed),
             "skippedDevices": skipped,
-            "subscriptionsAttempted": sum(
-                len(tokens) for tokens in subscribe_groups.values()
-            ),
-            "unsubscriptionsAttempted": sum(
-                len(tokens) for tokens in unsubscribe_groups.values()
-            ),
+            "subscriptionsAttempted": sum(len(tokens) for tokens in subscribe_groups.values()),
+            "unsubscriptionsAttempted": sum(len(tokens) for tokens in unsubscribe_groups.values()),
             "subscriptionResults": subscription_results,
             "unsubscriptionResults": unsubscription_results,
         }
@@ -151,6 +159,36 @@ class PushService:
         )
         response = messaging.send(message)
         return {"sent": True, "target": "token", "messageId": response}
+
+    def send_device_test(self, payload: PushDeviceTestRequest) -> dict[str, Any]:
+        device_token = payload.deviceToken.strip()
+        if not device_token or not self.registry.has_device_token(device_token):
+            return {
+                "sent": False,
+                "registered": False,
+                "reason": "device token is not registered",
+            }
+
+        title = "KBO Fans 원격 푸시 테스트"
+        body = "이 기기로 백엔드 원격 푸시가 도착했습니다."
+        messaging = self._get_messaging()
+        visible_options = _visible_push_options(messaging, title=title, body=body)
+        message = messaging.Message(
+            notification=messaging.Notification(title=title, body=body),
+            data={
+                "type": "test_push",
+                "route": "/diagnostics",
+            },
+            token=device_token,
+            **visible_options,
+        )
+        response = messaging.send(message)
+        return {
+            "sent": True,
+            "registered": True,
+            "target": "token",
+            "messageId": response,
+        }
 
     def send_baseball_info(
         self,
@@ -432,21 +470,33 @@ class PushService:
             ),
         }
 
-        for topic_name, enabled in topic_flags.items():
-            if not enabled:
-                continue
+        for topic_name, enabled_by_settings in topic_flags.items():
+            always_on_for_my_team = has_my_team and topic_name in ALWAYS_ON_MY_TEAM_GAME_TOPIC_NAMES
 
             if payload.notifications.allGames:
-                topics.append(f"{topic_name}_ALL")
+                if enabled_by_settings:
+                    topics.append(f"{topic_name}_ALL")
+                    continue
+                if not always_on_for_my_team:
+                    continue
+
+            if always_on_for_my_team:
+                topics.append(f"{topic_name}_{payload.myTeam}")
+
+            if not enabled_by_settings:
                 continue
 
             if topic_name in GAME_MOMENT_TOPIC_NAMES and followed_game_ids:
                 topics.extend(
-                    _game_topic(topic_name, game_id) for game_id in followed_game_ids
+                    _game_topic(topic_name, game_id)
+                    for game_id in followed_game_ids
+                    if not (
+                        always_on_for_my_team and _game_id_contains_team(game_id, payload.myTeam)
+                    )
                 )
                 continue
 
-            if has_my_team:
+            if has_my_team and not always_on_for_my_team:
                 topics.append(f"{topic_name}_{payload.myTeam}")
 
         if payload.notifications.allGames:
@@ -496,9 +546,7 @@ def _game_moment_copy(
 ) -> tuple[str, str]:
     score = f"{away_score}:{home_score}"
     matchup = f"{away_team_name} vs {home_team_name}"
-    start_detail = " · ".join(
-        part for part in [start_time.strip(), stadium.strip()] if part
-    )
+    start_detail = " · ".join(part for part in [start_time.strip(), stadium.strip()] if part)
     if moment == "game_start":
         return "경기 시작", f"{matchup} 경기가 시작됐습니다."
     if moment == "game_start_soon":
@@ -541,9 +589,7 @@ def _baseball_info_topics(
         return [topic]
     if team_id:
         return [f"baseball_info_{team_id}"]
-    return [f"baseball_info_{team_id}" for team_id in KBO_TEAM_IDS] + [
-        "baseball_info_ALL"
-    ]
+    return [f"baseball_info_{team_id}" for team_id in KBO_TEAM_IDS] + ["baseball_info_ALL"]
 
 
 def _baseball_info_target_preview(
@@ -647,9 +693,7 @@ def _visible_push_options(
             ),
         )
 
-    if all(
-        hasattr(messaging, name) for name in ("AndroidConfig", "AndroidNotification")
-    ):
+    if all(hasattr(messaging, name) for name in ("AndroidConfig", "AndroidNotification")):
         options["android"] = messaging.AndroidConfig(
             priority="high",
             notification=messaging.AndroidNotification(
@@ -671,6 +715,12 @@ def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
 
 def _game_topic(moment: str, game_id: str) -> str:
     return f"{moment}_GAME_{game_id}"
+
+
+def _game_id_contains_team(game_id: str, team_id: Optional[str]) -> bool:
+    if team_id is None or team_id == "" or len(game_id) < 12:
+        return False
+    return game_id[8:10] == team_id or game_id[10:12] == team_id
 
 
 def _clean_followed_game_ids(game_ids: list[str]) -> list[str]:

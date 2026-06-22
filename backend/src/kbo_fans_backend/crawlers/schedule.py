@@ -106,6 +106,7 @@ class ScheduleCrawler(BaseCrawler):
             "stadium": strip_tags(cells[offset + 6]["Text"]),
             "status": status,
             "statusLabel": self._derive_status_label(status, status_text),
+            "lineupOpened": self._derive_lineup_opened(action_html, status_text),
         }
 
     @staticmethod
@@ -176,3 +177,12 @@ class ScheduleCrawler(BaseCrawler):
         if status in {"CANCELLED", "SUSPENDED"}:
             return label
         return None
+
+    @staticmethod
+    def _derive_lineup_opened(action_html: str, status_text: str = "") -> bool:
+        if "section=START_PIT" in action_html:
+            return True
+        label = status_text.strip()
+        if "라인업" not in label:
+            return False
+        return "공개" in label or "발표" in label

@@ -12,6 +12,7 @@ import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
 import '../data/models/game.dart';
 import '../data/models/relay.dart';
+import '../data/models/schedule.dart';
 import '../data/repositories/game_repository.dart';
 import 'push_notification_service.dart';
 
@@ -123,7 +124,7 @@ class LiveActivityService {
 
       await followGame(autoTarget.gameId);
       DevConsole.instance.info(
-        'Live Activity auto-follow my team game: ${autoTarget.gameId}',
+        'Live Activity auto-follow target: ${autoTarget.gameId}',
       );
       await syncFollowedGame(autoTarget, repository: repository);
       return;
@@ -160,13 +161,19 @@ class LiveActivityService {
       return;
     }
 
-    if (game.status != GameStatus.live) {
+    final isPregame = game.isPregameLineupOpen;
+    if (game.status != GameStatus.live && !isPregame) {
       await endCurrentScore();
       return;
     }
 
-    final atBat = currentAtBat ?? await _fetchCurrentAtBat(game, repository);
-    await _syncGame(game, currentAtBat: atBat);
+    final atBat = game.status == GameStatus.live
+        ? currentAtBat ?? await _fetchCurrentAtBat(game, repository)
+        : null;
+    final rankLabels = isPregame
+        ? await _fetchRankLabels(game, repository)
+        : const _LiveActivityRankLabels();
+    await _syncGame(game, currentAtBat: atBat, rankLabels: rankLabels);
   }
 
   Future<CurrentAtBat?> _fetchCurrentAtBat(
@@ -189,9 +196,13 @@ class LiveActivityService {
     }
   }
 
-  Future<void> _syncGame(Game targetGame, {CurrentAtBat? currentAtBat}) async {
+  Future<void> _syncGame(
+    Game targetGame, {
+    CurrentAtBat? currentAtBat,
+    _LiveActivityRankLabels rankLabels = const _LiveActivityRankLabels(),
+  }) async {
     if (defaultTargetPlatform == TargetPlatform.android) {
-      await _showAndroidOngoingScore(targetGame);
+      await _showAndroidOngoingScore(targetGame, rankLabels: rankLabels);
       return;
     }
 
@@ -202,6 +213,7 @@ class LiveActivityService {
         _scorePayloadForGame(
           targetGame,
           currentAtBat: currentAtBat,
+          rankLabels: rankLabels,
           updatedAt: _updatedAtText(),
           apiBaseUrl: AppConfig.instance.apiBaseUrl,
         ),
@@ -224,7 +236,9 @@ class LiveActivityService {
     required String updatedAt,
     required String apiBaseUrl,
     CurrentAtBat? currentAtBat,
+    _LiveActivityRankLabels rankLabels = const _LiveActivityRankLabels(),
   }) {
+    final isPregame = targetGame.isPregameLineupOpen;
     return {
       'gameId': targetGame.gameId,
       'awayTeamId': targetGame.away.teamId,
@@ -246,6 +260,9 @@ class LiveActivityService {
       'updatedAt': updatedAt,
       'situationText': _situationText(currentAtBat),
       'playText': '',
+      'isPregame': isPregame,
+      'awayRankText': isPregame ? rankLabels.away : '',
+      'homeRankText': isPregame ? rankLabels.home : '',
       'apiBaseUrl': apiBaseUrl,
     };
   }
@@ -258,7 +275,7 @@ class LiveActivityService {
     if (atBatInning.isNotEmpty) {
       return atBatInning;
     }
-    if (targetGame.status == GameStatus.scheduled) {
+    if (targetGame.isPregameLineupOpen) {
       return '경기전';
     }
     return secondaryTextForGameStatus(
@@ -446,6 +463,34 @@ class LiveActivityService {
     return '$hour:$minute:$second';
   }
 
+  Future<_LiveActivityRankLabels> _fetchRankLabels(
+    Game game,
+    GameRepository? repository,
+  ) async {
+    if (repository == null) {
+      return const _LiveActivityRankLabels();
+    }
+    final season = _seasonFromGameId(game.gameId) ?? DateTime.now().year;
+    try {
+      final standings = await repository
+          .getStandings(season)
+          .timeout(const Duration(seconds: 4));
+      return _rankLabelsForGame(game, standings);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'Live Activity standings rank fetch skipped: $error',
+      );
+      return const _LiveActivityRankLabels();
+    }
+  }
+
+  int? _seasonFromGameId(String gameId) {
+    if (gameId.length < 4) {
+      return null;
+    }
+    return int.tryParse(gameId.substring(0, 4));
+  }
+
   bool get _supportsFollowSurface {
     if (kIsWeb) {
       return false;
@@ -491,7 +536,10 @@ class LiveActivityService {
     return _androidNotificationsAllowed;
   }
 
-  Future<void> _showAndroidOngoingScore(Game targetGame) async {
+  Future<void> _showAndroidOngoingScore(
+    Game targetGame, {
+    _LiveActivityRankLabels rankLabels = const _LiveActivityRankLabels(),
+  }) async {
     final allowed = await _requestAndroidNotificationPermission();
     if (!allowed) {
       DevConsole.instance.warn(
@@ -500,15 +548,19 @@ class LiveActivityService {
       return;
     }
 
-    final title =
-        '${targetGame.away.shortName} ${targetGame.away.score} : '
-        '${targetGame.home.score} ${targetGame.home.shortName}';
-    final statusText = secondaryTextForGameStatus(
-      targetGame.status,
-      inning: targetGame.inning,
-      startTime: targetGame.startTime,
-      statusLabel: targetGame.statusLabel,
-    );
+    final title = targetGame.isPregameLineupOpen
+        ? '${targetGame.away.shortName} ${rankLabels.awayOrDash} · '
+              '${rankLabels.homeOrDash} ${targetGame.home.shortName}'
+        : '${targetGame.away.shortName} ${targetGame.away.score} : '
+              '${targetGame.home.score} ${targetGame.home.shortName}';
+    final statusText = targetGame.isPregameLineupOpen
+        ? '경기전'
+        : secondaryTextForGameStatus(
+            targetGame.status,
+            inning: targetGame.inning,
+            startTime: targetGame.startTime,
+            statusLabel: targetGame.statusLabel,
+          );
     final updatedAt = _updatedAtText();
     final stadium = targetGame.stadium.isEmpty ? 'KBO' : targetGame.stadium;
     final body = '$statusText · $stadium · 업데이트 $updatedAt';
@@ -555,7 +607,10 @@ class LiveActivityService {
         payload: Uri(
           scheme: 'kboFans',
           host: 'game',
-          queryParameters: {'gameId': targetGame.gameId, 'tab': 'relay'},
+          queryParameters: {
+            'gameId': targetGame.gameId,
+            'tab': targetGame.isPregameLineupOpen ? 'lineup' : 'relay',
+          },
         ).toString(),
       );
       DevConsole.instance.info(
@@ -579,22 +634,86 @@ class LiveActivityService {
   }
 }
 
+class _LiveActivityRankLabels {
+  final String away;
+  final String home;
+
+  const _LiveActivityRankLabels({this.away = '', this.home = ''});
+
+  String get awayOrDash => away.isEmpty ? '-' : away;
+  String get homeOrDash => home.isEmpty ? '-' : home;
+}
+
+_LiveActivityRankLabels _rankLabelsForGame(
+  Game game,
+  List<TeamStanding> standings,
+) {
+  String rankFor(String teamId) {
+    for (final standing in standings) {
+      if (standing.teamId == teamId && standing.rank > 0) {
+        return '${standing.rank}위';
+      }
+    }
+    return '';
+  }
+
+  return _LiveActivityRankLabels(
+    away: rankFor(game.away.teamId),
+    home: rankFor(game.home.teamId),
+  );
+}
+
 @visibleForTesting
 Game? selectAutoLiveActivityGame({
   required List<Game> games,
   required String? myTeamId,
 }) {
-  if (myTeamId == null || myTeamId.isEmpty) {
-    return null;
+  final liveMyTeam = _findAutoFollowCandidate(
+    games,
+    myTeamId: myTeamId,
+    status: GameStatus.live,
+  );
+  if (liveMyTeam != null) {
+    return liveMyTeam;
   }
 
+  final liveOther = _findAutoFollowCandidate(games, status: GameStatus.live);
+  if (liveOther != null) {
+    return liveOther;
+  }
+
+  final pregameMyTeam = _findAutoFollowCandidate(
+    games,
+    myTeamId: myTeamId,
+    requirePregameLineup: true,
+  );
+  if (pregameMyTeam != null) {
+    return pregameMyTeam;
+  }
+
+  return _findAutoFollowCandidate(games, requirePregameLineup: true);
+}
+
+Game? _findAutoFollowCandidate(
+  List<Game> games, {
+  String? myTeamId,
+  GameStatus? status,
+  bool requirePregameLineup = false,
+}) {
   for (final game in games) {
-    if (game.status != GameStatus.live) {
+    if (status != null && game.status != status) {
       continue;
     }
-    if (game.away.teamId == myTeamId || game.home.teamId == myTeamId) {
-      return game;
+    if (requirePregameLineup && !game.isPregameLineupOpen) {
+      continue;
     }
+    if (myTeamId != null &&
+        myTeamId.isNotEmpty &&
+        game.away.teamId != myTeamId &&
+        game.home.teamId != myTeamId) {
+      continue;
+    }
+    return game;
   }
   return null;
 }
@@ -603,12 +722,14 @@ Game? selectAutoLiveActivityGame({
 Map<String, dynamic> buildLiveActivityScorePayloadForTesting({
   required Game game,
   CurrentAtBat? currentAtBat,
+  List<TeamStanding> standings = const [],
   String updatedAt = '12:34:56',
   String apiBaseUrl = 'https://api.example.test',
 }) {
   return LiveActivityService.instance._scorePayloadForGame(
     game,
     currentAtBat: currentAtBat,
+    rankLabels: _rankLabelsForGame(game, standings),
     updatedAt: updatedAt,
     apiBaseUrl: apiBaseUrl,
   );

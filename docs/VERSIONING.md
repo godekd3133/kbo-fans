@@ -31,7 +31,7 @@ Every version or release change must update these surfaces in the same work unit
 
 - `app/pubspec.yaml` when the app version or build number changes.
 - `CHANGELOG.md` for public/user-visible release history.
-- `app/assets/bootstrap/patch_notes.md` for in-app patch notes.
+- `app/assets/bootstrap/patch_notes.md` for in-app update notes. Keep these written for users: focus on visible screen, notification, data, and interaction changes. Put deployment checkpoints, server/workflow details, and verification notes in `CHANGELOG.md`, GitHub Release notes, and `docs/WORKLOG.md` instead.
 - GitHub Release title and body.
 - `docs/WORKLOG.md` for engineering decisions and verification.
 - `README.md`, `AGENTS.md`, `CLAUDE.md`, or `.claude/skills/` when release workflow rules changed.
@@ -40,12 +40,12 @@ Every version or release change must update these surfaces in the same work unit
 
 - Decide the target version before creating commits or tags.
 - Tags are immutable after publish. Do not force-update, delete, or recreate published tags unless the Director explicitly approves a historical release rewrite.
-- When historical releases are rewritten, update this release map, GitHub releases, in-app patch notes, and changelog in the same pass.
+- When historical releases are rewritten, update this release map, GitHub releases, in-app update notes, and changelog in the same pass.
 - GitHub releases should be normal releases, not prereleases, under the current no-preview policy.
 - Mark only the newest numeric release as `Latest`.
 - `APP_ENV=release` artifacts default to backend API data mode and must carry the production `API_BASE_URL` for screen data, push, and Live Activity token registration. Run `scripts/release-api-health-check.sh` before release-facing validation.
 - Tester-facing iOS TestFlight releases must include the external tester handoff in the same release closeout: wait for the uploaded build to become `VALID`, attach the newest build to the `External Testers` group, remove superseded older build relationships from that group, submit Beta App Review if no submission exists, and report external installability separately from upload/processing.
-- When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app patch notes change.
+- When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app update notes change.
 
 ## Numeric Release Map
 
@@ -112,7 +112,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.61`: backend API data mode becomes the default for local/dev/release/web/native builds and scripts/CI artifacts; direct KBO remains an explicit parser/debug path; game-detail live follow uses a single push relay CTA; live boxscore can show current batter/pitcher context before official rows exist; Live Activity batting average folds today's completed at-bats into the season AVG, app resume/widget Live Activity sync preserves current-at-bat stats, the Lock Screen/Dynamic Island matchup layout is tightened, Doosan 2025 and Samsung high-resolution logo assets ship, home standings taps open the standings overview, schedule/news/records surfaces receive density polish, and June 2026 schedule / records fixtures are refreshed; current app build `0.0.61+61`.
 - `0.0.62`: release sync checkpoint for the `0.0.61` backend API default / Live Activity real-time AVG build; Push / Live Activity preflight now checks the current API base URL handoff structure, and TestFlight, GitHub Release, backend deploy, topic resubscribe, and release API health evidence are realigned on current app build `0.0.62+62`.
 - `0.0.63`: reuploads the `0.0.62` backend API default / Live Activity real-time AVG / live boxscore context / push relay CTA release state as TestFlight build `0.0.63+63`; AWS backend API/worker runtime now receives KBO relay credentials through Secrets Manager so live relay API health is part of the release gate.
-- `0.0.64`: followed-game push subscriptions prefer `*_GAME_<gameId>` topics for game moments, backend game moment and lineup push sends include matching game-specific topics, local/remote push diagnostics are reinforced, and backend deploy, topic resubscribe, TestFlight upload, external tester handoff, and GitHub Release evidence are realigned on current app build `0.0.64+64`.
+- `0.0.64`: followed-game push subscriptions prefer `*_GAME_<gameId>` topics for game moments, backend game moment and lineup push sends include matching game-specific topics, app diagnostics can request a registered-device remote push self-test without bundling `PUSH_SYNC_SECRET`, in-app update notes use user-facing wording, and backend deploy, topic resubscribe, TestFlight upload, external tester handoff, and GitHub Release evidence are realigned on current app build `0.0.64+64`.
 
 ## GitHub Release Note Template
 

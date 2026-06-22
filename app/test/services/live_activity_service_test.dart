@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/relay.dart';
+import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/services/live_activity_service.dart';
 
 void main() {
@@ -69,20 +70,74 @@ void main() {
     expect(selected?.gameId, '20260520NCHH0');
   });
 
-  test('auto Live Activity target ignores scheduled my-team games', () {
-    final games = [
-      _game(
-        gameId: '20260520LGKT0',
-        awayTeamId: 'LG',
-        homeTeamId: 'KT',
-        status: GameStatus.scheduled,
-      ),
-    ];
+  test(
+    'auto Live Activity target ignores scheduled games before lineup opens',
+    () {
+      final games = [
+        _game(
+          gameId: '20260520LGKT0',
+          awayTeamId: 'LG',
+          homeTeamId: 'KT',
+          status: GameStatus.scheduled,
+        ),
+      ];
 
-    final selected = selectAutoLiveActivityGame(games: games, myTeamId: 'LG');
+      final selected = selectAutoLiveActivityGame(games: games, myTeamId: 'LG');
 
-    expect(selected, isNull);
-  });
+      expect(selected, isNull);
+    },
+  );
+
+  test(
+    'auto Live Activity target includes scheduled my-team game after lineup opens',
+    () {
+      final games = [
+        _game(
+          gameId: '20260520SSOB0',
+          awayTeamId: 'SS',
+          homeTeamId: 'OB',
+          status: GameStatus.scheduled,
+          lineupOpened: true,
+        ),
+        _game(
+          gameId: '20260520LGKT0',
+          awayTeamId: 'LG',
+          homeTeamId: 'KT',
+          status: GameStatus.scheduled,
+          lineupOpened: true,
+        ),
+      ];
+
+      final selected = selectAutoLiveActivityGame(games: games, myTeamId: 'LG');
+
+      expect(selected?.gameId, '20260520LGKT0');
+    },
+  );
+
+  test(
+    'auto Live Activity target prefers live games over lineup-open scheduled games',
+    () {
+      final games = [
+        _game(
+          gameId: '20260520LGKT0',
+          awayTeamId: 'LG',
+          homeTeamId: 'KT',
+          status: GameStatus.scheduled,
+          lineupOpened: true,
+        ),
+        _game(
+          gameId: '20260520SSOB0',
+          awayTeamId: 'SS',
+          homeTeamId: 'OB',
+          status: GameStatus.live,
+        ),
+      ];
+
+      final selected = selectAutoLiveActivityGame(games: games, myTeamId: 'LG');
+
+      expect(selected?.gameId, '20260520SSOB0');
+    },
+  );
 
   test(
     'Live Activity payload includes current at-bat stats and base state',
@@ -125,6 +180,45 @@ void main() {
       expect(payload['situationText'], '1사 1,2루');
     },
   );
+
+  test('Live Activity payload shows pregame rank text after lineup opens', () {
+    final payload = buildLiveActivityScorePayloadForTesting(
+      game: _game(
+        gameId: '20260620LGKT0',
+        awayTeamId: 'LG',
+        homeTeamId: 'KT',
+        status: GameStatus.scheduled,
+        lineupOpened: true,
+      ),
+      standings: const [
+        TeamStanding(
+          rank: 2,
+          teamId: 'LG',
+          teamName: 'LG 트윈스',
+          wins: 40,
+          losses: 28,
+          draws: 2,
+          pct: '.588',
+          gb: '1.5',
+        ),
+        TeamStanding(
+          rank: 5,
+          teamId: 'KT',
+          teamName: 'KT 위즈',
+          wins: 34,
+          losses: 34,
+          draws: 1,
+          pct: '.500',
+          gb: '7.0',
+        ),
+      ],
+    );
+
+    expect(payload['isPregame'], isTrue);
+    expect(payload['inning'], '경기전');
+    expect(payload['awayRankText'], '2위');
+    expect(payload['homeRankText'], '5위');
+  });
 }
 
 Game _game({
@@ -133,6 +227,7 @@ Game _game({
   required String homeTeamId,
   required GameStatus status,
   String? inning,
+  bool lineupOpened = false,
 }) {
   return Game(
     gameId: gameId,
@@ -154,5 +249,6 @@ Game _game({
     ),
     stadium: '잠실',
     startTime: '18:30',
+    lineupOpened: lineupOpened,
   );
 }

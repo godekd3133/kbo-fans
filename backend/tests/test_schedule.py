@@ -94,6 +94,16 @@ def test_derive_status_marks_start_pit_as_scheduled() -> None:
     assert status == "SCHEDULED"
 
 
+def test_derive_lineup_opened_marks_start_pit() -> None:
+    html = (
+        "<a href='/Schedule/GameCenter/Main.aspx?"
+        "gameDate=20260331&gameId=20260331HTLG0&section=START_PIT'"
+        " class='btn2' id='btnPreView'>프리뷰</a>"
+    )
+
+    assert ScheduleCrawler._derive_lineup_opened(html) is True
+
+
 def test_derive_status_marks_rain_cancelled() -> None:
     status = ScheduleCrawler._derive_status("", "우천취소")
     label = ScheduleCrawler._derive_status_label(status, "우천취소")

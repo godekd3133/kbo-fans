@@ -151,7 +151,9 @@ class WidgetSyncService {
       HomeWidget.saveWidgetData<String>('widget_subtitle', selected.stadium),
       HomeWidget.saveWidgetData<String>(
         'widget_status',
-        selected.inning.isEmpty
+        selected.isPregameLineupOpen
+            ? '경기전'
+            : selected.inning.isEmpty
             ? secondaryTextForGameStatus(
                 selected.status,
                 startTime: selected.startTime,
@@ -234,22 +236,34 @@ class WidgetSyncService {
       return liveMyTeamGame;
     }
 
-    final myTeamGame = _findGame(games, myTeamId: myTeamId);
-    if (myTeamGame != null) {
-      return myTeamGame;
-    }
-
     final liveGame = _findGame(games, onlyLive: true);
     if (liveGame != null) {
       return liveGame;
     }
 
-    return null;
+    final pregameMyTeamGame = _findGame(
+      games,
+      myTeamId: myTeamId,
+      onlyPregameLineup: true,
+    );
+    if (pregameMyTeamGame != null) {
+      return pregameMyTeamGame;
+    }
+
+    return _findGame(games, onlyPregameLineup: true);
   }
 
-  Game? _findGame(List<Game> games, {String? myTeamId, bool onlyLive = false}) {
+  Game? _findGame(
+    List<Game> games, {
+    String? myTeamId,
+    bool onlyLive = false,
+    bool onlyPregameLineup = false,
+  }) {
     for (final game in games) {
       if (onlyLive && game.status != GameStatus.live) {
+        continue;
+      }
+      if (onlyPregameLineup && !game.isPregameLineupOpen) {
         continue;
       }
       if (myTeamId == null ||
@@ -274,7 +288,7 @@ class WidgetSyncService {
       GameStatus.final_ => 'score',
       GameStatus.cancelled => 'score',
       GameStatus.suspended => 'score',
-      GameStatus.scheduled => 'score',
+      GameStatus.scheduled => game.isPregameLineupOpen ? 'lineup' : 'score',
     };
     return Uri(
       scheme: 'kboFans',
@@ -300,6 +314,7 @@ class WidgetSyncService {
             game.inning,
             game.away.score,
             game.home.score,
+            game.lineupOpened,
           ].join(':'),
         )
         .join(',');

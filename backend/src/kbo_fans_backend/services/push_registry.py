@@ -125,6 +125,11 @@ class PushRegistry:
         devices = data.get("devices", {})
         return bool(devices)
 
+    def has_device_token(self, device_token: str) -> bool:
+        data = self._load()
+        devices = data.get("devices", {})
+        return device_token in devices
+
     def device_registrations(self) -> list[dict[str, Any]]:
         data = self._load()
         devices = data.get("devices", {})

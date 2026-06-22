@@ -11,7 +11,7 @@
 - Use `.claude/SKILL_REFERENCE.md` for reusable task patterns extracted from prior work.
 - Use `README.md` for external-facing project summary, quick start, and local preview/run guidance.
 - Use `CHANGELOG.md` for user-visible change history.
-- Use `docs/VERSIONING.md` for app version, Git tag, GitHub release, and patch-note policy.
+- Use `docs/VERSIONING.md` for app version, Git tag, GitHub release, and in-app update-note policy.
 - Use `docs/DISTRIBUTION_GUIDE.md`, `docs/ANDROID_SIGNING_GUIDE.md`, and `docs/IOS_TESTFLIGHT_CHECKLIST.md` for friend/tester distribution work.
 - Use `docs/APP_SPEC.md` for screen behavior, provider structure, API contracts, and status codes.
 - Use `docs/ENGINEERING_NOTES.md` for implementation-level insights, local/dev behavior, widget/live activity constraints, and release workflow notes.
@@ -77,7 +77,7 @@
 - `kbo-history-snapshot`: use when classifying live vs historical data, adding snapshot-first backend paths, or making app historical screens cached-first.
 - `kbo-doc-sync`: use when architecture/API/UX changes also require synced updates across AGENTS, CLAUDE, spec docs, worklog, changelog, and skills.
 - `kbo-release-flow`: use when preparing commits, pushes, numeric release tags, or friend/TestFlight-facing release steps for this repository.
-- `kbo-version-release`: use when changing app versions, creating/reworking GitHub releases, or updating in-app patch notes.
+- `kbo-version-release`: use when changing app versions, creating/reworking GitHub releases, or updating in-app update notes.
 - If the Director says `이어서 해`, continue autonomously and decide from the actual diff whether to create the next numeric release or only reinforce the current GitHub Release notes.
 
 ## Implementation Insights
@@ -189,7 +189,7 @@
 
 ## Repeatable Workflows
 - Reuse `.claude/skills/ios-live-activity-widget/SKILL.md` when touching iOS WidgetKit / Live Activity / Dynamic Island logic.
-- Reuse `.claude/skills/kbo-version-release/SKILL.md` when changing versions, tags, release notes, or in-app patch notes.
+- Reuse `.claude/skills/kbo-version-release/SKILL.md` when changing versions, tags, release notes, or in-app update notes.
 - Reuse `.claude/skills/mobile-preview-release/SKILL.md` only as a legacy checklist when preparing TestFlight readiness or Android signing docs; release tags now follow plain numeric `0.0.x` policy in `kbo-version-release`.
 
 ## Known Document Notes

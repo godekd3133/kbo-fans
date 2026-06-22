@@ -27,6 +27,13 @@ enum PushNotificationMoment {
 
 enum PushNotificationDelivery { immediate, summary, liveOnly, off }
 
+class PushDiagnosticTestResult {
+  final bool sent;
+  final String message;
+
+  const PushDiagnosticTestResult({required this.sent, required this.message});
+}
+
 extension PushNotificationDeliveryX on PushNotificationDelivery {
   String get storageValue => switch (this) {
     PushNotificationDelivery.immediate => 'immediate',
@@ -737,6 +744,70 @@ class PushNotificationService {
     }
   }
 
+  Future<PushDiagnosticTestResult> sendRemoteDiagnosticTest({
+    String? myTeam,
+  }) async {
+    if (kIsWeb || !_shouldUseRemotePushServices()) {
+      return const PushDiagnosticTestResult(
+        sent: false,
+        message: '원격 푸시를 사용할 수 없는 실행 모드입니다.',
+      );
+    }
+
+    if (!_initialized) {
+      await initialize(myTeam: myTeam);
+    }
+    if (!_initialized) {
+      return const PushDiagnosticTestResult(
+        sent: false,
+        message: '푸시 초기화가 완료되지 않았습니다.',
+      );
+    }
+
+    final allowed = await requestPermissionAndSync(myTeam: myTeam);
+    if (!allowed) {
+      return const PushDiagnosticTestResult(
+        sent: false,
+        message: '시스템 알림 권한이 필요합니다.',
+      );
+    }
+
+    try {
+      await _waitForAppleApnsTokenIfNeeded();
+      final token = _lastToken ?? await FirebaseMessaging.instance.getToken();
+      if (token == null || token.isEmpty) {
+        return const PushDiagnosticTestResult(
+          sent: false,
+          message: 'FCM 기기 토큰을 아직 받지 못했습니다.',
+        );
+      }
+
+      _lastToken = token;
+      await syncRegistration(myTeam: myTeam, forceToken: token);
+      final response = await ApiClient().post(
+        '/push/test-device',
+        data: buildPushDeviceTestPayload(deviceToken: token),
+      );
+      final sent = response['sent'] == true;
+      if (sent) {
+        return const PushDiagnosticTestResult(
+          sent: true,
+          message: '원격 테스트 푸시를 요청했습니다.',
+        );
+      }
+      return PushDiagnosticTestResult(
+        sent: false,
+        message: response['reason']?.toString() ?? '원격 테스트 푸시 요청이 거절됐습니다.',
+      );
+    } catch (error) {
+      DevConsole.instance.warn('Remote push test failed: $error');
+      return PushDiagnosticTestResult(
+        sent: false,
+        message: describeAsyncError(error),
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> debugState() async {
     final prefs = await SharedPreferences.getInstance();
     final remotePushAvailable = _shouldUseRemotePushServices();
@@ -946,6 +1017,11 @@ Map<String, dynamic> buildPushRegistrationPayload({
   };
 }
 
+@visibleForTesting
+Map<String, dynamic> buildPushDeviceTestPayload({required String deviceToken}) {
+  return {'deviceToken': deviceToken};
+}
+
 bool shouldUseRemotePushServices({
   required bool isWeb,
   required bool useBackendApi,
@@ -1002,21 +1078,39 @@ Set<String> buildPushTopics({
     ),
   };
 
-  flags.forEach((topicName, enabled) {
-    if (!enabled) {
-      return;
-    }
+  flags.forEach((topicName, enabledBySettings) {
+    final alwaysOnForMyTeam =
+        hasMyTeam && _alwaysOnMyTeamGameTopicNames.contains(topicName);
+
     if (settings.allGames) {
-      topics.add('${topicName}_ALL');
+      if (enabledBySettings) {
+        topics.add('${topicName}_ALL');
+        return;
+      }
+      if (!alwaysOnForMyTeam) {
+        return;
+      }
+    }
+
+    if (alwaysOnForMyTeam) {
+      topics.add('${topicName}_$myTeam');
+    }
+
+    if (!enabledBySettings) {
       return;
     }
+
     if (_gameMomentTopicNames.contains(topicName) && hasFollowedGames) {
       for (final gameId in followedGames) {
+        if (alwaysOnForMyTeam && _gameIdContainsTeam(gameId, myTeam)) {
+          continue;
+        }
         topics.add('${topicName}_GAME_$gameId');
       }
       return;
     }
-    if (hasMyTeam) {
+
+    if (hasMyTeam && !alwaysOnForMyTeam) {
       topics.add('${topicName}_$myTeam');
     }
   });
@@ -1041,6 +1135,18 @@ const _gameMomentTopicNames = <String>{
   'at_bat',
 };
 
+const _alwaysOnMyTeamGameTopicNames = <String>{
+  'game_start',
+  'game_start_soon',
+  'scoring',
+  'hit',
+  'homerun',
+  'reversal',
+  'game_end',
+  'lineup_opened',
+  'at_bat',
+};
+
 Set<String> _cleanFollowedGameIds(Iterable<String> followedGameIds) {
   final cleaned = <String>{};
   for (final gameId in followedGameIds) {
@@ -1050,6 +1156,14 @@ Set<String> _cleanFollowedGameIds(Iterable<String> followedGameIds) {
     }
   }
   return cleaned;
+}
+
+bool _gameIdContainsTeam(String gameId, String? teamId) {
+  if (teamId == null || teamId.isEmpty || gameId.length < 12) {
+    return false;
+  }
+  return gameId.substring(8, 10) == teamId ||
+      gameId.substring(10, 12) == teamId;
 }
 
 String? pushNotificationRouteForData(Map<String, dynamic> data) {

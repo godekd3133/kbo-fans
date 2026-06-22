@@ -288,6 +288,7 @@ class ApiGameRepository implements GameRepository {
       highlightInfo: _parseHighlightInfo(
         json['highlightInfo'] as Map<String, dynamic>?,
       ),
+      lineupOpened: json['lineupOpened'] == true,
     );
   }
 

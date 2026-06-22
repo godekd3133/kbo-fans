@@ -50,6 +50,10 @@ class PushTestRequest(BaseModel):
     token: Optional[str] = None
 
 
+class PushDeviceTestRequest(BaseModel):
+    deviceToken: str
+
+
 class PushBaseballInfoRequest(BaseModel):
     kind: Literal[
         "weekly_check",
@@ -86,6 +90,9 @@ class LiveActivityContentState(BaseModel):
     updatedAt: str
     situationText: str = ""
     playText: str = ""
+    isPregame: bool = False
+    awayRankText: str = ""
+    homeRankText: str = ""
 
 
 class LiveActivityRegisterRequest(BaseModel):

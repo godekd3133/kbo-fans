@@ -2,6 +2,83 @@
 
 ---
 
+## 2026-06-22: 라인업 공개 경기전 Live Activity 시작/순위 표시
+
+### 원인
+- Live Activity가 기존에는 `GameStatus.live`에서만 시작/유지되어, KBO가 선발 라인업을 공개한 경기 전 구간에는 잠금화면/Dynamic Island가 뜨지 않았다.
+- 경기 전에는 실제 스코어가 없으므로 0:0이나 `vs`보다 `경기전`과 양 팀 순위를 보여주는 편이 사용자 맥락에 맞다.
+
+### 완료
+- [x] 앱 `Game` 모델과 backend scoreboard payload에 `lineupOpened`를 추가하고, schedule `section=START_PIT`를 라인업 공개 신호로 전달
+- [x] `LiveActivityService`가 라인업 공개 예정 경기를 follow surface 대상으로 유지하고, pregame payload에 `isPregame`, `awayRankText`, `homeRankText`, `inning=경기전`을 포함하도록 보정
+- [x] iOS ActivityKit ContentState와 잠금화면/Dynamic Island UI가 pregame이면 점수 대신 양 팀 순위를 표시하고, 탭하면 라인업 탭으로 진입하도록 변경
+- [x] backend Live Activity scoreboard sync가 등록된 ActivityKit token이 있는 라인업 공개 예정 경기에도 APNs update를 보내고, standings service로 순위 문자열을 붙이도록 보강
+- [x] `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `CHANGELOG.md`, `docs/WORKLOG.md`에 pregame Live Activity 계약 반영
+
+### 검증
+- [x] `git diff --check`
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `cd app && fvm flutter test --no-pub` (`173 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`178 passed`)
+- [x] `python3 -m compileall backend/src`
+
+### 남은 확인
+- [ ] iPhone 실기기에서 라인업 공개 예정 경기 Live Activity 노출과 Dynamic Island compact 표시 확인
+
+---
+
+## 2026-06-22: 마이팀 경기 알림 always-on 전환
+
+### 원인
+- 마이팀 경기는 사용자가 별도 알림 플레이북 UI를 조작하지 않아도 앱 밖 push를 받아야 한다.
+- 기존 topic 계산은 저장된 delivery 설정과 `followedGameIds`에 따라 마이팀 team topic을 빼거나 GAME topic으로 좁힐 수 있어, 마이팀 경기 수신 보장이 UI/설정 상태에 의존했다.
+
+### 완료
+- [x] 앱 `buildPushTopics`에서 마이팀 경기 핵심 moment(`game_start`, `game_start_soon`, `scoring`, `hit`, `homerun`, `reversal`, `game_end`, `lineup_opened`, `at_bat`)를 delivery 설정과 무관한 always-on team topic으로 보정
+- [x] backend `PushService._build_topics`도 같은 always-on 규칙을 적용해 registry 재구독 시 기존 설정에 막히지 않도록 보정
+- [x] 따라가는 경기 ID가 이미 마이팀 경기이면 같은 moment의 GAME topic을 추가하지 않아 team topic과 GAME topic 중복 수신을 피하도록 보정
+- [x] 더보기 화면에서 알림 프리셋, 알림 플레이북, 리그 전체 알림 토글 UI 제거
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`, `docs/WORKLOG.md`에 새 알림 정책 반영
+
+### 검증
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart` (`19 passed`)
+- [x] `cd app && fvm flutter test test/features/settings/settings_screen_test.dart` (`4 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`52 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `cd app && fvm flutter test --no-pub` (`173 passed`)
+- [x] `backend/.venv/bin/pytest -q` (`178 passed`)
+- [x] `python3 -m compileall backend/src`
+
+### 남은 확인
+- [ ] 운영 backend `resubscribe-topics` 실행 후 실제 registry topicCounts 확인
+- [ ] 사장님 iPhone/TestFlight에서 마이팀 경기 push 실제 수신 확인
+
+---
+
+## 2026-06-22: 앱 내 업데이트 소식 사용자-facing 정리
+
+### 원인
+- 더보기에는 이미 `patch_notes.md` 기반 화면이 있었지만, 앱 안에서 보이는 이름과 최신 노트 문구가 `패치노트`, `backend`, `TestFlight`, `checkpoint` 같은 내부 작업 기록에 가까웠다.
+- 사장님 요청은 기술적인 릴리즈 로그가 아니라 사용자가 앱 안에서 “무엇이 바뀌었는지”를 이해하는 업데이트 소식 화면이다.
+
+### 완료
+- [x] 더보기의 `패치노트` 진입점을 `업데이트 소식`으로 변경하고, 새 route `/release-notes`를 추가했다. 기존 `/patch-notes`는 `/release-notes`로 redirect해 호환성을 유지한다.
+- [x] 업데이트 소식 화면 title/error/current-version copy를 사용자-facing 문구로 바꿨다.
+- [x] 앱 화면에서는 최신 12개 릴리즈만 표시해 오래된 내부 배포 기록 노출을 줄였다.
+- [x] `app/assets/bootstrap/patch_notes.md`의 최신 릴리즈 노트를 알림, 일정, 기록, 홈, Live Activity처럼 사용자가 체감하는 변화 중심으로 다시 썼다.
+- [x] `docs/APP_SPEC.md`, `docs/VERSIONING.md`, `CLAUDE.md`, `AGENTS.md`, `.claude/SKILL_REFERENCE.md`, `.claude/skills/kbo-version-release/SKILL.md`, `CHANGELOG.md`에 앱 내 업데이트 소식 작성 기준을 동기화했다.
+
+### 검증
+- [x] `git diff --check -- app/lib/features/settings/patch_notes_screen.dart app/lib/features/settings/settings_screen.dart app/lib/core/router/app_router.dart app/lib/core/router/app_route_sanitizer.dart app/test/core/router/app_router_test.dart app/test/features/settings/settings_screen_test.dart app/assets/bootstrap/patch_notes.md docs/APP_SPEC.md docs/VERSIONING.md CLAUDE.md AGENTS.md .claude/SKILL_REFERENCE.md .claude/skills/kbo-version-release/SKILL.md CHANGELOG.md`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/settings/patch_notes_screen.dart lib/features/settings/settings_screen.dart lib/core/router/app_router.dart lib/core/router/app_route_sanitizer.dart test/core/router/app_router_test.dart test/features/settings/settings_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/core/router/app_router_test.dart test/features/settings/settings_screen_test.dart -r expanded` (`5 passed`)
+- [x] 전체 회귀: `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub` (`173 passed`), `backend/.venv/bin/pytest -q` (`178 passed`), `python3 -m compileall backend/src`
+
+### 남은 확인
+- [ ] 다음 tester-facing 배포 때 현재 `Unreleased` 변경과 함께 새 numeric version으로 묶을지 결정
+
+---
+
 ## 2026-06-22: 앱 내부 원격 푸시 self-test 버튼 추가
 
 ### 원인
@@ -18,6 +95,12 @@
 - [x] RED 확인: 신규 backend 테스트는 `PushDeviceTestRequest` 미존재로 실패, 신규 Flutter payload 테스트는 `buildPushDeviceTestPayload` 미존재로 실패
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret`
 - [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart --name '원격 테스트 push payload는 현재 기기 토큰만 보낸다'`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret backend/tests/test_live_activity_sync_loop.py` (`5 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/schemas/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/api/routes/push.py backend/tests/test_push_service.py`
+- [x] `python3 -m compileall backend/src`
+- [x] `cd app && fvm flutter analyze lib/services/push_notification_service.dart lib/features/settings/api_diagnostics_screen.dart test/services/push_notification_service_test.dart`
+- [x] `git diff --check`
+- [x] 전체 회귀: `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub` (`173 passed`), `backend/.venv/bin/pytest -q` (`178 passed`), `python3 -m compileall backend/src`
 
 ### 남은 확인
 - [ ] 사장님 iPhone에서 `설정 > API 진단 > 원격 푸시 테스트`를 눌러 실제 원격 push receipt 확인
@@ -35,12 +118,15 @@
 - [x] 앱 전역 폰트 기준을 NanumSquareRound로 전환하고 font asset / fallback / 디자인 문서를 함께 동기화
 - [x] 앱 push 구독 계산이 follow 중인 경기의 일반 경기 순간 토픽을 `*_GAME_<gameId>`로 우선 생성하도록 보강
 - [x] backend push worker가 경기 순간/라인업 공개 발송에 경기별 토픽을 함께 포함하고, topic 재등록 시 followed game topics로 registry를 재계산하도록 보강
+- [x] API 진단 화면의 원격 푸시 self-test와 backend `/api/push/test-device` endpoint까지 0.0.64 최종 소스 범위에 포함
+- [x] 앱 내 `패치노트` 표기를 `업데이트 소식`으로 바꾸고, in-app notes를 사용자 체감 변화 중심 문구로 재정리
 
 ### 진행 예정
-- [x] 릴리즈 전 검증 통과: `git diff --check`, `cd app && fvm flutter analyze`, `cd app && fvm flutter test` (`166 passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`47 passed`), `backend/.venv/bin/pytest -q` (`172 passed`)
+- [x] 릴리즈 전 검증 통과: `git diff --check`, `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub` (`173 passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`52 passed`), `backend/.venv/bin/pytest -q` (`178 passed`)
 - [x] `0.0.64` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27927108022`, head `7c03f18`, conclusion `success`, `KBO_BACKEND_IMAGE_TAG=0.0.64`, ECR digest `sha256:04fc7b66b7a58b43286efb14df73aee1c4fe2681d4780418139e81ce33d61bd6`, `readyForIphoneOnlyDemo=true`, scheduler age 2초
 - [x] topic 재등록 결과 확인: artifact `push-topic-resubscribe.json`, `registeredDevices=13`, `eligibleDevices=13`, `subscriptionsAttempted=104`, `unsubscriptionsAttempted=7`; followed game `20260620HTKT0`에 `scoring_GAME_...`, `hit_GAME_...`, `homerun_GAME_...`, `game_start_GAME_...`, `game_start_soon_GAME_...`, `at_bat_GAME_...`, `reversal_GAME_...` 구독 성공
 - [x] 운영 release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; `2026-06-22`은 scoreboard game이 없어 relay endpoint는 skip
+- [ ] 위 backend 배포 run은 최종 0.0.64 소스 커밋 전 head(`7c03f18`) 기준이므로, 최종 커밋 후 같은 tag로 backend worker/API 재배포와 topic 재등록을 한 번 더 수행
 - [ ] `0.0.64 (64)` IPA archive/upload 완료
 - [ ] App Store Connect build `64` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
 - [ ] GitHub Release `0.0.64` 생성 및 최종 release evidence 기록

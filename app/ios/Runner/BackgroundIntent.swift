@@ -22,6 +22,9 @@ struct KboFansScoreAttributes: ActivityAttributes {
     var updatedAt: String
     var situationText: String?
     var playText: String?
+    var isPregame: Bool?
+    var awayRankText: String?
+    var homeRankText: String?
   }
 
   var gameId: String

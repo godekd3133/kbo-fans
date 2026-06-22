@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
@@ -8,6 +9,9 @@ from kbo_fans_backend.schemas.push import LiveActivityContentState, LiveActivity
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.services.relay import RelayService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
+from kbo_fans_backend.services.standings import StandingsService
+
+logger = logging.getLogger(__name__)
 
 
 class LiveActivityScoreboardSyncService:
@@ -19,11 +23,13 @@ class LiveActivityScoreboardSyncService:
         scoreboard_service: Optional[ScoreboardService] = None,
         push_service: Optional[PushService] = None,
         relay_service: Optional[RelayService] = None,
+        standings_service: Optional[StandingsService] = None,
         now_provider: Optional[Callable[[], datetime]] = None,
     ) -> None:
         self.scoreboard_service = scoreboard_service or ScoreboardService()
         self.push_service = push_service or PushService()
         self.relay_service = relay_service
+        self.standings_service = standings_service or StandingsService()
         self.now_provider = now_provider or (lambda: datetime.now(timezone.utc))
 
     def sync_date(self, date: str) -> dict[str, Any]:
@@ -46,7 +52,7 @@ class LiveActivityScoreboardSyncService:
                 continue
 
             status = _status_value(game)
-            if status == "SCHEDULED":
+            if status == "SCHEDULED" and not _lineup_opened(game):
                 continue
 
             update = self._update_request_for_game(game, status)
@@ -224,6 +230,8 @@ class LiveActivityScoreboardSyncService:
         now = datetime.now(timezone.utc)
         event = "end" if status in {"FINAL", "CANCELLED", "SUSPENDED"} else "update"
         current = self._live_activity_current_payload(game, status)
+        is_pregame = status == "SCHEDULED" and _lineup_opened(game)
+        ranks = self._rank_labels_for_game(game) if is_pregame else {}
         state = LiveActivityContentState(
             awayTeamId=str(away.get("teamId") or ""),
             awayTeam=str(away.get("shortName") or away.get("name") or ""),
@@ -231,7 +239,11 @@ class LiveActivityScoreboardSyncService:
             homeTeam=str(home.get("shortName") or home.get("name") or ""),
             awayScore=_int_value(away.get("score")),
             homeScore=_int_value(home.get("score")),
-            inning=str(current.get("inning") or _inning_text(game, status)),
+            inning=(
+                "경기전"
+                if is_pregame
+                else str(current.get("inning") or _inning_text(game, status))
+            ),
             batter=current["batterName"],
             batterAverage=str(current.get("batterAverage") or ""),
             pitcher=current["pitcherName"],
@@ -243,7 +255,10 @@ class LiveActivityScoreboardSyncService:
             stadium=str(game.get("stadium") or "KBO"),
             updatedAt=now.astimezone().strftime("%H:%M:%S"),
             situationText=str(current.get("situationText") or ""),
-            playText=str(current.get("playText") or ""),
+            playText="" if is_pregame else str(current.get("playText") or ""),
+            isPregame=is_pregame,
+            awayRankText=ranks.get(str(away.get("teamId") or ""), ""),
+            homeRankText=ranks.get(str(home.get("teamId") or ""), ""),
         )
         return LiveActivityUpdateRequest(
             gameId=game_id,
@@ -271,6 +286,24 @@ class LiveActivityScoreboardSyncService:
 
         relay_current = _relay_current_state(relay.get("currentAtBat"), current)
         return {**current, **relay_current}
+
+    def _rank_labels_for_game(self, game: dict[str, Any]) -> dict[str, str]:
+        season = _season_from_game(game)
+        if season is None:
+            return {}
+        try:
+            payload = self.standings_service.get_standings(season)
+        except Exception as error:
+            logger.warning("live activity standings rank skipped: %s", error)
+            return {}
+
+        labels = {}
+        for standing in payload.get("standings", []):
+            team_id = str(standing.get("teamId") or "")
+            rank = _int_value(standing.get("rank"))
+            if team_id and rank > 0:
+                labels[team_id] = f"{rank}위"
+        return labels
 
 
 def _is_homerun_relay_item(item: dict[str, Any]) -> bool:
@@ -430,6 +463,31 @@ def _status_value(game: dict[str, Any]) -> str:
     return str(game.get("status") or "").upper()
 
 
+def _lineup_opened(game: dict[str, Any]) -> bool:
+    for key in ("lineupOpened", "lineup_opened", "LINEUP_CK"):
+        value = game.get(key)
+        if value is True:
+            return True
+        if isinstance(value, str) and value.strip().lower() == "true":
+            return True
+    text = " ".join(
+        str(value or "") for value in (game.get("statusLabel"), game.get("inning"))
+    )
+    if "라인업" not in text:
+        return False
+    return "공개" in text or "발표" in text
+
+
+def _season_from_game(game: dict[str, Any]) -> Optional[int]:
+    game_id = str(game.get("gameId") or "")
+    if len(game_id) >= 4:
+        try:
+            return int(game_id[:4])
+        except ValueError:
+            return None
+    return None
+
+
 def _inning_text(game: dict[str, Any], status: str) -> str:
     inning = str(game.get("inning") or "").strip()
     if inning:
@@ -453,6 +511,7 @@ def _scoreboard_state(game: dict[str, Any]) -> dict[str, Any]:
     current = _current_payload(game)
     return {
         "status": status,
+        "lineupOpened": _lineup_opened(game),
         "awayTeamId": str(away.get("teamId") or ""),
         "awayTeam": str(away.get("shortName") or away.get("name") or ""),
         "homeTeamId": str(home.get("teamId") or ""),

@@ -39,6 +39,7 @@
   - 앱 종료/백그라운드 push가 안 오면 먼저 `/push/register`가 실제 기기에서 성공해 registry `devices`가 채워졌는지 확인한다. 특정 경기 따라가기라면 registry의 `followedGameIds`와 `topicCounts`의 `scoring_GAME_{gameId}` / `hit_GAME_{gameId}` / `game_start_soon_GAME_{gameId}`도 같이 확인한다. 앱은 마이팀 선택 후 non-local 환경에서 최초 1회 권한 요청과 FCM registration sync를 자동 시도해야 한다.
   - 배포 후 `GET /api/push/config-status` 또는 `python -m kbo_fans_backend.scheduler.push_config_status`로 Firebase/APNs/registry/scheduler secret 누락을 먼저 확인한다.
   - local backend에서 `PUSH_SYNC_SECRET`이 없으면 `config-status`는 diagnostics 확인용으로 열어두지만, `/push/test`, `/push/baseball-info`, `/push/resubscribe-topics`, `/push/live-activity/sync-scoreboard` 같은 mutation endpoint는 Firebase/APNs까지 진행하지 않고 503으로 막아야 한다.
+  - 앱 내부 receipt 확인용 `/push/test-device`는 운영 secret을 요구하지 않는다. 대신 앱이 현재 FCM token을 `/push/register`로 먼저 저장해야 하며, backend는 registry에 없는 token에는 발송하지 않는다. 이 endpoint에는 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않기 위한 self-test 경계만 둔다.
   - 외부에서 `PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api`를 실행하면 `/health`와 push readiness를 같이 확인할 수 있다.
   - GitHub Actions secret 컨텍스트에서 원격 테스트 푸시를 보낼 때는 `Push Test Notification` workflow 또는 `./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch`를 사용한다. 이 helper는 secret/token 값을 출력하지 않는다.
   - backend image는 `./scripts/aws-push-image.sh`로 ECR에 push하고, 출력되는 `CONTAINER_IMAGE_URI`를 CloudFormation 배포에 사용할 수 있다.
@@ -64,8 +65,9 @@
 - Live Activity 선택 우선순위:
   1. 진행중인 마이팀 경기
   2. 진행중인 다른 경기
-  3. 오늘 마이팀 예정 경기
-  4. 오늘 다른 예정 경기
+  3. 오늘 마이팀 라인업 공개 예정 경기
+  4. 오늘 다른 라인업 공개 예정 경기
+- 라인업 공개 예정 경기 Live Activity는 `경기전` 상태와 양 팀 순위를 스코어 자리에 표시하고, 탭하면 라인업 탭으로 진입한다. 라인업 미공개 예정 경기는 follow session은 유지해도 Activity를 시작하지 않는다.
 - 홈 위젯과 Live Activity는 가능한 한 같은 source scoreboard 를 기준으로 동기화한다.
 - 중복 업데이트는 signature 비교로 억제한다.
 - 앱이 native에서 resumed 될 때만 scoreboard 를 다시 invalidate 해 Live Activity 를 재동기화한다. 웹은 홈 위젯/Live Activity가 없으므로 전역 resume refresh를 등록하지 않는다.

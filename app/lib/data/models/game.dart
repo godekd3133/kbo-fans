@@ -39,6 +39,7 @@ class Game {
   final int? crowd;
   final TicketInfo? ticketInfo;
   final HighlightInfo? highlightInfo;
+  final bool lineupOpened;
 
   const Game({
     required this.gameId,
@@ -52,7 +53,33 @@ class Game {
     this.crowd,
     this.ticketInfo,
     this.highlightInfo,
+    this.lineupOpened = false,
   });
 
   bool get hasTeamStats => away.hasStats && home.hasStats;
+
+  bool get isPregameLineupOpen {
+    if (status != GameStatus.scheduled) {
+      return false;
+    }
+    if (lineupOpened) {
+      return true;
+    }
+    return _mentionsLineupOpen(inning) || _mentionsLineupOpen(statusLabel);
+  }
+}
+
+bool _mentionsLineupOpen(String? value) {
+  final text = value?.trim() ?? '';
+  if (text.isEmpty) {
+    return false;
+  }
+  final mentionsLineup =
+      text.contains('라인업') || text.toLowerCase().contains('lineup');
+  if (!mentionsLineup) {
+    return false;
+  }
+  return text.contains('공개') ||
+      text.contains('발표') ||
+      text.toLowerCase().contains('open');
 }

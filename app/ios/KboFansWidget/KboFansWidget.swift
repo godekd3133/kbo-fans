@@ -196,10 +196,19 @@ struct KboFansLiveActivityView: View {
 
           VStack(spacing: 5) {
             HStack(alignment: .center, spacing: 8) {
-              scoreView(context.state.awayScore)
-              BaseballDiamondView(occupiedBases: occupiedBases)
-                .frame(width: 68, height: 46)
-              scoreView(context.state.homeScore)
+              if isPregame {
+                rankView(rankText(context.state.awayRankText))
+                Text("VS")
+                  .font(.system(size: 17, weight: .black, design: .rounded))
+                  .foregroundStyle(.white.opacity(0.66))
+                  .frame(width: 68, height: 46)
+                rankView(rankText(context.state.homeRankText))
+              } else {
+                scoreView(context.state.awayScore)
+                BaseballDiamondView(occupiedBases: occupiedBases)
+                  .frame(width: 68, height: 46)
+                scoreView(context.state.homeScore)
+              }
             }
 
             HStack(spacing: 8) {
@@ -240,7 +249,7 @@ struct KboFansLiveActivityView: View {
           .frame(width: 60, alignment: .leading)
         }
 
-        if hasMatchupContext {
+        if !isPregame && hasMatchupContext {
           LiveActivityMatchupRow(
             batter: batterName,
             batterDetail: batterDetailText,
@@ -272,10 +281,18 @@ struct KboFansLiveActivityView: View {
     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
     .activityBackgroundTint(Color.clear)
     .activitySystemActionForegroundColor(.white)
-    .widgetURL(launchURL(gameId: context.attributes.gameId, tab: "relay"))
+    .widgetURL(
+      launchURL(
+        gameId: context.attributes.gameId,
+        tab: isPregame ? "lineup" : "relay"
+      )
+    )
   }
 
   private var statusText: String {
+    if isPregame {
+      return "경기전"
+    }
     let text = context.state.inning.trimmingCharacters(
       in: .whitespacesAndNewlines
     )
@@ -302,6 +319,15 @@ struct KboFansLiveActivityView: View {
       .lineLimit(1)
       .minimumScaleFactor(0.72)
       .frame(width: 38)
+  }
+
+  private func rankView(_ text: String) -> some View {
+    Text(text)
+      .font(.system(size: 27, weight: .black, design: .rounded))
+      .foregroundStyle(.white)
+      .lineLimit(1)
+      .minimumScaleFactor(0.68)
+      .frame(width: 46)
   }
 
   private var batterName: String {
@@ -331,6 +357,10 @@ struct KboFansLiveActivityView: View {
   }
 
   private var bottomSituationText: String {
+    if isPregame {
+      let stadium = trimmed(context.state.stadium)
+      return stadium.isEmpty ? "라인업 공개" : "\(stadium) · 라인업 공개"
+    }
     let play = cleanedPlayText(context.state.playText)
     if !play.isEmpty {
       return play
@@ -364,11 +394,17 @@ struct KboFansLiveActivityView: View {
   }
 
   private var hasAtBatContext: Bool {
-    hasMatchupContext ||
+    !isPregame && (
+      hasMatchupContext ||
       context.state.pitchCount > 0 ||
       context.state.balls > 0 ||
       context.state.strikes > 0 ||
       context.state.outs > 0
+    )
+  }
+
+  private var isPregame: Bool {
+    context.state.isPregame == true
   }
 }
 
@@ -545,13 +581,13 @@ private struct CountDotsGroup: View {
 private struct DynamicIslandTeamScore: View {
   let teamId: String
   let team: String
-  let score: Int
+  let metric: String
   let alignEnd: Bool
 
   var body: some View {
     VStack(alignment: alignEnd ? .trailing : .leading, spacing: 2) {
       teamName
-      Text("\(score)")
+      Text(metric)
         .font(.system(size: 24, weight: .black, design: .rounded))
         .foregroundStyle(.white)
         .monospacedDigit()
@@ -577,6 +613,10 @@ private func pitcherLine(name: String, pitchCount: Int) -> String {
 }
 
 private func dynamicIslandSituationText(_ state: KboFansScoreAttributes.ContentState) -> String {
+  if state.isPregame == true {
+    let stadium = trimmed(state.stadium)
+    return stadium.isEmpty ? "라인업 공개" : "\(stadium) · 라인업 공개"
+  }
   let play = cleanedPlayText(state.playText)
   if !play.isEmpty {
     return play
@@ -617,8 +657,10 @@ private func dynamicIslandMatchupText(_ state: KboFansScoreAttributes.ContentSta
 }
 
 private func hasMatchupContext(_ state: KboFansScoreAttributes.ContentState) -> Bool {
-  !state.batter.isEmpty ||
-    !state.pitcher.isEmpty
+  if state.isPregame == true {
+    return false
+  }
+  return !state.batter.isEmpty || !state.pitcher.isEmpty
 }
 
 private enum InningHalf {
@@ -734,6 +776,15 @@ private func trimmed(_ text: String) -> String {
   text.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
+private func rankText(_ text: String?) -> String {
+  let value = trimmed(text)
+  return value.isEmpty ? "-" : value
+}
+
+private func teamMetricText(score: Int, rankText text: String?, isPregame: Bool) -> String {
+  return isPregame ? rankText(text) : "\(score)"
+}
+
 @available(iOS 16.1, *)
 struct KboFansLiveActivityWidget: Widget {
   var body: some WidgetConfiguration {
@@ -745,18 +796,24 @@ struct KboFansLiveActivityWidget: Widget {
           DynamicIslandTeamScore(
             teamId: context.state.awayTeamId,
             team: context.state.awayTeam,
-            score: context.state.awayScore,
+            metric: teamMetricText(
+              score: context.state.awayScore,
+              rankText: context.state.awayRankText,
+              isPregame: context.state.isPregame == true
+            ),
             alignEnd: false
           )
         }
         DynamicIslandExpandedRegion(.center) {
           VStack(spacing: 3) {
-            BaseballDiamondView(
-              occupiedBases: occupiedBasesFromText(context.state.situationText)
-            )
-            .frame(width: 46, height: 30)
-            .scaleEffect(0.58)
-            Text(context.state.inning)
+            if context.state.isPregame != true {
+              BaseballDiamondView(
+                occupiedBases: occupiedBasesFromText(context.state.situationText)
+              )
+              .frame(width: 46, height: 30)
+              .scaleEffect(0.58)
+            }
+            Text(context.state.isPregame == true ? "경기전" : context.state.inning)
               .font(.caption2.weight(.bold))
               .foregroundStyle(.white)
               .lineLimit(1)
@@ -773,13 +830,17 @@ struct KboFansLiveActivityWidget: Widget {
           DynamicIslandTeamScore(
             teamId: context.state.homeTeamId,
             team: context.state.homeTeam,
-            score: context.state.homeScore,
+            metric: teamMetricText(
+              score: context.state.homeScore,
+              rankText: context.state.homeRankText,
+              isPregame: context.state.isPregame == true
+            ),
             alignEnd: true
           )
         }
         DynamicIslandExpandedRegion(.bottom) {
           VStack(spacing: 5) {
-            if hasAtBatContext(context.state) {
+            if context.state.isPregame != true && hasAtBatContext(context.state) {
               CountDotsRow(
                 balls: context.state.balls,
                 strikes: context.state.strikes,
@@ -813,28 +874,52 @@ struct KboFansLiveActivityWidget: Widget {
           }
         }
       } compactLeading: {
-        Text("\(context.state.awayScore)")
+        Text(
+          teamMetricText(
+            score: context.state.awayScore,
+            rankText: context.state.awayRankText,
+            isPregame: context.state.isPregame == true
+          )
+        )
           .font(.headline.weight(.black))
           .foregroundStyle(.white)
           .monospacedDigit()
       } compactTrailing: {
-        Text("\(context.state.homeScore)")
+        Text(
+          teamMetricText(
+            score: context.state.homeScore,
+            rankText: context.state.homeRankText,
+            isPregame: context.state.isPregame == true
+          )
+        )
           .font(.headline.weight(.black))
           .foregroundStyle(.white)
           .monospacedDigit()
       } minimal: {
-        Text("\(context.state.awayScore):\(context.state.homeScore)")
+        Text(
+          context.state.isPregame == true
+            ? "경기전"
+            : "\(context.state.awayScore):\(context.state.homeScore)"
+        )
           .font(.caption2.weight(.bold))
           .foregroundStyle(.white)
           .monospacedDigit()
       }
       .keylineTint(teamAccentColor(teamId: context.state.homeTeamId))
-      .widgetURL(launchURL(gameId: context.attributes.gameId, tab: "relay"))
+      .widgetURL(
+        launchURL(
+          gameId: context.attributes.gameId,
+          tab: context.state.isPregame == true ? "lineup" : "relay"
+        )
+      )
     }
   }
 
   private func hasAtBatContext(_ state: KboFansScoreAttributes.ContentState) -> Bool {
-    hasMatchupContext(state) ||
+    if state.isPregame == true {
+      return false
+    }
+    return hasMatchupContext(state) ||
       state.pitchCount > 0 ||
       state.balls > 0 ||
       state.strikes > 0 ||

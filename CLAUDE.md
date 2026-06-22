@@ -42,7 +42,7 @@ kbo_fans/
 - 재사용 가능한 작업 패턴/스킬: `.claude/SKILL_REFERENCE.md`
 - 저장소 소개/실행 가이드: `README.md`
 - 외부 공개용 변경 이력: `CHANGELOG.md`
-- 버전/태그/릴리즈/패치노트 정책: `docs/VERSIONING.md`
+- 버전/태그/릴리즈/앱 내 업데이트 소식 정책: `docs/VERSIONING.md`
 - 배포 / 테스터 공유 가이드: `docs/DISTRIBUTION_GUIDE.md`, `docs/ANDROID_SIGNING_GUIDE.md`, `docs/IOS_TESTFLIGHT_CHECKLIST.md`
 - 제품 목표/UX 원칙/로드맵: `docs/PLANNING.md`
 - 화면 상세, 상태, API 계약: `docs/APP_SPEC.md`
@@ -62,7 +62,8 @@ kbo_fans/
 - 작업 이력은 `docs/WORKLOG.md`에 누적한다
 - 실행 방법, 프로젝트 구조, 현재 구현 범위가 바뀌면 `README.md`를 함께 갱신한다
 - 사용자 관점의 기능/마일스톤 변경이 생기면 `CHANGELOG.md`를 함께 갱신한다
-- 버전이나 릴리즈가 바뀌면 `CHANGELOG.md`, 앱 내 패치노트(`app/assets/bootstrap/patch_notes.md`), GitHub 릴리즈 노트를 같은 단위로 갱신한다
+- 버전이나 릴리즈가 바뀌면 `CHANGELOG.md`, 앱 내 업데이트 소식(`app/assets/bootstrap/patch_notes.md`), GitHub 릴리즈 노트를 같은 단위로 갱신한다
+- 앱 내 업데이트 소식은 사용자에게 보이는 화면/알림/데이터 변화 중심으로 쓰고, 배포 checkpoint나 서버/워크플로 세부는 `CHANGELOG.md`, GitHub Release, `docs/WORKLOG.md`에 분리한다
 - Codex 앱 실행 액션으로 쓰는 공용 명령은 가능하면 `scripts/` 아래 스크립트로 유지한다
 - Codex 앱 실행 액션을 플랫폼별로 분리할 때는 `ios`, `android`, `web` 각각 독립 스크립트 진입점을 둔다
 - Codex 앱 액션은 저장소 스크립트를 만든다고 UI에 자동 등록되지 않으므로, 사용자 수동 등록이 필요하다는 전제를 유지한다
@@ -123,7 +124,7 @@ kbo_fans/
 - `.claude/skills/kbo-release-flow/SKILL.md`
   - 커밋/푸시/숫자 릴리즈 태그/TestFlight 전환 시 체크해야 할 저장소 전용 릴리즈 가이드
 - `.claude/skills/kbo-version-release/SKILL.md`
-  - 앱 버전 변경, GitHub 릴리즈/태그 정리, 앱 내 패치노트 갱신 루틴
+  - 앱 버전 변경, GitHub 릴리즈/태그 정리, 앱 내 업데이트 소식 갱신 루틴
 - `.claude/skills/app-startup-runtime-triage/SKILL.md`
   - 앱 시작 흰 화면, local API base URL, Dev Console 로그 노이즈, Firebase local 경고 트리아지용 가이드
 - `.claude/skills/ios-device-run-action/SKILL.md`
@@ -200,7 +201,7 @@ kbo_fans/
 
 ## 반복 작업 스킬
 - 전체 스킬 인덱스: `.claude/SKILL_REFERENCE.md`
-- 버전 변경 / GitHub 릴리즈 / 앱 내 패치노트 갱신 시: `.claude/skills/kbo-version-release/SKILL.md`
+- 버전 변경 / GitHub 릴리즈 / 앱 내 업데이트 소식 갱신 시: `.claude/skills/kbo-version-release/SKILL.md`
 - Director가 `이어서 해`라고 하면 diff 규모를 보고 새 숫자 버전 생성 또는 현재 GitHub Release notes 보강을 자율 판단한다.
 - 히스토리 데이터 / snapshot-first 캐시 구조 작업 시: `.claude/skills/kbo-history-snapshot/SKILL.md`
 - 아키텍처/API/UX 변경 후 문서 동기화 시: `.claude/skills/kbo-doc-sync/SKILL.md`

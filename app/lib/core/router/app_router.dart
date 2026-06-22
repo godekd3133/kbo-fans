@@ -227,11 +227,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             _swipeBackPage(state, child: const ApiDiagnosticsScreen()),
       ),
       GoRoute(
-        path: '/patch-notes',
+        path: '/release-notes',
         parentNavigatorKey: _rootNavigatorKey,
         pageBuilder: (context, state) =>
             _swipeBackPage(state, child: const PatchNotesScreen()),
       ),
+      GoRoute(path: '/patch-notes', redirect: (_, _) => '/release-notes'),
       GoRoute(
         path: '/notifications',
         parentNavigatorKey: _rootNavigatorKey,

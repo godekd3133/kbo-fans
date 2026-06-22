@@ -2,7 +2,11 @@ from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
 
-from kbo_fans_backend.api.runtime_services import relay_service, scoreboard_service
+from kbo_fans_backend.api.runtime_services import (
+    relay_service,
+    scoreboard_service,
+    standings_service,
+)
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.scheduler.live_activity_sync import current_kbo_date
 from kbo_fans_backend.schemas.common import ApiEnvelope
@@ -11,6 +15,7 @@ from kbo_fans_backend.schemas.push import (
     LiveActivityUnregisterRequest,
     LiveActivityUpdateRequest,
     PushBaseballInfoRequest,
+    PushDeviceTestRequest,
     PushRegisterRequest,
     PushTestRequest,
 )
@@ -24,6 +29,7 @@ live_activity_sync_service = LiveActivityScoreboardSyncService(
     scoreboard_service=scoreboard_service,
     push_service=service,
     relay_service=relay_service,
+    standings_service=standings_service,
 )
 diagnostics_service = PushConfigurationDiagnostics()
 
@@ -40,6 +46,11 @@ def send_test_push(
 ) -> ApiEnvelope[dict]:
     _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
     return ApiEnvelope.success_response(service.send_test(payload))
+
+
+@router.post("/test-device", response_model=ApiEnvelope[dict])
+def send_device_test_push(payload: PushDeviceTestRequest) -> ApiEnvelope[dict]:
+    return ApiEnvelope.success_response(service.send_device_test(payload))
 
 
 @router.post("/baseball-info", response_model=ApiEnvelope[dict])
@@ -66,9 +77,7 @@ def resubscribe_push_topics(
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
     _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
-    return ApiEnvelope.success_response(
-        service.resubscribe_registered_topics(dry_run=dry_run)
-    )
+    return ApiEnvelope.success_response(service.resubscribe_registered_topics(dry_run=dry_run))
 
 
 @router.get("/config-status", response_model=ApiEnvelope[dict])

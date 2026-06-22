@@ -10,10 +10,24 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 마이팀 경기 핵심 알림은 별도 알림 플레이북 설정 없이 자동 수신되도록 바꾸고, 더보기 화면의 알림 프리셋/플레이북/리그 전체 토글 노출을 제거
+- iOS Live Activity가 라인업 공개된 경기 전부터 뜨도록 하고, 이 상태에서는 `경기전`과 양 팀 순위를 스코어 대신 표시하도록 변경
+
+### Fixed
+
+- 기존 알림 delivery 설정이 꺼져 있거나 따라가는 경기가 있어도 마이팀 경기 시작/득점/안타/홈런/역전/종료/라인업/타석 topic이 유지되도록 앱과 backend topic 재계산 경로를 보정
+
 ## [0.0.64] - 2026-06-22
+
+### Added
+
+- API 진단 화면에서 현재 iPhone/Android 기기에 backend 원격 테스트 푸시를 직접 요청하는 `원격 푸시 테스트` 버튼 추가
 
 ### Changed
 
+- 더보기의 `패치노트` 진입점을 `업데이트 소식`으로 바꾸고, 앱 안에서는 최근 변경사항을 배포/서버 세부가 아니라 사용자 체감 변화 중심 문구로 보여주도록 정리
 - 앱 전역 폰트를 둥근 획의 NanumSquareRound로 바꿔 홈, 경기 상세, 일정, 기록 화면의 텍스트 톤을 더 아기자기하게 조정
 - 따라가는 경기가 있으면 득점, 안타, 홈런, 타석, 라인업 공개 같은 경기 순간 push 구독을 팀 토픽보다 `*_GAME_<gameId>` 경기별 토픽으로 우선 생성하도록 변경
 - backend push worker도 경기 순간/라인업 공개 발송 시 팀/전체 토픽과 함께 경기별 토픽을 같이 발송하도록 보강
@@ -24,6 +38,7 @@
 
 - 로컬 경기 이벤트 알림이 release/dev/TestFlight 기본값에서는 중복 방지를 위해 꺼져 있음을 API 진단 화면에 노출하고, 회귀 확인용 `ENABLE_LOCAL_GAME_EVENT_ALERTS` 플래그로 명시 활성화할 수 있게 보강
 - API 진단 화면에서 OS 로컬 알림 경로를 즉시 확인할 수 있는 로컬 알림 테스트 action 추가
+- 앱 내부 원격 푸시 테스트가 운영용 `PUSH_SYNC_SECRET`에 의존하지 않도록, 등록된 자기 기기 FCM token에만 고정 테스트 알림을 보내는 backend self-test endpoint 추가
 - GitHub Actions secret 컨텍스트에서 topic/token 대상 원격 테스트 푸시를 발송하는 `Push Test Notification` workflow와 dispatch helper 추가
 - local backend에 `PUSH_SYNC_SECRET`이 없을 때 test push endpoint가 Firebase 초기화 500으로 떨어지지 않고 설정 누락 503을 반환하도록 보강
 - 진행 중 경기 박스스코어가 공식 rows 업데이트 전이어도 KBO 실시간 현재 타자/투수 context를 `실시간 기록 추적`으로 표시하도록 보강

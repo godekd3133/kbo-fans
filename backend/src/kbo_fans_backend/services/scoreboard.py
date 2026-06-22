@@ -377,6 +377,7 @@ class ScoreboardService:
             **self._merge_main_game(main_game),
             "status": resolved_status,
             "statusLabel": status_label,
+            "lineupOpened": self._lineup_opened_for_game(game, main_game),
             "ticketInfo": self.ticketing_service.build_ticket_info(
                 home_team_id=game.get("homeId"),
                 game_id=game_id,
@@ -418,6 +419,7 @@ class ScoreboardService:
             **self._merge_main_game(main_game),
             "status": resolved_status,
             "statusLabel": status_label,
+            "lineupOpened": self._lineup_opened_for_game(game, main_game),
             "ticketInfo": self.ticketing_service.build_ticket_info(
                 home_team_id=game.get("homeId"),
                 game_id=game_id,
@@ -738,6 +740,35 @@ class ScoreboardService:
         if not label or label == "정상경기":
             return None
         return label
+
+    @staticmethod
+    def _lineup_opened_for_game(
+        game: dict[str, Any],
+        main_game: dict[str, Any],
+    ) -> bool:
+        for value in (
+            game.get("lineupOpened"),
+            game.get("lineup_opened"),
+            main_game.get("LINEUP_CK"),
+            main_game.get("lineupOpened"),
+            main_game.get("lineup_opened"),
+        ):
+            if value is True:
+                return True
+            if isinstance(value, str) and value.strip().lower() == "true":
+                return True
+
+        text = " ".join(
+            str(value or "")
+            for value in (
+                game.get("statusLabel"),
+                game.get("inning"),
+                main_game.get("GAME_STATE_NM"),
+            )
+        )
+        if "라인업" not in text:
+            return False
+        return "공개" in text or "발표" in text
 
     @staticmethod
     def _build_official_highlight_url(game_id: Optional[str]) -> str:

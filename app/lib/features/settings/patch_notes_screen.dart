@@ -14,6 +14,7 @@ class PatchNotesScreen extends StatefulWidget {
 
 class _PatchNotesScreenState extends State<PatchNotesScreen> {
   static const _assetPath = 'assets/bootstrap/patch_notes.md';
+  static const _visibleReleaseCount = 12;
 
   late final Future<_PatchNotesData> _future;
 
@@ -25,7 +26,9 @@ class _PatchNotesScreenState extends State<PatchNotesScreen> {
 
   Future<_PatchNotesData> _loadPatchNotes() async {
     final raw = await rootBundle.loadString(_assetPath);
-    final releases = _parsePatchNotes(raw);
+    final releases = _parsePatchNotes(
+      raw,
+    ).take(_visibleReleaseCount).toList(growable: false);
     final currentVersion = await _loadCurrentVersion(
       fallbackVersion: releases.isEmpty ? '확인 불가' : releases.first.version,
     );
@@ -50,7 +53,7 @@ class _PatchNotesScreenState extends State<PatchNotesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('패치노트')),
+      appBar: AppBar(title: const Text('업데이트 소식')),
       body: FutureBuilder<_PatchNotesData>(
         future: _future,
         builder: (context, snapshot) {
@@ -232,7 +235,7 @@ class _CurrentVersionBanner extends StatelessWidget {
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
-              '현재 설치 버전',
+              '현재 설치한 버전',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
@@ -382,7 +385,7 @@ class _PatchNotesError extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(24),
         child: Text(
-          '패치노트를 불러올 수 없습니다',
+          '업데이트 소식을 불러올 수 없습니다',
           style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           textAlign: TextAlign.center,
         ),

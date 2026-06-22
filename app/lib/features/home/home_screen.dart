@@ -591,7 +591,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final myTeamGame = games
         .where(
           (game) =>
-              game.status == GameStatus.live && _isMyTeamGame(game, myTeamId),
+              (game.status == GameStatus.live || game.isPregameLineupOpen) &&
+              _isMyTeamGame(game, myTeamId),
         )
         .cast<Game?>()
         .firstOrNull;
