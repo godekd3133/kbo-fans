@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-06-22: 0.1.4 디자인 레퍼런스 정합성 릴리즈
+
+### 결정
+- Git 상태에는 추적 변경이 없었지만, `docs/WORKLOG.md`와 `docs/design_refs/2026-06-19-news-tab-design-qa.md`가 이미 참조하는 미추적 디자인 레퍼런스 이미지 3개와 `docs/design_refs/2026-06-20-records-tab-no-clip-design-qa.md`가 남아 있었다.
+- 문서가 의도적으로 참조하는 `docs/design_refs/2026-06-20-news-tab-reference-redraft.png`, `docs/design_refs/2026-06-20-records-tab-no-clip-reference.png`, `docs/design_refs/2026-06-20-schedule-tab-reference.png`, `docs/design_refs/2026-06-20-records-tab-no-clip-design-qa.md`는 포함한다.
+- `scripts/generate-notification-inbox-reference.py`는 알림함 레퍼런스를 재생성하는 프로젝트 소유 스크립트라 포함한다.
+- 문서 참조가 없는 루트 스크린샷, `artifacts/`, `output/`, 개인 office 문서, build 산출물과 cache는 제외한다.
+- 앱 런타임, backend API, push, Live Activity 동작 변경이 없으므로 TestFlight 업로드와 backend deploy는 수행하지 않는 `0.1.4+71` GitHub Release로 닫는다.
+
+### 검증
+- [x] `git status --short --branch --untracked-files=all`
+- [x] `git diff --stat` / `git diff --cached --stat` 변경 없음 확인 후 포함 대상만 선별
+- [x] `gh release list --repo godekd3133/kbo-fans --limit 10`로 `0.1.3` 최신 릴리스 확인
+- [x] `git ls-remote git@github-personal:godekd3133/kbo-fans.git refs/heads/main refs/tags/0.1.3 refs/tags/0.1.4`로 원격 `0.1.4` 미존재 확인
+- [x] `git diff --check`
+- [x] `python3 -m py_compile scripts/generate-notification-inbox-reference.py`
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+
+---
+
 ## 2026-06-22: 0.1.3 푸시 설치 단위 token 정리
 
 ### 결정

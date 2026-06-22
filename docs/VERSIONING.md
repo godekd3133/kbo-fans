@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.3+70`
-- Current release tag: `0.1.3`
+- Flutter app version: `0.1.4+71`
+- Current release tag: `0.1.4`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -120,6 +120,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.1`: remote push receipt observability release. The app reports handled remote push receipts back to the backend, and push config diagnostics expose recent receipt summaries without raw device tokens so followed-game notification receipt can be verified after TestFlight installation.
 - `0.1.2`: push device-state diagnostics release. App push registration reports notification authorization and APNs readiness to the backend, backend config-status exposes redacted device summaries with separate app-registration and topic-sync timestamps, and followed-game receipt debugging no longer has to guess whether the installed build has re-registered.
 - `0.1.3`: push installation identity release. App push registration includes a stable installation id, backend replaces stale FCM tokens for the same app installation, and config-status exposes redacted installation suffixes so followed-game push targets can be matched to the current installed app.
+- `0.1.4`: design-reference consistency release. News, schedule, and records design QA references that were already linked from docs are committed, and the notification inbox reference generator is added for repeatable future UI polish. No app runtime, backend API, push, or Live Activity behavior changes.
 
 ## GitHub Release Note Template
 
