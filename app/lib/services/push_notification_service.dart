@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -378,6 +379,7 @@ class PushNotificationService {
       '${_prefsPrefix}debug_last_init_reason';
   static const _autoPermissionRequestedKey =
       '${_prefsPrefix}auto_permission_requested';
+  static const _installationIdKey = '${_prefsPrefix}installation_id';
   static const _followedGameIdKey = 'live_activity.followed_game_id';
   static const _channelId = 'remote_push_foreground';
   static const _channelName = '원격 푸시 알림';
@@ -733,6 +735,7 @@ class PushNotificationService {
       final settings = await loadSettings();
       final resolvedMyTeam = myTeam ?? await _loadStoredMyTeam();
       final followedGameIds = await _loadFollowedGameIds();
+      final installationId = await _loadOrCreateInstallationId();
       final notificationSettings = await FirebaseMessaging.instance
           .getNotificationSettings();
       _notificationsAllowed = await _resolveNotificationsAllowed(
@@ -777,6 +780,7 @@ class PushNotificationService {
         data: buildPushRegistrationPayload(
           deviceToken: token,
           platform: _platformName(),
+          installationId: installationId,
           myTeam: resolvedMyTeam,
           settings: settings,
           followedGameIds: followedGameIds,
@@ -908,6 +912,20 @@ class PushNotificationService {
       return const <String>[];
     }
     return <String>[gameId];
+  }
+
+  Future<String> _loadOrCreateInstallationId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existing = prefs.getString(_installationIdKey)?.trim();
+    if (existing != null && existing.isNotEmpty) {
+      return existing;
+    }
+
+    final timestamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final random = Random.secure().nextInt(0x7fffffff).toRadixString(36);
+    final installationId = 'kbo-$timestamp-$random';
+    await prefs.setString(_installationIdKey, installationId);
+    return installationId;
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
@@ -1046,6 +1064,7 @@ class PushNotificationService {
 Map<String, dynamic> buildPushRegistrationPayload({
   required String deviceToken,
   required String platform,
+  required String installationId,
   required String? myTeam,
   required PushNotificationSettings settings,
   required Iterable<String> followedGameIds,
@@ -1064,6 +1083,7 @@ Map<String, dynamic> buildPushRegistrationPayload({
   final payload = {
     'deviceToken': deviceToken,
     'platform': platform,
+    'installationId': installationId.trim(),
     'myTeam': myTeam,
     'notifications': settings.toJson(),
     'followedGameIds': followed.toList()..sort(),

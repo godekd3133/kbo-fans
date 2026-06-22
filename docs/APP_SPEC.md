@@ -1551,6 +1551,7 @@ POST /api/push/register
 {
   "deviceToken": "fcm-device-token-xxx",
   "platform": "ios",
+  "installationId": "kbo-m9y2abc-1n4p9x",
   "myTeam": "LG",
   "momentPreferences": [
     {
@@ -1635,7 +1636,7 @@ GET /api/push/config-status
 - `baseball-info`: 운영자가 `weekly_check`, `off_day`, `game_day`, `records_check`, `lineup_day`, `rival_watch` 같은 야구 정보 확인 push를 보낸다. topic/token/teamId를 지정할 수 있고, 지정하지 않으면 10개 구단 `baseball_info_<팀>` topic과 `baseball_info_ALL`로 발송한다. `teamId`를 지정하면 알림 copy는 `LG 트윈스 기록실`, `LG 트윈스 경기일 체크`처럼 팀 이름 기준으로 구체화한다. `dryRun=true`이면 Firebase 발송 없이 title/body/data/targets 미리보기만 반환한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `python -m kbo_fans_backend.scheduler.baseball_info`: scheduled worker/cron용 CLI다. `--date`만 주면 KBO 경기일 기준 월요일에는 `weekly_check`를 발송하고, 다른 요일에는 자동 발송하지 않는다. `--kind records_check`처럼 명시하면 요일과 무관하게 해당 야구 브리프를 보낸다. 운영 전에는 `--dry-run`으로 topic과 copy를 확인한다. `--smart-daily`를 쓰면 해당 날짜 scoreboard를 읽어 팀별로 오늘 경기가 있으면 `game_day`, `--now-time HH:MM` 기준 경기 시작 3시간 이내이면 `lineup_day`, 이미 종료된 경기만 있으면 `records_check`, 마이팀 경기는 없지만 리그 경기가 있으면 `rival_watch`, 전체 리그가 쉬면 `off_day`를 자동 선택하고, 리그 전체 구독자용 `baseball_info_ALL`도 함께 계획한다.
 - `resubscribe-topics`: registry에 저장된 FCM device registration을 현재 push schema로 다시 해석해 Firebase topic을 재구독한다. `at_bat`, `game_start_soon`, `hit`, `*_GAME_{gameId}`처럼 새 moment topic을 추가한 뒤 기존 TestFlight 설치자의 topic membership을 보정할 때 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
-- `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. registry 진단에는 device token 원문 없이 `registeredDeviceCount`, `followedGameCount`, `activeLiveActivityGameCount`, `topicCounts`, `myTeamCounts`, `deviceSummaries`, `pushReceiptCount`, `recentPushReceipts`를 포함한다. `deviceSummaries`는 token suffix, platform, myTeam, followedGameIds, topicCount, updatedAt, topicsUpdatedAt, notificationsAllowed, authorizationStatus, apnsTokenReady만 노출해 앱 등록 최신성, 서버 topic 재동기화, 실제 알림 권한/APNs 준비 상태를 분리해서 본다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다. 실제 단말 receipt 확인은 `PUSH_SYNC_SECRET=<...> ./scripts/push-receipt-status.sh --expect-receipt --game-id <gameId> --type <type>`로 조회하고, 로컬에 secret이 없으면 `Push Receipt Status` GitHub Actions workflow 또는 `./scripts/github-push-receipt-status-run.sh --expect-receipt --game-id <gameId> --type <type> --watch`를 사용한다.
+- `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. registry 진단에는 device token 원문 없이 `registeredDeviceCount`, `followedGameCount`, `activeLiveActivityGameCount`, `topicCounts`, `myTeamCounts`, `deviceSummaries`, `pushReceiptCount`, `recentPushReceipts`를 포함한다. `deviceSummaries`는 token suffix, installation id suffix, platform, myTeam, followedGameIds, topicCount, updatedAt, topicsUpdatedAt, notificationsAllowed, authorizationStatus, apnsTokenReady만 노출해 앱 설치 최신성, 서버 topic 재동기화, 실제 알림 권한/APNs 준비 상태를 분리해서 본다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다. 실제 단말 receipt 확인은 `PUSH_SYNC_SECRET=<...> ./scripts/push-receipt-status.sh --expect-receipt --game-id <gameId> --type <type>`로 조회하고, 로컬에 secret이 없으면 `Push Receipt Status` GitHub Actions workflow 또는 `./scripts/github-push-receipt-status-run.sh --expect-receipt --game-id <gameId> --type <type> --watch`를 사용한다.
 - `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다. 기본 스코어/이닝/선수/카운트 필드 외에 하단 상황 표시용 `situationText`, `playText`를 optional로 보낼 수 있다.
 
 **응답**:
@@ -1652,6 +1653,7 @@ GET /api/push/config-status
 
 **마이그레이션 메모**:
 - 기존 boolean 기반 `notifications` body 는 앱 업데이트 전환 기간 동안만 호환 입력으로 유지할 수 있다.
+- `installationId`는 앱 설치 단위의 stable id다. 같은 설치에서 FCM token이 바뀌면 backend는 같은 `installationId`를 가진 이전 token registration을 제거해 팔로우 경기 push 대상이 stale token에 남지 않도록 한다.
 - `momentPreferences` / `notifications.deliveryModes` 는 브리프, selected-game follow, 향후 운영 확장을 위한 선호 입력으로 유지하며, 즉시 원격 push topic 계산의 기준이다.
 - `followedGameIds` 는 알림 설정이 아니라 현재 "경기 따라가기" Live surface session 을 표현한다. 홈의 마이팀 live 경기 자동 follow target 과 사용자가 직접 시작한 selected-game follow 를 모두 포함하며, 앱은 follow 시작/종료 직후 `/push/register`를 다시 호출해 registry를 정리한다.
 - `followedGameIds`가 비어 있으면 `allGames=false` 사용자는 immediate delivery인 마이팀 event topic을 구독한다. `followedGameIds`가 있으면 일반 경기 event moment는 selected-game `*_GAME_{gameId}` 범위로 좁히고, 야구 브리프처럼 경기 단건에 속하지 않는 정보성 push는 팀/전체 범위를 따른다.

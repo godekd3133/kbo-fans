@@ -251,6 +251,7 @@ def test_register_persists_push_client_state_for_receipt_diagnostics(tmp_path) -
         PushRegisterRequest(
             deviceToken="secret-fcm-token",
             platform="ios",
+            installationId="install-12345678",
             myTeam="LG",
             followedGameIds=["20260612KTLG0"],
             notificationsAllowed=True,
@@ -272,8 +273,67 @@ def test_register_persists_push_client_state_for_receipt_diagnostics(tmp_path) -
     registration = registry.device_registrations()[0]
 
     assert registration["notificationsAllowed"] is True
+    assert registration["installationId"] == "install-12345678"
     assert registration["authorizationStatus"] == "authorized"
     assert registration["apnsTokenReady"] is True
+
+
+def test_register_replaces_stale_token_for_same_installation(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+
+    service.register(
+        PushRegisterRequest(
+            deviceToken="old-token",
+            platform="ios",
+            installationId="install-12345678",
+            myTeam="HT",
+            followedGameIds=["20260620HTKT0"],
+            notificationsAllowed=True,
+            authorizationStatus="authorized",
+            apnsTokenReady=True,
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+
+    service.register(
+        PushRegisterRequest(
+            deviceToken="new-token",
+            platform="ios",
+            installationId="install-12345678",
+            myTeam="HT",
+            followedGameIds=["20260620HTKT0"],
+            notificationsAllowed=True,
+            authorizationStatus="authorized",
+            apnsTokenReady=True,
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+
+    registrations = registry.device_registrations()
+
+    assert len(registrations) == 1
+    assert registrations[0]["deviceToken"] == "new-token"
+    assert registrations[0]["installationId"] == "install-12345678"
+    assert registrations[0]["followedGameIds"] == ["20260620HTKT0"]
 
 
 def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> None:
@@ -1493,6 +1553,7 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
         PushRegisterRequest(
             deviceToken="secret-fcm-token",
             platform="ios",
+            installationId="install-87654321",
             myTeam="OB",
             followedGameIds=["20260618KTOB0"],
             notificationsAllowed=True,
@@ -1541,6 +1602,7 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
     assert status["registry"]["deviceSummaries"] == [
         {
             "deviceTokenSuffix": "cm-token",
+            "installationIdSuffix": "87654321",
             "platform": "ios",
             "myTeam": "OB",
             "followedGameIds": ["20260618KTOB0"],

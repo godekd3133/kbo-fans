@@ -38,6 +38,7 @@ def test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter
     payload["data"]["registry"]["deviceSummaries"] = [
         {
             "deviceTokenSuffix": "abcd1234",
+            "installationIdSuffix": "stall-id",
             "platform": "ios",
             "myTeam": "OB",
             "followedGameIds": ["GAME_20260620HTKT0"],
@@ -65,7 +66,8 @@ def test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter
     assert server.seen_secret == "secret"
     assert "push_receipts=status=ok count=1 recent=1" in result.stdout
     assert (
-        "push_device=platform=ios suffix=abcd1234 myTeam=OB followed=GAME_20260620HTKT0 "
+        "push_device=platform=ios suffix=abcd1234 installation=stall-id "
+        "myTeam=OB followed=GAME_20260620HTKT0 "
         "topicCount=8 notificationsAllowed=True authorizationStatus=authorized "
         "apnsTokenReady=True updatedAt=2026-06-22T06:10:00+00:00 "
         "topicsUpdatedAt=2026-06-22T06:11:00+00:00"

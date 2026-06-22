@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-06-22: 0.1.3 푸시 설치 단위 token 정리
+
+### 결정
+- `0.1.2 (69)` 처리와 외부 TestFlight 연결은 완료됐지만, 최신 receipt 조회에서 실제 단말 수신은 여전히 `push_receipts count=0`이다.
+- 새 build 69 계열로 보이는 iOS registration은 `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`로 준비돼 있지만 `followedGameIds`가 비어 있다.
+- 반대로 팔로우 경기 `20260620HTKT0`는 오래된 iOS token registration에 남아 있고 새 권한/APNs 진단 필드가 없다. 따라서 FCM token 교체나 TestFlight 재설치 이후 현재 token과 팔로우 경기 상태가 갈라질 수 있는 registry 구조를 먼저 줄인다.
+- 다음 TestFlight/backend 기준은 `0.1.3+70` / tag `0.1.3`로 올린다. 앱 registration payload와 backend registry 동작이 모두 바뀌므로 새 numeric release가 필요하다.
+
+### 진행
+- [x] receipt 상태 조회 run `27934854480`: `registeredDevices=19`, `followedGames=1`, `push_receipts count=0`
+- [x] 팔로우 경기 registration: token suffix `VFVMugoE`, `myTeam=HT`, `followed=20260620HTKT0`, `notificationsAllowed=None`, `authorizationStatus=-`, `apnsTokenReady=None`, `updatedAt=2026-06-22T06:17:41.057696+00:00`, `topicsUpdatedAt=2026-06-22T06:40:22.617429+00:00`
+- [x] 최신 APNs-ready registration: token suffix `scbFlHqc`, `myTeam=WO`, `followed=-`, `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`, `updatedAt=2026-06-22T06:48:56.351003+00:00`
+- [x] 앱 `/push/register` payload에 stable `installationId`를 추가하고, backend registry가 같은 installation id의 이전 FCM token registration을 제거하도록 변경
+- [x] `config-status`와 `push-receipt-status.sh`가 token 원문 없이 `installationIdSuffix`를 출력하도록 보강
+- [x] 검증: `cd app && fvm flutter analyze --no-pub lib/services/push_notification_service.dart test/services/push_notification_service_test.dart`, `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`20 passed`), `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`61 passed`), `backend/.venv/bin/python -m ruff check ...`, `bash -n scripts/push-receipt-status.sh`
+- [ ] `0.1.3` backend API/worker deploy와 topic 재등록
+- [ ] `0.1.3 (70)` IPA archive/upload와 외부 TestFlight 그룹 연결
+- [ ] 새 build 설치 후 앱 실행으로 현재 token과 followed-game registration 일치 확인
+- [ ] 팔로우 경기 원격 push receipt 재확인
+
+---
+
 ## 2026-06-22: 0.1.2 푸시 단말 상태 진단 릴리즈
 
 ### 결정

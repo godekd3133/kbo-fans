@@ -258,6 +258,9 @@ def _device_summaries(
         summaries.append(
             {
                 "deviceTokenSuffix": device_token[-8:] if device_token else "",
+                "installationIdSuffix": str(registration.get("installationId") or "")[
+                    -8:
+                ],
                 "platform": str(registration.get("platform") or ""),
                 "myTeam": str(registration.get("myTeam") or ""),
                 "followedGameIds": _clean_string_list(

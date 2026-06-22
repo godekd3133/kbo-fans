@@ -38,6 +38,7 @@ class NotificationSettings(BaseModel):
 class PushRegisterRequest(BaseModel):
     deviceToken: str
     platform: str
+    installationId: Optional[str] = None
     myTeam: Optional[str] = None
     notifications: NotificationSettings
     followedGameIds: list[str] = Field(default_factory=list)

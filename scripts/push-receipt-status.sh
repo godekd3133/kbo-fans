@@ -242,6 +242,7 @@ for device in device_summaries:
         "push_device="
         f"platform={text(device.get('platform')) or '-'} "
         f"suffix={text(device.get('deviceTokenSuffix')) or '-'} "
+        f"installation={text(device.get('installationIdSuffix')) or '-'} "
         f"myTeam={text(device.get('myTeam')) or '-'} "
         f"followed={followed_text or '-'} "
         f"topicCount={device.get('topicCount', '-')} "

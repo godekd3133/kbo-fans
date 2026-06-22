@@ -45,11 +45,24 @@ class PushRegistry:
         with self._mutate_data() as data:
             devices = data.setdefault("devices", {})
             now = _now_iso()
+            installation_id = _clean_optional_string(payload.installationId)
+            if installation_id:
+                stale_tokens = [
+                    token
+                    for token, registration in devices.items()
+                    if token != payload.deviceToken
+                    and isinstance(registration, dict)
+                    and _clean_optional_string(registration.get("installationId"))
+                    == installation_id
+                ]
+                for token in stale_tokens:
+                    devices.pop(token, None)
             existing = devices.get(payload.deviceToken, {})
             devices[payload.deviceToken] = {
                 **existing,
                 "deviceToken": payload.deviceToken,
                 "platform": payload.platform,
+                "installationId": installation_id,
                 "myTeam": payload.myTeam,
                 "notifications": _model_to_dict(payload.notifications),
                 "followedGameIds": _clean_string_list(payload.followedGameIds),
@@ -402,6 +415,10 @@ def _clean_string_list(values: list[str]) -> list[str]:
         seen.add(text)
         cleaned.append(text)
     return cleaned
+
+
+def _clean_optional_string(value: Any) -> str:
+    return str(value or "").strip()
 
 
 def _receipt_data(values: dict[str, Any]) -> dict[str, str]:

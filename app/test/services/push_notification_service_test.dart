@@ -190,6 +190,7 @@ void main() {
     final payload = buildPushRegistrationPayload(
       deviceToken: 'fcm-token',
       platform: 'ios',
+      installationId: 'install-12345678',
       myTeam: 'LG',
       settings: settings,
       followedGameIds: const ['20260612KTLG0', '  ', '20260612KTLG0'],
@@ -199,6 +200,7 @@ void main() {
     );
 
     expect(payload['deviceToken'], 'fcm-token');
+    expect(payload['installationId'], 'install-12345678');
     expect(payload['myTeam'], 'LG');
     expect(payload['notificationsAllowed'], isTrue);
     expect(payload['authorizationStatus'], 'authorized');
@@ -215,6 +217,7 @@ void main() {
     final payload = buildPushRegistrationPayload(
       deviceToken: 'fcm-token',
       platform: 'ios',
+      installationId: 'install-12345678',
       myTeam: 'LG',
       settings: const PushNotificationSettings.defaults(),
       followedGameIds: const [],

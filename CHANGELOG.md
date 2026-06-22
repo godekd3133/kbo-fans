@@ -10,6 +10,17 @@
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-06-22
+
+### Changed
+
+- 앱 원격 push 등록에 설치 단위 `installationId`를 추가해 TestFlight 업데이트나 FCM token 교체 후에도 같은 앱 설치를 backend가 구분할 수 있도록 보강
+- backend push 진단이 token suffix와 별개로 설치 id suffix를 보여줘, 팔로우 경기 상태가 오래된 token에 남았는지 확인할 수 있도록 확장
+
+### Fixed
+
+- 같은 앱 설치에서 새 FCM token이 등록될 때 이전 token registration을 제거해, 팔로우 경기 push 대상이 stale token과 현재 token으로 갈라지는 문제를 줄임
+
 ## [0.1.2] - 2026-06-22
 
 ### Changed

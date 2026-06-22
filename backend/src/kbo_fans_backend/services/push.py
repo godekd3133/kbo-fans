@@ -759,6 +759,7 @@ def _registration_to_payload(registration: dict[str, Any]) -> PushRegisterReques
         return PushRegisterRequest(
             deviceToken=str(registration["deviceToken"]),
             platform=str(registration.get("platform") or "unknown"),
+            installationId=str(registration.get("installationId") or ""),
             myTeam=registration.get("myTeam"),
             notifications=notifications,
             followedGameIds=_stored_followed_game_ids(registration),
