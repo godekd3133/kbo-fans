@@ -20,7 +20,7 @@
 - [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
 
 ### 진행 예정
-- [ ] GitHub Release `0.0.66` 생성 및 최종 release evidence 기록
+- [x] GitHub Release `0.0.66` 생성 완료: https://github.com/godekd3133/kbo-fans/releases/tag/0.0.66
 
 ---
 
