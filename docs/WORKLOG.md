@@ -26,7 +26,11 @@
 - [x] `0.1.6` 재등록 후 주요 LG topic 확인: `baseball_info_LG`, `lineup_opened_LG`, `game_end_LG`, `inning_change_LG`, `at_bat_LG`, `hit_LG`, `homerun_LG`, `scoring_LG` 모두 `requested=3`, `success=3`, `failure=0`
 - [x] 배포 후 API health 직접 확인: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health` 200, `status=ok`
 - [x] receipt 상태 재조회: GitHub Actions `Push Receipt Status` run `27940690694`, `push_receipts count=0`, `recent=0`, `registeredDevices=19`, `followedGames=1`; 최신 APNs-ready registration `installation=k-x3ggcb`, `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`, `topicCount=12`, `topicsUpdatedAt=2026-06-22T08:45:58.477005+00:00`
-- [ ] 실제 iPhone 처리 receipt는 아직 미확인. backend 배포/worker/topic readiness와 실제 단말 수신 proof를 계속 분리한다.
+- [x] `0.1.6 (73)` IPA archive/upload 성공 확인: main commit `7c734b8`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.6/73`, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, 업로드 IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, App Store Connect `Upload succeeded` / `Uploaded package is processing`; `objective_c.framework` dSYM warning은 기존과 같은 비차단 경고
+- [x] App Store Connect build `73` 처리 완료 확인: build id `ebe3a7ad-d86a-48d7-b570-ed6b36a6d24e`, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-09-20T02:08:31-07:00`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `73` 연결, 이전 build `72` 관계 제거. 최종 그룹 build 목록은 `73` 단독 연결
+- [ ] build `73` Beta App Review 제출: App Store Connect API `POST /v1/betaAppReviewSubmissions`가 `ENTITY_UNPROCESSABLE.SUBMISSION_LIMIT_REACHED`로 거부됨. 기존 pending Beta Review submission queue 정리가 필요
+- [ ] 실제 iPhone 처리 receipt는 아직 미확인. backend 배포/worker/topic readiness, TestFlight upload/processing/group assignment, 실제 단말 수신 proof를 계속 분리한다.
 
 ---
 
