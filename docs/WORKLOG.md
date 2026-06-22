@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-06-22: 앱 내부 원격 푸시 self-test 버튼 추가
+
+### 원인
+- backend에는 5초 `live_activity_sync_loop` worker와 ECS/CloudFormation sync worker 템플릿이 있어 scoreboard/relay 기반 FCM moment push와 Live Activity APNs update를 같은 sync pass에서 갱신하는 구조가 이미 있었다.
+- 기존 앱 API 진단 화면의 `로컬 알림 테스트`는 OS 로컬 알림 경로만 확인하므로, 실제 backend -> FCM -> iPhone 원격 푸시 수신 확인에는 부족했다.
+- 운영용 `/api/push/test`는 `PUSH_SYNC_SECRET`으로 보호되어야 하므로 앱 번들에 secret을 넣는 방식은 제외했다.
+
+### 완료
+- [x] backend `/api/push/test-device` self-test endpoint 추가. 앱이 `/push/register`로 등록한 FCM token만 대상으로 고정 테스트 알림과 `/diagnostics` route를 발송한다.
+- [x] API 진단 화면에 `원격 푸시 테스트` 버튼 추가. 버튼 클릭 시 알림 권한 확인, FCM token 확보, push registration sync, self-test endpoint 호출을 순서대로 수행한다.
+- [x] `docs/APP_SPEC.md`, `docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md`, `docs/ENGINEERING_NOTES.md`, `CHANGELOG.md`에 앱 내부 원격 테스트 경계를 반영했다.
+
+### 검증
+- [x] RED 확인: 신규 backend 테스트는 `PushDeviceTestRequest` 미존재로 실패, 신규 Flutter payload 테스트는 `buildPushDeviceTestPayload` 미존재로 실패
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart --name '원격 테스트 push payload는 현재 기기 토큰만 보낸다'`
+
+### 남은 확인
+- [ ] 사장님 iPhone에서 `설정 > API 진단 > 원격 푸시 테스트`를 눌러 실제 원격 push receipt 확인
+
+---
+
 ## 2026-06-22: 0.0.64 경기별 push topic 릴리즈/TestFlight/backend 배포
 
 ### 결정
@@ -16,7 +38,9 @@
 
 ### 진행 예정
 - [x] 릴리즈 전 검증 통과: `git diff --check`, `cd app && fvm flutter analyze`, `cd app && fvm flutter test` (`166 passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`47 passed`), `backend/.venv/bin/pytest -q` (`172 passed`)
-- [ ] 커밋/푸시 후 `0.0.64` backend API/worker deploy와 topic 재등록 완료
+- [x] `0.0.64` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27927108022`, head `7c03f18`, conclusion `success`, `KBO_BACKEND_IMAGE_TAG=0.0.64`, ECR digest `sha256:04fc7b66b7a58b43286efb14df73aee1c4fe2681d4780418139e81ce33d61bd6`, `readyForIphoneOnlyDemo=true`, scheduler age 2초
+- [x] topic 재등록 결과 확인: artifact `push-topic-resubscribe.json`, `registeredDevices=13`, `eligibleDevices=13`, `subscriptionsAttempted=104`, `unsubscriptionsAttempted=7`; followed game `20260620HTKT0`에 `scoring_GAME_...`, `hit_GAME_...`, `homerun_GAME_...`, `game_start_GAME_...`, `game_start_soon_GAME_...`, `at_bat_GAME_...`, `reversal_GAME_...` 구독 성공
+- [x] 운영 release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; `2026-06-22`은 scoreboard game이 없어 relay endpoint는 skip
 - [ ] `0.0.64 (64)` IPA archive/upload 완료
 - [ ] App Store Connect build `64` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
 - [ ] GitHub Release `0.0.64` 생성 및 최종 release evidence 기록
