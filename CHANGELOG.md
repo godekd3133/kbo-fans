@@ -10,6 +10,17 @@
 
 ## [Unreleased]
 
+## [0.0.66] - 2026-06-22
+
+### Changed
+
+- `0.0.65` 업로드 직후 main에 반영된 팔로우 경기 push topic 범위 보정을 포함해 새 TestFlight build `0.0.66 (66)`로 다시 맞춤
+- 따라가는 경기가 있으면 immediate 경기 moment는 팀 topic 대신 해당 경기의 `*_GAME_<gameId>` topic으로만 구독해 같은 팀의 다른 경기 push로 넓어지지 않도록 정리
+
+### Fixed
+
+- `summary`, `liveOnly`, `off`로 저장된 moment가 즉시 원격 push topic으로 다시 살아나지 않도록 앱/backend topic 계산과 테스트를 맞춤
+
 ## [0.0.65] - 2026-06-22
 
 ### Changed

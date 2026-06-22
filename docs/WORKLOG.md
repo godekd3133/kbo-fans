@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-06-22: 0.0.66 팔로우 경기 push topic 최종 릴리즈
+
+### 결정
+- `0.0.65 (65)` 업로드 후 main에 `488c75c` 팔로우 경기 push topic 범위 보정이 들어왔으므로, 외부 테스터 최신 공개 기준은 다시 `0.0.66+66`으로 승격한다.
+- `0.0.65`는 upload/VALID/external handoff까지 완료됐지만, 최신 source 기준 릴리즈는 `0.0.66`이 된다.
+
+### 완료
+- [x] 앱 버전과 릴리즈 문서를 `0.0.66+66` / tag `0.0.66` 기준으로 동기화
+
+### 진행 예정
+- [ ] `0.0.66` backend API/worker deploy와 topic 재등록 완료
+- [ ] `0.0.66 (66)` IPA archive/upload 완료
+- [ ] App Store Connect build `66` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
+- [ ] GitHub Release `0.0.66` 생성 및 최종 release evidence 기록
+
+---
+
 ## 2026-06-22: 0.0.65 TestFlight/backend 재배포
 
 ### 결정

@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.65+65`
-- Current release tag: `0.0.65`
+- Flutter app version: `0.0.66+66`
+- Current release tag: `0.0.66`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -114,6 +114,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.63`: reuploads the `0.0.62` backend API default / Live Activity real-time AVG / live boxscore context / push relay CTA release state as TestFlight build `0.0.63+63`; AWS backend API/worker runtime now receives KBO relay credentials through Secrets Manager so live relay API health is part of the release gate.
 - `0.0.64`: followed-game push subscriptions prefer `*_GAME_<gameId>` topics for game moments, backend game moment and lineup push sends include matching game-specific topics, app diagnostics can request a registered-device remote push self-test without bundling `PUSH_SYNC_SECRET`, in-app update notes use user-facing wording, and backend deploy, topic resubscribe, TestFlight upload, external tester handoff, and GitHub Release evidence are realigned on current app build `0.0.64+64`.
 - `0.0.65`: reuploads the `0.0.64` 경기별 push topic / pregame Live Activity / remote push self-test release state as TestFlight build `0.0.65+65` because App Store Connect already had build `64`; the iOS Widget extension build settings now inherit Flutter `Generated.xcconfig` so Runner and Widget versions stay aligned.
+- `0.0.66`: includes the followed-game push topic scope correction after `0.0.65`, narrowing immediate game moments to selected-game `*_GAME_<gameId>` topics and keeping `summary` / `liveOnly` / `off` moments out of immediate remote push topic registration.
 
 ## GitHub Release Note Template
 
