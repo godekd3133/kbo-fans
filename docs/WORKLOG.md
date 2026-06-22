@@ -133,7 +133,7 @@
 - [x] App Store Connect build `64` 처리 완료 확인: build id `badedf2b-924d-4095-b2e0-97d7cb9495d3`, `processingState=VALID`, `usesNonExemptEncryption=false`, expiration `2026-09-20`
 - [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `64` 연결, 이전 build `63` 관계 제거. 최종 그룹 build 목록은 `64` 단독 연결
 - [x] build `64` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
-- [x] GitHub Release `0.0.64` 생성 및 최종 release evidence 기록 예정 URL: `https://github.com/godekd3133/kbo-fans/releases/tag/0.0.64`
+- [x] GitHub Release `0.0.64` 생성 및 최종 release evidence 기록: `https://github.com/godekd3133/kbo-fans/releases/tag/0.0.64`
 
 ---
 
