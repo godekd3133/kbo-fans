@@ -1,5 +1,12 @@
 # 패치노트
 
+## 0.0.64+64 - Followed Game Push Topics
+
+- 따라가는 경기가 있으면 득점, 안타, 홈런, 타석, 라인업 공개 같은 일반 push 순간을 팀 토픽보다 경기별 토픽으로 우선 구독합니다.
+- backend push worker도 팀/전체 토픽과 함께 경기별 토픽으로 경기 순간 알림을 발송해 follow 중인 경기 알림 경로를 더 정확히 맞췄습니다.
+- 로컬 알림 진단, 원격 test push workflow, backend 설정 누락 응답, 진행 중 경기 boxscore context 보강까지 포함해 새 TestFlight build number로 다시 올렸습니다.
+- backend API/worker 배포, topic 재등록, TestFlight 업로드, 외부 테스터 최신 build 연결 기준을 0.0.64로 다시 맞춘 checkpoint입니다.
+
 ## 0.0.63+63 - TestFlight Rebuild Checkpoint
 
 - 0.0.62의 backend API 기본 모드, Live Activity 실시간 AVG, live 박스스코어 context, 푸쉬 중계 CTA, 배포 gate 보정 기준을 새 TestFlight build number로 다시 올렸습니다.

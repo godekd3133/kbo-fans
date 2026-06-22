@@ -47,6 +47,35 @@ void main() {
     expect(topics, isNot(contains('scoring_LG')));
   });
 
+  test('따라가는 경기가 있으면 경기별 일반 push 토픽을 우선 만든다', () {
+    final settings = const PushNotificationSettings.defaults().copyWith(
+      gameEndDelivery: PushNotificationDelivery.immediate,
+      lineupOpenedDelivery: PushNotificationDelivery.immediate,
+      inningChangeDelivery: PushNotificationDelivery.immediate,
+    );
+
+    final topics = buildPushTopics(
+      settings: settings,
+      myTeam: 'LG',
+      followedGameIds: const ['20260612KTLG0', ' ', '20260612KTLG0'],
+    );
+
+    expect(topics, contains('scoring_GAME_20260612KTLG0'));
+    expect(topics, contains('homerun_GAME_20260612KTLG0'));
+    expect(topics, contains('game_start_GAME_20260612KTLG0'));
+    expect(topics, contains('game_start_soon_GAME_20260612KTLG0'));
+    expect(topics, contains('game_end_GAME_20260612KTLG0'));
+    expect(topics, contains('hit_GAME_20260612KTLG0'));
+    expect(topics, contains('at_bat_GAME_20260612KTLG0'));
+    expect(topics, contains('lineup_opened_GAME_20260612KTLG0'));
+    expect(topics, contains('inning_change_GAME_20260612KTLG0'));
+    expect(topics, contains('baseball_info_LG'));
+    expect(topics, isNot(contains('scoring_LG')));
+    expect(topics, isNot(contains('homerun_LG')));
+    expect(topics, isNot(contains('game_start_LG')));
+    expect(topics, isNot(contains('baseball_info_GAME_20260612KTLG0')));
+  });
+
   test('release 앱에서 마이팀이 있으면 자동 푸시 권한 요청 대상이다', () {
     expect(
       shouldAutoRequestPushPermission(

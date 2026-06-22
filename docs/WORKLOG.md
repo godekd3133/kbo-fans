@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-06-22: 0.0.64 경기별 push topic 릴리즈/TestFlight/backend 배포
+
+### 결정
+- `0.0.63+63` 이후 push topic 계약이 앱/백엔드 모두 바뀌었으므로 단순 재실행이 아니라 새 tester-facing build `0.0.64+64`로 승격한다.
+- 외부 테스터 대상 릴리즈는 TestFlight upload에서 끝내지 않고 build `VALID`, `External Testers` 최신 build 단독 연결, Beta App Review 제출 상태까지 같은 closeout에 포함한다.
+
+### 완료
+- [x] 앱 버전과 릴리즈 문서를 `0.0.64+64` / tag `0.0.64` 기준으로 동기화
+- [x] 앱 전역 폰트 기준을 NanumSquareRound로 전환하고 font asset / fallback / 디자인 문서를 함께 동기화
+- [x] 앱 push 구독 계산이 follow 중인 경기의 일반 경기 순간 토픽을 `*_GAME_<gameId>`로 우선 생성하도록 보강
+- [x] backend push worker가 경기 순간/라인업 공개 발송에 경기별 토픽을 함께 포함하고, topic 재등록 시 followed game topics로 registry를 재계산하도록 보강
+
+### 진행 예정
+- [x] 릴리즈 전 검증 통과: `git diff --check`, `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`17 passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q` (`172 passed`)
+- [ ] 커밋/푸시 후 `0.0.64` backend API/worker deploy와 topic 재등록 완료
+- [ ] `0.0.64 (64)` IPA archive/upload 완료
+- [ ] App Store Connect build `64` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
+- [ ] GitHub Release `0.0.64` 생성 및 최종 release evidence 기록
+
+---
+
 ## 2026-06-22: 외부 TestFlight 최신 빌드 반복 확인
 
 ### 완료

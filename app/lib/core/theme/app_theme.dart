@@ -15,12 +15,21 @@ class AppColors {
   static const ballYellow = Color(0xFFFFD600);
 }
 
+class AppTypography {
+  static const primaryFontFamily = 'NanumSquareRound';
+  static const fallbackFontFamilies = [
+    'Pretendard',
+    'Apple SD Gothic Neo',
+    'Noto Sans KR',
+  ];
+}
+
 class AppTheme {
   static ThemeData get dark => ThemeData(
     brightness: Brightness.dark,
     splashFactory: InkRipple.splashFactory,
-    fontFamily: 'Pretendard',
-    fontFamilyFallback: const ['Apple SD Gothic Neo', 'Noto Sans KR'],
+    fontFamily: AppTypography.primaryFontFamily,
+    fontFamilyFallback: AppTypography.fallbackFontFamilies,
     scaffoldBackgroundColor: AppColors.background,
     colorScheme: const ColorScheme.dark(
       surface: AppColors.background,
@@ -32,7 +41,7 @@ class AppTheme {
       elevation: 0,
       centerTitle: true,
       titleTextStyle: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 18,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
@@ -44,8 +53,14 @@ class AppTheme {
       selectedItemColor: AppColors.textPrimary,
       unselectedItemColor: AppColors.textDisabled,
       type: BottomNavigationBarType.fixed,
-      selectedLabelStyle: TextStyle(fontFamily: 'Pretendard', fontSize: 10),
-      unselectedLabelStyle: TextStyle(fontFamily: 'Pretendard', fontSize: 10),
+      selectedLabelStyle: TextStyle(
+        fontFamily: AppTypography.primaryFontFamily,
+        fontSize: 10,
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: AppTypography.primaryFontFamily,
+        fontSize: 10,
+      ),
     ),
     cardTheme: CardThemeData(
       color: AppColors.card,
@@ -59,7 +74,7 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         textStyle: const TextStyle(
-          fontFamily: 'Pretendard',
+          fontFamily: AppTypography.primaryFontFamily,
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
@@ -71,7 +86,7 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         side: const BorderSide(color: AppColors.divider),
         textStyle: const TextStyle(
-          fontFamily: 'Pretendard',
+          fontFamily: AppTypography.primaryFontFamily,
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
@@ -100,46 +115,46 @@ class AppTheme {
     ),
     textTheme: const TextTheme(
       headlineLarge: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 28,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
       ),
       headlineMedium: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: AppColors.textPrimary,
       ),
       titleLarge: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
       titleMedium: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: AppColors.textPrimary,
       ),
       bodyLarge: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 16,
         color: AppColors.textPrimary,
       ),
       bodyMedium: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 14,
         color: AppColors.textPrimary,
       ),
       bodySmall: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 12,
         color: AppColors.textSecondary,
       ),
       labelSmall: TextStyle(
-        fontFamily: 'Pretendard',
+        fontFamily: AppTypography.primaryFontFamily,
         fontSize: 10,
         color: AppColors.textDisabled,
       ),

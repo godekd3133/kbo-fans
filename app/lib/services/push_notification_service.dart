@@ -684,6 +684,7 @@ class PushNotificationService {
     try {
       final settings = await loadSettings();
       final resolvedMyTeam = myTeam ?? await _loadStoredMyTeam();
+      final followedGameIds = await _loadFollowedGameIds();
       await _waitForAppleApnsTokenIfNeeded();
       final token =
           forceToken ??
@@ -695,8 +696,11 @@ class PushNotificationService {
       }
 
       _lastToken = token;
-      final desiredTopics = _buildTopics(settings, resolvedMyTeam);
-      final followedGameIds = await _loadFollowedGameIds();
+      final desiredTopics = _buildTopics(
+        settings,
+        resolvedMyTeam,
+        followedGameIds: followedGameIds,
+      );
       final prefs = await SharedPreferences.getInstance();
       final currentTopics =
           (prefs.getStringList(_subscribedTopicsKey) ?? const <String>[])
@@ -760,8 +764,16 @@ class PushNotificationService {
     };
   }
 
-  Set<String> _buildTopics(PushNotificationSettings settings, String? myTeam) {
-    return buildPushTopics(settings: settings, myTeam: myTeam);
+  Set<String> _buildTopics(
+    PushNotificationSettings settings,
+    String? myTeam, {
+    Iterable<String> followedGameIds = const <String>[],
+  }) {
+    return buildPushTopics(
+      settings: settings,
+      myTeam: myTeam,
+      followedGameIds: followedGameIds,
+    );
   }
 
   Future<String?> _loadStoredMyTeam() async {
@@ -962,8 +974,11 @@ bool shouldAutoRequestPushPermission({
 Set<String> buildPushTopics({
   required PushNotificationSettings settings,
   required String? myTeam,
+  Iterable<String> followedGameIds = const <String>[],
 }) {
   final hasMyTeam = myTeam != null && myTeam.isNotEmpty;
+  final followedGames = _cleanFollowedGameIds(followedGameIds);
+  final hasFollowedGames = followedGames.isNotEmpty;
   final topics = <String>{};
   final flags = <String, bool>{
     'game_start': settings.sendsImmediately(PushNotificationMoment.gameStart),
@@ -995,6 +1010,12 @@ Set<String> buildPushTopics({
       topics.add('${topicName}_ALL');
       return;
     }
+    if (_gameMomentTopicNames.contains(topicName) && hasFollowedGames) {
+      for (final gameId in followedGames) {
+        topics.add('${topicName}_GAME_$gameId');
+      }
+      return;
+    }
     if (hasMyTeam) {
       topics.add('${topicName}_$myTeam');
     }
@@ -1005,6 +1026,30 @@ Set<String> buildPushTopics({
   }
 
   return topics;
+}
+
+const _gameMomentTopicNames = <String>{
+  'game_start',
+  'game_start_soon',
+  'scoring',
+  'hit',
+  'homerun',
+  'reversal',
+  'game_end',
+  'lineup_opened',
+  'inning_change',
+  'at_bat',
+};
+
+Set<String> _cleanFollowedGameIds(Iterable<String> followedGameIds) {
+  final cleaned = <String>{};
+  for (final gameId in followedGameIds) {
+    final normalized = gameId.trim();
+    if (normalized.isNotEmpty) {
+      cleaned.add(normalized);
+    }
+  }
+  return cleaned;
 }
 
 String? pushNotificationRouteForData(Map<String, dynamic> data) {

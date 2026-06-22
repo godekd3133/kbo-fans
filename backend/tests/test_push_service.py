@@ -109,6 +109,41 @@ def test_build_topics_respects_delivery_modes() -> None:
     assert topics == ["game_start_LG", "game_start_soon_LG", "game_end_LG"]
 
 
+def test_build_topics_prefers_followed_game_topics_for_game_moments() -> None:
+    service = PushService()
+    payload = PushRegisterRequest(
+        deviceToken="token",
+        platform="flutter",
+        myTeam="LG",
+        followedGameIds=["20260612KTLG0", " ", "20260612KTLG0"],
+        notifications=NotificationSettings(
+            gameStart=True,
+            scoring=True,
+            homerun=True,
+            reversal=True,
+            gameEnd=True,
+            lineupOpened=True,
+            inningChange=True,
+            allGames=False,
+        ),
+    )
+
+    topics = service._build_topics(payload)
+
+    assert "scoring_GAME_20260612KTLG0" in topics
+    assert "homerun_GAME_20260612KTLG0" in topics
+    assert "game_start_GAME_20260612KTLG0" in topics
+    assert "game_start_soon_GAME_20260612KTLG0" in topics
+    assert "hit_GAME_20260612KTLG0" in topics
+    assert "at_bat_GAME_20260612KTLG0" in topics
+    assert "lineup_opened_GAME_20260612KTLG0" in topics
+    assert "baseball_info_LG" in topics
+    assert "scoring_LG" not in topics
+    assert "homerun_LG" not in topics
+    assert "game_start_LG" not in topics
+    assert "baseball_info_GAME_20260612KTLG0" not in topics
+
+
 def test_register_persists_device_token(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
@@ -194,6 +229,7 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
         "hit_LG",
         "hit_KT",
         "hit_ALL",
+        "hit_GAME_20260604LGKT0",
     ]
     first_message = messaging.sent_messages[0]
     assert first_message.notification.title == "안타"
@@ -211,6 +247,56 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
     assert first_message.android.priority == "high"
     assert first_message.android.notification.channel_id == "remote_push_foreground"
     assert first_message.android.notification.sound == "default"
+
+
+def test_send_game_moment_includes_followed_game_topic(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=2,
+        home_score=3,
+        inning="7회말",
+    )
+
+    assert response["sent"] is True
+    assert [message.topic for message in messaging.sent_messages] == [
+        "scoring_LG",
+        "scoring_KT",
+        "scoring_ALL",
+        "scoring_GAME_20260604LGKT0",
+    ]
+
+
+def test_send_lineup_opened_includes_followed_game_topic(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_lineup_opened(
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+    )
+
+    assert response["sent"] is True
+    assert [message.topic for message in messaging.sent_messages] == [
+        "lineup_opened_LG",
+        "lineup_opened_KT",
+        "lineup_opened_ALL",
+        "lineup_opened_GAME_20260604LGKT0",
+    ]
 
 
 def test_send_game_moment_start_soon_includes_start_time_payload(tmp_path) -> None:
@@ -238,6 +324,7 @@ def test_send_game_moment_start_soon_includes_start_time_payload(tmp_path) -> No
         "game_start_soon_LG",
         "game_start_soon_KT",
         "game_start_soon_ALL",
+        "game_start_soon_GAME_20260604LGKT0",
     ]
     first_message = messaging.sent_messages[0]
     assert first_message.notification.title == "경기 곧 시작"
@@ -405,7 +492,7 @@ def test_send_test_push_uses_visible_notification_options(tmp_path) -> None:
     assert message.android.notification.sound == "default"
 
 
-def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
+def test_resubscribe_registered_topics_rebuilds_followed_game_topics(tmp_path) -> None:
     registry_path = tmp_path / "push_registry.json"
     registry_path.write_text(
         json.dumps(
@@ -451,11 +538,16 @@ def test_resubscribe_registered_topics_rebuilds_at_bat_topic(tmp_path) -> None:
 
     assert response["resubscribed"] is True
     assert response["eligibleDevices"] == 1
-    assert "at_bat_LG" in subscribed_topics
-    assert "hit_LG" in subscribed_topics
-    assert "game_start_soon_LG" in subscribed_topics
+    assert "at_bat_GAME_20260612KTLG0" in subscribed_topics
+    assert "hit_GAME_20260612KTLG0" in subscribed_topics
+    assert "game_start_soon_GAME_20260612KTLG0" in subscribed_topics
+    assert "baseball_info_LG" in subscribed_topics
+    assert "game_start_LG" in unsubscribed_topics
+    assert "scoring_LG" in unsubscribed_topics
     assert "legacy_LG" in unsubscribed_topics
-    assert "at_bat_LG" in stored_topics
+    assert "at_bat_GAME_20260612KTLG0" in stored_topics
+    assert "game_start_LG" not in stored_topics
+    assert "scoring_LG" not in stored_topics
     assert "legacy_LG" not in stored_topics
     assert stored_followed_game_ids == ["20260612KTLG0"]
 
@@ -1158,8 +1250,10 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
 
     assert status["registry"]["registeredDeviceCount"] == 1
     assert status["registry"]["followedGameCount"] == 1
-    assert status["registry"]["topicCounts"]["game_start_soon_OB"] == 1
-    assert status["registry"]["topicCounts"]["hit_OB"] == 1
+    assert status["registry"]["topicCounts"]["game_start_soon_GAME_20260618KTOB0"] == 1
+    assert status["registry"]["topicCounts"]["hit_GAME_20260618KTOB0"] == 1
+    assert "game_start_soon_OB" not in status["registry"]["topicCounts"]
+    assert "hit_OB" not in status["registry"]["topicCounts"]
     assert "secret-fcm-token" not in str(status["registry"])
 
 

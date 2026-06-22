@@ -10,9 +10,15 @@
 
 ## [Unreleased]
 
+## [0.0.64] - 2026-06-22
+
 ### Changed
 
+- 앱 전역 폰트를 둥근 획의 NanumSquareRound로 바꿔 홈, 경기 상세, 일정, 기록 화면의 텍스트 톤을 더 아기자기하게 조정
+- 따라가는 경기가 있으면 득점, 안타, 홈런, 타석, 라인업 공개 같은 경기 순간 push 구독을 팀 토픽보다 `*_GAME_<gameId>` 경기별 토픽으로 우선 생성하도록 변경
+- backend push worker도 경기 순간/라인업 공개 발송 시 팀/전체 토픽과 함께 경기별 토픽을 같이 발송하도록 보강
 - 경기 탭 일정 화면을 새 생성 레퍼런스 기준으로 재정렬해 월 헤더, 필터, 범례, 캘린더 경기일 outline/dot, 선택 날짜, 경기 카드 밀도를 더 실제 다크 스포츠 앱 화면에 가깝게 조정
+- backend API/worker 배포, topic 재등록, TestFlight 업로드, 외부 테스터 최신 build 연결 기준을 새 TestFlight build `0.0.64 (64)`로 다시 맞춤
 
 ### Fixed
 
@@ -22,6 +28,7 @@
 - local backend에 `PUSH_SYNC_SECRET`이 없을 때 test push endpoint가 Firebase 초기화 500으로 떨어지지 않고 설정 누락 503을 반환하도록 보강
 - 진행 중 경기 박스스코어가 공식 rows 업데이트 전이어도 KBO 실시간 현재 타자/투수 context를 `실시간 기록 추적`으로 표시하도록 보강
 - 기록 탭 첫 화면의 spotlight 카드 하단 텍스트와 리더보드 `ERA` 탭이 390px 폭에서 잘리지 않도록 레이아웃 폭/높이를 보정
+- topic 재등록 시 기존 팀 기준 경기 순간 토픽을 남기지 않고 follow 중인 경기별 토픽으로 재계산되도록 backend registry 갱신 경로를 보정
 
 ## [0.0.63] - 2026-06-20
 

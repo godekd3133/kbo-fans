@@ -11,7 +11,7 @@
 
 - **프레임**: 390×844px (iPhone 14 기준, 모바일 앱)
 - **스타일**: 모던, 미니멀, 다크 모드 기반 스포츠 앱
-- **폰트**: Pretendard (한글), SF Pro Display (영문/숫자). Flutter 앱은 `PretendardVariable.ttf`를 번들에 포함해 시스템 fallback이 아니라 실제 Pretendard 렌더링을 기준으로 한다.
+- **폰트**: NanumSquareRound (한글/영문/숫자). Flutter 앱은 `NanumSquareRoundL/R/B/EB.ttf`를 번들에 포함해 시스템 fallback이 아니라 실제 둥근 획 렌더링을 기준으로 한다. Pretendard는 fallback으로만 유지한다.
 - **라운드**: Hero 카드 12px, 일반/요약 카드 8px, 버튼 12px, 입력 8px
 - **아이콘**: 앱 UI에서는 이모지 텍스트를 쓰지 않고, 홈/경기/기록/뉴스/더보기 의미의 벡터 아이콘을 사용
 - **앱 구현 기준**: 2026-05-19 v4 `Moment Subscription & Surface Strategy` 이후 실제 Flutter 화면도 430px 이하 mobile frame, 8px 카드, 작은 outline bottom tab, 상태 우선 헤더를 기본값으로 둔다.
@@ -153,7 +153,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 **레이아웃 (위에서 아래)**:
 
 1. **상단 여백**: 80px (Status Bar + 추가 여백)
-2. **앱 로고**: "KBO Fans" — 중앙정렬, Pretendard Bold 28px, #FFFFFF
+2. **앱 로고**: "KBO Fans" — 중앙정렬, NanumSquareRound Bold 28px, #FFFFFF
 3. **서브 텍스트**: "응원하는 팀을 선택하세요" — 중앙정렬, 16px, #B0B0B0, 상단 마진 8px
 4. **개인화 설명**: 상단 마진 16px, 좌우 패딩 32px, 12px #B0B0B0
    - "홈에서 내 팀 경기 먼저 보기"
@@ -170,7 +170,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
    - 전체 너비 (좌우 패딩 24px), 높이 52px, 라운드 12px
    - **미선택**: 배경 #333333, 텍스트 #666666, 비활성
    - **선택**: 배경 선택된 팀 Primary 컬러, 텍스트 #FFFFFF
-   - 텍스트: "시작하기" Pretendard SemiBold 16px
+   - 텍스트: "시작하기" NanumSquareRound SemiBold 16px
 7. **건너뛰기**: 상단 마진 16px, "건너뛰기" 14px, #666666, 중앙정렬, 밑줄 없음
 
 **Figma에 2가지 상태를 프레임으로 만들어주세요**: "미선택 상태" / "LG 선택 상태"
@@ -187,12 +187,12 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "KBO Fans" Pretendard Bold 20px #FFFFFF
+- 좌측: "KBO Fans" NanumSquareRound Bold 20px #FFFFFF
 - 우측: "3.28 토" 14px #B0B0B0 + "경기 중" 10px badge + 선택된 마이팀 엠블럼 44px
 
 **마이팀 브리프 카드** (Hero Game Card, 좌우 마진 16px, 상단 마진 12px):
 
-- "마이팀" 라벨: 12px, Pretendard SemiBold, 마이팀 Primary 컬러, 카드 좌상단 내부 패딩 16px
+- "마이팀" 라벨: 12px, NanumSquareRound SemiBold, 마이팀 Primary 컬러, 카드 좌상단 내부 패딩 16px
 - 카드: #1D1D1D 배경, 라운드 8px, 높이 약 176px, 내부 패딩 16px, 좌측 3px 팀 컬러 rail
 - **스코어 영역** (수평 배치, 가운데 정렬):
   - 좌측: 어웨이 팀 로고(48px) + 팀명(14px, #B0B0B0) — 수직 중앙 정렬
@@ -259,7 +259,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
    - 우측: LG 로고(40px) + "LG 트윈스"(12px #B0B0B0) — 수직 중앙
 3. **탭 바** (높이 44px, 배경 #0F0F0F):
    - 4개 탭: 스코어 | 문자중계 | 박스스코어 | 라인업
-   - 활성 탭: 14px Pretendard SemiBold #FFFFFF + 하단 2px 흰색 라인
+   - 활성 탭: 14px NanumSquareRound SemiBold #FFFFFF + 하단 2px 흰색 라인
    - 비활성 탭: 14px #666666
 
 **스코어 탭 콘텐츠**:
@@ -303,7 +303,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 중계 아이템 (최신이 위, 역순 정렬):
 
 - **득점 이벤트** (좌측 빨간 세로선 4px #FF4444, 배경 #1C1111, 라운드 8px, 패딩 12px 16px):
-  - 1행: "득점 6번 이강민: 2타점 적시타" 14px Pretendard SemiBold #FFFFFF
+  - 1행: "득점 6번 이강민: 2타점 적시타" 14px NanumSquareRound SemiBold #FFFFFF
   - 2행: "좌중간 2루타" 12px #B0B0B0
   - 3행: "S → B → B → S → F → 타격" 11px #666666 (투구 시퀀스)
 - **일반 이벤트** (좌측 회색 세로선 4px #333333, 패딩 12px 16px):
@@ -325,12 +325,12 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 **팀 토글** (좌우 마진 16px, 상단 마진 16px):
 
 - 2개 버튼 가로 배치, 각 50% 너비, 높이 36px, 라운드 8px
-- 활성(KT): 배경 #FFFFFF, 텍스트 #0F0F0F, Pretendard SemiBold 14px
+- 활성(KT): 배경 #FFFFFF, 텍스트 #0F0F0F, NanumSquareRound SemiBold 14px
 - 비활성(LG): 배경 투명, 텍스트 #666666, border #333333
 
 **타자 테이블** (상단 마진 16px, 좌우 패딩 16px):
 
-- 섹션 헤더: "타자" 14px Pretendard SemiBold #FFFFFF, 상단 마진 16px
+- 섹션 헤더: "타자" 14px NanumSquareRound SemiBold #FFFFFF, 상단 마진 16px
 - 컬럼 헤더: 타순 | 포지션 | 이름 | 타수 | 득점 | 안타 | 타점 — 12px #666666
 - 데이터 행 (14px #FFFFFF, 행 높이 40px):
 
@@ -351,7 +351,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **투수 테이블** (상단 마진 24px):
 
-- 섹션 헤더: "투수" 14px Pretendard SemiBold #FFFFFF
+- 섹션 헤더: "투수" 14px NanumSquareRound SemiBold #FFFFFF
 - 컬럼 헤더: 이름 | 이닝 | 안타 | 삼진 | 사사구 | 자책 | 판정 — 12px #666666
 
 | 이름 | 이닝 | 안타 | 삼진 | 사사구 | 자책 | 판정 |
@@ -373,7 +373,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 **선발 투수** (상단 마진 16px, 좌우 패딩 16px):
 
 - 카드: #1A1A1A, 라운드 12px, 패딩 16px
-- "선발투수" 12px #666666 + "사우어 (우투)" 16px Pretendard SemiBold #FFFFFF
+- "선발투수" 12px #666666 + "사우어 (우투)" 16px NanumSquareRound SemiBold #FFFFFF
 
 **라인업 리스트** (상단 마진 16px):
 
@@ -403,7 +403,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 중앙: "← 2026년 3월 →" — 화살표 24px #FFFFFF, 텍스트 18px Pretendard SemiBold #FFFFFF
+- 중앙: "← 2026년 3월 →" — 화살표 24px #FFFFFF, 텍스트 18px NanumSquareRound SemiBold #FFFFFF
 - ← → 버튼으로 월 전환
 
 **캘린더 그리드** (좌우 패딩 16px, 상단 패딩 8px):
@@ -419,7 +419,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **경기 목록** (선택된 날짜, 상단 마진 16px):
 
-- 섹션 헤더: "3월 28일 (토) — 개막전" 16px Pretendard SemiBold #FFFFFF, 좌측 패딩 20px
+- 섹션 헤더: "3월 28일 (토) — 개막전" 16px NanumSquareRound SemiBold #FFFFFF, 좌측 패딩 20px
 - 경기 카드 (좌우 마진 16px, 각 카드 간격 8px):
   - 카드: #1A1A1A, 라운드 12px, 높이 56px, 패딩 12px 16px
   - 배치: 시간(14px #B0B0B0) | 어웨이 로고(24px) 팀명(14px) | "vs" 12px #666666 | 팀명(14px) 홈 로고(24px) | 구장(12px #666666)
@@ -444,7 +444,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "2026 정규시즌 순위" 20px Pretendard Bold #FFFFFF
+- 좌측: "2026 정규시즌 순위" 20px NanumSquareRound Bold #FFFFFF
 
 **순위 테이블** (좌우 패딩 16px, 상단 패딩 12px):
 
@@ -477,7 +477,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "기록실" 20px Pretendard Bold #FFFFFF
+- 좌측: "기록실" 20px NanumSquareRound Bold #FFFFFF
 - 우측: 시즌 선택 chip "2026" 12px #FFFFFF, 배경 #252525, 라운드 8px
 
 **마이팀 선수 현황** (상단 마진 12px, 좌우 마진 16px):
@@ -511,7 +511,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "더보기" 11px Pretendard ExtraBold #B0B0B0 + "KBO 팬 허브" 23px Pretendard Black #FFFFFF
+- 좌측: "더보기" 11px NanumSquareRound ExtraBold #B0B0B0 + "KBO 팬 허브" 23px NanumSquareRound Black #FFFFFF
 
 **섹션 1 — 마이팀 요약** (상단 마진 16px, 좌우 패딩 16px):
 
@@ -549,7 +549,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 - 기준 산출물: `docs/UI_UX_NOTIFICATION_OUTSIDE_APP_TRENDS_2026-05-19.md`
 - 라벨: "알림 플레이북" 14px #B0B0B0, 하단 마진 8px
 - 요약 카드: #1A1A1A, 라운드 8px, 패딩 14px
-  - 타이틀: "내 팀 핵심 장면" 16px Pretendard SemiBold #FFFFFF
+  - 타이틀: "내 팀 핵심 장면" 16px NanumSquareRound SemiBold #FFFFFF
   - 설명: "장면마다 바로 알림, 요약, Live 표면, 끄기를 고릅니다" 12px #B0B0B0
   - 구형 "알림 강도" 다이얼 또는 단순 ON/OFF 목록으로 표현하지 말 것
 - Moment row 카드:

@@ -30,6 +30,18 @@ KBO_TEAM_NAMES = {
     "WO": "키움 히어로즈",
 }
 ANDROID_REMOTE_PUSH_CHANNEL_ID = "remote_push_foreground"
+GAME_MOMENT_TOPIC_NAMES = {
+    "game_start",
+    "game_start_soon",
+    "scoring",
+    "hit",
+    "homerun",
+    "reversal",
+    "game_end",
+    "lineup_opened",
+    "inning_change",
+    "at_bat",
+}
 
 
 class PushService:
@@ -279,6 +291,8 @@ class PushService:
             f"lineup_opened_{home_team_id}",
             "lineup_opened_ALL",
         ]
+        if game_id:
+            targets.append(_game_topic("lineup_opened", game_id))
         visible_options = _visible_push_options(messaging, title=title, body=body)
         sent = []
         for topic in targets:
@@ -336,6 +350,8 @@ class PushService:
             f"{moment}_{home_team_id}",
             f"{moment}_ALL",
         ]
+        if game_id:
+            targets.append(_game_topic(moment, game_id))
         visible_options = _visible_push_options(messaging, title=title, body=body)
         sent = []
         for topic in targets:
@@ -365,6 +381,7 @@ class PushService:
 
     def _build_topics(self, payload: PushRegisterRequest) -> list[str]:
         has_my_team = payload.myTeam is not None and payload.myTeam != ""
+        followed_game_ids = _clean_followed_game_ids(payload.followedGameIds)
         topics: list[str] = []
         delivery_modes = payload.notifications.deliveryModes
 
@@ -421,6 +438,12 @@ class PushService:
 
             if payload.notifications.allGames:
                 topics.append(f"{topic_name}_ALL")
+                continue
+
+            if topic_name in GAME_MOMENT_TOPIC_NAMES and followed_game_ids:
+                topics.extend(
+                    _game_topic(topic_name, game_id) for game_id in followed_game_ids
+                )
                 continue
 
             if has_my_team:
@@ -644,6 +667,22 @@ def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
     if delivery is None:
         return True
     return delivery == "immediate"
+
+
+def _game_topic(moment: str, game_id: str) -> str:
+    return f"{moment}_GAME_{game_id}"
+
+
+def _clean_followed_game_ids(game_ids: list[str]) -> list[str]:
+    cleaned = []
+    seen = set()
+    for game_id in game_ids:
+        text = str(game_id).strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        cleaned.append(text)
+    return cleaned
 
 
 def _registration_to_payload(registration: dict[str, Any]) -> PushRegisterRequest:

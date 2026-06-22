@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-06-20
+> Updated: 2026-06-22
 
 ## Current Baseline
 
 - Active release line: `0.0.x`
-- Flutter app version: `0.0.63+63`
-- Current release tag: `0.0.63`
+- Flutter app version: `0.0.64+64`
+- Current release tag: `0.0.64`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -112,6 +112,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.61`: backend API data mode becomes the default for local/dev/release/web/native builds and scripts/CI artifacts; direct KBO remains an explicit parser/debug path; game-detail live follow uses a single push relay CTA; live boxscore can show current batter/pitcher context before official rows exist; Live Activity batting average folds today's completed at-bats into the season AVG, app resume/widget Live Activity sync preserves current-at-bat stats, the Lock Screen/Dynamic Island matchup layout is tightened, Doosan 2025 and Samsung high-resolution logo assets ship, home standings taps open the standings overview, schedule/news/records surfaces receive density polish, and June 2026 schedule / records fixtures are refreshed; current app build `0.0.61+61`.
 - `0.0.62`: release sync checkpoint for the `0.0.61` backend API default / Live Activity real-time AVG build; Push / Live Activity preflight now checks the current API base URL handoff structure, and TestFlight, GitHub Release, backend deploy, topic resubscribe, and release API health evidence are realigned on current app build `0.0.62+62`.
 - `0.0.63`: reuploads the `0.0.62` backend API default / Live Activity real-time AVG / live boxscore context / push relay CTA release state as TestFlight build `0.0.63+63`; AWS backend API/worker runtime now receives KBO relay credentials through Secrets Manager so live relay API health is part of the release gate.
+- `0.0.64`: followed-game push subscriptions prefer `*_GAME_<gameId>` topics for game moments, backend game moment and lineup push sends include matching game-specific topics, local/remote push diagnostics are reinforced, and backend deploy, topic resubscribe, TestFlight upload, external tester handoff, and GitHub Release evidence are realigned on current app build `0.0.64+64`.
 
 ## GitHub Release Note Template
 
