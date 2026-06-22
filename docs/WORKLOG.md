@@ -17,10 +17,12 @@
 
 ### 검증
 - [x] `git diff --check`
-- [x] `cd app && fvm flutter analyze --no-pub`
-- [x] `cd app && fvm flutter test --no-pub` (`173 passed`)
-- [x] `backend/.venv/bin/pytest -q` (`178 passed`)
+- [x] `cd app && fvm flutter analyze lib/data/models/game.dart lib/data/repositories/api_game_repository.dart lib/services/live_activity_service.dart lib/services/widget_sync_service.dart lib/features/home/home_screen.dart test/services/live_activity_service_test.dart`
+- [x] `cd app && fvm flutter test test/services/live_activity_service_test.dart -r expanded` (`8 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`52 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_schedule.py backend/tests/test_scoreboard_service.py backend/tests/test_scoreboard_service_cache.py backend/tests/test_scoreboard_service_live_fallback.py` (`32 passed`)
 - [x] `python3 -m compileall backend/src`
+- [x] `cd app/ios && xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` (`BUILD SUCCEEDED`; local `Pods/Manifest.lock` missing으로 최초 실패 후 `pod install`로 복구)
 
 ### 남은 확인
 - [ ] iPhone 실기기에서 라인업 공개 예정 경기 Live Activity 노출과 Dynamic Island compact 표시 확인
@@ -123,10 +125,9 @@
 
 ### 진행 예정
 - [x] 릴리즈 전 검증 통과: `git diff --check`, `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub` (`173 passed`), `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`52 passed`), `backend/.venv/bin/pytest -q` (`178 passed`)
-- [x] `0.0.64` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27927108022`, head `7c03f18`, conclusion `success`, `KBO_BACKEND_IMAGE_TAG=0.0.64`, ECR digest `sha256:04fc7b66b7a58b43286efb14df73aee1c4fe2681d4780418139e81ce33d61bd6`, `readyForIphoneOnlyDemo=true`, scheduler age 2초
-- [x] topic 재등록 결과 확인: artifact `push-topic-resubscribe.json`, `registeredDevices=13`, `eligibleDevices=13`, `subscriptionsAttempted=104`, `unsubscriptionsAttempted=7`; followed game `20260620HTKT0`에 `scoring_GAME_...`, `hit_GAME_...`, `homerun_GAME_...`, `game_start_GAME_...`, `game_start_soon_GAME_...`, `at_bat_GAME_...`, `reversal_GAME_...` 구독 성공
-- [x] 운영 release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; `2026-06-22`은 scoreboard game이 없어 relay endpoint는 skip
-- [ ] 위 backend 배포 run은 최종 0.0.64 소스 커밋 전 head(`7c03f18`) 기준이므로, 최종 커밋 후 같은 tag로 backend worker/API 재배포와 topic 재등록을 한 번 더 수행
+- [x] 최종 `0.0.64` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27927754039`, head `048272e`, conclusion `success`, `KBO_BACKEND_IMAGE_TAG=0.0.64`, ECR digest `sha256:be6e93a22e3cb8958a8f9bd2b994a2e684518724c3ad4d2919f531dbf1b15907`, `readyForIphoneOnlyDemo=true`, scheduler age 0초
+- [x] topic 재등록 결과 확인: artifact `push-topic-resubscribe.json`, `registeredDevices=13`, `eligibleDevices=13`, `subscriptionsAttempted=104`, `unsubscriptionsAttempted=0`; followed game `20260620HTKT0`에 `scoring_GAME_...`, `hit_GAME_...`, `homerun_GAME_...`, `game_start_GAME_...`, `game_start_soon_GAME_...`, `at_bat_GAME_...`, `reversal_GAME_...` 구독 성공
+- [x] 최종 운영 release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; `2026-06-22`은 scoreboard game이 없어 relay endpoint는 skip
 - [ ] `0.0.64 (64)` IPA archive/upload 완료
 - [ ] App Store Connect build `64` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
 - [ ] GitHub Release `0.0.64` 생성 및 최종 release evidence 기록
