@@ -427,7 +427,8 @@ class PushService:
         return {"sent": True, "moment": moment, "messages": sent}
 
     def _build_topics(self, payload: PushRegisterRequest) -> list[str]:
-        has_my_team = payload.myTeam is not None and payload.myTeam != ""
+        my_team = str(payload.myTeam or "").strip()
+        has_my_team = my_team != ""
         followed_game_ids = _clean_followed_game_ids(payload.followedGameIds)
         topics: list[str] = []
         delivery_modes = payload.notifications.deliveryModes
@@ -480,24 +481,28 @@ class PushService:
         }
 
         for topic_name, (setting_enabled, delivery) in topic_flags.items():
-            enabled = (
-                _enabled_for_followed_game(setting_enabled, delivery)
-                if topic_name in GAME_MOMENT_TOPIC_NAMES and followed_game_ids
-                else _sends_immediately(setting_enabled, delivery)
-            )
-            if not enabled:
-                continue
-
             if payload.notifications.allGames:
-                topics.append(f"{topic_name}_ALL")
+                if _sends_immediately(setting_enabled, delivery):
+                    topics.append(f"{topic_name}_ALL")
                 continue
 
-            if topic_name in GAME_MOMENT_TOPIC_NAMES and followed_game_ids:
-                topics.extend(_game_topic(topic_name, game_id) for game_id in followed_game_ids)
+            if topic_name in GAME_MOMENT_TOPIC_NAMES:
+                if not _enabled_for_game_moment_topic(setting_enabled, delivery):
+                    continue
+
+                if has_my_team:
+                    topics.append(f"{topic_name}_{my_team}")
+
+                if followed_game_ids:
+                    topics.extend(
+                        _game_topic(topic_name, game_id)
+                        for game_id in followed_game_ids
+                        if not _game_id_contains_team(game_id, my_team if has_my_team else None)
+                    )
                 continue
 
-            if has_my_team:
-                topics.append(f"{topic_name}_{payload.myTeam}")
+            if has_my_team and _sends_immediately(setting_enabled, delivery):
+                topics.append(f"{topic_name}_{my_team}")
 
         if payload.notifications.allGames:
             topics.append("all_games_enabled")
@@ -569,6 +574,8 @@ def _game_moment_copy(
         return "역전", f"{inning} {matchup} 역전 상황입니다. 현재 {score}"
     if moment == "game_end":
         return "경기 종료", f"{matchup} 최종 스코어 {score}"
+    if moment == "lineup_opened":
+        return "선발 라인업 공개", f"{matchup} 라인업이 공개됐습니다."
     if moment == "inning_change":
         return "이닝 변경", f"{matchup} {inning} 진입, 현재 {score}"
     if moment == "at_bat":
@@ -716,7 +723,7 @@ def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:
     return delivery == "immediate"
 
 
-def _enabled_for_followed_game(enabled: bool, delivery: Optional[str]) -> bool:
+def _enabled_for_game_moment_topic(enabled: bool, delivery: Optional[str]) -> bool:
     if not enabled:
         return False
     return delivery != "off"
@@ -724,6 +731,12 @@ def _enabled_for_followed_game(enabled: bool, delivery: Optional[str]) -> bool:
 
 def _game_topic(moment: str, game_id: str) -> str:
     return f"{moment}_GAME_{game_id}"
+
+
+def _game_id_contains_team(game_id: str, team_id: Optional[str]) -> bool:
+    if team_id is None or team_id == "" or len(game_id) < 12:
+        return False
+    return game_id[8:10] == team_id or game_id[10:12] == team_id
 
 
 def _test_push_data_for_topic(topic: str) -> dict[str, str]:

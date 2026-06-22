@@ -1193,7 +1193,8 @@ Set<String> buildPushTopics({
   required String? myTeam,
   Iterable<String> followedGameIds = const <String>[],
 }) {
-  final hasMyTeam = myTeam != null && myTeam.isNotEmpty;
+  final normalizedMyTeam = myTeam?.trim();
+  final hasMyTeam = normalizedMyTeam != null && normalizedMyTeam.isNotEmpty;
   final followedGames = _cleanFollowedGameIds(followedGameIds);
   final hasFollowedGames = followedGames.isNotEmpty;
   final topics = <String>{};
@@ -1212,28 +1213,35 @@ Set<String> buildPushTopics({
   };
 
   topicMoments.forEach((topicName, moment) {
-    final enabled =
-        _gameMomentTopicNames.contains(topicName) && hasFollowedGames
-        ? settings.enablesFollowedGamePush(moment)
-        : settings.sendsImmediately(moment);
-    if (!enabled) {
-      return;
-    }
-
     if (settings.allGames) {
-      topics.add('${topicName}_ALL');
-      return;
-    }
-
-    if (_gameMomentTopicNames.contains(topicName) && hasFollowedGames) {
-      for (final gameId in followedGames) {
-        topics.add('${topicName}_GAME_$gameId');
+      if (settings.sendsImmediately(moment)) {
+        topics.add('${topicName}_ALL');
       }
       return;
     }
 
-    if (hasMyTeam) {
-      topics.add('${topicName}_$myTeam');
+    if (_gameMomentTopicNames.contains(topicName)) {
+      if (!settings.enablesFollowedGamePush(moment)) {
+        return;
+      }
+
+      if (hasMyTeam) {
+        topics.add('${topicName}_$normalizedMyTeam');
+      }
+
+      if (hasFollowedGames) {
+        for (final gameId in followedGames) {
+          if (_gameIdContainsTeam(gameId, normalizedMyTeam)) {
+            continue;
+          }
+          topics.add('${topicName}_GAME_$gameId');
+        }
+      }
+      return;
+    }
+
+    if (hasMyTeam && settings.sendsImmediately(moment)) {
+      topics.add('${topicName}_$normalizedMyTeam');
     }
   });
 
@@ -1266,6 +1274,17 @@ Set<String> _cleanFollowedGameIds(Iterable<String> followedGameIds) {
     }
   }
   return cleaned;
+}
+
+bool _gameIdContainsTeam(String gameId, String? teamId) {
+  final normalizedTeamId = teamId?.trim();
+  if (normalizedTeamId == null ||
+      normalizedTeamId.isEmpty ||
+      gameId.length < 12) {
+    return false;
+  }
+  return gameId.substring(8, 10) == normalizedTeamId ||
+      gameId.substring(10, 12) == normalizedTeamId;
 }
 
 String? pushNotificationRouteForData(Map<String, dynamic> data) {

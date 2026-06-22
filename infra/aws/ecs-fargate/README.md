@@ -68,9 +68,12 @@ APNS_BUNDLE_ID=com.kbofans.kboFans
 APNS_USE_SANDBOX=false
 PUSH_REGISTRY_PATH=/var/lib/kbo-fans/push_registry.json
 PUSH_SYNC_INTERVAL_SECONDS=5
+PUSH_BASEBALL_INFO_SMART_DAILY_TIMES=09:30,16:00,22:30
 ```
 
 `APNS_USE_SANDBOX=false` is required for TestFlight / App Store production APNs.
+`PUSH_BASEBALL_INFO_SMART_DAILY_TIMES` is interpreted in Asia/Seoul and can be
+set to `off` to disable the smart daily baseball-info push in the sync worker.
 
 ## Files In This Directory
 

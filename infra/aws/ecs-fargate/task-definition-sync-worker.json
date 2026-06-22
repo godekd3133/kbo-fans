@@ -60,6 +60,10 @@
         {
           "name": "PUSH_SYNC_INTERVAL_SECONDS",
           "value": "5"
+        },
+        {
+          "name": "PUSH_BASEBALL_INFO_SMART_DAILY_TIMES",
+          "value": "09:30,16:00,22:30"
         }
       ],
       "secrets": [

@@ -94,7 +94,13 @@ class LiveActivityScoreboardSyncService:
 
         if previous_state is not None:
             for moment in _moments_from_state(previous_state, current_state):
-                pushed.append(self._send_game_moment(moment, game_id, current_state))
+                response = self._send_game_moment(moment, game_id, current_state)
+                if moment == "lineup_opened" and response.get("sent"):
+                    self.push_service.registry.mark_pregame_alert_sent(
+                        game_id,
+                        "lineup_opened",
+                    )
+                pushed.append(response)
 
         pushed.extend(self._push_relay_moments_for_game(game_id, current_state))
         return pushed
@@ -538,6 +544,12 @@ def _moments_from_state(
     current_total = _int_value(current.get("awayScore")) + _int_value(current.get("homeScore"))
     moments = []
 
+    if (
+        current_status == "SCHEDULED"
+        and not bool(previous.get("lineupOpened"))
+        and bool(current.get("lineupOpened"))
+    ):
+        moments.append("lineup_opened")
     if previous_status == "SCHEDULED" and current_status == "LIVE":
         moments.append("game_start")
     if current_status == "LIVE" and current_total > previous_total:

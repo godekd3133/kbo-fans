@@ -88,9 +88,10 @@ APNS_AUTH_KEY_FILE=/path/AuthKey_<KEY_ID>.p8 \
    - ECS: EFS 또는 이후 DB/DynamoDB로 대체
 5. Fargate sync worker 또는 cron으로 scoreboard/relay sync를 5초마다 실행
    - ActivityKit token이 등록된 경기는 APNs `liveactivity` update/end 발송
-   - FCM device/topic 등록이 있으면 scoreboard diff 기준 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` topic push 발행
+   - FCM device/topic 등록이 있으면 scoreboard diff 기준 `lineup_opened`, `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` topic push 발행
    - 일반 FCM message에는 iOS APNs `apns-push-type=alert`, `apns-topic`, `aps.alert`, `aps.content-available=1`, `apns-priority=10`, default sound와 Android high priority / default sound 옵션을 포함
-   - `homerun`은 live relay seq diff 기준으로 새 `HOMERUN` event 또는 `홈런` 텍스트가 들어올 때 topic push 발행
+   - `hit` / `homerun`은 live relay seq diff 기준으로 새 `HIT` / `HOMERUN` event 또는 `안타` / `홈런` 텍스트가 들어올 때 topic push 발행
+   - `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES=09:30,16:00,22:30` 기본값으로 KST smart daily `baseball_info` 브리프를 슬롯마다 하루 한 번 발행. 비활성화는 `off`
 
 ```bash
 curl -X POST "https://api.kbofans.com/api/push/live-activity/sync-scoreboard" \

@@ -11,6 +11,7 @@ from kbo_fans_backend.storage import JsonSnapshotStore
 
 
 class LineupService:
+    _LINEUP_OPENED_ALERT_KEY = "lineup_opened"
     _PLAYER_IMAGE_URL = (
         "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{season}/{player_id}.jpg"
     )
@@ -65,20 +66,45 @@ class LineupService:
                 "imageUrl": self._starter_image_url(game_id, starter_id),
             }
 
-        if self._should_notify_lineup_opened(snapshot, lineup):
+        if (
+            self._should_notify_lineup_opened(snapshot, lineup)
+            and not self._lineup_opened_already_sent(game_id)
+        ):
             try:
-                self.push_service.send_lineup_opened(
+                response = self.push_service.send_lineup_opened(
                     game_id=game_id,
                     away_team_id=lineup["away"]["teamId"],
                     away_team_name=lineup["away"].get("teamName") or lineup["away"]["teamId"],
                     home_team_id=lineup["home"]["teamId"],
                     home_team_name=lineup["home"].get("teamName") or lineup["home"]["teamId"],
                 )
+                if isinstance(response, dict) and response.get("sent"):
+                    self._mark_lineup_opened_sent(game_id)
             except Exception:
                 pass
 
         self.snapshot_store.save("lineup", game_id, lineup)
         return lineup
+
+    def _lineup_opened_already_sent(self, game_id: str) -> bool:
+        registry = getattr(self.push_service, "registry", None)
+        if registry is None:
+            return False
+        try:
+            return bool(
+                registry.pregame_alert_sent(game_id, self._LINEUP_OPENED_ALERT_KEY)
+            )
+        except Exception:
+            return False
+
+    def _mark_lineup_opened_sent(self, game_id: str) -> None:
+        registry = getattr(self.push_service, "registry", None)
+        if registry is None:
+            return
+        try:
+            registry.mark_pregame_alert_sent(game_id, self._LINEUP_OPENED_ALERT_KEY)
+        except Exception:
+            pass
 
     def _get_main_game(self, game_id: str) -> Optional[dict[str, Any]]:
         if len(game_id) < 8:

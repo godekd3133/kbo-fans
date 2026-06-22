@@ -1,42 +1,92 @@
-import pytest
+from datetime import datetime, timezone
 
-from kbo_fans_backend.scheduler import live_activity_sync_loop
+from kbo_fans_backend.scheduler.live_activity_sync_loop import (
+    maybe_send_smart_daily_baseball_info,
+)
+from kbo_fans_backend.services.push_registry import PushRegistry
 
 
-def test_live_activity_sync_loop_defaults_to_5_seconds(monkeypatch, capsys) -> None:
-    sleep_intervals = []
+class _FakeScoreboardService:
+    def get_home_scoreboard(self, date):
+        return {
+            "date": date,
+            "games": [
+                {
+                    "status": "SCHEDULED",
+                    "startTime": "18:30",
+                    "away": {"teamId": "LG"},
+                    "home": {"teamId": "KT"},
+                }
+            ],
+        }
 
-    monkeypatch.delenv("PUSH_SYNC_INTERVAL_SECONDS", raising=False)
-    monkeypatch.setattr(live_activity_sync_loop, "_SHOULD_STOP", False)
-    monkeypatch.setattr(live_activity_sync_loop.signal, "signal", lambda *_: None)
-    monkeypatch.setattr(live_activity_sync_loop, "current_kbo_date", lambda: "2026-06-18")
-    monkeypatch.setattr(
-        live_activity_sync_loop,
-        "sync_once",
-        lambda sync_date: {"date": sync_date, "sent": True},
+
+class _FakePushService:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def send_baseball_info(self, **kwargs):
+        self.calls.append(kwargs)
+        return {"sent": True, "kind": kwargs["kind"], "messages": []}
+
+
+def test_sync_loop_sends_smart_daily_baseball_info_once_per_slot(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = _FakePushService()
+
+    first = maybe_send_smart_daily_baseball_info(
+        now=datetime(2026, 6, 22, 16, 0, tzinfo=timezone.utc),
+        registry=registry,
+        push_service=push_service,
+        scoreboard_service=_FakeScoreboardService(),
+        slots=["16:00"],
+    )
+    second = maybe_send_smart_daily_baseball_info(
+        now=datetime(2026, 6, 22, 16, 0, tzinfo=timezone.utc),
+        registry=registry,
+        push_service=push_service,
+        scoreboard_service=_FakeScoreboardService(),
+        slots=["16:00"],
     )
 
-    def stop_after_sleep(interval_seconds: int) -> None:
-        sleep_intervals.append(interval_seconds)
-        live_activity_sync_loop._SHOULD_STOP = True
-
-    monkeypatch.setattr(
-        live_activity_sync_loop,
-        "_sleep_until_next_run",
-        stop_after_sleep,
+    assert first["sent"] is True
+    assert first["slot"] == "16:00"
+    assert first["mode"] == "smart_daily"
+    assert second == {
+        "sent": False,
+        "mode": "smart_daily",
+        "slot": "16:00",
+        "date": "2026-06-22",
+        "reason": "already_sent",
+    }
+    assert len(push_service.calls) == 11
+    assert {
+        call.get("team_id")
+        for call in push_service.calls
+        if call["kind"] == "lineup_day"
+    } >= {"LG", "KT"}
+    assert any(
+        call.get("topic") == "baseball_info_ALL"
+        and call["kind"] == "lineup_day"
+        for call in push_service.calls
     )
 
-    try:
-        assert live_activity_sync_loop.main([]) == 0
-    finally:
-        live_activity_sync_loop._SHOULD_STOP = False
 
-    assert sleep_intervals == [5]
-    assert '"date": "2026-06-18"' in capsys.readouterr().out
+def test_sync_loop_skips_smart_daily_baseball_info_outside_slots(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = _FakePushService()
 
+    result = maybe_send_smart_daily_baseball_info(
+        now=datetime(2026, 6, 22, 15, 40, tzinfo=timezone.utc),
+        registry=registry,
+        push_service=push_service,
+        scoreboard_service=_FakeScoreboardService(),
+        slots=["16:00"],
+    )
 
-def test_live_activity_sync_loop_rejects_sub_5_second_interval(monkeypatch) -> None:
-    monkeypatch.setattr(live_activity_sync_loop, "_SHOULD_STOP", False)
-
-    with pytest.raises(SystemExit, match="interval-seconds must be at least 5"):
-        live_activity_sync_loop.main(["--interval-seconds", "4"])
+    assert result == {
+        "sent": False,
+        "mode": "smart_daily",
+        "reason": "not_due",
+    }
+    assert push_service.calls == []

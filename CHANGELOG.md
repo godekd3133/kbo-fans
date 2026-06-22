@@ -10,6 +10,20 @@
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-06-22
+
+### Changed
+
+- 마이팀 경기 알림은 `푸쉬 중계 받기`를 누르지 않아도 `off`가 아닌 경기 moment를 팀 topic으로 자동 구독하도록 보강
+- 특정 타 팀 경기를 따라갈 때는 마이팀 팀 topic을 유지하면서 해당 타 팀 경기만 `*_GAME_<gameId>` topic으로 추가하고, 마이팀 경기를 따라갈 때는 중복 GAME topic을 만들지 않도록 정리
+- 백엔드 sync worker가 KST 기본 슬롯에 맞춰 야구 브리프(`baseball_info`) smart daily push를 자동 발행하도록 연결
+- 알림함 화면 기준 이미지가 문서와 생성 스크립트가 가리키는 저장소 경로에 포함되도록 보강
+
+### Fixed
+
+- `summary` 또는 `liveOnly`로 저장된 마이팀 경기 종료, 라인업 공개, 이닝 변경 같은 enabled moment가 원격 push topic에서 빠질 수 있던 문제를 보정
+- 백엔드 sync worker가 라인업 공개 상태 변화를 자동 감지해 `lineup_opened` 원격 push를 발행하고, 라인업 API 경로와 중복 발송하지 않도록 보정
+
 ## [0.1.5] - 2026-06-22
 
 ### Changed

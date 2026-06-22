@@ -2,6 +2,66 @@
 
 ---
 
+## 2026-06-22: 0.1.6 마이팀 자동 경기 알림 릴리즈 준비
+
+### 결정
+- release gate 기준으로 tracked 변경은 app/backend/docs/infra에 걸친 push/Live Activity/runtime 동작 변경이라 다음 numeric release 대상이다.
+- 다음 버전은 현재 baseline `0.1.5+72` 다음인 `0.1.6+73`으로 정한다.
+- 포함 대상은 tracked 변경 전체와 문서/스크립트가 의도적으로 참조하는 `docs/design_refs/2026-06-19-notification-inbox-reference.png`다.
+- 제외 대상은 `artifacts/`, `output/`, 루트 일회성 스크린샷, 개인 office 문서, build 산출물/cache다.
+- 변경이 push topic, scheduler, backend worker 환경에 영향을 주므로 backend/API 검증과 release health check를 릴리스 gate에 포함한다.
+
+### 진행
+- [x] `git status --short --branch --untracked-files=all`로 포함/제외 대상 분류
+- [x] `0.1.6+73` version surface 업데이트: `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`
+- [x] 검증: `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] 검증: `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`25 passed`)
+- [x] 검증: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_lineup.py backend/tests/test_live_activity_sync_loop.py backend/tests/test_push_receipt_status_script.py` (`75 passed`)
+- [x] 검증: `backend/.venv/bin/python -m ruff check ...` (`All checks passed`)
+- [x] 검증: `python3 -m compileall backend/src`
+- [x] 검증: `git diff --check`
+- [x] 검증: `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh` (`Release API health gate passed`)
+- [x] 원격 확인: `git ls-remote git@github-personal:godekd3133/kbo-fans.git refs/heads/main refs/tags/0.1.6`에서 `main`만 확인되고 `0.1.6` 태그 없음
+
+---
+
+## 2026-06-22: 마이팀 자동 경기 push topic 보강
+
+### 결정
+- 사장님 요구는 "푸쉬 중계 받기" 버튼을 누른 selected-game follow가 아니라, 마이팀을 선택한 사용자가 경기 시간에 자동으로 중계성 push를 받는 것이다.
+- 현재 앱/backend topic 계산은 `followedGameIds`가 없으면 `summary` / `liveOnly` delivery의 `game_end`, `lineup_opened`, `inning_change` 등을 마이팀 team topic에서 제외해 버튼 없는 마이팀 자동 수신 범위가 부족했다.
+- 마이팀 team topic은 `off`가 아닌 enabled game moment를 자동 구독한다. 타 팀 경기를 직접 follow하면 해당 경기의 GAME topic도 추가하고, follow 대상이 마이팀 경기이면 team topic만 유지해 중복 수신을 피한다.
+- `baseball_info`는 경기 단건 moment가 아니므로 기존 팀/전체 topic 기준을 유지한다.
+- 추가 푸시 감사 결과 `lineup_opened`는 앱/backend topic과 `send_lineup_opened` 발송 함수는 있었지만, 상시 `sync-worker`의 scoreboard diff 경로에서 자동 발행되지 않았다. 라인업 API를 누군가 호출한 경우에만 발송될 수 있어 앱 종료/무조작 자동 수신 요구와 맞지 않았다.
+- `lineup_opened`는 scheduler가 예정 경기 `lineupOpened=false -> true` 전환을 감지해 발행하고, 같은 게임의 라인업 API 발송 경로와 registry key를 공유해 중복 발송을 막는다.
+- `baseball_info`는 앱 topic 구독과 backend 발송 CLI는 있었지만, 운영 `sync-worker`의 반복 루프에 자동 실행이 묶여 있지 않았다. KST 기본 슬롯 `09:30,16:00,22:30`에서 smart daily 브리프를 하루 한 번씩 발행하도록 연결한다.
+
+### 진행
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart --plain-name '마이팀은 푸쉬 중계 받기 없이 enabled game moment를 팀 토픽으로 구독한다'` 실패 (`game_end_LG` 누락)
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_build_topics_respects_delivery_modes` 실패 (`summary` / `live_only` 마이팀 topic 누락)
+- [x] 앱 `buildPushTopics`가 마이팀 game moment는 `enablesFollowedGamePush` 기준으로 team topic을 만들고, 마이팀 외 followed game만 GAME topic을 추가하도록 변경
+- [x] backend `PushService._build_topics`와 registry resubscribe 경로도 같은 topic 정책으로 정렬
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_scoreboard_sync_pushes_lineup_opened_after_baseline` 실패 (`lineup_opened` scheduler 자동 발행 없음)
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_lineup.py::test_lineup_service_marks_lineup_opened_after_push backend/tests/test_lineup.py::test_lineup_service_skips_lineup_opened_when_scheduler_already_sent`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_push_registry_tracks_multiple_pregame_alert_keys backend/tests/test_push_service.py::test_scoreboard_sync_pushes_lineup_opened_after_baseline` 실패
+- [x] backend `LiveActivityScoreboardSyncService`가 예정 경기 라인업 공개 전환을 `lineup_opened` moment로 발행하도록 보강
+- [x] backend `PushService.send_game_moment(moment="lineup_opened")` copy를 `send_lineup_opened`와 같은 라인업 공개 문구로 정렬
+- [x] `PushRegistry`의 pregame alert state를 게임당 여러 key 누적 구조로 확장하고, scheduler/lineup API가 `lineup_opened` 발송 기록을 공유해 중복 발송을 피하도록 보강
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_scoreboard_sync_pushes_lineup_opened_after_baseline backend/tests/test_push_service.py::test_send_game_moment_lineup_opened_uses_lineup_copy`
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_lineup.py::test_lineup_service_marks_lineup_opened_after_push backend/tests/test_lineup.py::test_lineup_service_skips_lineup_opened_when_scheduler_already_sent`, `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_push_registry_tracks_multiple_pregame_alert_keys backend/tests/test_push_service.py::test_scoreboard_sync_pushes_lineup_opened_after_baseline`
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_live_activity_sync_loop.py` 실패 (`maybe_send_smart_daily_baseball_info` 미구현)
+- [x] `live_activity_sync_loop`가 KST smart daily 슬롯에서 `baseball_info.send_smart_daily`를 호출하고, `scheduledAlertStates` registry key로 같은 날짜/슬롯 중복 발송을 막도록 보강
+- [x] ECS sync-worker task definition에 `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES=09:30,16:00,22:30` 기본 슬롯을 명시
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_live_activity_sync_loop.py` (`2 passed`)
+- [x] 검증: `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`25 passed`)
+- [x] 검증: `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] 검증: `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/scheduler/live_activity_sync_loop.py backend/src/kbo_fans_backend/services/lineup.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/tests/test_live_activity_sync_loop.py backend/tests/test_lineup.py backend/tests/test_push_service.py` (`All checks passed`)
+- [x] 검증: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py backend/tests/test_lineup.py backend/tests/test_baseball_info_scheduler.py backend/tests/test_live_activity_sync_loop.py` (`84 passed`)
+- [x] 검증: `python3 -m json.tool infra/aws/ecs-fargate/task-definition-sync-worker.json >/dev/null`
+- [x] 검증: `python3 -m compileall backend/src`
+- [x] 검증: `git diff --check`
+
+---
+
 ## 2026-06-22: 0.1.5 팔로우 경기 enabled moment GAME topic 보강
 
 ### 결정

@@ -271,17 +271,48 @@ class PushRegistry:
         state = states.get(game_id)
         if not isinstance(state, dict):
             return False
+        alert_keys = state.get("alertKeys")
+        if isinstance(alert_keys, list):
+            return alert_key in {str(item) for item in alert_keys}
         return str(state.get("alertKey") or "") == alert_key
 
     def mark_pregame_alert_sent(self, game_id: str, alert_key: str) -> dict[str, Any]:
         with self._mutate_data() as data:
             states = data.setdefault("pregameAlertStates", {})
+            previous = states.get(game_id)
+            previous_keys: list[str] = []
+            if isinstance(previous, dict):
+                alert_keys = previous.get("alertKeys")
+                if isinstance(alert_keys, list):
+                    previous_keys = [str(item) for item in alert_keys]
+                elif previous.get("alertKey"):
+                    previous_keys = [str(previous.get("alertKey"))]
+            if alert_key not in previous_keys:
+                previous_keys.append(alert_key)
             state = {
                 "gameId": game_id,
                 "alertKey": alert_key,
+                "alertKeys": previous_keys,
                 "updatedAt": _now_iso(),
             }
             states[game_id] = state
+            return state
+
+    def scheduled_alert_sent(self, alert_key: str) -> bool:
+        data = self._load()
+        states = data.get("scheduledAlertStates", {})
+        if not isinstance(states, dict):
+            return False
+        return alert_key in states
+
+    def mark_scheduled_alert_sent(self, alert_key: str) -> dict[str, Any]:
+        with self._mutate_data() as data:
+            states = data.setdefault("scheduledAlertStates", {})
+            state = {
+                "alertKey": alert_key,
+                "updatedAt": _now_iso(),
+            }
+            states[alert_key] = state
             return state
 
     def record_sync_heartbeat(self, payload: dict[str, Any]) -> dict[str, Any]:

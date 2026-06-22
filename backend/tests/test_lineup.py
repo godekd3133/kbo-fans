@@ -1,6 +1,7 @@
 import pytest
 
 from kbo_fans_backend.services.lineup import LineupService
+from kbo_fans_backend.services.push_registry import PushRegistry
 from kbo_fans_backend.storage import JsonSnapshotStore
 
 
@@ -46,6 +47,16 @@ class _StubMainCrawler:
 class _NoopPushService:
     def send_lineup_opened(self, **kwargs):
         return None
+
+
+class _RecordingPushService:
+    def __init__(self, registry: PushRegistry) -> None:
+        self.registry = registry
+        self.calls = []
+
+    def send_lineup_opened(self, **kwargs):
+        self.calls.append(kwargs)
+        return {"sent": True}
 
 
 def test_lineup_starter_images_are_built_from_main_game(tmp_path) -> None:
@@ -129,3 +140,37 @@ def test_lineup_service_does_not_use_snapshot_for_current_game_failure(tmp_path)
 
     with pytest.raises(RuntimeError, match="lineup unavailable"):
         service.get_lineup("29990101LGOB0")
+
+
+def test_lineup_service_marks_lineup_opened_after_push(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = _RecordingPushService(registry)
+    service = LineupService(
+        lineup_crawler=_StubLineupCrawler(),
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+        push_service=push_service,
+    )
+
+    service.get_lineup("20260425LGOB0")
+
+    assert len(push_service.calls) == 1
+    assert registry.pregame_alert_sent("20260425LGOB0", "lineup_opened") is True
+
+
+def test_lineup_service_skips_lineup_opened_when_scheduler_already_sent(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    registry.mark_pregame_alert_sent("20260425LGOB0", "lineup_opened")
+    push_service = _RecordingPushService(registry)
+    service = LineupService(
+        lineup_crawler=_StubLineupCrawler(),
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+        push_service=push_service,
+    )
+
+    service.get_lineup("20260425LGOB0")
+
+    assert push_service.calls == []
