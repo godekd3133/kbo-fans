@@ -11,11 +11,16 @@
 
 ### 완료
 - [x] 앱 버전과 릴리즈 문서를 `0.1.0+67` / tag `0.1.0` 기준으로 동기화
+- [x] `0.1.0` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27929744371`, head `94fc673`, conclusion `success`, `KBO_BACKEND_IMAGE_TAG=0.1.0`, ECR digest `sha256:6b9d35ffbc27a1cd16f3c449d3fca70385f6e0f3ae7bd4fcd305d7fdbd6667bb`, `readyForIphoneOnlyDemo=true`, scheduler age 2초
+- [x] topic 재등록 결과 확인: artifact `push-topic-resubscribe.json`, `registeredDevices=15`, `eligibleDevices=15`, `subscriptionsAttempted=120`, `unsubscriptionsAttempted=0`, `topicResultCount=80`
+- [x] 운영 release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; `2026-06-22`은 scoreboard game이 없어 relay endpoint는 skip
+- [x] `0.1.0 (67)` IPA archive/upload 성공 확인: release worktree `/tmp/kbo_fans_release_0_1_0`, commit `94fc673`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.0/67`, production APNs entitlement, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, App Store Connect `Upload succeeded` / `Uploaded package is processing`; `objective_c.framework` dSYM warning은 기존과 동일하게 남음
+- [x] App Store Connect build `67` 처리 완료 확인: build id `21f3d895-d02e-4bb2-991f-58ca8023173c`, `processingState=VALID`, `usesNonExemptEncryption=false`, expiration `2026-09-19T21:40:12-07:00`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `67` 연결, 이전 build `66` 관계 제거. 최종 그룹 build 목록은 `67` 단독 연결
+- [x] build `67` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
+- [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
 
 ### 진행 예정
-- [ ] `0.1.0` backend API/worker deploy와 topic 재등록 완료
-- [ ] `0.1.0 (67)` IPA archive/upload 완료
-- [ ] App Store Connect build `67` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
 - [ ] GitHub Release `0.1.0` 생성 및 최종 release evidence 기록
 
 ---
