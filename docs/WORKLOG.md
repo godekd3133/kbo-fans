@@ -2,6 +2,19 @@
 
 ---
 
+## 2026-06-22: 외부 TestFlight 최신 빌드 반복 확인
+
+### 완료
+- [x] App Store Connect API로 최신 valid build 재확인: `0.0.63 (63)`, build id `a8f8b1b4-34fd-4107-832c-fcb2f0b1bc71`, `processingState=VALID`, expiration `2026-09-18`, `usesNonExemptEncryption=false`
+- [x] 외부 TestFlight 그룹 `External Testers` build 목록 재확인: build `63` 단독 연결, 제거할 이전 build 없음
+- [x] build `63` Beta App Review 상태 재확인: `betaReviewState=WAITING_FOR_REVIEW`, `submittedDate=2026-06-20T03:30:09-07:00`
+- [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
+
+### 남은 확인
+- [ ] Apple Beta App Review 승인 후 외부 테스터에게 `0.0.63 (63)` 설치 가능 상태가 노출되는지 확인
+
+---
+
 ## 2026-06-22: 외부 TestFlight 최신 빌드 재확인 및 release DoD 고정
 
 ### 완료
