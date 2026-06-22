@@ -10,11 +10,16 @@
 
 ### 완료
 - [x] 앱 버전과 릴리즈 문서를 `0.0.66+66` / tag `0.0.66` 기준으로 동기화
+- [x] `0.0.66` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27929100200`, head `88d5edc`, conclusion `success`, `KBO_BACKEND_IMAGE_TAG=0.0.66`, ECR digest `sha256:06583292d3aad6ac6b828ecf6f2053e995f63fd8a9ee302a0995074d0d15bd96`, `readyForIphoneOnlyDemo=true`, scheduler age 0초
+- [x] topic 재등록 결과 확인: artifact `push-topic-resubscribe.json`, `registeredDevices=14`, `eligibleDevices=14`, `subscriptionsAttempted=112`, `unsubscriptionsAttempted=37`, `topicResultCount=72`
+- [x] 운영 release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; `2026-06-22`은 scoreboard game이 없어 relay endpoint는 skip
+- [x] `0.0.66 (66)` IPA archive/upload 성공 확인: release worktree `/tmp/kbo_fans_release_0_0_66`, commit `88d5edc`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.0.66/66`, production APNs entitlement, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, App Store Connect `Upload succeeded` / `Uploaded package is processing`; `objective_c.framework` dSYM warning은 기존과 동일하게 남음
+- [x] App Store Connect build `66` 처리 완료 확인: build id `578a5064-ff40-4e22-bd2d-488576d9308d`, `processingState=VALID`, `usesNonExemptEncryption=false`, expiration `2026-09-19T21:21:18-07:00`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `66` 연결, 이전 build `65` 관계 제거. 최종 그룹 build 목록은 `66` 단독 연결
+- [x] build `66` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
+- [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
 
 ### 진행 예정
-- [ ] `0.0.66` backend API/worker deploy와 topic 재등록 완료
-- [ ] `0.0.66 (66)` IPA archive/upload 완료
-- [ ] App Store Connect build `66` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
 - [ ] GitHub Release `0.0.66` 생성 및 최종 release evidence 기록
 
 ---
