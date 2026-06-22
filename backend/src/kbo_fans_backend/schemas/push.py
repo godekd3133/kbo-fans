@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -52,6 +52,17 @@ class PushTestRequest(BaseModel):
 
 class PushDeviceTestRequest(BaseModel):
     deviceToken: str
+
+
+class PushReceiptRequest(BaseModel):
+    deviceToken: str
+    messageId: Optional[str] = None
+    source: str
+    type: Optional[str] = None
+    gameId: Optional[str] = None
+    route: Optional[str] = None
+    receivedAt: Optional[str] = None
+    data: dict[str, Any] = Field(default_factory=dict)
 
 
 class PushBaseballInfoRequest(BaseModel):

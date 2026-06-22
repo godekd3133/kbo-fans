@@ -14,6 +14,7 @@ from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.schemas.push import (
     LiveActivityRegisterRequest,
     LiveActivityUnregisterRequest,
+    PushReceiptRequest,
     PushRegisterRequest,
 )
 
@@ -129,6 +130,48 @@ class PushRegistry:
         data = self._load()
         devices = data.get("devices", {})
         return device_token in devices
+
+    def record_push_receipt(self, payload: PushReceiptRequest) -> Optional[dict[str, Any]]:
+        device_token = payload.deviceToken.strip()
+        if not device_token:
+            return None
+
+        with self._mutate_data() as data:
+            devices = data.setdefault("devices", {})
+            registration = devices.get(device_token)
+            if not isinstance(registration, dict):
+                return None
+
+            receipts = data.setdefault("pushReceipts", [])
+            if not isinstance(receipts, list):
+                receipts = []
+                data["pushReceipts"] = receipts
+
+            receipt = {
+                "messageId": payload.messageId or "",
+                "source": payload.source,
+                "type": payload.type or "",
+                "gameId": payload.gameId or "",
+                "route": payload.route or "",
+                "receivedAt": payload.receivedAt or _now_iso(),
+                "recordedAt": _now_iso(),
+                "data": _receipt_data(payload.data),
+                "deviceTokenSuffix": device_token[-8:],
+                "platform": str(registration.get("platform") or ""),
+                "myTeam": str(registration.get("myTeam") or ""),
+                "followedGameIds": _clean_string_list(registration.get("followedGameIds") or []),
+            }
+            receipts.append(receipt)
+            del receipts[:-50]
+            return receipt
+
+    def recent_push_receipts(self, *, limit: int = 10) -> list[dict[str, Any]]:
+        data = self._load()
+        receipts = data.get("pushReceipts")
+        if not isinstance(receipts, list):
+            return []
+        cleaned = [receipt for receipt in receipts if isinstance(receipt, dict)]
+        return cleaned[-limit:]
 
     def device_registrations(self) -> list[dict[str, Any]]:
         data = self._load()
@@ -262,6 +305,7 @@ class PushRegistry:
         data.setdefault("scoreboardStates", {})
         data.setdefault("relayStates", {})
         data.setdefault("pregameAlertStates", {})
+        data.setdefault("pushReceipts", [])
         data.setdefault("syncHeartbeat", {})
         return data
 
@@ -300,6 +344,7 @@ def _empty_registry() -> dict[str, Any]:
         "scoreboardStates": {},
         "relayStates": {},
         "pregameAlertStates": {},
+        "pushReceipts": [],
         "syncHeartbeat": {},
     }
 
@@ -332,4 +377,15 @@ def _clean_string_list(values: list[str]) -> list[str]:
             continue
         seen.add(text)
         cleaned.append(text)
+    return cleaned
+
+
+def _receipt_data(values: dict[str, Any]) -> dict[str, str]:
+    allowed = {"topic", "collapseKey", "kind"}
+    cleaned: dict[str, str] = {}
+    for key, value in values.items():
+        key_text = str(key)
+        if key_text not in allowed:
+            continue
+        cleaned[key_text] = str(value)[:200]
     return cleaned

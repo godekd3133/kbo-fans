@@ -83,6 +83,7 @@ Future<void> _recordRemotePush(
 }) async {
   try {
     final data = Map<String, dynamic>.from(message.data);
+    final receivedAt = DateTime.now();
     final title =
         message.notification?.title ??
         _pushString(data['title']) ??
@@ -102,10 +103,50 @@ Future<void> _recordRemotePush(
       route: route,
       source: source,
       read: read,
-      receivedAt: DateTime.now(),
+      receivedAt: receivedAt,
+    );
+    await _reportRemotePushReceipt(
+      message,
+      source: source,
+      route: route,
+      receivedAt: receivedAt,
     );
   } catch (error) {
     DevConsole.instance.warn('Push inbox record skipped: $error');
+  }
+}
+
+Future<void> _reportRemotePushReceipt(
+  RemoteMessage message, {
+  required String source,
+  required String route,
+  required DateTime receivedAt,
+}) async {
+  if (!shouldUseRemotePushServices(
+    isWeb: kIsWeb,
+    useBackendApi: AppConfig.instance.shouldUseBackendApi,
+  )) {
+    return;
+  }
+
+  try {
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token == null || token.isEmpty) {
+      return;
+    }
+    await ApiClient().post(
+      '/push/receipt',
+      data: buildPushReceiptPayload(
+        deviceToken: token,
+        messageId: message.messageId,
+        source: source,
+        route: route,
+        receivedAt: receivedAt,
+        data: message.data,
+      ),
+    );
+  } catch (error) {
+    DevConsole.instance.warn('Push receipt report skipped: $error');
   }
 }
 
@@ -1020,6 +1061,50 @@ Map<String, dynamic> buildPushRegistrationPayload({
 @visibleForTesting
 Map<String, dynamic> buildPushDeviceTestPayload({required String deviceToken}) {
   return {'deviceToken': deviceToken};
+}
+
+@visibleForTesting
+Map<String, dynamic> buildPushReceiptPayload({
+  required String deviceToken,
+  required String? messageId,
+  required String source,
+  required String route,
+  required DateTime receivedAt,
+  required Map<String, dynamic> data,
+}) {
+  final payload = <String, dynamic>{
+    'deviceToken': deviceToken,
+    'source': source,
+    'receivedAt': receivedAt.toUtc().toIso8601String(),
+    'data': _pushReceiptData(data),
+  };
+  final normalizedMessageId = messageId?.trim();
+  if (normalizedMessageId != null && normalizedMessageId.isNotEmpty) {
+    payload['messageId'] = normalizedMessageId;
+  }
+  final type = _pushString(data['type']);
+  if (type != null) {
+    payload['type'] = type;
+  }
+  final gameId = _pushString(data['gameId']);
+  if (gameId != null) {
+    payload['gameId'] = gameId;
+  }
+  if (route.isNotEmpty) {
+    payload['route'] = route;
+  }
+  return payload;
+}
+
+Map<String, String> _pushReceiptData(Map<String, dynamic> data) {
+  final receiptData = <String, String>{};
+  for (final key in const ['topic', 'collapseKey', 'kind']) {
+    final value = _pushString(data[key]);
+    if (value != null) {
+      receiptData[key] = value;
+    }
+  }
+  return receiptData;
 }
 
 bool shouldUseRemotePushServices({

@@ -17,6 +17,7 @@ from kbo_fans_backend.schemas.push import (
     NotificationDeliveryModes,
     NotificationSettings,
     PushDeviceTestRequest,
+    PushReceiptRequest,
     PushRegisterRequest,
     PushTestRequest,
 )
@@ -582,6 +583,77 @@ def test_send_device_test_push_rejects_unregistered_token(tmp_path) -> None:
         "reason": "device token is not registered",
     }
     assert messaging.sent_messages == []
+
+
+def test_record_push_receipt_persists_registered_device_receipt(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service.register(
+        PushRegisterRequest(
+            deviceToken="registered-token-123456",
+            platform="ios",
+            myTeam="OB",
+            followedGameIds=["20260620HTKT0"],
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=False,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+
+    response = service.record_receipt(
+        PushReceiptRequest(
+            deviceToken="registered-token-123456",
+            messageId="projects/kbo-fans-47189/messages/receipt-1",
+            source="foreground",
+            type="hit",
+            gameId="20260620HTKT0",
+            route="/game/20260620HTKT0?tab=relay",
+            receivedAt="2026-06-22T04:50:00Z",
+            data={"topic": "hit_GAME_20260620HTKT0"},
+        )
+    )
+
+    assert response["recorded"] is True
+    assert response["registered"] is True
+    receipts = registry.recent_push_receipts()
+    assert len(receipts) == 1
+    assert receipts[0]["deviceTokenSuffix"] == "n-123456"
+    assert receipts[0]["myTeam"] == "OB"
+    assert receipts[0]["followedGameIds"] == ["20260620HTKT0"]
+    assert receipts[0]["messageId"] == "projects/kbo-fans-47189/messages/receipt-1"
+    assert receipts[0]["source"] == "foreground"
+    assert receipts[0]["type"] == "hit"
+    assert receipts[0]["gameId"] == "20260620HTKT0"
+    assert receipts[0]["route"] == "/game/20260620HTKT0?tab=relay"
+    assert receipts[0]["data"] == {"topic": "hit_GAME_20260620HTKT0"}
+    assert "deviceToken" not in receipts[0]
+
+
+def test_record_push_receipt_rejects_unregistered_token(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+
+    response = service.record_receipt(
+        PushReceiptRequest(
+            deviceToken="missing-token",
+            messageId="message-1",
+            source="foreground",
+        )
+    )
+
+    assert response == {
+        "recorded": False,
+        "registered": False,
+        "reason": "device token is not registered",
+    }
+    assert registry.recent_push_receipts() == []
 
 
 def test_resubscribe_registered_topics_rebuilds_followed_game_topics(tmp_path) -> None:
@@ -1374,6 +1446,16 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
             ),
         )
     )
+    service.record_receipt(
+        PushReceiptRequest(
+            deviceToken="secret-fcm-token",
+            messageId="message-1",
+            source="foreground",
+            type="hit",
+            gameId="20260618KTOB0",
+            route="/game/20260618KTOB0?tab=relay",
+        )
+    )
     settings = _settings(
         app_env="release",
         firebase_service_account_path=str(firebase_path),
@@ -1391,6 +1473,9 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
     assert status["registry"]["topicCounts"]["hit_GAME_20260618KTOB0"] == 1
     assert "game_start_soon_OB" not in status["registry"]["topicCounts"]
     assert "hit_OB" not in status["registry"]["topicCounts"]
+    assert status["registry"]["pushReceiptCount"] == 1
+    assert status["registry"]["recentPushReceipts"][0]["type"] == "hit"
+    assert status["registry"]["recentPushReceipts"][0]["deviceTokenSuffix"] == "cm-token"
     assert "secret-fcm-token" not in str(status["registry"])
 
 
@@ -1582,6 +1667,34 @@ def test_send_device_test_push_endpoint_does_not_require_sync_secret(monkeypatch
     assert response.status_code == 200
     assert captured["deviceToken"] == "registered-token"
     assert response.json()["data"]["sent"] is True
+
+
+def test_record_push_receipt_endpoint_does_not_require_sync_secret(monkeypatch) -> None:
+    captured = {}
+
+    class FakeService:
+        def record_receipt(self, payload) -> dict:
+            captured["deviceToken"] = payload.deviceToken
+            captured["source"] = payload.source
+            return {"recorded": True, "registered": True}
+
+    monkeypatch.setattr(push_routes, "service", FakeService())
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/push/receipt",
+        json={
+            "deviceToken": "registered-token",
+            "messageId": "message-1",
+            "source": "foreground",
+            "type": "hit",
+            "gameId": "20260620HTKT0",
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured == {"deviceToken": "registered-token", "source": "foreground"}
+    assert response.json()["data"]["recorded"] is True
 
 
 def test_push_config_status_allows_missing_sync_secret_for_diagnostics(monkeypatch) -> None:

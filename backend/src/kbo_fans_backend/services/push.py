@@ -11,6 +11,7 @@ from kbo_fans_backend.schemas.push import (
     LiveActivityUnregisterRequest,
     LiveActivityUpdateRequest,
     PushDeviceTestRequest,
+    PushReceiptRequest,
     PushRegisterRequest,
     PushTestRequest,
 )
@@ -176,6 +177,21 @@ class PushService:
             "registered": True,
             "target": "token",
             "messageId": response,
+        }
+
+    def record_receipt(self, payload: PushReceiptRequest) -> dict[str, Any]:
+        receipt = self.registry.record_push_receipt(payload)
+        if receipt is None:
+            return {
+                "recorded": False,
+                "registered": False,
+                "reason": "device token is not registered",
+            }
+        return {
+            "recorded": True,
+            "registered": True,
+            "messageId": receipt.get("messageId", ""),
+            "recordedAt": receipt.get("recordedAt", ""),
         }
 
     def send_baseball_info(

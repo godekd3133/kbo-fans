@@ -2,6 +2,22 @@
 
 ---
 
+## 2026-06-22: 0.1.1 원격 push receipt 관측 경로
+
+### 결정
+- 팔로우 경기 topic 발송은 GitHub Actions `Push Test Notification` run `27930288701`로 FCM message id까지 확인됐지만, 실제 iPhone receipt는 단말 관측 없이는 완료로 닫을 수 없다.
+- 다음 TestFlight/backend 기준은 `0.1.1+68` / tag `0.1.1`로 올린다. 앱 동작과 backend API가 모두 바뀌었기 때문에 `0.1.0+67` release note 보강만으로는 부족하다.
+
+### 진행
+- [x] 앱이 remote push를 foreground/background/opened 상태로 처리할 때 `/api/push/receipt`로 receipt를 보고하도록 추가
+- [x] backend는 registry에 이미 저장된 FCM token만 receipt로 인정하고, 최근 receipt 요약에는 raw device token을 노출하지 않음
+- [x] `GET /api/push/config-status` registry 진단에 `pushReceiptCount`, `recentPushReceipts` 추가
+- [x] API 계약 변경을 `docs/APP_SPEC.md`에 반영
+- [x] 검증: `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub` (`174 passed`), `backend/.venv/bin/pytest -q` (`181 passed`), `backend/.venv/bin/python -m ruff check ...`, `python3 -m compileall backend/src`
+- [ ] `0.1.1` backend deploy, topic resubscribe, TestFlight upload/external tester handoff, 실제 iPhone receipt 확인
+
+---
+
 ## 2026-06-22: 0.1.0 팔로우 경기 push topic milestone 릴리즈
 
 ### 결정
@@ -20,6 +36,7 @@
 - [x] build `67` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
 - [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
 - [x] 팔로우 경기 topic 원격 push 발송 확인: GitHub Actions `Push Test Notification` run `27930288701`, target `hit_GAME_20260620HTKT0`, `push_test_status=ok`, Firebase message id `projects/kbo-fans-47189/messages/8565774613501533378`
+- [x] 실제 receipt 확인을 원격으로 닫을 수 있도록 앱의 remote push 처리 시 `/api/push/receipt`로 `deviceToken`/`messageId`/`source`/`type`/`gameId`/`route`를 보고하고, backend registry/config-status가 token 원문 없이 최근 receipt를 보여주도록 보강
 - [ ] 실제 iPhone receipt 확인은 남음: 현재 작업 머신에서 `xcrun devicectl list devices`와 `fvm flutter devices --machine` 모두 8초 timeout이라 단말 foreground/background/terminated 수신 여부를 직접 볼 수 없음
 
 ### 진행 예정

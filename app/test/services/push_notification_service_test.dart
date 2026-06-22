@@ -223,6 +223,30 @@ void main() {
     expect(payload, {'deviceToken': 'fcm-token'});
   });
 
+  test('원격 push receipt payload는 등록 토큰과 라우팅 단서만 보낸다', () {
+    final payload = buildPushReceiptPayload(
+      deviceToken: 'fcm-token',
+      messageId: 'message-1',
+      source: 'foreground',
+      route: '/game/20260620HTKT0?tab=relay',
+      receivedAt: DateTime.utc(2026, 6, 22, 4, 50),
+      data: const {
+        'type': 'hit',
+        'gameId': '20260620HTKT0',
+        'topic': 'hit_GAME_20260620HTKT0',
+      },
+    );
+
+    expect(payload['deviceToken'], 'fcm-token');
+    expect(payload['messageId'], 'message-1');
+    expect(payload['source'], 'foreground');
+    expect(payload['type'], 'hit');
+    expect(payload['gameId'], '20260620HTKT0');
+    expect(payload['route'], '/game/20260620HTKT0?tab=relay');
+    expect(payload['receivedAt'], '2026-06-22T04:50:00.000Z');
+    expect(payload['data'], {'topic': 'hit_GAME_20260620HTKT0'});
+  });
+
   test('라인업 공개 push data는 라인업 탭 상세 route로 변환한다', () {
     final route = pushNotificationRouteForData({
       'type': 'lineup_opened',

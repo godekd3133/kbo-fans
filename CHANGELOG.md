@@ -10,6 +10,17 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-22
+
+### Changed
+
+- 원격 push를 앱이 처리할 때 backend에 receipt를 남기도록 보강해 팔로우 경기 알림의 실제 수신 확인 경로를 추가
+- backend `config-status`가 최근 push receipt 요약을 token 원문 없이 보여주도록 확장
+
+### Fixed
+
+- 팔로우 경기 topic 발송은 성공했지만 실제 단말 receipt 확인이 운영 registry에 남지 않던 관측 공백을 보정
+
 ## [0.1.0] - 2026-06-22
 
 ### Changed

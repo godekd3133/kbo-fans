@@ -16,6 +16,7 @@ from kbo_fans_backend.schemas.push import (
     LiveActivityUpdateRequest,
     PushBaseballInfoRequest,
     PushDeviceTestRequest,
+    PushReceiptRequest,
     PushRegisterRequest,
     PushTestRequest,
 )
@@ -51,6 +52,11 @@ def send_test_push(
 @router.post("/test-device", response_model=ApiEnvelope[dict])
 def send_device_test_push(payload: PushDeviceTestRequest) -> ApiEnvelope[dict]:
     return ApiEnvelope.success_response(service.send_device_test(payload))
+
+
+@router.post("/receipt", response_model=ApiEnvelope[dict])
+def record_push_receipt(payload: PushReceiptRequest) -> ApiEnvelope[dict]:
+    return ApiEnvelope.success_response(service.record_receipt(payload))
 
 
 @router.post("/baseball-info", response_model=ApiEnvelope[dict])
