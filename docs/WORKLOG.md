@@ -129,9 +129,11 @@
 - [x] 최종 `0.0.64` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27927754039`, head `048272e`, conclusion `success`, `KBO_BACKEND_IMAGE_TAG=0.0.64`, ECR digest `sha256:be6e93a22e3cb8958a8f9bd2b994a2e684518724c3ad4d2919f531dbf1b15907`, `readyForIphoneOnlyDemo=true`, scheduler age 0초
 - [x] topic 재등록 결과 확인: artifact `push-topic-resubscribe.json`, `registeredDevices=13`, `eligibleDevices=13`, `subscriptionsAttempted=104`, `unsubscriptionsAttempted=0`; followed game `20260620HTKT0`에 `scoring_GAME_...`, `hit_GAME_...`, `homerun_GAME_...`, `game_start_GAME_...`, `game_start_soon_GAME_...`, `at_bat_GAME_...`, `reversal_GAME_...` 구독 성공
 - [x] 최종 운영 release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; `2026-06-22`은 scoreboard game이 없어 relay endpoint는 skip
-- [ ] `0.0.64 (64)` IPA archive/upload 완료
-- [ ] App Store Connect build `64` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
-- [ ] GitHub Release `0.0.64` 생성 및 최종 release evidence 기록
+- [x] `0.0.64 (64)` IPA archive/upload 성공 확인: release worktree `/tmp/kbo_fans_release_0_0_64`, commit `3f3e50f`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.0.64/64`, production APNs entitlement, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, App Store Connect `Upload succeeded` / delivery UUID `badedf2b-924d-4095-b2e0-97d7cb9495d3`
+- [x] App Store Connect build `64` 처리 완료 확인: build id `badedf2b-924d-4095-b2e0-97d7cb9495d3`, `processingState=VALID`, `usesNonExemptEncryption=false`, expiration `2026-09-20`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `64` 연결, 이전 build `63` 관계 제거. 최종 그룹 build 목록은 `64` 단독 연결
+- [x] build `64` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
+- [x] GitHub Release `0.0.64` 생성 및 최종 release evidence 기록 예정 URL: `https://github.com/godekd3133/kbo-fans/releases/tag/0.0.64`
 
 ---
 
