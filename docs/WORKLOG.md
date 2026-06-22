@@ -16,10 +16,14 @@
 - [x] topic 재동기화 시각 분리 확인: `updatedAt=2026-06-22T06:17:41.057696+00:00`, `topicsUpdatedAt=2026-06-22T06:28:14.631846+00:00`
 - [x] 검증: `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`20 passed`), `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`60 passed`), `backend/.venv/bin/python -m ruff check ...`, `python3 -m compileall backend/src`
 - [x] 운영 release API health gate 통과: `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh`, `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; 기본 HTTPS gate는 현재 임시 HTTP ALB라 실패하는 상태를 별도 제한으로 유지
-- [ ] `0.1.2 (69)` IPA archive/upload
-- [ ] App Store Connect build `69` 처리 완료 확인
-- [ ] 외부 TestFlight 그룹 `External Testers` 최신 build 연결 및 이전 build 제거
-- [ ] build `69` Beta App Review 제출 또는 기존 제출 상태 확인
+- [x] `0.1.2` backend API/worker deploy와 topic 재등록 완료: GitHub Actions `Push Demo Deploy` run `27934243360`, `KBO_BACKEND_IMAGE_TAG=0.1.2`, image `303099472043.dkr.ecr.us-east-1.amazonaws.com/kbo-fans-backend:0.1.2`, `readyForIphoneOnlyDemo=true`, scheduler age 4초
+- [x] topic 재등록 결과 확인: `registeredDevices=18`, `eligibleDevices=18`, `subscriptionsAttempted=144`, `unsubscriptionsAttempted=0`
+- [x] backend `0.1.2` 배포 후 receipt 상태 조회 run `27934503531`: `push_receipts count=0`, 팔로우 경기 기기 `VFVMugoE`의 `topicsUpdatedAt=2026-06-22T06:40:22.617429+00:00`, 새 앱 진단 필드는 아직 미등록
+- [x] `0.1.2 (69)` IPA archive/upload 성공 확인: main commit `681e492`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.2/69`, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, 업로드 IPA entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, App Store Connect `UPLOAD SUCCEEDED`, delivery UUID `bfaa104d-e145-457f-a556-060a762f83f8`
+- [x] App Store Connect build `69` 처리 완료 확인: build id `bfaa104d-e145-457f-a556-060a762f83f8`, `processingState=VALID`, expiration `2026-09-19T23:42:11-07:00`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `69` 연결, 이전 build `68` 관계 제거. 최종 그룹 build 목록은 `69` 단독 연결
+- [x] build `69` Beta App Review 제출 완료: `betaReviewState=WAITING_FOR_REVIEW`
+- [x] 외부 그룹 테스터 1명 재확인: `na***@naver.com`, `inviteType=EMAIL`, `state=INSTALLED`
 - [ ] 새 build 설치 후 앱 실행으로 push registration 재전송 확인
 - [ ] 팔로우 경기 원격 push receipt 재확인
 
