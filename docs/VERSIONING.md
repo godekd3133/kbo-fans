@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.1+68`
-- Current release tag: `0.1.1`
+- Flutter app version: `0.1.2+69`
+- Current release tag: `0.1.2`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -118,6 +118,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.0.66`: includes the followed-game push topic scope correction after `0.0.65`, narrowing immediate game moments to selected-game `*_GAME_<gameId>` topics and keeping `summary` / `liveOnly` / `off` moments out of immediate remote push topic registration.
 - `0.1.0`: Director-requested minor milestone reupload of the `0.0.66` followed-game push topic scope correction as TestFlight build `0.1.0+67`, with backend deploy, topic resubscribe, external tester handoff, and GitHub Release evidence realigned on the new milestone tag.
 - `0.1.1`: remote push receipt observability release. The app reports handled remote push receipts back to the backend, and push config diagnostics expose recent receipt summaries without raw device tokens so followed-game notification receipt can be verified after TestFlight installation.
+- `0.1.2`: push device-state diagnostics release. App push registration reports notification authorization and APNs readiness to the backend, backend config-status exposes redacted device summaries with separate app-registration and topic-sync timestamps, and followed-game receipt debugging no longer has to guess whether the installed build has re-registered.
 
 ## GitHub Release Note Template
 

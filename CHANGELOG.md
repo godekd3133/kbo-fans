@@ -10,6 +10,17 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-22
+
+### Changed
+
+- 앱이 원격 push 등록 시 알림 허용 상태, iOS 권한 상태, APNs token 준비 여부를 backend에 함께 보내도록 보강
+- backend push 진단이 팔로우 경기 등록 기기의 권한/APNs 준비 상태와 앱 등록 시각, topic 재동기화 시각을 token 원문 없이 보여주도록 확장
+
+### Fixed
+
+- topic 재등록이 앱 등록 `updatedAt`을 덮어써서 실제 단말 재등록 여부를 흐리던 문제를 `topicsUpdatedAt`으로 분리
+
 ## [0.1.1] - 2026-06-22
 
 ### Changed

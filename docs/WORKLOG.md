@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-06-22: 0.1.2 푸시 단말 상태 진단 릴리즈
+
+### 결정
+- 실제 iPhone receipt가 계속 `0`인 상태에서, backend registry에는 팔로우 경기 `20260620HTKT0` 대상 iOS 기기가 존재한다.
+- 기존 설치 빌드는 `notificationsAllowed`, `authorizationStatus`, `apnsTokenReady`를 보내지 않으므로 backend가 단말 권한/APNs 준비 상태를 판단할 수 없다.
+- 새 TestFlight 기준은 `0.1.2+69` / tag `0.1.2`로 올려, 앱이 새 push registration payload를 보내도록 한다.
+
+### 진행
+- [x] push receipt 상태 조회 run `27934079797`: `registeredDevices=18`, `followedGames=1`, `push_receipts count=0`
+- [x] 팔로우 경기 기기 확인: iOS device suffix `VFVMugoE`, `myTeam=HT`, `followed=20260620HTKT0`, `topicCount=8`
+- [x] 같은 기기의 새 진단 필드는 아직 미등록: `notificationsAllowed=None`, `authorizationStatus=-`, `apnsTokenReady=None`
+- [x] topic 재동기화 시각 분리 확인: `updatedAt=2026-06-22T06:17:41.057696+00:00`, `topicsUpdatedAt=2026-06-22T06:28:14.631846+00:00`
+- [x] 검증: `cd app && fvm flutter analyze --no-pub`, `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart` (`20 passed`), `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`60 passed`), `backend/.venv/bin/python -m ruff check ...`, `python3 -m compileall backend/src`
+- [x] 운영 release API health gate 통과: `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh`, `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200; 기본 HTTPS gate는 현재 임시 HTTP ALB라 실패하는 상태를 별도 제한으로 유지
+- [ ] `0.1.2 (69)` IPA archive/upload
+- [ ] App Store Connect build `69` 처리 완료 확인
+- [ ] 외부 TestFlight 그룹 `External Testers` 최신 build 연결 및 이전 build 제거
+- [ ] build `69` Beta App Review 제출 또는 기존 제출 상태 확인
+- [ ] 새 build 설치 후 앱 실행으로 push registration 재전송 확인
+- [ ] 팔로우 경기 원격 push receipt 재확인
+
+---
+
 ## 2026-06-22: 0.1.1 원격 push receipt 관측 경로
 
 ### 결정
