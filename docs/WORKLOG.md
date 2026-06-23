@@ -40,6 +40,8 @@
 - [x] APNs reason 정정 배포 후 운영 API `/api/health` 직접 확인: 200 `status=ok`
 - [x] APNs reason 정정 배포 후 빈 diagnostic topic FCM 서버 발송 smoke 확인: GitHub Actions `Push Test Notification` run `28013321080`, topic `diagnostic_empty_20260623_after_apns_reason_deploy`, `push_test_status=ok sent=True`, message id `projects/kbo-fans-47189/messages/9165553089324123353`
 - [x] APNs reason 정정 배포 후 `Push Receipt Status` run `28013321189` 확인: registry `registeredDevices=20`, 현재 iOS token `qJvUdSbs`는 `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`, latest registration `updatedAt=2026-06-23T08:25:30Z`. 아직 새 `원격 푸시 테스트`가 눌리지 않아 `recent_device_test`에는 배포 전 service-account 문구가 남아 있음
+- [x] Firebase Console > Project settings > Cloud Messaging > iOS app `com.kbofans.kboFans`에서 `프로덕션 APNs 인증 키` 업로드 완료. 새로고침 후 화면에 key id `V74C27LFMA`, team id `A23ZPKGMW9`가 유지되고 `프로덕션 APNs 인증 키가 없습니다` 문구가 사라진 것을 확인
+- [x] Firebase Console 프로덕션 APNs key 업로드 후 빈 diagnostic topic FCM 서버 발송 smoke 확인: GitHub Actions `Push Test Notification` run `28014828831`, topic `diagnostic_empty_20260623_after_firebase_apns_upload`, `push_test_status=ok sent=True`, message id `projects/kbo-fans-47189/messages/2672673004619705884`
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
@@ -64,8 +66,7 @@
 - [x] `git diff --check`
 
 ### 남은 확인
-- [ ] Firebase Console > Project Settings > Cloud Messaging > iOS app `com.kbofans.kboFans`에 APNs authentication key가 production/TestFlight 경로로 업로드됐는지 확인한다. 현재 서버/GitHub 값은 APNs key id `V74C27LFMA`, Team ID `A23ZPKGMW9`, Firebase project `kbo-fans-47189`.
-- [ ] Firebase Console APNs 키 확인/수정 후 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 단말 token 대상 원격 푸시 수신과 receipt를 확인한다.
+- [ ] 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 단말 token 대상 원격 푸시 수신과 receipt를 확인한다.
 
 ---
 
