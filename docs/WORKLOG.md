@@ -13,6 +13,9 @@
 - [x] backend `/push/test-device`가 Firebase 발송 예외를 잡아 `sent=false`, `registered=true`, `reason`, `errorType`을 반환하도록 보정
 - [x] 회귀 테스트 추가: 등록된 token으로 Firebase 발송이 거부돼도 endpoint/service가 500 대신 실패 응답을 만든다.
 - [x] 앱에 표시되는 self-test 실패 reason을 한국어 안내로 정리하고, 원인 확인용 `debugReason`은 별도 필드로 분리
+- [x] 사장님 iPhone 스크린샷으로 알림 권한과 로컬 알림 경로는 정상임을 확인: `로컬 알림 테스트` 배너가 표시됐고 진단 화면도 `tokenReady=true`, `remote=on` 상태
+- [x] `원격 푸시 테스트` 결과를 backend registry의 `recentDeviceTestResults`에 저장하고 `/api/push/config-status`와 `push-receipt-status.sh`에서 token 원문 없이 조회 가능하게 보강
+- [x] Firebase 발송 실패 사유를 FCM token 만료/무효, Firebase sender mismatch, APNs 인증 문제, 기타 서버 진단 필요 상태로 분류해 앱 응답 `reason`에 반영
 - [x] backend API/worker 재배포: GitHub Actions `Push Demo Deploy` run `28008388108`, image tag `0.1.6-test-device-fix-a44b7c8`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`
 - [x] 재배포 후 readiness: `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=0`
 - [x] 재배포 후 `/api/push/test-device` 미등록 token smoke 확인: 200 `sent=false registered=false reason=device token is not registered`
@@ -23,9 +26,14 @@
 - [x] `python3 -m compileall backend/src/kbo_fans_backend/services/push.py`
 - [x] `git diff --check`
 - [x] 전체 push 회귀: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`66 passed`)
+- [x] 원격 푸시 진단 보강 회귀: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_push_config_status_reports_redacted_registration_topics backend/tests/test_push_receipt_status_script.py::test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter` (`3 passed`)
+- [x] 전체 push/receipt 회귀: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`69 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/push_diagnostics.py backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/push_diagnostics.py`
+- [x] `bash -n scripts/push-receipt-status.sh`
 
 ### 남은 확인
-- [ ] 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 Firebase 발송 결과와 receipt를 확인한다.
+- [ ] 보강된 backend를 재배포한 뒤 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 Firebase 발송 결과와 receipt를 확인한다.
 
 ---
 

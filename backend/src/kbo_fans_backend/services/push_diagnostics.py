@@ -115,6 +115,7 @@ class PushConfigurationDiagnostics:
             registrations = registry.device_registrations()
             live_activity_game_ids = registry.live_activity_game_ids()
             recent_push_receipts = registry.recent_push_receipts()
+            recent_device_test_results = registry.recent_device_test_results()
         except Exception as exc:
             return {
                 "readable": False,
@@ -127,6 +128,8 @@ class PushConfigurationDiagnostics:
                 "deviceSummaries": [],
                 "pushReceiptCount": 0,
                 "recentPushReceipts": [],
+                "deviceTestResultCount": 0,
+                "recentDeviceTestResults": [],
             }
 
         topic_counts: Counter[str] = Counter()
@@ -162,6 +165,8 @@ class PushConfigurationDiagnostics:
             "deviceSummaries": _device_summaries(registrations),
             "pushReceiptCount": len(recent_push_receipts),
             "recentPushReceipts": recent_push_receipts,
+            "deviceTestResultCount": len(recent_device_test_results),
+            "recentDeviceTestResults": recent_device_test_results,
         }
 
     def _scheduler_status(self) -> dict[str, Any]:

@@ -157,11 +157,19 @@ class PushService:
     def send_device_test(self, payload: PushDeviceTestRequest) -> dict[str, Any]:
         device_token = payload.deviceToken.strip()
         if not device_token or not self.registry.has_device_token(device_token):
-            return {
+            result = {
                 "sent": False,
                 "registered": False,
                 "reason": "device token is not registered",
             }
+            if device_token:
+                self.registry.record_device_test_result(
+                    device_token=device_token,
+                    sent=False,
+                    registered=False,
+                    reason=result["reason"],
+                )
+            return result
 
         title = "KBO Fans 원격 푸시 테스트"
         body = "이 기기로 백엔드 원격 푸시가 도착했습니다."
@@ -179,19 +187,36 @@ class PushService:
         try:
             response = messaging.send(message)
         except Exception as error:
-            return {
+            reason = _push_send_error_reason(error)
+            result = {
                 "sent": False,
                 "registered": True,
-                "reason": _push_send_error_reason(error),
+                "reason": reason,
                 "errorType": type(error).__name__,
                 "debugReason": str(error).strip(),
             }
-        return {
+            self.registry.record_device_test_result(
+                device_token=device_token,
+                sent=False,
+                registered=True,
+                reason=reason,
+                error_type=result["errorType"],
+                debug_reason=result["debugReason"],
+            )
+            return result
+        result = {
             "sent": True,
             "registered": True,
             "target": "token",
             "messageId": response,
         }
+        self.registry.record_device_test_result(
+            device_token=device_token,
+            sent=True,
+            registered=True,
+            message_id=response,
+        )
+        return result
 
     def record_receipt(self, payload: PushReceiptRequest) -> dict[str, Any]:
         receipt = self.registry.record_push_receipt(payload)
@@ -725,7 +750,26 @@ def _visible_push_options(
 
 
 def _push_send_error_reason(error: Exception) -> str:
-    return "원격 푸시 발송에 실패했습니다. 앱을 다시 열고 알림 권한을 확인한 뒤 다시 시도해주세요."
+    text = str(error).strip()
+    lower_text = text.lower()
+    if (
+        "registration-token-not-registered" in lower_text
+        or "requested entity was not found" in lower_text
+        or "not registered" in lower_text
+        or "invalid registration" in lower_text
+    ):
+        return (
+            "FCM 토큰이 만료되었거나 무효입니다. "
+            "앱을 완전히 종료한 뒤 다시 열고 다시 시도해주세요."
+        )
+    if "senderid" in lower_text or "sender id" in lower_text or "mismatch" in lower_text:
+        return (
+            "Firebase 프로젝트 설정이 앱 토큰과 맞지 않습니다. "
+            "서버 Firebase 설정 확인이 필요합니다."
+        )
+    if "apns" in lower_text or "third-party auth" in lower_text:
+        return "Firebase/APNs 인증 설정 문제로 발송하지 못했습니다. 서버 설정 확인이 필요합니다."
+    return "원격 푸시 발송에 실패했습니다. 서버 진단에서 상세 사유를 확인하겠습니다."
 
 
 def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:

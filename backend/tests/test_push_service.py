@@ -895,7 +895,8 @@ def test_send_device_test_push_returns_failure_when_firebase_rejects(tmp_path) -
     response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
 
     expected_reason = (
-        "원격 푸시 발송에 실패했습니다. 앱을 다시 열고 알림 권한을 확인한 뒤 다시 시도해주세요."
+        "FCM 토큰이 만료되었거나 무효입니다. "
+        "앱을 완전히 종료한 뒤 다시 열고 다시 시도해주세요."
     )
     assert response == {
         "sent": False,
@@ -905,6 +906,10 @@ def test_send_device_test_push_returns_failure_when_firebase_rejects(tmp_path) -
         "debugReason": "registration-token-not-registered",
     }
     assert len(messaging.sent_messages) == 1
+    assert registry.recent_device_test_results()[0]["reason"] == expected_reason
+    assert registry.recent_device_test_results()[0]["debugReason"] == (
+        "registration-token-not-registered"
+    )
 
 
 def test_record_push_receipt_persists_registered_device_receipt(tmp_path) -> None:
@@ -1832,6 +1837,7 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
     )
     registry = PushRegistry(str(registry_path))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service._get_messaging = lambda: FakeFcmMessaging()
     service.register(
         PushRegisterRequest(
             deviceToken="secret-fcm-token",
@@ -1865,6 +1871,7 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
             route="/game/20260618KTOB0?tab=relay",
         )
     )
+    service.send_device_test(PushDeviceTestRequest(deviceToken="secret-fcm-token"))
     settings = _settings(
         app_env="release",
         firebase_service_account_path=str(firebase_path),
@@ -1900,6 +1907,9 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
     assert status["registry"]["pushReceiptCount"] == 1
     assert status["registry"]["recentPushReceipts"][0]["type"] == "hit"
     assert status["registry"]["recentPushReceipts"][0]["deviceTokenSuffix"] == "cm-token"
+    assert status["registry"]["deviceTestResultCount"] == 1
+    assert status["registry"]["recentDeviceTestResults"][0]["sent"] is True
+    assert status["registry"]["recentDeviceTestResults"][0]["deviceTokenSuffix"] == "cm-token"
     assert "secret-fcm-token" not in str(status["registry"])
 
 

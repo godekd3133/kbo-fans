@@ -50,6 +50,20 @@ def test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter
             "apnsTokenReady": True,
         }
     ]
+    payload["data"]["registry"]["recentDeviceTestResults"] = [
+        {
+            "sent": False,
+            "registered": True,
+            "reason": "FCM 토큰이 만료되었거나 무효입니다.",
+            "errorType": "UnregisteredError",
+            "debugReason": "Requested entity was not found.",
+            "deviceTokenSuffix": "abcd1234",
+            "platform": "ios",
+            "myTeam": "OB",
+            "messageId": "",
+            "recordedAt": "2026-06-22T06:12:00+00:00",
+        }
+    ]
     with _mock_server(payload) as server:
         result = _run_status_script(
             server.base_url,
@@ -75,6 +89,8 @@ def test_push_receipt_status_prints_sanitized_recent_receipts_and_matches_filter
     assert "push_receipt_match=status=ok matches=1" in result.stdout
     assert "gameId=GAME_20260620HTKT0" in result.stdout
     assert "deviceTokenSuffix=abcd1234" in result.stdout
+    assert "recent_device_test[0]=sent=False registered=True" in result.stdout
+    assert "debugReason=Requested entity was not found." in result.stdout
     assert "topic=hit_GAME_20260620HTKT0" in result.stdout
     assert "secret-fcm-token" not in result.stdout
     assert "secret" not in result.stdout

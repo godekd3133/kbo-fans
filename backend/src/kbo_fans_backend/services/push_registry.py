@@ -168,6 +168,52 @@ class PushRegistry:
         devices = data.get("devices", {})
         return device_token in devices
 
+    def record_device_test_result(
+        self,
+        *,
+        device_token: str,
+        sent: bool,
+        registered: bool,
+        reason: str = "",
+        message_id: str = "",
+        error_type: str = "",
+        debug_reason: str = "",
+    ) -> dict[str, Any]:
+        with self._mutate_data() as data:
+            devices = data.setdefault("devices", {})
+            registration = devices.get(device_token)
+            if not isinstance(registration, dict):
+                registration = {}
+
+            results = data.setdefault("deviceTestResults", [])
+            if not isinstance(results, list):
+                results = []
+                data["deviceTestResults"] = results
+
+            result = {
+                "sent": sent,
+                "registered": registered,
+                "reason": reason,
+                "messageId": message_id,
+                "errorType": error_type,
+                "debugReason": _safe_diagnostic_text(debug_reason),
+                "deviceTokenSuffix": device_token[-8:],
+                "platform": str(registration.get("platform") or ""),
+                "myTeam": str(registration.get("myTeam") or ""),
+                "recordedAt": _now_iso(),
+            }
+            results.append(result)
+            del results[:-20]
+            return result
+
+    def recent_device_test_results(self, *, limit: int = 5) -> list[dict[str, Any]]:
+        data = self._load()
+        results = data.get("deviceTestResults")
+        if not isinstance(results, list):
+            return []
+        cleaned = [result for result in results if isinstance(result, dict)]
+        return cleaned[-limit:]
+
     def record_push_receipt(self, payload: PushReceiptRequest) -> Optional[dict[str, Any]]:
         device_token = payload.deviceToken.strip()
         if not device_token:
@@ -374,6 +420,7 @@ class PushRegistry:
         data.setdefault("relayStates", {})
         data.setdefault("pregameAlertStates", {})
         data.setdefault("pushReceipts", [])
+        data.setdefault("deviceTestResults", [])
         data.setdefault("syncHeartbeat", {})
         return data
 
@@ -413,6 +460,7 @@ def _empty_registry() -> dict[str, Any]:
         "relayStates": {},
         "pregameAlertStates": {},
         "pushReceipts": [],
+        "deviceTestResults": [],
         "syncHeartbeat": {},
     }
 
@@ -461,3 +509,10 @@ def _receipt_data(values: dict[str, Any]) -> dict[str, str]:
             continue
         cleaned[key_text] = str(value)[:200]
     return cleaned
+
+
+def _safe_diagnostic_text(value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return text[:500]

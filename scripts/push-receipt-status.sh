@@ -253,6 +253,27 @@ for device in device_summaries:
         f"topicsUpdatedAt={text(device.get('topicsUpdatedAt')) or '-'}"
     )
 
+device_test_results = registry.get("recentDeviceTestResults")
+if not isinstance(device_test_results, list):
+    device_test_results = []
+
+for index, result in enumerate(device_test_results):
+    if not isinstance(result, dict):
+        continue
+    print(
+        f"recent_device_test[{index}]="
+        f"sent={result.get('sent')} "
+        f"registered={result.get('registered')} "
+        f"deviceTokenSuffix={text(result.get('deviceTokenSuffix')) or '-'} "
+        f"platform={text(result.get('platform')) or '-'} "
+        f"myTeam={text(result.get('myTeam')) or '-'} "
+        f"reason={text(result.get('reason')) or '-'} "
+        f"errorType={text(result.get('errorType')) or '-'} "
+        f"debugReason={text(result.get('debugReason')) or '-'} "
+        f"messageId={text(result.get('messageId')) or '-'} "
+        f"recordedAt={text(result.get('recordedAt')) or '-'}"
+    )
+
 since = None
 if since_raw:
     try:
