@@ -36,6 +36,10 @@
 - [x] 같은 운영 backend에서 다시 빈 diagnostic topic 발송 smoke 확인: GitHub Actions `Push Test Notification` run `28012749424`, topic `diagnostic_empty_20260623_ios_apns_split`, `push_test_status=ok sent=True`, message id `projects/kbo-fans-47189/messages/8198247320507453832`
 - [x] 위 증거로 Firebase Admin service account / Google OAuth 경로는 동작하고, iOS device token 전송만 Firebase/APNs third-party auth 경로에서 막히는 것으로 원인 범위를 좁힘
 - [x] `ThirdPartyAuthError`의 OAuth credential 누락 문구를 `Firebase Admin 서비스 계정` 문제가 아니라 `Firebase Console iOS 앱 Cloud Messaging APNs 키 확인 필요` reason으로 분류하도록 정정
+- [x] APNs reason 정정 commit `c3eb4a8`을 backend API/worker에 재배포: GitHub Actions `Push Demo Deploy` run `28013001010`, image tag `0.1.6-ios-apns-error-c3eb4a8`, `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `aws_push_secrets=status=ok`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=2`
+- [x] APNs reason 정정 배포 후 운영 API `/api/health` 직접 확인: 200 `status=ok`
+- [x] APNs reason 정정 배포 후 빈 diagnostic topic FCM 서버 발송 smoke 확인: GitHub Actions `Push Test Notification` run `28013321080`, topic `diagnostic_empty_20260623_after_apns_reason_deploy`, `push_test_status=ok sent=True`, message id `projects/kbo-fans-47189/messages/9165553089324123353`
+- [x] APNs reason 정정 배포 후 `Push Receipt Status` run `28013321189` 확인: registry `registeredDevices=20`, 현재 iOS token `qJvUdSbs`는 `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`, latest registration `updatedAt=2026-06-23T08:25:30Z`. 아직 새 `원격 푸시 테스트`가 눌리지 않아 `recent_device_test`에는 배포 전 service-account 문구가 남아 있음
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
@@ -55,6 +59,9 @@
 - [x] RED: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_ios_third_party_auth_as_apns_configuration backend/tests/test_push_service.py::test_send_device_test_push_classifies_generic_missing_oauth_as_admin_credential` (`1 failed, 1 passed`)
 - [x] GREEN: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_ios_third_party_auth_as_apns_configuration backend/tests/test_push_service.py::test_send_device_test_push_classifies_generic_missing_oauth_as_admin_credential` (`2 passed`)
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`72 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/push.py`
+- [x] `git diff --check`
 
 ### 남은 확인
 - [ ] Firebase Console > Project Settings > Cloud Messaging > iOS app `com.kbofans.kboFans`에 APNs authentication key가 production/TestFlight 경로로 업로드됐는지 확인한다. 현재 서버/GitHub 값은 APNs key id `V74C27LFMA`, Team ID `A23ZPKGMW9`, Firebase project `kbo-fans-47189`.
