@@ -19,6 +19,10 @@
 - [x] backend API/worker 재배포: GitHub Actions `Push Demo Deploy` run `28008388108`, image tag `0.1.6-test-device-fix-a44b7c8`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`
 - [x] 재배포 후 readiness: `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=0`
 - [x] 재배포 후 `/api/push/test-device` 미등록 token smoke 확인: 200 `sent=false registered=false reason=device token is not registered`
+- [x] 진단 보강 commit `cb1051d`를 backend API/worker에 재배포: GitHub Actions `Push Demo Deploy` run `28010356784`, image tag `0.1.6-test-device-diagnostics-cb1051d`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`
+- [x] 진단 보강 재배포 후 readiness: `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=3`
+- [x] 진단 보강 재배포 후 `/api/push/test-device` 미등록 token smoke 확인: 200 `sent=false registered=false reason=device token is not registered`
+- [x] GitHub Actions `Push Receipt Status` run `28010678539`에서 `recent_device_test[0]=sent=False registered=False ... reason=device token is not registered` 출력 확인
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
@@ -33,7 +37,7 @@
 - [x] `bash -n scripts/push-receipt-status.sh`
 
 ### 남은 확인
-- [ ] 보강된 backend를 재배포한 뒤 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 Firebase 발송 결과와 receipt를 확인한다.
+- [ ] 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 Firebase 발송 결과와 receipt를 확인한다.
 
 ---
 
