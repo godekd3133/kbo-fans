@@ -12,6 +12,10 @@
 ### 진행
 - [x] backend `/push/test-device`가 Firebase 발송 예외를 잡아 `sent=false`, `registered=true`, `reason`, `errorType`을 반환하도록 보정
 - [x] 회귀 테스트 추가: 등록된 token으로 Firebase 발송이 거부돼도 endpoint/service가 500 대신 실패 응답을 만든다.
+- [x] 앱에 표시되는 self-test 실패 reason을 한국어 안내로 정리하고, 원인 확인용 `debugReason`은 별도 필드로 분리
+- [x] backend API/worker 재배포: GitHub Actions `Push Demo Deploy` run `28008388108`, image tag `0.1.6-test-device-fix-a44b7c8`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`
+- [x] 재배포 후 readiness: `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=0`
+- [x] 재배포 후 `/api/push/test-device` 미등록 token smoke 확인: 200 `sent=false registered=false reason=device token is not registered`
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
@@ -21,7 +25,7 @@
 - [x] 전체 push 회귀: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`66 passed`)
 
 ### 남은 확인
-- [ ] backend 재배포 후 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 Firebase 발송 결과와 receipt를 확인한다.
+- [ ] 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 Firebase 발송 결과와 receipt를 확인한다.
 
 ---
 
