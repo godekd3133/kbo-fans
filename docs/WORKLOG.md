@@ -27,6 +27,7 @@
 - [x] 위 증거로 단말 권한/토큰 등록 문제가 아니라 Firebase Admin/Google OAuth 인증 문제로 분류
 - [x] `ThirdPartyAuthError`의 OAuth credential 누락 문구를 `Firebase Admin 인증 설정 문제` reason으로 분류하도록 보강
 - [x] backend config-status가 Firebase Admin JSON의 `type`, `project_id`, `private_key`, `client_email` 필수 필드와 project id match를 확인하도록 보강
+- [x] Firebase 인증 진단 보강 commit `7b7afc7`을 backend API/worker에 재배포: GitHub Actions `Push Demo Deploy` run `28011346236`, image tag `0.1.6-firebase-auth-diagnostics-7b7afc7`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=3`
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
