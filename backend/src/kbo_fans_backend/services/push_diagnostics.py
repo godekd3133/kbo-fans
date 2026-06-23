@@ -9,6 +9,8 @@ from typing import Any, Optional
 from kbo_fans_backend.core.config import Settings, get_settings
 from kbo_fans_backend.services.push_registry import PushRegistry
 
+_FIREBASE_ADMIN_REQUIRED_FIELDS = ("type", "project_id", "private_key", "client_email")
+
 
 class PushConfigurationDiagnostics:
     def __init__(self, settings: Optional[Settings] = None) -> None:
@@ -38,22 +40,43 @@ class PushConfigurationDiagnostics:
         }
 
     def _firebase_status(self) -> dict[str, Any]:
-        service_account = _file_status(self.settings.firebase_service_account_path)
-        service_account_json = _json_object_status(self.settings.firebase_service_account_json)
+        service_account = _service_account_file_status(
+            self.settings.firebase_service_account_path,
+            expected_project_id=self.settings.firebase_project_id,
+        )
+        service_account_json = _service_account_json_status(
+            self.settings.firebase_service_account_json,
+            expected_project_id=self.settings.firebase_project_id,
+        )
         missing = []
         if service_account_json["configured"] and not service_account_json["valid"]:
             missing.append("FIREBASE_SERVICE_ACCOUNT_JSON:json")
+        elif service_account_json["configured"] and not service_account_json["hasRequiredFields"]:
+            missing.append("FIREBASE_SERVICE_ACCOUNT_JSON:service-account-fields")
+        elif service_account_json["configured"] and not service_account_json["projectIdMatches"]:
+            missing.append("FIREBASE_SERVICE_ACCOUNT_JSON:project_id")
         elif not service_account_json["configured"] and not service_account["configured"]:
             missing.append("FIREBASE_SERVICE_ACCOUNT_JSON|FIREBASE_SERVICE_ACCOUNT_PATH")
         elif service_account["configured"] and not service_account["exists"]:
             missing.append("FIREBASE_SERVICE_ACCOUNT_PATH:file")
+        elif service_account["configured"] and not service_account["valid"]:
+            missing.append("FIREBASE_SERVICE_ACCOUNT_PATH:json")
+        elif service_account["configured"] and not service_account["hasRequiredFields"]:
+            missing.append("FIREBASE_SERVICE_ACCOUNT_PATH:service-account-fields")
+        elif service_account["configured"] and not service_account["projectIdMatches"]:
+            missing.append("FIREBASE_SERVICE_ACCOUNT_PATH:project_id")
 
         return {
             "serviceAccountPathConfigured": service_account["configured"],
             "serviceAccountFileExists": service_account["exists"],
             "serviceAccountFilename": service_account["filename"],
+            "serviceAccountFileValid": service_account["valid"],
+            "serviceAccountFileHasRequiredFields": service_account["hasRequiredFields"],
+            "serviceAccountFileProjectIdMatches": service_account["projectIdMatches"],
             "serviceAccountJsonConfigured": service_account_json["configured"],
             "serviceAccountJsonValid": service_account_json["valid"],
+            "serviceAccountJsonHasRequiredFields": service_account_json["hasRequiredFields"],
+            "serviceAccountJsonProjectIdMatches": service_account_json["projectIdMatches"],
             "projectIdConfigured": bool(self.settings.firebase_project_id),
             "ready": not missing,
             "missing": missing,
@@ -196,6 +219,99 @@ class PushConfigurationDiagnostics:
         }
 
 
+def _service_account_file_status(
+    raw_path: str,
+    *,
+    expected_project_id: str = "",
+) -> dict[str, Any]:
+    configured = bool(raw_path)
+    if not configured:
+        return {
+            "configured": False,
+            "exists": False,
+            "filename": "",
+            "valid": False,
+            "hasRequiredFields": False,
+            "projectIdMatches": False,
+        }
+    path = Path(raw_path).expanduser()
+    payload_status = _service_account_payload_status(
+        _read_json_file(path) if path.is_file() else None,
+        expected_project_id=expected_project_id,
+    )
+    return {
+        "configured": True,
+        "exists": path.is_file(),
+        "filename": path.name,
+        **payload_status,
+    }
+
+
+def _service_account_json_status(
+    raw_json: str,
+    *,
+    expected_project_id: str = "",
+) -> dict[str, Any]:
+    configured = bool(raw_json)
+    if not configured:
+        return {
+            "configured": False,
+            "valid": False,
+            "hasRequiredFields": False,
+            "projectIdMatches": False,
+        }
+    try:
+        payload = json.loads(raw_json)
+    except json.JSONDecodeError:
+        return {
+            "configured": True,
+            "valid": False,
+            "hasRequiredFields": False,
+            "projectIdMatches": False,
+        }
+    return {
+        "configured": True,
+        **_service_account_payload_status(
+            payload,
+            expected_project_id=expected_project_id,
+        ),
+    }
+
+
+def _read_json_file(path: Path) -> Any:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _service_account_payload_status(
+    payload: Any,
+    *,
+    expected_project_id: str = "",
+) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {
+            "valid": False,
+            "hasRequiredFields": False,
+            "projectIdMatches": False,
+        }
+
+    has_required_fields = all(
+        str(payload.get(field) or "").strip()
+        for field in _FIREBASE_ADMIN_REQUIRED_FIELDS
+    ) and payload.get("type") == "service_account"
+    project_id = str(payload.get("project_id") or "").strip()
+    project_id_matches = bool(project_id) and (
+        not expected_project_id or project_id == expected_project_id
+    )
+    return {
+        "valid": True,
+        "hasRequiredFields": has_required_fields,
+        "projectIdMatches": project_id_matches,
+    }
+
+
 def _file_status(raw_path: str) -> dict[str, Any]:
     configured = bool(raw_path)
     if not configured:
@@ -206,17 +322,6 @@ def _file_status(raw_path: str) -> dict[str, Any]:
         "exists": path.is_file(),
         "filename": path.name,
     }
-
-
-def _json_object_status(raw_json: str) -> dict[str, Any]:
-    configured = bool(raw_json)
-    if not configured:
-        return {"configured": False, "valid": False}
-    try:
-        payload = json.loads(raw_json)
-    except json.JSONDecodeError:
-        return {"configured": True, "valid": False}
-    return {"configured": True, "valid": isinstance(payload, dict)}
 
 
 def _writable_path_status(raw_path: str) -> dict[str, Any]:

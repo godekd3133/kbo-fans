@@ -912,6 +912,53 @@ def test_send_device_test_push_returns_failure_when_firebase_rejects(tmp_path) -
     )
 
 
+def test_send_device_test_push_classifies_missing_firebase_oauth_credential(
+    tmp_path,
+) -> None:
+    class ThirdPartyAuthError(RuntimeError):
+        pass
+
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging(
+        send_error=ThirdPartyAuthError(
+            "Request is missing required authentication credential. "
+            "Expected OAuth 2 access token, login cookie or other valid authentication "
+            "credential."
+        )
+    )
+    service._get_messaging = lambda: messaging
+    service.register(
+        PushRegisterRequest(
+            deviceToken="registered-token",
+            platform="ios",
+            myTeam="SS",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=False,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+
+    response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
+
+    expected_reason = (
+        "Firebase Admin 인증 설정 문제로 원격 푸시를 발송하지 못했습니다. "
+        "서버 Firebase 서비스 계정 확인이 필요합니다."
+    )
+    assert response["sent"] is False
+    assert response["registered"] is True
+    assert response["reason"] == expected_reason
+    assert response["errorType"] == "ThirdPartyAuthError"
+    assert registry.recent_device_test_results()[0]["reason"] == expected_reason
+
+
 def test_record_push_receipt_persists_registered_device_receipt(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
@@ -1804,7 +1851,7 @@ def test_push_config_status_reports_missing_release_secrets(tmp_path) -> None:
 def test_push_config_status_accepts_production_ready_paths(tmp_path) -> None:
     firebase_path = tmp_path / "firebase-service-account.json"
     apns_path = tmp_path / "AuthKey_TESTKEY.p8"
-    firebase_path.write_text("{}", encoding="utf-8")
+    firebase_path.write_text(_firebase_service_account_json(), encoding="utf-8")
     apns_path.write_text(
         "-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----\n", encoding="utf-8"
     )
@@ -1926,7 +1973,7 @@ def test_push_config_status_accepts_aws_secret_env_content(tmp_path) -> None:
     settings = _settings(
         app_env="release",
         firebase_service_account_path="",
-        firebase_service_account_json='{"project_id":"kbo-fans"}',
+        firebase_service_account_json=_firebase_service_account_json(),
         push_registry_path=str(registry_path),
         apns_auth_key_path="",
         apns_auth_key_p8="-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----\n",
@@ -1941,9 +1988,30 @@ def test_push_config_status_accepts_aws_secret_env_content(tmp_path) -> None:
     assert status["missing"] == []
     assert status["firebase"]["serviceAccountJsonConfigured"] is True
     assert status["firebase"]["serviceAccountJsonValid"] is True
+    assert status["firebase"]["serviceAccountJsonHasRequiredFields"] is True
     assert status["apns"]["authKeyContentConfigured"] is True
     assert status["scheduler"]["lastSyncDate"] == "2026-06-04"
     assert status["scheduler"]["lastCheckedGames"] == 1
+
+
+def test_push_config_status_rejects_firebase_json_missing_admin_fields(tmp_path) -> None:
+    settings = _settings(
+        app_env="release",
+        firebase_service_account_path="",
+        firebase_service_account_json='{"project_id":"kbo-fans"}',
+        push_registry_path=str(tmp_path / "runtime" / "push_registry.json"),
+        apns_auth_key_path="",
+        apns_auth_key_p8="-----BEGIN PRIVATE KEY-----\n-----END PRIVATE KEY-----\n",
+        apns_use_sandbox=False,
+        push_sync_secret="secret",
+    )
+
+    status = PushConfigurationDiagnostics(settings).status()
+
+    assert status["ready"] is False
+    assert "FIREBASE_SERVICE_ACCOUNT_JSON:service-account-fields" in status["missing"]
+    assert status["firebase"]["serviceAccountJsonValid"] is True
+    assert status["firebase"]["serviceAccountJsonHasRequiredFields"] is False
 
 
 def test_push_config_status_reports_registry_read_error(monkeypatch, tmp_path) -> None:
@@ -2555,6 +2623,17 @@ def _live_activity_state() -> LiveActivityContentState:
         inning="7회말",
         stadium="수원",
         updatedAt="21:10:00",
+    )
+
+
+def _firebase_service_account_json(*, project_id: str = "kbo-fans") -> str:
+    return json.dumps(
+        {
+            "type": "service_account",
+            "project_id": project_id,
+            "private_key": "-----BEGIN PRIVATE KEY-----\nTEST\n-----END PRIVATE KEY-----\n",
+            "client_email": f"firebase-adminsdk@example.{project_id}.iam.gserviceaccount.com",
+        }
     )
 
 

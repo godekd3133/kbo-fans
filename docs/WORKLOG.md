@@ -23,6 +23,10 @@
 - [x] 진단 보강 재배포 후 readiness: `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=3`
 - [x] 진단 보강 재배포 후 `/api/push/test-device` 미등록 token smoke 확인: 200 `sent=false registered=false reason=device token is not registered`
 - [x] GitHub Actions `Push Receipt Status` run `28010678539`에서 `recent_device_test[0]=sent=False registered=False ... reason=device token is not registered` 출력 확인
+- [x] 사장님 iPhone 재시도 후 GitHub Actions `Push Receipt Status` run `28010975987`로 실제 실패 사유 확인: registered iOS token `qJvUdSbs`, `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`, `errorType=ThirdPartyAuthError`, `debugReason=Request is missing required authentication credential. Expected OAuth 2 access token...`
+- [x] 위 증거로 단말 권한/토큰 등록 문제가 아니라 Firebase Admin/Google OAuth 인증 문제로 분류
+- [x] `ThirdPartyAuthError`의 OAuth credential 누락 문구를 `Firebase Admin 인증 설정 문제` reason으로 분류하도록 보강
+- [x] backend config-status가 Firebase Admin JSON의 `type`, `project_id`, `private_key`, `client_email` 필수 필드와 project id match를 확인하도록 보강
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
@@ -35,9 +39,13 @@
 - [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/push_diagnostics.py backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py`
 - [x] `python3 -m compileall backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/push_diagnostics.py`
 - [x] `bash -n scripts/push-receipt-status.sh`
+- [x] RED: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_missing_firebase_oauth_credential backend/tests/test_push_service.py::test_push_config_status_rejects_firebase_json_missing_admin_fields` (`2 failed`)
+- [x] GREEN: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_missing_firebase_oauth_credential backend/tests/test_push_service.py::test_push_config_status_rejects_firebase_json_missing_admin_fields` (`2 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_missing_firebase_oauth_credential backend/tests/test_push_service.py::test_push_config_status_accepts_production_ready_paths backend/tests/test_push_service.py::test_push_config_status_accepts_aws_secret_env_content backend/tests/test_push_service.py::test_push_config_status_rejects_firebase_json_missing_admin_fields backend/tests/test_push_service.py::test_push_config_status_reports_registry_read_error backend/tests/test_push_service.py::test_push_config_status_rejects_invalid_firebase_json` (`6 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`71 passed`)
 
 ### 남은 확인
-- [ ] 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 Firebase 발송 결과와 receipt를 확인한다.
+- [ ] Firebase Admin service account / FCM OAuth 인증 설정을 교정한 뒤 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 원격 푸시 수신과 receipt를 확인한다.
 
 ---
 

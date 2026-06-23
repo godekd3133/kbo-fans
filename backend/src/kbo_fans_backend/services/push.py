@@ -767,6 +767,15 @@ def _push_send_error_reason(error: Exception) -> str:
             "Firebase 프로젝트 설정이 앱 토큰과 맞지 않습니다. "
             "서버 Firebase 설정 확인이 필요합니다."
         )
+    if (
+        "missing required authentication credential" in lower_text
+        or "expected oauth 2 access token" in lower_text
+        or "valid authentication credential" in lower_text
+    ):
+        return (
+            "Firebase Admin 인증 설정 문제로 원격 푸시를 발송하지 못했습니다. "
+            "서버 Firebase 서비스 계정 확인이 필요합니다."
+        )
     if "apns" in lower_text or "third-party auth" in lower_text:
         return "Firebase/APNs 인증 설정 문제로 발송하지 못했습니다. 서버 설정 확인이 필요합니다."
     return "원격 푸시 발송에 실패했습니다. 서버 진단에서 상세 사유를 확인하겠습니다."
