@@ -912,7 +912,7 @@ def test_send_device_test_push_returns_failure_when_firebase_rejects(tmp_path) -
     )
 
 
-def test_send_device_test_push_classifies_missing_firebase_oauth_credential(
+def test_send_device_test_push_classifies_ios_third_party_auth_as_apns_configuration(
     tmp_path,
 ) -> None:
     class ThirdPartyAuthError(RuntimeError):
@@ -949,13 +949,57 @@ def test_send_device_test_push_classifies_missing_firebase_oauth_credential(
     response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
 
     expected_reason = (
+        "Firebase/APNs 인증 설정 문제로 iOS 원격 푸시를 발송하지 못했습니다. "
+        "Firebase Console의 iOS 앱 Cloud Messaging APNs 키 확인이 필요합니다."
+    )
+    assert response["sent"] is False
+    assert response["registered"] is True
+    assert response["reason"] == expected_reason
+    assert response["errorType"] == "ThirdPartyAuthError"
+    assert registry.recent_device_test_results()[0]["reason"] == expected_reason
+
+
+def test_send_device_test_push_classifies_generic_missing_oauth_as_admin_credential(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging(
+        send_error=RuntimeError(
+            "Request is missing required authentication credential. "
+            "Expected OAuth 2 access token, login cookie or other valid authentication "
+            "credential."
+        )
+    )
+    service._get_messaging = lambda: messaging
+    service.register(
+        PushRegisterRequest(
+            deviceToken="registered-token",
+            platform="ios",
+            myTeam="SS",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=False,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+
+    response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
+
+    expected_reason = (
         "Firebase Admin 인증 설정 문제로 원격 푸시를 발송하지 못했습니다. "
         "서버 Firebase 서비스 계정 확인이 필요합니다."
     )
     assert response["sent"] is False
     assert response["registered"] is True
     assert response["reason"] == expected_reason
-    assert response["errorType"] == "ThirdPartyAuthError"
+    assert response["errorType"] == "RuntimeError"
     assert registry.recent_device_test_results()[0]["reason"] == expected_reason
 
 

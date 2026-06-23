@@ -15,6 +15,7 @@
 - API 진단의 `원격 푸시 테스트`가 Firebase 발송 거부를 generic 서버 오류로만 보여주지 않고, 등록된 기기 기준의 발송 실패 사유를 응답으로 돌려주도록 보정
 - `원격 푸시 테스트` 실패 기록을 backend 진단에 남겨 FCM token 만료, Firebase 프로젝트 불일치, APNs 인증 문제를 단말 권한 문제와 구분할 수 있도록 보강
 - Firebase Admin 인증 오류가 `서버 진단에서 상세 사유를 확인` 문구로만 보이지 않도록, 서비스 계정 인증 문제로 분류해 API 진단과 운영 진단에서 확인 가능하게 보강
+- iOS 기기 토큰 전송에서 Firebase `ThirdPartyAuthError`가 발생할 때 `Firebase 서비스 계정` 문제가 아니라 Firebase Console의 iOS Cloud Messaging APNs 키 설정 문제로 안내하도록 보정
 
 ## [0.1.6] - 2026-06-22
 

@@ -32,6 +32,10 @@
 - [x] 로컬에서 확인한 Firebase Admin service account JSON을 GitHub secret `FIREBASE_SERVICE_ACCOUNT_JSON`에 재반영. secret updated at `2026-06-23T08:13:35Z`
 - [x] 새 Firebase service account secret을 AWS Secrets Manager/ECS에 재배포: GitHub Actions `Push Demo Deploy` run `28012148175`, image tag `0.1.6-firebase-service-account-refresh-1bc0133`, `aws_push_secrets=status=ok`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=1`
 - [x] 실제 사용자 topic을 건드리지 않는 빈 diagnostic topic으로 FCM 서버 발송 smoke 확인: GitHub Actions `Push Test Notification` run `28012477543`, topic `diagnostic_empty_20260623_firebase_refresh`, `push_test_status=ok sent=True`, message id `projects/kbo-fans-47189/messages/4371012989681492652`
+- [x] 사장님 iPhone 재시도 후 GitHub Actions `Push Receipt Status` run `28012693040`으로 최신 실패 재확인: registered iOS token `qJvUdSbs`, `notificationsAllowed=True`, `authorizationStatus=authorized`, `apnsTokenReady=True`, latest registration `updatedAt=2026-06-23T08:21:40Z`, device-test failures `recordedAt=2026-06-23T08:21:14Z/08:21:23Z/08:21:42Z`, `errorType=ThirdPartyAuthError`, `debugReason=Request is missing required authentication credential...`
+- [x] 같은 운영 backend에서 다시 빈 diagnostic topic 발송 smoke 확인: GitHub Actions `Push Test Notification` run `28012749424`, topic `diagnostic_empty_20260623_ios_apns_split`, `push_test_status=ok sent=True`, message id `projects/kbo-fans-47189/messages/8198247320507453832`
+- [x] 위 증거로 Firebase Admin service account / Google OAuth 경로는 동작하고, iOS device token 전송만 Firebase/APNs third-party auth 경로에서 막히는 것으로 원인 범위를 좁힘
+- [x] `ThirdPartyAuthError`의 OAuth credential 누락 문구를 `Firebase Admin 서비스 계정` 문제가 아니라 `Firebase Console iOS 앱 Cloud Messaging APNs 키 확인 필요` reason으로 분류하도록 정정
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
@@ -48,9 +52,13 @@
 - [x] GREEN: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_missing_firebase_oauth_credential backend/tests/test_push_service.py::test_push_config_status_rejects_firebase_json_missing_admin_fields` (`2 passed`)
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_missing_firebase_oauth_credential backend/tests/test_push_service.py::test_push_config_status_accepts_production_ready_paths backend/tests/test_push_service.py::test_push_config_status_accepts_aws_secret_env_content backend/tests/test_push_service.py::test_push_config_status_rejects_firebase_json_missing_admin_fields backend/tests/test_push_service.py::test_push_config_status_reports_registry_read_error backend/tests/test_push_service.py::test_push_config_status_rejects_invalid_firebase_json` (`6 passed`)
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`71 passed`)
+- [x] RED: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_ios_third_party_auth_as_apns_configuration backend/tests/test_push_service.py::test_send_device_test_push_classifies_generic_missing_oauth_as_admin_credential` (`1 failed, 1 passed`)
+- [x] GREEN: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_classifies_ios_third_party_auth_as_apns_configuration backend/tests/test_push_service.py::test_send_device_test_push_classifies_generic_missing_oauth_as_admin_credential` (`2 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`72 passed`)
 
 ### 남은 확인
-- [ ] 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 단말 token 대상 원격 푸시 수신과 receipt를 확인한다.
+- [ ] Firebase Console > Project Settings > Cloud Messaging > iOS app `com.kbofans.kboFans`에 APNs authentication key가 production/TestFlight 경로로 업로드됐는지 확인한다. 현재 서버/GitHub 값은 APNs key id `V74C27LFMA`, Team ID `A23ZPKGMW9`, Firebase project `kbo-fans-47189`.
+- [ ] Firebase Console APNs 키 확인/수정 후 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 단말 token 대상 원격 푸시 수신과 receipt를 확인한다.
 
 ---
 

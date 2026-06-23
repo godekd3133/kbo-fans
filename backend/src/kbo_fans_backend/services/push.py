@@ -752,6 +752,7 @@ def _visible_push_options(
 def _push_send_error_reason(error: Exception) -> str:
     text = str(error).strip()
     lower_text = text.lower()
+    error_type = type(error).__name__.lower()
     if (
         "registration-token-not-registered" in lower_text
         or "requested entity was not found" in lower_text
@@ -768,6 +769,15 @@ def _push_send_error_reason(error: Exception) -> str:
             "서버 Firebase 설정 확인이 필요합니다."
         )
     if (
+        "thirdpartyauth" in error_type
+        or "apns" in lower_text
+        or "third-party auth" in lower_text
+    ):
+        return (
+            "Firebase/APNs 인증 설정 문제로 iOS 원격 푸시를 발송하지 못했습니다. "
+            "Firebase Console의 iOS 앱 Cloud Messaging APNs 키 확인이 필요합니다."
+        )
+    if (
         "missing required authentication credential" in lower_text
         or "expected oauth 2 access token" in lower_text
         or "valid authentication credential" in lower_text
@@ -776,8 +786,6 @@ def _push_send_error_reason(error: Exception) -> str:
             "Firebase Admin 인증 설정 문제로 원격 푸시를 발송하지 못했습니다. "
             "서버 Firebase 서비스 계정 확인이 필요합니다."
         )
-    if "apns" in lower_text or "third-party auth" in lower_text:
-        return "Firebase/APNs 인증 설정 문제로 발송하지 못했습니다. 서버 설정 확인이 필요합니다."
     return "원격 푸시 발송에 실패했습니다. 서버 진단에서 상세 사유를 확인하겠습니다."
 
 
