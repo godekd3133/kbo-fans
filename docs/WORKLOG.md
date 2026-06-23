@@ -28,6 +28,10 @@
 - [x] `ThirdPartyAuthError`의 OAuth credential 누락 문구를 `Firebase Admin 인증 설정 문제` reason으로 분류하도록 보강
 - [x] backend config-status가 Firebase Admin JSON의 `type`, `project_id`, `private_key`, `client_email` 필수 필드와 project id match를 확인하도록 보강
 - [x] Firebase 인증 진단 보강 commit `7b7afc7`을 backend API/worker에 재배포: GitHub Actions `Push Demo Deploy` run `28011346236`, image tag `0.1.6-firebase-auth-diagnostics-7b7afc7`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=3`
+- [x] 로컬 `backend/firebase-service-account.json`의 project id `kbo-fans-47189`, service account email, private key 존재를 확인하고 Google OAuth token refresh smoke 확인: `oauth_refresh=status=ok`, `token_ready=True`
+- [x] 로컬에서 확인한 Firebase Admin service account JSON을 GitHub secret `FIREBASE_SERVICE_ACCOUNT_JSON`에 재반영. secret updated at `2026-06-23T08:13:35Z`
+- [x] 새 Firebase service account secret을 AWS Secrets Manager/ECS에 재배포: GitHub Actions `Push Demo Deploy` run `28012148175`, image tag `0.1.6-firebase-service-account-refresh-1bc0133`, `aws_push_secrets=status=ok`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`, `/api/health` 200, `/api/push/config-status` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=1`
+- [x] 실제 사용자 topic을 건드리지 않는 빈 diagnostic topic으로 FCM 서버 발송 smoke 확인: GitHub Actions `Push Test Notification` run `28012477543`, topic `diagnostic_empty_20260623_firebase_refresh`, `push_test_status=ok sent=True`, message id `projects/kbo-fans-47189/messages/4371012989681492652`
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
@@ -46,7 +50,7 @@
 - [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py backend/tests/test_push_receipt_status_script.py` (`71 passed`)
 
 ### 남은 확인
-- [ ] Firebase Admin service account / FCM OAuth 인증 설정을 교정한 뒤 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 원격 푸시 수신과 receipt를 확인한다.
+- [ ] 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 단말 token 대상 원격 푸시 수신과 receipt를 확인한다.
 
 ---
 
