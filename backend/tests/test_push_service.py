@@ -869,6 +869,40 @@ def test_send_device_test_push_rejects_unregistered_token(tmp_path) -> None:
     assert messaging.sent_messages == []
 
 
+def test_send_device_test_push_returns_failure_when_firebase_rejects(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging(send_error=RuntimeError("registration-token-not-registered"))
+    service._get_messaging = lambda: messaging
+    service.register(
+        PushRegisterRequest(
+            deviceToken="registered-token",
+            platform="ios",
+            myTeam="OB",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=False,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+        )
+    )
+
+    response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
+
+    assert response == {
+        "sent": False,
+        "registered": True,
+        "reason": "remote push send failed: registration-token-not-registered",
+        "errorType": "RuntimeError",
+    }
+    assert len(messaging.sent_messages) == 1
+
+
 def test_record_push_receipt_persists_registered_device_receipt(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
@@ -2335,11 +2369,14 @@ class FakeFcmMessaging:
     AndroidNotification = FakeFcmAndroidNotification
     AndroidConfig = FakeFcmAndroidConfig
 
-    def __init__(self) -> None:
+    def __init__(self, send_error=None) -> None:
         self.sent_messages = []
+        self.send_error = send_error
 
     def send(self, message) -> str:
         self.sent_messages.append(message)
+        if self.send_error is not None:
+            raise self.send_error
         return f"message-{len(self.sent_messages)}"
 
 

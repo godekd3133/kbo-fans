@@ -176,7 +176,15 @@ class PushService:
             token=device_token,
             **visible_options,
         )
-        response = messaging.send(message)
+        try:
+            response = messaging.send(message)
+        except Exception as error:
+            return {
+                "sent": False,
+                "registered": True,
+                "reason": _push_send_error_reason(error),
+                "errorType": type(error).__name__,
+            }
         return {
             "sent": True,
             "registered": True,
@@ -713,6 +721,13 @@ def _visible_push_options(
         )
 
     return options
+
+
+def _push_send_error_reason(error: Exception) -> str:
+    text = str(error).strip()
+    if text:
+        return f"remote push send failed: {text}"
+    return "remote push send failed"
 
 
 def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:

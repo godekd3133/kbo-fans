@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-06-23: 원격 푸시 테스트 서버 오류 보정
+
+### 원인
+- 사장님 iPhone에서 `설정 > API 진단 > 원격 푸시 테스트`를 누르면 앱에는 `서버 오류가 발생했습니다`가 표시됐다.
+- 운영 API `/api/health`는 200 `status=ok`이고, `/api/push/test-device`에 미등록 token을 보내면 200 `sent=false registered=false`로 응답해 endpoint 라우팅 자체는 정상이다.
+- 코드 확인 결과 등록된 token이면 backend가 Firebase `messaging.send()`를 바로 호출하고, Firebase가 token 만료/거부/발송 실패를 반환할 때 예외를 잡지 않아 FastAPI 500으로 올라갈 수 있었다.
+
+### 진행
+- [x] backend `/push/test-device`가 Firebase 발송 예외를 잡아 `sent=false`, `registered=true`, `reason`, `errorType`을 반환하도록 보정
+- [x] 회귀 테스트 추가: 등록된 token으로 Firebase 발송이 거부돼도 endpoint/service가 500 대신 실패 응답을 만든다.
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_device_test_push_targets_registered_token_only backend/tests/test_push_service.py::test_send_device_test_push_rejects_unregistered_token backend/tests/test_push_service.py::test_send_device_test_push_returns_failure_when_firebase_rejects backend/tests/test_push_service.py::test_send_device_test_push_endpoint_does_not_require_sync_secret` (`4 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/push.py`
+- [x] `git diff --check`
+- [x] 전체 push 회귀: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`66 passed`)
+
+### 남은 확인
+- [ ] backend 재배포 후 사장님 iPhone에서 `원격 푸시 테스트`를 다시 눌러 실제 Firebase 발송 결과와 receipt를 확인한다.
+
+---
+
 ## 2026-06-22: 0.1.6 마이팀 자동 경기 알림 릴리즈 준비
 
 ### 결정
