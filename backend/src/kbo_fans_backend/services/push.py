@@ -184,6 +184,7 @@ class PushService:
                 "registered": True,
                 "reason": _push_send_error_reason(error),
                 "errorType": type(error).__name__,
+                "debugReason": str(error).strip(),
             }
         return {
             "sent": True,
@@ -724,10 +725,7 @@ def _visible_push_options(
 
 
 def _push_send_error_reason(error: Exception) -> str:
-    text = str(error).strip()
-    if text:
-        return f"remote push send failed: {text}"
-    return "remote push send failed"
+    return "원격 푸시 발송에 실패했습니다. 앱을 다시 열고 알림 권한을 확인한 뒤 다시 시도해주세요."
 
 
 def _sends_immediately(enabled: bool, delivery: Optional[str]) -> bool:

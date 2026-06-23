@@ -894,11 +894,15 @@ def test_send_device_test_push_returns_failure_when_firebase_rejects(tmp_path) -
 
     response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
 
+    expected_reason = (
+        "원격 푸시 발송에 실패했습니다. 앱을 다시 열고 알림 권한을 확인한 뒤 다시 시도해주세요."
+    )
     assert response == {
         "sent": False,
         "registered": True,
-        "reason": "remote push send failed: registration-token-not-registered",
+        "reason": expected_reason,
         "errorType": "RuntimeError",
+        "debugReason": "registration-token-not-registered",
     }
     assert len(messaging.sent_messages) == 1
 
