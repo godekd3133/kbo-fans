@@ -20,9 +20,9 @@
 - [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `74` 연결, 이전 build `73` 관계 제거. 최종 그룹 build 목록은 `74` 단독 연결
 - [x] build `74` Beta App Review 제출 완료: submission id `0fc67521-8e09-495d-90a7-add4e6a0723e`, state `WAITING_FOR_REVIEW`
 - [x] 외부 테스터 상태 확인: `na******@naver.com`, invite type `EMAIL`, tester state `INSTALLED`
+- [x] GitHub Release `0.1.7` 생성: `https://github.com/godekd3133/kbo-fans/releases/tag/0.1.7`
 
 ### 진행 예정
-- [ ] GitHub Release `0.1.7` 생성 및 최종 release evidence 기록
 - [ ] 외부 TestFlight 실제 설치 가능 상태는 Apple Beta Review 승인 이후 재확인
 
 ---
