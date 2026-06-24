@@ -11,12 +11,19 @@
 
 ### 완료
 - [x] 앱 버전과 릴리즈 문서를 `0.1.7+74` / tag `0.1.7` 기준으로 동기화
+- [x] `0.1.7` backend API/worker deploy 완료: GitHub Actions `Push Demo Deploy` run `28076448346`, head `becd241b26e2fd8504b41064af86e869e7427243`, conclusion `success`, backend image tag `0.1.7`, ECR digest `sha256:a35ea5907e306f6409e5438fed622f3ccc855274f404a148f74dad3f48271749`
+- [x] backend readiness 확인: push/live preflight `status=ok checks=46 warnings=7 failures=0`, `push_config=status=ok readyForIphoneOnlyDemo=true`, registry `registeredDevices=21 followedGames=3 activeLiveActivityGames=3`, scheduler `status=ok lastSyncAt=2026-06-24T05:09:41.448893+00:00`
+- [x] topic 재등록 완료: `push_topic_resubscribe=status=ok registeredDevices=21 eligibleDevices=21 subscriptionsAttempted=232 unsubscriptionsAttempted=0`, artifact `push-topic-resubscribe.json`의 `subscriptionResults` 111개
+- [x] release API health gate 통과: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, date `2026-06-24`, `/health`, `/scoreboard/home`, `/game/20260624SSLG0/relay`, `/home`, `/schedule`, `/standings`, `/records/overview` 모두 `200`
+- [x] `0.1.7 (74)` IPA archive/upload 성공 확인: release worktree `/tmp/kbo_fans_release_0_1_7`, commit `becd241`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.7/74`, Firebase `com.kbofans.kboFans`/`kbo-fans-47189`, Runner entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, App Store Connect `Upload succeeded` / `Uploaded package is processing`; `objective_c.framework` dSYM warning은 기존과 같은 비차단 경고
+- [x] App Store Connect build `74` 처리 완료 확인: build id `0fc67521-8e09-495d-90a7-add4e6a0723e`, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-09-21T22:11:36-07:00`
+- [x] 외부 TestFlight 그룹 `External Testers` (`81506852-9006-4a43-b152-067ac78a1736`)에 build `74` 연결, 이전 build `73` 관계 제거. 최종 그룹 build 목록은 `74` 단독 연결
+- [x] build `74` Beta App Review 제출 완료: submission id `0fc67521-8e09-495d-90a7-add4e6a0723e`, state `WAITING_FOR_REVIEW`
+- [x] 외부 테스터 상태 확인: `na******@naver.com`, invite type `EMAIL`, tester state `INSTALLED`
 
 ### 진행 예정
-- [ ] `0.1.7` backend API/worker deploy와 topic 재등록 완료
-- [ ] `0.1.7 (74)` IPA archive/upload 완료
-- [ ] App Store Connect build `74` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
 - [ ] GitHub Release `0.1.7` 생성 및 최종 release evidence 기록
+- [ ] 외부 TestFlight 실제 설치 가능 상태는 Apple Beta Review 승인 이후 재확인
 
 ---
 
