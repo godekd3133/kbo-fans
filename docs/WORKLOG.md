@@ -23,6 +23,11 @@
 - [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
 - [x] `python3 -m compileall backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py`
 - [x] `git diff --check`
+- [x] 운영 배포 커밋 `ee763ab` push: `main -> origin/main`
+- [x] 운영 backend API/worker 배포: GitHub Actions `Push Demo Deploy` run `28071650791`, image tag `ee763ab36e32`, `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`
+- [x] 배포 후 readiness: workflow log 기준 `/api/health` 200, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=4`
+- [x] topic 재구독: `push_topic_resubscribe=status=ok registeredDevices=21 eligibleDevices=21 subscriptionsAttempted=232 unsubscriptionsAttempted=0`
+- [x] 운영 API 직접 smoke: `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/health` 200 `{"status":"ok"}`
 
 ---
 
