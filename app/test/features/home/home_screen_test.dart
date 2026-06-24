@@ -300,6 +300,32 @@ void main() {
     expect(find.text('standings'), findsOneWidget);
   });
 
+  testWidgets('home notification header opens notification inbox', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(child: MaterialApp.router(routerConfig: router)),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('알림 설정'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('notifications'), findsOneWidget);
+  });
+
   testWidgets('KBO brief record item renders real player image URL', (
     tester,
   ) async {
@@ -524,6 +550,10 @@ GoRouter _homeInteractionRouter() {
       GoRoute(path: '/news', builder: (_, _) => const Text('news')),
       GoRoute(path: '/onboarding', builder: (_, _) => const Text('onboarding')),
       GoRoute(path: '/settings', builder: (_, _) => const Text('settings')),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, _) => const Text('notifications'),
+      ),
     ],
   );
 }

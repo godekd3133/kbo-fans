@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
+import '../core/utils/team_display.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/models/boxscore.dart';
 import '../data/models/game.dart';
@@ -245,6 +246,7 @@ class GameEventAlertService {
       );
       final relayItems = [...relayData.relayItems]
         ..sort((a, b) => a.seqNo.compareTo(b.seqNo));
+      final matchupLabel = _gameEventMatchupLabel(game);
 
       var maxSeq = previous?.lastRelaySeq ?? 0;
       final shouldNotify = previous != null && maxSeq > 0;
@@ -258,7 +260,7 @@ class GameEventAlertService {
 
         if (notifyHomerun && _isHomerunEvent(item)) {
           await _showNow(
-            title: '${game.away.shortName} vs ${game.home.shortName} 홈런',
+            title: '$matchupLabel 홈런',
             body: buildGameEventRelayAlertBody(
               playText: item.text,
               currentAtBat: relayData.currentAtBat,
@@ -269,7 +271,7 @@ class GameEventAlertService {
 
         if (notifyHit && _isHitEvent(item)) {
           await _showNow(
-            title: '${game.away.shortName} vs ${game.home.shortName} 안타',
+            title: '$matchupLabel 안타',
             body: buildGameEventRelayAlertBody(
               playText: item.text,
               currentAtBat: relayData.currentAtBat,
@@ -280,7 +282,7 @@ class GameEventAlertService {
 
         if (notifyInningChange && item.event == 'INNING_CHANGE') {
           await _showNow(
-            title: '${game.away.shortName} vs ${game.home.shortName} 이닝 교대',
+            title: '$matchupLabel 이닝 교대',
             body: item.text,
             tag: '${game.gameId}:inning:${item.seqNo}',
           );
@@ -338,8 +340,7 @@ class GameEventAlertService {
             : '선발 라인업 변경';
         await _showNow(
           title: title,
-          body:
-              '${game.away.shortName} vs ${game.home.shortName} 라인업이 업데이트됐습니다.',
+          body: '${_gameEventMatchupLabel(game)} 라인업이 업데이트됐습니다.',
           tag: '${game.gameId}:lineup:${signature.hashCode}',
         );
       }
@@ -413,16 +414,19 @@ class GameEventAlertService {
     final opponent = isMyTeamGame
         ? (game.away.teamId == myTeamId ? game.home : game.away)
         : null;
+    final matchupLabel = _gameEventMatchupLabel(game);
+    final myTeamLabel = myTeam == null ? '' : _gameEventTeamLabel(myTeam);
+    final opponentLabel = opponent == null ? '' : _gameEventTeamLabel(opponent);
 
     if (settings.sendsImmediately(PushNotificationMoment.gameStart) &&
         previous.status == GameStatus.scheduled &&
         current.status == GameStatus.live) {
       await _showNow(
         title: isMyTeamGame && myTeam != null
-            ? '${myTeam.shortName} 경기 시작'
-            : '${game.away.shortName} vs ${game.home.shortName} 경기 시작',
+            ? '$myTeamLabel 경기 시작'
+            : '$matchupLabel 경기 시작',
         body: isMyTeamGame && opponent != null
-            ? '${opponent.shortName}전이 시작됐습니다. ${game.stadium}'
+            ? _gameEventStartBody(opponentLabel: opponentLabel, game: game)
             : '${game.stadium} 경기 시작',
         tag: '${game.gameId}:start:${current.inning}',
       );
@@ -438,9 +442,9 @@ class GameEventAlertService {
             previous.scoreForTeam(myTeam.teamId);
         if (myScoreDelta > 0) {
           await _showNow(
-            title: '${myTeam.shortName} $myScoreDelta점 득점',
+            title: '$myTeamLabel $myScoreDelta점 득점',
             body:
-                '현재 ${myTeam.shortName} ${current.scoreForTeam(myTeam.teamId)} : ${current.scoreForTeam(opponent.teamId)} ${opponent.shortName}',
+                '스코어 ${_gameEventTeamScoreLine(myTeam: myTeam, opponent: opponent, current: current)}',
             tag:
                 '${game.gameId}:score:${current.scoreForTeam(myTeam.teamId)}:${current.scoreForTeam(opponent.teamId)}',
           );
@@ -449,9 +453,8 @@ class GameEventAlertService {
         final scorer = awayDelta > 0 ? game.away : game.home;
         final delta = awayDelta > 0 ? awayDelta : homeDelta;
         await _showNow(
-          title: '${scorer.shortName} $delta점 득점',
-          body:
-              '현재 ${game.away.shortName} ${current.awayScore} : ${current.homeScore} ${game.home.shortName}',
+          title: '${_gameEventTeamLabel(scorer)} $delta점 득점',
+          body: '스코어 ${_gameEventScoreLine(game: game, current: current)}',
           tag: '${game.gameId}:score:${current.awayScore}:${current.homeScore}',
         );
       }
@@ -467,11 +470,9 @@ class GameEventAlertService {
         if (isMyTeamGame && myTeam != null && opponent != null) {
           final myLeading = currentLeader == myTeam.teamId;
           await _showNow(
-            title: myLeading
-                ? '${myTeam.shortName} 역전'
-                : '${myTeam.shortName} 역전 허용',
+            title: myLeading ? '$myTeamLabel 역전' : '$myTeamLabel 역전 허용',
             body:
-                '${opponent.shortName}전 스코어 ${current.scoreForTeam(myTeam.teamId)}:${current.scoreForTeam(opponent.teamId)}',
+                '$opponentLabel전 스코어 ${current.scoreForTeam(myTeam.teamId)}:${current.scoreForTeam(opponent.teamId)}',
             tag:
                 '${game.gameId}:reversal:${current.awayScore}:${current.homeScore}',
           );
@@ -480,9 +481,8 @@ class GameEventAlertService {
               ? game.away
               : game.home;
           await _showNow(
-            title: '${leader.shortName} 역전',
-            body:
-                '현재 ${game.away.shortName} ${current.awayScore} : ${current.homeScore} ${game.home.shortName}',
+            title: '${_gameEventTeamLabel(leader)} 역전',
+            body: '스코어 ${_gameEventScoreLine(game: game, current: current)}',
             tag:
                 '${game.gameId}:reversal:${current.awayScore}:${current.homeScore}',
           );
@@ -502,15 +502,15 @@ class GameEventAlertService {
             ? '패배'
             : '무승부';
         await _showNow(
-          title: '${myTeam.shortName} 경기 종료',
-          body: '$result · $myScore : $opponentScore ${opponent.shortName}',
+          title: '$myTeamLabel 경기 종료',
+          body:
+              '$result · ${_gameEventTeamScoreLine(myTeam: myTeam, opponent: opponent, current: current)}',
           tag: '${game.gameId}:end:$myScore:$opponentScore',
         );
       } else {
         await _showNow(
-          title: '${game.away.shortName} vs ${game.home.shortName} 경기 종료',
-          body:
-              '최종 ${current.awayScore} : ${current.homeScore} ${game.home.shortName}',
+          title: '$matchupLabel 경기 종료',
+          body: '최종 ${_gameEventScoreLine(game: game, current: current)}',
           tag: '${game.gameId}:end:${current.awayScore}:${current.homeScore}',
         );
       }
@@ -635,6 +635,61 @@ class GameEventAlertService {
   }
 }
 
+String _gameEventTeamLabel(TeamScore team) {
+  return buildGameEventTeamLabel(
+    teamId: team.teamId,
+    teamName: team.teamName,
+    shortName: team.shortName,
+  );
+}
+
+String _gameEventMatchupLabel(Game game) {
+  return buildGameEventMatchupLabel(
+    awayTeamId: game.away.teamId,
+    awayTeamName: game.away.teamName,
+    awayShortName: game.away.shortName,
+    homeTeamId: game.home.teamId,
+    homeTeamName: game.home.teamName,
+    homeShortName: game.home.shortName,
+  );
+}
+
+String _gameEventScoreLine({
+  required Game game,
+  required _GameAlertSnapshot current,
+}) {
+  return buildGameEventScoreLine(
+    awayTeamId: game.away.teamId,
+    awayTeamName: game.away.teamName,
+    awayShortName: game.away.shortName,
+    awayScore: current.awayScore,
+    homeTeamId: game.home.teamId,
+    homeTeamName: game.home.teamName,
+    homeShortName: game.home.shortName,
+    homeScore: current.homeScore,
+  );
+}
+
+String _gameEventTeamScoreLine({
+  required TeamScore myTeam,
+  required TeamScore opponent,
+  required _GameAlertSnapshot current,
+}) {
+  return '${_gameEventTeamLabel(myTeam)} ${current.scoreForTeam(myTeam.teamId)}:'
+      '${current.scoreForTeam(opponent.teamId)} ${_gameEventTeamLabel(opponent)}';
+}
+
+String _gameEventStartBody({
+  required String opponentLabel,
+  required Game game,
+}) {
+  final stadium = game.stadium.trim();
+  if (stadium.isEmpty) {
+    return '$opponentLabel전이 시작됐습니다.';
+  }
+  return '$opponentLabel전이 시작됐습니다. $stadium';
+}
+
 class _GameAlertSnapshot {
   final GameStatus status;
   final String inning;
@@ -731,6 +786,57 @@ class _LineupCheckResult {
   final int? checkedAtMs;
 
   const _LineupCheckResult({this.signature, this.checkedAtMs});
+}
+
+@visibleForTesting
+String buildGameEventTeamLabel({
+  required String teamId,
+  required String teamName,
+  required String shortName,
+}) {
+  return kboShortTeamDisplayName(
+    teamId: teamId,
+    teamName: teamName,
+    shortName: shortName,
+  );
+}
+
+@visibleForTesting
+String buildGameEventMatchupLabel({
+  required String awayTeamId,
+  required String awayTeamName,
+  required String awayShortName,
+  required String homeTeamId,
+  required String homeTeamName,
+  required String homeShortName,
+}) {
+  final away = buildGameEventTeamLabel(
+    teamId: awayTeamId,
+    teamName: awayTeamName,
+    shortName: awayShortName,
+  );
+  final home = buildGameEventTeamLabel(
+    teamId: homeTeamId,
+    teamName: homeTeamName,
+    shortName: homeShortName,
+  );
+  return '$away vs $home';
+}
+
+@visibleForTesting
+String buildGameEventScoreLine({
+  required String awayTeamId,
+  required String awayTeamName,
+  required String awayShortName,
+  required int awayScore,
+  required String homeTeamId,
+  required String homeTeamName,
+  required String homeShortName,
+  required int homeScore,
+}) {
+  return '${buildGameEventTeamLabel(teamId: awayTeamId, teamName: awayTeamName, shortName: awayShortName)} '
+      '$awayScore:$homeScore '
+      '${buildGameEventTeamLabel(teamId: homeTeamId, teamName: homeTeamName, shortName: homeShortName)}';
 }
 
 @visibleForTesting

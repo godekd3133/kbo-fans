@@ -2171,9 +2171,12 @@ class _RelayMomentCard extends StatelessWidget {
     final actorProfile = actorLabel == null
         ? null
         : _resolvePlayerProfile(playersByName, actorLabel);
+    final actorProfileImageUrl = actorProfile == null
+        ? null
+        : playerProfileImageUrl(actorProfile, season: DateTime.now().year);
     final actorImageUrl = actorLabel == null
         ? null
-        : (actorProfile?.imageUrl ?? _resolveImageUrl(imageMap, actorLabel));
+        : (actorProfileImageUrl ?? _resolveImageUrl(imageMap, actorLabel));
     final offenseTeam = _offenseTeam();
     final defenseTeam = _defenseTeam();
     final actorLineupEntry = actorLabel == null

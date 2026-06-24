@@ -18,38 +18,18 @@ import '../../features/settings/settings_screen.dart';
 import '../../features/settings/api_diagnostics_screen.dart';
 import '../../features/settings/patch_notes_screen.dart';
 import 'app_route_sanitizer.dart';
+import 'onboarding_state.dart';
 import '../widgets/main_scaffold.dart';
 import '../widgets/boot_splash_screen.dart';
+
+export 'onboarding_state.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 int? _lastTabIndex;
 
-class OnboardingDoneNotifier extends Notifier<bool?> {
-  @override
-  bool? build() => null;
-
-  void setValue(bool value) {
-    state = value;
-  }
-}
-
-/// 앱 초기 부트스트랩 중에는 null
-final onboardingDoneProvider = NotifierProvider<OnboardingDoneNotifier, bool?>(
-  OnboardingDoneNotifier.new,
-);
-
-final _onboardingDoneRefreshProvider = Provider<ValueNotifier<bool?>>((ref) {
-  final notifier = ValueNotifier<bool?>(ref.read(onboardingDoneProvider));
-  ref.listen<bool?>(onboardingDoneProvider, (_, next) {
-    notifier.value = next;
-  });
-  ref.onDispose(notifier.dispose);
-  return notifier;
-});
-
 final routerProvider = Provider<GoRouter>((ref) {
-  final onboardingDoneRefresh = ref.watch(_onboardingDoneRefreshProvider);
+  final onboardingDoneRefresh = ref.watch(onboardingDoneRefreshProvider);
   _lastTabIndex = null;
 
   final router = GoRouter(

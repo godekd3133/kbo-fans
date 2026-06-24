@@ -195,6 +195,31 @@ def test_home_run_quick_item_uses_player_image_and_detail_route() -> None:
     assert items[0]["imageUrl"].endswith("/2026/52605.jpg")
 
 
+def test_my_team_game_quick_item_normalizes_team_codes() -> None:
+    service = HomeService.__new__(HomeService)
+
+    items = service._build_quick_items(
+        my_team_brief={
+            "teamId": "SS",
+            "teamLabel": "삼성 라이온즈",
+            "todayGameId": "20260624SSSK0",
+        },
+        overview={"leaders": {"hr": []}},
+        games=[
+            {
+                "gameId": "20260624SSSK0",
+                "inning": "7회말",
+                "stadium": "대구",
+                "away": {"teamId": "SS", "shortName": "SS", "score": 4},
+                "home": {"teamId": "SK", "shortName": "SK", "score": 3},
+            }
+        ],
+        season=2026,
+    )
+
+    assert items[0]["title"] == "삼성 4 : 3 SSG"
+
+
 def test_kbo_brief_record_item_uses_player_image_and_detail_route() -> None:
     service = HomeService.__new__(HomeService)
 

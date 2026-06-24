@@ -1629,6 +1629,42 @@ def test_live_activity_scoreboard_sync_updates_registered_live_games(tmp_path) -
     assert registry.sync_heartbeat()["checkedGames"] == 1
 
 
+def test_live_activity_scoreboard_sync_normalizes_team_codes(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260624SSSK0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    game_id="20260624SSSK0",
+                    away_team_id="SS",
+                    away_short_name="SS",
+                    home_team_id="SK",
+                    home_short_name="SK",
+                    away_score=4,
+                    home_score=3,
+                    inning="7회말",
+                )
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    sync_service.sync_date("2026-06-24")
+
+    state = sender.calls[0]["state"]
+    assert state.awayTeam == "삼성"
+    assert state.homeTeam == "SSG"
+
+
 def test_live_activity_scoreboard_sync_updates_lineup_opened_pregame_with_ranks(
     tmp_path,
 ) -> None:
@@ -2967,6 +3003,11 @@ def _register_device_token_batch(
 
 def _scoreboard_game(
     *,
+    game_id: str = "20260604LGKT0",
+    away_team_id: str = "LG",
+    away_short_name: str = "LG",
+    home_team_id: str = "KT",
+    home_short_name: str = "KT",
     away_score: int,
     home_score: int,
     inning: str,
@@ -2977,7 +3018,7 @@ def _scoreboard_game(
     lineup_opened: bool = False,
 ) -> dict:
     return {
-        "gameId": "20260604LGKT0",
+        "gameId": game_id,
         "status": status,
         "inning": inning,
         "stadium": "수원",
@@ -2991,13 +3032,13 @@ def _scoreboard_game(
             "outs": 0,
         },
         "away": {
-            "teamId": "LG",
-            "shortName": "LG",
+            "teamId": away_team_id,
+            "shortName": away_short_name,
             "score": away_score,
         },
         "home": {
-            "teamId": "KT",
-            "shortName": "KT",
+            "teamId": home_team_id,
+            "shortName": home_short_name,
             "score": home_score,
         },
     }

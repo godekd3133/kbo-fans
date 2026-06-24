@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
 import '../core/utils/game_status_label.dart';
+import '../core/utils/team_display.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
 import '../data/models/game.dart';
@@ -242,9 +243,9 @@ class LiveActivityService {
     return {
       'gameId': targetGame.gameId,
       'awayTeamId': targetGame.away.teamId,
-      'awayTeam': targetGame.away.shortName,
+      'awayTeam': _liveActivityTeamLabel(targetGame.away),
       'homeTeamId': targetGame.home.teamId,
-      'homeTeam': targetGame.home.shortName,
+      'homeTeam': _liveActivityTeamLabel(targetGame.home),
       'awayScore': targetGame.away.score,
       'homeScore': targetGame.home.score,
       'inning': _inningTextForLiveActivity(targetGame, currentAtBat),
@@ -548,11 +549,10 @@ class LiveActivityService {
       return;
     }
 
-    final title = targetGame.isPregameLineupOpen
-        ? '${targetGame.away.shortName} ${rankLabels.awayOrDash} · '
-              '${rankLabels.homeOrDash} ${targetGame.home.shortName}'
-        : '${targetGame.away.shortName} ${targetGame.away.score} : '
-              '${targetGame.home.score} ${targetGame.home.shortName}';
+    final title = _androidFollowNotificationTitle(
+      targetGame,
+      rankLabels: rankLabels,
+    );
     final statusText = targetGame.isPregameLineupOpen
         ? '경기전'
         : secondaryTextForGameStatus(
@@ -644,6 +644,26 @@ class _LiveActivityRankLabels {
   String get homeOrDash => home.isEmpty ? '-' : home;
 }
 
+String _liveActivityTeamLabel(TeamScore team) {
+  return kboShortTeamDisplayName(
+    teamId: team.teamId,
+    teamName: team.teamName,
+    shortName: team.shortName,
+  );
+}
+
+String _androidFollowNotificationTitle(
+  Game game, {
+  _LiveActivityRankLabels rankLabels = const _LiveActivityRankLabels(),
+}) {
+  final away = _liveActivityTeamLabel(game.away);
+  final home = _liveActivityTeamLabel(game.home);
+  if (game.isPregameLineupOpen) {
+    return '$away ${rankLabels.awayOrDash} · ${rankLabels.homeOrDash} $home';
+  }
+  return '$away ${game.away.score}:${game.home.score} $home';
+}
+
 _LiveActivityRankLabels _rankLabelsForGame(
   Game game,
   List<TeamStanding> standings,
@@ -732,5 +752,16 @@ Map<String, dynamic> buildLiveActivityScorePayloadForTesting({
     rankLabels: _rankLabelsForGame(game, standings),
     updatedAt: updatedAt,
     apiBaseUrl: apiBaseUrl,
+  );
+}
+
+@visibleForTesting
+String buildAndroidFollowNotificationTitleForTesting({
+  required Game game,
+  List<TeamStanding> standings = const [],
+}) {
+  return _androidFollowNotificationTitle(
+    game,
+    rankLabels: _rankLabelsForGame(game, standings),
   );
 }

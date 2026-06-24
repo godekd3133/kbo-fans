@@ -6,6 +6,7 @@ import 'package:workmanager/workmanager.dart';
 
 import '../core/config/app_config.dart';
 import '../core/utils/game_status_label.dart';
+import '../core/utils/team_display.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
 import '../data/models/game.dart';
@@ -146,7 +147,7 @@ class WidgetSyncService {
     await Future.wait([
       HomeWidget.saveWidgetData<String>(
         'widget_title',
-        '${selected.away.shortName} vs ${selected.home.shortName}',
+        _widgetGameTitle(selected),
       ),
       HomeWidget.saveWidgetData<String>('widget_subtitle', selected.stadium),
       HomeWidget.saveWidgetData<String>(
@@ -322,6 +323,20 @@ class WidgetSyncService {
   }
 }
 
+String _widgetGameTitle(Game game) {
+  final away = kboShortTeamDisplayName(
+    teamId: game.away.teamId,
+    teamName: game.away.teamName,
+    shortName: game.away.shortName,
+  );
+  final home = kboShortTeamDisplayName(
+    teamId: game.home.teamId,
+    teamName: game.home.teamName,
+    shortName: game.home.shortName,
+  );
+  return '$away vs $home';
+}
+
 @visibleForTesting
 String encodeWidgetMyTeamIdForStorage(String? myTeamId) {
   return myTeamId ?? '';
@@ -333,4 +348,9 @@ String? decodeWidgetMyTeamIdFromStorage(String? storedMyTeamId) {
     return null;
   }
   return storedMyTeamId;
+}
+
+@visibleForTesting
+String buildWidgetGameTitleForTesting(Game game) {
+  return _widgetGameTitle(game);
 }

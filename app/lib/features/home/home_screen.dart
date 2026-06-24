@@ -921,7 +921,7 @@ class _HeaderBar extends StatelessWidget {
                 _HeaderIconButton(
                   icon: Icons.notifications_none_rounded,
                   tooltip: '알림 설정',
-                  onPressed: () => context.go('/settings'),
+                  onPressed: () => context.push('/notifications'),
                 ),
                 const SizedBox(width: 8),
                 _HeaderIconButton(

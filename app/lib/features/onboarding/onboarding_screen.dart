@@ -4,11 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/constants/visual_assets.dart';
 import '../../core/router/app_route_sanitizer.dart';
-import '../../core/router/app_router.dart';
+import '../../core/router/onboarding_state.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -30,14 +28,30 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _selectedTeamId;
+  bool _isSubmitting = false;
 
   Future<void> _saveAndProceed() async {
+    if (_isSubmitting) {
+      return;
+    }
     final resolvedTeamId = _selectedTeamId ?? ref.read(myTeamProvider);
-    // 마이팀을 전역 Provider에 저장
-    await ref.read(myTeamProvider.notifier).setTeam(resolvedTeamId);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboardingDone', true);
-    ref.read(onboardingDoneProvider.notifier).setValue(true);
+    setState(() => _isSubmitting = true);
+    try {
+      // 마이팀을 전역 Provider에 저장
+      await ref.read(myTeamProvider.notifier).setTeam(resolvedTeamId);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboardingDone', true);
+      ref.read(onboardingDoneProvider.notifier).setValue(true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('시작 준비에 실패했습니다. 다시 시도해주세요.')),
+      );
+      return;
+    }
     if (!mounted) {
       return;
     }
@@ -105,12 +119,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    AppArtworkCard(
-                      assetName: VisualAssets.onboardingStadiumHero,
-                      height: viewportWidth >= 900 ? 176 : 108,
-                      alignment: Alignment.center,
-                    ),
-                    const SizedBox(height: 10),
                     _SelectedTeamPreview(team: selectedTeam),
                     const SizedBox(height: 10),
                     GridView.builder(
@@ -133,8 +141,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           child: _OnboardingTeamCard(
                             team: team,
                             isSelected: isSelected,
-                            onTap: () =>
-                                setState(() => _selectedTeamId = team.id),
+                            onTap: _isSubmitting
+                                ? null
+                                : () =>
+                                      setState(() => _selectedTeamId = team.id),
                           ),
                         );
                       },
@@ -144,12 +154,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       width: double.infinity,
                       height: 52,
                       enabled: effectiveSelectedTeamId != null,
-                      label: widget.isEditMode ? '선택 완료' : '시작하기',
+                      isLoading: _isSubmitting,
+                      label: _isSubmitting
+                          ? (widget.isEditMode ? '저장 중입니다' : '시작 중입니다')
+                          : (widget.isEditMode ? '선택 완료' : '시작하기'),
                       onTap: _saveAndProceed,
                     ),
                     const SizedBox(height: 14),
                     AppPressable(
-                      onTap: widget.isEditMode
+                      onTap: _isSubmitting
+                          ? null
+                          : widget.isEditMode
                           ? () => context.go('/settings')
                           : _saveAndProceed,
                       pressedScale: 0.97,
@@ -358,6 +373,7 @@ class _OnboardingPrimaryButton extends StatelessWidget {
   final double width;
   final double height;
   final bool enabled;
+  final bool isLoading;
   final String label;
   final VoidCallback onTap;
 
@@ -365,6 +381,7 @@ class _OnboardingPrimaryButton extends StatelessWidget {
     required this.width,
     required this.height,
     required this.enabled,
+    required this.isLoading,
     required this.label,
     required this.onTap,
   });
@@ -372,7 +389,7 @@ class _OnboardingPrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPressable(
-      onTap: enabled ? onTap : null,
+      onTap: enabled && !isLoading ? onTap : null,
       pressedScale: 0.982,
       child: Container(
         width: width,
@@ -398,12 +415,35 @@ class _OnboardingPrimaryButton extends StatelessWidget {
                 ]
               : null,
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 16,
-            color: enabled ? AppColors.textPrimary : AppColors.textDisabled,
-            fontWeight: FontWeight.w900,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: Row(
+            key: ValueKey(label),
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isLoading) ...[
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 16,
+                  color: enabled
+                      ? AppColors.textPrimary
+                      : AppColors.textDisabled,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -414,7 +454,7 @@ class _OnboardingPrimaryButton extends StatelessWidget {
 class _OnboardingTeamCard extends StatelessWidget {
   final KboTeam team;
   final bool isSelected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _OnboardingTeamCard({
     required this.team,

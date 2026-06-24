@@ -70,6 +70,36 @@ void main() {
     expect(body, '장성우 : 좌월 홈런');
   });
 
+  test('로컬 경기 이벤트 알림 팀명은 KBO 팀 ID를 팬이 보는 짧은 팀명으로 바꾼다', () {
+    expect(
+      buildGameEventMatchupLabel(
+        awayTeamId: 'SS',
+        awayTeamName: '삼성 라이온즈',
+        awayShortName: 'SS',
+        homeTeamId: 'SK',
+        homeTeamName: 'SSG 랜더스',
+        homeShortName: 'SK',
+      ),
+      '삼성 vs SSG',
+    );
+  });
+
+  test('로컬 경기 이벤트 알림 스코어 문구도 팀 코드를 노출하지 않는다', () {
+    expect(
+      buildGameEventScoreLine(
+        awayTeamId: '',
+        awayTeamName: '삼성 라이온즈',
+        awayShortName: '삼성 라이온즈',
+        awayScore: 4,
+        homeTeamId: 'SK',
+        homeTeamName: '',
+        homeShortName: 'SK',
+        homeScore: 3,
+      ),
+      '삼성 4:3 SSG',
+    );
+  });
+
   test('로컬 경기 이벤트 알림은 첫 득점을 역전으로 보지 않는다', () {
     expect(
       shouldSendGameEventReversal(previousLeader: null, currentLeader: 'LG'),

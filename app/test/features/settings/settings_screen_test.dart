@@ -18,7 +18,7 @@ void main() {
     );
   });
 
-  testWidgets('더보기 허브는 마이팀과 오늘 정보 섹션을 보여준다', (tester) async {
+  testWidgets('더보기 허브는 필수 액션만 보여주고 다른 탭 정보를 중복 노출하지 않는다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -29,9 +29,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('KBO 팬 허브'), findsOneWidget);
+    expect(find.text('더보기'), findsOneWidget);
     expect(find.text('마이팀을 선택하세요'), findsOneWidget);
-    expect(find.text('오늘 챙길 정보'), findsOneWidget);
+    expect(find.text('마이팀 선택'), findsOneWidget);
+    expect(find.text('오늘 챙길 정보'), findsNothing);
+    expect(find.text('경기 있음'), findsNothing);
+    expect(find.text('최근'), findsNothing);
+    expect(find.text('앱 밖 표면'), findsNothing);
     expect(find.text('현재 프리셋: 내 팀 집중'), findsNothing);
     expect(find.text('알림 플레이북'), findsNothing);
     expect(find.text('리그 전체 알림'), findsNothing);
@@ -42,9 +46,13 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('빠른 이동'), findsOneWidget);
+    expect(find.text('오늘과 이번 주'), findsNothing);
+    expect(find.text('게임차와 흐름'), findsNothing);
+    expect(find.text('선수와 팀 기록'), findsNothing);
+    expect(find.text('짧은 경기 브리프'), findsNothing);
   });
 
-  testWidgets('앱 밖 표면 설명은 사용자 언어로 보인다', (tester) async {
+  testWidgets('알림함은 내용 미리보기 없이 진입 버튼으로 보인다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -58,13 +66,14 @@ void main() {
     final mainScroll = find.byType(Scrollable).first;
 
     await tester.scrollUntilVisible(
-      find.text('앱 밖 표면'),
+      find.text('알림함'),
       500,
       scrollable: mainScroll,
     );
-    expect(find.text('푸시'), findsOneWidget);
-    expect(find.text('라이브 액티비티'), findsOneWidget);
-    expect(find.text('브리프'), findsOneWidget);
+    expect(find.text('푸시 알림 모아보기'), findsOneWidget);
+    expect(find.text('최근 받은 알림을 확인합니다'), findsOneWidget);
+    expect(find.text('득점, 홈런, 타석, 브리프가 수신 순서로 쌓입니다'), findsNothing);
+    expect(find.text('라이브 액티비티'), findsNothing);
   });
 
   testWidgets('저장된 커스텀 알림 설정이 있어도 플레이북 UI를 노출하지 않는다', (tester) async {
@@ -81,7 +90,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('KBO 팬 허브'), findsOneWidget);
+    expect(find.text('더보기'), findsOneWidget);
     expect(find.text('현재 프리셋: 커스텀'), findsNothing);
     expect(find.text('알림 플레이북'), findsNothing);
     expect(find.text('프리셋 적용'), findsNothing);

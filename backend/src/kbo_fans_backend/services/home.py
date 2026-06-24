@@ -29,6 +29,18 @@ class HomeService:
         "OB": "두산 베어스",
         "WO": "키움 히어로즈",
     }
+    _TEAM_SHORT_LABELS = {
+        "LG": "LG",
+        "KT": "KT",
+        "SK": "SSG",
+        "SS": "삼성",
+        "NC": "NC",
+        "HH": "한화",
+        "LT": "롯데",
+        "HT": "KIA",
+        "OB": "두산",
+        "WO": "키움",
+    }
 
     def __init__(
         self,
@@ -414,11 +426,12 @@ class HomeService:
             away_score = away.get("score")
             home_score = home.get("score")
             if away_score is None or home_score is None:
-                title = f"{away.get('shortName')} vs {home.get('shortName')}"
-            else:
                 title = (
-                    f"{away.get('shortName')} {away_score} : {home_score} {home.get('shortName')}"
+                    f"{self._team_short_name(today_game, 'away')} vs "
+                    f"{self._team_short_name(today_game, 'home')}"
                 )
+            else:
+                title = self._score_line(today_game)
             items.append(
                 {
                     "eyebrow": "마이팀 경기",
@@ -734,7 +747,22 @@ class HomeService:
     @staticmethod
     def _team_short_name(game: Dict[str, Any], side: str) -> str:
         team = game.get(side) or {}
-        return str(team.get("shortName") or team.get("teamName") or game.get(f"{side}Name") or "-")
+        team_id = str(team.get("teamId") or game.get(f"{side}Id") or "").strip()
+        if team_id in HomeService._TEAM_SHORT_LABELS:
+            return HomeService._TEAM_SHORT_LABELS[team_id]
+
+        short_name = str(team.get("shortName") or "").strip()
+        if short_name in HomeService._TEAM_SHORT_LABELS:
+            return HomeService._TEAM_SHORT_LABELS[short_name]
+
+        team_name = str(team.get("teamName") or game.get(f"{side}Name") or "").strip()
+        for known_team_id, known_team_name in HomeService._TEAM_LABELS.items():
+            normalized_name = team_name.replace(" ", "")
+            normalized_known_name = known_team_name.replace(" ", "")
+            if team_name == known_team_name or normalized_name == normalized_known_name:
+                return HomeService._TEAM_SHORT_LABELS[known_team_id]
+
+        return short_name or team_name or team_id or "-"
 
     @staticmethod
     def _as_int(value: Any, fallback: int = 0) -> int:

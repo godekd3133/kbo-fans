@@ -219,6 +219,33 @@ void main() {
     expect(payload['awayRankText'], '2위');
     expect(payload['homeRankText'], '5위');
   });
+
+  test('Live Activity payload normalizes KBO team IDs for display labels', () {
+    final payload = buildLiveActivityScorePayloadForTesting(
+      game: _game(
+        gameId: '20260624SSSK0',
+        awayTeamId: 'SS',
+        homeTeamId: 'SK',
+        status: GameStatus.live,
+      ),
+    );
+
+    expect(payload['awayTeam'], '삼성');
+    expect(payload['homeTeam'], 'SSG');
+  });
+
+  test('Android follow notification title normalizes team IDs', () {
+    final title = buildAndroidFollowNotificationTitleForTesting(
+      game: _game(
+        gameId: '20260624SSSK0',
+        awayTeamId: 'SS',
+        homeTeamId: 'SK',
+        status: GameStatus.live,
+      ),
+    );
+
+    expect(title, '삼성 0:0 SSG');
+  });
 }
 
 Game _game({

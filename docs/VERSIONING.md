@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-06-22
+> Updated: 2026-06-24
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.6+73`
-- Current release tag: `0.1.6`
+- Flutter app version: `0.1.7+74`
+- Current release tag: `0.1.7`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -20,7 +20,7 @@
 ## Bump Rules
 
 - Pre-1.0 release checkpoints increment `PATCH` by one for every tester-facing or release-facing checkpoint.
-- Build number increments with the app release number while this project stays in `0.0.x`.
+- Build number increments monotonically with each tester-facing iOS build.
 - `MINOR` is reserved for a larger product milestone after the current early tester line is stable.
 - The Director may explicitly promote a release to a minor milestone; `0.1.0+67` is the first such tester-facing milestone after `0.0.66+66`.
 - `MAJOR` is reserved for post-1.0 product, data, or release contract changes that are incompatible with the previous stable line.
@@ -123,6 +123,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.4`: design-reference consistency release. News, schedule, and records design QA references that were already linked from docs are committed, and the notification inbox reference generator is added for repeatable future UI polish. No app runtime, backend API, push, or Live Activity behavior changes.
 - `0.1.5`: followed-game moment coverage release. Selected-game follow subscriptions include every enabled game moment as `*_GAME_<gameId>` topics even when the saved delivery mode is `summary` or `liveOnly`, while team/all-game subscriptions still require `immediate`.
 - `0.1.6`: my-team automatic game notification release. My-team subscriptions include every enabled game moment on team topics without requiring `푸쉬 중계 받기`, followed other-team games add only the selected GAME topic, scheduler scoreboard diff sends `lineup_opened`, the sync worker schedules KST smart daily `baseball_info`, and the missing notification-inbox reference image is committed.
+- `0.1.7`: notification copy and screen-flow polish release. Onboarding shows a submitting state and removes the standalone hero image, More becomes an action-focused hub, player images are restored across detail/records surfaces, push/Live Activity/widget copy uses fan-facing short team names, and hit/homerun/scoring/reversal/cancelled/suspended messages are normalized for live game context.
 
 ## GitHub Release Note Template
 

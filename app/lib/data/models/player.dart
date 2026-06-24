@@ -1,3 +1,5 @@
+import 'records_overview.dart';
+
 enum PlayerType { hitter, pitcher }
 
 enum PlayerAvailabilityStatus { available, injured, inactive }
@@ -72,4 +74,16 @@ class PlayerProfile {
     this.whip,
     this.isRetired = false,
   });
+}
+
+String? playerProfileImageUrl(PlayerProfile player, {required int season}) {
+  final explicit = player.imageUrl?.trim();
+  if (explicit != null && explicit.isNotEmpty) {
+    return explicit;
+  }
+  final playerId = player.id.trim();
+  if (playerId.isEmpty) {
+    return null;
+  }
+  return kboPlayerImageUrl(season: season, playerId: playerId);
 }

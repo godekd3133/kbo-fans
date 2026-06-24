@@ -100,6 +100,8 @@ class LineupEntry {
   final String position;
   final String positionKo;
   final String name;
+  final String? playerId;
+  final String? imageUrl;
   final String? statValue;
   final String? changeLabel;
 
@@ -108,6 +110,8 @@ class LineupEntry {
     required this.position,
     required this.positionKo,
     required this.name,
+    this.playerId,
+    this.imageUrl,
     this.statValue,
     this.changeLabel,
   });

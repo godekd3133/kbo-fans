@@ -44,6 +44,27 @@ class _StubMainCrawler:
         ]
 
 
+class _StubPlayerStatsService:
+    def get_team_players(self, team_id: str, season: int):
+        players = {
+            "LG": [
+                {
+                    "id": "78224",
+                    "name": "홍창기",
+                    "imageUrl": "https://img.test/2026/78224.jpg",
+                }
+            ],
+            "OB": [
+                {
+                    "id": "66203",
+                    "name": "박준영",
+                    "imageUrl": "https://img.test/2026/66203.jpg",
+                }
+            ],
+        }
+        return {"teamId": team_id, "season": season, "players": players.get(team_id, [])}
+
+
 class _NoopPushService:
     def send_lineup_opened(self, **kwargs):
         return None
@@ -66,6 +87,7 @@ def test_lineup_starter_images_are_built_from_main_game(tmp_path) -> None:
         main_crawler=_StubMainCrawler(),
         snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
         push_service=_NoopPushService(),
+        player_stats_service=_StubPlayerStatsService(),
     )
 
     payload = service.get_lineup("20260425LGOB0")
@@ -76,6 +98,24 @@ def test_lineup_starter_images_are_built_from_main_game(tmp_path) -> None:
     assert payload["home"]["starter"]["id"] == "55268"
     assert payload["home"]["starter"]["name"] == "최민석"
     assert payload["home"]["starter"]["imageUrl"].endswith("/2026/55268.jpg")
+
+
+def test_lineup_rows_are_enriched_with_player_images(tmp_path) -> None:
+    service = LineupService(
+        lineup_crawler=_StubLineupCrawler(),
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+        push_service=_NoopPushService(),
+        player_stats_service=_StubPlayerStatsService(),
+    )
+
+    payload = service.get_lineup("20260425LGOB0")
+
+    assert payload["away"]["lineup"][0]["id"] == "78224"
+    assert payload["away"]["lineup"][0]["imageUrl"] == "https://img.test/2026/78224.jpg"
+    assert payload["home"]["lineup"][0]["id"] == "66203"
+    assert payload["home"]["lineup"][0]["imageUrl"] == "https://img.test/2026/66203.jpg"
 
 
 def test_lineup_service_uses_snapshot_first_for_past_game(tmp_path) -> None:
@@ -151,6 +191,7 @@ def test_lineup_service_marks_lineup_opened_after_push(tmp_path) -> None:
         main_crawler=_StubMainCrawler(),
         snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
         push_service=push_service,
+        player_stats_service=_StubPlayerStatsService(),
     )
 
     service.get_lineup("20260425LGOB0")
@@ -169,6 +210,7 @@ def test_lineup_service_skips_lineup_opened_when_scheduler_already_sent(tmp_path
         main_crawler=_StubMainCrawler(),
         snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
         push_service=push_service,
+        player_stats_service=_StubPlayerStatsService(),
     )
 
     service.get_lineup("20260425LGOB0")

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.relay import RelayCrawler
+from kbo_fans_backend.services.push import KBO_TEAM_NAMES, KBO_TEAM_SHORT_NAMES
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
 
@@ -107,8 +108,8 @@ class RelayService:
         home = game.get("home", {})
         away_scores = away.get("scores", [])
         home_scores = home.get("scores", [])
-        away_name = away.get("shortName") or away.get("teamName") or "원정팀"
-        home_name = home.get("shortName") or home.get("teamName") or "홈팀"
+        away_name = _team_short_display_name(away, "원정팀")
+        home_name = _team_short_display_name(home, "홈팀")
 
         items = []
         seq_no = 1
@@ -211,3 +212,22 @@ class RelayService:
             if ":" in text or item.get("pitchSequence"):
                 return True
         return False
+
+
+def _team_short_display_name(team: dict[str, Any], fallback: str) -> str:
+    team_id = str(team.get("teamId") or "").strip()
+    if team_id in KBO_TEAM_SHORT_NAMES:
+        return KBO_TEAM_SHORT_NAMES[team_id]
+
+    short_name = str(team.get("shortName") or "").strip()
+    if short_name in KBO_TEAM_SHORT_NAMES:
+        return KBO_TEAM_SHORT_NAMES[short_name]
+
+    team_name = str(team.get("teamName") or team.get("name") or "").strip()
+    for known_team_id, known_team_name in KBO_TEAM_NAMES.items():
+        normalized_name = team_name.replace(" ", "")
+        normalized_known_name = known_team_name.replace(" ", "")
+        if team_name == known_team_name or normalized_name == normalized_known_name:
+            return KBO_TEAM_SHORT_NAMES[known_team_id]
+
+    return short_name or team_name or team_id or fallback

@@ -6,6 +6,7 @@ from typing import Any, Optional
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
 from kbo_fans_backend.crawlers.lineup import LineupCrawler
 from kbo_fans_backend.crawlers.main import MainCrawler
+from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.storage import JsonSnapshotStore
 
@@ -23,12 +24,14 @@ class LineupService:
         main_crawler: Optional[MainCrawler] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
         push_service: Optional[PushService] = None,
+        player_stats_service: Optional[PlayerStatsService] = None,
     ) -> None:
         self.lineup_crawler = lineup_crawler or LineupCrawler()
         self.boxscore_crawler = boxscore_crawler or BoxscoreCrawler()
         self.main_crawler = main_crawler or MainCrawler()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self.push_service = push_service or PushService()
+        self.player_stats_service = player_stats_service or PlayerStatsService()
 
     def get_lineup(self, game_id: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("lineup", game_id)
@@ -65,6 +68,8 @@ class LineupService:
                 "hand": None,
                 "imageUrl": self._starter_image_url(game_id, starter_id),
             }
+
+        self._enrich_lineup_rows(lineup, game_id)
 
         if (
             self._should_notify_lineup_opened(snapshot, lineup)
@@ -148,6 +153,78 @@ class LineupService:
         if not starter_id:
             return None
         return self._PLAYER_IMAGE_URL.format(season=game_id[:4], player_id=starter_id)
+
+    def _enrich_lineup_rows(self, lineup: dict[str, Any], game_id: str) -> None:
+        season = self._season_from_game_id(game_id)
+        if season is None:
+            return
+
+        for side in ("away", "home"):
+            team = lineup.get(side)
+            if not isinstance(team, dict):
+                continue
+            team_id = str(team.get("teamId") or "").strip()
+            rows = team.get("lineup")
+            if not team_id or not isinstance(rows, list) or not rows:
+                continue
+
+            players_by_name = self._team_players_by_name(team_id, season)
+            if not players_by_name:
+                continue
+
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                player = players_by_name.get(self._normalize_player_name(row.get("name")))
+                if player is None:
+                    continue
+                player_id = str(player.get("id") or player.get("playerId") or "").strip()
+                image_url = str(player.get("imageUrl") or "").strip()
+                if player_id and not row.get("id"):
+                    row["id"] = player_id
+                if not image_url and player_id:
+                    image_url = self._PLAYER_IMAGE_URL.format(
+                        season=season,
+                        player_id=player_id,
+                    )
+                if image_url and not row.get("imageUrl"):
+                    row["imageUrl"] = image_url
+
+    def _team_players_by_name(self, team_id: str, season: int) -> dict[str, dict[str, Any]]:
+        try:
+            payload = self.player_stats_service.get_team_players(team_id, season)
+        except Exception:
+            return {}
+        players = payload.get("players") if isinstance(payload, dict) else None
+        if not isinstance(players, list):
+            return {}
+
+        result: dict[str, dict[str, Any]] = {}
+        for player in players:
+            if not isinstance(player, dict):
+                continue
+            key = self._normalize_player_name(player.get("name"))
+            if key and key not in result:
+                result[key] = player
+        return result
+
+    @staticmethod
+    def _season_from_game_id(game_id: str) -> Optional[int]:
+        try:
+            return int(game_id[:4])
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_player_name(value: Any) -> str:
+        import re
+
+        text = str(value or "")
+        text = re.sub(r"\([^)]*\)", "", text)
+        text = re.sub(r"\[[^\]]*\]", "", text)
+        text = re.sub(r"\s+", "", text)
+        text = text.replace("·", "").replace("ㆍ", "").replace(".", "")
+        return re.sub(r"[^0-9A-Za-z가-힣]", "", text)
 
     @staticmethod
     def _should_notify_lineup_opened(

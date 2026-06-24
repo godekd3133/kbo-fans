@@ -5,12 +5,14 @@ def test_parse_current_at_bat_from_live_text_view() -> None:
     html = """
     <div class="playerBox awayBox">
       <div class="player-info-wrap">
+        <span class="player-img"><img class="pic" src="//img.test/pitcher.jpg"></span>
         <strong class="who">롯데<br><span class="no">No.34 김원중</span><span>(우투)</span></strong>
         <p class="today"><span>15투구 | 6B | 9S </span></p>
       </div>
     </div>
     <div class="playerBox homeBox">
       <div class="player-info-wrap">
+        <span class="player-img"><img class="pic" src="/batter.jpg"></span>
         <strong class="who">삼성<br><span class="no">No.58 김지찬</span><span>(좌타)</span></strong>
         <p class="today"><span>땅볼|4구|2루타|</span></p>
       </div>
@@ -41,6 +43,7 @@ def test_parse_current_at_bat_from_live_text_view() -> None:
             "hand": "좌타",
             "recent": "땅볼|4구|2루타|",
             "average": "",
+            "imageUrl": "https://www.koreabaseball.com/batter.jpg",
         },
         "pitcher": {
             "name": "김원중",
@@ -48,6 +51,7 @@ def test_parse_current_at_bat_from_live_text_view() -> None:
             "hand": "우투",
             "pitchCount": 15,
             "era": "",
+            "imageUrl": "https://img.test/pitcher.jpg",
         },
         "ballCount": {"balls": 1, "strikes": 1, "outs": 3},
         "inningText": "9회 말",
@@ -60,7 +64,9 @@ def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
     <div class="playerBox awayBox">
       <div class="batter">
         <div class="player-info-wrap">
-          <strong class="who">삼성<br><span class="no">No.61 디아즈</span><span>(좌타)</span></strong>
+        <strong class="who">
+          삼성<br><span class="no">No.61 디아즈</span><span>(좌타)</span>
+        </strong>
           <p class="today"><span>땅볼|4구|2루타|</span></p>
         </div>
         <table>
@@ -72,7 +78,9 @@ def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
     <div class="playerBox homeBox">
       <div class="pitcher">
         <div class="player-info-wrap">
-          <strong class="who">한화<br><span class="no">No.68 박준영</span><span>(우투)</span></strong>
+        <strong class="who">
+          한화<br><span class="no">No.68 박준영</span><span>(우투)</span>
+        </strong>
           <p class="today"><span>38투구 | 13B | 25S</span></p>
         </div>
         <table>
@@ -105,6 +113,7 @@ def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
             "hand": "좌타",
             "recent": "땅볼|4구|2루타|",
             "average": "0.245",
+            "imageUrl": "",
         },
         "pitcher": {
             "name": "박준영",
@@ -112,6 +121,7 @@ def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
             "hand": "우투",
             "pitchCount": 38,
             "era": "4.13",
+            "imageUrl": "",
         },
         "ballCount": {"balls": 1, "strikes": 2, "outs": 2},
         "inningText": "2회 초",

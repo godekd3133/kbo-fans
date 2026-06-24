@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-06-24: 0.1.7 알림 문구와 화면 흐름 릴리즈
+
+### 결정
+- 현재 작업 트리에 온보딩, 더보기, 선수 이미지, push copy, Live Activity, 위젯, backend relay/home/lineup 변경이 포함되어 있으므로 단순 `0.1.6` 재등록이 아니라 `0.1.7+74` / tag `0.1.7` 새 tester-facing build로 승격한다.
+- App Store Connect에는 이미 `0.1.6 (73)`이 업로드되어 있으므로 iOS build number는 다음 값인 `74`를 사용한다.
+- 이번 릴리즈도 TestFlight upload에서 멈추지 않고 build `VALID`, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태까지 같은 closeout에 포함한다.
+
+### 완료
+- [x] 앱 버전과 릴리즈 문서를 `0.1.7+74` / tag `0.1.7` 기준으로 동기화
+
+### 진행 예정
+- [ ] `0.1.7` backend API/worker deploy와 topic 재등록 완료
+- [ ] `0.1.7 (74)` IPA archive/upload 완료
+- [ ] App Store Connect build `74` 처리 완료, 외부 그룹 최신 build 단독 연결, Beta App Review 제출 상태 확인
+- [ ] GitHub Release `0.1.7` 생성 및 최종 release evidence 기록
+
+---
+
 ## 2026-06-24: push 문구 상태별 자연어 보정
 
 ### 원인
@@ -26,6 +44,116 @@
 
 ---
 
+## 2026-06-24: 온보딩 상단 장식 이미지 제거
+
+### 원인
+- 사장님 요청: 온보딩에 들어간 어색한 이미지를 제거해야 했다.
+- 온보딩 상단에서 `AppArtworkCard`가 `VisualAssets.onboardingStadiumHero`를 독립 이미지 카드로 렌더하고 있어, 팀 선택 흐름의 정보 밀도를 떨어뜨렸다.
+
+### 진행
+- [x] 온보딩 상단의 독립 경기장 이미지 카드 제거
+- [x] 온보딩 화면에서 더 이상 `VisualAssets.onboardingStadiumHero` / `AppArtworkCard` import를 사용하지 않도록 정리
+- [x] 온보딩에 독립 장식 이미지 카드가 다시 들어오지 않도록 widget test 추가
+- [x] APP_SPEC/CHANGELOG에 온보딩 비주얼 기준 반영
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/onboarding/onboarding_screen_test.dart -r expanded` (`AppArtworkCard`가 1개 발견되어 실패)
+- [x] GREEN 확인: `cd app && fvm flutter test --no-pub test/features/onboarding/onboarding_screen_test.dart -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm dart analyze lib/features/onboarding/onboarding_screen.dart test/features/onboarding/onboarding_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/features/onboarding/onboarding_screen.dart app/test/features/onboarding/onboarding_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-24: 더보기 탭 액션 중심 정리
+
+### 원인
+- 사장님 지적: 더보기 탭이 다른 탭에서 이미 볼 수 있는 경기/순위/기록/뉴스 정보와 설명형 카드까지 반복 노출해 산만했다.
+- 기존 더보기는 `homeAggregateProvider`를 다시 watch해 `오늘 챙길 정보`, 마이팀 순위/최근/오늘 경기 지표, 앱 밖 표면 설명을 한 화면에 섞고 있었다.
+
+### 진행
+- [x] 더보기 상단 마이팀 카드는 팀 선택/변경 버튼만 남기고 순위, 최근 흐름, 오늘 경기 여부 지표 제거
+- [x] `오늘 챙길 정보`와 `앱 밖 표면` 설명 섹션 제거
+- [x] 중복 마이팀 카드 제거
+- [x] 빠른 이동 카드는 목적지 이름만 보이는 버튼형 UI로 축소
+- [x] 알림함 카드는 최신 알림 본문 미리보기 대신 진입 버튼과 unread count 중심으로 정리
+- [x] 더보기 화면에서 불필요한 `homeAggregateProvider` 조회 제거
+- [x] APP_SPEC/CHANGELOG에 더보기 액션 허브 원칙 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/settings/settings_screen.dart test/features/settings/settings_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/settings/settings_screen.dart test/features/settings/settings_screen_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/features/settings/settings_screen_test.dart -r expanded` (`4 passed`)
+
+---
+
+## 2026-06-24: 온보딩 시작 버튼 저장 중 로딩 상태
+
+### 원인
+- 사장님 요청: 최초 온보딩에서 팀을 선택하고 `시작하기`를 누른 뒤 홈이 뜨기까지 오래 걸리는데, 그동안 로딩 표시가 없어 탭이 먹었는지 알기 어렵다.
+- `OnboardingScreen._saveAndProceed()`는 `myTeamProvider.setTeam()`을 기다린 뒤 `onboardingDone` 저장과 route 이동을 수행한다.
+- `MyTeamNotifier.setTeam()`은 마이팀 저장뿐 아니라 자동 푸시 권한/등록 동기화까지 기다릴 수 있어, 첫 시작 버튼에서 네트워크/권한 경로 지연이 그대로 온보딩 UI 대기로 보일 수 있다.
+
+### 진행
+- [x] 온보딩 저장 중 `_isSubmitting` 상태를 추가해 CTA를 `시작 중입니다` / spinner로 전환
+- [x] 저장 중 시작 CTA, 건너뛰기, 팀 카드 중복 입력을 차단
+- [x] 저장 실패 시 다시 시도할 수 있도록 진행 상태를 해제하고 snackbar 안내
+- [x] 온보딩 화면이 `onboardingDoneProvider` 하나 때문에 전체 router/settings 화면까지 import하지 않도록 부트스트랩 상태 provider를 `core/router/onboarding_state.dart`로 분리
+- [x] APP_SPEC/CHANGELOG에 저장 중 UI 기준을 기록
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/onboarding/onboarding_screen_test.dart -r expanded` (`시작 중입니다` 미표시로 실패)
+- [x] GREEN 확인: `cd app && fvm flutter test --no-pub test/features/onboarding/onboarding_screen_test.dart -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/core/router/app_router_test.dart -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm dart analyze lib/core/router/app_router.dart lib/core/router/onboarding_state.dart lib/features/onboarding/onboarding_screen.dart test/core/router/app_router_test.dart test/features/onboarding/onboarding_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/core/router/onboarding_state.dart app/lib/core/router/app_router.dart app/lib/features/onboarding/onboarding_screen.dart app/test/features/onboarding/onboarding_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-24: 로컬 알림/Live Activity 팀명 코드 노출 추가 보정
+
+### 원인
+- 사장님 후속 요청: `SS -> 삼성`, `SK -> SSG` 보정 이후에도 비슷하게 어색한 알림 문구가 남아 있는지 추가 감사가 필요했다.
+- 원격 FCM push visible copy는 이미 backend `PushService`에서 짧은 팀명으로 정규화하고 있었지만, 앱 로컬 경기 이벤트 알림/예매 알림/Live Activity 앱-origin payload/Android 경기 따라가기 알림/홈 위젯은 `TeamScore.shortName`을 직접 문구에 넣고 있었다.
+- 추가 검색에서 backend `/home` aggregate quick card도 scoreboard `shortName`을 직접 조합해 `SS 4 : 3 SK` 같은 제목이 나올 수 있었다.
+- backend relay summary fallback도 scoreboard `shortName`을 직접 사용해 `1회초 SS 1득점` 같은 문구가 나올 수 있었다.
+- backend scoreboard sync가 직접 보내는 Live Activity APNs state도 scoreboard의 `shortName`을 그대로 사용해, 서버-origin Live Activity 표면에서 `SS`, `SK`가 다시 보일 수 있었다.
+
+### 진행
+- [x] 앱 공용 `kboShortTeamDisplayName()` helper를 추가해 teamId, shortName-as-teamId, full team name을 모두 팬이 보는 짧은 팀명으로 정규화
+- [x] `GameEventAlertService`의 홈런/안타/이닝/라인업/시작/득점/역전/종료 로컬 알림 제목과 스코어 문구를 helper 경유로 보정
+- [x] `TicketAlertService` 예매 알림 제목을 helper 경유로 보정
+- [x] `LiveActivityService` iOS payload와 Android 경기 따라가기 ongoing notification 제목을 helper 경유로 보정
+- [x] `WidgetSyncService` 홈 위젯 경기 제목을 helper 경유로 보정
+- [x] backend `LiveActivityScoreboardSyncService`의 APNs content-state와 baseline scoreboard state도 `KBO_TEAM_SHORT_NAMES` 기준으로 정규화
+- [x] backend `HomeService`의 마이팀 경기 quick card와 score line 팀명도 짧은 팀명 매핑을 통하도록 보정
+- [x] backend `RelayService`의 종료 경기 summary fallback 득점/경기종료 문구도 짧은 팀명 매핑을 통하도록 보정
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/services/game_event_alert_service_test.dart test/services/ticket_alert_service_test.dart -r expanded` (`buildGameEventMatchupLabel`, `buildGameEventScoreLine`, `buildTicketAlertTitle` missing)
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/services/live_activity_service_test.dart -r expanded` (`buildAndroidFollowNotificationTitleForTesting` missing)
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/services/widget_sync_service_test.dart -r expanded` (`buildWidgetGameTitleForTesting` missing)
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "live_activity_scoreboard_sync_normalizes_team_codes"` (`state.awayTeam == "SS"`)
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_home.py -k "my_team_game_quick_item_normalizes_team_codes"` (`SS 4 : 3 SK`)
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_relay_service.py -k "summary_items_normalize_team_codes"` (`1회초 SS 1득점`)
+- [x] GREEN 확인: `cd app && fvm flutter test --no-pub test/services/game_event_alert_service_test.dart test/services/ticket_alert_service_test.dart test/services/live_activity_service_test.dart test/services/widget_sync_service_test.dart -r expanded` (`20 passed`)
+- [x] `cd app && fvm dart analyze lib/core/utils/team_display.dart lib/services/game_event_alert_service.dart lib/services/ticket_alert_service.dart lib/services/live_activity_service.dart lib/services/widget_sync_service.dart test/services/game_event_alert_service_test.dart test/services/ticket_alert_service_test.dart test/services/live_activity_service_test.dart test/services/widget_sync_service_test.dart`
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "live_activity_scoreboard_sync_normalizes_team_codes"` (`1 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`78 passed`)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_home.py -k "my_team_game_quick_item_normalizes_team_codes"` (`1 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py` (`15 passed`)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_relay_service.py -k "summary_items_normalize_team_codes"` (`1 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_relay_service.py` (`6 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
+- [x] `backend/.venv/bin/python -m compileall backend/src/kbo_fans_backend/services/live_activity_scoreboard.py`
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/home.py backend/tests/test_home.py`
+- [x] `backend/.venv/bin/python -m compileall backend/src/kbo_fans_backend/services/home.py`
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/relay.py backend/tests/test_relay_service.py`
+- [x] `backend/.venv/bin/python -m compileall backend/src/kbo_fans_backend/services/relay.py`
+- [x] `git diff --check`
+- [!] 참고: 전역 `pytest`는 macOS Python 3.12 `_scproxy` code signature 문제로 collection 전에 실패해, repo backend 가상환경 `backend/.venv`로 검증했다.
+
+---
+
 ## 2026-06-24: 0:0 선취점 역전 push 오분류 보정
 
 ### 원인
@@ -44,6 +172,35 @@
 - [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
 - [x] `backend/.venv/bin/python -m compileall backend/src/kbo_fans_backend/services/live_activity_scoreboard.py`
 - [x] `git diff --check -- backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
+
+---
+
+## 2026-06-24: 선수 프로필 이미지 fallback 보정
+
+### 원인
+- 사장님 요청: 라인업 페이지와 문자중계 타석/주요 장면 선수 프로필에서 사진 대신 `문보경`의 `문`처럼 첫 글자 fallback만 보인다.
+- direct KBO 경로는 current at-bat player box 이미지 파싱/보강이 있었지만, backend relay parser는 `batter.imageUrl` / `pitcher.imageUrl`을 response에 싣지 않았다.
+- API app parser도 currentAtBat 이미지 URL을 `CurrentAtBat` 모델로 전달하지 않았고, `/game/{gameId}/lineup` row는 선수 id/image가 없어 별도 team players 조회 성공에 의존했다.
+- 추가 감사 결과 박스스코어, 기록실 선수 목록, 선수 상세도 `PlayerProfile.id`가 있어도 `imageUrl`이 비어 있으면 첫 글자/아이콘 fallback으로 떨어질 수 있었다.
+
+### 진행
+- [x] backend relay parser가 LiveText player box의 `.player-img img.pic` src를 정규화해 `currentAtBat.batter.imageUrl` / `pitcher.imageUrl`로 반환
+- [x] backend lineup service가 팀 선수 데이터와 라인업 row 이름을 매칭해 row별 `id` / `imageUrl`을 보강
+- [x] 앱 `LineupEntry`와 API parser에 `playerId` / `imageUrl`을 추가하고, 라인업 row는 response imageUrl, id 기반 KBO CDN URL, 기존 이름 매칭 순서로 이미지를 선택
+- [x] 앱 API relay parser가 currentAtBat의 batter/pitcher imageUrl을 모델에 전달하도록 보정
+- [x] `PlayerProfile` 공통 이미지 helper를 추가해 `imageUrl` 우선, 없으면 `id` 기반 KBO CDN URL을 사용하도록 정리
+- [x] 박스스코어 핵심 기록/선수 row, 기록실 선수 목록, 선수 상세, relay 주요 장면이 공통 helper 또는 같은 fallback 규칙을 사용하도록 보강
+- [x] APP_SPEC, CHANGELOG에 선수 이미지 계약 반영
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_relay_crawler.py backend/tests/test_lineup.py` (`2 failed`)
+- [x] RED 확인: `cd app && fvm flutter test test/data/api_client_test.dart test/features/game_detail/lineup_tab_test.dart -r expanded` (`LineupEntry.playerId/imageUrl missing`)
+- [x] RED 확인: `cd app && fvm flutter test test/features/game_detail/boxscore_tab_test.dart test/features/records/player_image_surfaces_test.dart -r expanded` (`3 failed`)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_relay_crawler.py backend/tests/test_lineup.py` (`12 passed`)
+- [x] GREEN 확인: `cd app && fvm flutter test test/data/api_client_test.dart test/features/game_detail/lineup_tab_test.dart -r expanded` (`18 passed`)
+- [x] GREEN 확인: `cd app && fvm flutter test test/features/game_detail/boxscore_tab_test.dart test/features/records/player_image_surfaces_test.dart -r expanded` (`7 passed`)
+- [x] 회귀 확인: `cd app && fvm flutter test test/data/api_client_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/relay_tab_test.dart test/features/records/player_image_surfaces_test.dart -r expanded` (`31 passed`)
+- [x] `cd app && fvm flutter analyze lib/data/models/player.dart lib/data/models/boxscore.dart lib/data/repositories/api_game_repository.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/game_detail/tabs/relay_tab.dart lib/features/records/records_screen.dart lib/features/records/player_detail_screen.dart test/data/api_client_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/relay_tab_test.dart test/features/records/player_image_surfaces_test.dart`
 
 ---
 

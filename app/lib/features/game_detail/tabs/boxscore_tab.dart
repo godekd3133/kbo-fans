@@ -305,7 +305,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         : '생산 +$productionScore',
                     accent: accent,
                     imageUrl:
-                        keyBatterPlayer?.imageUrl ??
+                        _resolvedPlayerImageUrl(keyBatterPlayer) ??
                         _resolveImageUrl(playerImageMap, keyBatter.name),
                     badgeLabel: (keyBatterPlayer?.number ?? 0) > 0
                         ? '${keyBatterPlayer!.number}'
@@ -334,7 +334,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         : '효율 +$efficiencyScore',
                     accent: AppColors.live,
                     imageUrl:
-                        keyPitcherPlayer?.imageUrl ??
+                        _resolvedPlayerImageUrl(keyPitcherPlayer) ??
                         _resolveImageUrl(playerImageMap, keyPitcher.name),
                     badgeLabel: (keyPitcherPlayer?.number ?? 0) > 0
                         ? '${keyPitcherPlayer!.number}'
@@ -397,7 +397,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final todayAvg = batter.atBats > 0 ? (batter.hits / batter.atBats) : 0.0;
     return _RecordDataRow(
       onTap: player == null ? null : () => _pushPlayerDetail(player),
-      imageUrl: player?.imageUrl,
+      imageUrl: _resolvedPlayerImageUrl(player),
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
       name: batter.name,
       meta: batter.liveContext
@@ -435,7 +435,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final player = _resolvePlayer(playersByName, pitcher.name);
     return _RecordDataRow(
       onTap: player == null ? null : () => _pushPlayerDetail(player),
-      imageUrl: player?.imageUrl,
+      imageUrl: _resolvedPlayerImageUrl(player),
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
       name: pitcher.name,
       meta: pitcher.liveContext ? pitcher.contextLabel ?? '투수 정보' : '투수 기록',
@@ -531,9 +531,16 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     Map<String, PlayerProfile> playersByName,
   ) => {
     for (final entry in playersByName.entries)
-      if (entry.value.imageUrl != null && entry.value.imageUrl!.isNotEmpty)
-        entry.key: entry.value.imageUrl!,
+      if (_resolvedPlayerImageUrl(entry.value) != null)
+        entry.key: _resolvedPlayerImageUrl(entry.value)!,
   };
+
+  String? _resolvedPlayerImageUrl(PlayerProfile? player) {
+    if (player == null) {
+      return null;
+    }
+    return playerProfileImageUrl(player, season: DateTime.now().year);
+  }
 
   PlayerProfile? _resolvePlayer(
     Map<String, PlayerProfile> playersByName,

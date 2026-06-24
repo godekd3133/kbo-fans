@@ -6,6 +6,7 @@ import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/player.dart';
+import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/boxscore_tab.dart';
 
@@ -106,6 +107,36 @@ void main() {
         (widget) =>
             widget is CachedNetworkImage &&
             widget.imageUrl == 'https://example.test/no.png',
+      ),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('박스스코어 선수 이미지는 프로필 id 기반 URL로 보강한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final season = DateTime.now().year;
+    final expectedImageUrl = kboPlayerImageUrl(
+      season: season,
+      playerId: '69102',
+    );
+
+    await _pumpBoxscoreTab(
+      tester,
+      boxscore: _moonBoxscore,
+      players: const [_moonBatterWithoutImage],
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CachedNetworkImage && widget.imageUrl == expectedImageUrl,
       ),
       findsWidgets,
     );
@@ -260,6 +291,27 @@ const _officialBoxscore = GameBoxscoreData(
   ),
 );
 
+const _moonBoxscore = GameBoxscoreData(
+  gameId: '20260613KTLG0',
+  officialAvailable: true,
+  away: TeamBoxscoreData(
+    teamId: 'KT',
+    batters: [
+      BatterRecord(
+        order: 4,
+        position: '3B',
+        name: '문보경',
+        atBats: 4,
+        runs: 1,
+        hits: 2,
+        rbi: 1,
+      ),
+    ],
+    pitchers: [],
+  ),
+  home: TeamBoxscoreData(teamId: 'LG', batters: [], pitchers: []),
+);
+
 const _liveContextBoxscore = GameBoxscoreData(
   gameId: '20260620OBLG0',
   officialAvailable: false,
@@ -330,4 +382,24 @@ const _matchedBatter = PlayerProfile(
   highlights: [],
   recentGames: [],
   imageUrl: 'https://example.test/no.png',
+);
+
+const _moonBatterWithoutImage = PlayerProfile(
+  id: '69102',
+  teamId: 'KT',
+  playerType: PlayerType.hitter,
+  name: '문보경',
+  number: 2,
+  position: '3B',
+  roleLabel: '내야수',
+  handedness: '우투좌타',
+  heightWeight: '',
+  birthDate: '',
+  status: PlayerAvailabilityStatus.available,
+  rosterGroup: PlayerRosterGroup.entry,
+  headlineStat: '',
+  secondaryStat: '',
+  seasonStats: [],
+  highlights: [],
+  recentGames: [],
 );

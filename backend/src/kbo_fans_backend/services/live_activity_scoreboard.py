@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
 from kbo_fans_backend.schemas.push import LiveActivityContentState, LiveActivityUpdateRequest
-from kbo_fans_backend.services.push import PushService
+from kbo_fans_backend.services.push import KBO_TEAM_NAMES, KBO_TEAM_SHORT_NAMES, PushService
 from kbo_fans_backend.services.relay import RelayService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.standings import StandingsService
@@ -256,9 +256,9 @@ class LiveActivityScoreboardSyncService:
         ranks = self._rank_labels_for_game(game) if is_pregame else {}
         state = LiveActivityContentState(
             awayTeamId=str(away.get("teamId") or ""),
-            awayTeam=str(away.get("shortName") or away.get("name") or ""),
+            awayTeam=_team_short_display_name(away),
             homeTeamId=str(home.get("teamId") or ""),
-            homeTeam=str(home.get("shortName") or home.get("name") or ""),
+            homeTeam=_team_short_display_name(home),
             awayScore=_int_value(away.get("score")),
             homeScore=_int_value(home.get("score")),
             inning=(
@@ -526,6 +526,25 @@ def _inning_text(game: dict[str, Any], status: str) -> str:
     return "진행중"
 
 
+def _team_short_display_name(team: dict[str, Any]) -> str:
+    team_id = str(team.get("teamId") or "").strip()
+    if team_id in KBO_TEAM_SHORT_NAMES:
+        return KBO_TEAM_SHORT_NAMES[team_id]
+
+    short_name = str(team.get("shortName") or "").strip()
+    if short_name in KBO_TEAM_SHORT_NAMES:
+        return KBO_TEAM_SHORT_NAMES[short_name]
+
+    team_name = str(team.get("teamName") or team.get("name") or "").strip()
+    for known_team_id, known_team_name in KBO_TEAM_NAMES.items():
+        if team_name == known_team_name or team_name.replace(" ", "") == known_team_name.replace(
+            " ", ""
+        ):
+            return KBO_TEAM_SHORT_NAMES[known_team_id]
+
+    return short_name or team_name or team_id
+
+
 def _scoreboard_state(game: dict[str, Any]) -> dict[str, Any]:
     away = game.get("away") or {}
     home = game.get("home") or {}
@@ -535,9 +554,9 @@ def _scoreboard_state(game: dict[str, Any]) -> dict[str, Any]:
         "status": status,
         "lineupOpened": _lineup_opened(game),
         "awayTeamId": str(away.get("teamId") or ""),
-        "awayTeam": str(away.get("shortName") or away.get("name") or ""),
+        "awayTeam": _team_short_display_name(away),
         "homeTeamId": str(home.get("teamId") or ""),
-        "homeTeam": str(home.get("shortName") or home.get("name") or ""),
+        "homeTeam": _team_short_display_name(home),
         "awayScore": _int_value(away.get("score")),
         "homeScore": _int_value(home.get("score")),
         "inning": _inning_text(game, status),

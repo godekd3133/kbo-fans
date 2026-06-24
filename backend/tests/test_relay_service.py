@@ -60,6 +60,36 @@ def test_relay_service_builds_summary_items_for_final_game(tmp_path: Path) -> No
     assert relay["relayItems"][-1]["event"] == "GAME_END"
 
 
+def test_relay_service_summary_items_normalize_team_codes(tmp_path: Path) -> None:
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": "20260624SSSK0",
+                "status": "FINAL",
+                "away": {
+                    "teamId": "SS",
+                    "shortName": "SS",
+                    "score": 1,
+                    "scores": [1],
+                },
+                "home": {
+                    "teamId": "SK",
+                    "shortName": "SK",
+                    "score": 2,
+                    "scores": [2],
+                },
+            }
+        ),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    relay = service.get_relay("20260624SSSK0")
+
+    assert relay["relayItems"][0]["text"] == "1회초 삼성 1득점"
+    assert relay["relayItems"][1]["text"] == "1회말 SSG 2득점"
+
+
 def test_relay_service_does_not_summary_fallback_for_live_game() -> None:
     service = RelayService(
         relay_crawler=_FailingRelayCrawler(),

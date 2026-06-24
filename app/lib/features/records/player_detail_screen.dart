@@ -55,6 +55,7 @@ class PlayerDetailScreen extends ConsumerWidget {
 
   Widget _buildBody(PlayerProfile player) {
     final team = KboTeams.byId(player.teamId);
+    final photoUrl = playerProfileImageUrl(player, season: season);
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -82,10 +83,9 @@ class PlayerDetailScreen extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child:
-                        player.imageUrl != null && player.imageUrl!.isNotEmpty
+                    child: photoUrl != null && photoUrl.isNotEmpty
                         ? CachedNetworkImage(
-                            imageUrl: player.imageUrl!,
+                            imageUrl: photoUrl,
                             fit: BoxFit.cover,
                             errorWidget: (_, _, _) =>
                                 _photoFallback(player.number),

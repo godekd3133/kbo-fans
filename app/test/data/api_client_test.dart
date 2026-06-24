@@ -295,6 +295,79 @@ void main() {
     expect(games.single.home.walks, 0);
   });
 
+  test('game lineup parser preserves row player id and image URL', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ApiGameRepository(
+      ApiClient(
+        dio: _dioWithAdapter(
+          _SuccessAdapter({
+            'gameId': '20260425LGOB0',
+            'away': {
+              'teamId': 'LG',
+              'lineup': [
+                {
+                  'order': 4,
+                  'position': '3B',
+                  'positionKo': '3루수',
+                  'name': '문보경',
+                  'id': '69102',
+                  'imageUrl': 'https://img.test/2026/69102.jpg',
+                },
+              ],
+            },
+            'home': {'teamId': 'OB', 'lineup': const []},
+          }),
+        ),
+        enableRequestTiming: false,
+      ),
+    );
+
+    final lineup = await repository.getLineupData('20260425LGOB0');
+
+    expect(lineup.away.lineup.single.playerId, '69102');
+    expect(
+      lineup.away.lineup.single.imageUrl,
+      'https://img.test/2026/69102.jpg',
+    );
+  });
+
+  test('relay parser preserves current at-bat player image URLs', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ApiGameRepository(
+      ApiClient(
+        dio: _dioWithAdapter(
+          _SuccessAdapter({
+            'gameId': '20260425LGOB0',
+            'currentAtBat': {
+              'batter': {
+                'name': '문보경',
+                'imageUrl': 'https://img.test/2026/69102.jpg',
+              },
+              'pitcher': {
+                'name': '최민석',
+                'imageUrl': 'https://img.test/2026/55268.jpg',
+              },
+              'ballCount': {'balls': 1, 'strikes': 2, 'outs': 0},
+            },
+            'relayItems': const [],
+          }),
+        ),
+        enableRequestTiming: false,
+      ),
+    );
+
+    final relay = await repository.getRelayData('20260425LGOB0');
+
+    expect(
+      relay.currentAtBat?.batterImageUrl,
+      'https://img.test/2026/69102.jpg',
+    );
+    expect(
+      relay.currentAtBat?.pitcherImageUrl,
+      'https://img.test/2026/55268.jpg',
+    );
+  });
+
   test('standings parser preserves team streak', () async {
     SharedPreferences.setMockInitialValues({});
     final repository = ApiGameRepository(

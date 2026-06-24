@@ -1344,9 +1344,10 @@ class _LineupColumn extends StatelessWidget {
               child: _LineupRow(
                 entry: displayedLineup[index],
                 accent: accent,
-                imageUrl: _resolveImageUrl(
+                imageUrl: _resolveLineupEntryImageUrl(
                   imageMap,
-                  displayedLineup[index].name,
+                  displayedLineup[index],
+                  season: season,
                 ),
               ),
             ),
@@ -1551,6 +1552,22 @@ String? _playerImageUrl({required int season, required String? playerId}) {
     return null;
   }
   return '$_kboPersonImageBase/$season/$cleaned.jpg';
+}
+
+String? _resolveLineupEntryImageUrl(
+  Map<String, String> imageMap,
+  LineupEntry entry, {
+  required int season,
+}) {
+  final responseImageUrl = entry.imageUrl?.trim();
+  if (responseImageUrl != null && responseImageUrl.isNotEmpty) {
+    return responseImageUrl;
+  }
+  final idImageUrl = _playerImageUrl(season: season, playerId: entry.playerId);
+  if (idImageUrl != null && idImageUrl.isNotEmpty) {
+    return idImageUrl;
+  }
+  return _resolveImageUrl(imageMap, entry.name);
 }
 
 String _normalizeName(String value) {

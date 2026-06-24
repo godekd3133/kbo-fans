@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 class RelayCrawler(BaseCrawler):
     """Fetches play-by-play relay data from KBO live text pages."""
 
+    _KBO_BASE_URL = "https://www.koreabaseball.com"
+
     def __init__(self) -> None:
         super().__init__()
         settings = get_settings()
@@ -233,6 +235,7 @@ class RelayCrawler(BaseCrawler):
                 "hand": batter_meta["hand"],
                 "recent": batter_meta["recent"],
                 "average": batter_meta["average"],
+                "imageUrl": batter_meta["image_url"],
             },
             "pitcher": {
                 "name": pitcher or pitcher_meta["name"],
@@ -240,6 +243,7 @@ class RelayCrawler(BaseCrawler):
                 "hand": pitcher_meta["hand"],
                 "pitchCount": pitcher_meta["pitch_count"],
                 "era": pitcher_meta["era"],
+                "imageUrl": pitcher_meta["image_url"],
             },
             "ballCount": {
                 "balls": balls,
@@ -332,6 +336,7 @@ class RelayCrawler(BaseCrawler):
                 "recent": "",
                 "average": "",
                 "era": "",
+                "image_url": "",
             }
 
         player_wrap = element.select_one(".player-info-wrap") or element
@@ -347,6 +352,10 @@ class RelayCrawler(BaseCrawler):
 
         today_text = RelayCrawler._player_text(player_wrap.select_one(".today span"))
         pitch_count_match = re.search(r"(\d+)투구", today_text)
+        image = player_wrap.select_one(".player-img img.pic") or player_wrap.select_one(
+            "img.pic"
+        )
+        image_src = str(image.get("src") or "") if image is not None else ""
 
         name = number_text
         number = 0
@@ -364,7 +373,32 @@ class RelayCrawler(BaseCrawler):
             "recent": "" if pitch_count_match or today_text == "-" else today_text,
             "average": RelayCrawler._parse_live_batting_average(element, today_text),
             "era": RelayCrawler._parse_season_stat(element, ("ERA", "평균자책", "평균자책점")),
+            "image_url": RelayCrawler._normalize_player_image_url(image_src),
         }
+
+    @staticmethod
+    def _normalize_player_image_url(src: str) -> str:
+        value = src.strip()
+        if not value:
+            return ""
+        lower = value.lower()
+        if any(
+            marker in lower
+            for marker in (
+                "noimage",
+                "no_img",
+                "noimg",
+                "no_photo",
+                "player_no",
+                "playernone",
+            )
+        ):
+            return ""
+        if value.startswith("//"):
+            return f"https:{value}"
+        if value.startswith("/"):
+            return f"{RelayCrawler._KBO_BASE_URL}{value}"
+        return value
 
     @staticmethod
     def _parse_live_batting_average(element: Any, today_text: str) -> str:

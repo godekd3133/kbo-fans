@@ -346,11 +346,13 @@ class ApiGameRepository implements GameRepository {
 
     return CurrentAtBat(
       batterName: batter['name'] as String? ?? '',
+      batterImageUrl: batter['imageUrl'] as String? ?? '',
       batterNumber: batter['number'] as int? ?? 0,
       batterHand: batter['hand'] as String? ?? '',
       batterRecent: batter['recent'] as String? ?? '',
       batterAverage: batter['average'] as String? ?? '',
       pitcherName: pitcher['name'] as String? ?? '',
+      pitcherImageUrl: pitcher['imageUrl'] as String? ?? '',
       pitcherNumber: pitcher['number'] as int? ?? 0,
       pitcherHand: pitcher['hand'] as String? ?? '',
       pitcherEra: pitcher['era'] as String? ?? '',
@@ -421,11 +423,14 @@ class ApiGameRepository implements GameRepository {
   }
 
   LineupEntry _parseLineup(Map<String, dynamic> json) {
+    final playerId = (json['id'] ?? json['playerId'])?.toString().trim();
     return LineupEntry(
       order: json['order'] as int? ?? 0,
       position: json['position'] as String? ?? '',
       positionKo: json['positionKo'] as String? ?? '',
       name: json['name'] as String? ?? '',
+      playerId: playerId == null || playerId.isEmpty ? null : playerId,
+      imageUrl: json['imageUrl'] as String?,
       statValue: (json['statValue'] ?? json['stat'] ?? json['metric'])
           ?.toString(),
     );

@@ -977,7 +977,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _playerPhoto(PlayerProfile player, KboTeam? team) {
-    final photoUrl = player.imageUrl;
+    final photoUrl = playerProfileImageUrl(player, season: _selectedSeason);
     if (photoUrl != null && photoUrl.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),

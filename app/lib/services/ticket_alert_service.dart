@@ -1,12 +1,13 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../core/utils/team_display.dart';
 import '../data/models/game.dart';
 
 class TicketAlertResult {
@@ -134,7 +135,7 @@ class TicketAlertService {
 
       await _plugin.zonedSchedule(
         _notificationId(game.gameId, index),
-        '${game.away.shortName} vs ${game.home.shortName} 예매 알림',
+        buildTicketAlertTitle(game),
         '${ticket.vendorName} 예매 ${_relativeLabel(offset)} 전입니다. 오픈 시각 ${_formatDateTime(ticket.openAt!)}',
         tz.TZDateTime.from(reminderTime, tz.local),
         NotificationDetails(
@@ -212,4 +213,17 @@ class TicketAlertService {
     }
     return '${offset.inMinutes}분 전';
   }
+}
+
+@visibleForTesting
+String buildTicketAlertTitle(Game game) {
+  return '${_ticketTeamLabel(game.away)} vs ${_ticketTeamLabel(game.home)} 예매 알림';
+}
+
+String _ticketTeamLabel(TeamScore team) {
+  return kboShortTeamDisplayName(
+    teamId: team.teamId,
+    teamName: team.teamName,
+    shortName: team.shortName,
+  );
 }
