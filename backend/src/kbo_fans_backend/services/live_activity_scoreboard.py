@@ -143,14 +143,29 @@ class LiveActivityScoreboardSyncService:
             if previous_relay_state is None:
                 continue
             if _is_homerun_relay_item(item):
-                pushed.append(self._send_game_moment("homerun", game_id, current_state))
+                homerun_state = {
+                    **current_state,
+                    **relay_current_state,
+                    "inning": _relay_item_inning_text(item) or relay_current_state["inning"],
+                    "batterName": (
+                        _relay_item_actor(item)
+                        or relay_current_state["batterName"]
+                        or current_state["batterName"]
+                    ),
+                    "playText": str(item.get("text") or "").strip(),
+                }
+                pushed.append(self._send_game_moment("homerun", game_id, homerun_state))
                 continue
             if _is_hit_relay_item(item):
                 hit_state = {
                     **current_state,
                     **relay_current_state,
                     "inning": _relay_item_inning_text(item) or relay_current_state["inning"],
-                    "batterName": _relay_item_actor(item) or current_state["batterName"],
+                    "batterName": (
+                        _relay_item_actor(item)
+                        or relay_current_state["batterName"]
+                        or current_state["batterName"]
+                    ),
                     "playText": str(item.get("text") or "").strip(),
                 }
                 pushed.append(self._send_game_moment("hit", game_id, hit_state))

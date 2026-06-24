@@ -503,7 +503,7 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
     ]
     first_message = messaging.sent_messages[0]
     assert first_message.notification.title == "안타"
-    assert first_message.notification.body == "7회말 장성우 : 좌전 안타 · 1사 1,2루"
+    assert first_message.notification.body == "7회말 장성우 : 좌전 안타 · 현재 1사 1,2루"
     assert first_message.data["type"] == "hit"
     assert first_message.data["situationText"] == "1사 1,2루"
     assert first_message.data["playText"] == "장성우 : 좌전 안타"
@@ -512,7 +512,10 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
     assert first_message.apns.headers["apns-push-type"] == "alert"
     assert first_message.apns.headers["apns-topic"] == "com.kbofans.kboFans"
     assert first_message.apns.payload.aps.alert.title == "안타"
-    assert first_message.apns.payload.aps.alert.body == "7회말 장성우 : 좌전 안타 · 1사 1,2루"
+    assert (
+        first_message.apns.payload.aps.alert.body
+        == "7회말 장성우 : 좌전 안타 · 현재 1사 1,2루"
+    )
     assert first_message.apns.payload.aps.sound == "default"
     assert first_message.android.priority == "high"
     assert first_message.android.notification.channel_id == "remote_push_foreground"
@@ -544,6 +547,41 @@ def test_send_game_moment_includes_followed_game_topic(tmp_path) -> None:
         "scoring_ALL",
         "scoring_GAME_20260604LGKT0",
     ]
+
+
+def test_send_game_moment_homerun_uses_plain_copy_and_situation_payload(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="homerun",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=2,
+        home_score=6,
+        inning="7회말",
+        batter_name="장성우",
+        pitcher_name="김진성",
+        situation_text="1사 1,2루",
+        play_text="장성우 : 좌월 홈런",
+    )
+
+    assert response["sent"] is True
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "홈런"
+    assert (
+        first_message.notification.body
+        == "7회말 장성우 : 좌월 홈런 · 현재 1사 1,2루 · 스코어 2:6"
+    )
+    assert "홈런 발생" not in first_message.notification.body
+    assert first_message.data["type"] == "homerun"
+    assert first_message.data["situationText"] == "1사 1,2루"
+    assert first_message.data["playText"] == "장성우 : 좌월 홈런"
 
 
 def test_send_lineup_opened_includes_followed_game_topic(tmp_path) -> None:
@@ -1641,7 +1679,11 @@ def test_scoreboard_sync_pushes_homerun_from_new_relay_items(tmp_path) -> None:
                     "pitchSequence": None,
                 }
             ],
-        ]
+        ],
+        current_at_bat_by_call=[
+            _current_at_bat(outs=1, base_state="주자1루"),
+            _current_at_bat(outs=1, base_state="주자1,2루"),
+        ],
     )
     sync_service = LiveActivityScoreboardSyncService(
         scoreboard_service=FakeScoreboardSequenceService(
@@ -1660,6 +1702,9 @@ def test_scoreboard_sync_pushes_homerun_from_new_relay_items(tmp_path) -> None:
     assert first_response["pushedMoments"] == []
     assert relay_service.calls[1]["after"] == 10
     assert [call["moment"] for call in push_service.moment_calls] == ["homerun"]
+    assert push_service.moment_calls[0]["batter_name"] == "장성우"
+    assert push_service.moment_calls[0]["situation_text"] == "1사 1,2루"
+    assert push_service.moment_calls[0]["play_text"] == "장성우 : 좌월 홈런"
     assert second_response["pushedMoments"][0]["moment"] == "homerun"
 
 

@@ -598,12 +598,18 @@ def _game_moment_copy(
         return "득점 발생", f"{inning} {matchup} 현재 스코어 {score}"
     if moment == "hit":
         actor = f"{batter_name} " if batter_name else ""
-        situation = f" · {situation_text}" if situation_text else ""
+        situation = _current_situation_suffix(situation_text)
         if play_text:
             return "안타", f"{inning} {play_text}{situation}"
         return "안타", f"{inning} {actor}안타{situation}"
     if moment == "homerun":
-        return "홈런", f"{inning} {matchup} 홈런 발생, 현재 {score}"
+        situation = _current_situation_suffix(situation_text)
+        if play_text:
+            return "홈런", f"{inning} {play_text}{situation} · 스코어 {score}"
+        actor = f"{batter_name} " if batter_name else ""
+        if actor:
+            return "홈런", f"{inning} {actor}홈런{situation} · 스코어 {score}"
+        return "홈런", f"{inning} {matchup} 홈런{situation} · 스코어 {score}"
     if moment == "reversal":
         return "역전", f"{inning} {matchup} 역전 상황입니다. 현재 {score}"
     if moment == "game_end":
@@ -619,6 +625,13 @@ def _game_moment_copy(
             return "타석 알림", f"{inning} {batter_name} 타석"
         return "타석 알림", f"{matchup} {inning} 현재 {score}"
     return "경기 알림", f"{matchup} {inning} 현재 {score}"
+
+
+def _current_situation_suffix(situation_text: str) -> str:
+    situation = situation_text.strip()
+    if not situation:
+        return ""
+    return f" · 현재 {situation}"
 
 
 def _baseball_info_topics(

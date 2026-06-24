@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-06-24: 경기 순간 push 문구와 주자상황 보강
+
+### 원인
+- 사장님 요청: 안타 같은 경기 순간 push에서 현재 주자/아웃 상황을 같이 알려주고, `홈런 발생` 문구는 부자연스러우니 `홈런`으로만 표현해야 한다.
+- backend `PushService._game_moment_copy()`는 `hit`의 상황 텍스트를 보내고 있었지만 `현재` 없이 붙였고, `homerun`은 relay 원문/상황을 쓰지 않고 `홈런 발생` 고정 문구를 만들었다.
+- backend scoreboard/relay sync는 `HOMERUN` relay item을 감지할 때 안타와 달리 `currentAtBat` 기반 `situationText`와 relay `playText`를 `send_game_moment()`에 넘기지 않았다.
+
+### 진행
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_game_moment_hit_includes_play_and_situation_payload backend/tests/test_push_service.py::test_send_game_moment_homerun_uses_plain_copy_and_situation_payload backend/tests/test_push_service.py::test_scoreboard_sync_pushes_homerun_from_new_relay_items` (`3 failed`)
+- [x] backend `hit` push body를 `7회말 장성우 : 좌전 안타 · 현재 1사 1,2루`처럼 상황 앞에 `현재`를 붙이도록 보정
+- [x] backend `homerun` push body를 relay play text 우선으로 만들고 `홈런 발생` 표현을 제거
+- [x] relay diff 기반 `homerun` 발행도 `hit`처럼 relay item의 타자/원문과 `currentAtBat`의 주자/아웃 상황을 함께 넘기도록 보정
+- [x] APP_SPEC/README/CHANGELOG에 일반 push의 `hit`/`homerun` 상황 텍스트와 홈런 copy 계약을 동기화
+
+### 검증
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_send_game_moment_hit_includes_play_and_situation_payload backend/tests/test_push_service.py::test_send_game_moment_homerun_uses_plain_copy_and_situation_payload backend/tests/test_push_service.py::test_scoreboard_sync_pushes_homerun_from_new_relay_items` (`3 passed`)
+- [x] 전체 push 회귀: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`70 passed`)
+- [x] 전체 backend 회귀: `backend/.venv/bin/pytest -q` (`201 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py`
+- [x] `git diff --check`
+
+---
+
 ## 2026-06-23: 원격 푸시 테스트 서버 오류 보정
 
 ### 원인
