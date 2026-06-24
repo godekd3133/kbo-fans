@@ -557,6 +557,8 @@ def _moments_from_state(
     current_status = str(current.get("status") or "").upper()
     previous_total = _int_value(previous.get("awayScore")) + _int_value(previous.get("homeScore"))
     current_total = _int_value(current.get("awayScore")) + _int_value(current.get("homeScore"))
+    previous_leader = _leader(previous)
+    current_leader = _leader(current)
     moments = []
 
     if (
@@ -569,7 +571,12 @@ def _moments_from_state(
         moments.append("game_start")
     if current_status == "LIVE" and current_total > previous_total:
         moments.append("scoring")
-    if current_status == "LIVE" and _leader(previous) != _leader(current) and _leader(current):
+    if (
+        current_status == "LIVE"
+        and previous_leader
+        and current_leader
+        and previous_leader != current_leader
+    ):
         moments.append("reversal")
     if previous_status not in {"FINAL", "CANCELLED", "SUSPENDED"} and current_status in {
         "FINAL",

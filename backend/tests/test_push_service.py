@@ -1708,6 +1708,45 @@ def test_scoreboard_sync_pushes_score_moments_after_baseline(tmp_path) -> None:
     assert push_service.moment_calls[0]["home_score"] == 3
 
 
+def test_scoreboard_sync_does_not_push_reversal_for_first_score(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = FakePushService(registry=registry, live_activity_sender=sender)
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=0, home_score=0, inning="1회초"),
+                _scoreboard_game(away_score=1, home_score=0, inning="1회초"),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    first_response = sync_service.sync_date("2026-06-04")
+    second_response = sync_service.sync_date("2026-06-04")
+
+    assert first_response["pushedMoments"] == []
+    assert [call["moment"] for call in push_service.moment_calls] == ["scoring"]
+    assert [moment["moment"] for moment in second_response["pushedMoments"]] == ["scoring"]
+
+
 def test_scoreboard_sync_pushes_inning_change_when_only_inning_changes(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     push_service = FakePushService(

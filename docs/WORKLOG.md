@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-06-24: 0:0 선취점 역전 push 오분류 보정
+
+### 원인
+- 사장님 지적: `0:0`에서 첫 득점이 난 상황을 `역전`이라고 부르는 것은 어색하다.
+- backend scoreboard sync의 `reversal` 판정은 `이전 leader != 현재 leader && 현재 leader 있음`만 확인해, 이전이 동점이라 leader가 없던 상태에서 첫 leader가 생기는 선취점도 `reversal`로 분류했다.
+
+### 진행
+- [x] `0:0 -> 1:0` scoreboard diff는 `scoring`만 발행하고 `reversal`은 발행하지 않는 회귀 테스트 추가
+- [x] `reversal`은 이전 리더와 현재 리더가 모두 있고 리더가 실제로 바뀐 경우에만 발행하도록 보정
+- [x] APP_SPEC/CHANGELOG에 선취점과 역전 push 판정 차이를 기록
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "first_score or score_moments_after_baseline"` (`1 failed, 1 passed`)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "first_score or score_moments_after_baseline"` (`2 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`77 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
+- [x] `backend/.venv/bin/python -m compileall backend/src/kbo_fans_backend/services/live_activity_scoreboard.py`
+- [x] `git diff --check -- backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py`
+
+---
+
 ## 2026-06-24: 경기 순간 push 문구 추가 감사
 
 ### 원인
