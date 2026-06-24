@@ -549,6 +549,45 @@ def test_send_game_moment_includes_followed_game_topic(tmp_path) -> None:
     ]
 
 
+def test_send_game_moment_matchup_copy_normalizes_team_ids(tmp_path) -> None:
+    expected_names = {
+        "LG": "LG",
+        "KT": "KT",
+        "SK": "SSG",
+        "SS": "삼성",
+        "NC": "NC",
+        "HH": "한화",
+        "LT": "롯데",
+        "HT": "KIA",
+        "OB": "두산",
+        "WO": "키움",
+    }
+
+    for team_id, expected_name in expected_names.items():
+        registry = PushRegistry(str(tmp_path / f"push_registry_{team_id}.json"))
+        service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+        messaging = FakeFcmMessaging()
+        service._get_messaging = lambda messaging=messaging: messaging
+
+        response = service.send_game_moment(
+            moment="game_start",
+            game_id=f"20260604{team_id}LG0",
+            away_team_id=team_id,
+            away_team_name=team_id,
+            home_team_id="LG",
+            home_team_name="LG",
+            away_score=0,
+            home_score=0,
+            inning="경기전",
+        )
+
+        assert response["sent"] is True
+        assert messaging.sent_messages[0].notification.body == (
+            f"{expected_name} vs LG 경기가 시작됐습니다."
+        )
+        assert messaging.sent_messages[0].data["awayTeamId"] == team_id
+
+
 def test_send_game_moment_homerun_uses_plain_copy_and_situation_payload(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
@@ -605,6 +644,33 @@ def test_send_lineup_opened_includes_followed_game_topic(tmp_path) -> None:
         "lineup_opened_ALL",
         "lineup_opened_GAME_20260604LGKT0",
     ]
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.body == "LG vs KT 라인업이 공개됐습니다."
+
+
+def test_send_lineup_opened_copy_normalizes_team_ids(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_lineup_opened(
+        game_id="20260604SSSK0",
+        away_team_id="SS",
+        away_team_name="SS",
+        home_team_id="SK",
+        home_team_name="SK",
+    )
+
+    assert response["sent"] is True
+    assert [message.topic for message in messaging.sent_messages] == [
+        "lineup_opened_SS",
+        "lineup_opened_SK",
+        "lineup_opened_ALL",
+        "lineup_opened_GAME_20260604SSSK0",
+    ]
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.body == "삼성 vs SSG 라인업이 공개됐습니다."
 
 
 def test_send_game_moment_lineup_opened_uses_lineup_copy(tmp_path) -> None:
@@ -695,10 +761,114 @@ def test_send_game_moment_scoring_uses_play_text_for_varied_copy(tmp_path) -> No
 
     assert response["sent"] is True
     first_message = messaging.sent_messages[0]
-    assert first_message.notification.title == "득점 장면"
-    assert first_message.notification.body == "8회초 문보경 우전 적시타 · 2사 1,3루 · 현재 4:3"
+    assert first_message.notification.title == "득점"
+    assert (
+        first_message.notification.body
+        == "8회초 문보경 우전 적시타 · 현재 2사 1,3루 · 스코어 4:3"
+    )
     assert first_message.data["type"] == "scoring"
     assert first_message.data["playText"] == "문보경 우전 적시타"
+
+
+def test_send_game_moment_scoring_without_play_uses_plain_copy(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG 트윈스",
+        home_team_id="KT",
+        home_team_name="KT 위즈",
+        away_score=4,
+        home_score=3,
+        inning="8회초",
+    )
+
+    assert response["sent"] is True
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "득점"
+    assert first_message.notification.body == "8회초 LG vs KT 득점 · 스코어 4:3"
+    assert "발생" not in first_message.notification.body
+    assert "현재 스코어" not in first_message.notification.body
+
+
+def test_send_game_moment_reversal_uses_scorebug_copy(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="reversal",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=4,
+        home_score=3,
+        inning="8회초",
+    )
+
+    assert response["sent"] is True
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "역전"
+    assert first_message.notification.body == "8회초 LG vs KT 역전 · 스코어 4:3"
+    assert "상황입니다" not in first_message.notification.body
+
+
+def test_send_game_moment_inning_change_uses_baseball_copy(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="inning_change",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=2,
+        home_score=3,
+        inning="8회초",
+    )
+
+    assert response["sent"] is True
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "이닝 교대"
+    assert first_message.notification.body == "LG vs KT 8회초 시작 · 스코어 2:3"
+
+
+def test_send_game_moment_at_bat_uses_plain_title(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="at_bat",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=4,
+        home_score=3,
+        inning="8회초",
+        batter_name="문보경",
+        pitcher_name="고영표",
+    )
+
+    assert response["sent"] is True
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "타석"
+    assert first_message.notification.body == "8회초 문보경 타석 · 투수 고영표"
 
 
 def test_send_baseball_info_weekly_check_targets_all_team_topics(tmp_path) -> None:

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/services/game_event_alert_service.dart';
 
 void main() {
@@ -35,5 +36,37 @@ void main() {
       ),
       isFalse,
     );
+  });
+
+  test('로컬 경기 이벤트 알림 body는 주자 상황 앞에 현재를 붙인다', () {
+    const currentAtBat = CurrentAtBat(
+      batterName: '장성우',
+      batterNumber: 4,
+      batterHand: 'R',
+      pitcherName: '김진성',
+      pitcherNumber: 42,
+      pitcherHand: 'R',
+      pitchCount: 12,
+      baseState: '주자1,2루',
+      balls: 1,
+      strikes: 2,
+      outs: 1,
+    );
+
+    final body = buildGameEventRelayAlertBody(
+      playText: '장성우 : 좌전 안타',
+      currentAtBat: currentAtBat,
+    );
+
+    expect(body, '장성우 : 좌전 안타 · 현재 1사 1,2루');
+  });
+
+  test('로컬 경기 이벤트 알림 body는 상황이 없으면 relay 원문만 쓴다', () {
+    final body = buildGameEventRelayAlertBody(
+      playText: '장성우 : 좌월 홈런',
+      currentAtBat: null,
+    );
+
+    expect(body, '장성우 : 좌월 홈런');
   });
 }

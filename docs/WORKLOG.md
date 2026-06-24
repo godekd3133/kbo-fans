@@ -2,6 +2,60 @@
 
 ---
 
+## 2026-06-24: 경기 순간 push 문구 추가 감사
+
+### 원인
+- 사장님 후속 요청: `홈런 발생`처럼 부자연스러운 비슷한 push 문구가 더 있으면 조사해 수정하고, 운영 배포까지 진행해야 한다.
+- backend `_game_moment_copy()`에는 `득점 발생`, `역전 상황입니다`, `이닝 변경`, `타석 알림`처럼 알림 title/body에서 설명식으로 보이는 표현이 남아 있었다.
+- 앱 내부 보조 로컬 알림은 local 개발 모드 전용이지만, 안타 relay body에서 주자/아웃 상황 앞에 `현재`를 붙이지 않았고 홈런 relay body에는 상황을 붙이지 않았다.
+
+### 진행
+- [x] 경기 moment 원격 push copy를 짧은 사건명 제목과 `스코어 4:3` 점수 형식으로 정리
+- [x] `scoring`은 relay play text가 있으면 `득점`, `현재 2사 1,3루`, `스코어 4:3` 순서로 보여주고, play text가 없을 때도 `득점 발생`을 쓰지 않도록 보정
+- [x] `reversal`, `inning_change`, `at_bat` visible copy를 각각 `역전`, `이닝 교대`, `타석` 중심으로 정리
+- [x] local 개발용 `GameEventAlertService`의 안타/홈런 relay body가 같은 `현재 1사 1,2루` 상황 형식을 공유하도록 pure helper로 분리
+- [x] APP_SPEC, README, CHANGELOG에 경기 moment push copy 계약 반영
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "scoring_uses_play_text or scoring_without_play or reversal_uses_scorebug or inning_change_uses_baseball or at_bat_uses_plain"` (`5 failed`)
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/services/game_event_alert_service_test.dart` (`buildGameEventRelayAlertBody` missing)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "scoring_uses_play_text or scoring_without_play or reversal_uses_scorebug or inning_change_uses_baseball or at_bat_uses_plain"` (`5 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`76 passed`)
+- [x] `cd app && fvm flutter test --no-pub test/services/game_event_alert_service_test.dart` (`3 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py`
+- [x] `backend/.venv/bin/python -m compileall backend/src/kbo_fans_backend/services/push.py`
+- [x] `cd app && fvm dart analyze lib/services/game_event_alert_service.dart test/services/game_event_alert_service_test.dart`
+- [x] `git diff --check`
+- [!] 참고: `backend/.venv/bin/pytest -q`는 이번 변경과 무관한 `backend/tests/test_lineup.py::test_lineup_rows_are_enriched_with_player_images`, `backend/tests/test_relay_crawler.py::test_parse_current_at_bat_uses_top_half_player_boxes_and_stats` 2건에서 기존 계약 불일치로 실패
+- [!] 참고: `cd app && fvm flutter analyze`는 이번 변경과 무관한 lineup test의 `LineupEntry.playerId` / `imageUrl` 기대값 3건에서 실패
+
+---
+
+## 2026-06-24: 경기 push 팀명 코드 노출 보정
+
+### 원인
+- 사장님 요청: 경기 push 문구에서 삼성 라이온즈가 `SS`처럼 팀 ID로 보이는 경우가 있어 `삼성`처럼 읽히는 팀명으로 보여야 한다.
+- backend `PushService.send_game_moment()`와 `send_lineup_opened()`는 topic/data용 `away_team_id`, `home_team_id`는 따로 갖고 있었지만, visible push body에는 호출자가 넘긴 `away_team_name`, `home_team_name`을 그대로 사용했다.
+- scoreboard sync 경로의 `shortName`이 팀 ID 형태로 들어오거나 호출자가 fallback으로 teamId를 넘기면 `SS vs LG`, `SS vs SK` 같은 문구가 그대로 발송될 수 있었다.
+
+### 진행
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "team_ids or send_lineup_opened_copy_normalizes"` (`2 failed`)
+- [x] visible push copy 전용 짧은 팀명 매핑 추가: `SS -> 삼성`, `SK -> SSG`, `HH -> 한화`, `LT -> 롯데`, `HT -> KIA`, `OB -> 두산`, `WO -> 키움`
+- [x] 경기 순간 push copy와 라인업 공개 push copy가 teamId 또는 full team name을 받아도 사용자 문구에는 짧은 팀명을 쓰도록 보정
+- [x] topic 이름과 data payload의 `awayTeamId` / `homeTeamId`는 기존 KBO teamId 그대로 유지
+- [x] 앱 쪽 remote/local notification 표시 경로는 서버가 보낸 title/body를 그대로 기록/표시하는 구조임을 확인
+- [x] 야구 브리프(`baseball_info`) 경로는 기존 `_team_display_name()`으로 `SS`를 `삼성 라이온즈`처럼 풀어 쓰고 있어 이번 증상과 별개임을 확인
+
+### 검증
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "team_ids or send_lineup_opened_copy_normalizes"` (`2 passed`)
+- [x] 전체 push 회귀: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`72 passed`)
+- [x] 전체 backend 회귀: `backend/.venv/bin/pytest -q` (`203 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py`
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/push.py`
+- [x] `git diff --check`
+
+---
+
 ## 2026-06-24: 경기 순간 push 문구와 주자상황 보강
 
 ### 원인

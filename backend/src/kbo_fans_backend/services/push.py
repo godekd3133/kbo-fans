@@ -31,6 +31,18 @@ KBO_TEAM_NAMES = {
     "OB": "두산 베어스",
     "WO": "키움 히어로즈",
 }
+KBO_TEAM_SHORT_NAMES = {
+    "LG": "LG",
+    "KT": "KT",
+    "SK": "SSG",
+    "SS": "삼성",
+    "NC": "NC",
+    "HH": "한화",
+    "LT": "롯데",
+    "HT": "KIA",
+    "OB": "두산",
+    "WO": "키움",
+}
 ANDROID_REMOTE_PUSH_CHANNEL_ID = "remote_push_foreground"
 GAME_MOMENT_TOPIC_NAMES = {
     "game_start",
@@ -365,7 +377,13 @@ class PushService:
     ) -> dict[str, Any]:
         messaging = self._get_messaging()
         title = "선발 라인업 공개"
-        body = f"{away_team_name} vs {home_team_name} 라인업이 공개됐습니다."
+        matchup = _game_matchup_display(
+            away_team_id=away_team_id,
+            away_team_name=away_team_name,
+            home_team_id=home_team_id,
+            home_team_name=home_team_name,
+        )
+        body = f"{matchup} 라인업이 공개됐습니다."
 
         targets = [
             f"lineup_opened_{away_team_id}",
@@ -414,7 +432,9 @@ class PushService:
         messaging = self._get_messaging()
         title, body = _game_moment_copy(
             moment=moment,
+            away_team_id=away_team_id,
             away_team_name=away_team_name,
+            home_team_id=home_team_id,
             home_team_name=home_team_name,
             away_score=away_score,
             home_score=home_score,
@@ -571,7 +591,9 @@ class PushService:
 def _game_moment_copy(
     *,
     moment: str,
+    away_team_id: str,
     away_team_name: str,
+    home_team_id: str,
     home_team_name: str,
     away_score: int,
     home_score: int,
@@ -584,7 +606,12 @@ def _game_moment_copy(
     stadium: str = "",
 ) -> tuple[str, str]:
     score = f"{away_score}:{home_score}"
-    matchup = f"{away_team_name} vs {home_team_name}"
+    matchup = _game_matchup_display(
+        away_team_id=away_team_id,
+        away_team_name=away_team_name,
+        home_team_id=home_team_id,
+        home_team_name=home_team_name,
+    )
     start_detail = " · ".join(part for part in [start_time.strip(), stadium.strip()] if part)
     if moment == "game_start":
         return "경기 시작", f"{matchup} 경기가 시작됐습니다."
@@ -592,10 +619,10 @@ def _game_moment_copy(
         suffix = f" {start_detail}" if start_detail else ""
         return "경기 곧 시작", f"{matchup} 경기가 곧 시작됩니다.{suffix}"
     if moment == "scoring":
+        situation = _current_situation_suffix(situation_text)
         if play_text:
-            situation = f" · {situation_text}" if situation_text else ""
-            return "득점 장면", f"{inning} {play_text}{situation} · 현재 {score}"
-        return "득점 발생", f"{inning} {matchup} 현재 스코어 {score}"
+            return "득점", f"{inning} {play_text}{situation} · 스코어 {score}"
+        return "득점", f"{inning} {matchup} 득점 · 스코어 {score}"
     if moment == "hit":
         actor = f"{batter_name} " if batter_name else ""
         situation = _current_situation_suffix(situation_text)
@@ -611,20 +638,20 @@ def _game_moment_copy(
             return "홈런", f"{inning} {actor}홈런{situation} · 스코어 {score}"
         return "홈런", f"{inning} {matchup} 홈런{situation} · 스코어 {score}"
     if moment == "reversal":
-        return "역전", f"{inning} {matchup} 역전 상황입니다. 현재 {score}"
+        return "역전", f"{inning} {matchup} 역전 · 스코어 {score}"
     if moment == "game_end":
         return "경기 종료", f"{matchup} 최종 스코어 {score}"
     if moment == "lineup_opened":
         return "선발 라인업 공개", f"{matchup} 라인업이 공개됐습니다."
     if moment == "inning_change":
-        return "이닝 변경", f"{matchup} {inning} 진입, 현재 {score}"
+        return "이닝 교대", f"{matchup} {inning} 시작 · 스코어 {score}"
     if moment == "at_bat":
         if batter_name and pitcher_name:
-            return "타석 알림", f"{inning} {batter_name} 타석 · 투수 {pitcher_name}"
+            return "타석", f"{inning} {batter_name} 타석 · 투수 {pitcher_name}"
         if batter_name:
-            return "타석 알림", f"{inning} {batter_name} 타석"
-        return "타석 알림", f"{matchup} {inning} 현재 {score}"
-    return "경기 알림", f"{matchup} {inning} 현재 {score}"
+            return "타석", f"{inning} {batter_name} 타석"
+        return "타석", f"{matchup} {inning} · 스코어 {score}"
+    return "경기 알림", f"{matchup} {inning} · 스코어 {score}"
 
 
 def _current_situation_suffix(situation_text: str) -> str:
@@ -632,6 +659,37 @@ def _current_situation_suffix(situation_text: str) -> str:
     if not situation:
         return ""
     return f" · 현재 {situation}"
+
+
+def _game_matchup_display(
+    *,
+    away_team_id: str,
+    away_team_name: str,
+    home_team_id: str,
+    home_team_name: str,
+) -> str:
+    away_display = _game_team_display_name(team_id=away_team_id, team_name=away_team_name)
+    home_display = _game_team_display_name(team_id=home_team_id, team_name=home_team_name)
+    return f"{away_display} vs {home_display}"
+
+
+def _game_team_display_name(*, team_id: str, team_name: str) -> str:
+    name = _team_short_display_name(team_name)
+    if name:
+        return name
+    return _team_short_display_name(team_id)
+
+
+def _team_short_display_name(value: Optional[str]) -> str:
+    team = (value or "").strip()
+    if not team:
+        return ""
+    if team in KBO_TEAM_SHORT_NAMES:
+        return KBO_TEAM_SHORT_NAMES[team]
+    for team_id, full_name in KBO_TEAM_NAMES.items():
+        if team == full_name:
+            return KBO_TEAM_SHORT_NAMES[team_id]
+    return team
 
 
 def _baseball_info_topics(

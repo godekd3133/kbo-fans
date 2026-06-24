@@ -259,16 +259,21 @@ class GameEventAlertService {
         if (notifyHomerun && _isHomerunEvent(item)) {
           await _showNow(
             title: '${game.away.shortName} vs ${game.home.shortName} 홈런',
-            body: item.text,
+            body: buildGameEventRelayAlertBody(
+              playText: item.text,
+              currentAtBat: relayData.currentAtBat,
+            ),
             tag: '${game.gameId}:homerun:${item.seqNo}',
           );
         }
 
         if (notifyHit && _isHitEvent(item)) {
-          final situation = _situationText(relayData.currentAtBat);
           await _showNow(
             title: '${game.away.shortName} vs ${game.home.shortName} 안타',
-            body: situation.isEmpty ? item.text : '${item.text} · $situation',
+            body: buildGameEventRelayAlertBody(
+              playText: item.text,
+              currentAtBat: relayData.currentAtBat,
+            ),
             tag: '${game.gameId}:hit:${item.seqNo}',
           );
         }
@@ -572,37 +577,6 @@ class GameEventAlertService {
         item.text.contains('3루타');
   }
 
-  String _situationText(CurrentAtBat? currentAtBat) {
-    if (currentAtBat == null) {
-      return '';
-    }
-    final outs = switch (currentAtBat.outs) {
-      0 => '무사',
-      1 => '1사',
-      2 => '2사',
-      _ => '',
-    };
-    final base = _baseStateLabel(currentAtBat.baseState);
-    if (outs.isNotEmpty && base.isNotEmpty) {
-      return '$outs $base';
-    }
-    return outs.isNotEmpty ? outs : base;
-  }
-
-  String _baseStateLabel(String baseState) {
-    final text = baseState.trim();
-    if (text.isEmpty) {
-      return '';
-    }
-    if (text == '주자없음') {
-      return '주자 없음';
-    }
-    if (text.startsWith('주자')) {
-      return text.substring(2);
-    }
-    return text;
-  }
-
   String _lineupSignature(GameLineupData lineup) {
     final away = _teamLineupSignature(lineup.away);
     final home = _teamLineupSignature(lineup.home);
@@ -754,6 +728,49 @@ class _LineupCheckResult {
   final int? checkedAtMs;
 
   const _LineupCheckResult({this.signature, this.checkedAtMs});
+}
+
+@visibleForTesting
+String buildGameEventRelayAlertBody({
+  required String playText,
+  required CurrentAtBat? currentAtBat,
+}) {
+  final situation = _gameEventSituationText(currentAtBat);
+  if (situation.isEmpty) {
+    return playText;
+  }
+  return '$playText · 현재 $situation';
+}
+
+String _gameEventSituationText(CurrentAtBat? currentAtBat) {
+  if (currentAtBat == null) {
+    return '';
+  }
+  final outs = switch (currentAtBat.outs) {
+    0 => '무사',
+    1 => '1사',
+    2 => '2사',
+    _ => '',
+  };
+  final base = _gameEventBaseStateLabel(currentAtBat.baseState);
+  if (outs.isNotEmpty && base.isNotEmpty) {
+    return '$outs $base';
+  }
+  return outs.isNotEmpty ? outs : base;
+}
+
+String _gameEventBaseStateLabel(String baseState) {
+  final text = baseState.trim();
+  if (text.isEmpty) {
+    return '';
+  }
+  if (text == '주자없음') {
+    return '주자 없음';
+  }
+  if (text.startsWith('주자')) {
+    return text.substring(2);
+  }
+  return text;
 }
 
 @visibleForTesting
