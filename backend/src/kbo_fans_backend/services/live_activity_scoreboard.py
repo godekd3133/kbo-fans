@@ -228,6 +228,7 @@ class LiveActivityScoreboardSyncService:
                 play_text=current_state.get("playText", ""),
                 start_time=current_state.get("startTime", ""),
                 stadium=current_state.get("stadium", ""),
+                game_status=current_state.get("status", ""),
             )
         except Exception as error:
             return {

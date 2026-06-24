@@ -460,7 +460,10 @@ class GameEventAlertService {
     if (settings.sendsImmediately(PushNotificationMoment.reversal)) {
       final previousLeader = previous.leadingTeamId;
       final currentLeader = current.leadingTeamId;
-      if (previousLeader != currentLeader && currentLeader != null) {
+      if (shouldSendGameEventReversal(
+        previousLeader: previousLeader,
+        currentLeader: currentLeader,
+      )) {
         if (isMyTeamGame && myTeam != null && opponent != null) {
           final myLeading = currentLeader == myTeam.teamId;
           await _showNow(
@@ -728,6 +731,16 @@ class _LineupCheckResult {
   final int? checkedAtMs;
 
   const _LineupCheckResult({this.signature, this.checkedAtMs});
+}
+
+@visibleForTesting
+bool shouldSendGameEventReversal({
+  required String? previousLeader,
+  required String? currentLeader,
+}) {
+  return previousLeader != null &&
+      currentLeader != null &&
+      previousLeader != currentLeader;
 }
 
 @visibleForTesting

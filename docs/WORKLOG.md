@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-06-24: push 문구 상태별 자연어 보정
+
+### 원인
+- 사장님 지적: 0:0에서 선취점이 난 상황을 `역전`으로 표현하는 것은 어색하다.
+- 추가 감사 결과 backend scheduler는 이미 원격 push의 첫 득점 역전 오발송을 막았지만, 앱 로컬 경기 이벤트 알림에는 같은 조건이 남아 있었다.
+- scoreboard sync는 `FINAL`, `CANCELLED`, `SUSPENDED`를 모두 `game_end` moment로 보내고 있어, 취소/서스펜디드 경기에도 원격 push copy가 `경기 종료` / `최종 스코어`로 보일 수 있었다.
+
+### 진행
+- [x] 원격 push `game_end` copy를 경기 status 기준으로 분기해 `CANCELLED`는 `경기 취소`, `SUSPENDED`는 `서스펜디드`, `FINAL`은 기존 `경기 종료` 문구를 유지
+- [x] scoreboard sync가 push service에 `game_status`를 함께 전달하도록 연결
+- [x] 로컬 경기 이벤트 알림의 역전 판정을 이전 리더와 현재 리더가 모두 있고 서로 다를 때만 true가 되도록 보정
+- [x] APP_SPEC/CHANGELOG에 push copy 경계 반영
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "cancelled_game_end or suspended_game_end or cancelled_status_to_game_end"` (`game_status` 미지원/미전달로 실패)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "cancelled_game_end or suspended_game_end or cancelled_status_to_game_end"` (`3 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`80 passed`)
+- [x] `backend/.venv/bin/ruff check backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py` (`All checks passed`)
+- [x] `backend/.venv/bin/python -m compileall -q backend/src`
+- [x] `cd app && fvm flutter analyze --no-pub lib/services/game_event_alert_service.dart test/services/game_event_alert_service_test.dart` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub test/services/game_event_alert_service_test.dart` (`All tests passed`)
+
+---
+
 ## 2026-06-24: 0:0 선취점 역전 push 오분류 보정
 
 ### 원인

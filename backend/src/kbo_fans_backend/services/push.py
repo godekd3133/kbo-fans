@@ -428,6 +428,7 @@ class PushService:
         play_text: str = "",
         start_time: str = "",
         stadium: str = "",
+        game_status: str = "",
     ) -> dict[str, Any]:
         messaging = self._get_messaging()
         title, body = _game_moment_copy(
@@ -445,6 +446,7 @@ class PushService:
             play_text=play_text,
             start_time=start_time,
             stadium=stadium,
+            game_status=game_status,
         )
         targets = [
             f"{moment}_{away_team_id}",
@@ -472,6 +474,7 @@ class PushService:
                     "playText": play_text,
                     "startTime": start_time,
                     "stadium": stadium,
+                    "gameStatus": game_status,
                 },
                 topic=topic,
                 **visible_options,
@@ -604,8 +607,10 @@ def _game_moment_copy(
     play_text: str = "",
     start_time: str = "",
     stadium: str = "",
+    game_status: str = "",
 ) -> tuple[str, str]:
     score = f"{away_score}:{home_score}"
+    status = game_status.strip().upper()
     matchup = _game_matchup_display(
         away_team_id=away_team_id,
         away_team_name=away_team_name,
@@ -640,6 +645,10 @@ def _game_moment_copy(
     if moment == "reversal":
         return "역전", f"{inning} {matchup} 역전 · 스코어 {score}"
     if moment == "game_end":
+        if status == "CANCELLED":
+            return "경기 취소", f"{matchup} 경기가 취소됐습니다."
+        if status == "SUSPENDED":
+            return "서스펜디드", f"{matchup} 경기가 서스펜디드 처리됐습니다."
         return "경기 종료", f"{matchup} 최종 스코어 {score}"
     if moment == "lineup_opened":
         return "선발 라인업 공개", f"{matchup} 라인업이 공개됐습니다."

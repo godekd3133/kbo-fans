@@ -69,4 +69,22 @@ void main() {
 
     expect(body, '장성우 : 좌월 홈런');
   });
+
+  test('로컬 경기 이벤트 알림은 첫 득점을 역전으로 보지 않는다', () {
+    expect(
+      shouldSendGameEventReversal(previousLeader: null, currentLeader: 'LG'),
+      isFalse,
+    );
+  });
+
+  test('로컬 경기 이벤트 알림은 리더가 바뀔 때만 역전으로 본다', () {
+    expect(
+      shouldSendGameEventReversal(previousLeader: 'KT', currentLeader: 'LG'),
+      isTrue,
+    );
+    expect(
+      shouldSendGameEventReversal(previousLeader: 'LG', currentLeader: 'LG'),
+      isFalse,
+    );
+  });
 }

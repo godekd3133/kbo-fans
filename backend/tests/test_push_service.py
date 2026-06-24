@@ -821,6 +821,60 @@ def test_send_game_moment_reversal_uses_scorebug_copy(tmp_path) -> None:
     assert "상황입니다" not in first_message.notification.body
 
 
+def test_send_game_moment_cancelled_game_end_uses_cancel_copy(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="game_end",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=0,
+        home_score=0,
+        inning="경기취소",
+        game_status="CANCELLED",
+    )
+
+    assert response["sent"] is True
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "경기 취소"
+    assert first_message.notification.body == "LG vs KT 경기가 취소됐습니다."
+    assert "최종 스코어" not in first_message.notification.body
+    assert first_message.data["gameStatus"] == "CANCELLED"
+
+
+def test_send_game_moment_suspended_game_end_uses_suspended_copy(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_game_moment(
+        moment="game_end",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=2,
+        home_score=2,
+        inning="서스펜디드",
+        game_status="SUSPENDED",
+    )
+
+    assert response["sent"] is True
+    first_message = messaging.sent_messages[0]
+    assert first_message.notification.title == "서스펜디드"
+    assert first_message.notification.body == "LG vs KT 경기가 서스펜디드 처리됐습니다."
+    assert "최종 스코어" not in first_message.notification.body
+    assert first_message.data["gameStatus"] == "SUSPENDED"
+
+
 def test_send_game_moment_inning_change_uses_baseball_copy(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
@@ -1745,6 +1799,55 @@ def test_scoreboard_sync_does_not_push_reversal_for_first_score(tmp_path) -> Non
     assert first_response["pushedMoments"] == []
     assert [call["moment"] for call in push_service.moment_calls] == ["scoring"]
     assert [moment["moment"] for moment in second_response["pushedMoments"]] == ["scoring"]
+
+
+def test_scoreboard_sync_passes_cancelled_status_to_game_end_push(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = FakePushService(registry=registry, live_activity_sender=sender)
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    away_score=0,
+                    home_score=0,
+                    inning="18:30",
+                    status="SCHEDULED",
+                ),
+                _scoreboard_game(
+                    away_score=0,
+                    home_score=0,
+                    inning="경기취소",
+                    status="CANCELLED",
+                ),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    sync_service.sync_date("2026-06-04")
+    response = sync_service.sync_date("2026-06-04")
+
+    assert [call["moment"] for call in push_service.moment_calls] == ["game_end"]
+    assert push_service.moment_calls[0]["game_status"] == "CANCELLED"
+    assert response["pushedMoments"][0]["moment"] == "game_end"
 
 
 def test_scoreboard_sync_pushes_inning_change_when_only_inning_changes(tmp_path) -> None:
