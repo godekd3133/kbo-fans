@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,7 +20,7 @@ import '../../../data/models/schedule.dart';
 import '../../../data/models/team_stats.dart';
 import '../../../data/providers.dart';
 
-class LineupTab extends ConsumerWidget {
+class LineupTab extends ConsumerStatefulWidget {
   final String gameId;
   final GameStatus gameStatus;
   final String awayName;
@@ -39,7 +41,22 @@ class LineupTab extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LineupTab> createState() => _LineupTabState();
+}
+
+class _LineupTabState extends ConsumerState<LineupTab> {
+  String? _lastPrefetchedImageSignature;
+
+  @override
+  Widget build(BuildContext context) {
+    final gameId = widget.gameId;
+    final gameStatus = widget.gameStatus;
+    final awayName = widget.awayName;
+    final homeName = widget.homeName;
+    final awayTeamId = widget.awayTeamId;
+    final homeTeamId = widget.homeTeamId;
+    final onRefresh = widget.onRefresh;
+    final colors = AppTheme.colorsOf(context);
     if (gameStatus == GameStatus.cancelled) {
       return _buildUnavailableState('취소된 경기는 라인업이 없습니다');
     }
@@ -108,6 +125,20 @@ class LineupTab extends ConsumerWidget {
                         season: season,
                         relayData: null,
                       );
+                      final awayStarterImageUrl = _resolveStarterImageUrl(
+                        awayImageMap,
+                        name: gameLineup.away.starterName ?? '',
+                        starterId: gameLineup.away.starterId,
+                        starterImageUrl: gameLineup.away.starterImageUrl,
+                        season: season,
+                      );
+                      final homeStarterImageUrl = _resolveStarterImageUrl(
+                        homeImageMap,
+                        name: gameLineup.home.starterName ?? '',
+                        starterId: gameLineup.home.starterId,
+                        starterImageUrl: gameLineup.home.starterImageUrl,
+                        season: season,
+                      );
                       final compareData = _buildMatchupCompareData(
                         awayTeamId: awayTeamId,
                         awayName: awayName,
@@ -121,21 +152,27 @@ class LineupTab extends ConsumerWidget {
                         homeStarter: null,
                         awayStarterName: gameLineup.away.starterName,
                         homeStarterName: gameLineup.home.starterName,
-                        awayStarterImageUrl: _resolveStarterImageUrl(
-                          awayImageMap,
-                          name: gameLineup.away.starterName ?? '',
-                          starterId: gameLineup.away.starterId,
-                          starterImageUrl: gameLineup.away.starterImageUrl,
-                          season: season,
-                        ),
-                        homeStarterImageUrl: _resolveStarterImageUrl(
-                          homeImageMap,
-                          name: gameLineup.home.starterName ?? '',
-                          starterId: gameLineup.home.starterId,
-                          starterImageUrl: gameLineup.home.starterImageUrl,
-                          season: season,
-                        ),
+                        awayStarterImageUrl: awayStarterImageUrl,
+                        homeStarterImageUrl: homeStarterImageUrl,
                       );
+                      _prefetchLineupPlayerImages([
+                        awayStarterImageUrl,
+                        homeStarterImageUrl,
+                        ...awayImageMap.values,
+                        ...homeImageMap.values,
+                        for (final entry in gameLineup.away.lineup)
+                          _resolveLineupEntryImageUrl(
+                            awayImageMap,
+                            entry,
+                            season: season,
+                          ),
+                        for (final entry in gameLineup.home.lineup)
+                          _resolveLineupEntryImageUrl(
+                            homeImageMap,
+                            entry,
+                            season: season,
+                          ),
+                      ]);
 
                       return Column(
                         key: ValueKey(
@@ -147,12 +184,14 @@ class LineupTab extends ConsumerWidget {
                             index: 0,
                             child: _MatchupCompareSection(
                               data: compareData,
-                              awayAccent:
-                                  KboTeams.byId(awayTeamId)?.primaryColor ??
-                                  AppColors.live,
-                              homeAccent:
-                                  KboTeams.byId(homeTeamId)?.primaryColor ??
-                                  AppColors.accent,
+                              awayAccent: colors.readableAccent(
+                                KboTeams.byId(awayTeamId)?.primaryColor ??
+                                    colors.live,
+                              ),
+                              homeAccent: colors.readableAccent(
+                                KboTeams.byId(homeTeamId)?.primaryColor ??
+                                    colors.accent,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -235,6 +274,29 @@ class LineupTab extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  void _prefetchLineupPlayerImages(Iterable<String?> imageUrls) {
+    final urls = <String>{
+      for (final rawUrl in imageUrls)
+        if ((rawUrl?.trim() ?? '').isNotEmpty) rawUrl!.trim(),
+    }.toList()..sort();
+    if (urls.isEmpty) {
+      return;
+    }
+    final signature = urls.join('|');
+    if (_lastPrefetchedImageSignature == signature) {
+      return;
+    }
+    _lastPrefetchedImageSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(
+        precacheKboPlayerImageUrls(context, urls, limit: 80).catchError((_) {}),
+      );
+    });
   }
 }
 
@@ -475,6 +537,8 @@ class _MatchupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+
     Widget teamBlock(_TeamCompareData team, {required bool alignEnd}) {
       return Column(
         crossAxisAlignment: alignEnd
@@ -506,14 +570,14 @@ class _MatchupHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: teamBlock(data.away, alignEnd: true)),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 18),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18),
           child: Text(
             'VS',
             style: TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF555555),
+              color: colors.textDisabled,
             ),
           ),
         ),
@@ -665,14 +729,13 @@ class _RecentResultBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     final background = switch (result) {
       '승' => const Color(0xFF18C8F7),
       '패' => const Color(0xFFD41438),
       _ => const Color(0xFF585858),
     };
-    final labelColor = result == '무'
-        ? AppColors.textSecondary
-        : AppColors.background;
+    final labelColor = colors.readableForegroundOn(background);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 5),
       child: Container(
@@ -829,6 +892,7 @@ class _StarterDuelSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return Column(
       children: [
         Divider(color: AppColors.divider, height: 1),
@@ -856,7 +920,7 @@ class _StarterDuelSection extends StatelessWidget {
                     'VS',
                     style: TextStyle(
                       fontSize: 48,
-                      color: Color(0xFF555555),
+                      color: colors.textDisabled,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1182,7 +1246,10 @@ class _LineupColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = KboTeams.byId(teamId)?.primaryColor ?? AppColors.accent;
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(
+      KboTeams.byId(teamId)?.primaryColor ?? colors.accent,
+    );
     final baseLineup = lineup.isNotEmpty
         ? lineup.take(9).toList()
         : _lineupEntriesFromBatters(batterFallback);
@@ -1862,33 +1929,39 @@ class _LineupAvatar extends StatelessWidget {
               errorWidget: (_, _, _) => _fallback(),
             ),
           ),
-          if (badgeLabel != null) _orderBadge(),
+          if (badgeLabel != null) _orderBadge(context),
         ],
       );
     }
     return Stack(
       clipBehavior: Clip.none,
-      children: [_fallback(), if (badgeLabel != null) _orderBadge()],
+      children: [_fallback(), if (badgeLabel != null) _orderBadge(context)],
     );
   }
 
-  Widget _orderBadge() {
+  Widget _orderBadge(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    final badgeFill =
+        accent.computeLuminance() > 0.75 &&
+            colors.background.computeLuminance() < 0.3
+        ? colors.card
+        : accent;
     return Positioned(
       right: -4,
       bottom: -4,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
-          color: accent,
+          color: badgeFill,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: AppColors.background, width: 1.5),
+          border: Border.all(color: colors.background, width: 1.5),
         ),
         child: Text(
           badgeLabel!,
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: colors.readableForegroundOn(badgeFill),
           ),
         ),
       ),

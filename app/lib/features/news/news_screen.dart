@@ -1017,7 +1017,10 @@ String _labelForStoryKind(String kind) {
 String _storyKindForBriefType(String type, String route) {
   return switch (type) {
     'player_performance' || 'pitcher_check' => 'player',
-    'record_radar' => 'record',
+    'record_radar' ||
+    'batting_leader' ||
+    'defense_issue' ||
+    'defense_rank' => 'record',
     'standings' || 'team_trend' => 'standings',
     'big_match' || 'schedule_remaining' || 'offday' => 'schedule',
     'live' || 'league_now' || 'game_flow' => 'live',
@@ -1058,6 +1061,9 @@ _NewsFilter _filterForBriefType(String type) {
   return switch (type) {
     'standings' || 'team_trend' => _NewsFilter.standings,
     'record_radar' ||
+    'batting_leader' ||
+    'defense_issue' ||
+    'defense_rank' ||
     'player_performance' ||
     'pitcher_check' => _NewsFilter.records,
     'offday' => _NewsFilter.records,

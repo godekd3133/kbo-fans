@@ -98,6 +98,61 @@ void main() {
     expect(find.text('3연승'), findsOneWidget);
   });
 
+  testWidgets('standings table highlights my team row', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          standingsProvider.overrideWith((ref, season) async {
+            return const [
+              TeamStanding(
+                rank: 1,
+                teamId: 'KT',
+                teamName: 'KT 위즈',
+                wins: 26,
+                losses: 17,
+                draws: 1,
+                pct: '0.605',
+                gb: '0',
+                streak: '1승',
+              ),
+              TeamStanding(
+                rank: 2,
+                teamId: 'LG',
+                teamName: 'LG 트윈스',
+                wins: 25,
+                losses: 17,
+                draws: 1,
+                pct: '0.595',
+                gb: '0.5',
+                streak: '3승',
+              ),
+            ];
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const StandingsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('standing-my-team-badge-LG')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('standing-my-team-badge-KT')),
+      findsNothing,
+    );
+  });
+
   testWidgets('standings empty response shows artwork empty state', (
     tester,
   ) async {
@@ -125,4 +180,13 @@ void main() {
     expect(find.text('다시 확인'), findsOneWidget);
     expect(find.text('연속'), findsNothing);
   });
+}
+
+class _FixedMyTeamNotifier extends MyTeamNotifier {
+  _FixedMyTeamNotifier(this.teamId);
+
+  final String? teamId;
+
+  @override
+  String? build() => teamId;
 }

@@ -195,7 +195,8 @@ class _SelectedTeamPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = team?.primaryColor ?? AppColors.live;
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(team?.primaryColor ?? colors.live);
     final title = team?.name ?? '마이팀 미리보기';
     final logoTeamId = team?.id;
     final fallback = team?.shortName ?? 'KBO';
@@ -222,7 +223,7 @@ class _SelectedTeamPreview extends StatelessWidget {
             'MY TEAM',
             style: TextStyle(
               fontSize: 11,
-              color: accent == Colors.black ? AppColors.live : accent,
+              color: accent,
               fontWeight: FontWeight.w900,
               letterSpacing: 0,
             ),
@@ -464,9 +465,8 @@ class _OnboardingTeamCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = team.primaryColor == Colors.black
-        ? AppColors.textPrimary
-        : team.primaryColor;
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(team.primaryColor);
     return AppPressable(
       onTap: onTap,
       pressedScale: 0.976,

@@ -131,8 +131,12 @@ void main() {
     expect(find.text('경기 전후 요약만 받기'), findsOneWidget);
     expect(find.text('경기 중 실시간 알림받기'), findsOneWidget);
     expect(find.text('안받기'), findsOneWidget);
+    expect(find.text('요약 디테일'), findsNothing);
+    expect(find.text('실시간 디테일'), findsOneWidget);
     expect(find.text('경기 전후'), findsOneWidget);
     expect(find.text('경기 중 실시간'), findsOneWidget);
+    expect(find.text('점수 변화 즉시'), findsOneWidget);
+    expect(find.text('주자 상황 포함'), findsOneWidget);
     expect(find.text('선발 라인업 공개'), findsOneWidget);
     expect(find.text('경기 시작과 시작 임박'), findsOneWidget);
     expect(find.text('경기 종료 결과'), findsOneWidget);
@@ -143,6 +147,77 @@ void main() {
     expect(find.text('역전'), findsOneWidget);
     expect(find.text('이닝 전환'), findsOneWidget);
     expect(find.text('타석 변화'), findsOneWidget);
+  });
+
+  testWidgets('경기 전후 요약 모드는 디테일 단계를 저장한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('경기 전후 요약만 받기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('요약 디테일'), findsOneWidget);
+    expect(find.text('핵심'), findsOneWidget);
+    expect(find.text('기본'), findsOneWidget);
+    expect(find.text('자세히'), findsOneWidget);
+
+    await tester.tap(find.text('기본'));
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getString('push_notifications.summary_detail_level'),
+      'standard',
+    );
+    expect(prefs.getBool('push_notifications.game_start'), isTrue);
+    expect(prefs.getBool('push_notifications.game_end'), isTrue);
+    expect(prefs.getBool('push_notifications.lineup_opened'), isTrue);
+    expect(prefs.getBool('push_notifications.baseball_info'), isFalse);
+    expect(
+      prefs.getString('push_notifications.lineup_opened.delivery'),
+      'summary',
+    );
+    expect(prefs.getString('push_notifications.baseball_info.delivery'), 'off');
+  });
+
+  testWidgets('경기 중 실시간 모드는 디테일 단계를 저장한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('실시간 디테일'), findsOneWidget);
+    expect(find.text('핵심'), findsOneWidget);
+    expect(find.text('기본'), findsOneWidget);
+    expect(find.text('자세히'), findsOneWidget);
+
+    await tester.tap(find.text('기본'));
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('push_notifications.live_detail_level'), 'standard');
+    expect(prefs.getBool('push_notifications.scoring'), isTrue);
+    expect(prefs.getBool('push_notifications.hit'), isTrue);
+    expect(prefs.getBool('push_notifications.homerun'), isTrue);
+    expect(prefs.getBool('push_notifications.reversal'), isTrue);
+    expect(prefs.getBool('push_notifications.lineup_opened'), isTrue);
+    expect(prefs.getBool('push_notifications.inning_change'), isFalse);
+    expect(prefs.getBool('push_notifications.at_bat'), isFalse);
+    expect(prefs.getBool('push_notifications.baseball_info'), isFalse);
+    expect(prefs.getString('push_notifications.hit.delivery'), 'immediate');
+    expect(prefs.getString('push_notifications.at_bat.delivery'), 'off');
   });
 
   testWidgets('안받기 선택은 저장된 moment와 delivery를 모두 끈다', (tester) async {

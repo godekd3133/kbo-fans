@@ -137,31 +137,34 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   }
 
   Widget _buildUnavailableState(String message) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        height: 178,
-        width: double.infinity,
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            const Text(
-              '박스스코어',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              message,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-          ],
+        child: Container(
+          height: 178,
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              const Text(
+                '박스스코어',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message,
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -200,7 +203,8 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     required bool isLiveContext,
   }) {
     final team = KboTeams.byId(_selectedTeamId);
-    final accent = team?.primaryColor ?? AppColors.accent;
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
 
     final officialBatters = batters.where((batter) => !batter.liveContext);
     final totalAtBats = officialBatters.fold<int>(
@@ -1114,11 +1118,13 @@ class _TeamToggleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     final team = KboTeams.resolve(
       id: teamId,
       name: teamName,
       shortName: teamName,
     );
+    final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
 
     return AppPressable(
       onTap: onTap,
@@ -1129,11 +1135,7 @@ class _TeamToggleCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: active ? AppColors.card : AppColors.background,
-          border: Border.all(
-            color: active
-                ? (team?.primaryColor ?? AppColors.accent)
-                : AppColors.divider,
-          ),
+          border: Border.all(color: active ? accent : AppColors.divider),
         ),
         child: Row(
           children: [
@@ -1149,9 +1151,7 @@ class _TeamToggleCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      color: active
-                          ? (team?.primaryColor ?? AppColors.accent)
-                          : AppColors.textDisabled,
+                      color: active ? accent : AppColors.textDisabled,
                     ),
                   ),
                   const SizedBox(height: 3),
@@ -1216,7 +1216,10 @@ class _PlayerAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
-      children: [_fallbackAvatar(), if (badgeLabel != null) _numberBadge()],
+      children: [
+        _fallbackAvatar(),
+        if (badgeLabel != null) _numberBadge(context),
+      ],
     );
   }
 
@@ -1233,23 +1236,24 @@ class _PlayerAvatar extends StatelessWidget {
     );
   }
 
-  Widget _numberBadge() {
+  Widget _numberBadge(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return Positioned(
       right: -4,
       bottom: -4,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.textPrimary,
+          color: accent,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: AppColors.background, width: 1.5),
+          border: Border.all(color: colors.background, width: 1.5),
         ),
         child: Text(
           badgeLabel!,
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w900,
-            color: accent,
+            color: colors.readableForegroundOn(accent),
           ),
         ),
       ),

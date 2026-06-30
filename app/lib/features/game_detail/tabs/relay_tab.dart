@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -40,6 +42,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   _RelayMomentFilter _selectedMomentFilter = _RelayMomentFilter.all;
   int? _latestSeenSeq;
   bool _hasNewRelay = false;
+  String? _lastPrefetchedImageSignature;
 
   @override
   void dispose() {
@@ -93,6 +96,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             season: season,
             currentAtBat: currentAtBat,
           );
+          _prefetchRelayPlayerImages(imageMap.values);
           return _buildContent(
             latestGame,
             relayData.relayItems,
@@ -104,6 +108,29 @@ class _RelayTabState extends ConsumerState<RelayTab> {
         },
       ),
     );
+  }
+
+  void _prefetchRelayPlayerImages(Iterable<String?> imageUrls) {
+    final urls = <String>{
+      for (final rawUrl in imageUrls)
+        if ((rawUrl?.trim() ?? '').isNotEmpty) rawUrl!.trim(),
+    }.toList()..sort();
+    if (urls.isEmpty) {
+      return;
+    }
+    final signature = urls.join('|');
+    if (_lastPrefetchedImageSignature == signature) {
+      return;
+    }
+    _lastPrefetchedImageSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(
+        precacheKboPlayerImageUrls(context, urls, limit: 80).catchError((_) {}),
+      );
+    });
   }
 
   CurrentAtBat? _currentAtBatForGame(Game game, CurrentAtBat? atBat) {
@@ -627,6 +654,113 @@ String _normalizeRelayPlayerName(String value) {
       .trim();
 }
 
+String? _relayLeadActorLabel(String text) {
+  final colonIndex = text.indexOf(':');
+  if (colonIndex > 0) {
+    return text.substring(0, colonIndex).trim();
+  }
+  final byMatch = RegExp(r'^(.*?)\s+(교체|볼넷|삼진|안타|홈런|아웃)').firstMatch(text);
+  final actor = byMatch?.group(1)?.trim() ?? '';
+  return actor.isEmpty ? null : actor;
+}
+
+_ScoringPlayViewData? _scoringPlayViewData(RelayItem item) {
+  if (!item.isScoring && item.event != 'RUNS' && item.event != 'HOMERUN') {
+    return null;
+  }
+
+  final batterName = _scoringBatterName(item.text);
+  final scoredRunnerNames = _scoredRunnerNames(item.text);
+  if (item.text.contains('홈런') && batterName != null) {
+    _addUniquePlayerName(scoredRunnerNames, batterName);
+  }
+
+  if (batterName == null && scoredRunnerNames.isEmpty) {
+    return null;
+  }
+  return _ScoringPlayViewData(
+    batterName: batterName,
+    scoredRunnerNames: scoredRunnerNames,
+  );
+}
+
+String? _scoringBatterName(String text) {
+  final actor = _relayLeadActorLabel(text);
+  if (actor == null || actor.contains('주자')) {
+    return null;
+  }
+  return _cleanScoringPlayerName(actor);
+}
+
+List<String> _scoredRunnerNames(String text) {
+  final names = <String>[];
+  final segments = text.split(RegExp(r'[,，.·ㆍ]'));
+  for (final segment in segments) {
+    if (segment.contains('무득점')) {
+      continue;
+    }
+    final keyword = RegExp(r'(홈인|득점)').firstMatch(segment);
+    if (keyword == null) {
+      continue;
+    }
+
+    var candidate = segment.substring(0, keyword.start).trim();
+    final colonIndex = candidate.indexOf(':');
+    if (colonIndex >= 0) {
+      final left = candidate.substring(0, colonIndex).trim();
+      final right = candidate.substring(colonIndex + 1).trim();
+      candidate = left.contains('주자') ? left : right;
+    }
+
+    _addUniquePlayerName(names, _cleanScoringPlayerName(candidate));
+  }
+  return names;
+}
+
+void _addUniquePlayerName(List<String> names, String? name) {
+  if (name == null || name.isEmpty) {
+    return;
+  }
+  final normalized = _normalizeRelayPlayerName(name);
+  if (normalized.isEmpty) {
+    return;
+  }
+  final exists = names.any(
+    (existing) => _normalizeRelayPlayerName(existing) == normalized,
+  );
+  if (!exists) {
+    names.add(name);
+  }
+}
+
+String? _cleanScoringPlayerName(String value) {
+  var cleaned = value
+      .replaceAll(RegExp(r'[:：]'), ' ')
+      .replaceAll(RegExp(r'[-–—]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  cleaned = cleaned
+      .replaceFirst(RegExp(r'^(?:[123]루)?주자\s*'), '')
+      .replaceFirst(RegExp(r'^(대타|대주자|타자)\s+'), '')
+      .trim();
+
+  if (cleaned.contains(RegExp(r'\d|회|공격|무득점|홈인|득점'))) {
+    return null;
+  }
+  if (!RegExp(r'[가-힣A-Za-z]').hasMatch(cleaned)) {
+    return null;
+  }
+
+  final parts = cleaned.split(' ').where((part) => part.isNotEmpty).toList();
+  if (parts.length > 1) {
+    cleaned = parts.last;
+  }
+  if (cleaned.length < 2 || cleaned.length > 12) {
+    return null;
+  }
+  return cleaned;
+}
+
 Map<String, String> _buildRelayPlayerImageMap({
   required Iterable<PlayerProfile> teamPlayers,
   required int season,
@@ -1066,10 +1200,13 @@ class _RelayBroadcastScorebug extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final awayColor =
-        KboTeams.byId(game.away.teamId)?.primaryColor ?? AppColors.accent;
-    final homeColor =
-        KboTeams.byId(game.home.teamId)?.primaryColor ?? AppColors.live;
+    final colors = AppTheme.colorsOf(context);
+    final awayColor = colors.readableAccent(
+      KboTeams.byId(game.away.teamId)?.primaryColor ?? colors.accent,
+    );
+    final homeColor = colors.readableAccent(
+      KboTeams.byId(game.home.teamId)?.primaryColor ?? colors.live,
+    );
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
@@ -2209,6 +2346,7 @@ class _RelayMomentCard extends StatelessWidget {
         : _lineupEntryForName(_offenseLineup(), actorLabel);
     final pitcherName = _pitcherNameForMoment();
     final pitchLogs = _buildPitchLogs(moment.pitchItems);
+    final scoringPlay = _scoringPlayViewData(moment.lead);
 
     return Container(
       padding: EdgeInsets.all(16),
@@ -2257,6 +2395,10 @@ class _RelayMomentCard extends StatelessWidget {
               defenseTeam: defenseTeam,
               pitcherName: pitcherName,
             ),
+          ],
+          if (scoringPlay != null) ...[
+            SizedBox(height: actorLabel == null ? 14 : 12),
+            _ScoringPlaySummary(data: scoringPlay),
           ],
           SizedBox(height: 16),
           _RelayResultBar(
@@ -2356,13 +2498,7 @@ class _RelayMomentCard extends StatelessWidget {
   }
 
   String? _actorLabel(String text) {
-    final colonIndex = text.indexOf(':');
-    if (colonIndex > 0) {
-      return text.substring(0, colonIndex).trim();
-    }
-    final byMatch = RegExp(r'^(.*?)\s+(교체|볼넷|삼진|안타|홈런|아웃)').firstMatch(text);
-    final actor = byMatch?.group(1)?.trim() ?? '';
-    return actor.isEmpty ? null : actor;
+    return _relayLeadActorLabel(text);
   }
 
   List<_PitchLogViewData> _buildPitchLogs(List<RelayItem> pitchItems) {
@@ -2654,6 +2790,70 @@ class _RelayResultBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ScoringPlaySummary extends StatelessWidget {
+  final _ScoringPlayViewData data;
+
+  const _ScoringPlaySummary({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (data.batterName != null)
+          _ScoringFactRow(label: '친 선수', value: data.batterName!),
+        if (data.batterName != null && data.scoredRunnerNames.isNotEmpty)
+          SizedBox(height: 8),
+        if (data.scoredRunnerNames.isNotEmpty)
+          _ScoringFactRow(
+            label: '홈인',
+            value: data.scoredRunnerNames.join(', '),
+          ),
+      ],
+    );
+  }
+}
+
+class _ScoringFactRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ScoringFactRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 58,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.live,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -3112,6 +3312,16 @@ String _cleanRelayPlayText(String text) {
     return trimmed.substring(colonIndex + 1).trim();
   }
   return trimmed;
+}
+
+class _ScoringPlayViewData {
+  final String? batterName;
+  final List<String> scoredRunnerNames;
+
+  const _ScoringPlayViewData({
+    required this.batterName,
+    required this.scoredRunnerNames,
+  });
 }
 
 class _RelayMoment {

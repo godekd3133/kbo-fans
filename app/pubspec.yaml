@@ -44,6 +44,7 @@ flutter:
     - assets/bootstrap/team_players/
     - assets/bootstrap/team_stats/
     - assets/visuals/kbo_header_logo.png
+    - assets/visuals/kbo_header_logo_light.png
     - assets/visuals/reference_status_icons.png
     - assets/visuals/onboarding_stadium_hero.png
     - assets/visuals/records_stadium_backdrop.png

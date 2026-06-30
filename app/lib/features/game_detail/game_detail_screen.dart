@@ -481,11 +481,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: _GameScorebug(
-                    game: game,
-                    isLive: isLive,
-                    metaText: _stateMetaText(game),
-                  ),
+                  child: _GameScorebug(game: game, isLive: isLive),
                 ),
                 if (isLive)
                   SliverToBoxAdapter(
@@ -582,41 +578,18 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       );
     });
   }
-
-  String _stateMetaText(Game game) {
-    return switch (game.status) {
-      GameStatus.live => '방금 업데이트',
-      GameStatus.final_ => '최종 기록',
-      GameStatus.scheduled =>
-        game.startTime.isEmpty ? '경기 예정' : '${game.startTime} 예정',
-      GameStatus.cancelled => '취소',
-      GameStatus.suspended => '중단',
-    };
-  }
 }
 
 class _GameScorebug extends StatelessWidget {
   final Game game;
   final bool isLive;
-  final String metaText;
 
-  const _GameScorebug({
-    required this.game,
-    required this.isLive,
-    required this.metaText,
-  });
+  const _GameScorebug({required this.game, required this.isLive});
 
   @override
   Widget build(BuildContext context) {
-    final statusLabel = isLive
-        ? 'LIVE'
-        : labelForGameStatus(game.status, statusLabel: game.statusLabel);
-    final inningLabel = secondaryTextForGameStatus(
-      game.status,
-      inning: game.inning,
-      startTime: game.startTime,
-      statusLabel: game.statusLabel,
-    );
+    final inningLabel = _scorebugInningLabel(game);
+    final stadium = _displayStadiumName(game.stadium);
 
     return Container(
       width: double.infinity,
@@ -654,11 +627,13 @@ class _GameScorebug extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _LiveBadge(label: statusLabel, active: isLive),
-                    const SizedBox(width: 10),
+                    if (isLive) ...[
+                      const _LiveBadge(label: 'LIVE', active: true),
+                      const SizedBox(width: 10),
+                    ],
                     Expanded(
                       child: Text(
-                        'KBO 리그 | $metaText',
+                        isLive ? 'KBO 리그 | 방금 업데이트' : 'KBO 리그',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -748,16 +723,11 @@ class _GameScorebug extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _ScorebugInfoPill(label: game.stadium),
-                    const SizedBox(width: 8),
-                    _ScorebugInfoPill(label: game.startTime),
-                    const SizedBox(width: 8),
-                    _ScorebugInfoPill(label: metaText),
-                  ],
-                ),
+                if (stadium.isNotEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [_ScorebugInfoPill(label: stadium)],
+                  ),
               ],
             ),
           ),
@@ -765,6 +735,70 @@ class _GameScorebug extends StatelessWidget {
       ),
     );
   }
+}
+
+String _scorebugInningLabel(Game game) {
+  if (game.status == GameStatus.final_) {
+    final finalInningLabel = _lineScoreInningLabel(game);
+    if (finalInningLabel != null) {
+      return finalInningLabel;
+    }
+  }
+
+  final inning = _normalizedInningLabel(game.inning);
+  if (inning != null) {
+    return inning;
+  }
+
+  return switch (game.status) {
+    GameStatus.live => labelForGameStatus(
+      game.status,
+      statusLabel: game.statusLabel,
+    ),
+    GameStatus.final_ => '9회',
+    GameStatus.scheduled => '경기 전',
+    GameStatus.cancelled => labelForGameStatus(
+      game.status,
+      statusLabel: game.statusLabel,
+    ),
+    GameStatus.suspended => labelForGameStatus(
+      game.status,
+      statusLabel: game.statusLabel,
+    ),
+  };
+}
+
+String? _lineScoreInningLabel(Game game) {
+  final maxLength = game.away.innings.length > game.home.innings.length
+      ? game.away.innings.length
+      : game.home.innings.length;
+  for (var index = maxLength - 1; index >= 0; index -= 1) {
+    final awayScore = index < game.away.innings.length
+        ? game.away.innings[index]
+        : null;
+    final homeScore = index < game.home.innings.length
+        ? game.home.innings[index]
+        : null;
+    if (awayScore != null || homeScore != null) {
+      return '${index + 1}회';
+    }
+  }
+  return null;
+}
+
+String? _normalizedInningLabel(String raw) {
+  final label = raw.trim();
+  if (label.isEmpty) {
+    return null;
+  }
+  final match = RegExp(r'(연장\s*)?(\d+)\s*회\s*([초말]?)').firstMatch(label);
+  if (match == null) {
+    return null;
+  }
+  final prefix = match.group(1) == null ? '' : '연장 ';
+  final inning = match.group(2)!;
+  final half = match.group(3) ?? '';
+  return '$prefix$inning회$half';
 }
 
 class _LiveBadge extends StatelessWidget {
@@ -813,7 +847,10 @@ class _ScorebugTeam extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final team = KboTeams.byId(teamId);
-    final accent = team?.primaryColor ?? AppColors.textSecondary;
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(
+      team?.primaryColor ?? colors.textSecondary,
+    );
     return Column(
       crossAxisAlignment: alignEnd
           ? CrossAxisAlignment.end

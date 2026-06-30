@@ -275,11 +275,13 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       routerConfig: router,
       debugShowCheckedModeBanner: !AppConfig.instance.isRelease,
       builder: (context, child) {
+        AppColors.sync(AppTheme.colorsOf(context));
+        final appChild = child ?? const SizedBox.shrink();
         if (!AppConfig.instance.shouldShowDevConsole) {
-          return child ?? const SizedBox.shrink();
+          return appChild;
         }
 
-        return DevConsoleOverlay(child: child ?? const SizedBox.shrink());
+        return DevConsoleOverlay(child: appChild);
       },
     );
   }

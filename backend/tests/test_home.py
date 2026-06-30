@@ -246,6 +246,147 @@ def test_kbo_brief_record_item_uses_player_image_and_detail_route() -> None:
     assert item["fallbackLabel"] == "김도영"
 
 
+def test_kbo_brief_surfaces_high_error_game() -> None:
+    service = HomeService.__new__(HomeService)
+
+    brief = service._build_kbo_brief(
+        today="2026-06-29",
+        my_team=None,
+        games=[
+            {
+                "gameId": "20260629OBLG0",
+                "status": "FINAL",
+                "inning": "경기종료",
+                "stadium": "잠실",
+                "away": {
+                    "teamId": "OB",
+                    "shortName": "두산",
+                    "score": 4,
+                    "hits": 8,
+                    "errors": 3,
+                },
+                "home": {
+                    "teamId": "LG",
+                    "shortName": "LG",
+                    "score": 6,
+                    "hits": 10,
+                    "errors": 2,
+                },
+            }
+        ],
+        standings=[],
+        overview={"leaders": {"avg": [], "hr": []}},
+    )
+
+    defense_items = [item for item in brief["items"] if item["type"] == "defense_issue"]
+    assert defense_items
+    assert defense_items[0]["eyebrow"] == "실책 많은 경기"
+    assert defense_items[0]["title"] == "두산-LG 합계 5실책"
+    assert defense_items[0]["subtitle"] == "두산 3실책 · LG 2실책"
+    assert defense_items[0]["route"] == "/game/20260629OBLG0"
+
+
+def test_kbo_brief_surfaces_team_error_rank_for_day() -> None:
+    service = HomeService.__new__(HomeService)
+
+    brief = service._build_kbo_brief(
+        today="2026-06-29",
+        my_team=None,
+        games=[
+            {
+                "gameId": "20260629OBLG0",
+                "status": "FINAL",
+                "inning": "경기종료",
+                "stadium": "잠실",
+                "away": {"teamId": "OB", "shortName": "두산", "score": 4, "errors": 3},
+                "home": {"teamId": "LG", "shortName": "LG", "score": 6, "errors": 2},
+            },
+            {
+                "gameId": "20260629HTSS0",
+                "status": "FINAL",
+                "inning": "경기종료",
+                "stadium": "대구",
+                "away": {"teamId": "HT", "shortName": "KIA", "score": 5, "errors": 1},
+                "home": {"teamId": "SS", "shortName": "삼성", "score": 3, "errors": 0},
+            },
+        ],
+        standings=[],
+        overview={"leaders": {"avg": [], "hr": []}},
+    )
+
+    rank_items = [item for item in brief["items"] if item["type"] == "defense_rank"]
+    assert rank_items
+    assert rank_items[0]["eyebrow"] == "팀별 실책"
+    assert rank_items[0]["title"] == "두산 3개 · LG 2개"
+    assert rank_items[0]["subtitle"] == "6월 29일 경기 기준 · 실책 많은 팀 순"
+    assert rank_items[0]["route"] == "/schedule"
+
+
+def test_kbo_brief_uses_avg_leader_when_available() -> None:
+    service = HomeService.__new__(HomeService)
+
+    brief = service._build_kbo_brief(
+        today="2026-06-30",
+        my_team=None,
+        games=[],
+        standings=[],
+        overview={
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 1,
+                        "playerId": "64166",
+                        "name": "홍창기",
+                        "teamId": "LG",
+                        "value": "0.351",
+                    }
+                ],
+                "hr": [],
+            }
+        },
+    )
+
+    avg_items = [item for item in brief["items"] if item["type"] == "batting_leader"]
+    assert avg_items
+    assert avg_items[0]["eyebrow"] == "6월 현재 타율"
+    assert avg_items[0]["title"] == "홍창기 타율 0.351"
+    assert avg_items[0]["route"] == "/records/player/64166?season=2026"
+    assert avg_items[0]["imageUrl"].endswith("/2026/64166.jpg")
+
+
+def test_quick_items_include_hitter_and_pitcher_brief_cards_together() -> None:
+    service = HomeService.__new__(HomeService)
+
+    items = service._build_quick_items(
+        my_team_brief=None,
+        overview={
+            "leaders": {"hr": []},
+            "featured": {
+                "todayHitter": {
+                    "label": "오늘의 타자",
+                    "playerId": "64166",
+                    "name": "홍창기",
+                    "teamId": "LG",
+                    "headline": "타율 1위",
+                },
+                "todayPitcher": {
+                    "label": "오늘의 투수",
+                    "playerId": "50126",
+                    "name": "폰세",
+                    "teamId": "HH",
+                    "headline": "ERA 1위",
+                },
+            },
+        },
+        games=[],
+        season=2026,
+    )
+
+    assert [item["title"] for item in items] == ["홍창기", "폰세"]
+    assert items[0]["route"] == "/records/player/64166?season=2026"
+    assert items[1]["route"] == "/records/player/50126?season=2026"
+
+
 def test_kbo_brief_summarizes_final_game_without_fake_records() -> None:
     service = HomeService.__new__(HomeService)
 

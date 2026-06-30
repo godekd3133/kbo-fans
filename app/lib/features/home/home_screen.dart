@@ -26,6 +26,8 @@ import '../../data/models/player.dart';
 import '../../data/models/records_overview.dart';
 import '../../data/models/relay.dart';
 import '../../data/models/schedule.dart';
+import '../../data/models/team_records_bundle.dart';
+import '../../data/models/team_stats.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
 import '../../services/game_event_alert_service.dart';
@@ -63,9 +65,10 @@ String gameDetailLocationFor(
   );
 }
 
-const _gameDetailPlayerImagePrefetchLimit = 12;
-const _gameDetailPlayerImagePrefetchTimeout = Duration(seconds: 4);
+const _gameDetailPlayerImagePrefetchLimit = 80;
+const _gameDetailPlayerImagePrefetchTimeout = Duration(seconds: 8);
 const _teamPlayerImagePrefetchTimeout = Duration(seconds: 3);
+const _lineupImagePrefetchSourceTimeout = Duration(seconds: 4);
 
 @visibleForTesting
 List<String> relayPlayerImagePrefetchUrlsForTesting({
@@ -76,6 +79,21 @@ List<String> relayPlayerImagePrefetchUrlsForTesting({
   return _relayPlayerImagePrefetchUrls(
     relayData: relayData,
     teamPlayers: teamPlayers,
+    season: season,
+  );
+}
+
+@visibleForTesting
+List<String> lineupPlayerImagePrefetchUrlsForTesting({
+  required GameLineupData lineupData,
+  required Iterable<PlayerProfile> awayPlayers,
+  required Iterable<PlayerProfile> homePlayers,
+  required int season,
+}) {
+  return _lineupPlayerImagePrefetchUrls(
+    lineupData: lineupData,
+    awayPlayers: awayPlayers,
+    homePlayers: homePlayers,
     season: season,
   );
 }
@@ -119,9 +137,12 @@ List<String> _relayPlayerImagePrefetchUrls({
       continue;
     }
     addUrl(_resolvePlayerImageUrl(imageByName, actorLabel));
-    if (imageUrls.length >= _gameDetailPlayerImagePrefetchLimit) {
-      break;
-    }
+  }
+  for (final imageUrl in _playerProfileImageUrlsForPrefetch(
+    teamPlayers,
+    season,
+  )) {
+    addUrl(imageUrl);
   }
 
   return imageUrls.take(_gameDetailPlayerImagePrefetchLimit).toList();
@@ -153,22 +174,37 @@ List<String> _lineupPlayerImagePrefetchUrls({
         season: season,
       ),
     );
-    for (final entry in teamLineup.lineup.take(9)) {
+    for (final entry in teamLineup.lineup) {
       addUrl(
         _lineupEntryImageUrl(entry, imageByName: imageByName, season: season),
       );
-      if (imageUrls.length >= _gameDetailPlayerImagePrefetchLimit) {
-        break;
-      }
+    }
+    for (final imageUrl in _playerProfileImageUrlsForPrefetch(
+      players,
+      season,
+    )) {
+      addUrl(imageUrl);
     }
   }
 
   addTeamUrls(lineupData.away, awayPlayers);
-  if (imageUrls.length < _gameDetailPlayerImagePrefetchLimit) {
-    addTeamUrls(lineupData.home, homePlayers);
-  }
+  addTeamUrls(lineupData.home, homePlayers);
 
   return imageUrls.take(_gameDetailPlayerImagePrefetchLimit).toList();
+}
+
+List<String> _playerProfileImageUrlsForPrefetch(
+  Iterable<PlayerProfile> players,
+  int season,
+) {
+  final imageUrls = <String>[];
+  for (final player in players) {
+    final imageUrl = playerProfileImageUrl(player, season: season)?.trim();
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      imageUrls.add(imageUrl);
+    }
+  }
+  return imageUrls;
 }
 
 Map<String, String> _playerImageUrlByName(
@@ -333,6 +369,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AppColors.sync(AppTheme.colorsOf(context));
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final scoreboardAsync = ref.watch(scoreboardProvider(today));
     final myTeamId = ref.watch(myTeamProvider);
@@ -738,7 +775,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   final kboBrief = aggregate?.kboBrief;
                   final standingsPreview =
                       aggregate?.standingsPreview ?? const <TeamStanding>[];
-
                   _MyTeamBriefData? myTeamBrief;
                   List<_QuickContentItemData> baseQuickItems;
 
@@ -756,6 +792,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       'HOME aggregate unavailable; skipping local fallback assembly',
                     );
                   }
+                  final season = int.tryParse(today.substring(0, 4)) ?? 2026;
+                  final AsyncValue<TeamRecordsBundle>? teamRecordsAsync =
+                      _secondarySectionsEnabled &&
+                          myTeamId != null &&
+                          myTeamId.isNotEmpty &&
+                          myTeamBrief != null
+                      ? ref.watch(teamRecordsProvider('$myTeamId|$season'))
+                      : null;
 
                   _logSecondarySectionsLoaded(today: today, brief: myTeamBrief);
 
@@ -768,6 +812,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 myTeamId: myTeamId,
                                 brief: myTeamBrief,
                                 todayGame: myGame,
+                                teamRecordsAsync: teamRecordsAsync,
                                 onOpenGame: _openGameDetail,
                               )
                             : const _DeferredSectionCard(
@@ -903,6 +948,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       gameFuture.then<Object?>((value) => value),
     ];
 
+    Future<GameLineupData> readLineupForImagePrefetch() {
+      final existingFuture = lineupFuture;
+      if (existingFuture != null) {
+        return existingFuture;
+      }
+      ref.invalidate(gameLineupProvider(gameId));
+      final nextFuture = ref.read(gameLineupProvider(gameId).future);
+      lineupFuture = nextFuture;
+      futures.add(nextFuture.then<Object?>((value) => value));
+      return nextFuture;
+    }
+
     switch (targetTab) {
       case 'relay':
         ref.invalidate(relayDataProvider(gameId));
@@ -917,12 +974,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               .read(gameBoxscoreProvider(gameId).future)
               .then<Object?>((value) => value),
         );
+        readLineupForImagePrefetch();
         break;
       case 'lineup':
-        ref.invalidate(gameLineupProvider(gameId));
-        final gameLineupFuture = ref.read(gameLineupProvider(gameId).future);
-        lineupFuture = gameLineupFuture;
-        futures.add(gameLineupFuture.then<Object?>((value) => value));
+        readLineupForImagePrefetch();
+        break;
+      case null:
+        readLineupForImagePrefetch();
         break;
     }
 
@@ -951,11 +1009,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     try {
-      final imageUrls = switch (targetTab) {
-        'relay' => await _relayImageUrlsBeforeOpen(game, relayData),
-        'lineup' => await _lineupImageUrlsBeforeOpen(game, lineupData),
-        _ => const <String>[],
-      };
+      final imageUrls = <String>[];
+      switch (targetTab) {
+        case 'relay':
+          imageUrls.addAll(await _relayImageUrlsBeforeOpen(game, relayData));
+          imageUrls.addAll(
+            await _lineupImageUrlsBeforeOpen(
+              game,
+              lineupData ?? await _lineupDataForImagePrefetch(game.gameId),
+            ),
+          );
+          break;
+        case 'lineup':
+          imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
+          break;
+        case 'boxscore':
+        case null:
+          imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
+          break;
+      }
       if (imageUrls.isEmpty || !mounted) {
         return;
       }
@@ -975,12 +1047,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     Game game,
     RelayData? relayData,
   ) async {
-    if (relayData == null ||
-        (relayData.relayItems.isEmpty && relayData.currentAtBat == null)) {
+    if (relayData == null) {
       return const [];
     }
-    final season = DateTime.now().year;
+    final season = _seasonFromGameId(game.gameId);
     final teamPlayers = await _teamPlayersForImagePrefetch(game, season);
+    if (relayData.relayItems.isEmpty && relayData.currentAtBat == null) {
+      return _playerProfileImageUrlsForPrefetch(
+        teamPlayers,
+        season,
+      ).take(_gameDetailPlayerImagePrefetchLimit).toList();
+    }
     return _relayPlayerImagePrefetchUrls(
       relayData: relayData,
       teamPlayers: teamPlayers,
@@ -992,10 +1069,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     Game game,
     GameLineupData? lineupData,
   ) async {
-    if (lineupData == null) {
-      return const [];
-    }
     final season = _seasonFromGameId(game.gameId);
+    if (lineupData == null) {
+      final teamPlayers = await _teamPlayersForImagePrefetch(game, season);
+      return _playerProfileImageUrlsForPrefetch(
+        teamPlayers,
+        season,
+      ).take(_gameDetailPlayerImagePrefetchLimit).toList();
+    }
     final awayTeamId = lineupData.away.teamId.isNotEmpty
         ? lineupData.away.teamId
         : game.away.teamId;
@@ -1049,6 +1130,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         'HOME game detail team image source skipped: $teamId $season $error',
       );
       return const [];
+    }
+  }
+
+  Future<GameLineupData?> _lineupDataForImagePrefetch(String gameId) async {
+    try {
+      return await ref
+          .read(gameLineupProvider(gameId).future)
+          .timeout(_lineupImagePrefetchSourceTimeout);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'HOME game detail lineup image source skipped: $gameId $error',
+      );
+      return null;
     }
   }
 
@@ -1375,6 +1469,11 @@ class _HeaderBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final logoAsset = isLight
+        ? 'assets/visuals/kbo_header_logo_light.png'
+        : 'assets/visuals/kbo_header_logo.png';
+
     return SizedBox(
       height: height,
       child: Stack(
@@ -1383,7 +1482,8 @@ class _HeaderBar extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Image.asset(
-              'assets/visuals/kbo_header_logo.png',
+              logoAsset,
+              key: const ValueKey('home-header-logo'),
               width: 64,
               height: 28,
               fit: BoxFit.contain,
@@ -1453,12 +1553,14 @@ class _MyTeamBriefCard extends StatelessWidget {
   final String? myTeamId;
   final _MyTeamBriefData? brief;
   final Game? todayGame;
+  final AsyncValue<TeamRecordsBundle>? teamRecordsAsync;
   final ValueChanged<Game> onOpenGame;
 
   const _MyTeamBriefCard({
     required this.myTeamId,
     required this.brief,
     required this.todayGame,
+    required this.teamRecordsAsync,
     required this.onOpenGame,
   });
 
@@ -1522,8 +1624,10 @@ class _MyTeamBriefCard extends StatelessWidget {
         ? (nextGame.awayId == myTeamId ? nextGame.homeId : nextGame.awayId)
         : null;
     final opponent = opponentId != null ? KboTeams.byId(opponentId) : null;
-    final accent = team?.primaryColor ?? AppColors.accent;
-    final metrics = _briefMetricsForTeam(myTeamId!);
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
+    final recordBrief = _TeamRecordBriefData.resolve(teamRecordsAsync);
+    final metrics = recordBrief.metrics;
     final view = _MyTeamBriefViewModel.resolve(
       myTeamId: myTeamId!,
       teamName: team?.name ?? myTeamId!,
@@ -1666,6 +1770,8 @@ class _MyTeamBriefCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
+            _TeamRecordSpotlightRow(recordBrief: recordBrief),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -1741,23 +1847,6 @@ class _MyTeamBriefCard extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  _BriefMetricSnapshot _briefMetricsForTeam(String teamId) {
-    if (teamId == 'LG') {
-      return const _BriefMetricSnapshot(
-        avg: '0.268',
-        avgRank: '3위',
-        era: '3.42',
-        eraRank: '4위',
-      );
-    }
-    return const _BriefMetricSnapshot(
-      avg: '-',
-      avgRank: '집계 중',
-      era: '-',
-      eraRank: '집계 중',
     );
   }
 
@@ -1852,6 +1941,382 @@ class _BriefMetricSnapshot {
     required this.era,
     required this.eraRank,
   });
+
+  static _BriefMetricSnapshot _fromTeamStats(TeamStats stats) {
+    final avg = _statValue(stats.hitting, const ['AVG', '타율']);
+    final avgRank = _statValue(stats.hitting, const ['순위', 'Rank', 'RANK']);
+    final ops = _statValue(stats.hitting, const ['OPS']);
+    final era = _statValue(stats.pitching, const ['ERA', '평균자책점', '평균자책']);
+    final eraRank = _statValue(stats.pitching, const ['순위', 'Rank', 'RANK']);
+    final whip = _statValue(stats.pitching, const ['WHIP']);
+
+    return _BriefMetricSnapshot(
+      avg: _formatAverage(avg),
+      avgRank: avgRank.isNotEmpty
+          ? _formatRank(avgRank)
+          : _formatLabeledStat('OPS', ops),
+      era: _formatEra(era),
+      eraRank: eraRank.isNotEmpty
+          ? _formatRank(eraRank)
+          : _formatLabeledStat('WHIP', whip),
+    );
+  }
+
+  static String _statValue(Map<String, String> values, List<String> keys) {
+    for (final key in keys) {
+      final value = values[key]?.trim();
+      if (value != null && value.isNotEmpty) {
+        return value;
+      }
+    }
+
+    final normalizedKeys = keys.map(_normalizeStatKey).toSet();
+    for (final entry in values.entries) {
+      if (normalizedKeys.contains(_normalizeStatKey(entry.key))) {
+        final value = entry.value.trim();
+        if (value.isNotEmpty) {
+          return value;
+        }
+      }
+    }
+    return '';
+  }
+
+  static String _normalizeStatKey(String key) {
+    return key.replaceAll(RegExp(r'\s+'), '').toUpperCase();
+  }
+
+  static String _formatAverage(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty || value == '-') {
+      return '-';
+    }
+    if (value.startsWith('.') && RegExp(r'^\.\d+$').hasMatch(value)) {
+      return '0$value';
+    }
+    final parsed = double.tryParse(value.replaceAll(',', ''));
+    if (parsed != null && parsed > 0 && parsed < 1) {
+      return parsed.toStringAsFixed(3);
+    }
+    return value;
+  }
+
+  static String _formatEra(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty || value == '-') {
+      return '-';
+    }
+    final parsed = double.tryParse(value.replaceAll(',', ''));
+    if (parsed != null) {
+      return parsed.toStringAsFixed(2);
+    }
+    return value;
+  }
+
+  static String _formatRank(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty || value == '-') {
+      return '순위 없음';
+    }
+    if (value.endsWith('위')) {
+      return value;
+    }
+    final match = RegExp(r'\d+').firstMatch(value);
+    if (match != null) {
+      return '${match.group(0)}위';
+    }
+    return value;
+  }
+
+  static String _formatLabeledStat(String label, String raw) {
+    final value = raw.trim();
+    if (value.isEmpty || value == '-') {
+      return '집계 중';
+    }
+    return '$label $value';
+  }
+}
+
+class _PlayerRecordHighlight {
+  final String name;
+  final String value;
+
+  const _PlayerRecordHighlight({required this.name, required this.value});
+}
+
+class _TeamRecordBriefData {
+  final _BriefMetricSnapshot metrics;
+  final _PlayerRecordHighlight? homeRunLeader;
+  final _PlayerRecordHighlight? risingPlayer;
+  final bool isLoading;
+  final bool hasError;
+
+  const _TeamRecordBriefData({
+    required this.metrics,
+    this.homeRunLeader,
+    this.risingPlayer,
+    this.isLoading = false,
+    this.hasError = false,
+  });
+
+  static _TeamRecordBriefData resolve(
+    AsyncValue<TeamRecordsBundle>? recordsAsync,
+  ) {
+    if (recordsAsync == null || recordsAsync.isLoading) {
+      return const _TeamRecordBriefData(
+        metrics: _BriefMetricSnapshot(
+          avg: '-',
+          avgRank: '불러오는 중',
+          era: '-',
+          eraRank: '불러오는 중',
+        ),
+        isLoading: true,
+      );
+    }
+    if (recordsAsync.hasError) {
+      return const _TeamRecordBriefData(
+        metrics: _BriefMetricSnapshot(
+          avg: '-',
+          avgRank: '확인 필요',
+          era: '-',
+          eraRank: '확인 필요',
+        ),
+        hasError: true,
+      );
+    }
+
+    final bundle = recordsAsync.asData?.value;
+    if (bundle == null) {
+      return const _TeamRecordBriefData(
+        metrics: _BriefMetricSnapshot(
+          avg: '-',
+          avgRank: '집계 중',
+          era: '-',
+          eraRank: '집계 중',
+        ),
+      );
+    }
+
+    return _TeamRecordBriefData(
+      metrics: _BriefMetricSnapshot._fromTeamStats(bundle.teamStats),
+      homeRunLeader: _homeRunLeaderFromPlayers(bundle.players),
+      risingPlayer: _risingPlayerFromPlayers(bundle.players),
+    );
+  }
+
+  static _PlayerRecordHighlight? _homeRunLeaderFromPlayers(
+    List<PlayerProfile> players,
+  ) {
+    PlayerProfile? leader;
+    var leaderHomeRuns = 0;
+    for (final player in players) {
+      if (player.playerType != PlayerType.hitter || player.isRetired) {
+        continue;
+      }
+      final homeRuns = _homeRunsForPlayer(player);
+      if (homeRuns > leaderHomeRuns) {
+        leader = player;
+        leaderHomeRuns = homeRuns;
+      }
+    }
+    if (leader == null || leaderHomeRuns <= 0) {
+      return null;
+    }
+    return _PlayerRecordHighlight(
+      name: leader.name,
+      value: '$leaderHomeRuns홈런',
+    );
+  }
+
+  static _PlayerRecordHighlight? _risingPlayerFromPlayers(
+    List<PlayerProfile> players,
+  ) {
+    PlayerProfile? bestHitter;
+    var bestHitterScore = -1.0;
+    for (final player in players) {
+      if (player.playerType != PlayerType.hitter || player.isRetired) {
+        continue;
+      }
+      final score = player.ops ?? player.avg;
+      if (score != null && score > bestHitterScore) {
+        bestHitter = player;
+        bestHitterScore = score;
+      }
+    }
+    if (bestHitter != null && bestHitterScore >= 0) {
+      final value = bestHitter.ops != null
+          ? 'OPS ${bestHitter.ops!.toStringAsFixed(3)}'
+          : 'AVG ${bestHitter.avg!.toStringAsFixed(3)}';
+      return _PlayerRecordHighlight(name: bestHitter.name, value: value);
+    }
+
+    PlayerProfile? bestPitcher;
+    var bestPitcherEra = 999.0;
+    for (final player in players) {
+      if (player.playerType != PlayerType.pitcher || player.isRetired) {
+        continue;
+      }
+      final era = player.era;
+      if (era != null && era < bestPitcherEra) {
+        bestPitcher = player;
+        bestPitcherEra = era;
+      }
+    }
+    if (bestPitcher == null || bestPitcherEra >= 999) {
+      return null;
+    }
+    return _PlayerRecordHighlight(
+      name: bestPitcher.name,
+      value: 'ERA ${bestPitcherEra.toStringAsFixed(2)}',
+    );
+  }
+
+  static int _homeRunsForPlayer(PlayerProfile player) {
+    final candidates = [
+      ...player.seasonStats,
+      player.headlineStat,
+      player.secondaryStat,
+      ...player.highlights,
+    ];
+    for (final candidate in candidates) {
+      final text = candidate.trim();
+      if (text.isEmpty) {
+        continue;
+      }
+      final hrMatch = RegExp(
+        r'(?:^|[\s·])HR\s*([0-9,]+)',
+        caseSensitive: false,
+      ).firstMatch(text);
+      if (hrMatch != null) {
+        return _parseInt(hrMatch.group(1));
+      }
+      final koreanMatch = RegExp(r'([0-9,]+)\s*홈런').firstMatch(text);
+      if (koreanMatch != null) {
+        return _parseInt(koreanMatch.group(1));
+      }
+    }
+    return 0;
+  }
+
+  static int _parseInt(String? value) {
+    if (value == null) {
+      return 0;
+    }
+    return int.tryParse(value.replaceAll(',', '')) ?? 0;
+  }
+}
+
+class _TeamRecordSpotlightRow extends StatelessWidget {
+  final _TeamRecordBriefData recordBrief;
+
+  const _TeamRecordSpotlightRow({required this.recordBrief});
+
+  @override
+  Widget build(BuildContext context) {
+    final placeholderTitle = recordBrief.isLoading
+        ? '불러오는 중'
+        : recordBrief.hasError
+        ? '확인 불가'
+        : '집계 중';
+    final placeholderSubtitle = recordBrief.isLoading
+        ? '팀 기록 확인'
+        : recordBrief.hasError
+        ? '팀 기록 API'
+        : '선수 기록 없음';
+
+    return Row(
+      children: [
+        Expanded(
+          child: _RecordSpotlightTile(
+            icon: Icons.local_fire_department_rounded,
+            label: '팀 홈런 1위',
+            title: recordBrief.homeRunLeader?.name ?? placeholderTitle,
+            subtitle: recordBrief.homeRunLeader?.value ?? placeholderSubtitle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _RecordSpotlightTile(
+            icon: Icons.trending_up_rounded,
+            label: '뜨는 선수',
+            title: recordBrief.risingPlayer?.name ?? placeholderTitle,
+            subtitle: recordBrief.risingPlayer?.value ?? placeholderSubtitle,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecordSpotlightTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String title;
+  final String subtitle;
+
+  const _RecordSpotlightTile({
+    required this.icon,
+    required this.label,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 68,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider.withValues(alpha: 0.8)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.ballYellow),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textDisabled,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MyTeamBriefViewModel {
@@ -2071,7 +2536,10 @@ class _LiveMyTeamGameCard extends StatelessWidget {
     final opponent = isAway ? game.home : game.away;
     final myTeamInfo = KboTeams.byId(myTeam.teamId);
     final opponentInfo = KboTeams.byId(opponent.teamId);
-    final accent = myTeamInfo?.primaryColor ?? AppColors.live;
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(
+      myTeamInfo?.primaryColor ?? colors.live,
+    );
     final inningText = game.inning.trim().isNotEmpty
         ? game.inning.trim()
         : game.statusLabel?.trim().isNotEmpty == true
@@ -2241,7 +2709,8 @@ class _LiveTeamScoreInline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = team?.primaryColor ?? AppColors.live;
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(team?.primaryColor ?? colors.live);
     final logo = _TeamLogo(
       team: team,
       fallbackLabel: fallbackLabel,
@@ -2344,6 +2813,7 @@ class _TodayGamesReferenceCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _sectionCard(
+          key: const ValueKey('home-today-games-card'),
           padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2644,6 +3114,7 @@ class _RecentFlowReferenceCard extends StatelessWidget {
         _ReferenceSectionHeader(title: '최근 흐름', showAction: false),
         const SizedBox(height: 8),
         _sectionCard(
+          key: const ValueKey('home-standings-card'),
           padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -4056,6 +4527,8 @@ String _kboBriefShortTitle(HomeKboBriefItem item) {
     return '순위';
   }
   if (item.eyebrow.contains('기록')) return '기록';
+  if (item.eyebrow.contains('실책')) return '실책';
+  if (item.eyebrow.contains('타율')) return '타율';
   if (item.eyebrow.contains('일정')) return '일정';
   if (item.eyebrow.contains('안타') || item.eyebrow.contains('타격')) {
     return '승부처';
@@ -4087,7 +4560,10 @@ Color _kboBriefAccent(String type) {
     case 'game_flow':
       return AppColors.live;
     case 'player_performance':
+    case 'defense_issue':
+    case 'defense_rank':
       return AppColors.positive;
+    case 'batting_leader':
     case 'record_radar':
       return AppColors.ballYellow;
     case 'standings':
@@ -4110,7 +4586,10 @@ IconData _kboBriefIcon(String type) {
     case 'game_flow':
       return Icons.sports_baseball_rounded;
     case 'player_performance':
+    case 'defense_issue':
+    case 'defense_rank':
       return Icons.local_fire_department_rounded;
+    case 'batting_leader':
     case 'record_radar':
       return Icons.auto_graph_rounded;
     case 'standings':
@@ -4142,8 +4621,13 @@ String _kboBriefBadgeLabel(HomeKboBriefItem item) {
     case 'record_radar':
       final valueMatch = RegExp(r'([0-9]+)').firstMatch(item.title);
       return valueMatch == null ? 'TOP' : '${valueMatch.group(1)}개';
+    case 'batting_leader':
+      return '타율';
     case 'player_performance':
       return '타격';
+    case 'defense_issue':
+    case 'defense_rank':
+      return '실책';
     case 'pitcher_check':
       return '선발';
     case 'team_trend':
@@ -4271,7 +4755,7 @@ class _QuickContentListItem extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                _quickItemAvatar(item, accent),
+                _quickItemAvatar(context, item, accent),
               ],
             ),
             const SizedBox(height: 10),
@@ -4323,7 +4807,7 @@ class _QuickContentListItem extends ConsumerWidget {
 
             return SafeArea(
               top: false,
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
                 child: playerAsync.when(
                   loading: () => SizedBox(
@@ -4336,7 +4820,7 @@ class _QuickContentListItem extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _playerBottomSheetHeader(item: item),
+                      _playerBottomSheetHeader(context, item: item),
                       const SizedBox(height: 12),
                       Text(
                         '최근 기록을 불러오지 못했습니다',
@@ -4349,78 +4833,41 @@ class _QuickContentListItem extends ConsumerWidget {
                       _playerBottomSheetButton(context),
                     ],
                   ),
-                  data: (player) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _playerBottomSheetHeader(
-                        item: item,
-                        playerName: player.name,
-                      ),
-                      const SizedBox(height: 14),
-                      const Text(
-                        '최근 기록',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
+                  data: (player) {
+                    final recentGames = player.recentGames.take(5).toList();
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _playerBottomSheetHeader(
+                          context,
+                          item: item,
+                          playerName: player.name,
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      if (player.recentGames.isEmpty)
-                        Text(
-                          '표시할 최근 기록이 없습니다',
+                        const SizedBox(height: 14),
+                        const Text(
+                          '최근 5경기',
                           style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
                           ),
-                        )
-                      else
-                        ...player.recentGames
-                            .take(3)
-                            .map(
-                              (game) => Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.cardSub,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: AppColors.divider,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${game.date} · ${game.opponent}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textDisabled,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        game.summary,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: AppColors.textPrimary,
-                                          fontWeight: FontWeight.w600,
-                                          height: 1.35,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
+                        ),
+                        const SizedBox(height: 10),
+                        if (recentGames.isEmpty)
+                          Text(
+                            '최근 5경기 기록이 없습니다',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
                             ),
-                      const SizedBox(height: 6),
-                      _playerBottomSheetButton(context),
-                    ],
-                  ),
+                          )
+                        else
+                          ...recentGames.map(_playerRecentGameCard),
+                        const SizedBox(height: 6),
+                        _playerBottomSheetButton(context),
+                      ],
+                    );
+                  },
                 ),
               ),
             );
@@ -4430,14 +4877,15 @@ class _QuickContentListItem extends ConsumerWidget {
     );
   }
 
-  Widget _playerBottomSheetHeader({
+  Widget _playerBottomSheetHeader(
+    BuildContext context, {
     required _QuickContentItemData item,
     String? playerName,
   }) {
     final accent = _quickItemAccent(item);
     return Row(
       children: [
-        _quickItemAvatar(item, accent),
+        _quickItemAvatar(context, item, accent),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -4472,6 +4920,68 @@ class _QuickContentListItem extends ConsumerWidget {
     );
   }
 
+  Widget _playerRecentGameCard(PlayerRecentGame game) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    game.date,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'vs ${game.opponent}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            Text(
+              game.summary,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w600,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _playerBottomSheetButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -4493,6 +5003,7 @@ class _QuickContentListItem extends ConsumerWidget {
 }
 
 Widget _sectionCard({
+  Key? key,
   required Widget child,
   EdgeInsetsGeometry padding = const EdgeInsets.all(16),
   Color? accentColor,
@@ -4501,6 +5012,7 @@ Widget _sectionCard({
   double backgroundOpacity = 0.22,
 }) {
   return Container(
+    key: key,
     clipBehavior: Clip.antiAlias,
     decoration: BoxDecoration(
       color: AppColors.card,
@@ -4577,7 +5089,12 @@ String _quickItemCta(_QuickContentItemData item) {
   return '자세히 보기';
 }
 
-Widget _quickItemAvatar(_QuickContentItemData item, Color accent) {
+Widget _quickItemAvatar(
+  BuildContext context,
+  _QuickContentItemData item,
+  Color accent,
+) {
+  final colors = AppTheme.colorsOf(context);
   final team = KboTeams.resolve(
     id: item.teamId,
     name: item.fallbackLabel,
@@ -4595,8 +5112,10 @@ Widget _quickItemAvatar(_QuickContentItemData item, Color accent) {
         memCacheWidth: 156,
         memCacheHeight: 156,
         fit: BoxFit.cover,
-        errorWidget: (_, _, _) => _quickItemAvatarFallback(item, accent, team),
-        placeholder: (_, _) => _quickItemAvatarFallback(item, accent, team),
+        errorWidget: (_, _, _) =>
+            _quickItemAvatarFallback(item, accent, team, colors),
+        placeholder: (_, _) =>
+            _quickItemAvatarFallback(item, accent, team, colors),
       ),
     );
   }
@@ -4610,16 +5129,18 @@ Widget _quickItemAvatar(_QuickContentItemData item, Color accent) {
     );
   }
 
-  return _quickItemAvatarFallback(item, accent, team);
+  return _quickItemAvatarFallback(item, accent, team, colors);
 }
 
 Widget _quickItemAvatarFallback(
   _QuickContentItemData item,
   Color accent,
   KboTeam? team,
+  AppThemeColors colors,
 ) {
   final label = (item.fallbackLabel ?? item.title).trim();
   final initial = label.isEmpty ? _quickItemIcon(item) : label.characters.first;
+  final foreground = colors.readableAccent(team?.primaryColor ?? accent);
   return Container(
     width: 52,
     height: 52,
@@ -4633,7 +5154,7 @@ Widget _quickItemAvatarFallback(
       style: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w800,
-        color: team?.primaryColor ?? accent,
+        color: foreground,
       ),
     ),
   );

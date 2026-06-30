@@ -10,6 +10,26 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/boxscore_tab.dart';
 
 void main() {
+  testWidgets('예정 경기 박스스코어 빈 상태는 카드 하단으로 밀리지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpBoxscoreTab(
+      tester,
+      gameStatus: GameStatus.scheduled,
+      boxscore: _officialBoxscore,
+      players: const <PlayerProfile>[],
+    );
+
+    await tester.pump();
+
+    final titleTop = tester.getTopLeft(find.text('박스스코어')).dy;
+    expect(titleTop, lessThan(64));
+    expect(find.text('경기 시작 후 박스스코어가 제공됩니다'), findsOneWidget);
+  });
+
   testWidgets('박스스코어가 0값 투수 placeholder만 있으면 업데이트 전 상태를 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -189,6 +209,7 @@ void main() {
 
 Future<void> _pumpBoxscoreTab(
   WidgetTester tester, {
+  GameStatus gameStatus = GameStatus.live,
   required GameBoxscoreData boxscore,
   required List<PlayerProfile> players,
 }) async {
@@ -201,11 +222,11 @@ Future<void> _pumpBoxscoreTab(
       ],
       child: MaterialApp(
         theme: AppTheme.dark,
-        home: const Scaffold(
+        home: Scaffold(
           body: BoxscoreTab(
             gameId: '20260613KTLG0',
             game: _liveGame,
-            gameStatus: GameStatus.live,
+            gameStatus: gameStatus,
             awayName: 'KT',
             homeName: 'LG',
             awayTeamId: 'KT',

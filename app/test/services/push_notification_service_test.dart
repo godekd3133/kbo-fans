@@ -314,6 +314,85 @@ void main() {
     expect(topics, isNot(contains('at_bat_LG')));
   });
 
+  test('경기 전후 요약 핵심 디테일은 시작과 종료만 구독한다', () {
+    final settings = PushNotificationSettings.forMode(
+      PushNotificationMode.summary,
+      summaryDetailLevel: PushNotificationSummaryDetailLevel.essential,
+    );
+
+    final topics = buildPushTopics(settings: settings, myTeam: 'LG');
+
+    expect(
+      settings.summaryDetailLevel,
+      PushNotificationSummaryDetailLevel.essential,
+    );
+    expect(topics, contains('game_start_LG'));
+    expect(topics, contains('game_start_soon_LG'));
+    expect(topics, contains('game_end_LG'));
+    expect(topics, isNot(contains('lineup_opened_LG')));
+    expect(topics, isNot(contains('baseball_info_LG')));
+  });
+
+  test('경기 전후 요약 기본 디테일은 라인업까지 구독한다', () {
+    final settings = PushNotificationSettings.forMode(
+      PushNotificationMode.summary,
+      summaryDetailLevel: PushNotificationSummaryDetailLevel.standard,
+    );
+
+    final topics = buildPushTopics(settings: settings, myTeam: 'LG');
+
+    expect(
+      settings.summaryDetailLevel,
+      PushNotificationSummaryDetailLevel.standard,
+    );
+    expect(topics, contains('game_start_LG'));
+    expect(topics, contains('game_start_soon_LG'));
+    expect(topics, contains('game_end_LG'));
+    expect(topics, contains('lineup_opened_LG'));
+    expect(topics, isNot(contains('baseball_info_LG')));
+  });
+
+  test('경기 중 실시간 핵심 디테일은 승부 핵심 모먼트만 구독한다', () {
+    final settings = PushNotificationSettings.forMode(
+      PushNotificationMode.live,
+      liveDetailLevel: PushNotificationLiveDetailLevel.essential,
+    );
+
+    final topics = buildPushTopics(settings: settings, myTeam: 'LG');
+
+    expect(settings.liveDetailLevel, PushNotificationLiveDetailLevel.essential);
+    expect(topics, contains('game_start_LG'));
+    expect(topics, contains('game_start_soon_LG'));
+    expect(topics, contains('scoring_LG'));
+    expect(topics, contains('homerun_LG'));
+    expect(topics, contains('reversal_LG'));
+    expect(topics, contains('game_end_LG'));
+    expect(topics, isNot(contains('hit_LG')));
+    expect(topics, isNot(contains('lineup_opened_LG')));
+    expect(topics, isNot(contains('inning_change_LG')));
+    expect(topics, isNot(contains('at_bat_LG')));
+    expect(topics, isNot(contains('baseball_info_LG')));
+  });
+
+  test('경기 중 실시간 기본 디테일은 안타와 라인업까지 구독한다', () {
+    final settings = PushNotificationSettings.forMode(
+      PushNotificationMode.live,
+      liveDetailLevel: PushNotificationLiveDetailLevel.standard,
+    );
+
+    final topics = buildPushTopics(settings: settings, myTeam: 'LG');
+
+    expect(settings.liveDetailLevel, PushNotificationLiveDetailLevel.standard);
+    expect(topics, contains('scoring_LG'));
+    expect(topics, contains('hit_LG'));
+    expect(topics, contains('homerun_LG'));
+    expect(topics, contains('reversal_LG'));
+    expect(topics, contains('lineup_opened_LG'));
+    expect(topics, isNot(contains('inning_change_LG')));
+    expect(topics, isNot(contains('at_bat_LG')));
+    expect(topics, isNot(contains('baseball_info_LG')));
+  });
+
   test('push 등록 payload는 현재 따라가는 경기 id를 포함한다', () {
     const settings = PushNotificationSettings.defaults();
 
@@ -336,6 +415,8 @@ void main() {
     expect(payload['authorizationStatus'], 'authorized');
     expect(payload['apnsTokenReady'], isTrue);
     expect(payload['notifications']['baseballInfo'], isTrue);
+    expect(payload['notifications']['summaryDetailLevel'], 'detailed');
+    expect(payload['notifications']['liveDetailLevel'], 'detailed');
     expect(
       payload['notifications']['deliveryModes']['baseballInfo'],
       'immediate',

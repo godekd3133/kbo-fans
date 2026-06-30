@@ -33,8 +33,10 @@ class MyTeamGameCard extends StatelessWidget {
     final homeTeam = KboTeams.byId(game.home.teamId);
     final isLive = game.status == GameStatus.live;
     final secondary = _secondaryText();
-    final accent =
-        awayTeam?.primaryColor ?? homeTeam?.primaryColor ?? AppColors.live;
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(
+      awayTeam?.primaryColor ?? homeTeam?.primaryColor ?? colors.live,
+    );
     final primaryAction = _primaryAction();
     final secondaryAction = _secondaryAction();
     final scoreText = _scoreboardText();

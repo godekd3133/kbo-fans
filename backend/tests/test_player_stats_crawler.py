@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from kbo_fans_backend.crawlers.player_stats import PlayerStatsCrawler
 
 
@@ -169,3 +172,56 @@ def test_parse_profile_uses_2022_image_folder_for_old_seasons() -> None:
     )
 
     assert profile["imageUrl"].endswith("/2022/99999.jpg")
+
+
+class _CurrentPlayerDetailCrawler(PlayerStatsCrawler):
+    def _get_text(self, url: str, *, breaker_key: str) -> str:
+        if "Total.aspx" in url:
+            return """
+            <table class="tbl tt">
+              <thead>
+                <tr><th>연도</th><th>팀명</th><th>AVG</th><th>G</th><th>H</th><th>HR</th><th>RBI</th><th>OPS</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>2026</td><td>KIA</td><td>0.333</td><td>43</td><td>53</td><td>6</td><td>20</td><td>0.978</td></tr>
+              </tbody>
+            </table>
+            """
+        return """
+        <span id="lblName">김도영</span>
+        <span id="lblBackNo">5</span>
+        <span id="lblBirthday">2003-10-02</span>
+        <span id="lblPosition">내야수(우투우타)</span>
+        <span id="lblHeightWeight">183cm/85kg</span>
+        <span id="lblCareer">동성고</span>
+        <h6>최근 10경기</h6>
+        <div class="tbl-type02 mb35">
+          <table class="tbl tt">
+            <tbody>
+              <tr>
+                <td>06.28</td><td>두산</td><td>0.500</td><td>4</td><td>4</td>
+                <td>1</td><td>2</td><td>0</td><td>0</td><td>1</td><td>1</td>
+              </tr>
+              <tr>
+                <td>06.27</td><td>두산</td><td>0.000</td><td>4</td><td>4</td>
+                <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        """
+
+
+def test_player_detail_includes_current_recent_games_when_page_omits_season_label() -> None:
+    crawler = _CurrentPlayerDetailCrawler()
+    current_season = datetime.now(ZoneInfo("Asia/Seoul")).year
+
+    payload = crawler.get_player_detail(
+        "52605",
+        "hitter",
+        current_season,
+        include_recent=True,
+    )
+
+    assert [game["date"] for game in payload["recentGames"]] == ["06.28", "06.27"]
+    assert payload["recentGames"][0]["summary"] == "AVG 0.500 · H 2 · HR 1 · RBI 1"

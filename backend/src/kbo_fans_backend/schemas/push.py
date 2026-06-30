@@ -5,6 +5,8 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 NotificationDelivery = Literal["immediate", "summary", "live_only", "off"]
+NotificationSummaryDetailLevel = Literal["essential", "standard", "detailed"]
+NotificationLiveDetailLevel = Literal["essential", "standard", "detailed"]
 
 
 class NotificationDeliveryModes(BaseModel):
@@ -32,6 +34,8 @@ class NotificationSettings(BaseModel):
     atBat: bool = True
     baseballInfo: bool = True
     allGames: bool
+    summaryDetailLevel: NotificationSummaryDetailLevel = "detailed"
+    liveDetailLevel: NotificationLiveDetailLevel = "detailed"
     deliveryModes: Optional[NotificationDeliveryModes] = None
 
 
@@ -82,6 +86,10 @@ class PushBaseballInfoRequest(BaseModel):
     topic: Optional[str] = None
     token: Optional[str] = None
     teamId: Optional[str] = None
+    gameId: Optional[str] = None
+    matchup: Optional[str] = None
+    startTime: Optional[str] = None
+    stadium: Optional[str] = None
     dryRun: bool = False
 
 

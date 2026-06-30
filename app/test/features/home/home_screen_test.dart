@@ -6,12 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
+import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
 import 'package:kbo_fans/data/models/player.dart';
 import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
+import 'package:kbo_fans/data/models/team_records_bundle.dart';
+import 'package:kbo_fans/data/models/team_stats.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/home/home_screen.dart';
 import 'package:kbo_fans/services/live_activity_service.dart';
@@ -56,6 +60,7 @@ void main() {
       teamPlayers: [
         _playerProfile(name: '곽빈', id: '67263'),
         _playerProfile(name: '이유찬', id: '66244'),
+        _playerProfile(name: '나성범', id: '64646'),
       ],
       season: 2026,
     );
@@ -64,7 +69,185 @@ void main() {
       'https://img.example.com/doyoung.jpg',
       kboPlayerImageUrl(season: 2026, playerId: '67263'),
       kboPlayerImageUrl(season: 2026, playerId: '66244'),
+      kboPlayerImageUrl(season: 2026, playerId: '64646'),
     ]);
+  });
+
+  test('경기 상세 진입 전 lineup 선수 사진 prefetch 후보를 계산한다', () {
+    final urls = lineupPlayerImagePrefetchUrlsForTesting(
+      lineupData: const GameLineupData(
+        gameId: '20260611SSLG0',
+        away: TeamLineupData(
+          teamId: 'SS',
+          starterId: '55268',
+          starterName: '원태인',
+          lineup: [
+            LineupEntry(
+              order: 1,
+              position: 'CF',
+              positionKo: '중견수',
+              name: '김지찬',
+              playerId: '51454',
+            ),
+          ],
+        ),
+        home: TeamLineupData(
+          teamId: 'LG',
+          starterName: '임찬규',
+          starterImageUrl: 'https://img.example.com/starter.jpg',
+          lineup: [
+            LineupEntry(
+              order: 1,
+              position: 'RF',
+              positionKo: '우익수',
+              name: '홍창기',
+              imageUrl: 'https://img.example.com/hong.jpg',
+            ),
+          ],
+        ),
+      ),
+      awayPlayers: [_playerProfile(name: '구자욱', id: '62404')],
+      homePlayers: [_playerProfile(name: '문보경', id: '69102')],
+      season: 2026,
+    );
+
+    expect(urls, [
+      kboPlayerImageUrl(season: 2026, playerId: '55268'),
+      kboPlayerImageUrl(season: 2026, playerId: '51454'),
+      kboPlayerImageUrl(season: 2026, playerId: '62404'),
+      'https://img.example.com/starter.jpg',
+      'https://img.example.com/hong.jpg',
+      kboPlayerImageUrl(season: 2026, playerId: '69102'),
+    ]);
+  });
+
+  testWidgets('light mode syncs home palette and keeps header visible', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(() => AppColors.sync(AppTheme.darkColors));
+
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({});
+    AppColors.sync(AppTheme.darkColors);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scoreboardProvider.overrideWith((ref, date) async {
+            return const <Game>[];
+          }),
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: 'LG',
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+          teamStatsProvider.overrideWith((ref, key) async {
+            return _teamStatsForKey(key);
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.light, home: const HomeScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(AppColors.background, AppTheme.lightColors.background);
+    expect(AppColors.card, AppTheme.lightColors.card);
+
+    final logo = tester
+        .widgetList<Image>(find.byKey(const ValueKey('home-header-logo')))
+        .first;
+    expect(
+      (logo.image as AssetImage).assetName,
+      'assets/visuals/kbo_header_logo_light.png',
+    );
+
+    final headerIconButtons = tester
+        .widgetList<IconButton>(find.byType(IconButton))
+        .take(2)
+        .toList();
+    expect(headerIconButtons, hasLength(2));
+    expect(
+      headerIconButtons.map((button) => button.color),
+      everyElement(equals(AppTheme.lightColors.textPrimary)),
+    );
+  });
+
+  testWidgets('light mode keeps populated home cards readable', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(() => AppColors.sync(AppTheme.darkColors));
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    final game = _scheduledGame(
+      gameId: '20260619SSLG0',
+      awayTeamId: 'SS',
+      awayShortName: '삼성',
+      homeTeamId: 'LG',
+      homeShortName: 'LG',
+      stadium: '잠실',
+    );
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(theme: AppTheme.light, routerConfig: router),
+        scoreboardGames: [game],
+        standingsPreview: _leagueStandings(),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(AppColors.card, AppTheme.lightColors.card);
+    expect(AppColors.textPrimary, AppTheme.lightColors.textPrimary);
+
+    final todayCard = tester.widget<Container>(
+      find.byKey(const ValueKey('home-today-games-card')),
+    );
+    final todayCardDecoration = todayCard.decoration as BoxDecoration;
+    expect(todayCardDecoration.color, AppTheme.lightColors.card);
+
+    final todayRow = find.byKey(ValueKey('home-today-game-${game.gameId}'));
+    expect(todayRow, findsOneWidget);
+    final stadiumText = tester.widget<Text>(
+      find.descendant(of: todayRow, matching: find.text('잠실')),
+    );
+    expect(stadiumText.style?.color, AppTheme.lightColors.textPrimary);
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('home-standings-card')),
+    );
+    await tester.pumpAndSettle();
+
+    final standingsCard = tester.widget<Container>(
+      find.byKey(const ValueKey('home-standings-card')),
+    );
+    final standingsCardDecoration = standingsCard.decoration as BoxDecoration;
+    expect(standingsCardDecoration.color, AppTheme.lightColors.card);
+
+    final standingsRow = find.byKey(const ValueKey('home-standings-row-LG'));
+    expect(standingsRow, findsOneWidget);
+    final standingsGames = tester.widget<Text>(
+      find.descendant(of: standingsRow, matching: find.text('62')),
+    );
+    expect(standingsGames.style?.color, AppTheme.lightColors.textPrimary);
   });
 
   testWidgets('defers home aggregate provider until after scoreboard paint', (
@@ -209,6 +392,9 @@ void main() {
               quickItems: const [],
             );
           }),
+          teamStatsProvider.overrideWith((ref, key) async {
+            return _teamStatsForKey(key);
+          }),
         ],
         child: const MaterialApp(home: HomeScreen()),
       ),
@@ -257,6 +443,12 @@ void main() {
                 (ref, gameId) async =>
                     const RelayData(currentAtBat: null, relayItems: []),
               ),
+              gameLineupProvider.overrideWith(
+                (ref, gameId) async => _emptyLineupForGame(liveMyTeamGame),
+              ),
+              teamPlayersProvider.overrideWith((ref, key) async {
+                return const <PlayerProfile>[];
+              }),
             ],
             child: MaterialApp.router(routerConfig: router),
           ),
@@ -333,6 +525,9 @@ void main() {
               quickItems: const [],
             );
           }),
+          teamStatsProvider.overrideWith((ref, key) async {
+            return _teamStatsForKey(key);
+          }),
         ],
         child: MaterialApp(
           builder: (context, child) {
@@ -358,6 +553,46 @@ void main() {
       find.byKey(ValueKey('home-today-game-${otherGame.gameId}')),
       findsOneWidget,
     );
+  });
+
+  testWidgets('my team brief shows team AVG and ERA with ranks', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        teamRecordsBundle: TeamRecordsBundle(
+          players: const [],
+          teamStats: _teamStatsForKey(
+            'LG|2026',
+            avg: '.281',
+            avgRank: '8',
+            era: '4.73',
+            eraRank: '9',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('팀 타율'), findsOneWidget);
+    expect(find.text('0.281'), findsOneWidget);
+    expect(find.text('8위'), findsOneWidget);
+    expect(find.text('팀 ERA'), findsOneWidget);
+    expect(find.text('4.73'), findsOneWidget);
+    expect(find.text('9위'), findsOneWidget);
   });
 
   testWidgets(
@@ -627,6 +862,67 @@ void main() {
     );
   });
 
+  testWidgets('KBO brief renders defense and batting leader items', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        kboBrief: const HomeKboBrief(
+          title: '오늘의 KBO 소식',
+          subtitle: '실책과 타율 흐름',
+          items: [
+            HomeKboBriefItem(
+              type: 'defense_issue',
+              eyebrow: '실책 많은 경기',
+              title: '두산-LG 합계 5실책',
+              subtitle: '두산 3실책 · LG 2실책',
+              route: '/game/20260629OBLG0',
+              gameId: '20260629OBLG0',
+              teamIds: ['OB', 'LG'],
+            ),
+            HomeKboBriefItem(
+              type: 'batting_leader',
+              eyebrow: '6월 현재 타율',
+              title: '홍창기 타율 0.351',
+              subtitle: 'LG 트윈스 · 시즌 타율 1위',
+              route: '/records/player/64166?season=2026',
+              teamIds: ['LG'],
+              fallbackLabel: '홍창기',
+            ),
+            HomeKboBriefItem(
+              type: 'defense_rank',
+              eyebrow: '팀별 실책',
+              title: '두산 3개 · LG 2개',
+              subtitle: '6월 29일 경기 기준 · 실책 많은 팀 순',
+              route: '/schedule',
+              teamIds: ['OB', 'LG'],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('두산-LG 합계 5실책'), findsOneWidget);
+    expect(find.text('홍창기 타율 0.351'), findsOneWidget);
+    expect(find.text('두산 3개 · LG 2개'), findsOneWidget);
+    expect(find.text('실책'), findsWidgets);
+    expect(find.text('타율'), findsWidgets);
+  });
+
   testWidgets('home insight and quick cards keep long copy visible', (
     tester,
   ) async {
@@ -728,6 +1024,94 @@ void main() {
     expect(find.text('5위 · 두산 베어스'), findsOneWidget);
     expect(find.text('38승 38패 2무 · 9.5G차'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('my-team brief shows real team stats and player highlights', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        teamRecordsBundle: const TeamRecordsBundle(
+          teamStats: TeamStats(
+            teamId: 'LG',
+            season: 2026,
+            hitting: {'AVG': '0.276', 'OPS': '0.771', 'HR': '82'},
+            pitching: {'ERA': '3.54', 'WHIP': '1.28'},
+          ),
+          players: [
+            PlayerProfile(
+              id: '69102',
+              teamId: 'LG',
+              playerType: PlayerType.hitter,
+              name: '문보경',
+              number: 2,
+              position: '3B',
+              roleLabel: '내야수',
+              handedness: '우투좌타',
+              heightWeight: '',
+              birthDate: '',
+              status: PlayerAvailabilityStatus.available,
+              rosterGroup: PlayerRosterGroup.entry,
+              headlineStat: 'AVG 0.303',
+              secondaryStat: 'OPS 0.850',
+              seasonStats: ['HR 12', 'RBI 47'],
+              highlights: [],
+              recentGames: [],
+              avg: 0.303,
+              ops: 0.850,
+            ),
+            PlayerProfile(
+              id: '64166',
+              teamId: 'LG',
+              playerType: PlayerType.hitter,
+              name: '홍창기',
+              number: 51,
+              position: 'RF',
+              roleLabel: '외야수',
+              handedness: '좌투좌타',
+              heightWeight: '',
+              birthDate: '',
+              status: PlayerAvailabilityStatus.available,
+              rosterGroup: PlayerRosterGroup.entry,
+              headlineStat: 'AVG 0.321',
+              secondaryStat: 'OPS 0.910',
+              seasonStats: ['HR 4', 'RBI 28'],
+              highlights: [],
+              recentGames: [],
+              avg: 0.321,
+              ops: 0.910,
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('0.276'), findsOneWidget);
+    expect(find.text('3.54'), findsOneWidget);
+    final homeRunLabel = find.text('팀 홈런 1위', skipOffstage: false);
+    await tester.ensureVisible(homeRunLabel);
+    await tester.pumpAndSettle();
+
+    expect(find.text('팀 홈런 1위'), findsOneWidget);
+    expect(find.text('문보경'), findsOneWidget);
+    expect(find.text('12홈런'), findsOneWidget);
+    expect(find.text('뜨는 선수'), findsOneWidget);
+    expect(find.text('홍창기'), findsOneWidget);
+    expect(find.text('OPS 0.910'), findsOneWidget);
   });
 
   testWidgets('KBO brief hides remaining-game footer and stale item', (
@@ -1019,6 +1403,12 @@ void main() {
               relayFetches++;
               return relayCompleter.future;
             }),
+            gameLineupProvider.overrideWith(
+              (ref, gameId) async => _emptyLineupForGame(liveGame),
+            ),
+            teamPlayersProvider.overrideWith((ref, key) async {
+              return const <PlayerProfile>[];
+            }),
           ],
           child: MaterialApp.router(routerConfig: router),
         ),
@@ -1056,6 +1446,110 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('홈 기본 상세 진입은 라인업 사진 source 준비 후 이동한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    final finalGame = Game(
+      gameId: '20260611SSLG0',
+      status: GameStatus.final_,
+      inning: '종료',
+      away: const TeamScore(
+        teamId: 'SS',
+        teamName: '삼성',
+        shortName: '삼성',
+        score: 3,
+        innings: [],
+      ),
+      home: const TeamScore(
+        teamId: 'LG',
+        teamName: 'LG',
+        shortName: 'LG',
+        score: 4,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+    final detailCompleter = Completer<Game?>();
+    final lineupCompleter = Completer<GameLineupData>();
+    var detailFetches = 0;
+    var lineupFetches = 0;
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        scoreboardGames: [finalGame],
+        child: ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            gameProvider.overrideWith((ref, gameId) async {
+              detailFetches++;
+              return detailCompleter.future;
+            }),
+            gameLineupProvider.overrideWith((ref, gameId) async {
+              lineupFetches++;
+              return lineupCompleter.future;
+            }),
+            teamPlayersProvider.overrideWith((ref, key) async {
+              return const <PlayerProfile>[];
+            }),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(ValueKey('home-today-game-${finalGame.gameId}'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+
+    expect(detailFetches, 1);
+    expect(lineupFetches, 1);
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
+    expect(
+      find.byKey(const ValueKey('home-game-detail-loading')),
+      findsOneWidget,
+    );
+
+    detailCompleter.complete(finalGame);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
+    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsNothing);
+
+    lineupCompleter.complete(
+      GameLineupData(
+        gameId: finalGame.gameId,
+        away: const TeamLineupData(teamId: 'SS', lineup: []),
+        home: const TeamLineupData(teamId: 'LG', lineup: []),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsOneWidget);
+  });
+}
+
+GameLineupData _emptyLineupForGame(Game game) {
+  return GameLineupData(
+    gameId: game.gameId,
+    away: TeamLineupData(teamId: game.away.teamId, lineup: const []),
+    home: TeamLineupData(teamId: game.home.teamId, lineup: const []),
+  );
 }
 
 PlayerProfile _playerProfile({required String name, required String id}) {
@@ -1145,6 +1639,7 @@ Widget _homeInteractionScope({
   List<HomeQuickItem> quickItems = const [],
   List<Game>? scoreboardGames,
   List<TeamStanding>? standingsPreview,
+  TeamRecordsBundle teamRecordsBundle = _defaultTeamRecordsBundle,
 }) {
   final standings = standingsPreview ?? _defaultHomeStandings();
   return ProviderScope(
@@ -1198,8 +1693,40 @@ Widget _homeInteractionScope({
           standingsPreview: standings,
         );
       }),
+      teamStatsProvider.overrideWith((ref, key) async {
+        return teamRecordsBundle.teamStats;
+      }),
+      teamRecordsProvider.overrideWith((ref, key) async => teamRecordsBundle),
     ],
     child: child,
+  );
+}
+
+const _defaultTeamRecordsBundle = TeamRecordsBundle(
+  players: [],
+  teamStats: TeamStats(
+    teamId: 'LG',
+    season: 2026,
+    hitting: {'순위': '3', 'AVG': '0.268', 'OPS': '-', 'HR': '-'},
+    pitching: {'순위': '4', 'ERA': '3.42', 'WHIP': '-'},
+  ),
+);
+
+TeamStats _teamStatsForKey(
+  String key, {
+  String avg = '0.268',
+  String avgRank = '3',
+  String era = '3.42',
+  String eraRank = '4',
+}) {
+  final parts = key.split('|');
+  final teamId = parts.first;
+  final season = parts.length > 1 ? int.tryParse(parts[1]) ?? 2026 : 2026;
+  return TeamStats(
+    teamId: teamId,
+    season: season,
+    hitting: {'순위': avgRank, 'AVG': avg, 'OPS': '-', 'HR': '-'},
+    pitching: {'순위': eraRank, 'ERA': era, 'WHIP': '-'},
   );
 }
 

@@ -461,6 +461,98 @@ void main() {
     expect(find.text('구자욱: 중견수 플라이 아웃'), findsNothing);
   });
 
+  testWidgets('득점 필터는 타자와 홈인 주자를 함께 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const game = Game(
+      gameId: '20260611SSLG0',
+      status: GameStatus.live,
+      inning: '7회초',
+      away: TeamScore(
+        teamId: 'SS',
+        teamName: '삼성 라이온즈',
+        shortName: '삼성',
+        score: 5,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 2,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith((ref, gameId) async {
+            return const RelayData(
+              currentAtBat: null,
+              relayItems: [
+                RelayItem(
+                  seqNo: 2,
+                  inning: 7,
+                  half: 'top',
+                  event: 'RUNS',
+                  isScoring: true,
+                  text: '오지환: 우중간 2루타, 박해민 홈인, 홍창기 홈인',
+                ),
+                RelayItem(
+                  seqNo: 1,
+                  inning: 7,
+                  half: 'top',
+                  event: 'HIT',
+                  text: '문성주: 중전 안타',
+                ),
+              ],
+            );
+          }),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260611SSLG0',
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260611SSLG0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.tap(find.text('득점 1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('친 선수'), findsOneWidget);
+    expect(find.text('오지환'), findsAtLeastNWidgets(1));
+    expect(find.text('홈인'), findsOneWidget);
+    expect(find.text('박해민, 홍창기'), findsOneWidget);
+    expect(find.text('문성주: 중전 안타'), findsNothing);
+  });
+
   testWidgets('종료 경기는 stale 현재 타석 카드를 노출하지 않는다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

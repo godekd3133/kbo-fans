@@ -12,6 +12,7 @@ class ScheduleGameCard extends StatelessWidget {
   final ScheduleGame game;
   final String? dateLabel;
   final String? ticketSummary;
+  final String? myTeamId;
   final VoidCallback? onTap;
   final bool showTeamLogos;
 
@@ -20,117 +21,177 @@ class ScheduleGameCard extends StatelessWidget {
     required this.game,
     this.dateLabel,
     this.ticketSummary,
+    this.myTeamId,
     this.onTap,
     this.showTeamLogos = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final normalizedMyTeamId = myTeamId?.trim();
+    final isMyTeamGame =
+        normalizedMyTeamId != null &&
+        normalizedMyTeamId.isNotEmpty &&
+        (game.awayId == normalizedMyTeamId ||
+            game.homeId == normalizedMyTeamId);
+    final colors = AppTheme.colorsOf(context);
+    final myTeamColor = colors.readableAccent(
+      KboTeams.byId(normalizedMyTeamId ?? '')?.primaryColor ?? colors.accent,
+    );
+    final cardColor = isMyTeamGame
+        ? Color.alphaBlend(myTeamColor.withValues(alpha: 0.18), AppColors.card)
+        : AppColors.card.withValues(alpha: 0.92);
+
     return AppPressable(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         decoration: BoxDecoration(
-          color: AppColors.card.withValues(alpha: 0.92),
+          color: cardColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider.withValues(alpha: 0.86)),
+          border: Border.all(
+            color: isMyTeamGame
+                ? myTeamColor.withValues(alpha: 0.62)
+                : AppColors.divider.withValues(alpha: 0.86),
+          ),
+          boxShadow: isMyTeamGame
+              ? [
+                  BoxShadow(
+                    color: myTeamColor.withValues(alpha: 0.16),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
           children: [
-            Row(
-              children: [
-                if (dateLabel != null) ...[
-                  Text(
-                    dateLabel!,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textDisabled,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  game.time,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (game.status.isNotEmpty)
-                  GameStatusBadge.forSchedule(
-                    game.status,
-                    statusLabel: game.statusLabel,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    fontSize: 11,
-                  ),
-                const Spacer(),
-                Text(
-                  game.stadium,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textDisabled,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 13),
-            Row(
-              children: [
-                Expanded(
-                  child: _TeamInfo(
-                    teamId: game.awayId,
-                    fallbackName: game.awayName,
-                    alignEnd: true,
-                    showLogo: showTeamLogos,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                _ScoreOrVersus(
-                  awayScore: game.awayScore,
-                  homeScore: game.homeScore,
-                  status: game.status,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _TeamInfo(
-                    teamId: game.homeId,
-                    fallbackName: game.homeName,
-                    showLogo: showTeamLogos,
-                  ),
-                ),
-              ],
-            ),
-            if (ticketSummary != null &&
-                shouldShowTicketInfoForScheduleStatus(game.status)) ...[
-              const SizedBox(height: 12),
-              Row(
+            if (isMyTeamGame)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(width: 4, color: myTeamColor),
+              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    Icons.confirmation_num_outlined,
-                    size: 14,
-                    color: AppColors.accent,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      ticketSummary!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                  Row(
+                    children: [
+                      if (dateLabel != null) ...[
+                        Text(
+                          dateLabel!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textDisabled,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Text(
+                        game.time,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      if (game.status.isNotEmpty)
+                        GameStatusBadge.forSchedule(
+                          game.status,
+                          statusLabel: game.statusLabel,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          fontSize: 11,
+                        ),
+                      if (isMyTeamGame) ...[
+                        const SizedBox(width: 8),
+                        _MyTeamBadge(
+                          key: ValueKey(
+                            'schedule-my-team-badge-${game.gameId}',
+                          ),
+                          color: myTeamColor,
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          game.stadium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textDisabled,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 13),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _TeamInfo(
+                          teamId: game.awayId,
+                          fallbackName: game.awayName,
+                          alignEnd: true,
+                          showLogo: showTeamLogos,
+                          highlighted: game.awayId == normalizedMyTeamId,
+                          accentColor: myTeamColor,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _ScoreOrVersus(
+                        awayScore: game.awayScore,
+                        homeScore: game.homeScore,
+                        status: game.status,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _TeamInfo(
+                          teamId: game.homeId,
+                          fallbackName: game.homeName,
+                          showLogo: showTeamLogos,
+                          highlighted: game.homeId == normalizedMyTeamId,
+                          accentColor: myTeamColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (ticketSummary != null &&
+                      shouldShowTicketInfoForScheduleStatus(game.status)) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.confirmation_num_outlined,
+                          size: 14,
+                          color: AppColors.accent,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            ticketSummary!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -143,18 +204,27 @@ class _TeamInfo extends StatelessWidget {
   final String fallbackName;
   final bool alignEnd;
   final bool showLogo;
+  final bool highlighted;
+  final Color accentColor;
 
   const _TeamInfo({
     required this.teamId,
     required this.fallbackName,
     this.alignEnd = false,
     this.showLogo = true,
+    this.highlighted = false,
+    this.accentColor = Colors.transparent,
   });
 
   @override
   Widget build(BuildContext context) {
     final team = KboTeams.byId(teamId);
     final shortName = team?.shortName ?? fallbackName;
+    final teamNameStyle = TextStyle(
+      fontSize: 15,
+      fontWeight: highlighted ? FontWeight.w900 : FontWeight.w800,
+      color: highlighted ? AppColors.textPrimary : null,
+    );
 
     return Row(
       mainAxisAlignment: alignEnd
@@ -166,12 +236,18 @@ class _TeamInfo extends StatelessWidget {
             child: Text(
               shortName,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              style: teamNameStyle,
             ),
           ),
           const SizedBox(width: 8),
         ],
-        if (showLogo) _TeamLogo(teamId: teamId, size: 38),
+        if (showLogo)
+          _TeamLogo(
+            teamId: teamId,
+            size: 38,
+            highlighted: highlighted,
+            accentColor: accentColor,
+          ),
         if (!showLogo)
           Container(
             width: 38,
@@ -179,6 +255,9 @@ class _TeamInfo extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.cardSub,
               shape: BoxShape.circle,
+              border: highlighted
+                  ? Border.all(color: accentColor.withValues(alpha: 0.7))
+                  : null,
             ),
             child: Center(
               child: Text(
@@ -197,7 +276,7 @@ class _TeamInfo extends StatelessWidget {
             child: Text(
               shortName,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+              style: teamNameStyle,
             ),
           ),
         ],
@@ -209,17 +288,63 @@ class _TeamInfo extends StatelessWidget {
 class _TeamLogo extends StatelessWidget {
   final String teamId;
   final double size;
+  final bool highlighted;
+  final Color accentColor;
 
-  const _TeamLogo({required this.teamId, required this.size});
+  const _TeamLogo({
+    required this.teamId,
+    required this.size,
+    this.highlighted = false,
+    this.accentColor = Colors.transparent,
+  });
 
   @override
   Widget build(BuildContext context) {
     final team = KboTeams.byId(teamId);
-    return KboTeamLogoImage(
+    final logo = KboTeamLogoImage(
       teamId: teamId,
       fallback: team?.shortName ?? '',
       size: size,
       padding: 0,
+    );
+
+    if (!highlighted) {
+      return logo;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: accentColor.withValues(alpha: 0.72)),
+      ),
+      child: logo,
+    );
+  }
+}
+
+class _MyTeamBadge extends StatelessWidget {
+  final Color color;
+
+  const _MyTeamBadge({super.key, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.52)),
+      ),
+      child: Text(
+        '마이팀',
+        style: TextStyle(
+          fontSize: 10,
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }

@@ -197,9 +197,12 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
           final s = standings[index];
           final isMyTeam = s.teamId == myTeamId;
           final team = KboTeams.byId(s.teamId);
-          final teamColor = team?.primaryColor ?? AppColors.live;
+          final colors = AppTheme.colorsOf(context);
+          final teamColor = colors.readableAccent(
+            team?.primaryColor ?? colors.live,
+          );
           final rowTint = Color.alphaBlend(
-            teamColor.withValues(alpha: 0.12),
+            teamColor.withValues(alpha: 0.2),
             AppColors.card,
           );
 
@@ -215,134 +218,189 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     : (index.isOdd ? AppColors.card : Colors.transparent),
                 borderRadius: BorderRadius.circular(14),
                 border: isMyTeam
-                    ? Border.all(color: teamColor.withValues(alpha: 0.22))
+                    ? Border.all(color: teamColor.withValues(alpha: 0.58))
+                    : null,
+                boxShadow: isMyTeam
+                    ? [
+                        BoxShadow(
+                          color: teamColor.withValues(alpha: 0.18),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
+                        ),
+                      ]
                     : null,
               ),
-              child: Row(
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
                 children: [
-                  SizedBox(
-                    width: 32,
-                    child: Center(
-                      child: Text(
-                        '${s.rank}',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: isMyTeam
-                              ? FontWeight.w800
-                              : FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
                   if (isMyTeam)
-                    Container(
-                      margin: const EdgeInsets.only(right: 4),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: teamColor,
-                        shape: BoxShape.circle,
-                      ),
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: Container(width: 4, color: teamColor),
                     ),
-                  KboTeamLogoImage(
-                    teamId: team?.id,
-                    fallback: team?.shortName ?? s.teamName,
-                    size: 24,
-                    padding: 0,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      s.teamName,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: isMyTeam
-                            ? FontWeight.w700
-                            : FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 32,
-                    child: Center(
-                      child: Text(
-                        '${s.wins}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 32,
+                        child: Center(
+                          child: Text(
+                            '${s.rank}',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: isMyTeam
+                                  ? FontWeight.w800
+                                  : FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 32,
-                    child: Center(
-                      child: Text(
-                        '${s.losses}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      if (isMyTeam)
+                        Container(
+                          margin: const EdgeInsets.only(right: 4),
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: teamColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      KboTeamLogoImage(
+                        teamId: team?.id,
+                        fallback: team?.shortName ?? s.teamName,
+                        size: 24,
+                        padding: 0,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                s.teamName,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: isMyTeam
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            if (isMyTeam) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                key: ValueKey(
+                                  'standing-my-team-badge-${s.teamId}',
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: teamColor.withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: teamColor.withValues(alpha: 0.52),
+                                  ),
+                                ),
+                                child: Text(
+                                  '마이팀',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 28,
-                    child: Center(
-                      child: Text(
-                        '${s.draws}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
+                      SizedBox(
+                        width: 32,
+                        child: Center(
+                          child: Text(
+                            '${s.wins}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 48,
-                    child: Center(
-                      child: Text(
-                        s.pct,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                      SizedBox(
+                        width: 32,
+                        child: Center(
+                          child: Text(
+                            '${s.losses}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 42,
-                    child: Center(
-                      child: Text(
-                        _gbText(s.gb),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: isMyTeam
-                              ? AppColors.textPrimary
-                              : AppColors.textSecondary,
-                          fontWeight: isMyTeam
-                              ? FontWeight.w600
-                              : FontWeight.w400,
+                      SizedBox(
+                        width: 28,
+                        child: Center(
+                          child: Text(
+                            '${s.draws}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 50,
-                    child: Center(
-                      child: Text(
-                        s.streakLabel,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _streakColor(s.streakLabel, isMyTeam),
-                          fontWeight: isMyTeam
-                              ? FontWeight.w800
-                              : FontWeight.w700,
+                      SizedBox(
+                        width: 48,
+                        child: Center(
+                          child: Text(
+                            s.pct,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      SizedBox(
+                        width: 42,
+                        child: Center(
+                          child: Text(
+                            _gbText(s.gb),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isMyTeam
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
+                              fontWeight: isMyTeam
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 50,
+                        child: Center(
+                          child: Text(
+                            s.streakLabel,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _streakColor(s.streakLabel, isMyTeam),
+                              fontWeight: isMyTeam
+                                  ? FontWeight.w800
+                                  : FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -545,8 +603,10 @@ class _StandingsPulseRail extends StatelessWidget {
                     icon: Icons.push_pin_rounded,
                     color: myTeam == null
                         ? AppColors.textSecondary
-                        : (KboTeams.byId(myTeam.teamId)?.primaryColor ??
-                              AppColors.live),
+                        : AppTheme.colorsOf(context).readableAccent(
+                            KboTeams.byId(myTeam.teamId)?.primaryColor ??
+                                AppTheme.colorsOf(context).live,
+                          ),
                   ),
                 ),
                 const _PulseDivider(),

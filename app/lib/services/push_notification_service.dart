@@ -30,6 +30,10 @@ enum PushNotificationDelivery { immediate, summary, liveOnly, off }
 
 enum PushNotificationMode { summary, live, off }
 
+enum PushNotificationSummaryDetailLevel { essential, standard, detailed }
+
+enum PushNotificationLiveDetailLevel { essential, standard, detailed }
+
 class PushDiagnosticTestResult {
   final bool sent;
   final String message;
@@ -46,6 +50,23 @@ extension PushNotificationDeliveryX on PushNotificationDelivery {
   };
 }
 
+extension PushNotificationSummaryDetailLevelX
+    on PushNotificationSummaryDetailLevel {
+  String get storageValue => switch (this) {
+    PushNotificationSummaryDetailLevel.essential => 'essential',
+    PushNotificationSummaryDetailLevel.standard => 'standard',
+    PushNotificationSummaryDetailLevel.detailed => 'detailed',
+  };
+}
+
+extension PushNotificationLiveDetailLevelX on PushNotificationLiveDetailLevel {
+  String get storageValue => switch (this) {
+    PushNotificationLiveDetailLevel.essential => 'essential',
+    PushNotificationLiveDetailLevel.standard => 'standard',
+    PushNotificationLiveDetailLevel.detailed => 'detailed',
+  };
+}
+
 PushNotificationDelivery _deliveryFromStorage(
   String? value, {
   required bool legacyEnabled,
@@ -57,6 +78,45 @@ PushNotificationDelivery _deliveryFromStorage(
     'live_only' => PushNotificationDelivery.liveOnly,
     'off' => PushNotificationDelivery.off,
     _ => legacyEnabled ? enabledFallback : PushNotificationDelivery.off,
+  };
+}
+
+PushNotificationSummaryDetailLevel _summaryDetailFromStorage(
+  String? value, {
+  required bool lineupOpened,
+  required bool baseballInfo,
+}) {
+  return switch (value) {
+    'essential' => PushNotificationSummaryDetailLevel.essential,
+    'standard' => PushNotificationSummaryDetailLevel.standard,
+    'detailed' => PushNotificationSummaryDetailLevel.detailed,
+    _ =>
+      baseballInfo
+          ? PushNotificationSummaryDetailLevel.detailed
+          : lineupOpened
+          ? PushNotificationSummaryDetailLevel.standard
+          : PushNotificationSummaryDetailLevel.essential,
+  };
+}
+
+PushNotificationLiveDetailLevel _liveDetailFromStorage(
+  String? value, {
+  required bool hit,
+  required bool lineupOpened,
+  required bool inningChange,
+  required bool atBat,
+  required bool baseballInfo,
+}) {
+  return switch (value) {
+    'essential' => PushNotificationLiveDetailLevel.essential,
+    'standard' => PushNotificationLiveDetailLevel.standard,
+    'detailed' => PushNotificationLiveDetailLevel.detailed,
+    _ =>
+      (inningChange || atBat || baseballInfo)
+          ? PushNotificationLiveDetailLevel.detailed
+          : (hit || lineupOpened)
+          ? PushNotificationLiveDetailLevel.standard
+          : PushNotificationLiveDetailLevel.essential,
   };
 }
 
@@ -199,6 +259,8 @@ class PushNotificationSettings {
   final PushNotificationDelivery inningChangeDelivery;
   final PushNotificationDelivery atBatDelivery;
   final PushNotificationDelivery baseballInfoDelivery;
+  final PushNotificationSummaryDetailLevel summaryDetailLevel;
+  final PushNotificationLiveDetailLevel liveDetailLevel;
 
   const PushNotificationSettings({
     required this.gameStart,
@@ -222,6 +284,8 @@ class PushNotificationSettings {
     PushNotificationDelivery? inningChangeDelivery,
     PushNotificationDelivery? atBatDelivery,
     PushNotificationDelivery? baseballInfoDelivery,
+    this.summaryDetailLevel = PushNotificationSummaryDetailLevel.detailed,
+    this.liveDetailLevel = PushNotificationLiveDetailLevel.detailed,
   }) : gameStartDelivery =
            gameStartDelivery ??
            (gameStart
@@ -294,58 +358,28 @@ class PushNotificationSettings {
       lineupOpenedDelivery = PushNotificationDelivery.summary,
       inningChangeDelivery = PushNotificationDelivery.liveOnly,
       atBatDelivery = PushNotificationDelivery.immediate,
-      baseballInfoDelivery = PushNotificationDelivery.immediate;
+      baseballInfoDelivery = PushNotificationDelivery.immediate,
+      summaryDetailLevel = PushNotificationSummaryDetailLevel.detailed,
+      liveDetailLevel = PushNotificationLiveDetailLevel.detailed;
 
   factory PushNotificationSettings.forMode(
     PushNotificationMode mode, {
     bool allGames = false,
+    PushNotificationSummaryDetailLevel summaryDetailLevel =
+        PushNotificationSummaryDetailLevel.detailed,
+    PushNotificationLiveDetailLevel liveDetailLevel =
+        PushNotificationLiveDetailLevel.detailed,
   }) {
     return switch (mode) {
-      PushNotificationMode.summary => PushNotificationSettings(
-        gameStart: true,
-        scoring: false,
-        hit: false,
-        homerun: false,
-        reversal: false,
-        gameEnd: true,
-        lineupOpened: true,
-        inningChange: false,
-        atBat: false,
-        baseballInfo: true,
+      PushNotificationMode.summary => _summarySettingsForDetail(
+        summaryDetailLevel,
         allGames: allGames,
-        gameStartDelivery: PushNotificationDelivery.summary,
-        scoringDelivery: PushNotificationDelivery.off,
-        hitDelivery: PushNotificationDelivery.off,
-        homerunDelivery: PushNotificationDelivery.off,
-        reversalDelivery: PushNotificationDelivery.off,
-        gameEndDelivery: PushNotificationDelivery.summary,
-        lineupOpenedDelivery: PushNotificationDelivery.summary,
-        inningChangeDelivery: PushNotificationDelivery.off,
-        atBatDelivery: PushNotificationDelivery.off,
-        baseballInfoDelivery: PushNotificationDelivery.immediate,
+        liveDetailLevel: liveDetailLevel,
       ),
-      PushNotificationMode.live => PushNotificationSettings(
-        gameStart: true,
-        scoring: true,
-        hit: true,
-        homerun: true,
-        reversal: true,
-        gameEnd: true,
-        lineupOpened: true,
-        inningChange: true,
-        atBat: true,
-        baseballInfo: true,
+      PushNotificationMode.live => _liveSettingsForDetail(
+        liveDetailLevel,
         allGames: allGames,
-        gameStartDelivery: PushNotificationDelivery.immediate,
-        scoringDelivery: PushNotificationDelivery.immediate,
-        hitDelivery: PushNotificationDelivery.immediate,
-        homerunDelivery: PushNotificationDelivery.immediate,
-        reversalDelivery: PushNotificationDelivery.immediate,
-        gameEndDelivery: PushNotificationDelivery.summary,
-        lineupOpenedDelivery: PushNotificationDelivery.summary,
-        inningChangeDelivery: PushNotificationDelivery.liveOnly,
-        atBatDelivery: PushNotificationDelivery.immediate,
-        baseballInfoDelivery: PushNotificationDelivery.immediate,
+        summaryDetailLevel: summaryDetailLevel,
       ),
       PushNotificationMode.off => PushNotificationSettings(
         gameStart: false,
@@ -369,6 +403,8 @@ class PushNotificationSettings {
         inningChangeDelivery: PushNotificationDelivery.off,
         atBatDelivery: PushNotificationDelivery.off,
         baseballInfoDelivery: PushNotificationDelivery.off,
+        summaryDetailLevel: summaryDetailLevel,
+        liveDetailLevel: liveDetailLevel,
       ),
     };
   }
@@ -395,6 +431,8 @@ class PushNotificationSettings {
     PushNotificationDelivery? inningChangeDelivery,
     PushNotificationDelivery? atBatDelivery,
     PushNotificationDelivery? baseballInfoDelivery,
+    PushNotificationSummaryDetailLevel? summaryDetailLevel,
+    PushNotificationLiveDetailLevel? liveDetailLevel,
   }) {
     return PushNotificationSettings(
       gameStart: gameStart ?? this.gameStart,
@@ -418,6 +456,8 @@ class PushNotificationSettings {
       inningChangeDelivery: inningChangeDelivery ?? this.inningChangeDelivery,
       atBatDelivery: atBatDelivery ?? this.atBatDelivery,
       baseballInfoDelivery: baseballInfoDelivery ?? this.baseballInfoDelivery,
+      summaryDetailLevel: summaryDetailLevel ?? this.summaryDetailLevel,
+      liveDetailLevel: liveDetailLevel ?? this.liveDetailLevel,
     );
   }
 
@@ -432,7 +472,40 @@ class PushNotificationSettings {
   }
 
   PushNotificationSettings withMode(PushNotificationMode mode) {
-    return PushNotificationSettings.forMode(mode, allGames: allGames);
+    return PushNotificationSettings.forMode(
+      mode,
+      allGames: allGames,
+      summaryDetailLevel: summaryDetailLevel,
+      liveDetailLevel: liveDetailLevel,
+    );
+  }
+
+  PushNotificationSettings withSummaryDetailLevel(
+    PushNotificationSummaryDetailLevel level,
+  ) {
+    if (mode == PushNotificationMode.summary) {
+      return PushNotificationSettings.forMode(
+        PushNotificationMode.summary,
+        allGames: allGames,
+        summaryDetailLevel: level,
+        liveDetailLevel: liveDetailLevel,
+      );
+    }
+    return copyWith(summaryDetailLevel: level);
+  }
+
+  PushNotificationSettings withLiveDetailLevel(
+    PushNotificationLiveDetailLevel level,
+  ) {
+    if (mode == PushNotificationMode.live) {
+      return PushNotificationSettings.forMode(
+        PushNotificationMode.live,
+        allGames: allGames,
+        summaryDetailLevel: summaryDetailLevel,
+        liveDetailLevel: level,
+      );
+    }
+    return copyWith(liveDetailLevel: level);
   }
 
   PushNotificationSettings withMomentEnabled(
@@ -442,7 +515,7 @@ class PushNotificationSettings {
     final delivery = enabled
         ? _defaultDeliveryForMoment(moment, mode)
         : PushNotificationDelivery.off;
-    return switch (moment) {
+    final next = switch (moment) {
       PushNotificationMoment.gameStart => copyWith(
         gameStart: enabled,
         gameStartDelivery: delivery,
@@ -484,6 +557,13 @@ class PushNotificationSettings {
         baseballInfoDelivery: delivery,
       ),
     };
+    if (next.mode == PushNotificationMode.summary) {
+      return next.copyWith(summaryDetailLevel: _summaryDetailFromMoments(next));
+    }
+    if (next.mode == PushNotificationMode.live) {
+      return next.copyWith(liveDetailLevel: _liveDetailFromMoments(next));
+    }
+    return next;
   }
 
   bool isMomentEnabled(PushNotificationMoment moment) {
@@ -569,6 +649,8 @@ class PushNotificationSettings {
       'atBat': atBat,
       'baseballInfo': baseballInfo,
       'allGames': allGames,
+      'summaryDetailLevel': summaryDetailLevel.storageValue,
+      'liveDetailLevel': liveDetailLevel.storageValue,
       'deliveryModes': {
         'gameStart': gameStartDelivery.storageValue,
         'scoring': scoringDelivery.storageValue,
@@ -583,6 +665,123 @@ class PushNotificationSettings {
       },
     };
   }
+}
+
+PushNotificationSettings _summarySettingsForDetail(
+  PushNotificationSummaryDetailLevel level, {
+  required bool allGames,
+  required PushNotificationLiveDetailLevel liveDetailLevel,
+}) {
+  final includeLineup =
+      level == PushNotificationSummaryDetailLevel.standard ||
+      level == PushNotificationSummaryDetailLevel.detailed;
+  final includeBaseballInfo =
+      level == PushNotificationSummaryDetailLevel.detailed;
+  return PushNotificationSettings(
+    gameStart: true,
+    scoring: false,
+    hit: false,
+    homerun: false,
+    reversal: false,
+    gameEnd: true,
+    lineupOpened: includeLineup,
+    inningChange: false,
+    atBat: false,
+    baseballInfo: includeBaseballInfo,
+    allGames: allGames,
+    gameStartDelivery: PushNotificationDelivery.summary,
+    scoringDelivery: PushNotificationDelivery.off,
+    hitDelivery: PushNotificationDelivery.off,
+    homerunDelivery: PushNotificationDelivery.off,
+    reversalDelivery: PushNotificationDelivery.off,
+    gameEndDelivery: PushNotificationDelivery.summary,
+    lineupOpenedDelivery: includeLineup
+        ? PushNotificationDelivery.summary
+        : PushNotificationDelivery.off,
+    inningChangeDelivery: PushNotificationDelivery.off,
+    atBatDelivery: PushNotificationDelivery.off,
+    baseballInfoDelivery: includeBaseballInfo
+        ? PushNotificationDelivery.immediate
+        : PushNotificationDelivery.off,
+    summaryDetailLevel: level,
+    liveDetailLevel: liveDetailLevel,
+  );
+}
+
+PushNotificationSettings _liveSettingsForDetail(
+  PushNotificationLiveDetailLevel level, {
+  required bool allGames,
+  required PushNotificationSummaryDetailLevel summaryDetailLevel,
+}) {
+  final includeHit =
+      level == PushNotificationLiveDetailLevel.standard ||
+      level == PushNotificationLiveDetailLevel.detailed;
+  final includeLineup =
+      level == PushNotificationLiveDetailLevel.standard ||
+      level == PushNotificationLiveDetailLevel.detailed;
+  final includeFullDetail = level == PushNotificationLiveDetailLevel.detailed;
+  return PushNotificationSettings(
+    gameStart: true,
+    scoring: true,
+    hit: includeHit,
+    homerun: true,
+    reversal: true,
+    gameEnd: true,
+    lineupOpened: includeLineup,
+    inningChange: includeFullDetail,
+    atBat: includeFullDetail,
+    baseballInfo: includeFullDetail,
+    allGames: allGames,
+    gameStartDelivery: PushNotificationDelivery.immediate,
+    scoringDelivery: PushNotificationDelivery.immediate,
+    hitDelivery: includeHit
+        ? PushNotificationDelivery.immediate
+        : PushNotificationDelivery.off,
+    homerunDelivery: PushNotificationDelivery.immediate,
+    reversalDelivery: PushNotificationDelivery.immediate,
+    gameEndDelivery: PushNotificationDelivery.summary,
+    lineupOpenedDelivery: includeLineup
+        ? PushNotificationDelivery.summary
+        : PushNotificationDelivery.off,
+    inningChangeDelivery: includeFullDetail
+        ? PushNotificationDelivery.liveOnly
+        : PushNotificationDelivery.off,
+    atBatDelivery: includeFullDetail
+        ? PushNotificationDelivery.immediate
+        : PushNotificationDelivery.off,
+    baseballInfoDelivery: includeFullDetail
+        ? PushNotificationDelivery.immediate
+        : PushNotificationDelivery.off,
+    summaryDetailLevel: summaryDetailLevel,
+    liveDetailLevel: level,
+  );
+}
+
+PushNotificationSummaryDetailLevel _summaryDetailFromMoments(
+  PushNotificationSettings settings,
+) {
+  if (settings.isMomentEnabled(PushNotificationMoment.baseballInfo)) {
+    return PushNotificationSummaryDetailLevel.detailed;
+  }
+  if (settings.isMomentEnabled(PushNotificationMoment.lineupOpened)) {
+    return PushNotificationSummaryDetailLevel.standard;
+  }
+  return PushNotificationSummaryDetailLevel.essential;
+}
+
+PushNotificationLiveDetailLevel _liveDetailFromMoments(
+  PushNotificationSettings settings,
+) {
+  if (settings.isMomentEnabled(PushNotificationMoment.inningChange) ||
+      settings.isMomentEnabled(PushNotificationMoment.atBat) ||
+      settings.isMomentEnabled(PushNotificationMoment.baseballInfo)) {
+    return PushNotificationLiveDetailLevel.detailed;
+  }
+  if (settings.isMomentEnabled(PushNotificationMoment.hit) ||
+      settings.isMomentEnabled(PushNotificationMoment.lineupOpened)) {
+    return PushNotificationLiveDetailLevel.standard;
+  }
+  return PushNotificationLiveDetailLevel.essential;
 }
 
 class PushNotificationService {
@@ -604,6 +803,8 @@ class PushNotificationService {
   static const _channelName = '원격 푸시 알림';
   static const _channelDescription = '앱 실행 중 수신한 원격 푸시 알림';
   static const _deliverySuffix = '.delivery';
+  static const _summaryDetailLevelKey = '${_prefsPrefix}summary_detail_level';
+  static const _liveDetailLevelKey = '${_prefsPrefix}live_detail_level';
 
   bool _initialized = false;
   Future<void>? _initializing;
@@ -817,6 +1018,19 @@ class PushNotificationService {
         prefs.getString('${_prefsPrefix}baseball_info$_deliverySuffix'),
         legacyEnabled: baseballInfo,
       ),
+      summaryDetailLevel: _summaryDetailFromStorage(
+        prefs.getString(_summaryDetailLevelKey),
+        lineupOpened: lineupOpened,
+        baseballInfo: baseballInfo,
+      ),
+      liveDetailLevel: _liveDetailFromStorage(
+        prefs.getString(_liveDetailLevelKey),
+        hit: hit,
+        lineupOpened: lineupOpened,
+        inningChange: inningChange,
+        atBat: atBat,
+        baseballInfo: baseballInfo,
+      ),
     );
   }
 
@@ -882,6 +1096,14 @@ class PushNotificationService {
     await prefs.setBool('${_prefsPrefix}at_bat', settings.atBat);
     await prefs.setBool('${_prefsPrefix}baseball_info', settings.baseballInfo);
     await prefs.setBool('${_prefsPrefix}all_games', settings.allGames);
+    await prefs.setString(
+      _summaryDetailLevelKey,
+      settings.summaryDetailLevel.storageValue,
+    );
+    await prefs.setString(
+      _liveDetailLevelKey,
+      settings.liveDetailLevel.storageValue,
+    );
     await prefs.setString(
       '${_prefsPrefix}game_start$_deliverySuffix',
       settings.gameStartDelivery.storageValue,

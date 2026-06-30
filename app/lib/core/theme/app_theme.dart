@@ -86,6 +86,53 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       navShadow: Color.lerp(navShadow, other.navShadow, t)!,
     );
   }
+
+  Color readableAccent(Color color, {double minContrast = 4.5}) {
+    if (_contrastRatio(color, background) >= minContrast) {
+      return color;
+    }
+
+    final target = background.computeLuminance() > 0.5
+        ? Colors.black
+        : Colors.white;
+    for (final amount in const [0.28, 0.42, 0.56, 0.7, 0.84]) {
+      final candidate = Color.lerp(color, target, amount)!;
+      if (_contrastRatio(candidate, background) >= minContrast) {
+        return candidate;
+      }
+    }
+
+    if (_contrastRatio(accent, background) >= minContrast) {
+      return accent;
+    }
+    return target;
+  }
+
+  Color readableForegroundOn(Color fill, {double minContrast = 4.5}) {
+    final candidates = [textPrimary, background, Colors.white, Colors.black];
+    var best = candidates.first;
+    var bestContrast = _contrastRatio(best, fill);
+    for (final candidate in candidates.skip(1)) {
+      final contrast = _contrastRatio(candidate, fill);
+      if (contrast > bestContrast) {
+        best = candidate;
+        bestContrast = contrast;
+      }
+    }
+    return best;
+  }
+}
+
+double _contrastRatio(Color first, Color second) {
+  final firstLuminance = first.computeLuminance();
+  final secondLuminance = second.computeLuminance();
+  final lighter = firstLuminance > secondLuminance
+      ? firstLuminance
+      : secondLuminance;
+  final darker = firstLuminance > secondLuminance
+      ? secondLuminance
+      : firstLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 class AppColors {

@@ -49,6 +49,46 @@ void main() {
     expect(aggregate.kboBrief?.items.single.fallbackLabel, '김도영');
   });
 
+  test('local quick items include hitter and pitcher brief cards together', () {
+    final aggregate = buildLocalHomeAggregate(
+      date: '2026-06-30',
+      myTeam: null,
+      games: const [],
+      scheduleDays: const [],
+      standings: const [],
+      overview: const RecordsOverview(
+        season: 2026,
+        avgLeaders: [],
+        hrLeaders: [],
+        opsLeaders: [],
+        opsPlusLeaders: [],
+        eraLeaders: [],
+        todayHitter: FeaturedPlayerCard(
+          label: '오늘의 타자',
+          playerId: '64166',
+          name: '홍창기',
+          teamId: 'LG',
+          headline: '타율 1위',
+        ),
+        todayPitcher: FeaturedPlayerCard(
+          label: '오늘의 투수',
+          playerId: '50126',
+          name: '폰세',
+          teamId: 'HH',
+          headline: 'ERA 1위',
+        ),
+        monthHitter: FeaturedPlayerCard(label: 'month hitter'),
+        monthPitcher: FeaturedPlayerCard(label: 'month pitcher'),
+      ),
+    );
+
+    expect(
+      aggregate.quickItems.map((item) => item.title),
+      containsAll(['홍창기', '폰세']),
+    );
+    expect(aggregate.quickItems.length, 2);
+  });
+
   test('off-day KBO brief opens schedule instead of generic records', () {
     final aggregate = buildLocalHomeAggregate(
       date: '2026-06-20',
@@ -378,6 +418,161 @@ void main() {
       expect(highHitItems, isEmpty);
     },
   );
+
+  test('local KBO brief surfaces high-error game', () {
+    final aggregate = buildLocalHomeAggregate(
+      date: '2026-06-29',
+      myTeam: null,
+      games: const [
+        Game(
+          gameId: '20260629OBLG0',
+          status: GameStatus.final_,
+          inning: '경기종료',
+          away: TeamScore(
+            teamId: 'OB',
+            teamName: '두산 베어스',
+            shortName: '두산',
+            score: 4,
+            innings: [],
+            hits: 8,
+            errors: 3,
+          ),
+          home: TeamScore(
+            teamId: 'LG',
+            teamName: 'LG 트윈스',
+            shortName: 'LG',
+            score: 6,
+            innings: [],
+            hits: 10,
+            errors: 2,
+          ),
+          stadium: '잠실',
+          startTime: '18:30',
+        ),
+      ],
+      scheduleDays: const [],
+      standings: const [],
+      overview: _emptyOverview(),
+    );
+
+    final defenseItems = aggregate.kboBrief!.items.where(
+      (item) => item.type == 'defense_issue',
+    );
+
+    expect(defenseItems, isNotEmpty);
+    expect(defenseItems.first.eyebrow, '실책 많은 경기');
+    expect(defenseItems.first.title, '두산-LG 합계 5실책');
+    expect(defenseItems.first.subtitle, '두산 3실책 · LG 2실책');
+    expect(defenseItems.first.route, '/game/20260629OBLG0');
+  });
+
+  test('local KBO brief surfaces team error rank for day', () {
+    final aggregate = buildLocalHomeAggregate(
+      date: '2026-06-29',
+      myTeam: null,
+      games: const [
+        Game(
+          gameId: '20260629OBLG0',
+          status: GameStatus.final_,
+          inning: '경기종료',
+          away: TeamScore(
+            teamId: 'OB',
+            teamName: '두산 베어스',
+            shortName: '두산',
+            score: 4,
+            innings: [],
+            errors: 3,
+          ),
+          home: TeamScore(
+            teamId: 'LG',
+            teamName: 'LG 트윈스',
+            shortName: 'LG',
+            score: 6,
+            innings: [],
+            errors: 2,
+          ),
+          stadium: '잠실',
+          startTime: '18:30',
+        ),
+        Game(
+          gameId: '20260629HTSS0',
+          status: GameStatus.final_,
+          inning: '경기종료',
+          away: TeamScore(
+            teamId: 'HT',
+            teamName: 'KIA 타이거즈',
+            shortName: 'KIA',
+            score: 5,
+            innings: [],
+            errors: 1,
+          ),
+          home: TeamScore(
+            teamId: 'SS',
+            teamName: '삼성 라이온즈',
+            shortName: '삼성',
+            score: 3,
+            innings: [],
+          ),
+          stadium: '대구',
+          startTime: '18:30',
+        ),
+      ],
+      scheduleDays: const [],
+      standings: const [],
+      overview: _emptyOverview(),
+    );
+
+    final rankItems = aggregate.kboBrief!.items.where(
+      (item) => item.type == 'defense_rank',
+    );
+
+    expect(rankItems, isNotEmpty);
+    expect(rankItems.first.eyebrow, '팀별 실책');
+    expect(rankItems.first.title, '두산 3개 · LG 2개');
+    expect(rankItems.first.subtitle, '6월 29일 경기 기준 · 실책 많은 팀 순');
+    expect(rankItems.first.route, '/schedule');
+  });
+
+  test('local KBO brief uses batting average leader when available', () {
+    final aggregate = buildLocalHomeAggregate(
+      date: '2026-06-30',
+      myTeam: null,
+      games: const [],
+      scheduleDays: const [],
+      standings: const [],
+      overview: const RecordsOverview(
+        season: 2026,
+        avgLeaders: [
+          RecordLeader(
+            rank: 1,
+            playerId: '64166',
+            playerType: 'hitter',
+            name: '홍창기',
+            teamId: 'LG',
+            value: '0.351',
+          ),
+        ],
+        hrLeaders: [],
+        opsLeaders: [],
+        opsPlusLeaders: [],
+        eraLeaders: [],
+        todayHitter: FeaturedPlayerCard(label: 'today hitter'),
+        todayPitcher: FeaturedPlayerCard(label: 'today pitcher'),
+        monthHitter: FeaturedPlayerCard(label: 'month hitter'),
+        monthPitcher: FeaturedPlayerCard(label: 'month pitcher'),
+      ),
+    );
+
+    final avgItems = aggregate.kboBrief!.items.where(
+      (item) => item.type == 'batting_leader',
+    );
+
+    expect(avgItems, isNotEmpty);
+    expect(avgItems.first.eyebrow, '6월 현재 타율');
+    expect(avgItems.first.title, '홍창기 타율 0.351');
+    expect(avgItems.first.route, '/records/player/64166?season=2026');
+    expect(avgItems.first.imageUrl, endsWith('/2026/64166.jpg'));
+  });
 }
 
 RecordsOverview _emptyOverview() {

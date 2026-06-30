@@ -6,7 +6,12 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from kbo_fans_backend.services.push import KBO_TEAM_IDS, PushService
+from kbo_fans_backend.services.push import (
+    KBO_TEAM_IDS,
+    KBO_TEAM_NAMES,
+    KBO_TEAM_SHORT_NAMES,
+    PushService,
+)
 
 try:
     from zoneinfo import ZoneInfo
@@ -80,6 +85,10 @@ def send_smart_daily(
             date=target_date,
             topic=item.get("topic"),
             team_id=item.get("teamId"),
+            game_id=item.get("gameId"),
+            matchup=item.get("matchup"),
+            start_time=item.get("startTime"),
+            stadium=item.get("stadium"),
             dry_run=dry_run,
         )
         deliveries.append({**item, "response": response})
@@ -101,14 +110,17 @@ def build_smart_daily_plan(
     now_time: Optional[str] = None,
 ) -> list[dict[str, str]]:
     game_list = games if isinstance(games, list) else []
-    team_kinds = _team_kinds_for_games(game_list, now_time=now_time)
+    team_items = _team_plan_items_for_games(game_list, now_time=now_time)
     idle_kind = _idle_kind_for_games(game_list, now_time=now_time)
     teams = [team_id] if team_id else list(KBO_TEAM_IDS)
-    plan = [
-        {"teamId": team, "kind": team_kinds.get(team, idle_kind)}
-        for team in teams
-        if team in KBO_TEAM_IDS
-    ]
+    plan = []
+    for team in teams:
+        if team not in KBO_TEAM_IDS:
+            continue
+        item = team_items.get(team)
+        if item is None:
+            item = {"teamId": team, "kind": idle_kind}
+        plan.append(dict(item))
     if team_id is None:
         plan.append({"topic": "baseball_info_ALL", "kind": _league_kind(plan)})
     return plan
@@ -124,22 +136,70 @@ def _scheduled_kind_for_date(date_text: str) -> Optional[str]:
     return None
 
 
-def _team_kinds_for_games(
+def _team_plan_items_for_games(
     games: list[dict[str, Any]],
     *,
     now_time: Optional[str],
-) -> dict[str, str]:
+) -> dict[str, dict[str, str]]:
     now_minutes = _time_to_minutes(now_time)
-    team_kinds: dict[str, str] = {}
+    team_items: dict[str, dict[str, str]] = {}
     for game in games:
         kind = _kind_for_game(game, now_minutes=now_minutes)
+        context = _game_context(game) if kind in {"game_day", "lineup_day"} else {}
         for team_id in [_game_team_id(game, "away"), _game_team_id(game, "home")]:
             if team_id not in KBO_TEAM_IDS:
                 continue
-            previous = team_kinds.get(team_id)
-            if previous is None or _kind_priority(kind) > _kind_priority(previous):
-                team_kinds[team_id] = kind
-    return team_kinds
+            previous = team_items.get(team_id)
+            if previous is None or _kind_priority(kind) > _kind_priority(previous["kind"]):
+                team_items[team_id] = {"teamId": team_id, "kind": kind, **context}
+    return team_items
+
+
+def _game_context(game: dict[str, Any]) -> dict[str, str]:
+    context: dict[str, str] = {}
+    game_id = str(game.get("gameId") or "").strip()
+    if game_id:
+        context["gameId"] = game_id
+
+    away_label = _game_team_label(game, "away")
+    home_label = _game_team_label(game, "home")
+    if away_label and home_label:
+        context["matchup"] = f"{away_label} vs {home_label}"
+
+    start_time = str(game.get("startTime") or game.get("time") or "").strip()
+    if start_time:
+        context["startTime"] = start_time
+
+    stadium = str(game.get("stadium") or "").strip()
+    if stadium:
+        context["stadium"] = stadium
+
+    return context
+
+
+def _game_team_label(game: dict[str, Any], side: str) -> str:
+    nested = game.get(side)
+    team_id = _game_team_id(game, side)
+    if team_id in KBO_TEAM_SHORT_NAMES:
+        return KBO_TEAM_SHORT_NAMES[team_id]
+    if isinstance(nested, dict):
+        for key in ("shortName", "teamName", "name"):
+            label = _short_team_name(nested.get(key))
+            if label:
+                return label
+    return _short_team_name(game.get(f"{side}Name")) or team_id
+
+
+def _short_team_name(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    if text in KBO_TEAM_SHORT_NAMES:
+        return KBO_TEAM_SHORT_NAMES[text]
+    for team_id, full_name in KBO_TEAM_NAMES.items():
+        if text == full_name or text.replace(" ", "") == full_name.replace(" ", ""):
+            return KBO_TEAM_SHORT_NAMES[team_id]
+    return text
 
 
 def _game_team_id(game: dict[str, Any], side: str) -> str:

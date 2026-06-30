@@ -10,6 +10,66 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/lineup_tab.dart';
 
 void main() {
+  testWidgets('다크모드 라인업 타순은 검정 팀 컬러에서도 읽히는 색을 쓴다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260612KTLG0',
+              away: TeamLineupData(
+                teamId: 'KT',
+                lineup: [
+                  LineupEntry(
+                    order: 1,
+                    position: 'CF',
+                    positionKo: '중견수',
+                    name: '배정대',
+                  ),
+                ],
+              ),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: LineupTab(
+              gameId: '20260612KTLG0',
+              gameStatus: GameStatus.scheduled,
+              awayName: 'KT',
+              homeName: 'LG',
+              awayTeamId: 'KT',
+              homeTeamId: 'LG',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final orderText = tester.widget<Text>(find.text('1'));
+    final orderColor = orderText.style?.color;
+
+    expect(orderColor, isNotNull);
+    expect(
+      _contrastRatio(orderColor!, AppTheme.darkColors.background),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
   testWidgets('경기 전이라도 공개된 라인업은 라인업 탭에서 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -249,4 +309,16 @@ void main() {
       findsOneWidget,
     );
   });
+}
+
+double _contrastRatio(Color foreground, Color background) {
+  final foregroundLuminance = foreground.computeLuminance();
+  final backgroundLuminance = background.computeLuminance();
+  final lighter = foregroundLuminance > backgroundLuminance
+      ? foregroundLuminance
+      : backgroundLuminance;
+  final darker = foregroundLuminance > backgroundLuminance
+      ? backgroundLuminance
+      : foregroundLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
 }

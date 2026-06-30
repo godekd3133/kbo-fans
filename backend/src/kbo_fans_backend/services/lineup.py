@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import date as date_type
-from typing import Any, Optional
+from datetime import datetime, timedelta, timezone
+from typing import Any, Callable, Optional
 
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
 from kbo_fans_backend.crawlers.lineup import LineupCrawler
@@ -11,6 +12,18 @@ from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover - Python 3.9+ expected
+    ZoneInfo = None
+
+_KST = timezone(timedelta(hours=9))
+
+
+def _current_kbo_date() -> date_type:
+    tz = ZoneInfo("Asia/Seoul") if ZoneInfo is not None else _KST
+    return datetime.now(tz).date()
 
 
 class LineupService:
@@ -24,6 +37,7 @@ class LineupService:
         snapshot_store: Optional[JsonSnapshotStore] = None,
         push_service: Optional[PushService] = None,
         player_stats_service: Optional[PlayerStatsService] = None,
+        today_provider: Optional[Callable[[], date_type]] = None,
     ) -> None:
         self.lineup_crawler = lineup_crawler or LineupCrawler()
         self.boxscore_crawler = boxscore_crawler or BoxscoreCrawler()
@@ -31,6 +45,7 @@ class LineupService:
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self.push_service = push_service or PushService()
         self.player_stats_service = player_stats_service or PlayerStatsService()
+        self.today_provider = today_provider or _current_kbo_date
 
     def get_lineup(self, game_id: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("lineup", game_id)
@@ -77,7 +92,7 @@ class LineupService:
         self._enrich_lineup_rows(lineup, game_id)
 
         if (
-            self._should_notify_lineup_opened(snapshot, lineup)
+            self._should_send_lineup_opened_alert(game_id, snapshot, lineup)
             and not self._lineup_opened_already_sent(game_id)
         ):
             try:
@@ -280,16 +295,34 @@ class LineupService:
     def _has_ready_lineup(payload: dict[str, Any]) -> bool:
         return bool(payload.get("away", {}).get("lineup") and payload.get("home", {}).get("lineup"))
 
+    def _should_send_lineup_opened_alert(
+        self,
+        game_id: str,
+        previous: Optional[dict[str, Any]],
+        current: dict[str, Any],
+    ) -> bool:
+        return self._is_current_kbo_game_id(game_id) and self._should_notify_lineup_opened(
+            previous,
+            current,
+        )
+
+    def _is_current_kbo_game_id(self, game_id: str) -> bool:
+        game_date = self._game_date_from_id(game_id)
+        return game_date is not None and game_date == self.today_provider()
+
+    def _is_past_game_id(self, game_id: str) -> bool:
+        game_date = self._game_date_from_id(game_id)
+        return game_date is not None and game_date < self.today_provider()
+
     @staticmethod
-    def _is_past_game_id(game_id: str) -> bool:
+    def _game_date_from_id(game_id: str) -> Optional[date_type]:
         if len(game_id) < 8:
-            return False
+            return None
         try:
-            game_date = date_type(
+            return date_type(
                 int(game_id[:4]),
                 int(game_id[4:6]),
                 int(game_id[6:8]),
             )
         except ValueError:
-            return False
-        return game_date < date_type.today()
+            return None

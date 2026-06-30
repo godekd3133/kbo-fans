@@ -281,6 +281,51 @@ void main() {
     expect(find.text('보기'), findsNothing);
     expect(find.text('바로 재생'), findsOneWidget);
   });
+
+  testWidgets('종료 경기 상세 상단은 상태와 시작 시각 대신 이닝을 중심으로 표시한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _finalGame();
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('경기 종료'), findsNothing);
+    expect(find.text('경기종료'), findsNothing);
+    expect(find.text('18:30'), findsNothing);
+    expect(find.text('최종 기록'), findsNothing);
+    expect(find.text('9회'), findsOneWidget);
+  });
 }
 
 Game _liveGame() {

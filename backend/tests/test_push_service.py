@@ -420,6 +420,65 @@ def test_register_persists_followed_game_ids(tmp_path) -> None:
     assert registration["followedGameIds"] == ["20260612KTLG0"]
 
 
+def test_register_persists_summary_detail_level(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+
+    service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=False,
+                homerun=False,
+                reversal=False,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                baseballInfo=False,
+                allGames=False,
+                summaryDetailLevel="standard",
+            ),
+        )
+    )
+
+    registration = registry.device_registrations()[0]
+
+    assert registration["notifications"]["summaryDetailLevel"] == "standard"
+
+
+def test_register_persists_live_detail_level(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+
+    service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                hit=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                baseballInfo=False,
+                allGames=False,
+                liveDetailLevel="standard",
+            ),
+        )
+    )
+
+    registration = registry.device_registrations()[0]
+
+    assert registration["notifications"]["liveDetailLevel"] == "standard"
+
+
 def test_register_persists_push_client_state_for_receipt_diagnostics(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
@@ -1034,6 +1093,34 @@ def test_send_baseball_info_game_day_copy_uses_team_name(tmp_path) -> None:
         "title": "LG 트윈스 경기일 체크",
         "body": "오늘 LG 트윈스 경기 일정, 선발 라인업, 중계 상황을 확인해 보세요.",
     }
+    assert messaging.sent_messages == []
+
+
+def test_send_baseball_info_lineup_day_copy_uses_matchup_context(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    messaging = FakeFcmMessaging()
+    service._get_messaging = lambda: messaging
+
+    response = service.send_baseball_info(
+        kind="lineup_day",
+        date="2026-06-30",
+        team_id="OB",
+        game_id="20260630LTOB0",
+        matchup="롯데 vs 두산",
+        start_time="18:30",
+        stadium="잠실",
+        dry_run=True,
+    )
+
+    assert response["sent"] is False
+    assert response["notification"] == {
+        "title": "롯데 vs 두산 경기 전 체크",
+        "body": "18:30 · 잠실 · 선발 라인업과 예매 정보를 확인해 보세요.",
+    }
+    assert response["data"]["teamId"] == "OB"
+    assert response["data"]["gameId"] == "20260630LTOB0"
+    assert response["data"]["route"] == "/game/20260630LTOB0?tab=lineup"
     assert messaging.sent_messages == []
 
 

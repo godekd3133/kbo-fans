@@ -146,6 +146,66 @@ void main() {
     expect(find.text('오늘 3경기'), findsWidgets);
   });
 
+  testWidgets('classifies defense and batting brief items as records news', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: const HomeKboBrief(
+                title: '오늘의 KBO 소식',
+                subtitle: '실책과 타율 흐름',
+                items: [
+                  HomeKboBriefItem(
+                    type: 'defense_issue',
+                    eyebrow: '실책 많은 경기',
+                    title: '두산-LG 합계 5실책',
+                    subtitle: '두산 3실책 · LG 2실책',
+                    route: '/game/20260629OBLG0',
+                    teamIds: ['OB', 'LG'],
+                  ),
+                  HomeKboBriefItem(
+                    type: 'batting_leader',
+                    eyebrow: '6월 현재 타율',
+                    title: '홍창기 타율 0.351',
+                    subtitle: 'LG 트윈스 · 시즌 타율 1위',
+                    route: '/records/player/64166?season=2026',
+                    teamIds: ['LG'],
+                    fallbackLabel: '홍창기',
+                  ),
+                  HomeKboBriefItem(
+                    type: 'defense_rank',
+                    eyebrow: '팀별 실책',
+                    title: '두산 3개 · LG 2개',
+                    subtitle: '6월 29일 경기 기준 · 실책 많은 팀 순',
+                    route: '/schedule',
+                    teamIds: ['OB', 'LG'],
+                  ),
+                ],
+              ),
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('두산-LG 합계 5실책'), findsWidgets);
+    expect(find.text('홍창기 타율 0.351'), findsWidgets);
+    expect(find.text('두산 3개 · LG 2개'), findsWidgets);
+    expect(find.text('기록 보기'), findsWidgets);
+  });
+
   testWidgets('renders empty state when aggregate has no news items', (
     tester,
   ) async {

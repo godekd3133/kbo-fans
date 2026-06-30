@@ -57,6 +57,71 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('캘린더의 다음달 1일을 누르면 다음달로 이동한다', (tester) async {
+    final now = DateTime.now();
+    final visibleMonth = _monthWithVisibleNextMonthDay(now);
+    final nextMonth = DateTime(visibleMonth.year, visibleMonth.month + 1);
+    final monthDelta =
+        (visibleMonth.year - now.year) * 12 + visibleMonth.month - now.month;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          scheduleProvider.overrideWith(
+            (_, yearMonth) async => _singleGameOnFirstDaySchedule(yearMonth),
+          ),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < monthDelta; i += 1) {
+      await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text(_monthLabel(visibleMonth)), findsOneWidget);
+
+    await tester.tap(find.text('1').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text(_monthLabel(nextMonth)), findsOneWidget);
+    expect(find.text('Away 1'), findsOneWidget);
+  });
+
+  testWidgets('매치업 탭은 선택한 두 팀의 맞대결 일정만 보여준다', (tester) async {
+    final now = DateTime.now();
+    final yearMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith(
+            (_, month) async => _matchupScheduleForMonth(yearMonth, month),
+          ),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('매치업'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('잠실 LG-KT'), findsOneWidget);
+    expect(find.text('잠실 LG-SSG'), findsNothing);
+    expect(find.text('사직 롯데-두산'), findsNothing);
+
+    await tester.tap(find.text('SSG').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('잠실 LG-KT'), findsNothing);
+    expect(find.text('잠실 LG-SSG'), findsOneWidget);
+    expect(find.text('사직 롯데-두산'), findsNothing);
+  });
+
   testWidgets('캘린더 영역에서 위로 밀어도 선택일 경기 목록이 스크롤된다', (tester) async {
     final now = DateTime.now();
 
@@ -139,14 +204,120 @@ void main() {
 
     expect(find.text(_monthLabel(nextMonth)), findsOneWidget);
   });
+
+  testWidgets('마이팀 경기는 일정 카드에서 강조된다', (tester) async {
+    final now = DateTime.now();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith(
+            (_, yearMonth) async => _myTeamScheduleForToday(now, yearMonth),
+          ),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('schedule-my-team-badge-today-lg')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('schedule-my-team-badge-today-nc-ob')),
+      findsNothing,
+    );
+  });
 }
 
 String _monthLabel(DateTime month) {
   return DateFormat('MMM yyyy', 'en_US').format(month).toUpperCase();
 }
 
+DateTime _monthWithVisibleNextMonthDay(DateTime start) {
+  for (var offset = 0; offset < 12; offset += 1) {
+    final month = DateTime(start.year, start.month + offset);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
+    if (lastDay.weekday != DateTime.sunday) {
+      return month;
+    }
+  }
+
+  throw StateError('No month with visible next-month day found');
+}
+
 List<ScheduleDay> _scheduleForMonth(String yearMonth) {
   return [ScheduleDay(date: '$yearMonth-01', games: const [])];
+}
+
+List<ScheduleDay> _singleGameOnFirstDaySchedule(String yearMonth) {
+  return [
+    ScheduleDay(
+      date: '$yearMonth-01',
+      games: const [
+        ScheduleGame(
+          gameId: 'next-month-1',
+          time: '18:30',
+          awayId: 'AW1',
+          awayName: 'Away 1',
+          homeId: 'HM1',
+          homeName: 'Home 1',
+          stadium: '테스트 구장',
+        ),
+      ],
+    ),
+  ];
+}
+
+List<ScheduleDay> _matchupScheduleForMonth(
+  String currentYearMonth,
+  String requestedYearMonth,
+) {
+  if (requestedYearMonth != currentYearMonth) {
+    return const [];
+  }
+
+  return [
+    ScheduleDay(
+      date: '$requestedYearMonth-03',
+      games: const [
+        ScheduleGame(
+          gameId: 'lg-kt',
+          time: '18:30',
+          awayId: 'KT',
+          awayName: 'KT 위즈',
+          homeId: 'LG',
+          homeName: 'LG 트윈스',
+          stadium: '잠실 LG-KT',
+        ),
+        ScheduleGame(
+          gameId: 'lt-ob',
+          time: '18:30',
+          awayId: 'OB',
+          awayName: '두산 베어스',
+          homeId: 'LT',
+          homeName: '롯데 자이언츠',
+          stadium: '사직 롯데-두산',
+        ),
+      ],
+    ),
+    ScheduleDay(
+      date: '$requestedYearMonth-17',
+      games: const [
+        ScheduleGame(
+          gameId: 'lg-sk',
+          time: '18:30',
+          awayId: 'LG',
+          awayName: 'LG 트윈스',
+          homeId: 'SK',
+          homeName: 'SSG 랜더스',
+          stadium: '잠실 LG-SSG',
+        ),
+      ],
+    ),
+  ];
 }
 
 List<ScheduleDay> _longScheduleForToday(DateTime today, String yearMonth) {
@@ -173,4 +344,49 @@ List<ScheduleDay> _longScheduleForToday(DateTime today, String yearMonth) {
       ),
     ),
   ];
+}
+
+List<ScheduleDay> _myTeamScheduleForToday(DateTime today, String yearMonth) {
+  final currentYearMonth =
+      '${today.year}-${today.month.toString().padLeft(2, '0')}';
+  if (yearMonth != currentYearMonth) {
+    return const [];
+  }
+
+  return [
+    ScheduleDay(
+      date: '$yearMonth-${today.day.toString().padLeft(2, '0')}',
+      games: const [
+        ScheduleGame(
+          gameId: 'today-lg',
+          time: '18:30',
+          awayId: 'LG',
+          awayName: 'LG',
+          homeId: 'KT',
+          homeName: 'KT',
+          stadium: '잠실',
+          status: 'SCHEDULED',
+        ),
+        ScheduleGame(
+          gameId: 'today-nc-ob',
+          time: '18:30',
+          awayId: 'NC',
+          awayName: 'NC',
+          homeId: 'OB',
+          homeName: '두산',
+          stadium: '창원',
+          status: 'SCHEDULED',
+        ),
+      ],
+    ),
+  ];
+}
+
+class _FixedMyTeamNotifier extends MyTeamNotifier {
+  _FixedMyTeamNotifier(this.teamId);
+
+  final String? teamId;
+
+  @override
+  String? build() => teamId;
 }

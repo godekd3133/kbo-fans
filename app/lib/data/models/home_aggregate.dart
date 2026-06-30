@@ -327,10 +327,10 @@ List<HomeQuickItem> _buildLocalQuickItems({
     );
   }
 
-  final featured = overview.todayHitter.name != null
-      ? overview.todayHitter
-      : overview.todayPitcher;
-  if (featured.name != null) {
+  for (final featured in [overview.todayHitter, overview.todayPitcher]) {
+    if (featured.name == null) {
+      continue;
+    }
     items.add(
       HomeQuickItem(
         eyebrow: featured.label,
@@ -349,7 +349,7 @@ List<HomeQuickItem> _buildLocalQuickItems({
     );
   }
 
-  return items.take(4).toList();
+  return items.take(6).toList();
 }
 
 HomeKboBrief _buildLocalKboBrief({
@@ -461,6 +461,33 @@ HomeKboBrief _buildLocalKboBrief({
     );
   }
 
+  final highErrorGames =
+      activeGames
+          .where((game) => game.hasTeamStats && _totalErrors(game) >= 3)
+          .toList()
+        ..sort((a, b) => _totalErrors(b).compareTo(_totalErrors(a)));
+  if (highErrorGames.isNotEmpty) {
+    final game = highErrorGames.first;
+    add(
+      HomeKboBriefItem(
+        type: 'defense_issue',
+        eyebrow: '실책 많은 경기',
+        title:
+            '${game.away.shortName}-${game.home.shortName} 합계 ${_totalErrors(game)}실책',
+        subtitle:
+            '${game.away.shortName} ${game.away.errors}실책 · ${game.home.shortName} ${game.home.errors}실책',
+        route: '/game/${game.gameId}',
+        gameId: game.gameId,
+        teamIds: [game.away.teamId, game.home.teamId],
+      ),
+    );
+  }
+
+  final errorRankItem = _buildErrorRankBriefItem(activeGames, date);
+  if (errorRankItem != null) {
+    add(errorRankItem);
+  }
+
   if (liveGames.length > 1) {
     add(
       HomeKboBriefItem(
@@ -501,6 +528,11 @@ HomeKboBrief _buildLocalKboBrief({
   final recordItem = _buildRecordBriefItem(overview);
   if (recordItem != null) {
     add(recordItem);
+  }
+
+  final avgItem = _buildAvgBriefItem(overview, date);
+  if (avgItem != null) {
+    add(avgItem);
   }
 
   if (items.isEmpty) {
@@ -559,6 +591,73 @@ HomeKboBriefItem? _buildRecordBriefItem(RecordsOverview overview) {
     eyebrow: '기록 레이더',
     title: '${leader.name} ${leader.value}홈런',
     subtitle: '${leader.teamId} · 시즌 홈런 1위',
+    route: leader.playerId.isEmpty
+        ? '/records'
+        : '/records/player/${leader.playerId}?season=${overview.season}',
+    teamIds: [leader.teamId],
+    imageUrl: imageUrl,
+    fallbackLabel: leader.name,
+  );
+}
+
+HomeKboBriefItem? _buildErrorRankBriefItem(List<Game> games, String date) {
+  final entries = <({String teamId, String label, int errors})>[];
+  final seen = <String>{};
+  for (final game in games) {
+    for (final team in [game.away, game.home]) {
+      if (team.errors <= 0 || !team.hasStats) {
+        continue;
+      }
+      final key = team.teamId.isEmpty
+          ? '${game.gameId}:${team.shortName}'
+          : team.teamId;
+      if (!seen.add(key)) {
+        continue;
+      }
+      entries.add((
+        teamId: team.teamId,
+        label: team.shortName,
+        errors: team.errors,
+      ));
+    }
+  }
+
+  entries.sort((a, b) => b.errors.compareTo(a.errors));
+  if (entries.length < 2) {
+    return null;
+  }
+
+  final leaders = entries.take(3).toList();
+  final title = leaders
+      .take(2)
+      .map((entry) => '${entry.label} ${entry.errors}개')
+      .join(' · ');
+  return HomeKboBriefItem(
+    type: 'defense_rank',
+    eyebrow: '팀별 실책',
+    title: title,
+    subtitle: '${_monthDayLabel(date)} 경기 기준 · 실책 많은 팀 순',
+    route: '/schedule',
+    teamIds: leaders
+        .map((entry) => entry.teamId)
+        .where((teamId) => teamId.isNotEmpty)
+        .toList(),
+  );
+}
+
+HomeKboBriefItem? _buildAvgBriefItem(RecordsOverview overview, String date) {
+  if (overview.avgLeaders.isEmpty) {
+    return null;
+  }
+  final leader = overview.avgLeaders.first;
+  final imageUrl = leader.playerId.isEmpty
+      ? null
+      : kboPlayerImageUrl(season: overview.season, playerId: leader.playerId);
+  return HomeKboBriefItem(
+    type: 'batting_leader',
+    eyebrow: '${_monthLabel(date)} 현재 타율',
+    title: '${leader.name} 타율 ${leader.value}',
+    subtitle: '${leader.teamId} · 시즌 타율 1위',
     route: leader.playerId.isEmpty
         ? '/records'
         : '/records/player/${leader.playerId}?season=${overview.season}',
@@ -627,11 +726,29 @@ bool _isYesterday(String date) {
   return target == today.subtract(const Duration(days: 1));
 }
 
+String _monthDayLabel(String date) {
+  final parsed = DateTime.tryParse(date);
+  if (parsed == null) {
+    return date;
+  }
+  return '${parsed.month}월 ${parsed.day}일';
+}
+
+String _monthLabel(String date) {
+  final parsed = DateTime.tryParse(date);
+  if (parsed == null) {
+    return '현재';
+  }
+  return '${parsed.month}월';
+}
+
 int _gameLivePriority(Game game) => game.status == GameStatus.live ? 0 : 1;
 
 int _totalScore(Game game) => game.away.score + game.home.score;
 
 int _totalHits(Game game) => game.away.hits + game.home.hits;
+
+int _totalErrors(Game game) => game.away.errors + game.home.errors;
 
 String _scoreLine(Game game) {
   return '${game.away.shortName} ${game.away.score} : ${game.home.score} ${game.home.shortName}';

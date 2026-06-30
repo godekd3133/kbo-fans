@@ -56,6 +56,7 @@ class PlayerDetailScreen extends ConsumerWidget {
   Widget _buildBody(PlayerProfile player) {
     final team = KboTeams.byId(player.teamId);
     final photoUrl = playerProfileImageUrl(player, season: season);
+    final recentGames = player.recentGames.take(5).toList();
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -157,63 +158,15 @@ class PlayerDetailScreen extends ConsumerWidget {
         ),
         SizedBox(height: 18),
         _section(
-          title: '최근 기록',
-          child: player.recentGames.isEmpty
+          title: '최근 5경기',
+          child: recentGames.isEmpty
               ? Text(
-                  '최근 기록이 없습니다',
+                  '최근 5경기 기록이 없습니다',
                   style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
                 )
               : Column(
                   children: [
-                    for (final game in player.recentGames)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardSub,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                width: 54,
-                                child: Text(
-                                  game.date,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textDisabled,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      game.opponent,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      game.summary,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    for (final game in recentGames) _recentGameRow(game),
                   ],
                 ),
         ),
@@ -271,6 +224,66 @@ class PlayerDetailScreen extends ConsumerWidget {
           ),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
         ],
+      ),
+    );
+  }
+
+  Widget _recentGameRow(PlayerRecentGame game) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 58,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                game.date,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'vs ${game.opponent}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    game.summary,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

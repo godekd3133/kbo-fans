@@ -73,6 +73,10 @@ def send_baseball_info_push(
             topic=payload.topic,
             token=payload.token,
             team_id=payload.teamId,
+            game_id=payload.gameId,
+            matchup=payload.matchup,
+            start_time=payload.startTime,
+            stadium=payload.stadium,
             dry_run=payload.dryRun,
         )
     )

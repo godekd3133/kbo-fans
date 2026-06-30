@@ -43,6 +43,34 @@ void main() {
     expect(AppColors.textPrimary, AppTheme.darkColors.textPrimary);
   });
 
+  test('readable accent lifts black team color on dark backgrounds', () {
+    final accent = AppTheme.darkColors.readableAccent(Colors.black);
+
+    expect(accent, isNot(Colors.black));
+    expect(
+      _contrastRatio(accent, AppTheme.darkColors.background),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
+  test('foreground helper chooses readable text over colored fills', () {
+    final darkFillForeground = AppTheme.darkColors.readableForegroundOn(
+      Colors.black,
+    );
+    final orangeFillForeground = AppTheme.lightColors.readableForegroundOn(
+      const Color(0xFFFF6600),
+    );
+
+    expect(
+      _contrastRatio(darkFillForeground, Colors.black),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      _contrastRatio(orangeFillForeground, const Color(0xFFFF6600)),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
   test('theme mode preference keeps dark as the no-storage default', () {
     expect(
       AppThemeModePreference.fromStorage(null),
@@ -61,4 +89,16 @@ void main() {
       ThemeMode.dark,
     );
   });
+}
+
+double _contrastRatio(Color foreground, Color background) {
+  final foregroundLuminance = foreground.computeLuminance();
+  final backgroundLuminance = background.computeLuminance();
+  final lighter = foregroundLuminance > backgroundLuminance
+      ? foregroundLuminance
+      : backgroundLuminance;
+  final darker = foregroundLuminance > backgroundLuminance
+      ? backgroundLuminance
+      : foregroundLuminance;
+  return (lighter + 0.05) / (darker + 0.05);
 }

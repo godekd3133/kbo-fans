@@ -59,7 +59,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final myTeamId = ref.watch(myTeamProvider);
     final team = myTeamId != null ? KboTeams.byId(myTeamId) : null;
     final colors = AppTheme.colorsOf(context);
-    final teamColor = team?.primaryColor ?? colors.live;
+    final teamColor = colors.readableAccent(team?.primaryColor ?? colors.live);
 
     return Scaffold(
       body: SafeArea(
@@ -585,6 +585,22 @@ class _PushNotificationSettingsCardState
     unawaited(_save(current.withMomentEnabled(moment, value)));
   }
 
+  void _changeSummaryDetailLevel(PushNotificationSummaryDetailLevel level) {
+    final current = _settings ?? const PushNotificationSettings.defaults();
+    if (_saving || current.summaryDetailLevel == level) {
+      return;
+    }
+    unawaited(_save(current.withSummaryDetailLevel(level)));
+  }
+
+  void _changeLiveDetailLevel(PushNotificationLiveDetailLevel level) {
+    final current = _settings ?? const PushNotificationSettings.defaults();
+    if (_saving || current.liveDetailLevel == level) {
+      return;
+    }
+    unawaited(_save(current.withLiveDetailLevel(level)));
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<PushNotificationSettings>(
@@ -609,7 +625,9 @@ class _PushNotificationSettingsCardState
         }
 
         final mode = settings.mode;
-        final accent = widget.team?.primaryColor ?? colors.accent;
+        final accent = colors.readableAccent(
+          widget.team?.primaryColor ?? colors.accent,
+        );
         return _NotificationSettingsShell(
           status: _saving ? '저장 중' : _modeLabel(mode),
           child: Column(
@@ -628,6 +646,15 @@ class _PushNotificationSettingsCardState
                     ? null
                     : () => _changeMode(PushNotificationMode.summary),
               ),
+              if (mode == PushNotificationMode.summary) ...[
+                const SizedBox(height: 8),
+                _SummaryDetailSelector(
+                  value: settings.summaryDetailLevel,
+                  enabled: !_saving,
+                  accent: accent,
+                  onChanged: _changeSummaryDetailLevel,
+                ),
+              ],
               const SizedBox(height: 8),
               _PushModeOption(
                 key: const ValueKey('push_mode_live'),
@@ -640,6 +667,15 @@ class _PushNotificationSettingsCardState
                     ? null
                     : () => _changeMode(PushNotificationMode.live),
               ),
+              if (mode == PushNotificationMode.live) ...[
+                const SizedBox(height: 8),
+                _LiveDetailSelector(
+                  value: settings.liveDetailLevel,
+                  enabled: !_saving,
+                  accent: accent,
+                  onChanged: _changeLiveDetailLevel,
+                ),
+              ],
               const SizedBox(height: 8),
               _PushModeOption(
                 key: const ValueKey('push_mode_off'),
@@ -660,18 +696,22 @@ class _PushNotificationSettingsCardState
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.lineupOpened,
                       label: '선발 라인업 공개',
+                      subtitle: '라인업이 뜨면 알림',
                     ),
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.gameStart,
                       label: '경기 시작과 시작 임박',
+                      subtitle: '10분 전과 플레이볼',
                     ),
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.gameEnd,
                       label: '경기 종료 결과',
+                      subtitle: '종료와 취소 결과',
                     ),
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.baseballInfo,
                       label: '야구 브리프',
+                      subtitle: '경기일/기록 체크',
                     ),
                   ],
                   settings: settings,
@@ -687,26 +727,32 @@ class _PushNotificationSettingsCardState
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.scoring,
                       label: '득점',
+                      subtitle: '점수 변화 즉시',
                     ),
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.hit,
                       label: '안타',
+                      subtitle: '주자 상황 포함',
                     ),
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.homerun,
                       label: '홈런',
+                      subtitle: '홈런 장면 즉시',
                     ),
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.reversal,
                       label: '역전',
+                      subtitle: '리드 변경 시',
                     ),
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.inningChange,
                       label: '이닝 전환',
+                      subtitle: '초/말 전환',
                     ),
                     _NotificationToggleItem(
                       moment: PushNotificationMoment.atBat,
                       label: '타석 변화',
+                      subtitle: '새 타자 진입',
                     ),
                   ],
                   settings: settings,
@@ -808,6 +854,174 @@ class _NotificationTargetStrip extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryDetailSelector extends StatelessWidget {
+  final PushNotificationSummaryDetailLevel value;
+  final bool enabled;
+  final Color accent;
+  final void Function(PushNotificationSummaryDetailLevel level) onChanged;
+
+  const _SummaryDetailSelector({
+    required this.value,
+    required this.enabled,
+    required this.accent,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '요약 디테일',
+            style: TextStyle(
+              fontSize: 12,
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final level
+                  in PushNotificationSummaryDetailLevel.values) ...[
+                Expanded(
+                  child: _SummaryDetailSegment(
+                    label: _summaryDetailLabel(level),
+                    selected: value == level,
+                    enabled: enabled,
+                    accent: accent,
+                    onTap: () => onChanged(level),
+                  ),
+                ),
+                if (level != PushNotificationSummaryDetailLevel.values.last)
+                  const SizedBox(width: 6),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryDetailSegment extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final bool enabled;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _SummaryDetailSegment({
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: AppPressable(
+        onTap: enabled ? onTap : null,
+        pressedScale: 0.985,
+        child: AnimatedContainer(
+          height: 36,
+          alignment: Alignment.center,
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutQuart,
+          decoration: BoxDecoration(
+            color: selected ? accent.withValues(alpha: 0.16) : colors.card,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: selected ? accent : colors.divider),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 13,
+              color: selected ? colors.textPrimary : colors.textSecondary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveDetailSelector extends StatelessWidget {
+  final PushNotificationLiveDetailLevel value;
+  final bool enabled;
+  final Color accent;
+  final void Function(PushNotificationLiveDetailLevel level) onChanged;
+
+  const _LiveDetailSelector({
+    required this.value,
+    required this.enabled,
+    required this.accent,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '실시간 디테일',
+            style: TextStyle(
+              fontSize: 12,
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final level in PushNotificationLiveDetailLevel.values) ...[
+                Expanded(
+                  child: _SummaryDetailSegment(
+                    label: _liveDetailLabel(level),
+                    selected: value == level,
+                    enabled: enabled,
+                    accent: accent,
+                    onTap: () => onChanged(level),
+                  ),
+                ),
+                if (level != PushNotificationLiveDetailLevel.values.last)
+                  const SizedBox(width: 6),
+              ],
+            ],
           ),
         ],
       ),
@@ -986,21 +1200,40 @@ class _NotificationToggleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 48),
+      constraints: const BoxConstraints(minHeight: 54),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: enabled ? colors.textPrimary : colors.textDisabled,
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: enabled ? colors.textPrimary : colors.textDisabled,
+                    ),
+                  ),
+                  if (item.subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: colors.textDisabled,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             Switch.adaptive(
@@ -1047,8 +1280,13 @@ class _NotificationOffState extends StatelessWidget {
 class _NotificationToggleItem {
   final PushNotificationMoment moment;
   final String label;
+  final String? subtitle;
 
-  const _NotificationToggleItem({required this.moment, required this.label});
+  const _NotificationToggleItem({
+    required this.moment,
+    required this.label,
+    this.subtitle,
+  });
 }
 
 String _modeLabel(PushNotificationMode mode) {
@@ -1056,6 +1294,22 @@ String _modeLabel(PushNotificationMode mode) {
     PushNotificationMode.summary => '전후 요약',
     PushNotificationMode.live => '실시간',
     PushNotificationMode.off => '꺼짐',
+  };
+}
+
+String _summaryDetailLabel(PushNotificationSummaryDetailLevel level) {
+  return switch (level) {
+    PushNotificationSummaryDetailLevel.essential => '핵심',
+    PushNotificationSummaryDetailLevel.standard => '기본',
+    PushNotificationSummaryDetailLevel.detailed => '자세히',
+  };
+}
+
+String _liveDetailLabel(PushNotificationLiveDetailLevel level) {
+  return switch (level) {
+    PushNotificationLiveDetailLevel.essential => '핵심',
+    PushNotificationLiveDetailLevel.standard => '기본',
+    PushNotificationLiveDetailLevel.detailed => '자세히',
   };
 }
 

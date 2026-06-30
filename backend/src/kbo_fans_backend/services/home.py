@@ -335,6 +335,39 @@ class HomeService:
                 )
             )
 
+        high_error_games = [
+            game for game in active_games if self._game_total_errors(game) >= 3
+        ]
+        high_error_games.sort(
+            key=lambda game: self._game_total_errors(game),
+            reverse=True,
+        )
+        if high_error_games:
+            game = high_error_games[0]
+            add(
+                self._kbo_brief_item(
+                    item_type="defense_issue",
+                    eyebrow="실책 많은 경기",
+                    title=(
+                        f"{self._team_short_name(game, 'away')}-"
+                        f"{self._team_short_name(game, 'home')} 합계 "
+                        f"{self._game_total_errors(game)}실책"
+                    ),
+                    subtitle=(
+                        f"{self._team_short_name(game, 'away')} "
+                        f"{self._team_errors(game, 'away')}실책 · "
+                        f"{self._team_short_name(game, 'home')} "
+                        f"{self._team_errors(game, 'home')}실책"
+                    ),
+                    route=f"/game/{game.get('gameId')}",
+                    game=game,
+                )
+            )
+
+        error_rank_item = self._build_error_rank_brief_item(active_games, today)
+        if error_rank_item is not None:
+            add(error_rank_item)
+
         if len(live_games) > 1:
             add(
                 {
@@ -374,6 +407,10 @@ class HomeService:
         record_item = self._build_record_brief_item(overview, int(today[:4]))
         if record_item is not None:
             add(record_item)
+
+        avg_item = self._build_avg_brief_item(overview, int(today[:4]), today)
+        if avg_item is not None:
+            add(avg_item)
 
         if not items:
             add(
@@ -499,10 +536,12 @@ class HomeService:
                 }
             )
 
-        featured = overview.get("featured", {}).get("todayHitter", {})
-        if not featured.get("name"):
-            featured = overview.get("featured", {}).get("todayPitcher", {})
-        if featured.get("name"):
+        for featured in [
+            overview.get("featured", {}).get("todayHitter", {}),
+            overview.get("featured", {}).get("todayPitcher", {}),
+        ]:
+            if not featured.get("name"):
+                continue
             route = (
                 f"/records/player/{featured.get('playerId')}?season={season}"
                 if featured.get("playerId")
@@ -527,7 +566,7 @@ class HomeService:
                 }
             )
 
-        return items[:4]
+        return items[:6]
 
     def _build_standings_brief_item(
         self,
@@ -608,6 +647,79 @@ class HomeService:
             "eyebrow": "기록 레이더",
             "title": f"{leader.get('name')} {leader.get('value')}홈런",
             "subtitle": f"{self._TEAM_LABELS.get(team_id, team_id)} · 시즌 홈런 1위",
+            "route": route,
+            "gameId": None,
+            "teamIds": [team_id] if team_id else [],
+            "imageUrl": self._record_leader_image_url(leader, season),
+            "fallbackLabel": leader.get("name"),
+        }
+
+    def _build_error_rank_brief_item(
+        self,
+        games: List[Dict[str, Any]],
+        today: str,
+    ) -> Optional[Dict[str, Any]]:
+        entries: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+        for game in games:
+            for side in ("away", "home"):
+                errors = self._team_errors(game, side)
+                if errors <= 0:
+                    continue
+                team_id = str((game.get(side) or {}).get("teamId") or "")
+                key = team_id or f"{game.get('gameId')}:{side}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                entries.append(
+                    {
+                        "teamId": team_id,
+                        "label": self._team_short_name(game, side),
+                        "errors": errors,
+                    }
+                )
+
+        entries.sort(key=lambda item: item["errors"], reverse=True)
+        if len(entries) < 2:
+            return None
+
+        leaders = entries[:3]
+        title = " · ".join(f"{item['label']} {item['errors']}개" for item in leaders[:2])
+        return {
+            "type": "defense_rank",
+            "eyebrow": "팀별 실책",
+            "title": title,
+            "subtitle": f"{self._month_day_label(today)} 경기 기준 · 실책 많은 팀 순",
+            "route": "/schedule",
+            "gameId": None,
+            "teamIds": [
+                item["teamId"] for item in leaders if isinstance(item.get("teamId"), str)
+            ],
+        }
+
+    def _build_avg_brief_item(
+        self,
+        overview: Dict[str, Any],
+        season: int,
+        today: str,
+    ) -> Optional[Dict[str, Any]]:
+        avg_leaders = overview.get("leaders", {}).get("avg", [])
+        if not avg_leaders:
+            return None
+
+        leader = avg_leaders[0]
+        player_id = str(leader.get("playerId") or "")
+        team_id = str(leader.get("teamId") or "")
+        route = (
+            f"/records/player/{player_id}?season={season}"
+            if player_id
+            else "/records"
+        )
+        return {
+            "type": "batting_leader",
+            "eyebrow": f"{self._month_label(today)} 현재 타율",
+            "title": f"{leader.get('name')} 타율 {leader.get('value')}",
+            "subtitle": f"{self._TEAM_LABELS.get(team_id, team_id)} · 시즌 타율 1위",
             "route": route,
             "gameId": None,
             "teamIds": [team_id] if team_id else [],
@@ -714,6 +826,22 @@ class HomeService:
         return "경기 정보"
 
     @staticmethod
+    def _month_day_label(value: str) -> str:
+        try:
+            target = date_type.fromisoformat(value)
+        except ValueError:
+            return value
+        return f"{target.month}월 {target.day}일"
+
+    @staticmethod
+    def _month_label(value: str) -> str:
+        try:
+            target = date_type.fromisoformat(value)
+        except ValueError:
+            return "현재"
+        return f"{target.month}월"
+
+    @staticmethod
     def _game_total_score(game: Dict[str, Any]) -> int:
         return HomeService._team_score(game, "away") + HomeService._team_score(game, "home")
 
@@ -722,12 +850,20 @@ class HomeService:
         return HomeService._team_hits(game, "away") + HomeService._team_hits(game, "home")
 
     @staticmethod
+    def _game_total_errors(game: Dict[str, Any]) -> int:
+        return HomeService._team_errors(game, "away") + HomeService._team_errors(game, "home")
+
+    @staticmethod
     def _team_score(game: Dict[str, Any], side: str) -> int:
         return HomeService._as_int((game.get(side) or {}).get("score"))
 
     @staticmethod
     def _team_hits(game: Dict[str, Any], side: str) -> int:
         return HomeService._as_int((game.get(side) or {}).get("hits"))
+
+    @staticmethod
+    def _team_errors(game: Dict[str, Any], side: str) -> int:
+        return HomeService._as_int((game.get(side) or {}).get("errors"))
 
     @staticmethod
     def _team_short_name(game: Dict[str, Any], side: str) -> str:

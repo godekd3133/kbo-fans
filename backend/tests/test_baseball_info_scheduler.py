@@ -98,17 +98,28 @@ def test_smart_daily_plan_uses_lineup_day_near_scheduled_start() -> None:
     plan = baseball_info.build_smart_daily_plan(
         games=[
             {
+                "gameId": "20260630LTOB0",
                 "status": "SCHEDULED",
                 "startTime": "18:30",
-                "away": {"teamId": "LG"},
-                "home": {"teamId": "KT"},
+                "stadium": "잠실",
+                "away": {"teamId": "LT", "shortName": "롯데"},
+                "home": {"teamId": "OB", "shortName": "두산"},
             }
         ],
-        team_id="LG",
+        team_id="OB",
         now_time="16:00",
     )
 
-    assert plan == [{"teamId": "LG", "kind": "lineup_day"}]
+    assert plan == [
+        {
+            "teamId": "OB",
+            "kind": "lineup_day",
+            "gameId": "20260630LTOB0",
+            "matchup": "롯데 vs 두산",
+            "startTime": "18:30",
+            "stadium": "잠실",
+        }
+    ]
 
 
 def test_smart_daily_plan_uses_records_check_after_final_game() -> None:
@@ -141,10 +152,12 @@ def test_baseball_info_scheduler_smart_daily_sends_team_specific_plan() -> None:
                 "date": date,
                 "games": [
                     {
+                        "gameId": "20260630LTOB0",
                         "status": "SCHEDULED",
                         "startTime": "18:30",
-                        "away": {"teamId": "LG"},
-                        "home": {"teamId": "KT"},
+                        "stadium": "잠실",
+                        "away": {"teamId": "LT", "shortName": "롯데"},
+                        "home": {"teamId": "OB", "shortName": "두산"},
                     }
                 ],
             }
@@ -156,7 +169,7 @@ def test_baseball_info_scheduler_smart_daily_sends_team_specific_plan() -> None:
 
     result = baseball_info.send_smart_daily(
         date="2026-06-22",
-        team_id="LG",
+        team_id="OB",
         now_time="16:00",
         dry_run=True,
         scoreboard_service=FakeScoreboardService(),
@@ -171,7 +184,11 @@ def test_baseball_info_scheduler_smart_daily_sends_team_specific_plan() -> None:
             "kind": "lineup_day",
             "date": "2026-06-22",
             "topic": None,
-            "team_id": "LG",
+            "team_id": "OB",
+            "game_id": "20260630LTOB0",
+            "matchup": "롯데 vs 두산",
+            "start_time": "18:30",
+            "stadium": "잠실",
             "dry_run": True,
         }
     ]

@@ -19,7 +19,7 @@ import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
 import 'widgets/schedule_game_card.dart';
 
-enum ScheduleViewMode { calendar, stadium }
+enum ScheduleViewMode { calendar, stadium, matchup }
 
 enum ScheduleTeamFilter { all, myTeamOnly, otherTeamsOnly }
 
@@ -28,6 +28,13 @@ class _StadiumScheduleItem {
   final ScheduleGame game;
 
   const _StadiumScheduleItem({required this.date, required this.game});
+}
+
+class _MatchupScheduleItem {
+  final String date;
+  final ScheduleGame game;
+
+  const _MatchupScheduleItem({required this.date, required this.game});
 }
 
 class ScheduleScreen extends ConsumerStatefulWidget {
@@ -45,6 +52,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   ScheduleViewMode _viewMode = ScheduleViewMode.calendar;
   ScheduleTeamFilter _teamFilter = ScheduleTeamFilter.all;
   String? _stadiumTeamId;
+  String? _matchupFirstTeamId;
+  String? _matchupSecondTeamId;
   final Map<String, GlobalKey> _stadiumSectionKeys = {};
   int? _scheduleLoadStartedAtMicros;
   String? _lastScheduleLoadLogKey;
@@ -167,7 +176,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   void _selectDate(DateTime date) {
-    _goToMonth(DateTime(date.year, date.month), selectedDay: date.day);
+    final selectedMonth = DateTime(date.year, date.month);
+    final shouldMoveCalendar =
+        selectedMonth.year != _currentMonth.year ||
+        selectedMonth.month != _currentMonth.month;
+    _goToMonth(
+      selectedMonth,
+      selectedDay: date.day,
+      animateCalendar: shouldMoveCalendar,
+    );
   }
 
   @override
@@ -269,11 +286,21 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       return _buildCalendarModeBody(scheduleAsync, selectedSchedule);
     }
 
+    if (_viewMode == ScheduleViewMode.stadium) {
+      return Column(
+        children: [
+          _buildControls(),
+          Divider(color: AppColors.divider, height: 1),
+          Expanded(child: _buildStadiumPager()),
+        ],
+      );
+    }
+
     return Column(
       children: [
         _buildControls(),
         Divider(color: AppColors.divider, height: 1),
-        Expanded(child: _buildStadiumPager()),
+        Expanded(child: _buildMatchupPager()),
       ],
     );
   }
@@ -395,68 +422,82 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         setState(() => _viewMode = ScheduleViewMode.stadium),
                   ),
                 ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: _segmentedButton(
+                    label: '매치업',
+                    selected: _viewMode == ScheduleViewMode.matchup,
+                    onTap: () =>
+                        setState(() => _viewMode = ScheduleViewMode.matchup),
+                  ),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _filterChip(
-                  label: '전체',
-                  selected: _teamFilter == ScheduleTeamFilter.all,
-                  onTap: () =>
-                      setState(() => _teamFilter = ScheduleTeamFilter.all),
-                ),
-                if (hasMyTeam) ...[
-                  const SizedBox(width: 8),
-                  _filterChip(
-                    label: '마이팀만',
-                    selected: _teamFilter == ScheduleTeamFilter.myTeamOnly,
-                    onTap: () => setState(
-                      () => _teamFilter = ScheduleTeamFilter.myTeamOnly,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _filterChip(
-                    label: '다른 경기',
-                    selected: _teamFilter == ScheduleTeamFilter.otherTeamsOnly,
-                    onTap: () => setState(
-                      () => _teamFilter = ScheduleTeamFilter.otherTeamsOnly,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (_viewMode == ScheduleViewMode.calendar) ...[
-            const SizedBox(height: 8),
-            _legendRow(),
-          ] else ...[
-            const SizedBox(height: 8),
+          if (_viewMode == ScheduleViewMode.matchup)
+            _buildMatchupTeamControls()
+          else ...[
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
                   _filterChip(
-                    label: '전체 팀',
-                    selected: _stadiumTeamId == null,
-                    onTap: () => setState(() => _stadiumTeamId = null),
+                    label: '전체',
+                    selected: _teamFilter == ScheduleTeamFilter.all,
+                    onTap: () =>
+                        setState(() => _teamFilter = ScheduleTeamFilter.all),
                   ),
-                  ...KboTeams.teams.map((team) {
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: _filterChip(
-                        label: team.shortName,
-                        selected: _stadiumTeamId == team.id,
-                        onTap: () => setState(() => _stadiumTeamId = team.id),
+                  if (hasMyTeam) ...[
+                    const SizedBox(width: 8),
+                    _filterChip(
+                      label: '마이팀만',
+                      selected: _teamFilter == ScheduleTeamFilter.myTeamOnly,
+                      onTap: () => setState(
+                        () => _teamFilter = ScheduleTeamFilter.myTeamOnly,
                       ),
-                    );
-                  }),
+                    ),
+                    const SizedBox(width: 8),
+                    _filterChip(
+                      label: '다른 경기',
+                      selected:
+                          _teamFilter == ScheduleTeamFilter.otherTeamsOnly,
+                      onTap: () => setState(
+                        () => _teamFilter = ScheduleTeamFilter.otherTeamsOnly,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
+            if (_viewMode == ScheduleViewMode.calendar) ...[
+              const SizedBox(height: 8),
+              _legendRow(),
+            ] else ...[
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _filterChip(
+                      label: '전체 팀',
+                      selected: _stadiumTeamId == null,
+                      onTap: () => setState(() => _stadiumTeamId = null),
+                    ),
+                    ...KboTeams.teams.map((team) {
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: _filterChip(
+                          label: team.shortName,
+                          selected: _stadiumTeamId == team.id,
+                          onTap: () => setState(() => _stadiumTeamId = team.id),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
           ],
         ],
       ),
@@ -554,6 +595,170 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
+  Widget _buildMatchupTeamControls() {
+    final myTeamId = ref.watch(myTeamProvider);
+    final firstTeamId = _effectiveMatchupFirstTeamId(myTeamId);
+    final secondTeamId = _effectiveMatchupSecondTeamId(firstTeamId);
+
+    return Column(
+      children: [
+        _teamSelectRow(
+          label: '팀 1',
+          selectedTeamId: firstTeamId,
+          disabledTeamId: secondTeamId,
+          onSelect: _setMatchupFirstTeam,
+        ),
+        const SizedBox(height: 8),
+        _teamSelectRow(
+          label: '팀 2',
+          selectedTeamId: secondTeamId,
+          disabledTeamId: firstTeamId,
+          onSelect: _setMatchupSecondTeam,
+        ),
+      ],
+    );
+  }
+
+  Widget _teamSelectRow({
+    required String label,
+    required String selectedTeamId,
+    required String disabledTeamId,
+    required ValueChanged<String> onSelect,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 42,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textDisabled,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: KboTeams.teams.map((team) {
+                final selected = selectedTeamId == team.id;
+                final disabled = disabledTeamId == team.id;
+                return Padding(
+                  padding: EdgeInsets.only(
+                    left: team == KboTeams.teams.first ? 0 : 8,
+                  ),
+                  child: _teamChoiceChip(
+                    team: team,
+                    selected: selected,
+                    disabled: disabled,
+                    onTap: () => onSelect(team.id),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _teamChoiceChip({
+    required KboTeam team,
+    required bool selected,
+    required bool disabled,
+    required VoidCallback onTap,
+  }) {
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(team.primaryColor);
+
+    return IgnorePointer(
+      ignoring: disabled,
+      child: Opacity(
+        opacity: disabled ? 0.38 : 1,
+        child: AppPressable(
+          onTap: onTap,
+          pressedScale: 0.96,
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 46),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected
+                  ? accent.withValues(alpha: 0.24)
+                  : AppColors.cardSub.withValues(alpha: 0.68),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: selected
+                    ? accent.withValues(alpha: 0.84)
+                    : AppColors.divider.withValues(alpha: 0.72),
+              ),
+            ),
+            child: Text(
+              team.shortName,
+              style: TextStyle(
+                fontSize: 12,
+                color: selected
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _effectiveMatchupFirstTeamId(String? myTeamId) {
+    if (_isKnownTeam(_matchupFirstTeamId)) {
+      return _matchupFirstTeamId!;
+    }
+    if (_isKnownTeam(myTeamId)) {
+      return myTeamId!;
+    }
+    return KboTeams.teams.first.id;
+  }
+
+  String _effectiveMatchupSecondTeamId(String firstTeamId) {
+    if (_isKnownTeam(_matchupSecondTeamId) &&
+        _matchupSecondTeamId != firstTeamId) {
+      return _matchupSecondTeamId!;
+    }
+    return _fallbackOpponentId(firstTeamId);
+  }
+
+  bool _isKnownTeam(String? teamId) {
+    return teamId != null && KboTeams.byId(teamId) != null;
+  }
+
+  String _fallbackOpponentId(String teamId) {
+    return KboTeams.teams
+        .firstWhere(
+          (team) => team.id != teamId,
+          orElse: () => KboTeams.teams.first,
+        )
+        .id;
+  }
+
+  void _setMatchupFirstTeam(String teamId) {
+    setState(() {
+      _matchupFirstTeamId = teamId;
+      if (_matchupSecondTeamId == null || _matchupSecondTeamId == teamId) {
+        _matchupSecondTeamId = _fallbackOpponentId(teamId);
+      }
+    });
+  }
+
+  void _setMatchupSecondTeam(String teamId) {
+    final firstTeamId = _effectiveMatchupFirstTeamId(ref.read(myTeamProvider));
+    if (teamId == firstTeamId) {
+      return;
+    }
+    setState(() => _matchupSecondTeamId = teamId);
+  }
+
   Widget _buildCalendarPager(BuildContext context) {
     return SizedBox(
       height: _calendarPagerHeight(context),
@@ -639,6 +844,64 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         );
       },
     );
+  }
+
+  Widget _buildMatchupPager() {
+    final myTeamId = ref.watch(myTeamProvider);
+    final firstTeamId = _effectiveMatchupFirstTeamId(myTeamId);
+    final secondTeamId = _effectiveMatchupSecondTeamId(firstTeamId);
+
+    return PageView.builder(
+      controller: _calendarPageController,
+      onPageChanged: (page) {
+        final nextMonth = _monthForPage(page);
+        final selectedDay = _pendingSelectedDay;
+        _pendingSelectedDay = null;
+        _applyVisibleMonth(nextMonth, selectedDay: selectedDay);
+      },
+      itemBuilder: (context, index) {
+        final month = _monthForPage(index);
+        final yearMonth =
+            '${month.year}-${month.month.toString().padLeft(2, '0')}';
+        final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
+
+        return scheduleAsync.when(
+          loading: _buildGameListLoading,
+          error: (error, _) => RefreshIndicator(
+            onRefresh: _refreshSchedule,
+            color: AppColors.live,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [_buildScheduleErrorContent(error)],
+            ),
+          ),
+          data: (days) => _buildMatchupList(
+            yearMonth: yearMonth,
+            items: _matchupItems(days, firstTeamId, secondTeamId),
+            firstTeamId: firstTeamId,
+            secondTeamId: secondTeamId,
+          ),
+        );
+      },
+    );
+  }
+
+  List<_MatchupScheduleItem> _matchupItems(
+    List<ScheduleDay> days,
+    String firstTeamId,
+    String secondTeamId,
+  ) {
+    final items = <_MatchupScheduleItem>[];
+    for (final day in days) {
+      for (final game in day.games) {
+        final gameTeamIds = {game.awayId, game.homeId};
+        if (gameTeamIds.contains(firstTeamId) &&
+            gameTeamIds.contains(secondTeamId)) {
+          items.add(_MatchupScheduleItem(date: day.date, game: game));
+        }
+      }
+    }
+    return items;
   }
 
   Widget _buildCalendar(
@@ -840,6 +1103,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final label = schedule.label != null
         ? '$dateLabel — ${schedule.label}'
         : dateLabel;
+    final myTeamId = ref.watch(myTeamProvider);
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
@@ -856,6 +1120,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             index: entry.key,
             child: ScheduleGameCard(
               game: entry.value,
+              myTeamId: myTeamId,
               onTap: () => _openGameDetail(entry.value.gameId),
               ticketSummary:
                   entry.value.ticketInfo == null ||
@@ -945,6 +1210,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _buildStadiumList(String yearMonth, List<ScheduleDay> days) {
+    final myTeamId = ref.watch(myTeamProvider);
     final stadiumMap = <String, List<_StadiumScheduleItem>>{};
     for (final day in days) {
       for (final game in day.games) {
@@ -1025,6 +1291,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   child: ScheduleGameCard(
                     game: entry.value.game,
                     dateLabel: _formatDateLabel(entry.value.date),
+                    myTeamId: myTeamId,
                     onTap: () => _openGameDetail(entry.value.game.gameId),
                     ticketSummary:
                         entry.value.game.ticketInfo == null ||
@@ -1038,6 +1305,116 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMatchupList({
+    required String yearMonth,
+    required List<_MatchupScheduleItem> items,
+    required String firstTeamId,
+    required String secondTeamId,
+  }) {
+    final myTeamId = ref.watch(myTeamProvider);
+    final firstTeam = KboTeams.byId(firstTeamId);
+    final secondTeam = KboTeams.byId(secondTeamId);
+    final matchupLabel =
+        '${firstTeam?.shortName ?? firstTeamId} vs ${secondTeam?.shortName ?? secondTeamId}';
+
+    if (items.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refreshSchedule,
+        color: AppColors.live,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            _buildMatchupSummary(
+              matchupLabel: matchupLabel,
+              gameCount: 0,
+              yearMonth: yearMonth,
+            ),
+            _buildScheduleEmptyArtwork(
+              title: '매치업 일정 없음',
+              message: '$matchupLabel 경기가 이 달에 없습니다',
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshSchedule,
+      color: AppColors.live,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          _buildMatchupSummary(
+            matchupLabel: matchupLabel,
+            gameCount: items.length,
+            yearMonth: yearMonth,
+          ),
+          const SizedBox(height: 12),
+          ...items.asMap().entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: AppMotionListItem(
+                key: ValueKey('matchup-game-${entry.value.game.gameId}'),
+                index: entry.key,
+                child: ScheduleGameCard(
+                  game: entry.value.game,
+                  dateLabel: _formatDateLabel(entry.value.date),
+                  myTeamId: myTeamId,
+                  onTap: () => _openGameDetail(entry.value.game.gameId),
+                  ticketSummary:
+                      entry.value.game.ticketInfo == null ||
+                          !shouldShowTicketInfoForScheduleStatus(
+                            entry.value.game.status,
+                          )
+                      ? null
+                      : _ticketSummary(entry.value.game.ticketInfo!),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMatchupSummary({
+    required String matchupLabel,
+    required int gameCount,
+    required String yearMonth,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '팀 매치업 일정',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textDisabled,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            matchupLabel,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '$yearMonth · $gameCount경기 · 홈/원정 무관',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );

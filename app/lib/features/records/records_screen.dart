@@ -24,7 +24,7 @@ enum PlayerListFilter { all, entryOnly, reserveOnly }
 enum PlayerSortOption { name, avg, ops, era, whip }
 
 const firstSupportedRecordsSeason = 2002;
-final _tableHeaderStyle = TextStyle(
+TextStyle get _tableHeaderStyle => TextStyle(
   fontSize: 11,
   color: AppColors.textDisabled,
   fontWeight: FontWeight.w800,
@@ -74,6 +74,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   @override
   Widget build(BuildContext context) {
+    AppColors.sync(AppTheme.colorsOf(context));
     if (widget.teamId == null) {
       return _buildTeamChooser();
     }
@@ -121,139 +122,142 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           children: [
             const Positioned.fill(child: _RecordsBackdrop()),
             AppPageFrame(
-              child: RefreshIndicator(
-                onRefresh: _refreshOverview,
-                color: AppColors.live,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'RECORDS',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.textDisabled,
-                                  letterSpacing: 0,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                '기록실',
-                                style: TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.05,
-                                ),
-                              ),
-                              SizedBox(height: 6),
-                              Text(
-                                '한눈에 보는 리그 리더와 팀&선수 기록',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: '기록실 새로고침',
-                          onPressed: () {
-                            unawaited(_refreshOverview());
-                            setState(() {});
-                          },
-                          icon: const Icon(Icons.refresh_rounded),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    _seasonSelector(),
-                    const SizedBox(height: 10),
-                    overviewAsync.when(
-                      loading: () => const SizedBox.shrink(),
-                      error: (error, stackTrace) =>
-                          _recordsOverviewErrorCard(error),
-                      data: (overview) => Column(
+              child: DefaultTextStyle.merge(
+                style: TextStyle(color: AppColors.textPrimary),
+                child: RefreshIndicator(
+                  onRefresh: _refreshOverview,
+                  color: AppColors.live,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+                    children: [
+                      Row(
                         children: [
-                          _recordsBriefingPanel(overview),
-                          const SizedBox(height: 8),
-                          _metricSpotlightRail(overview),
-                          const SizedBox(height: 8),
-                          _recordsSectionHeader(
-                            title: '리그 리더보드',
-                            subtitle: '핵심 지표별 TOP 5를 빠르게 비교합니다.',
-                            actionLabel: '전체 보기',
-                            onActionTap: () => context.push(
-                              '/records/leaderboard/${_selectedPreviewMetric.key}?season=$_selectedSeason',
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'RECORDS',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.textDisabled,
+                                    letterSpacing: 0,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  '기록실',
+                                  style: TextStyle(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.05,
+                                  ),
+                                ),
+                                SizedBox(height: 6),
+                                Text(
+                                  '한눈에 보는 리그 리더와 팀&선수 기록',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          _metricHub(overview),
-                          const SizedBox(height: 18),
-                          _recordsSectionHeader(
-                            title: '팀 기록실',
-                            subtitle: '마이팀을 먼저 배치하고 팀별 선수 기록으로 이어집니다.',
+                          IconButton(
+                            tooltip: '기록실 새로고침',
+                            onPressed: () {
+                              unawaited(_refreshOverview());
+                              setState(() {});
+                            },
+                            icon: const Icon(Icons.refresh_rounded),
                           ),
-                          const SizedBox(height: 12),
                         ],
                       ),
-                    ),
-                    TextField(
-                      onChanged: (value) =>
-                          setState(() => _searchQuery = value),
-                      decoration: InputDecoration(
-                        hintText: '팀 검색',
-                        hintStyle: TextStyle(color: AppColors.textDisabled),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: AppColors.textDisabled,
+                      const SizedBox(height: 10),
+                      _seasonSelector(),
+                      const SizedBox(height: 10),
+                      overviewAsync.when(
+                        loading: () => const SizedBox.shrink(),
+                        error: (error, stackTrace) =>
+                            _recordsOverviewErrorCard(error),
+                        data: (overview) => Column(
+                          children: [
+                            _recordsBriefingPanel(overview),
+                            const SizedBox(height: 8),
+                            _metricSpotlightRail(overview),
+                            const SizedBox(height: 8),
+                            _recordsSectionHeader(
+                              title: '리그 리더보드',
+                              subtitle: '핵심 지표별 TOP 5를 빠르게 비교합니다.',
+                              actionLabel: '전체 보기',
+                              onActionTap: () => context.push(
+                                '/records/leaderboard/${_selectedPreviewMetric.key}?season=$_selectedSeason',
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            _metricHub(overview),
+                            const SizedBox(height: 18),
+                            _recordsSectionHeader(
+                              title: '팀 기록실',
+                              subtitle: '마이팀을 먼저 배치하고 팀별 선수 기록으로 이어집니다.',
+                            ),
+                            const SizedBox(height: 12),
+                          ],
                         ),
-                        filled: true,
-                        fillColor: AppColors.card,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppColors.divider),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: AppColors.divider),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(
-                            color: AppColors.textSecondary,
+                      ),
+                      TextField(
+                        onChanged: (value) =>
+                            setState(() => _searchQuery = value),
+                        decoration: InputDecoration(
+                          hintText: '팀 검색',
+                          hintStyle: TextStyle(color: AppColors.textDisabled),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: AppColors.textDisabled,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.card,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: AppColors.divider),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: AppColors.divider),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    for (final team in visibleTeams)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _teamChooserCard(
-                          team,
-                          isMyTeam: myTeamId == team.id,
-                        ),
-                      ),
-                    if (visibleTeams.isEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(top: 48),
-                        child: Center(
-                          child: Text(
-                            '검색 결과가 없습니다',
-                            style: TextStyle(color: AppColors.textDisabled),
+                      const SizedBox(height: 14),
+                      for (final team in visibleTeams)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _teamChooserCard(
+                            team,
+                            isMyTeam: myTeamId == team.id,
                           ),
                         ),
-                      ),
-                  ],
+                      if (visibleTeams.isEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: 48),
+                          child: Center(
+                            child: Text(
+                              '검색 결과가 없습니다',
+                              style: TextStyle(color: AppColors.textDisabled),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -264,6 +268,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _teamChooserCard(KboTeam team, {required bool isMyTeam}) {
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(team.primaryColor);
     return AppPressable(
       onTap: () => context.push('/records/team/${team.id}'),
       pressedScale: 0.97,
@@ -272,9 +278,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isMyTeam ? team.primaryColor : AppColors.divider,
-          ),
+          border: Border.all(color: isMyTeam ? accent : AppColors.divider),
         ),
         child: Row(
           children: [
@@ -310,7 +314,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                             color: AppColors.background.withValues(alpha: 0.88),
                             borderRadius: BorderRadius.circular(999),
                             border: Border.all(
-                              color: team.primaryColor.withValues(alpha: 0.55),
+                              color: accent.withValues(alpha: 0.55),
                             ),
                           ),
                           child: Text(
@@ -360,215 +364,220 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return Scaffold(
       body: SafeArea(
         child: AppPageFrame(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => context.go('/records'),
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '기록실',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${team?.name ?? teamId} $_selectedSeason 시즌 기록실',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
+          child: DefaultTextStyle.merge(
+            style: TextStyle(color: AppColors.textPrimary),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => context.go('/records'),
+                        icon: const Icon(Icons.arrow_back),
                       ),
-                    ),
-                    IconButton(
-                      tooltip: '팀 기록 새로고침',
-                      onPressed: () => unawaited(_refreshTeamRecords(teamId)),
-                      icon: const Icon(Icons.refresh_rounded),
-                    ),
-                    if (team != null)
-                      KboTeamLogoImage(
-                        teamId: team.id,
-                        fallback: team.shortName,
-                        size: 40,
-                        padding: 0,
-                      ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: _seasonSelector(),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: teamRecordsAsync.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, stackTrace) => const SizedBox.shrink(),
-                  data: (teamRecords) => _teamStatsCard(teamRecords.teamStats),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Container(
-                  height: 52,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    indicator: BoxDecoration(
-                      color: AppColors.textPrimary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    dividerColor: Colors.transparent,
-                    labelPadding: EdgeInsets.zero,
-                    labelColor: AppColors.background,
-                    unselectedLabelColor: AppColors.textSecondary,
-                    labelStyle: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    unselectedLabelStyle: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overlayColor: WidgetStateProperty.all(Colors.transparent),
-                    splashFactory: NoSplash.splashFactory,
-                    tabs: const [
-                      Tab(height: 44, child: Center(child: Text('야수'))),
-                      Tab(height: 44, child: Center(child: Text('투수'))),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _filterButton(
-                        label: '전체',
-                        selected: _filter == PlayerListFilter.all,
-                        onTap: () =>
-                            setState(() => _filter = PlayerListFilter.all),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _filterButton(
-                        label: '엔트리',
-                        selected: _filter == PlayerListFilter.entryOnly,
-                        onTap: () => setState(
-                          () => _filter = PlayerListFilter.entryOnly,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _filterButton(
-                        label: '엔트리 제외',
-                        selected: _filter == PlayerListFilter.reserveOnly,
-                        onTap: () => setState(
-                          () => _filter = PlayerListFilter.reserveOnly,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: _sortOptionsForCurrentTab().map((option) {
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _sortChip(
-                        label: _sortLabel(option),
-                        selected: _sort == option,
-                        onTap: () => setState(() => _sort = option),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: AppMotionSwitcher(
-                  child: KeyedSubtree(
-                    key: ValueKey(recordsMotionKey),
-                    child: RefreshIndicator(
-                      onRefresh: () => _refreshTeamRecords(teamId),
-                      color: AppColors.live,
-                      child: teamRecordsAsync.when(
-                        loading: () => ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            SizedBox(
-                              height: 420,
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  color: AppColors.live,
-                                ),
+                            const Text(
+                              '기록실',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${team?.name ?? teamId} $_selectedSeason 시즌 기록실',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
                         ),
-                        error: (error, _) => ListView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          children: [
-                            SizedBox(
-                              height: 420,
-                              child: Center(
+                      ),
+                      IconButton(
+                        tooltip: '팀 기록 새로고침',
+                        onPressed: () => unawaited(_refreshTeamRecords(teamId)),
+                        icon: const Icon(Icons.refresh_rounded),
+                      ),
+                      if (team != null)
+                        KboTeamLogoImage(
+                          teamId: team.id,
+                          fallback: team.shortName,
+                          size: 40,
+                          padding: 0,
+                        ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: _seasonSelector(),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: teamRecordsAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, stackTrace) => const SizedBox.shrink(),
+                    data: (teamRecords) =>
+                        _teamStatsCard(teamRecords.teamStats),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    height: 52,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicator: BoxDecoration(
+                        color: AppColors.textPrimary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      dividerColor: Colors.transparent,
+                      labelPadding: EdgeInsets.zero,
+                      labelColor: AppColors.background,
+                      unselectedLabelColor: AppColors.textSecondary,
+                      labelStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      unselectedLabelStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overlayColor: WidgetStateProperty.all(Colors.transparent),
+                      splashFactory: NoSplash.splashFactory,
+                      tabs: const [
+                        Tab(height: 44, child: Center(child: Text('야수'))),
+                        Tab(height: 44, child: Center(child: Text('투수'))),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _filterButton(
+                          label: '전체',
+                          selected: _filter == PlayerListFilter.all,
+                          onTap: () =>
+                              setState(() => _filter = PlayerListFilter.all),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _filterButton(
+                          label: '엔트리',
+                          selected: _filter == PlayerListFilter.entryOnly,
+                          onTap: () => setState(
+                            () => _filter = PlayerListFilter.entryOnly,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _filterButton(
+                          label: '엔트리 제외',
+                          selected: _filter == PlayerListFilter.reserveOnly,
+                          onTap: () => setState(
+                            () => _filter = PlayerListFilter.reserveOnly,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: _sortOptionsForCurrentTab().map((option) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _sortChip(
+                          label: _sortLabel(option),
+                          selected: _sort == option,
+                          onTap: () => setState(() => _sort = option),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: AppMotionSwitcher(
+                    child: KeyedSubtree(
+                      key: ValueKey(recordsMotionKey),
+                      child: RefreshIndicator(
+                        onRefresh: () => _refreshTeamRecords(teamId),
+                        color: AppColors.live,
+                        child: teamRecordsAsync.when(
+                          loading: () => ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: 420,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.live,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          error: (error, _) => ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              SizedBox(
+                                height: 420,
+                                child: Center(
+                                  child: Text(
+                                    '선수 기록을 불러올 수 없습니다',
+                                    style: TextStyle(
+                                      color: AppColors.textDisabled,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                ),
                                 child: Text(
-                                  '선수 기록을 불러올 수 없습니다',
+                                  describeAsyncError(error),
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
+                                    fontSize: 12,
                                     color: AppColors.textDisabled,
                                   ),
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                              ),
-                              child: Text(
-                                describeAsyncError(error),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textDisabled,
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
+                          data: (teamRecords) =>
+                              _buildList(teamRecords.players),
                         ),
-                        data: (teamRecords) => _buildList(teamRecords.players),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -991,29 +1000,31 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _playerPhotoFallback(int number, KboTeam? team) {
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(
+      team?.primaryColor ?? colors.textSecondary,
+    );
     return Container(
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        color: team?.primaryColor.withValues(alpha: 0.14) ?? AppColors.cardSub,
+        color: accent.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(8),
       ),
       alignment: Alignment.center,
-      child: Icon(
-        Icons.person_rounded,
-        color: team?.primaryColor ?? AppColors.textSecondary,
-        size: 28,
-      ),
+      child: Icon(Icons.person_rounded, color: accent, size: 28),
     );
   }
 
   Widget _numberBadge(int number, KboTeam? team) {
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(
+      team?.primaryColor ?? colors.textSecondary,
+    );
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: (team?.primaryColor ?? AppColors.textSecondary).withValues(
-          alpha: 0.14,
-        ),
+        color: accent.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -1021,7 +1032,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w700,
-          color: team?.primaryColor ?? AppColors.textSecondary,
+          color: accent,
         ),
       ),
     );
@@ -1322,8 +1333,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _recordsBriefingPanel(RecordsOverview overview) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     final snapshots = _metricSnapshots(overview);
     final headline = _headlineLeader(overview);
+    final todayFeatured = _todayFeaturedCards(overview);
     final uniqueTopFive = {
       for (final snapshot in snapshots)
         for (final leader in snapshot.leaders.take(5)) leader.playerId,
@@ -1334,17 +1347,24 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final briefLines = _recordBriefLines(overview);
 
     return Container(
+      key: const ValueKey('records-briefing-panel'),
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.card.withValues(alpha: 0.96),
-            AppColors.surface.withValues(alpha: 0.9),
-            AppColors.background.withValues(alpha: 0.86),
-          ],
+          colors: isLight
+              ? [
+                  AppColors.card,
+                  AppColors.card,
+                  AppColors.cardSub.withValues(alpha: 0.76),
+                ]
+              : [
+                  AppColors.card.withValues(alpha: 0.96),
+                  AppColors.surface.withValues(alpha: 0.9),
+                  AppColors.background.withValues(alpha: 0.86),
+                ],
         ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
@@ -1352,9 +1372,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.32),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
+            color: isLight
+                ? const Color(0x1A0F172A)
+                : Colors.black.withValues(alpha: 0.32),
+            blurRadius: isLight ? 16 : 22,
+            offset: Offset(0, isLight ? 8 : 12),
           ),
         ],
       ),
@@ -1396,13 +1418,18 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             ],
           ),
           const SizedBox(height: 9),
-          if (headline == null)
+          if (headline == null && todayFeatured.isEmpty)
             Text(
               '현재 표시할 기록 리더가 없습니다.',
               style: TextStyle(fontSize: 13, color: AppColors.textDisabled),
             )
-          else
-            _headlineLeaderBlock(overview, headline),
+          else ...[
+            if (headline != null) _headlineLeaderBlock(overview, headline),
+            if (todayFeatured.isNotEmpty) ...[
+              if (headline != null) const SizedBox(height: 10),
+              _todayFeaturedPlayerStrip(todayFeatured),
+            ],
+          ],
           const SizedBox(height: 7),
           Row(
             children: [
@@ -1442,6 +1469,155 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
           ],
         ],
+      ),
+    );
+  }
+
+  List<FeaturedPlayerCard> _todayFeaturedCards(RecordsOverview overview) {
+    return [
+      overview.todayHitter,
+      overview.todayPitcher,
+    ].where(_hasFeaturedPlayer).toList();
+  }
+
+  bool _hasFeaturedPlayer(FeaturedPlayerCard card) {
+    return (card.name ?? '').trim().isNotEmpty ||
+        (card.playerId ?? '').trim().isNotEmpty;
+  }
+
+  Widget _todayFeaturedPlayerStrip(List<FeaturedPlayerCard> cards) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 330 || cards.length == 1) {
+          return Column(
+            children: [
+              for (var index = 0; index < cards.length; index++) ...[
+                if (index > 0) const SizedBox(height: 7),
+                _todayFeaturedPlayerCell(cards[index]),
+              ],
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            for (var index = 0; index < cards.length; index++) ...[
+              if (index > 0) const SizedBox(width: 8),
+              Expanded(child: _todayFeaturedPlayerCell(cards[index])),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _todayFeaturedPlayerCell(FeaturedPlayerCard card) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final team = card.teamId == null ? null : KboTeams.byId(card.teamId!);
+    final name = (card.name ?? '').trim().isEmpty ? '준비 중' : card.name!.trim();
+    final summary = (card.headline ?? card.summary ?? '').trim();
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 72),
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: isLight
+            ? AppColors.cardSub.withValues(alpha: 0.64)
+            : AppColors.background.withValues(alpha: 0.24),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.textSecondary.withValues(alpha: 0.16),
+        ),
+      ),
+      child: Row(
+        children: [
+          _featuredPlayerPhoto(card, team),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  card.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textDisabled,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
+                ),
+                if (summary.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    summary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _featuredPlayerPhoto(FeaturedPlayerCard card, KboTeam? team) {
+    final playerId = (card.playerId ?? '').trim();
+    final imageUrl = (card.imageUrl ?? '').trim().isNotEmpty
+        ? card.imageUrl!.trim()
+        : playerId.isNotEmpty
+        ? kboPlayerImageUrl(season: _selectedSeason, playerId: playerId)
+        : null;
+
+    Widget fallback() => Container(
+      width: 38,
+      height: 44,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      alignment: Alignment.center,
+      child: team == null
+          ? Icon(Icons.person_rounded, size: 21, color: AppColors.textDisabled)
+          : KboTeamLogoImage(
+              teamId: team.id,
+              fallback: team.shortName,
+              size: 26,
+              padding: 0,
+            ),
+    );
+
+    if (imageUrl == null) {
+      return fallback();
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: 38,
+        height: 44,
+        fit: BoxFit.cover,
+        errorWidget: (_, _, _) => fallback(),
       ),
     );
   }
@@ -1519,17 +1695,21 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _briefStat(String label, String value) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
-      height: 42,
+      constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.28),
+        color: isLight
+            ? AppColors.cardSub.withValues(alpha: 0.7)
+            : AppColors.background.withValues(alpha: 0.28),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: AppColors.textSecondary.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -1542,7 +1722,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               fontWeight: FontWeight.w700,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -1584,6 +1764,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _metricSpotlightCard(_MetricSnapshot snapshot) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     final leader = snapshot.topLeader;
     final team = leader == null ? null : KboTeams.byId(leader.teamId);
     return AppPressable(
@@ -1592,15 +1773,18 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       ),
       pressedScale: 0.97,
       child: Container(
+        key: ValueKey('records-metric-${snapshot.metric.key}'),
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.card.withValues(alpha: 0.98),
-              AppColors.surface.withValues(alpha: 0.9),
-            ],
+            colors: isLight
+                ? [AppColors.card, AppColors.cardSub.withValues(alpha: 0.68)]
+                : [
+                    AppColors.card.withValues(alpha: 0.98),
+                    AppColors.surface.withValues(alpha: 0.9),
+                  ],
           ),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: snapshot.color.withValues(alpha: 0.62)),
@@ -1689,6 +1873,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   Widget _metricHub(RecordsOverview overview) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
     final snapshots = _metricSnapshots(overview);
     final selected = snapshots.firstWhere(
       (snapshot) => snapshot.metric == _selectedPreviewMetric,
@@ -1697,16 +1882,21 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final leaders = selected.leaders.take(3).toList();
 
     return Container(
+      key: const ValueKey('records-leaderboard-hub'),
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.card.withValues(alpha: 0.96),
+        color: isLight
+            ? AppColors.card
+            : AppColors.card.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
+            color: isLight
+                ? const Color(0x140F172A)
+                : Colors.black.withValues(alpha: 0.2),
+            blurRadius: isLight ? 14 : 18,
+            offset: Offset(0, isLight ? 7 : 10),
           ),
         ],
       ),
@@ -1996,6 +2186,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     required double height,
   }) {
     final team = KboTeams.byId(leader.teamId);
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(
+      team?.primaryColor ?? colors.textSecondary,
+    );
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: CachedNetworkImage(
@@ -2011,15 +2205,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         errorWidget: (_, _, _) => Container(
           width: width,
           height: height,
-          color:
-              team?.primaryColor.withValues(alpha: 0.14) ?? AppColors.cardSub,
+          color: accent.withValues(alpha: 0.14),
           alignment: Alignment.center,
           child: Text(
             leader.name.isEmpty ? '?' : leader.name.substring(0, 1),
-            style: TextStyle(
-              color: team?.primaryColor ?? AppColors.textSecondary,
-              fontWeight: FontWeight.w900,
-            ),
+            style: TextStyle(color: accent, fontWeight: FontWeight.w900),
           ),
         ),
       ),
@@ -2161,41 +2351,42 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   }
 
   List<_MetricSnapshot> _metricSnapshots(RecordsOverview overview) {
+    final colors = AppTheme.colorsOf(context);
     return [
       _MetricSnapshot(
         metric: LeaderboardMetric.avg,
         title: '타율 리더',
         description: '컨택과 출루 흐름의 첫 기준',
         leaders: overview.avgLeaders,
-        color: AppColors.accent,
+        color: colors.readableAccent(AppColors.accent),
       ),
       _MetricSnapshot(
         metric: LeaderboardMetric.hr,
         title: '홈런왕 경쟁',
         description: '장타 한 방의 순위 변화',
         leaders: overview.hrLeaders,
-        color: AppColors.ballYellow,
+        color: colors.readableAccent(AppColors.ballYellow),
       ),
       _MetricSnapshot(
         metric: LeaderboardMetric.ops,
         title: 'OPS 생산력',
         description: '출루와 장타를 함께 보는 지표',
         leaders: overview.opsLeaders,
-        color: AppColors.positive,
+        color: colors.readableAccent(AppColors.positive),
       ),
       _MetricSnapshot(
         metric: LeaderboardMetric.opsPlus,
         title: LeaderboardMetric.opsPlus.title,
         description: '리그 OPS 리더군 기준 환산',
         leaders: overview.opsPlusLeaders,
-        color: const Color(0xFF9D7CFF),
+        color: colors.readableAccent(const Color(0xFF7B5CFF)),
       ),
       _MetricSnapshot(
         metric: LeaderboardMetric.era,
         title: 'ERA 마운드',
         description: '낮을수록 강한 선발 경쟁',
         leaders: overview.eraLeaders,
-        color: AppColors.live,
+        color: colors.readableAccent(AppColors.live),
       ),
     ];
   }
@@ -2235,6 +2426,8 @@ class _RecordsBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
     return IgnorePointer(
       child: Stack(
         children: [
@@ -2243,12 +2436,14 @@ class _RecordsBackdrop extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF080808),
-                  AppColors.background,
-                  AppColors.background,
-                ],
-                stops: [0, 0.48, 1],
+                colors: isLight
+                    ? [colors.background, colors.background, colors.cardSub]
+                    : [
+                        const Color(0xFF080808),
+                        colors.background,
+                        colors.background,
+                      ],
+                stops: const [0, 0.48, 1],
               ),
             ),
             child: SizedBox.expand(),
@@ -2258,10 +2453,13 @@ class _RecordsBackdrop extends StatelessWidget {
             top: 0,
             right: 0,
             height: 280,
-            child: Image.asset(
-              VisualAssets.recordsStadiumBackdrop,
-              fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
+            child: Opacity(
+              opacity: isLight ? 0.16 : 1,
+              child: Image.asset(
+                VisualAssets.recordsStadiumBackdrop,
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+              ),
             ),
           ),
           Positioned(
@@ -2274,12 +2472,18 @@ class _RecordsBackdrop extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.18),
-                    Colors.black.withValues(alpha: 0.48),
-                    AppColors.background,
-                  ],
-                  stops: [0, 0.52, 1],
+                  colors: isLight
+                      ? [
+                          colors.background.withValues(alpha: 0.1),
+                          colors.background.withValues(alpha: 0.72),
+                          colors.background,
+                        ]
+                      : [
+                          Colors.black.withValues(alpha: 0.18),
+                          Colors.black.withValues(alpha: 0.48),
+                          colors.background,
+                        ],
+                  stops: const [0, 0.52, 1],
                 ),
               ),
             ),

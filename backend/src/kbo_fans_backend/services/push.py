@@ -255,19 +255,34 @@ class PushService:
         topic: Optional[str] = None,
         token: Optional[str] = None,
         team_id: Optional[str] = None,
+        game_id: Optional[str] = None,
+        matchup: Optional[str] = None,
+        start_time: Optional[str] = None,
+        stadium: Optional[str] = None,
         dry_run: bool = False,
     ) -> dict[str, Any]:
         if token and topic:
             raise ValueError("only one of token or topic is allowed")
 
-        title, body = _baseball_info_copy(kind=kind, team_id=team_id)
+        title, body = _baseball_info_copy(
+            kind=kind,
+            team_id=team_id,
+            matchup=matchup,
+            start_time=start_time,
+            stadium=stadium,
+        )
+        route = "/home"
+        if game_id:
+            route = f"/game/{game_id}?tab=lineup" if kind == "lineup_day" else f"/game/{game_id}"
         data = {
             "type": "baseball_info",
             "kind": kind,
             "date": date,
             "teamId": team_id or "",
-            "route": "/home",
+            "route": route,
         }
+        if game_id:
+            data["gameId"] = game_id
         if dry_run:
             return {
                 "sent": False,
@@ -806,8 +821,17 @@ def _baseball_info_target_preview(
     return [{"topic": target} for target in _baseball_info_topics(topic=topic, team_id=team_id)]
 
 
-def _baseball_info_copy(*, kind: str, team_id: Optional[str] = None) -> tuple[str, str]:
+def _baseball_info_copy(
+    *,
+    kind: str,
+    team_id: Optional[str] = None,
+    matchup: Optional[str] = None,
+    start_time: Optional[str] = None,
+    stadium: Optional[str] = None,
+) -> tuple[str, str]:
     team_name = _team_display_name(team_id)
+    matchup_label = (matchup or "").strip()
+    game_detail = _baseball_info_game_detail(start_time=start_time, stadium=stadium)
     if kind == "weekly_check":
         if team_name:
             return (
@@ -823,6 +847,12 @@ def _baseball_info_copy(*, kind: str, team_id: Optional[str] = None) -> tuple[st
             )
         return "오늘의 야구 브리프", "경기가 없는 날에는 순위표와 다음 일정을 가볍게 확인해 보세요."
     if kind == "game_day":
+        if matchup_label:
+            prefix = f"{game_detail} · " if game_detail else ""
+            return (
+                f"{matchup_label} 경기일 체크",
+                f"오늘 {prefix}경기 일정과 중계 상황을 확인해 보세요.",
+            )
         if team_name:
             return (
                 f"{team_name} 경기일 체크",
@@ -834,6 +864,12 @@ def _baseball_info_copy(*, kind: str, team_id: Optional[str] = None) -> tuple[st
             return f"{team_name} 기록실", f"{team_name} 타자와 투수 기록 흐름을 확인해 보세요."
         return "기록실 업데이트", "타자와 투수 기록 흐름을 확인해 보세요."
     if kind == "lineup_day":
+        if matchup_label:
+            prefix = f"{game_detail} · " if game_detail else ""
+            return (
+                f"{matchup_label} 경기 전 체크",
+                f"{prefix}선발 라인업과 예매 정보를 확인해 보세요.",
+            )
         if team_name:
             return f"{team_name} 경기 전 체크", "선발 라인업과 예매 정보를 경기 전에 확인해 보세요."
         return "경기 전 체크", "선발 라인업과 예매 정보를 경기 전에 확인해 보세요."
@@ -848,6 +884,21 @@ def _team_display_name(team_id: Optional[str]) -> str:
     if not team_id:
         return ""
     return KBO_TEAM_NAMES.get(team_id, team_id)
+
+
+def _baseball_info_game_detail(
+    *,
+    start_time: Optional[str],
+    stadium: Optional[str],
+) -> str:
+    return " · ".join(
+        part
+        for part in [
+            (start_time or "").strip(),
+            (stadium or "").strip(),
+        ]
+        if part
+    )
 
 
 def _firebase_certificate_source(

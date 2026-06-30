@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import concurrent.futures
 import re
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
+
+
+_KBO_TIMEZONE = timezone(timedelta(hours=9))
 
 
 class PlayerStatsCrawler(BaseCrawler):
@@ -144,7 +148,7 @@ class PlayerStatsCrawler(BaseCrawler):
         profile.update(self._parse_profile(html, player_id, player_type, season))
 
         season_stats = self._parse_season_stats(total_html, season)
-        current_season = self._extract_current_season(html)
+        current_season = self._resolve_recent_games_season(html)
         recent_games = self._parse_recent_games(
             html,
             include_recent=include_recent and season == current_season,
@@ -430,6 +434,9 @@ class PlayerStatsCrawler(BaseCrawler):
     def _extract_current_season(html: str) -> int:
         match = re.search(r"(\d{4})\s*시즌", html)
         return int(match.group(1)) if match else 0
+
+    def _resolve_recent_games_season(self, html: str) -> int:
+        return self._extract_current_season(html) or datetime.now(_KBO_TIMEZONE).year
 
     def _parse_recent_games(
         self, html: str, include_recent: bool, player_type: str
