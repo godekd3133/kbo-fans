@@ -29,14 +29,16 @@
 - 앱이 꺼진 뒤에도 알림이나 Dynamic Island가 바뀌려면 앱 direct KBO 경로가 아니라 운영 백엔드가 상태 변화를 읽어야 한다.
   - FCM은 일반 push notification 전달 채널이다.
   - iOS Live Activity / Dynamic Island 원격 갱신은 ActivityKit push token + APNs `liveactivity` push 채널이다.
+  - iOS 17.2+ 자동 시작은 ActivityKit push-to-start token + APNs `liveactivity` `event=start` 채널이다. 앱이 한 번 실행되어 `/push/live-activity/start-token/register`에 token과 `installationId`를 등록해야 하며, 설치 후 한 번도 실행하지 않은 앱이나 Live Activity/알림 권한이 꺼진 단말은 서버가 임의로 시작할 수 없다.
   - backend scheduler가 live 경기 중 5초 간격으로 scoreboard/relay sync를 실행하고, 등록된 ActivityKit token에는 update/end payload를 보낸다.
   - 같은 scheduler가 이전 scoreboard state와 비교해 FCM topic push용 `lineup_opened`, `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` moment를 발행한다.
-  - 일반 경기 event FCM은 backend가 원정팀/홈팀/전체 topic과 함께 `*_GAME_{gameId}` 경기별 topic으로도 발송한다. 앱은 마이팀 team topic을 `off`가 아닌 enabled game moment 기준으로 자동 구독해, 사용자가 `푸쉬 중계 받기`를 누르지 않아도 마이팀 경기 시작/득점/안타/홈런/역전/종료/라인업/이닝 변경/타석 push를 받을 수 있다. selected-game GAME topic도 같은 enabled 기준을 쓰되, 따라가는 경기가 마이팀 경기이면 team topic만 유지해 중복 수신을 피한다. 리그 전체 topic은 기존처럼 `immediate` 기준이다.
+  - scoreboard/relay baseline이 2분 이상 오래되었거나 `updatedAt`을 해석할 수 없으면 scheduler는 그 차이를 FCM moment로 발행하지 않고 현재 scoreboard state/relay last seq만 저장한다. 푸시 설정 직후나 worker 재시작 뒤 밀린 lineup/hit/homerun을 backfill하지 않는 정책이다.
+  - 일반 경기 event FCM은 backend가 원정팀/홈팀/전체 topic과 함께 `*_GAME_{gameId}` 경기별 topic으로도 발송한다. 앱은 마이팀 team topic을 저장된 delivery/off 값과 무관하게 자동 구독해, 사용자가 `푸쉬 중계 받기`를 누르지 않아도 마이팀 경기 시작/시작 임박/득점/안타/홈런/역전/종료/라인업/이닝 변경/타석 push를 모두 받을 수 있다. selected-game GAME topic은 기존 enabled 기준을 쓰되, 선택 경기가 마이팀 경기이면 team topic만 유지해 중복 수신을 피한다. 리그 전체 topic은 기존처럼 `immediate` 기준이다.
   - `baseball_info`는 특정 경기 event가 아니므로 `followedGameIds`가 있어도 `baseball_info_<팀>` / `baseball_info_ALL` 범위를 유지한다. long-running sync worker는 KST `09:30,16:00,22:30` 기본 슬롯에서 smart daily 브리프를 하루 한 번씩 시도하고, `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES`로 슬롯 조정 또는 `off` 비활성화를 지원한다.
   - 일반 FCM message의 iOS APNs config는 `apns-push-type=alert`, app bundle `apns-topic`, `aps.alert`, `aps.content-available=1`, `apns-priority=10`, default sound를 명시한다. 앱 쪽은 `remote-notification` background mode와 Firebase background handler를 유지해야 한다. 앱 실행 시점에 몰려 보이는 증상이 재현되면 이 alert-class payload가 운영 image에 배포됐는지 먼저 확인한다.
-  - `GameEventAlertService`의 scoreboard/relay diff 기반 local notification은 local 개발 모드에서만 처리한다. release/dev에서 이 경로가 켜져 있으면 앱 resume/focus 시 지난 이벤트가 몰아서 표시될 수 있으므로 backend remote push와 역할을 섞지 않는다. 회귀 확인용으로만 `--dart-define=ENABLE_LOCAL_GAME_EVENT_ALERTS=true`를 명시해 보조 로컬 알림 경로를 켤 수 있다.
+  - `GameEventAlertService`의 scoreboard/relay diff 기반 local notification은 local 개발 모드에서만 처리한다. release/dev에서 이 경로가 켜져 있으면 앱 resume/focus 시 지난 이벤트가 몰아서 표시될 수 있으므로 backend remote push와 역할을 섞지 않는다. 권한 off 상태에서도 snapshot baseline은 갱신하고, snapshot이 오래됐거나 settings signature가 바뀐 첫 tick은 알림 발행 없이 현재 상태만 저장한다. 회귀 확인용으로만 `--dart-define=ENABLE_LOCAL_GAME_EVENT_ALERTS=true`를 명시해 보조 로컬 알림 경로를 켤 수 있다.
   - scoreboard diff만으로 확정하기 어려운 `homerun` moment는 같은 scheduler가 live relay seq baseline을 저장하고, 새 relay item의 `HOMERUN` event 또는 `홈런` 텍스트를 감지해 발행한다.
-  - 앱 종료/백그라운드 push가 안 오면 먼저 `/push/register`가 실제 기기에서 성공해 registry `devices`가 채워졌는지 확인한다. 마이팀 자동 push라면 registry `topicCounts`의 `scoring_{팀}` / `hit_{팀}` / `game_start_soon_{팀}`와 `deviceSummaries`의 `installationIdSuffix` / `notificationsAllowed` / `authorizationStatus` / `apnsTokenReady`를 본다. 특정 타 팀 경기 따라가기라면 `followedGameIds`와 `scoring_GAME_{gameId}` / `hit_GAME_{gameId}` / `game_start_soon_GAME_{gameId}`도 같이 확인한다. 앱은 마이팀 선택 후 non-local 환경에서 최초 1회 권한 요청과 FCM registration sync를 자동 시도해야 한다.
+  - 앱 종료/백그라운드 push가 안 오면 먼저 `/push/register`가 실제 기기에서 성공해 registry `devices`가 채워졌는지 확인한다. 마이팀 자동 push라면 registry `topicCounts`의 `scoring_{팀}` / `hit_{팀}` / `game_start_soon_{팀}`와 `deviceSummaries`의 `installationIdSuffix` / `notificationsAllowed` / `authorizationStatus` / `apnsTokenReady`를 본다. 특정 타 팀 수동 경기 알림이라면 `followedGameIds`와 `scoring_GAME_{gameId}` / `hit_GAME_{gameId}` / `game_start_soon_GAME_{gameId}`도 같이 확인한다. 앱은 마이팀 선택 후 non-local 환경에서 최초 1회 권한 요청과 FCM registration sync를 자동 시도해야 한다.
   - 앱은 `/push/register`에 stable `installationId`를 함께 보내며, backend는 같은 설치 id로 새 FCM token이 들어오면 이전 token registration을 제거한다. 팔로우 경기 상태가 권한/APNs 준비된 현재 token이 아니라 오래된 token에 남는 증상이 보이면 `installationIdSuffix`와 `updatedAt`을 먼저 비교한다.
   - `deviceSummaries.updatedAt`은 앱이 `/push/register`를 보낸 시각이고, `topicsUpdatedAt`은 운영자가 registry 기반 topic resubscribe를 수행한 시각이다. 단말 최신성 판단에는 `updatedAt`과 권한/APNs 상태를 보고, resubscribe 성공 여부에는 `topicsUpdatedAt`과 topic count를 본다.
   - 배포 후 `GET /api/push/config-status` 또는 `python -m kbo_fans_backend.scheduler.push_config_status`로 Firebase/APNs/registry/scheduler secret 누락을 먼저 확인한다.
@@ -57,7 +59,7 @@
   - 5초 시연에는 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` long-running worker가 EventBridge 1분 one-shot보다 예측 가능하다.
   - `config-status.scheduler.lastSyncAt`은 sync worker가 실제로 registry에 heartbeat를 남겼는지 보는 운영 신호다. secret readiness와 worker activity를 구분해서 판단한다.
 - 홈 scoreboard 자동 refresh cadence는 live 8초, scheduled 5분, terminal 정지로 둔다.
-- 경기 상세는 live 기본 탭 8초, 문자중계 foreground 원천 갱신은 5초 cadence로 맞춘다.
+- 경기 상세는 live 기본 탭 8초, 문자중계 foreground 원천 갱신은 5초 cadence로 맞춘다. LIVE 경기에서 스코어/문자중계/박스스코어/라인업 탭을 전환하면 타이머 tick을 기다리지 않고 현재 보이는 탭 provider를 즉시 갱신한다.
 
 ## Backend Lint / Compatibility
 
@@ -68,8 +70,8 @@
 
 - Live Activity 선택 우선순위:
   1. 진행중인 마이팀 경기
-  2. 진행중인 다른 경기
-  3. 오늘 마이팀 라인업 공개 예정 경기
+  2. 오늘 마이팀 라인업 공개 예정 경기
+  3. 진행중인 다른 경기
   4. 오늘 다른 라인업 공개 예정 경기
 - 라인업 공개 예정 경기 Live Activity는 `경기전` 상태와 양 팀 순위를 스코어 자리에 표시하고, 탭하면 라인업 탭으로 진입한다. 라인업 미공개 예정 경기는 follow session은 유지해도 Activity를 시작하지 않는다.
 - 홈 위젯과 Live Activity는 가능한 한 같은 source scoreboard 를 기준으로 동기화한다.

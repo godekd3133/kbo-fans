@@ -2,6 +2,246 @@
 
 ---
 
+## 2026-06-30: 0.1.8 릴리즈 준비
+
+### 기준
+- 현재 공개 baseline은 `0.1.7+74` / tag `0.1.7`이며, 이번 diff는 앱 동작, backend push/Live Activity 동작, 사용자-visible 화면 흐름을 포함해 새 tester-facing 버전이 필요하다고 판단함.
+- 목표 버전은 `0.1.8+75`, Git tag는 `0.1.8`로 결정함.
+
+### 진행
+- [x] `app/pubspec.yaml` 버전을 `0.1.8+75`로 증가
+- [x] `CHANGELOG.md`의 Unreleased 항목을 `0.1.8 - 2026-06-30` 릴리즈 항목으로 승격
+- [x] 앱 내 `업데이트 소식`은 사용자-facing 변화 중심으로 `0.1.8+75` 항목 추가
+- [x] `docs/VERSIONING.md` current baseline과 numeric release map을 `0.1.8` 기준으로 갱신
+
+### 1차 검증
+- [x] `git diff --check`
+- [x] `cd app && fvm flutter test` (`All tests passed!`, 204 tests)
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`224 passed`)
+
+### 남은 릴리즈 체크포인트
+- [ ] 버전 갱신 후 최종 검증 재실행
+- [ ] 작업 단위 커밋 분리 및 `main` push
+- [ ] tag `0.1.8` / GitHub Release 발행
+- [ ] TestFlight 업로드
+- [ ] Apple processing `VALID`
+- [ ] `External Testers` 최신 build 연결 및 이전 build 관계 제거
+- [ ] Beta App Review 제출/상태 확인
+- [ ] 외부 테스터 설치 가능성 확인
+
+---
+
+## 2026-06-30: 홈 경기 상세 진입 전 선갱신
+
+### 원인
+- 사장님 지적: 홈 점수는 실시간으로 갱신되지만, 이미 열어 본 경기 상세는 들어간 뒤 pull-to-refresh를 해야 최신 점수/중계 상태가 보일 수 있었다.
+- 확인 결과 홈의 `scoreboardProvider(today)`와 상세의 `gameProvider(gameId)` 캐시는 별도라, 홈이 최신이어도 상세 route 진입 시 이전 상세 provider 값이 먼저 쓰일 수 있었다.
+
+### 진행
+- [x] 홈 경기 행과 마이팀 오늘 경기 카드에서 상세로 push 하기 전 `gameProvider(gameId)`를 invalidate/read 하도록 변경
+- [x] 진행 중 경기 기본 진입 탭인 `relayDataProvider(gameId)`도 함께 선갱신해 중계 탭 진입 직후 수동 refresh가 필요 없게 보정
+- [x] 선갱신 중에는 홈 위에 `경기 정보 갱신 중` 로딩 overlay를 표시하고, 실패하면 stale 상세로 이동하지 않고 홈에서 실패 snackbar를 표시
+- [x] APP_SPEC, CHANGELOG에 홈→상세 진입 선갱신 기준 반영
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다'` (`home-game-detail-loading` 없음)
+- [x] GREEN 확인: `cd app && fvm flutter test test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다'` (`All tests passed!`)
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/test/features/home/home_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-30: 라인업 선수 사진 누락 경로 보강
+
+### 원인
+- 사장님 지적: 라인업 페이지에서 선수 사진이 여전히 안 보이는 경우가 있었다.
+- 실제 확인 결과 기존 2026 lineup snapshot들은 row별 `id` / `imageUrl` 없이 저장되어 있었고, 과거 경기에서는 snapshot-first 정책 때문에 보강 없이 그대로 반환됐다.
+- 현재 시즌 `PlayerStatsService.get_team_players()`도 영문 KBO 선수검색 경로가 빈 결과를 반환하면 0명 payload를 만들 수 있어 새 라인업 row 보강이 실패했다.
+- 앱 라인업 fallback URL은 `gameId` 연도가 아니라 `DateTime.now().year`를 사용해 과거 경기 `playerId` 기반 사진 URL을 잘못 만들 수 있었다.
+
+### 진행
+- [x] backend 라인업 서비스가 과거 snapshot을 반환하기 전 row별 `id` / `imageUrl`이 비어 있으면 team player 데이터로 보강하고, 실제 내용이 바뀐 경우만 snapshot을 다시 저장하도록 변경
+- [x] KBO 영문 선수검색 결과가 비어 있으면 한국 KBO 등록 페이지의 선수 상세 링크에서 roster `id`, 이름, 포지션, 투타, 생년월일, 체격을 복구하도록 fallback 추가
+- [x] 라인업 탭의 `playerId` fallback 이미지는 `gameId` 시즌과 공통 KBO 이미지 helper를 사용하도록 보정
+- [x] CHANGELOG에 사용자-visible 라인업 사진 누락 보정으로 기록
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_lineup.py::test_lineup_service_enriches_past_snapshot_with_missing_player_images backend/tests/test_player_stats_crawler.py::test_get_team_players_falls_back_to_korean_register_page_when_search_is_empty` (`2 failed`)
+- [x] RED 확인: `cd app && fvm flutter test test/features/game_detail/lineup_tab_test.dart --plain-name '라인업 row는 playerId만 있으면 경기 연도 기준 KBO 이미지 URL을 만든다' -r expanded` (`1 failed`)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_lineup.py backend/tests/test_player_stats_crawler.py` (`12 passed`)
+- [x] GREEN 확인: `cd app && fvm flutter test test/features/game_detail/lineup_tab_test.dart -r expanded` (`All tests passed!`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/crawlers/player_stats.py backend/src/kbo_fans_backend/services/lineup.py backend/tests/test_lineup.py backend/tests/test_player_stats_crawler.py` (`All checks passed!`)
+- [x] `python3 -m compileall backend/src`
+- [x] `cd app && fvm flutter analyze lib/features/game_detail/tabs/lineup_tab.dart test/features/game_detail/lineup_tab_test.dart` (`No issues found!`)
+- [x] temp snapshot store로 `20260630LGWO0` 실데이터 probe: away/home 18명 모두 `id` / `imageUrl` 존재
+
+---
+
+## 2026-06-30: LIVE 경기 상세 탭 전환 즉시 새로고침
+
+### 원인
+- 사장님 지적: 경기 상세에서 탭을 옮길 때마다 진행 중 경기 데이터가 바로 새로고침되지 않아 매번 스크롤해서 pull-to-refresh 해야 했다.
+- 확인 결과 `_handleTabChanged()`는 refresh timer 간격만 재조정하고 실제 `_refreshGameDetail()`은 실행하지 않았다.
+- 그래서 이미 한 번 열어 캐시된 박스스코어/라인업/relay 탭은 다시 탭을 열어도 다음 5초/8초 timer tick 또는 수동 refresh 전까지 재조회하지 않았다.
+
+### 진행
+- [x] LIVE 경기에서 탭 변경이 settle되면 현재 visible tab provider를 즉시 invalidate/read하도록 연결
+- [x] 기존 cadence는 유지: 문자중계 탭 5초, 그 외 상세 탭 8초
+- [x] APP_SPEC, ENGINEERING_NOTES, CHANGELOG에 LIVE 탭 전환 즉시 refresh 기준 반영
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart --name "라이브 경기 상세는 탭을 다시 열 때 visible 탭 데이터를 즉시 새로고침한다" --reporter expanded` (`1 failed`: 박스스코어 재진입 호출 수가 증가하지 않음)
+- [x] GREEN 확인: `cd app && fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart --name "라이브 경기 상세는 탭을 다시 열 때 visible 탭 데이터를 즉시 새로고침한다" --reporter expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart --reporter expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart` (`No issues found!`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-30: 경기 시작 시 Live Activity 원격 자동 시작
+
+### 원인
+- 사장님 요청: 앱을 직접 켜지 않아도 경기 시간이 되면 Live Activity / Dynamic Island가 자동으로 켜지길 원했다.
+- 기존 구현은 앱이 먼저 `Activity.request(... pushType: .token)`으로 Live Activity를 시작한 뒤 update token을 `/push/live-activity/register`에 등록하는 구조라, 앱이 꺼져 있는 상태에서 새 Live Activity를 시작할 수 없었다.
+- Apple ActivityKit의 push-to-start token은 iOS 17.2+에서만 제공되며, 앱이 한 번 실행되어 token을 서버에 등록한 뒤에만 backend가 APNs `event=start`로 시작할 수 있다.
+
+### 진행
+- [x] iOS native channel에 `Activity<KboFansScoreAttributes>.pushToStartToken` / `pushToStartTokenUpdates` 동기화 추가
+- [x] Flutter `LiveActivityService`가 push-to-start token을 stable `installationId`와 함께 `/push/live-activity/start-token/register`에 등록하도록 연결
+- [x] backend registry에 `liveActivityStartTokens` / `liveActivityStartStates`를 추가하고, 마이팀 또는 선택 경기의 iOS 기기만 자동 시작 대상으로 필터링
+- [x] APNs sender가 `event=start`, `attributes-type=KboFansScoreAttributes`, `attributes.gameId`, `alert`, `input-push-token`을 포함한 start payload를 발송하도록 확장
+- [x] scoreboard sync worker가 LIVE 경기에서 start token 대상자에게 한 번만 start push를 보내고, 기존 update/end 경로는 유지하도록 연결
+- [x] APP_SPEC, ENGINEERING_NOTES, CHANGELOG에 iOS 17.2+ / 최초 앱 실행 / 권한 제약과 운영 계약 반영
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_register_live_activity_start_token_replaces_previous_token backend/tests/test_push_service.py::test_live_activity_start_registration_targets_my_team_ios_device backend/tests/test_push_service.py::test_live_activity_scoreboard_sync_starts_my_team_live_activity_from_start_token backend/tests/test_push_service.py::test_apns_live_activity_start_payload_includes_activity_attributes` (`4 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/apns_live_activity.py backend/src/kbo_fans_backend/services/push_registry.py backend/src/kbo_fans_backend/services/push.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/src/kbo_fans_backend/api/routes/push.py backend/src/kbo_fans_backend/schemas/push.py backend/tests/test_push_service.py` (`All checks passed`)
+- [x] `cd app && fvm flutter analyze lib/main.dart lib/services/live_activity_service.dart lib/services/push_notification_service.dart` (`No issues found`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`87 passed`)
+- [x] `cd app && fvm flutter test test/services/live_activity_service_test.dart test/services/push_notification_service_test.dart` (`All tests passed`)
+- [x] `cd app && fvm flutter build ios --simulator --debug --dart-define=USE_BACKEND_API=true` (`Built build/ios/iphonesimulator/Runner.app`)
+- [ ] 실제 iPhone/TestFlight에서 push-to-start token 등록, APNs start 수신, start 후 update token 등록까지 end-to-end 확인
+
+---
+
+## 2026-06-30: 푸시 설정 직후 밀린 경기 알림 backfill 차단
+
+### 원인
+- 사장님 지적: 푸시 알림을 켜면 현재 상태부터가 아니라 라인업 공개부터 지난 경기 알림이 다시 오는 증상이 있었다.
+- backend scheduler가 registry의 오래된 scoreboard/relay baseline과 현재 상태를 비교하면 `lineup_opened`, `hit`, `homerun` 같은 과거 delta를 새 FCM push처럼 발행할 수 있었다.
+- local `GameEventAlertService`도 권한/설정 off 동안 snapshot baseline이 갱신되지 않거나 설정 signature가 바뀌면 첫 처리에서 오래된 diff를 알림으로 볼 수 있었다.
+
+### 진행
+- [x] backend stale scoreboard baseline은 FCM moment를 발행하지 않고 현재 state로 재기준화
+- [x] backend stale relay baseline은 밀린 relay item을 발행하지 않고 현재 last seq로 재기준화
+- [x] local event alert는 알림 권한 off 상태에서도 baseline을 갱신하고, snapshot이 오래됐거나 settings signature가 바뀐 첫 tick은 알림 없이 baseline만 저장
+- [x] APP_SPEC, ENGINEERING_NOTES, CHANGELOG에 "밀린 알림은 받지 않는다" 정책 반영
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "rebaselines_stale"` (`2 failed`: stale baseline에서 `lineup_opened` / `homerun`이 발행됨)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py -k "rebaselines_stale"` (`2 passed, 81 deselected`)
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/services/game_event_alert_service_test.dart -r expanded` (`Method not found: shouldNotifyFromGameEventSnapshot`)
+- [x] GREEN 확인: `cd app && fvm flutter test --no-pub test/services/game_event_alert_service_test.dart -r expanded` (`All tests passed!`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`87 passed`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_push_service.py` (`All checks passed!`)
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/live_activity_scoreboard.py`
+- [x] `cd app && fvm flutter analyze --no-pub lib/services/game_event_alert_service.dart test/services/game_event_alert_service_test.dart` (`No issues found!`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-30: 마이팀 Live Activity와 푸쉬 전체 수신 정책 보강
+
+### 원인
+- 사장님 지적: `경기 따라가기`는 사용자가 이해하기에 모호하고, 마이팀 경기는 별도 선택 없이 Live Activity와 푸쉬 알림이 모두 떠야 한다.
+- 기존 앱/백엔드 topic 계산은 저장된 delivery/off 값에 따라 마이팀 경기 moment topic을 뺄 수 있어 예전 설정 상태가 자동 수신 정책을 약하게 만들 수 있었다.
+- Live Activity sync도 이미 타 경기를 follow 중이면 마이팀 라인업 공개 예정 경기보다 타 경기 live를 우선할 수 있었다.
+
+### 진행
+- [x] 앱 `buildPushTopics`가 마이팀 경기 moment는 delivery/off 저장값과 무관하게 팀 topic을 항상 만들도록 변경
+- [x] backend `PushService._build_topics`도 같은 규칙으로 맞춰 registry 재구독과 운영 worker 정책을 일치
+- [x] Live Activity 자동 선택을 마이팀 live, 마이팀 라인업 공개 예정, 다른 live, 다른 라인업 공개 예정 순서로 변경하고 기존 타 경기 follow보다 마이팀 후보를 우선
+- [x] 홈 카드/Android 진행형 알림/알림함/개인정보 문구에서 모호한 `따라가기` 표현을 `마이팀 알림` 또는 `라이브 경기 알림` 기준으로 정리
+- [x] APP_SPEC, ENGINEERING_NOTES, CHANGELOG를 최신 정책으로 동기화
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/services/push_notification_service_test.dart test/services/live_activity_service_test.dart test/features/home/widgets/my_team_game_card_test.dart`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py`
+- [x] `cd app && fvm flutter analyze --no-pub lib/services/live_activity_service.dart lib/services/push_notification_service.dart lib/features/home/widgets/my_team_game_card.dart lib/features/notifications/notification_inbox_screen.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart test/services/live_activity_service_test.dart test/features/home/widgets/my_team_game_card_test.dart`
+
+---
+
+## 2026-06-30: live 박스스코어 relay 계산값 연결
+
+### 원인
+- 사장님 지적: 진행 중 박스스코어는 실시간으로 계산해 받을 수 있는 값이 있는데 화면에서 쓰지 않는 듯했다.
+- 확인 결과 backend relay parser는 `LiveTextView2.aspx`의 오늘 타석 결과로 현재 타자 타수/안타를 계산해 Live Activity 타율 보강에는 쓰고 있었지만, `/api/game/{gameId}/boxscore` live context response로 전달하지 않았다.
+- 기존 박스스코어 live context UI도 `liveContext=true` row는 모든 기록 셀을 `-`로 고정해, backend가 계산값을 내려줘도 표시할 경로가 없었다.
+
+### 진행
+- [x] relay currentAtBat response에 오늘 타수/안타 계산값(`todayAtBats`, `todayHits`)을 포함
+- [x] 공식 `GetBoxScoreScroll`이 비어 있는 live 경기에서 boxscore crawler가 relay currentAtBat의 같은 현재 타자 계산값을 `BatterRecord`에 병합
+- [x] 박스스코어 탭이 live context row라도 계산된 타수/안타가 있으면 타수/안타/타율은 표시하고, 타점/득점처럼 확정하지 못한 값은 `-`로 유지
+- [x] APP_SPEC/CHANGELOG에 live boxscore 계산값 표시 기준 반영
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_relay_crawler.py backend/tests/test_boxscore_crawler.py` (`3 failed, 7 passed`)
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/game_detail/boxscore_tab_test.dart --reporter expanded` (`1 failed`)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_relay_crawler.py backend/tests/test_boxscore_crawler.py` (`10 passed`)
+- [x] GREEN 확인: `cd app && fvm flutter test --no-pub test/features/game_detail/boxscore_tab_test.dart --reporter expanded` (`All tests passed!`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/crawlers/boxscore.py backend/src/kbo_fans_backend/crawlers/relay.py backend/tests/test_boxscore_crawler.py backend/tests/test_relay_crawler.py` (`All checks passed!`)
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/crawlers/boxscore.py backend/src/kbo_fans_backend/crawlers/relay.py`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/game_detail/tabs/boxscore_tab.dart test/features/game_detail/boxscore_tab_test.dart` (`No issues found!`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-30: 알림함 진입 라벨과 회귀 테스트 보강
+
+### 원인
+- 사장님 지적: 현재 알림 설정 페이지가 들어가지지 않는 것처럼 보였다.
+- 현재 `main`의 홈 헤더는 이미 `/notifications`로 이동하지만, 툴팁이 여전히 `알림 설정`이라 숨겨진 설정 화면을 기대하게 만드는 불일치가 남아 있었다.
+- 더보기의 알림함 카드는 `context.push('/notifications')`로 연결되어 있었지만 실제 router 기반 진입 테스트가 없어 같은 회귀를 막는 증거가 부족했다.
+
+### 진행
+- [x] 홈 상단 알림 아이콘 툴팁을 실제 목적지인 `알림함`으로 변경
+- [x] 더보기 알림함 카드가 `/notifications`로 이동하는 router 기반 widget test 추가
+- [x] CHANGELOG에 사용자-visible 라벨/진입 보강으로 기록
+
+### 검증
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart --name "home notification inbox header opens notification inbox" --no-pub` (`All tests passed!`)
+- [x] `cd app && fvm flutter test test/features/settings/settings_screen_test.dart --name "더보기 알림함 카드로 알림함에 진입한다" --no-pub` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart test/features/settings/settings_screen_test.dart` (`No issues found!`)
+
+---
+
+## 2026-06-30: Live Activity 두 자리 점수와 타석 기록 잘림 보정
+
+### 원인
+- 사장님 지적: Live Activity와 유사한 앱 밖 표면에서 점수가 두 자리일 때 글자가 잘렸다.
+- 후속 지적: 현재 타석에서 오늘 어떤 기록이 있는지 보여주는 문장도 잘렸다.
+- `KboFansLiveActivityView.scoreView`가 38pt 점수 글자를 38pt 고정 폭에 넣고 있어 두 자리 점수에서 폭 부족이 날 수 있었다.
+- Dynamic Island expanded/compact/minimal과 홈 위젯 점수 텍스트도 별도 축소 기준이 부족해 같은 증상이 재발할 수 있었다.
+- `MatchupPlayerChip`이 `타자/이름/타율`, `투수/이름/ERA·투구수`를 한 줄에 모두 배치해 이름 또는 지표가 길어질 때 오늘 타석 기록이 잘릴 수 있었다.
+- 직전 플레이/상황 문장도 1줄 고정이라 긴 타석 결과 문장에서 잘림이 날 수 있었다.
+
+### 진행
+- [x] Lock Screen Live Activity 점수 폭을 넓히고 두 자리 이상일 때 폰트 크기와 최소 축소율을 조정
+- [x] Dynamic Island expanded/compact/minimal 점수 텍스트에 한 줄, 축소, 폭 기준을 추가
+- [x] 홈 위젯 점수 텍스트도 두 자리 스코어에 맞춰 축소/우선순위를 보강
+- [x] Lock Screen Live Activity 타자/투수 matchup chip을 이름과 기록 2줄 구조로 바꿔 현재 타석 지표가 잘리지 않도록 보강
+- [x] Lock Screen/Dynamic Island의 matchup/상황 문장은 2줄까지 표시되도록 보강
+- [x] 홈 위젯 타석/투수 문장에도 축소 기준 추가
+- [x] CHANGELOG에 사용자-visible 버그 수정으로 기록
+
+### 검증
+- [x] XcodeBuildMCP `build_sim` Runner / iPhone 17 simulator / Debug / `CODE_SIGNING_ALLOWED=NO` 성공
+
+---
+
 ## 2026-06-24: 0.1.7 알림 문구와 화면 흐름 릴리즈
 
 ### 결정

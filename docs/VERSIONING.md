@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-06-24
+> Updated: 2026-06-30
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.7+74`
-- Current release tag: `0.1.7`
+- Flutter app version: `0.1.8+75`
+- Current release tag: `0.1.8`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -124,6 +124,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.5`: followed-game moment coverage release. Selected-game follow subscriptions include every enabled game moment as `*_GAME_<gameId>` topics even when the saved delivery mode is `summary` or `liveOnly`, while team/all-game subscriptions still require `immediate`.
 - `0.1.6`: my-team automatic game notification release. My-team subscriptions include every enabled game moment on team topics without requiring `푸쉬 중계 받기`, followed other-team games add only the selected GAME topic, scheduler scoreboard diff sends `lineup_opened`, the sync worker schedules KST smart daily `baseball_info`, and the missing notification-inbox reference image is committed.
 - `0.1.7`: notification copy and screen-flow polish release. Onboarding shows a submitting state and removes the standalone hero image, More becomes an action-focused hub, player images are restored across detail/records surfaces, push/Live Activity/widget copy uses fan-facing short team names, and hit/homerun/scoring/reversal/cancelled/suspended messages are normalized for live game context.
+- `0.1.8`: live alert and game-detail freshness release. My-team game topics now include every game moment regardless of saved delivery/off settings, iOS 17.2+ push-to-start Live Activity registration and backend APNs start dispatch are added, stale push baselines are re-anchored without backfill, home-to-detail navigation waits for fresh detail/tab data, live detail tab switches refresh visible data immediately, live boxscore context can show relay-derived at-bats/hits/AVG, lineup/player image fallbacks are reinforced, and Live Activity/Dynamic Island/widget text fitting is tightened.
 
 ## GitHub Release Note Template
 
