@@ -28,6 +28,14 @@ struct KboFansWidgetEntry: TimelineEntry {
   let updatedAtEpoch: Int64
   let statusKind: String
   let launchUri: String
+  let summaryTitle: String
+  let contextLabel: String
+  let todayCount: Int
+  let liveCount: Int
+  let secondaryTitle: String
+  let secondaryStatus: String
+  let secondaryScore: String
+  let summaryLines: [String]
 }
 
 struct KboFansWidgetProvider: TimelineProvider {
@@ -49,7 +57,19 @@ struct KboFansWidgetProvider: TimelineProvider {
       updatedAt: "14:32",
       updatedAtEpoch: Int64(Date().timeIntervalSince1970 * 1000),
       statusKind: "live",
-      launchUri: "kboFans://game?gameId=preview&tab=relay&homeWidget"
+      launchUri: "kboFans://game?gameId=preview&tab=relay&homeWidget",
+      summaryTitle: "LIVE 2경기",
+      contextLabel: "마이팀",
+      todayCount: 5,
+      liveCount: 2,
+      secondaryTitle: "삼성 vs SSG",
+      secondaryStatus: "18:30 예정",
+      secondaryScore: "vs",
+      summaryLines: [
+        "LG 6:2 KT · 4회초",
+        "삼성 vs SSG · 18:30 예정",
+        "KIA 1:0 두산 · 2회말",
+      ]
     )
   }
 
@@ -82,78 +102,66 @@ struct KboFansWidgetProvider: TimelineProvider {
       updatedAt: data?.string(forKey: "widget_updated_at") ?? "--:--",
       updatedAtEpoch: Int64(data?.string(forKey: "widget_updated_at_epoch") ?? "0") ?? 0,
       statusKind: data?.string(forKey: "widget_status_kind") ?? "none",
-      launchUri: data?.string(forKey: "widget_launch_uri") ?? "kboFans://home?homeWidget"
+      launchUri: data?.string(forKey: "widget_launch_uri") ?? "kboFans://home?homeWidget",
+      summaryTitle: data?.string(forKey: "widget_summary_title") ?? "오늘 경기 없음",
+      contextLabel: data?.string(forKey: "widget_context_label") ?? "오늘 경기",
+      todayCount: Int(data?.string(forKey: "widget_today_count") ?? "0") ?? 0,
+      liveCount: Int(data?.string(forKey: "widget_live_count") ?? "0") ?? 0,
+      secondaryTitle: data?.string(forKey: "widget_secondary_title") ?? "",
+      secondaryStatus: data?.string(forKey: "widget_secondary_status") ?? "",
+      secondaryScore: data?.string(forKey: "widget_secondary_score") ?? "",
+      summaryLines: (1...4).compactMap { index in
+        let line = data?.string(forKey: "widget_summary_line_\(index)") ?? ""
+        return line.isEmpty ? nil : line
+      }
     )
   }
 }
 
 struct KboFansWidgetEntryView: View {
+  @Environment(\.widgetFamily) private var family
   let entry: KboFansWidgetProvider.Entry
 
   var body: some View {
-    let content = VStack(alignment: .leading, spacing: 6) {
-      Text(entry.title)
-        .font(.headline)
-        .foregroundStyle(.white)
-      Text(entry.subtitle)
-        .font(.caption)
-        .foregroundStyle(.gray)
-      Spacer(minLength: 6)
-      HStack(alignment: .center) {
-        TeamLogoView(teamId: entry.awayTeamId, fallback: "A", size: 22)
-        Text(entry.score)
-          .font(.title2)
-          .bold()
-          .foregroundStyle(.white)
-          .monospacedDigit()
-          .lineLimit(1)
-          .minimumScaleFactor(0.6)
-          .allowsTightening(true)
-          .layoutPriority(2)
-        TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 22)
-        Spacer(minLength: 10)
-        if hasAtBatContext {
-          _countBadges(balls: entry.balls, strikes: entry.strikes, outs: entry.outs)
-        }
-      }
-      Text(entry.status)
-        .font(.subheadline)
-        .foregroundStyle(Color(red: 1.0, green: 0.27, blue: 0.27))
-      if !entry.batter.isEmpty {
-        Text("타석 \(entry.batter)")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.68)
-          .allowsTightening(true)
-      }
-      if !entry.pitcher.isEmpty {
-        Text(pitcherLine(name: entry.pitcher, pitchCount: entry.pitchCount))
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-          .minimumScaleFactor(0.68)
-          .allowsTightening(true)
-      }
-      Text(
-        freshnessText(
-          updatedAt: entry.updatedAt,
-          updatedAtEpoch: entry.updatedAtEpoch,
-          statusKind: entry.statusKind
-        )
-      )
-        .font(.caption2)
-        .foregroundStyle(.gray)
-    }
-    .padding()
-    .widgetURL(URL(string: entry.launchUri))
+    let content = widgetContent
+      .widgetURL(URL(string: entry.launchUri))
 
     if #available(iOS 17.0, *) {
       content.containerBackground(for: .widget) {
-        Color(red: 0.06, green: 0.06, blue: 0.06)
+        kboBackground
       }
     } else {
-      content.background(Color(red: 0.06, green: 0.06, blue: 0.06))
+      content.background(kboBackground)
+    }
+  }
+
+  @ViewBuilder
+  private var widgetContent: some View {
+    if #available(iOSApplicationExtension 16.0, *) {
+      switch family {
+      case .accessoryInline:
+        accessoryInlineWidget
+      case .accessoryCircular:
+        accessoryCircularWidget
+      case .accessoryRectangular:
+        accessoryRectangularWidget
+      default:
+        systemWidget
+      }
+    } else {
+      systemWidget
+    }
+  }
+
+  @ViewBuilder
+  private var systemWidget: some View {
+    switch family {
+    case .systemLarge:
+      largeSlateWidget
+    case .systemMedium:
+      mediumScoreWidget
+    default:
+      smallScoreWidget
     }
   }
 
@@ -165,6 +173,240 @@ struct KboFansWidgetEntryView: View {
       entry.strikes > 0 ||
       entry.outs > 0
   }
+
+  private var smallScoreWidget: some View {
+    VStack(alignment: .leading, spacing: 7) {
+      headerRow
+      Spacer(minLength: 4)
+      HStack(alignment: .center, spacing: 8) {
+        TeamLogoView(teamId: entry.awayTeamId, fallback: "A", size: 24)
+        scoreText(entry.score, size: 27)
+        TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 24)
+      }
+      Text(statusOrSubtitle)
+        .font(.system(size: 14, weight: .bold, design: .rounded))
+        .foregroundStyle(statusColor)
+        .lineLimit(1)
+        .minimumScaleFactor(0.72)
+      footerFreshness
+    }
+    .padding(14)
+  }
+
+  private var mediumScoreWidget: some View {
+    HStack(alignment: .top, spacing: 14) {
+      VStack(alignment: .leading, spacing: 7) {
+        headerRow
+        Spacer(minLength: 2)
+        HStack(spacing: 9) {
+          TeamLogoView(teamId: entry.awayTeamId, fallback: "A", size: 26)
+          scoreText(entry.score, size: 30)
+          TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 26)
+        }
+        Text(statusOrSubtitle)
+          .font(.system(size: 13, weight: .bold, design: .rounded))
+          .foregroundStyle(statusColor)
+          .lineLimit(1)
+          .minimumScaleFactor(0.72)
+        footerFreshness
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+
+      Divider()
+        .overlay(kboDivider)
+
+      VStack(alignment: .leading, spacing: 7) {
+        Text("다음 보기")
+          .font(.system(size: 11, weight: .bold, design: .rounded))
+          .foregroundStyle(kboTextSecondary)
+        if entry.secondaryTitle.isEmpty {
+          summaryRows(limit: 2)
+        } else {
+          Text(entry.secondaryTitle)
+            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.66)
+          Text(entry.secondaryScore)
+            .font(.system(size: 22, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.62)
+          Text(entry.secondaryStatus)
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundStyle(kboTextSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.66)
+        }
+        Spacer(minLength: 0)
+      }
+      .frame(width: 128, alignment: .leading)
+    }
+    .padding(14)
+  }
+
+  private var largeSlateWidget: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: 3) {
+          Text(entry.summaryTitle)
+            .font(.system(size: 20, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+          Text(entry.liveCount > 0 ? "라이브 \(entry.liveCount) · 전체 \(entry.todayCount)" : "전체 \(entry.todayCount)")
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundStyle(kboTextSecondary)
+        }
+        Spacer(minLength: 8)
+        footerFreshness
+      }
+
+      HStack(spacing: 10) {
+        TeamLogoView(teamId: entry.awayTeamId, fallback: "A", size: 30)
+        VStack(alignment: .leading, spacing: 2) {
+          Text(entry.title)
+            .font(.system(size: 16, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+            .lineLimit(1)
+            .minimumScaleFactor(0.66)
+          Text(statusOrSubtitle)
+            .font(.system(size: 12, weight: .semibold, design: .rounded))
+            .foregroundStyle(kboTextSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.66)
+        }
+        Spacer(minLength: 6)
+        scoreText(entry.score, size: 28)
+        TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 30)
+      }
+      .padding(10)
+      .background(
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
+          .fill(kboCard)
+      )
+
+      summaryRows(limit: 4)
+      Spacer(minLength: 0)
+    }
+    .padding(14)
+  }
+
+  @available(iOSApplicationExtension 16.0, *)
+  private var accessoryInlineWidget: some View {
+    Text(accessoryLine)
+      .font(.caption.weight(.bold))
+      .lineLimit(1)
+      .minimumScaleFactor(0.62)
+      .widgetAccentable()
+  }
+
+  @available(iOSApplicationExtension 16.0, *)
+  private var accessoryCircularWidget: some View {
+    VStack(spacing: 1) {
+      Text(entry.statusKind == "live" ? "LIVE" : "KBO")
+        .font(.system(size: 10, weight: .black, design: .rounded))
+      Text(entry.score.isEmpty ? "vs" : entry.score.replacingOccurrences(of: " ", with: ""))
+        .font(.system(size: 12, weight: .black, design: .rounded))
+        .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.5)
+    }
+    .widgetAccentable()
+  }
+
+  @available(iOSApplicationExtension 16.0, *)
+  private var accessoryRectangularWidget: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(entry.title)
+        .font(.system(size: 13, weight: .bold, design: .rounded))
+        .lineLimit(1)
+        .minimumScaleFactor(0.62)
+      Text("\(entry.score.isEmpty ? entry.contextLabel : entry.score) · \(statusOrSubtitle)")
+        .font(.system(size: 11, weight: .semibold, design: .rounded))
+        .lineLimit(1)
+        .minimumScaleFactor(0.58)
+    }
+    .widgetAccentable()
+  }
+
+  private var headerRow: some View {
+    VStack(alignment: .leading, spacing: 3) {
+      Text(entry.contextLabel)
+        .font(.system(size: 11, weight: .bold, design: .rounded))
+        .foregroundStyle(kboTextSecondary)
+      Text(entry.title)
+        .font(.system(size: 17, weight: .black, design: .rounded))
+        .foregroundStyle(.white)
+        .lineLimit(1)
+        .minimumScaleFactor(0.62)
+    }
+  }
+
+  private var footerFreshness: some View {
+    Text(
+      freshnessText(
+        updatedAt: entry.updatedAt,
+        updatedAtEpoch: entry.updatedAtEpoch,
+        statusKind: entry.statusKind
+      )
+    )
+    .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+    .foregroundStyle(Color.white.opacity(0.46))
+    .lineLimit(1)
+    .minimumScaleFactor(0.7)
+  }
+
+  private var statusOrSubtitle: String {
+    if !entry.status.isEmpty {
+      return entry.status
+    }
+    return entry.subtitle.isEmpty ? entry.summaryTitle : entry.subtitle
+  }
+
+  private var statusColor: Color {
+    entry.statusKind == "live" ? kboLive : kboTextSecondary
+  }
+
+  private var accessoryLine: String {
+    let score = entry.score.isEmpty ? "" : "\(entry.score) · "
+    return "\(entry.title) \(score)\(statusOrSubtitle)"
+  }
+
+  private func scoreText(_ text: String, size: CGFloat) -> some View {
+    Text(text.isEmpty ? "vs" : text)
+      .font(.system(size: text.count > 5 ? size - 4 : size, weight: .black, design: .rounded))
+      .foregroundStyle(.white)
+      .monospacedDigit()
+      .lineLimit(1)
+      .minimumScaleFactor(0.56)
+      .allowsTightening(true)
+      .layoutPriority(2)
+  }
+
+  private func summaryRows(limit: Int) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      ForEach(Array(entry.summaryLines.prefix(limit).enumerated()), id: \.offset) { index, line in
+        HStack(spacing: 7) {
+          Text("\(index + 1)")
+            .font(.system(size: 10, weight: .black, design: .rounded))
+            .foregroundStyle(kboTextSecondary)
+            .frame(width: 14)
+          Text(line)
+            .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+            .foregroundStyle(index == 0 ? .white : kboTextSecondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.62)
+        }
+      }
+      if entry.summaryLines.isEmpty {
+        Text("오늘 표시할 경기가 없습니다")
+          .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+          .foregroundStyle(kboTextSecondary)
+          .lineLimit(1)
+          .minimumScaleFactor(0.62)
+      }
+    }
+  }
 }
 
 struct KboFansWidget: Widget {
@@ -174,10 +416,24 @@ struct KboFansWidget: Widget {
     StaticConfiguration(kind: kind, provider: KboFansWidgetProvider()) { entry in
       KboFansWidgetEntryView(entry: entry)
     }
-    .configurationDisplayName("KBO Fans")
-    .description("마이팀 혹은 현재 경기 점수를 빠르게 확인합니다.")
-    .supportedFamilies([.systemSmall, .systemMedium])
+    .configurationDisplayName("KBO Fans 경기판")
+    .description("마이팀, 현재 경기, 오늘 경기 목록을 크기별로 확인합니다.")
+    .supportedFamilies(kboSupportedWidgetFamilies())
   }
+}
+
+private func kboSupportedWidgetFamilies() -> [WidgetFamily] {
+  if #available(iOSApplicationExtension 16.0, *) {
+    return [
+      .systemSmall,
+      .systemMedium,
+      .systemLarge,
+      .accessoryInline,
+      .accessoryCircular,
+      .accessoryRectangular,
+    ]
+  }
+  return [.systemSmall, .systemMedium, .systemLarge]
 }
 
 @available(iOS 16.1, *)

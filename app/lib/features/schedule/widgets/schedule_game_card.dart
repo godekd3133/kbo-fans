@@ -43,7 +43,7 @@ class ScheduleGameCard extends StatelessWidget {
                 if (dateLabel != null) ...[
                   Text(
                     dateLabel!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textDisabled,
                       fontWeight: FontWeight.w700,
@@ -53,7 +53,7 @@ class ScheduleGameCard extends StatelessWidget {
                 ],
                 Text(
                   game.time,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w800,
@@ -73,7 +73,7 @@ class ScheduleGameCard extends StatelessWidget {
                 const Spacer(),
                 Text(
                   game.stadium,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textDisabled,
                     fontWeight: FontWeight.w700,
@@ -113,7 +113,7 @@ class ScheduleGameCard extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.confirmation_num_outlined,
                     size: 14,
                     color: AppColors.accent,
@@ -122,7 +122,7 @@ class ScheduleGameCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       ticketSummary!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
@@ -176,14 +176,14 @@ class _TeamInfo extends StatelessWidget {
           Container(
             width: 38,
             height: 38,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: AppColors.cardSub,
               shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
                 shortName.isEmpty ? '?' : shortName.substring(0, 1),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 10,
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
@@ -242,7 +242,7 @@ class _ScoreOrVersus extends StatelessWidget {
         awayScore != null &&
         homeScore != null;
     if (!hasScore) {
-      return const Text(
+      return Text(
         'vs',
         style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
       );
@@ -258,7 +258,7 @@ class _ScoreOrVersus extends StatelessWidget {
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
           ),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text(
             ':',

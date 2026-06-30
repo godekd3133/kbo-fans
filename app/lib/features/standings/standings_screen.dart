@@ -56,7 +56,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     _seasonDropdown(),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.refresh,
                         size: 20,
                         color: AppColors.textDisabled,
@@ -71,7 +71,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               Expanded(
                 child: AppMotionSwitcher(
                   child: standingsAsync.when(
-                    loading: () => const KeyedSubtree(
+                    loading: () => KeyedSubtree(
                       key: ValueKey('standings-loading'),
                       child: Center(
                         child: CircularProgressIndicator(color: AppColors.live),
@@ -99,7 +99,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                                 const SizedBox(height: 6),
                                 Text(
                                   describeAsyncError(e),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,
                                     height: 1.35,
@@ -147,7 +147,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                                   ),
                                   child: _buildHeaderRow(),
                                 ),
-                                const Divider(
+                                Divider(
                                   color: AppColors.divider,
                                   height: 1,
                                   indent: 16,
@@ -167,7 +167,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 child: Center(
                   child: Text(
                     '마지막 업데이트: ${DateFormat('yyyy.MM.dd HH:mm').format(DateTime.now())}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textDisabled,
                     ),
@@ -292,7 +292,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     child: Center(
                       child: Text(
                         '${s.draws}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
                         ),
@@ -354,8 +354,8 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   }
 
   Widget _buildHeaderRow() {
-    const style = TextStyle(fontSize: 12, color: AppColors.textDisabled);
-    return const SizedBox(
+    final style = TextStyle(fontSize: 12, color: AppColors.textDisabled);
+    return SizedBox(
       height: 34,
       child: Row(
         children: [
@@ -468,7 +468,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
               const SizedBox(height: 6),
               Text(
                 '$_selectedSeason 시즌 순위가 들어오면 이 화면에서 바로 정리됩니다.',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
                   height: 1.35,
@@ -626,7 +626,7 @@ class _StandingsPulseItem extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.w700,
@@ -654,7 +654,7 @@ class _StandingsPulseItem extends StatelessWidget {
               detail!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 color: AppColors.textDisabled,
                 fontWeight: FontWeight.w600,

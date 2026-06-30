@@ -34,30 +34,27 @@ class LeaderboardScreen extends ConsumerWidget {
             children: [
               Text(
                 '$season 시즌 · ${metric.shortLabel}',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               if (!metric.supportedByOfficialSource)
                 _unsupportedMetricCard(metric: metric)
               else
                 Expanded(
                   child: asyncValue.when(
-                    loading: () => const Center(
+                    loading: () => Center(
                       child: CircularProgressIndicator(color: AppColors.live),
                     ),
                     error: (error, _) => Center(
                       child: Text(
                         '$error',
-                        style: const TextStyle(color: AppColors.textDisabled),
+                        style: TextStyle(color: AppColors.textDisabled),
                         textAlign: TextAlign.center,
                       ),
                     ),
                     data: (leaders) {
                       if (leaders.isEmpty) {
-                        return const Center(
+                        return Center(
                           child: Text(
                             '표시할 리더보드 데이터가 없습니다',
                             style: TextStyle(color: AppColors.textDisabled),
@@ -122,7 +119,7 @@ class LeaderboardScreen extends ConsumerWidget {
               width: 28,
               child: Text(
                 '${leader.rank}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textSecondary,
@@ -144,7 +141,7 @@ class LeaderboardScreen extends ConsumerWidget {
                   alignment: Alignment.center,
                   child: Text(
                     leader.name.isEmpty ? '?' : leader.name.substring(0, 1),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w700,
                     ),
@@ -189,7 +186,7 @@ class LeaderboardScreen extends ConsumerWidget {
                         const SizedBox(height: 2),
                         Text(
                           team?.name ?? leader.teamId,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
@@ -232,7 +229,7 @@ class LeaderboardScreen extends ConsumerWidget {
             metric == LeaderboardMetric.war
                 ? '현재 KBO 공식 소스 기준으로는 WAR 리더보드를 같은 방식으로 공개하지 않아 아직 연결하지 못했습니다.'
                 : '현재 이 지표는 사용할 수 없습니다.',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
               height: 1.45,
@@ -250,7 +247,7 @@ class LeaderboardScreen extends ConsumerWidget {
         color: AppColors.textDisabled.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: const Text(
+      child: Text(
         '은퇴',
         style: TextStyle(
           fontSize: 10,

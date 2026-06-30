@@ -77,6 +77,87 @@ void main() {
     expect(item.route, '/schedule');
   });
 
+  test('local home aggregate keeps every standings row in rank order', () {
+    final aggregate = buildLocalHomeAggregate(
+      date: '2026-06-20',
+      myTeam: 'LG',
+      games: const [],
+      scheduleDays: const [],
+      standings: const [
+        TeamStanding(
+          rank: 6,
+          teamId: 'LG',
+          teamName: 'LG 트윈스',
+          wins: 24,
+          losses: 24,
+          draws: 2,
+          pct: '.500',
+          gb: '7.0',
+        ),
+        TeamStanding(
+          rank: 1,
+          teamId: 'HT',
+          teamName: 'KIA 타이거즈',
+          wins: 31,
+          losses: 17,
+          draws: 2,
+          pct: '.646',
+          gb: '-',
+        ),
+        TeamStanding(
+          rank: 2,
+          teamId: 'OB',
+          teamName: '두산 베어스',
+          wins: 30,
+          losses: 18,
+          draws: 2,
+          pct: '.625',
+          gb: '1.0',
+        ),
+        TeamStanding(
+          rank: 3,
+          teamId: 'SS',
+          teamName: '삼성 라이온즈',
+          wins: 28,
+          losses: 20,
+          draws: 2,
+          pct: '.583',
+          gb: '3.0',
+        ),
+        TeamStanding(
+          rank: 4,
+          teamId: 'SK',
+          teamName: 'SSG 랜더스',
+          wins: 27,
+          losses: 21,
+          draws: 2,
+          pct: '.563',
+          gb: '4.0',
+        ),
+        TeamStanding(
+          rank: 5,
+          teamId: 'NC',
+          teamName: 'NC 다이노스',
+          wins: 26,
+          losses: 22,
+          draws: 2,
+          pct: '.542',
+          gb: '5.0',
+        ),
+      ],
+      overview: _emptyOverview(),
+    );
+
+    expect(aggregate.standingsPreview.map((standing) => standing.teamId), [
+      'HT',
+      'OB',
+      'SS',
+      'SK',
+      'NC',
+      'LG',
+    ]);
+  });
+
   test('local KBO brief puts league game ahead of my-team duplicate', () {
     final aggregate = buildLocalHomeAggregate(
       date: '2026-05-20',
@@ -233,7 +314,7 @@ void main() {
     expect(brief.recentDraws, 0);
     expect(brief.recentSummaries.single.score, '5:2');
     expect(aggregate.quickItems.first.title, '두산 vs LG');
-    expect(aggregate.kboBrief?.title, '오늘의 KBO 관전 포인트');
+    expect(aggregate.kboBrief?.title, 'KBO 소식');
     expect(aggregate.kboBrief?.items.first.title, '두산 vs LG');
   });
 
@@ -296,5 +377,20 @@ void main() {
       expect(titles, isNot(contains('두산-삼성 합계 19안타')));
       expect(highHitItems, isEmpty);
     },
+  );
+}
+
+RecordsOverview _emptyOverview() {
+  return const RecordsOverview(
+    season: 2026,
+    avgLeaders: [],
+    hrLeaders: [],
+    opsLeaders: [],
+    opsPlusLeaders: [],
+    eraLeaders: [],
+    todayHitter: FeaturedPlayerCard(label: 'today hitter'),
+    todayPitcher: FeaturedPlayerCard(label: 'today pitcher'),
+    monthHitter: FeaturedPlayerCard(label: 'month hitter'),
+    monthPitcher: FeaturedPlayerCard(label: 'month pitcher'),
   );
 }

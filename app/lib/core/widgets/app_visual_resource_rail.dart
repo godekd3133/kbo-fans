@@ -48,7 +48,7 @@ class AppVisualResourceRail extends StatelessWidget {
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.low,
                   errorBuilder: (_, _, _) =>
-                      const ColoredBox(color: AppColors.cardSub),
+                      ColoredBox(color: AppColors.cardSub),
                 ),
               ),
             );

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="default_notification_channel_id">remote_push_foreground</string>
+    <string name="kbo_score_widget_label">KBO 점수 위젯</string>
+    <string name="kbo_slate_widget_label">KBO 경기판 위젯</string>
 </resources>

@@ -166,20 +166,7 @@ List<TeamStanding> _buildLocalStandingsPreview(
   }
 
   final sorted = [...standings]..sort((a, b) => a.rank.compareTo(b.rank));
-  final preview = sorted.take(5).toList();
-  final myTeamStanding = myTeam == null
-      ? null
-      : sorted.where((item) => item.teamId == myTeam).firstOrNull;
-  if (myTeamStanding != null &&
-      !preview.any((item) => item.teamId == myTeamStanding.teamId)) {
-    if (preview.length >= 5) {
-      preview[preview.length - 1] = myTeamStanding;
-    } else {
-      preview.add(myTeamStanding);
-    }
-    preview.sort((a, b) => a.rank.compareTo(b.rank));
-  }
-  return List.unmodifiable(preview);
+  return List.unmodifiable(sorted);
 }
 
 HomeMyTeamBrief? _buildLocalMyTeamBrief({
@@ -522,7 +509,7 @@ HomeKboBrief _buildLocalKboBrief({
         type: 'offday',
         eyebrow: '리그 체크',
         title: '오늘은 KBO 경기가 없습니다',
-        subtitle: '순위표와 리더보드로 다음 경기 관전 포인트를 준비하세요.',
+        subtitle: '순위표와 리더보드로 다음 경기 흐름을 확인하세요.',
         route: '/schedule',
       ),
     );
@@ -608,7 +595,7 @@ String _kboBriefTitle({
   if (hasFinal) {
     return _isYesterday(date) ? '어제의 KBO 브리프' : '오늘의 KBO 요약';
   }
-  return '오늘의 KBO 관전 포인트';
+  return 'KBO 소식';
 }
 
 String _kboBriefSubtitle({
@@ -626,7 +613,7 @@ String _kboBriefSubtitle({
   if (finalGames > 0) {
     return '$finalGames경기 종료 · 기록과 흐름을 빠르게 확인';
   }
-  return '$scheduledGames경기 예정 · 경기 전 체크포인트';
+  return '$scheduledGames경기 예정 · 오늘 일정';
 }
 
 bool _isYesterday(String date) {

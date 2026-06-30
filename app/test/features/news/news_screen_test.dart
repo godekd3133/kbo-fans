@@ -52,8 +52,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('뉴스'), findsOneWidget);
-    expect(find.text('지금 KBO'), findsOneWidget);
-    expect(find.text('오늘의 3분 브리핑'), findsOneWidget);
+    expect(find.text('주요 소식'), findsOneWidget);
+    expect(find.text('지금 KBO'), findsNothing);
+    expect(find.text('2경기 진행 중'), findsNothing);
+    expect(find.text('오늘의 3분 브리핑'), findsNothing);
     expect(find.text('최신 뉴스'), findsOneWidget);
     expect(find.text('LG 트윈스 1위 유지'), findsWidgets);
     expect(find.text('김도영 13개'), findsWidgets);
@@ -93,7 +95,7 @@ void main() {
                 ],
               ),
               kboBrief: const HomeKboBrief(
-                title: '오늘의 KBO 인사이트 팩',
+                title: '오늘의 KBO 소식',
                 subtitle: '지금 볼 장면 8개',
                 items: [
                   HomeKboBriefItem(

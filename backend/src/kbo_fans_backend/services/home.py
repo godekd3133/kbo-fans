@@ -381,7 +381,7 @@ class HomeService:
                     "type": "offday",
                     "eyebrow": "리그 체크",
                     "title": "오늘은 KBO 경기가 없습니다",
-                    "subtitle": "순위표와 리더보드로 다음 경기 관전 포인트를 준비하세요.",
+                    "subtitle": "순위표와 리더보드로 다음 경기 흐름을 확인하세요.",
                     "route": "/schedule",
                     "gameId": None,
                     "teamIds": [],
@@ -575,22 +575,7 @@ class HomeService:
             standings,
             key=lambda item: self._as_int(item.get("rank"), fallback=999),
         )
-        preview = list(sorted_standings[:5])
-        if my_team:
-            my_team_standing = next(
-                (item for item in sorted_standings if item.get("teamId") == my_team),
-                None,
-            )
-            if my_team_standing is not None and all(
-                item.get("teamId") != my_team for item in preview
-            ):
-                if len(preview) >= 5:
-                    preview[-1] = my_team_standing
-                else:
-                    preview.append(my_team_standing)
-                preview.sort(key=lambda item: self._as_int(item.get("rank"), fallback=999))
-
-        return [self._standings_preview_item(item) for item in preview]
+        return [self._standings_preview_item(item) for item in sorted_standings]
 
     def _standings_preview_item(self, item: Dict[str, Any]) -> Dict[str, Any]:
         return {
@@ -675,7 +660,7 @@ class HomeService:
             return "지금 KBO"
         if has_final:
             return "어제의 KBO 브리프" if HomeService._is_yesterday(today) else "오늘의 KBO 요약"
-        return "오늘의 KBO 관전 포인트"
+        return "KBO 소식"
 
     @staticmethod
     def _kbo_brief_subtitle(
@@ -691,7 +676,7 @@ class HomeService:
             return f"{live_games}경기 진행 중 · 강한 흐름부터 정리"
         if final_games > 0:
             return f"{final_games}경기 종료 · 기록과 흐름을 빠르게 확인"
-        return f"{scheduled_games}경기 예정 · 경기 전 체크포인트"
+        return f"{scheduled_games}경기 예정 · 오늘 일정"
 
     @staticmethod
     def _is_yesterday(value: str) -> bool:

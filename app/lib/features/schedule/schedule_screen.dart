@@ -203,7 +203,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     'MMM yyyy',
                     'en_US',
                   ).format(_currentMonth).toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textDisabled,
                     fontWeight: FontWeight.w900,
@@ -272,7 +272,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return Column(
       children: [
         _buildControls(),
-        const Divider(color: AppColors.divider, height: 1),
+        Divider(color: AppColors.divider, height: 1),
         Expanded(child: _buildStadiumPager()),
       ],
     );
@@ -289,7 +289,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         children: [
           _buildControls(),
           _buildCalendarPager(context),
-          const Divider(color: AppColors.divider, height: 1),
+          Divider(color: AppColors.divider, height: 1),
           Expanded(child: _buildGameListLoading()),
         ],
       );
@@ -304,7 +304,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         children: [
           _buildControls(),
           _buildCalendarPager(context),
-          const Divider(color: AppColors.divider, height: 1),
+          Divider(color: AppColors.divider, height: 1),
           ...scheduleAsync.when<List<Widget>>(
             loading: () => [_buildGameListLoadingSection()],
             error: (error, _) => [_buildScheduleErrorContent(error)],
@@ -490,7 +490,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
+          style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
         ),
       ],
     );
@@ -891,10 +891,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             const SizedBox(height: 6),
             Text(
               message,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -903,9 +900,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _buildGameListLoading() {
-    return const Center(
-      child: CircularProgressIndicator(color: AppColors.live),
-    );
+    return Center(child: CircularProgressIndicator(color: AppColors.live));
   }
 
   Widget _buildGameListLoadingSection() {
@@ -929,7 +924,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             const SizedBox(height: 6),
             Text(
               describeAsyncError(error),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,
                 height: 1.35,
@@ -1066,7 +1061,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.place_outlined,
               size: 14,
               color: AppColors.textSecondary,
@@ -1074,7 +1069,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             const SizedBox(width: 5),
             Text(
               stadium,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -1083,7 +1078,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             const SizedBox(width: 5),
             Text(
               '$gameCount',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 color: AppColors.textDisabled,
                 fontWeight: FontWeight.w600,

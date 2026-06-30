@@ -107,7 +107,7 @@ class PlayerDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 4),
                         Text(
                           '${team?.name ?? player.teamId} · ${player.roleLabel}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
                           ),
@@ -155,11 +155,11 @@ class PlayerDetailScreen extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         _section(
           title: '최근 기록',
           child: player.recentGames.isEmpty
-              ? const Text(
+              ? Text(
                   '최근 기록이 없습니다',
                   style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
                 )
@@ -181,7 +181,7 @@ class PlayerDetailScreen extends ConsumerWidget {
                                 width: 54,
                                 child: Text(
                                   game.date,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textDisabled,
                                   ),
@@ -202,7 +202,7 @@ class PlayerDetailScreen extends ConsumerWidget {
                                     const SizedBox(height: 4),
                                     Text(
                                       game.summary,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         color: AppColors.textSecondary,
                                       ),
@@ -217,11 +217,11 @@ class PlayerDetailScreen extends ConsumerWidget {
                   ],
                 ),
         ),
-        const SizedBox(height: 18),
+        SizedBox(height: 18),
         _section(
           title: '노트',
           child: player.highlights.isEmpty
-              ? const Text(
+              ? Text(
                   '표시할 메모가 없습니다',
                   style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
                 )
@@ -266,10 +266,7 @@ class PlayerDetailScreen extends ConsumerWidget {
             width: 68,
             child: Text(
               label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textDisabled,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
             ),
           ),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
@@ -287,7 +284,7 @@ class PlayerDetailScreen extends ConsumerWidget {
       ),
       child: Text(
         text,
-        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
       ),
     );
   }
@@ -298,7 +295,7 @@ class PlayerDetailScreen extends ConsumerWidget {
       alignment: Alignment.center,
       child: Text(
         '$number',
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 28,
           fontWeight: FontWeight.w700,
           color: AppColors.textSecondary,
@@ -315,7 +312,7 @@ class _PlayerDetailLoading extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      children: const [
+      children: [
         SizedBox(
           height: 420,
           child: Center(

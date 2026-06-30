@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
+import 'package:kbo_fans/data/models/player.dart';
+import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
@@ -16,6 +18,55 @@ import 'package:kbo_fans/services/live_activity_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('경기 상세 진입 전 relay 선수 사진 prefetch 후보를 계산한다', () {
+    const relayData = RelayData(
+      currentAtBat: CurrentAtBat(
+        batterName: '김도영',
+        batterImageUrl: 'https://img.example.com/doyoung.jpg',
+        batterNumber: 5,
+        batterHand: '우타',
+        pitcherName: '곽빈',
+        pitcherNumber: 47,
+        pitcherHand: '우투',
+        pitchCount: 12,
+        balls: 1,
+        strikes: 0,
+        outs: 1,
+      ),
+      relayItems: [
+        RelayItem(
+          seqNo: 11,
+          inning: 9,
+          half: 'bottom',
+          event: 'OUT',
+          text: '이유찬: 좌익수 플라이 아웃',
+        ),
+        RelayItem(
+          seqNo: 10,
+          inning: 9,
+          half: 'top',
+          event: 'HIT',
+          text: '김도영: 우전 안타',
+        ),
+      ],
+    );
+
+    final urls = relayPlayerImagePrefetchUrlsForTesting(
+      relayData: relayData,
+      teamPlayers: [
+        _playerProfile(name: '곽빈', id: '67263'),
+        _playerProfile(name: '이유찬', id: '66244'),
+      ],
+      season: 2026,
+    );
+
+    expect(urls, [
+      'https://img.example.com/doyoung.jpg',
+      kboPlayerImageUrl(season: 2026, playerId: '67263'),
+      kboPlayerImageUrl(season: 2026, playerId: '66244'),
+    ]);
+  });
+
   testWidgets('defers home aggregate provider until after scoreboard paint', (
     tester,
   ) async {
@@ -178,6 +229,66 @@ void main() {
     );
   });
 
+  testWidgets(
+    'shows live my-team relay card above today games and opens relay',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+      _ensureAppConfigInitialized();
+      final router = _homeInteractionRouter();
+      final liveMyTeamGame = _liveGame(
+        gameId: '20260611SSLG0',
+        awayTeamId: 'SS',
+        homeTeamId: 'LG',
+      );
+
+      await tester.pumpWidget(
+        _homeInteractionScope(
+          scoreboardGames: [liveMyTeamGame],
+          child: ProviderScope(
+            retry: (_, _) => null,
+            overrides: [
+              gameProvider.overrideWith((ref, gameId) async => liveMyTeamGame),
+              relayDataProvider.overrideWith(
+                (ref, gameId) async =>
+                    const RelayData(currentAtBat: null, relayItems: []),
+              ),
+            ],
+            child: MaterialApp.router(routerConfig: router),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final liveCard = find.byKey(const ValueKey('home-live-my-team-game'));
+      final todayHeader = find.byKey(const ValueKey('home-today-games-header'));
+      expect(liveCard, findsOneWidget);
+      expect(find.text('내 경기 진행 중'), findsOneWidget);
+      expect(find.text('문자중계 보기'), findsOneWidget);
+      expect(
+        tester.getTopLeft(liveCard).dy,
+        lessThan(tester.getTopLeft(todayHeader).dy),
+      );
+
+      await tester.tap(liveCard);
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('game-detail-${liveMyTeamGame.gameId}-tab-relay'),
+        findsOneWidget,
+      );
+      expect(find.text('game-detail-focus-relay'), findsOneWidget);
+    },
+  );
+
   testWidgets('deduplicates today games and keeps my-team row visible', (
     tester,
   ) async {
@@ -249,6 +360,107 @@ void main() {
     );
   });
 
+  testWidgets(
+    'home shows all today games and standings without view-all CTAs',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+      _ensureAppConfigInitialized();
+      final router = _homeInteractionRouter();
+      final games = [
+        _scheduledGame(
+          gameId: '20260619SSLG0',
+          awayTeamId: 'SS',
+          awayShortName: '삼성',
+          homeTeamId: 'LG',
+          homeShortName: 'LG',
+          stadium: '잠실',
+        ),
+        _scheduledGame(
+          gameId: '20260619HTOB0',
+          awayTeamId: 'HT',
+          awayShortName: 'KIA',
+          homeTeamId: 'OB',
+          homeShortName: '두산',
+          stadium: '광주',
+        ),
+        _scheduledGame(
+          gameId: '20260619NCKT0',
+          awayTeamId: 'NC',
+          awayShortName: 'NC',
+          homeTeamId: 'KT',
+          homeShortName: 'KT',
+          stadium: '창원',
+        ),
+        _scheduledGame(
+          gameId: '20260619WOLT0',
+          awayTeamId: 'WO',
+          awayShortName: '키움',
+          homeTeamId: 'LT',
+          homeShortName: '롯데',
+          stadium: '고척',
+        ),
+        _scheduledGame(
+          gameId: '20260619HHSK0',
+          awayTeamId: 'HH',
+          awayShortName: '한화',
+          homeTeamId: 'SK',
+          homeShortName: 'SSG',
+          stadium: '대전',
+        ),
+      ];
+      final standings = _leagueStandings();
+
+      await tester.pumpWidget(
+        _homeInteractionScope(
+          child: MaterialApp.router(routerConfig: router),
+          scoreboardGames: games,
+          standingsPreview: standings,
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      final todayHeader = find.byKey(const ValueKey('home-today-games-header'));
+      expect(
+        find.descendant(
+          of: todayHeader,
+          matching: find.widgetWithText(TextButton, '전체 보기'),
+        ),
+        findsNothing,
+      );
+      for (final game in games) {
+        expect(
+          find.byKey(ValueKey('home-today-game-${game.gameId}')),
+          findsOneWidget,
+        );
+      }
+
+      final standingsHeader = find.byKey(
+        const ValueKey('home-standings-header'),
+      );
+      expect(
+        find.descendant(
+          of: standingsHeader,
+          matching: find.widgetWithText(TextButton, '전체 보기'),
+        ),
+        findsNothing,
+      );
+      for (final standing in standings) {
+        expect(
+          find.byKey(ValueKey('home-standings-row-${standing.teamId}')),
+          findsOneWidget,
+        );
+      }
+    },
+  );
+
   testWidgets('recent flow row opens team records with press interaction', (
     tester,
   ) async {
@@ -273,6 +485,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('team-record-LG'), findsOneWidget);
+  });
+
+  testWidgets('recent flow renders every standings team below standings', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(child: MaterialApp.router(routerConfig: router)),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home-recent-flow-row-HT')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-recent-flow-row-LG')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-recent-flow-row-SS')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-recent-flow-row-KT')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('standings row opens standings overview like View All', (
@@ -347,7 +597,7 @@ void main() {
       _homeInteractionScope(
         child: MaterialApp.router(routerConfig: router),
         kboBrief: const HomeKboBrief(
-          title: '오늘의 KBO 인사이트 팩',
+          title: '오늘의 KBO 소식',
           subtitle: '실제 기록 신호',
           items: [
             HomeKboBriefItem(
@@ -377,6 +627,208 @@ void main() {
     );
   });
 
+  testWidgets('home insight and quick cards keep long copy visible', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    final standings = [
+      _standing(
+        rank: 1,
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        wins: 42,
+        losses: 35,
+        draws: 1,
+        pct: '.545',
+        gb: '-',
+        streak: 'W2',
+      ),
+      _standing(
+        rank: 5,
+        teamId: 'OB',
+        teamName: '두산 베어스',
+        wins: 38,
+        losses: 38,
+        draws: 2,
+        pct: '.500',
+        gb: '9.5',
+        streak: 'L1',
+      ),
+    ];
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        standingsPreview: standings,
+        kboBrief: const HomeKboBrief(
+          title: '오늘의 KBO 소식',
+          subtitle: '지금 볼 장면 3개',
+          items: [
+            HomeKboBriefItem(
+              type: 'standings',
+              eyebrow: '선두권',
+              title: '1위 LG 트윈스',
+              subtitle: '삼성 라이온즈와 2.5G차 · 선두권 흐름 확인',
+              route: '/standings',
+              teamIds: ['LG', 'SS'],
+            ),
+            HomeKboBriefItem(
+              type: 'record_radar',
+              eyebrow: '기록 레이더',
+              title: '오스틴 24홈런',
+              subtitle: 'LG 트윈스 · 시즌 홈런 선두권 경쟁 중',
+              route: '/records',
+              teamIds: ['LG'],
+            ),
+            HomeKboBriefItem(
+              type: 'big_match',
+              eyebrow: '오늘 일정',
+              title: '롯데 자이언츠 vs 두산 베어스',
+              subtitle: '18:30 · 잠실 · 오늘 5경기 예정',
+              route: '/game/20260630LTOB0',
+              teamIds: ['LT', 'OB'],
+            ),
+          ],
+        ),
+        quickItems: const [
+          HomeQuickItem(
+            eyebrow: '마이팀 순위',
+            title: '5위 · 두산 베어스',
+            subtitle: '38승 38패 2무 · 9.5G차',
+            route: '/standings',
+            teamId: 'OB',
+            fallbackLabel: '두산 베어스',
+          ),
+        ],
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('오늘의 KBO 소식'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('kbo-brief-team-logo-standings-LG')),
+      findsAtLeastNWidgets(1),
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.ensureVisible(find.text('지금 보면 좋은 정보'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('5위 · 두산 베어스'), findsOneWidget);
+    expect(find.text('38승 38패 2무 · 9.5G차'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('KBO brief hides remaining-game footer and stale item', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        kboBrief: const HomeKboBrief(
+          title: '오늘의 KBO 소식',
+          subtitle: '지금 볼 장면 2개',
+          items: [
+            HomeKboBriefItem(
+              type: 'big_match',
+              eyebrow: '오늘 일정',
+              title: '삼성 vs LG',
+              subtitle: '18:30 · 잠실 · 오늘 2경기 예정',
+              route: '/game/20260619SSLG0',
+            ),
+            HomeKboBriefItem(
+              type: 'schedule_remaining',
+              eyebrow: '남은 경기',
+              title: 'SSG vs 두산 외 1경기',
+              subtitle: '18:30 시작 · 중계 바로가기',
+              route: '/schedule',
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('오늘의 KBO 소식'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('오늘의 KBO 소식'), findsOneWidget);
+    expect(find.text('삼성 vs LG'), findsAtLeastNWidgets(1));
+    expect(find.text('오늘 남은 경기 2'), findsNothing);
+    expect(find.text('남은 경기'), findsNothing);
+    expect(find.text('SSG vs 두산 외 1경기'), findsNothing);
+    expect(find.text('중계 바로가기'), findsNothing);
+  });
+
+  testWidgets('KBO brief scheduled feature does not render as LIVE', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        kboBrief: const HomeKboBrief(
+          title: '오늘의 KBO 소식',
+          subtitle: '지금 볼 장면 1개',
+          items: [
+            HomeKboBriefItem(
+              type: 'big_match',
+              eyebrow: '오늘 일정',
+              title: '롯데 vs 두산',
+              subtitle: '18:30 · 잠실 · 오늘 5경기 예정',
+              route: '/game/20260630LTOB0',
+              gameId: '20260630LTOB0',
+              teamIds: ['LT', 'OB'],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('오늘의 KBO 소식'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('롯데 vs 두산'), findsAtLeastNWidgets(1));
+    expect(find.text('예정'), findsAtLeastNWidgets(1));
+    expect(find.text('LIVE'), findsNothing);
+    expect(find.text('B'), findsNothing);
+    expect(find.text('S'), findsNothing);
+    expect(find.text('O'), findsNothing);
+  });
+
   testWidgets('home broad insight CTAs open news brief instead of records', (
     tester,
   ) async {
@@ -393,7 +845,7 @@ void main() {
       _homeInteractionScope(
         child: MaterialApp.router(routerConfig: router),
         kboBrief: const HomeKboBrief(
-          title: '오늘의 KBO 관전 포인트',
+          title: 'KBO 소식',
           subtitle: '2경기 예정',
           items: [
             HomeKboBriefItem(
@@ -606,6 +1058,27 @@ void main() {
   });
 }
 
+PlayerProfile _playerProfile({required String name, required String id}) {
+  return PlayerProfile(
+    id: id,
+    teamId: 'OB',
+    name: name,
+    number: 0,
+    position: '',
+    roleLabel: '',
+    handedness: '',
+    heightWeight: '',
+    birthDate: '',
+    status: PlayerAvailabilityStatus.available,
+    rosterGroup: PlayerRosterGroup.entry,
+    headlineStat: '',
+    secondaryStat: '',
+    seasonStats: const [],
+    highlights: const [],
+    recentGames: const [],
+  );
+}
+
 String _todayKey() {
   final now = DateTime.now();
   return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -651,8 +1124,15 @@ GoRouter _homeInteractionRouter() {
       ),
       GoRoute(
         path: '/game/:gameId',
-        builder: (_, state) => Text(
-          'game-detail-${state.pathParameters['gameId']}-tab-${state.uri.queryParameters['tab'] ?? ''}',
+        builder: (_, state) => Column(
+          children: [
+            Text(
+              'game-detail-${state.pathParameters['gameId']}-tab-${state.uri.queryParameters['tab'] ?? ''}',
+            ),
+            Text(
+              'game-detail-focus-${state.uri.queryParameters['focus'] ?? ''}',
+            ),
+          ],
         ),
       ),
     ],
@@ -664,8 +1144,76 @@ Widget _homeInteractionScope({
   HomeKboBrief? kboBrief,
   List<HomeQuickItem> quickItems = const [],
   List<Game>? scoreboardGames,
+  List<TeamStanding>? standingsPreview,
 }) {
-  final standings = [
+  final standings = standingsPreview ?? _defaultHomeStandings();
+  return ProviderScope(
+    retry: (_, _) => null,
+    overrides: [
+      myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+      scoreboardProvider.overrideWith((ref, date) async {
+        return scoreboardGames ??
+            [
+              _scheduledGame(
+                gameId: '20260619SSLG0',
+                awayTeamId: 'SS',
+                awayShortName: '삼성',
+                homeTeamId: 'LG',
+                homeShortName: 'LG',
+                stadium: '잠실',
+              ),
+            ];
+      }),
+      homeAggregateProvider.overrideWith((ref, key) async {
+        return HomeAggregate(
+          date: key.split('|').first,
+          myTeam: 'LG',
+          myTeamBrief: HomeMyTeamBrief(
+            teamId: 'LG',
+            teamLabel: 'LG 트윈스',
+            standing: _standingByTeamId(standings, 'LG'),
+            todayGameId: '20260619SSLG0',
+            nextGame: null,
+            recentWins: 4,
+            recentLosses: 1,
+            recentDraws: 0,
+            recentGamesCount: 5,
+            recentSummaries: const [
+              HomeRecentGameSummary(
+                gameId: 'recent-1',
+                result: '승',
+                opponentName: 'NC',
+                score: '4:3',
+              ),
+              HomeRecentGameSummary(
+                gameId: 'recent-2',
+                result: '승',
+                opponentName: 'NC',
+                score: '7:1',
+              ),
+            ],
+          ),
+          kboBrief: kboBrief,
+          quickItems: quickItems,
+          standingsPreview: standings,
+        );
+      }),
+    ],
+    child: child,
+  );
+}
+
+TeamStanding? _standingByTeamId(List<TeamStanding> standings, String teamId) {
+  for (final standing in standings) {
+    if (standing.teamId == teamId) {
+      return standing;
+    }
+  }
+  return null;
+}
+
+List<TeamStanding> _defaultHomeStandings() {
+  return [
     _standing(
       rank: 1,
       teamId: 'HT',
@@ -699,61 +1247,133 @@ Widget _homeInteractionScope({
       gb: '6.0',
       streak: 'W2',
     ),
+    _standing(
+      rank: 4,
+      teamId: 'KT',
+      teamName: 'KT 위즈',
+      wins: 23,
+      losses: 22,
+      draws: 1,
+      pct: '.511',
+      gb: '7.0',
+      streak: 'L1',
+    ),
   ];
-  return ProviderScope(
-    retry: (_, _) => null,
-    overrides: [
-      myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
-      scoreboardProvider.overrideWith((ref, date) async {
-        return scoreboardGames ??
-            [
-              _scheduledGame(
-                gameId: '20260619SSLG0',
-                awayTeamId: 'SS',
-                awayShortName: '삼성',
-                homeTeamId: 'LG',
-                homeShortName: 'LG',
-                stadium: '잠실',
-              ),
-            ];
-      }),
-      homeAggregateProvider.overrideWith((ref, key) async {
-        return HomeAggregate(
-          date: key.split('|').first,
-          myTeam: 'LG',
-          myTeamBrief: HomeMyTeamBrief(
-            teamId: 'LG',
-            teamLabel: 'LG 트윈스',
-            standing: standings[1],
-            todayGameId: '20260619SSLG0',
-            nextGame: null,
-            recentWins: 4,
-            recentLosses: 1,
-            recentDraws: 0,
-            recentGamesCount: 5,
-            recentSummaries: const [
-              HomeRecentGameSummary(
-                gameId: 'recent-1',
-                result: '승',
-                opponentName: 'NC',
-                score: '4:3',
-              ),
-              HomeRecentGameSummary(
-                gameId: 'recent-2',
-                result: '승',
-                opponentName: 'NC',
-                score: '7:1',
-              ),
-            ],
-          ),
-          kboBrief: kboBrief,
-          quickItems: quickItems,
-          standingsPreview: standings,
-        );
-      }),
-    ],
-    child: child,
-  );
+}
+
+List<TeamStanding> _leagueStandings() {
+  return [
+    _standing(
+      rank: 1,
+      teamId: 'HT',
+      teamName: 'KIA 타이거즈',
+      wins: 40,
+      losses: 20,
+      draws: 2,
+      pct: '.667',
+      gb: '-',
+      streak: 'W2',
+    ),
+    _standing(
+      rank: 2,
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      wins: 38,
+      losses: 22,
+      draws: 2,
+      pct: '.633',
+      gb: '2.0',
+      streak: 'W4',
+    ),
+    _standing(
+      rank: 3,
+      teamId: 'SS',
+      teamName: '삼성 라이온즈',
+      wins: 35,
+      losses: 25,
+      draws: 2,
+      pct: '.583',
+      gb: '5.0',
+      streak: 'W1',
+    ),
+    _standing(
+      rank: 4,
+      teamId: 'OB',
+      teamName: '두산 베어스',
+      wins: 34,
+      losses: 26,
+      draws: 2,
+      pct: '.567',
+      gb: '6.0',
+      streak: 'L1',
+    ),
+    _standing(
+      rank: 5,
+      teamId: 'NC',
+      teamName: 'NC 다이노스',
+      wins: 32,
+      losses: 28,
+      draws: 2,
+      pct: '.533',
+      gb: '8.0',
+      streak: 'W3',
+    ),
+    _standing(
+      rank: 6,
+      teamId: 'KT',
+      teamName: 'KT 위즈',
+      wins: 30,
+      losses: 30,
+      draws: 2,
+      pct: '.500',
+      gb: '10.0',
+      streak: 'L2',
+    ),
+    _standing(
+      rank: 7,
+      teamId: 'WO',
+      teamName: '키움 히어로즈',
+      wins: 28,
+      losses: 32,
+      draws: 2,
+      pct: '.467',
+      gb: '12.0',
+      streak: 'W1',
+    ),
+    _standing(
+      rank: 8,
+      teamId: 'LT',
+      teamName: '롯데 자이언츠',
+      wins: 26,
+      losses: 34,
+      draws: 2,
+      pct: '.433',
+      gb: '14.0',
+      streak: 'L1',
+    ),
+    _standing(
+      rank: 9,
+      teamId: 'HH',
+      teamName: '한화 이글스',
+      wins: 24,
+      losses: 36,
+      draws: 2,
+      pct: '.400',
+      gb: '16.0',
+      streak: 'L3',
+    ),
+    _standing(
+      rank: 10,
+      teamId: 'SK',
+      teamName: 'SSG 랜더스',
+      wins: 22,
+      losses: 38,
+      draws: 2,
+      pct: '.367',
+      gb: '18.0',
+      streak: 'W1',
+    ),
+  ];
 }
 
 TeamStanding _standing({

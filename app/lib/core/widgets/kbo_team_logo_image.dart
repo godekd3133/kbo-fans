@@ -10,6 +10,9 @@ const kboImageHeaders = {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
 };
 
+const _darkLogoContrastPlateKey = ValueKey('kbo-team-logo-contrast-plate');
+const _darkLogoContrastTeamIds = {'OB'};
+
 String? kboReferenceTeamLogoAsset(String? teamId) {
   final normalized = (teamId ?? '').trim().toUpperCase();
   return switch (normalized) {
@@ -33,6 +36,7 @@ class KboTeamLogoImage extends StatelessWidget {
   final double size;
   final double padding;
   final bool preferReferenceAsset;
+  final bool useDarkLogoContrastPlate;
 
   const KboTeamLogoImage({
     super.key,
@@ -41,6 +45,7 @@ class KboTeamLogoImage extends StatelessWidget {
     required this.size,
     this.padding = 2,
     this.preferReferenceAsset = true,
+    this.useDarkLogoContrastPlate = true,
   });
 
   @override
@@ -53,21 +58,35 @@ class KboTeamLogoImage extends StatelessWidget {
     final referenceAsset = preferReferenceAsset
         ? kboReferenceTeamLogoAsset(team?.id ?? teamId)
         : null;
+    final showContrastPlate =
+        useDarkLogoContrastPlate &&
+        _needsDarkLogoContrastPlate(team?.id ?? teamId);
     return SizedBox(
       width: size,
       height: size,
-      child: Padding(
-        padding: EdgeInsets.all(padding),
-        child: referenceAsset == null
-            ? _networkLogo(team)
-            : Image.asset(
-                referenceAsset,
-                fit: BoxFit.contain,
-                width: double.infinity,
-                height: double.infinity,
-                filterQuality: FilterQuality.high,
-                errorBuilder: (_, _, _) => _networkLogo(team),
-              ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          if (showContrastPlate)
+            Positioned.fill(
+              child: _DarkLogoContrastPlate(size: size, team: team),
+            ),
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.all(padding),
+              child: referenceAsset == null
+                  ? _networkLogo(team)
+                  : Image.asset(
+                      referenceAsset,
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                      height: double.infinity,
+                      filterQuality: FilterQuality.high,
+                      errorBuilder: (_, _, _) => _networkLogo(team),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -110,6 +129,51 @@ class KboTeamLogoImage extends StatelessWidget {
           fontSize: size * 0.34,
           fontWeight: FontWeight.w900,
           color: AppColors.textPrimary,
+        ),
+      ),
+    );
+  }
+}
+
+bool _needsDarkLogoContrastPlate(String? teamId) {
+  final normalized = (teamId ?? '').trim().toUpperCase();
+  return _darkLogoContrastTeamIds.contains(normalized);
+}
+
+class _DarkLogoContrastPlate extends StatelessWidget {
+  final double size;
+  final KboTeam? team;
+
+  const _DarkLogoContrastPlate({required this.size, required this.team});
+
+  @override
+  Widget build(BuildContext context) {
+    final teamColor = team?.primaryColor ?? AppColors.cardSub;
+    final plateSize = size * (size < 36 ? 0.92 : 0.88);
+    final borderWidth = size < 36 ? 0.8 : 1.0;
+    return Center(
+      child: Container(
+        key: _darkLogoContrastPlateKey,
+        width: plateSize,
+        height: plateSize,
+        decoration: BoxDecoration(
+          color: AppColors.textPrimary.withValues(alpha: 0.9),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: teamColor.withValues(alpha: 0.36),
+            width: borderWidth,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.26),
+              blurRadius: size * 0.16,
+              offset: Offset(0, size * 0.05),
+            ),
+            BoxShadow(
+              color: teamColor.withValues(alpha: 0.22),
+              blurRadius: size * 0.14,
+            ),
+          ],
         ),
       ),
     );

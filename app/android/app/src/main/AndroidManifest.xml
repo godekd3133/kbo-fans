@@ -33,6 +33,7 @@
         </activity>
         <receiver
             android:name=".KboFansScoreWidgetProvider"
+            android:label="@string/kbo_score_widget_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -40,6 +41,17 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/kbo_score_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".KboFansSlateWidgetProvider"
+            android:label="@string/kbo_slate_widget_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/kbo_slate_widget_info" />
         </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

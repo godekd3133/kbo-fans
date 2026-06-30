@@ -36,8 +36,7 @@ class AppArtworkCard extends StatelessWidget {
             fit: BoxFit.cover,
             alignment: alignment,
             filterQuality: FilterQuality.medium,
-            errorBuilder: (_, _, _) =>
-                const ColoredBox(color: AppColors.cardSub),
+            errorBuilder: (_, _, _) => ColoredBox(color: AppColors.cardSub),
           ),
           DecoratedBox(
             decoration: BoxDecoration(
@@ -87,8 +86,7 @@ class AppArtworkLayer extends StatelessWidget {
             fit: fit,
             alignment: alignment,
             filterQuality: FilterQuality.medium,
-            errorBuilder: (_, _, _) =>
-                const ColoredBox(color: AppColors.cardSub),
+            errorBuilder: (_, _, _) => ColoredBox(color: AppColors.cardSub),
           ),
         ),
         DecoratedBox(

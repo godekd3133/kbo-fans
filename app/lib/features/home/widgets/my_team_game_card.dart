@@ -81,7 +81,7 @@ class MyTeamGameCard extends StatelessWidget {
                       Container(
                         width: 6,
                         height: 6,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.live,
                           shape: BoxShape.circle,
                         ),
@@ -94,7 +94,7 @@ class MyTeamGameCard extends StatelessWidget {
                                 game.status,
                                 statusLabel: game.statusLabel,
                               ),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
@@ -332,7 +332,7 @@ class MyTeamGameCard extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           caption,
-          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -350,7 +350,7 @@ class MyTeamGameCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AppColors.textDisabled),
+            style: TextStyle(fontSize: 10, color: AppColors.textDisabled),
           ),
           const SizedBox(height: 4),
           Text(

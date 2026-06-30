@@ -110,7 +110,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                           ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       '응원 팀을 선택하세요',
                       style: TextStyle(
                         fontSize: 16,
@@ -309,7 +309,7 @@ class _PreviewBenefit extends StatelessWidget {
         Container(
           width: 24,
           height: 24,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.cardSub,
             shape: BoxShape.circle,
           ),
@@ -326,7 +326,7 @@ class _PreviewBenefit extends StatelessWidget {
                 child: Text(
                   title,
                   maxLines: 1,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,
@@ -340,7 +340,7 @@ class _PreviewBenefit extends StatelessWidget {
                 child: Text(
                   subtitle,
                   maxLines: 1,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 8,
                     color: AppColors.textDisabled,
                     fontWeight: FontWeight.w700,
@@ -423,7 +423,7 @@ class _OnboardingPrimaryButton extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (isLoading) ...[
-                const SizedBox(
+                SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
@@ -512,7 +512,7 @@ class _OnboardingTeamCard extends StatelessWidget {
                         team.shortName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w900,
@@ -524,7 +524,7 @@ class _OnboardingTeamCard extends StatelessWidget {
                         team.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w700,
@@ -542,11 +542,11 @@ class _OnboardingTeamCard extends StatelessWidget {
                 child: Container(
                   width: 30,
                   height: 30,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: AppColors.live,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.check_rounded,
                     size: 20,
                     color: AppColors.textPrimary,

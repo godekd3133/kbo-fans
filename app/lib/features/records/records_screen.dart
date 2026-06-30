@@ -24,7 +24,7 @@ enum PlayerListFilter { all, entryOnly, reserveOnly }
 enum PlayerSortOption { name, avg, ops, era, whip }
 
 const firstSupportedRecordsSeason = 2002;
-const _tableHeaderStyle = TextStyle(
+final _tableHeaderStyle = TextStyle(
   fontSize: 11,
   color: AppColors.textDisabled,
   fontWeight: FontWeight.w800,
@@ -130,7 +130,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   children: [
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -211,10 +211,8 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                           setState(() => _searchQuery = value),
                       decoration: InputDecoration(
                         hintText: '팀 검색',
-                        hintStyle: const TextStyle(
-                          color: AppColors.textDisabled,
-                        ),
-                        prefixIcon: const Icon(
+                        hintStyle: TextStyle(color: AppColors.textDisabled),
+                        prefixIcon: Icon(
                           Icons.search,
                           color: AppColors.textDisabled,
                         ),
@@ -222,19 +220,15 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         fillColor: AppColors.card,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: AppColors.divider,
-                          ),
+                          borderSide: BorderSide(color: AppColors.divider),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: AppColors.divider,
-                          ),
+                          borderSide: BorderSide(color: AppColors.divider),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
+                          borderSide: BorderSide(
                             color: AppColors.textSecondary,
                           ),
                         ),
@@ -250,7 +244,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         ),
                       ),
                     if (visibleTeams.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 48),
                         child: Center(
                           child: Text(
@@ -319,7 +313,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                               color: team.primaryColor.withValues(alpha: 0.55),
                             ),
                           ),
-                          child: const Text(
+                          child: Text(
                             '마이팀',
                             style: TextStyle(
                               fontSize: 11,
@@ -344,7 +338,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textDisabled),
+            Icon(Icons.chevron_right, color: AppColors.textDisabled),
           ],
         ),
       ),
@@ -391,7 +385,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                           const SizedBox(height: 6),
                           Text(
                             '${team?.name ?? teamId} $_selectedSeason 시즌 기록실',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               color: AppColors.textSecondary,
                             ),
@@ -528,7 +522,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                       child: teamRecordsAsync.when(
                         loading: () => ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          children: const [
+                          children: [
                             SizedBox(
                               height: 420,
                               child: Center(
@@ -542,7 +536,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         error: (error, _) => ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
                           children: [
-                            const SizedBox(
+                            SizedBox(
                               height: 420,
                               child: Center(
                                 child: Text(
@@ -560,7 +554,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                               child: Text(
                                 describeAsyncError(error),
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textDisabled,
                                 ),
@@ -595,7 +589,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(
+            Icon(
               Icons.info_outline_rounded,
               size: 20,
               color: AppColors.textDisabled,
@@ -612,7 +606,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   const SizedBox(height: 6),
                   Text(
                     describeAsyncError(error),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
                       height: 1.35,
@@ -842,7 +836,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
         ),
         const SizedBox(height: 6),
         Text(
@@ -905,7 +899,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     const SizedBox(height: 4),
                     Text(
                       _playerMetaLine(player),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
@@ -921,7 +915,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     const SizedBox(height: 3),
                     Text(
                       player.secondaryStat,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
@@ -954,7 +948,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
               const SizedBox(width: 8),
               if (!player.isRetired)
-                const Icon(Icons.chevron_right, color: AppColors.textDisabled),
+                Icon(Icons.chevron_right, color: AppColors.textDisabled),
             ],
           ),
         ),
@@ -1216,7 +1210,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       ),
       child: Row(
         children: [
-          const Text(
+          Text(
             '시즌',
             style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
           ),
@@ -1304,7 +1298,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
         ),
         const SizedBox(height: 8),
         Text(
@@ -1317,7 +1311,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             color: AppColors.textSecondary,
             height: 1.35,
@@ -1369,7 +1363,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1393,7 +1387,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
               Text(
                 '$_selectedSeason',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textDisabled,
                   fontWeight: FontWeight.w800,
@@ -1403,7 +1397,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           ),
           const SizedBox(height: 9),
           if (headline == null)
-            const Text(
+            Text(
               '현재 표시할 기록 리더가 없습니다.',
               style: TextStyle(fontSize: 13, color: AppColors.textDisabled),
             )
@@ -1427,7 +1421,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.arrow_right_rounded,
                       size: 15,
                       color: AppColors.accent,
@@ -1436,7 +1430,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     Expanded(
                       child: Text(
                         line,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 10,
                           height: 1.15,
                           color: AppColors.textSecondary,
@@ -1493,7 +1487,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 team?.name ?? leader.teamId,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
                   height: 1.2,
@@ -1542,7 +1536,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               color: AppColors.textDisabled,
               fontWeight: FontWeight.w700,
@@ -1637,7 +1631,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     ),
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chevron_right_rounded,
                   size: 18,
                   color: AppColors.textDisabled,
@@ -1669,10 +1663,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   : '${team?.shortName ?? leader.teamId} · ${_leaderGapText(snapshot.metric, snapshot.leaders)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 10,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 4),
             SizedBox(
@@ -1742,7 +1733,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           Container(height: 1, color: AppColors.divider),
           _leaderboardHeader(),
           if (leaders.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.fromLTRB(14, 18, 14, 18),
               child: Align(
                 alignment: Alignment.centerLeft,
@@ -1844,7 +1835,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return Container(
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      child: const Row(
+      child: Row(
         children: [
           SizedBox(width: 34, child: Text('순위', style: _tableHeaderStyle)),
           SizedBox(width: 14),
@@ -1873,7 +1864,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         border: Border(
-          top: const BorderSide(color: AppColors.divider),
+          top: BorderSide(color: AppColors.divider),
           bottom: showDivider
               ? BorderSide(color: AppColors.background.withValues(alpha: 0.3))
               : BorderSide.none,
@@ -1932,7 +1923,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         team?.shortName ?? leader.teamId,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
@@ -2058,10 +2049,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -2084,14 +2072,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 children: [
                   Text(
                     actionLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(width: 5),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right_rounded,
                     size: 17,
                     color: AppColors.textSecondary,
@@ -2250,7 +2238,7 @@ class _RecordsBackdrop extends StatelessWidget {
     return IgnorePointer(
       child: Stack(
         children: [
-          const DecoratedBox(
+          DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,

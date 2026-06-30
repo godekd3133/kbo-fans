@@ -43,7 +43,7 @@ class GameCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   Text(
                     game.away.shortName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
                     ),
@@ -112,7 +112,7 @@ class GameCard extends StatelessWidget {
                   const SizedBox(width: 12),
                   Text(
                     game.home.shortName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
                     ),

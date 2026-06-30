@@ -410,7 +410,7 @@ def test_my_team_brief_keeps_recent_five_results() -> None:
     assert brief["recentSummaries"][0]["gameId"] == "20260515OBLG0"
 
 
-def test_standings_preview_keeps_my_team_when_outside_top_five() -> None:
+def test_standings_preview_returns_all_teams_in_rank_order() -> None:
     service = HomeService.__new__(HomeService)
 
     standings = [
@@ -429,8 +429,7 @@ def test_standings_preview_keeps_my_team_when_outside_top_five() -> None:
 
     preview = service._build_standings_preview(standings=standings, my_team="LG")
 
-    assert len(preview) == 5
-    assert preview[-1]["teamId"] == "LG"
+    assert [item["teamId"] for item in preview] == ["HT", "OB", "SS", "SK", "NC", "LG"]
     assert preview[-1]["rank"] == 6
 
 
@@ -468,7 +467,7 @@ def test_kbo_brief_builds_scheduled_game_and_record_radar_items() -> None:
         },
     )
 
-    assert brief["title"] == "오늘의 KBO 관전 포인트"
+    assert brief["title"] == "KBO 소식"
     assert brief["items"][0]["type"] == "record_radar"
     assert brief["items"][0]["route"] == "/records/player/52605?season=2026"
     assert any(item["title"] == "두산 vs LG" for item in brief["items"])

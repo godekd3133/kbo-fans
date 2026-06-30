@@ -116,7 +116,7 @@ class _NewsHeader extends StatelessWidget {
             children: [
               Text(
                 '$displayDate 기준',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textDisabled,
                   fontWeight: FontWeight.w700,
@@ -132,8 +132,8 @@ class _NewsHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                '경기, 선수, 순위, 기록을 오늘 읽을 순서로 정리했습니다.',
+              Text(
+                '경기 · 순위 · 기록 · 마이팀',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -197,34 +197,32 @@ class _FilterTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      margin: const EdgeInsets.all(4),
       alignment: Alignment.center,
-      children: [
-        Text(
-          filter.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
-          ),
+      decoration: BoxDecoration(
+        color: selected
+            ? AppColors.live.withValues(alpha: 0.16)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: selected
+              ? AppColors.live.withValues(alpha: 0.55)
+              : Colors.transparent,
         ),
-        Positioned(
-          left: 16,
-          right: 16,
-          bottom: 6,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            height: 2,
-            decoration: BoxDecoration(
-              color: selected ? AppColors.textPrimary : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
+      ),
+      child: Text(
+        filter.label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          color: selected ? AppColors.textPrimary : AppColors.textDisabled,
         ),
-      ],
+      ),
     );
   }
 }
@@ -253,7 +251,7 @@ class _NewsContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _EditorialLead(aggregate: aggregate, items: leadItems),
+        _EditorialLead(items: leadItems),
         const SizedBox(height: 12),
         _FilterBar(selected: filter, onChanged: onFilterChanged),
         const SizedBox(height: 14),
@@ -282,14 +280,12 @@ class _NewsContent extends StatelessWidget {
 }
 
 class _EditorialLead extends StatelessWidget {
-  final HomeAggregate aggregate;
   final List<_NewsCardData> items;
 
-  const _EditorialLead({required this.aggregate, required this.items});
+  const _EditorialLead({required this.items});
 
   @override
   Widget build(BuildContext context) {
-    final brief = aggregate.kboBrief;
     final leadItems = items;
 
     return Container(
@@ -311,24 +307,13 @@ class _EditorialLead extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      brief?.title ?? '오늘 읽을 KBO',
+                    const Text(
+                      '주요 소식',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      brief?.subtitle ?? '경기, 순위, 기록 흐름을 짧게 정리했습니다.',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
                       ),
                     ),
                   ],
@@ -340,15 +325,6 @@ class _EditorialLead extends StatelessWidget {
             const SizedBox(height: 13),
             Container(height: 1, color: AppColors.divider),
             const SizedBox(height: 10),
-            const Text(
-              '오늘의 3분 브리핑',
-              style: TextStyle(
-                fontSize: 11,
-                color: AppColors.textDisabled,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
             for (var index = 0; index < leadItems.length; index++) ...[
               _LeadRow(rank: index + 1, item: leadItems[index]),
               if (index != leadItems.length - 1) const SizedBox(height: 7),
@@ -380,7 +356,7 @@ class _LeadRow extends StatelessWidget {
             child: Text(
               '$rank',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
                 color: AppColors.live,
@@ -410,7 +386,7 @@ class _LeadRow extends StatelessWidget {
                   '${_labelForStoryKind(item.storyKind)} · ${item.sourceLabel}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
                     color: AppColors.textDisabled,
                     fontWeight: FontWeight.w700,
@@ -449,7 +425,7 @@ class _NewsSectionHeader extends StatelessWidget {
         ),
         Text(
           '$count개',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             color: AppColors.textDisabled,
             fontWeight: FontWeight.w800,
@@ -508,7 +484,7 @@ class _NewsCard extends StatelessWidget {
                             '${item.sourceLabel} · ${item.label}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
                               color: AppColors.textDisabled,
                               fontWeight: FontWeight.w700,
@@ -533,7 +509,7 @@ class _NewsCard extends StatelessWidget {
                       item.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                         height: 1.3,
@@ -542,7 +518,7 @@ class _NewsCard extends StatelessWidget {
                     const SizedBox(height: 7),
                     Text(
                       item.actionLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textDisabled,
                         fontWeight: FontWeight.w800,
@@ -769,7 +745,7 @@ class _StateCard extends StatelessWidget {
           const SizedBox(height: 7),
           Text(
             body,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,
               height: 1.35,

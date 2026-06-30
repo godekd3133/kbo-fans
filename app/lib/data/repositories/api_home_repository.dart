@@ -62,6 +62,7 @@ class ApiHomeRepository {
     final items = (json['items'] as List<dynamic>? ?? [])
         .map((item) => _parseKboBriefItem(item as Map<String, dynamic>))
         .where((item) => item.title.isNotEmpty)
+        .where((item) => item.type != 'schedule_remaining')
         .toList();
 
     return HomeKboBrief(
