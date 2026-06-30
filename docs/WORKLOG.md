@@ -2,6 +2,55 @@
 
 ---
 
+## 2026-07-01: 홈 상세 진입 이미지 prefetch 비차단화
+
+### 원인
+- 사장님 요청: 현재 기능과 스펙을 건드리지 않는 선에서 리스크가 가장 낮은 성능 최적화만 진행해야 했다.
+- 확인 결과 홈에서 경기 상세로 들어갈 때 `gameProvider`와 첫 진입 탭 provider 갱신은 실제 상세 정확도에 필요하지만, 라인업/선수사진 cache warm-up까지 navigation gate에 묶여 기본 상세 진입이 불필요하게 늦어질 수 있었다.
+- relay/boxscore/lineup 상세 탭은 각 탭 자체에서도 선수 이미지 prefetch를 수행하고 있어, 홈의 선수사진 cache warm-up을 백그라운드로 넘겨도 화면 기능과 API 계약을 바꾸지 않아도 된다.
+
+### 진행
+- [x] 홈 상세 진입 pre-refresh에서 기본/박스스코어 진입의 라인업 이미지 source blocking wait를 제거.
+- [x] `gameProvider(gameId)`와 첫 진입 탭 provider 갱신은 기존처럼 상세 진입 gate로 유지.
+- [x] 선수사진 URL 수집과 `precacheImage` warm-up은 상세 진입을 막지 않는 백그라운드 작업으로 전환.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 상세 데이터 gate와 이미지 cache warm-up 정책을 분리해 기록.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 기본 상세 진입은 라인업 사진 source를 기다리지 않고 이동한다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입 refresh 실패 시 기존 경기정보로 이동한다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`32 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found!`)
+- [x] `cd app && fvm flutter test --no-pub` (`294 passed`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/test/features/home/home_screen_test.dart docs/APP_SPEC.md CHANGELOG.md`
+- [x] `git diff --check`
+
+---
+
+## 2026-07-01: 리그 리더보드 타자/투수 탭 분리
+
+### 원인
+- 사장님 요청: 리그 리더보드를 투수와 타자 두 탭으로 나누고, 더 많은 지표를 한 화면에서 볼 수 있어야 했다.
+- 확인 결과 backend/direct records overview와 leaderboard 경로는 이미 AVG/HR/OPS/wRC+ 및 ERA/다승/세이브/탈삼진을 지원했고, 화면만 단일 지표 중심으로 진입해 지표 전환 밀도가 낮았다.
+
+### 진행
+- [x] 공통 모델에 `LeaderboardPlayerGroup`을 추가해 타자 지표와 투수 지표 묶음을 한곳에서 관리.
+- [x] 기록실 첫 화면의 `리그 리더보드` preview를 `타자` / `투수` 세그먼트와 역할별 지표 탭 구조로 변경.
+- [x] 전체 리더보드 화면에서도 `타자` / `투수` 탭과 역할별 지표 chip을 제공해 뒤로 가지 않고 여러 리그 지표를 전환하도록 변경.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 사용자-facing 동작을 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/data/models/records_overview.dart lib/features/records/records_screen.dart lib/features/records/leaderboard_screen.dart test/features/records/leaderboard_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/records/leaderboard_screen_test.dart -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/records/player_image_surfaces_test.dart -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/data/models/records_overview.dart lib/features/records/records_screen.dart lib/features/records/leaderboard_screen.dart test/features/records/leaderboard_screen_test.dart test/features/records/player_image_surfaces_test.dart` (`No issues found!`)
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `cd app && fvm flutter test` (`294 passed`)
+- [x] `git diff --check`
+
+---
+
 ## 2026-07-01: 0.1.11 릴리즈 준비 및 TestFlight 외부 배포
 
 ### 원인
@@ -12,9 +61,9 @@
 - [x] release 기준을 `0.1.11+78` / tag `0.1.11`로 결정.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`에 릴리즈 기준과 사용자-facing 업데이트 소식 반영.
 - [x] app/backend 검증 재실행.
-- [ ] `main` push, tag push, GitHub Release 생성.
-- [ ] iOS release IPA archive/export/upload.
-- [ ] App Store Connect processing `VALID`, `External Testers` 최신 build 단독 연결, Beta App Review/설치 가능성 확인.
+- [x] `main` push, tag push, GitHub Release 생성.
+- [x] iOS release IPA archive/export/upload.
+- [x] App Store Connect processing `VALID`, `External Testers` 최신 build 단독 연결, Beta App Review/설치 가능성 확인.
 
 ### 검증
 - [x] `cd app && fvm flutter analyze` (`No issues found!`)
@@ -23,6 +72,11 @@
 - [x] `git diff --check`
 - [x] `./scripts/release-api-health-check.sh`는 운영 `API_BASE_URL`이 기존 임시 HTTP ALB라 HTTPS gate에서 중단됨.
 - [x] `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh` (`/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200 OK)
+- [x] `git push origin main` (`1f6c547..df51041`)
+- [x] iOS release archive / IPA build: `0.1.11 (78)`, `APP_ENV=release`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.11/78`, Runner entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, IPA sha256 `6f21e7cd62bf81165628fcdb0a70ccac9a88569e530b9ff9d558bf20de4db66f`.
+- [x] TestFlight upload: IPA `0.1.11+78`, App Store Connect `Upload succeeded` / `Uploaded package is processing`, delivery UUID `91321d1d-ec71-4bc9-aa88-26f91d730499`.
+- [x] Apple processing `VALID`: build id `91321d1d-ec71-4bc9-aa88-26f91d730499`, build number `78`, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-09-29 04:01`.
+- [x] `External Testers` 최신 build 연결 / 이전 build 제거 / Beta App Review 상태 확인: group `81506852-9006-4a43-b152-067ac78a1736`에 build `78` 연결, 이전 build 1개 관계 제거, 최종 그룹 build 목록은 `78` 단독 연결, Beta App Review `WAITING_FOR_REVIEW`, tester 1명 `na***@naver.com` `INSTALLED`.
 
 ---
 
