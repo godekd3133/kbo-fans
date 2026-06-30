@@ -105,6 +105,11 @@ struct KboFansWidgetEntryView: View {
           .font(.title2)
           .bold()
           .foregroundStyle(.white)
+          .monospacedDigit()
+          .lineLimit(1)
+          .minimumScaleFactor(0.6)
+          .allowsTightening(true)
+          .layoutPriority(2)
         TeamLogoView(teamId: entry.homeTeamId, fallback: "H", size: 22)
         Spacer(minLength: 10)
         if hasAtBatContext {
@@ -119,12 +124,16 @@ struct KboFansWidgetEntryView: View {
           .font(.caption)
           .foregroundStyle(.secondary)
           .lineLimit(1)
+          .minimumScaleFactor(0.68)
+          .allowsTightening(true)
       }
       if !entry.pitcher.isEmpty {
         Text(pitcherLine(name: entry.pitcher, pitchCount: entry.pitchCount))
           .font(.caption)
           .foregroundStyle(.secondary)
           .lineLimit(1)
+          .minimumScaleFactor(0.68)
+          .allowsTightening(true)
       }
       Text(
         freshnessText(
@@ -235,7 +244,7 @@ struct KboFansLiveActivityView: View {
             }
             .frame(maxWidth: .infinity)
           }
-          .frame(minWidth: 150, maxWidth: 166)
+          .frame(minWidth: 166, maxWidth: 184)
           .padding(.top, 3)
 
           LiveActivityTeamPanel(
@@ -263,8 +272,9 @@ struct KboFansLiveActivityView: View {
           Text(bottomSituationText)
             .font(.system(size: 14, weight: .semibold, design: .rounded))
             .foregroundStyle(.white.opacity(0.9))
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
+            .lineLimit(2)
+            .minimumScaleFactor(0.68)
+            .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 5)
             .padding(.horizontal, 10)
@@ -312,13 +322,17 @@ struct KboFansLiveActivityView: View {
   }
 
   private func scoreView(_ score: Int) -> some View {
-    Text("\(score)")
-      .font(.system(size: 38, weight: .black, design: .rounded))
+    let scoreText = "\(score)"
+    let fontSize: CGFloat = scoreText.count > 1 ? 34 : 38
+    return Text(scoreText)
+      .font(.system(size: fontSize, weight: .black, design: .rounded))
       .foregroundStyle(.white)
       .monospacedDigit()
       .lineLimit(1)
-      .minimumScaleFactor(0.72)
-      .frame(width: 38)
+      .minimumScaleFactor(0.58)
+      .allowsTightening(true)
+      .frame(width: 46, alignment: .center)
+      .layoutPriority(2)
   }
 
   private func rankView(_ text: String) -> some View {
@@ -451,8 +465,8 @@ private struct LiveActivityMatchupRow: View {
       }
     }
     .frame(maxWidth: .infinity)
-    .padding(.horizontal, 10)
-    .padding(.vertical, 6)
+    .padding(.horizontal, 9)
+    .padding(.vertical, 5)
     .background(
       Capsule()
         .fill(Color.black.opacity(0.18))
@@ -485,24 +499,34 @@ private struct MatchupPlayerChip: View {
   let alignment: Alignment
 
   var body: some View {
-    HStack(spacing: 4) {
-      Text(role)
-        .font(.system(size: 10, weight: .bold, design: .rounded))
-        .foregroundStyle(.white.opacity(0.54))
-      Text(name)
-        .font(.system(size: 14, weight: .semibold, design: .rounded))
-        .foregroundStyle(.white.opacity(0.94))
-        .lineLimit(1)
-        .minimumScaleFactor(0.66)
+    VStack(spacing: 1) {
+      HStack(spacing: 4) {
+        Text(role)
+          .font(.system(size: 10, weight: .bold, design: .rounded))
+          .foregroundStyle(.white.opacity(0.54))
+          .fixedSize(horizontal: true, vertical: false)
+        Text(name)
+          .font(.system(size: 14, weight: .semibold, design: .rounded))
+          .foregroundStyle(.white.opacity(0.94))
+          .lineLimit(1)
+          .minimumScaleFactor(0.62)
+          .allowsTightening(true)
+      }
+      .frame(maxWidth: .infinity, alignment: alignment)
+
       if !detail.isEmpty {
         Text(detail)
-          .font(.system(size: 11, weight: .medium, design: .rounded))
-          .foregroundStyle(.white.opacity(0.62))
+          .font(.system(size: 10.5, weight: .medium, design: .rounded))
+          .foregroundStyle(.white.opacity(0.72))
+          .monospacedDigit()
           .lineLimit(1)
-          .minimumScaleFactor(0.66)
+          .minimumScaleFactor(0.58)
+          .allowsTightening(true)
+          .frame(maxWidth: .infinity, alignment: alignment)
       }
     }
-    .frame(maxWidth: .infinity, alignment: alignment)
+    .frame(maxWidth: .infinity, minHeight: detail.isEmpty ? 18 : 31, alignment: alignment)
+    .layoutPriority(2)
   }
 }
 
@@ -588,9 +612,20 @@ private struct DynamicIslandTeamScore: View {
     VStack(alignment: alignEnd ? .trailing : .leading, spacing: 2) {
       teamName
       Text(metric)
-        .font(.system(size: 24, weight: .black, design: .rounded))
+        .font(
+          .system(
+            size: metric.count > 2 ? 20 : 24,
+            weight: .black,
+            design: .rounded
+          )
+        )
         .foregroundStyle(.white)
         .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.58)
+        .allowsTightening(true)
+        .frame(minWidth: 28, maxWidth: 48, alignment: alignEnd ? .trailing : .leading)
+        .layoutPriority(2)
     }
     .padding(.horizontal, 2)
   }
@@ -853,8 +888,9 @@ struct KboFansLiveActivityWidget: Widget {
               Text(dynamicIslandMatchupText(context.state))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.9))
-                .lineLimit(1)
-                .minimumScaleFactor(0.66)
+                .lineLimit(2)
+                .minimumScaleFactor(0.62)
+                .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 5)
                 .padding(.horizontal, 10)
@@ -868,42 +904,42 @@ struct KboFansLiveActivityWidget: Widget {
               Text(dynamicIslandSituationText(context.state))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(kboTextSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .lineLimit(2)
+                .minimumScaleFactor(0.66)
+                .multilineTextAlignment(.center)
             }
           }
         }
       } compactLeading: {
-        Text(
+        compactMetricView(
           teamMetricText(
             score: context.state.awayScore,
             rankText: context.state.awayRankText,
             isPregame: context.state.isPregame == true
-          )
+          ),
+          alignment: .leading
         )
-          .font(.headline.weight(.black))
-          .foregroundStyle(.white)
-          .monospacedDigit()
       } compactTrailing: {
-        Text(
+        compactMetricView(
           teamMetricText(
             score: context.state.homeScore,
             rankText: context.state.homeRankText,
             isPregame: context.state.isPregame == true
-          )
+          ),
+          alignment: .trailing
         )
-          .font(.headline.weight(.black))
-          .foregroundStyle(.white)
-          .monospacedDigit()
       } minimal: {
         Text(
           context.state.isPregame == true
             ? "경기전"
             : "\(context.state.awayScore):\(context.state.homeScore)"
         )
-          .font(.caption2.weight(.bold))
+          .font(.system(size: 11, weight: .bold, design: .rounded))
           .foregroundStyle(.white)
           .monospacedDigit()
+          .lineLimit(1)
+          .minimumScaleFactor(0.55)
+          .allowsTightening(true)
       }
       .keylineTint(teamAccentColor(teamId: context.state.homeTeamId))
       .widgetURL(
@@ -924,6 +960,23 @@ struct KboFansLiveActivityWidget: Widget {
       state.balls > 0 ||
       state.strikes > 0 ||
       state.outs > 0
+  }
+
+  private func compactMetricView(_ text: String, alignment: Alignment) -> some View {
+    Text(text)
+      .font(
+        .system(
+          size: text.count > 2 ? 15 : 17,
+          weight: .black,
+          design: .rounded
+        )
+      )
+      .foregroundStyle(.white)
+      .monospacedDigit()
+      .lineLimit(1)
+      .minimumScaleFactor(0.58)
+      .allowsTightening(true)
+      .frame(minWidth: 22, maxWidth: 34, alignment: alignment)
   }
 }
 
