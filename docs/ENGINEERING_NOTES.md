@@ -30,8 +30,8 @@
   - FCM은 일반 push notification 전달 채널이다.
   - iOS Live Activity / Dynamic Island 원격 갱신은 ActivityKit push token + APNs `liveactivity` push 채널이다.
   - iOS 17.2+ 자동 시작은 ActivityKit push-to-start token + APNs `liveactivity` `event=start` 채널이다. 앱이 한 번 실행되어 `/push/live-activity/start-token/register`에 token과 `installationId`를 등록해야 하며, 설치 후 한 번도 실행하지 않은 앱이나 Live Activity/알림 권한이 꺼진 단말은 서버가 임의로 시작할 수 없다.
-  - backend scheduler가 live 경기 중 5초 간격으로 scoreboard/relay sync를 실행하고, 등록된 ActivityKit token에는 update/end payload를 보낸다.
-  - 같은 scheduler가 이전 scoreboard state와 비교해 FCM topic push용 `lineup_opened`, `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` moment를 발행한다.
+  - backend scheduler가 live 경기 중 5초 간격으로 scoreboard/relay sync를 실행하고, 시작 10분 전 예정 경기에는 push-to-start `event=start`, 등록된 ActivityKit token에는 update/end payload를 보낸다.
+  - 같은 scheduler가 이전 scoreboard state와 비교해 FCM topic push용 `game_start_soon`, `lineup_opened`, `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat` moment를 발행한다.
   - scoreboard/relay baseline이 2분 이상 오래되었거나 `updatedAt`을 해석할 수 없으면 scheduler는 그 차이를 FCM moment로 발행하지 않고 현재 scoreboard state/relay last seq만 저장한다. 푸시 설정 직후나 worker 재시작 뒤 밀린 lineup/hit/homerun을 backfill하지 않는 정책이다.
   - 일반 경기 event FCM은 backend가 원정팀/홈팀/전체 topic과 함께 `*_GAME_{gameId}` 경기별 topic으로도 발송한다. 앱은 마이팀 team topic을 저장된 delivery/off 값과 무관하게 자동 구독해, 사용자가 `푸쉬 중계 받기`를 누르지 않아도 마이팀 경기 시작/시작 임박/득점/안타/홈런/역전/종료/라인업/이닝 변경/타석 push를 모두 받을 수 있다. selected-game GAME topic은 기존 enabled 기준을 쓰되, 선택 경기가 마이팀 경기이면 team topic만 유지해 중복 수신을 피한다. 리그 전체 topic은 기존처럼 `immediate` 기준이다.
   - `baseball_info`는 특정 경기 event가 아니므로 `followedGameIds`가 있어도 `baseball_info_<팀>` / `baseball_info_ALL` 범위를 유지한다. long-running sync worker는 KST `09:30,16:00,22:30` 기본 슬롯에서 smart daily 브리프를 하루 한 번씩 시도하고, `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES`로 슬롯 조정 또는 `off` 비활성화를 지원한다.
@@ -70,12 +70,14 @@
 
 - Live Activity 선택 우선순위:
   1. 진행중인 마이팀 경기
-  2. 오늘 마이팀 라인업 공개 예정 경기
+  2. 오늘 마이팀 라인업 공개 또는 시작 10분 전 예정 경기
   3. 진행중인 다른 경기
-  4. 오늘 다른 라인업 공개 예정 경기
-- 라인업 공개 예정 경기 Live Activity는 `경기전` 상태와 양 팀 순위를 스코어 자리에 표시하고, 탭하면 라인업 탭으로 진입한다. 라인업 미공개 예정 경기는 follow session은 유지해도 Activity를 시작하지 않는다.
+  4. 오늘 다른 라인업 공개 또는 시작 10분 전 예정 경기
+- 라인업 공개/시작 10분 전 예정 경기 Live Activity는 `경기전` 상태와 양 팀 순위를 스코어 자리에 표시하고, 탭하면 라인업 탭으로 진입한다. 라인업 미공개 예정 경기는 시작 10분 전 window 전까지 follow session은 유지해도 Activity를 시작하지 않는다.
 - 홈 위젯과 Live Activity는 가능한 한 같은 source scoreboard 를 기준으로 동기화한다.
 - 중복 업데이트는 signature 비교로 억제한다.
+- iOS 홈 위젯은 하나의 WidgetKit kind가 `systemSmall`, `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`를 family별로 다르게 렌더링한다. Android는 기존 단일 경기 `KboFansScoreWidgetProvider`와 오늘 경기 목록용 `KboFansSlateWidgetProvider`를 함께 등록한다.
+- 위젯 family 다양화를 위해 backend 상세 스코어보드 크롤링을 새로 붙이지 않는다. foreground home scoreboard sync가 여러 경기 summary line을 채우고, background compact sync는 main 경기만 있어도 정상 상태로 degrade 되어야 한다.
 - 앱이 native에서 resumed 될 때만 scoreboard 를 다시 invalidate 해 Live Activity 를 재동기화한다. 웹은 홈 위젯/Live Activity가 없으므로 전역 resume refresh를 등록하지 않는다.
 - Live Activity 는 코드상 연결만으로 끝나지 않는다.
   - Widget extension signing

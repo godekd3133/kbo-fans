@@ -33,6 +33,16 @@ description: Use when changing KBO Fans app versions, creating GitHub releases o
 - Do not force-update, delete, or recreate published tags unless the Director explicitly approves a historical release rewrite.
 - "이어서 해" means continue autonomously through versioning/release-note judgment without asking unless the choice is risky or ambiguous.
 
+## In-App Update Notes Style
+
+- Write for users who just opened the updated app. Avoid internal labels, endpoint names, deployment wording, test names, and implementation details.
+- Keep notes scannable by category. Prefer bullet prefixes like `새로워졌어요:`, `고쳤어요:`, `빨라졌어요:`, and `작게 다듬었어요:` over generic technical bullets.
+- Include small visible changes, concrete bug fixes, and performance/stability improvements. Do not hide them behind broad wording like `기타 개선` or `여러 버그 수정`.
+- Describe the user-visible symptom and result: `알림함 설정 링크가 빈 화면처럼 보이지 않고 설정 화면으로 바로 이동합니다`, not `route handling fixed`.
+- Order bullets by user impact: major visible change, important bug fix, performance/stability, small polish.
+- Keep each bullet one short sentence when possible. Use Korean app words users see on screen, such as `알림함`, `업데이트 소식`, `문자중계`, `홈 위젯`, `Live Activity`.
+- If there were no user-visible app changes, do not invent in-app notes. Keep release/deploy-only detail in `CHANGELOG.md`, GitHub Release notes, and `docs/WORKLOG.md`.
+
 ## Minimum Verification
 
 - `git status --short --branch`

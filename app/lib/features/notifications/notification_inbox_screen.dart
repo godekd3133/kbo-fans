@@ -194,7 +194,7 @@ class _InboxHeader extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
         ),
         const SizedBox(width: 2),
-        const Expanded(
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -276,7 +276,7 @@ class _InboxSummaryCard extends StatelessWidget {
                     color: AppColors.live.withValues(alpha: 0.38),
                   ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.notifications_active_outlined,
                   color: AppColors.live,
                   size: 22,
@@ -301,7 +301,7 @@ class _InboxSummaryCard extends StatelessWidget {
                           : '$totalCount개 수신 · $unreadCount개 안 읽음',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
@@ -462,7 +462,7 @@ class _InboxTimeline extends StatelessWidget {
           for (int index = 0; index < entries.length; index++) ...[
             _InboxEntryRow(entry: entries[index], onTap: onOpenEntry),
             if (index != entries.length - 1)
-              const Divider(
+              Divider(
                 color: AppColors.cardSub,
                 height: 1,
                 indent: 16,
@@ -525,7 +525,7 @@ class _InboxEntryRow extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         _timeLabel(entry.receivedAt),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textDisabled,
                           fontWeight: FontWeight.w700,
@@ -539,7 +539,7 @@ class _InboxEntryRow extends StatelessWidget {
                       entry.body,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                         height: 1.35,
@@ -553,12 +553,9 @@ class _InboxEntryRow extends StatelessWidget {
                     children: [
                       _SmallPill(label: _typeLabel(entry.type), color: color),
                       if (!entry.read)
-                        const _SmallPill(label: '새 알림', color: AppColors.live),
+                        _SmallPill(label: '새 알림', color: AppColors.live),
                       if (entry.hasRoute)
-                        const _SmallPill(
-                          label: '바로 열기',
-                          color: AppColors.accent,
-                        ),
+                        _SmallPill(label: '바로 열기', color: AppColors.accent),
                     ],
                   ),
                 ],
@@ -604,7 +601,7 @@ class _InboxEmptyState extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.divider),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.notifications_none_rounded,
               color: AppColors.textSecondary,
             ),
@@ -615,7 +612,7 @@ class _InboxEmptyState extends StatelessWidget {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 5),
-          const Text(
+          Text(
             '득점, 홈런, 타석, 야구 브리프처럼 앱 밖에서 온 신호가 이곳에 시간순으로 모입니다.',
             style: TextStyle(
               fontSize: 12,
@@ -668,7 +665,7 @@ class _InboxPlaybookSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '받을 준비된 신호',
                 style: TextStyle(
@@ -679,8 +676,8 @@ class _InboxPlaybookSection extends StatelessWidget {
               ),
             ),
             AppPressable(
-              onTap: () => context.push('/settings'),
-              child: const Row(
+              onTap: () => context.go('/settings'),
+              child: Row(
                 children: [
                   Text(
                     '설정',
@@ -715,7 +712,7 @@ class _InboxPlaybookSection extends StatelessWidget {
                     for (int index = 0; index < items.length; index++) ...[
                       _PlaybookMomentRow(item: items[index]),
                       if (index != items.length - 1)
-                        const Divider(
+                        Divider(
                           color: AppColors.cardSub,
                           height: 1,
                           indent: 16,
@@ -735,7 +732,7 @@ class _PlaybookLoadingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
+    return Padding(
       padding: EdgeInsets.all(16),
       child: Text(
         '알림 설정을 불러오는 중입니다',
@@ -775,10 +772,7 @@ class _PlaybookMomentRow extends StatelessWidget {
                   item.description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textDisabled,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
                 ),
               ],
             ),

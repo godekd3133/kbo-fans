@@ -1,7 +1,7 @@
 name: kbo_fans
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.8+75
+version: 0.1.9+76
 
 environment:
   sdk: ^3.11.4
@@ -225,6 +225,10 @@ flutter:
     - assets/visuals/casual_onboarding_24.webp
     - assets/visuals/casual_onboarding_25.webp
   fonts:
+    - family: Jua
+      fonts:
+        - asset: assets/fonts/Jua-Regular.ttf
+          weight: 400
     - family: NanumSquareRound
       fonts:
         - asset: assets/fonts/NanumSquareRoundL.ttf

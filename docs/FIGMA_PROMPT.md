@@ -11,9 +11,9 @@
 
 - **프레임**: 390×844px (iPhone 14 기준, 모바일 앱)
 - **스타일**: 모던, 미니멀, 다크 모드 기반 스포츠 앱
-- **폰트**: NanumSquareRound (한글/영문/숫자). Flutter 앱은 `NanumSquareRoundL/R/B/EB.ttf`를 번들에 포함해 시스템 fallback이 아니라 실제 둥근 획 렌더링을 기준으로 한다. Pretendard는 fallback으로만 유지한다.
+- **폰트**: Jua (한글/영문/숫자). Flutter 앱은 `Jua-Regular.ttf`를 전역 기준으로 번들에 포함하고, `NanumSquareRoundL/R/B/EB.ttf`와 Pretendard는 fallback으로 유지한다.
 - **라운드**: Hero 카드 12px, 일반/요약 카드 8px, 버튼 12px, 입력 8px
-- **아이콘**: 앱 UI에서는 이모지 텍스트를 쓰지 않고, 홈/경기/기록/뉴스/더보기 의미의 벡터 아이콘을 사용
+- **아이콘**: 앱 UI에서는 이모지 텍스트를 쓰지 않고, 홈/경기/기록/뉴스/설정 의미의 벡터 아이콘을 사용
 - **앱 구현 기준**: 2026-05-19 v4 `Moment Subscription & Surface Strategy` 이후 실제 Flutter 화면도 430px 이하 mobile frame, 8px 카드, 작은 outline bottom tab, 상태 우선 헤더를 기본값으로 둔다.
 - **보조 비주얼 리소스**: 리얼/시네마틱 사진풍이 아니라 캐주얼 2.5D 스티커형 야구 일러스트를 사용한다. 화면별 25개 단위 리소스는 48~54px 높이의 가로 레일로 다루고, 로고/읽을 수 있는 텍스트/실제 선수 얼굴을 넣지 않는다.
 
@@ -80,7 +80,7 @@ https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/emblem/regular/2026/initial_{�
 
 ### Bottom Tab Bar (공통)
 
-- 5탭: 홈 | 경기 | 기록 | 뉴스 | 더보기
+- 5탭: 홈 | 경기 | 기록 | 뉴스 | 설정
 - 높이: 83px (하단 Safe Area 34px 포함)
 - 배경: #0F0F0F, 상단 구분선 #333333 (0.5px)
 - 활성 탭: #FFFFFF 아이콘 + 텍스트
@@ -131,17 +131,15 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
                          ├── 리그 리더
                          └── 선수 카드 탭 → [선수 상세]
 
-                    [7. 더보기] ◀── Bottom Tab "더보기"
-                         ├── 마이팀 요약 / 오늘 챙길 정보
-                         ├── 빠른 이동 → 경기 / 순위 / 기록 / 뉴스
-                         ├── 앱 밖 표면 Push · Live · Brief
-                         ├── 알림 플레이북 / Moment Subscription
+                    [7. 설정] ◀── Bottom Tab "설정"
+                         ├── 마이팀 선택 / 변경
+                         ├── 알림함
                          └── 세부 설정 및 지원
 ```
 
 - 각 화면을 라운드 사각형(#1A1A1A, border #333333)으로 표현
 - 화살표로 연결, 조건은 화살표 위에 텍스트 표기
-- Bottom Tab 4개를 하단에 수평으로 배치하고 각 탭에서 해당 화면으로 점선 연결
+- Bottom Tab 5개를 하단에 수평으로 배치하고 각 탭에서 해당 화면으로 점선 연결
 - 배경 #0F0F0F, 텍스트 #FFFFFF
 
 ---
@@ -153,7 +151,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 **레이아웃 (위에서 아래)**:
 
 1. **상단 여백**: 80px (Status Bar + 추가 여백)
-2. **앱 로고**: "KBO Fans" — 중앙정렬, NanumSquareRound Bold 28px, #FFFFFF
+2. **앱 로고**: "KBO Fans" — 중앙정렬, Jua 28px, #FFFFFF
 3. **서브 텍스트**: "응원하는 팀을 선택하세요" — 중앙정렬, 16px, #B0B0B0, 상단 마진 8px
 4. **개인화 설명**: 상단 마진 16px, 좌우 패딩 32px, 12px #B0B0B0
    - "홈에서 내 팀 경기 먼저 보기"
@@ -170,7 +168,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
    - 전체 너비 (좌우 패딩 24px), 높이 52px, 라운드 12px
    - **미선택**: 배경 #333333, 텍스트 #666666, 비활성
    - **선택**: 배경 선택된 팀 Primary 컬러, 텍스트 #FFFFFF
-   - 텍스트: "시작하기" NanumSquareRound SemiBold 16px
+   - 텍스트: "시작하기" Jua 16px
 7. **건너뛰기**: 상단 마진 16px, "건너뛰기" 14px, #666666, 중앙정렬, 밑줄 없음
 
 **Figma에 2가지 상태를 프레임으로 만들어주세요**: "미선택 상태" / "LG 선택 상태"
@@ -187,12 +185,12 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "KBO Fans" NanumSquareRound Bold 20px #FFFFFF
+- 좌측: "KBO Fans" Jua 20px #FFFFFF
 - 우측: "3.28 토" 14px #B0B0B0 + "경기 중" 10px badge + 선택된 마이팀 엠블럼 44px
 
 **마이팀 브리프 카드** (Hero Game Card, 좌우 마진 16px, 상단 마진 12px):
 
-- "마이팀" 라벨: 12px, NanumSquareRound SemiBold, 마이팀 Primary 컬러, 카드 좌상단 내부 패딩 16px
+- "마이팀" 라벨: 12px, Jua, 마이팀 Primary 컬러, 카드 좌상단 내부 패딩 16px
 - 카드: #1D1D1D 배경, 라운드 8px, 높이 약 176px, 내부 패딩 16px, 좌측 3px 팀 컬러 rail
 - **스코어 영역** (수평 배치, 가운데 정렬):
   - 좌측: 어웨이 팀 로고(48px) + 팀명(14px, #B0B0B0) — 수직 중앙 정렬
@@ -259,7 +257,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
    - 우측: LG 로고(40px) + "LG 트윈스"(12px #B0B0B0) — 수직 중앙
 3. **탭 바** (높이 44px, 배경 #0F0F0F):
    - 4개 탭: 스코어 | 문자중계 | 박스스코어 | 라인업
-   - 활성 탭: 14px NanumSquareRound SemiBold #FFFFFF + 하단 2px 흰색 라인
+   - 활성 탭: 14px Jua #FFFFFF + 하단 2px 흰색 라인
    - 비활성 탭: 14px #666666
 
 **스코어 탭 콘텐츠**:
@@ -303,7 +301,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 중계 아이템 (최신이 위, 역순 정렬):
 
 - **득점 이벤트** (좌측 빨간 세로선 4px #FF4444, 배경 #1C1111, 라운드 8px, 패딩 12px 16px):
-  - 1행: "득점 6번 이강민: 2타점 적시타" 14px NanumSquareRound SemiBold #FFFFFF
+  - 1행: "득점 6번 이강민: 2타점 적시타" 14px Jua #FFFFFF
   - 2행: "좌중간 2루타" 12px #B0B0B0
   - 3행: "S → B → B → S → F → 타격" 11px #666666 (투구 시퀀스)
 - **일반 이벤트** (좌측 회색 세로선 4px #333333, 패딩 12px 16px):
@@ -325,12 +323,12 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 **팀 토글** (좌우 마진 16px, 상단 마진 16px):
 
 - 2개 버튼 가로 배치, 각 50% 너비, 높이 36px, 라운드 8px
-- 활성(KT): 배경 #FFFFFF, 텍스트 #0F0F0F, NanumSquareRound SemiBold 14px
+- 활성(KT): 배경 #FFFFFF, 텍스트 #0F0F0F, Jua 14px
 - 비활성(LG): 배경 투명, 텍스트 #666666, border #333333
 
 **타자 테이블** (상단 마진 16px, 좌우 패딩 16px):
 
-- 섹션 헤더: "타자" 14px NanumSquareRound SemiBold #FFFFFF, 상단 마진 16px
+- 섹션 헤더: "타자" 14px Jua #FFFFFF, 상단 마진 16px
 - 컬럼 헤더: 타순 | 포지션 | 이름 | 타수 | 득점 | 안타 | 타점 — 12px #666666
 - 데이터 행 (14px #FFFFFF, 행 높이 40px):
 
@@ -351,7 +349,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **투수 테이블** (상단 마진 24px):
 
-- 섹션 헤더: "투수" 14px NanumSquareRound SemiBold #FFFFFF
+- 섹션 헤더: "투수" 14px Jua #FFFFFF
 - 컬럼 헤더: 이름 | 이닝 | 안타 | 삼진 | 사사구 | 자책 | 판정 — 12px #666666
 
 | 이름 | 이닝 | 안타 | 삼진 | 사사구 | 자책 | 판정 |
@@ -373,7 +371,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 **선발 투수** (상단 마진 16px, 좌우 패딩 16px):
 
 - 카드: #1A1A1A, 라운드 12px, 패딩 16px
-- "선발투수" 12px #666666 + "사우어 (우투)" 16px NanumSquareRound SemiBold #FFFFFF
+- "선발투수" 12px #666666 + "사우어 (우투)" 16px Jua #FFFFFF
 
 **라인업 리스트** (상단 마진 16px):
 
@@ -403,7 +401,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 중앙: "← 2026년 3월 →" — 화살표 24px #FFFFFF, 텍스트 18px NanumSquareRound SemiBold #FFFFFF
+- 중앙: "← 2026년 3월 →" — 화살표 24px #FFFFFF, 텍스트 18px Jua #FFFFFF
 - ← → 버튼으로 월 전환
 
 **캘린더 그리드** (좌우 패딩 16px, 상단 패딩 8px):
@@ -419,7 +417,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **경기 목록** (선택된 날짜, 상단 마진 16px):
 
-- 섹션 헤더: "3월 28일 (토) — 개막전" 16px NanumSquareRound SemiBold #FFFFFF, 좌측 패딩 20px
+- 섹션 헤더: "3월 28일 (토) — 개막전" 16px Jua #FFFFFF, 좌측 패딩 20px
 - 경기 카드 (좌우 마진 16px, 각 카드 간격 8px):
   - 카드: #1A1A1A, 라운드 12px, 높이 56px, 패딩 12px 16px
   - 배치: 시간(14px #B0B0B0) | 어웨이 로고(24px) 팀명(14px) | "vs" 12px #666666 | 팀명(14px) 홈 로고(24px) | 구장(12px #666666)
@@ -444,7 +442,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "2026 정규시즌 순위" 20px NanumSquareRound Bold #FFFFFF
+- 좌측: "2026 정규시즌 순위" 20px Jua #FFFFFF
 
 **순위 테이블** (좌우 패딩 16px, 상단 패딩 12px):
 
@@ -477,7 +475,7 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "기록실" 20px NanumSquareRound Bold #FFFFFF
+- 좌측: "기록실" 20px Jua #FFFFFF
 - 우측: 시즌 선택 chip "2026" 12px #FFFFFF, 배경 #252525, 라운드 8px
 
 **마이팀 선수 현황** (상단 마진 12px, 좌우 마진 16px):
@@ -505,69 +503,31 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
 
 ---
 
-### Page 10: 더보기 - KBO 팬 허브
+### Page 10: 설정 - KBO 액션 허브
 
-마이팀 상태, 오늘 챙길 정보, 주요 화면 이동, 앱 밖 표면, 알림 플레이북을 한 흐름으로 정리하는 허브 화면. **Bottom Tab 포함 (더보기 탭 활성).**
+마이팀 선택, 알림함, 앱 관리 액션만 모은 화면. 홈/일정/순위/기록/뉴스에서 이미 볼 수 있는 요약 정보나 중복 이동 버튼은 반복하지 않는다. **Bottom Tab 포함 (설정 탭 활성).**
 
 **헤더** (높이 56px, 좌우 패딩 20px):
 
-- 좌측: "더보기" 11px NanumSquareRound ExtraBold #B0B0B0 + "KBO 팬 허브" 23px NanumSquareRound Black #FFFFFF
+- 좌측: "설정" 23px Jua #FFFFFF
 
-**섹션 1 — 마이팀 요약** (상단 마진 16px, 좌우 패딩 16px):
+**섹션 1 — 마이팀** (상단 마진 16px, 좌우 패딩 16px):
 
 - 카드: #1A1A1A, 라운드 8px, 패딩 16px
   - 좌측: 팀 로고 52px
-  - 중앙: "마이팀" 10px #666666 + 팀명 20px #FFFFFF + 승패/승률/경기차 요약 12px #B0B0B0
-  - 우측: 상태 pill "오늘 경기" 또는 "팬 허브"
-  - 하단: 오늘 / 순위 / 최근 3개 metric tile, 각 tile 은 고정 높이와 8px radius
+  - 중앙: "마이팀" 10px #666666 + 선택된 팀명 또는 "마이팀을 선택하세요" 18px #FFFFFF
+  - 우측: "마이팀 선택" 또는 "마이팀 변경" 버튼
+  - 순위, 최근 흐름, 오늘 경기 여부 metric tile은 넣지 않는다.
 
-**섹션 2 — 오늘 챙길 정보**:
+**섹션 2 — 알림함**:
 
-- 라벨: "오늘 챙길 정보" 15px #FFFFFF
-- home aggregate brief를 4개 row로 가공해 경기, 순위, 기록, 마이팀 문맥을 먼저 보여줌
-- 각 row: label pill 10px, title 13px, summary 11px, chevron
-- 아이콘: 38px well, 8px radius, custom glyph 20px. Material 기본 아이콘을 그대로 쓰지 말고 baseball seam, standings bars, records trend, news document 형태를 같은 선 두께로 그림
+- 카드: #1A1A1A, 라운드 8px, 패딩 16px
+  - 타이틀: "푸시 알림 모아보기" 16px #FFFFFF
+  - 보조 문구: "최근 받은 알림을 확인합니다" 12px #B0B0B0
+  - 우측 chevron 또는 unread count badge
+  - 최신 알림 본문 미리보기는 펼치지 않는다.
 
-**섹션 3 — 빠른 이동**:
-
-- 2x2 shortcut grid: 경기 일정, 순위표, 기록실, 뉴스
-- 각 카드: #1A1A1A, 8px radius, 82px 내외 높이, custom glyph 21px, title 14px, subtitle 11px
-
-**섹션 4 — 앱 밖 표면** (상단 마진 20px):
-
-- 라벨: "앱 밖 표면" 14px #B0B0B0, 하단 마진 8px
-- 3개 row: 푸시, 라이브 액티비티, 브리프
-- 내부 구현명 설명이 아니라 사용자가 받는 경험을 설명: "득점/홈런/역전", "따라가는 경기", "비경기일 정보"
-- 아이콘: 34px well, border 없이 11% 색면. 푸시는 outline bell, 라이브 액티비티는 phone outline, 브리프는 stacked summary lines
-
-**섹션 5 — 마이팀** (상단 마진 20px):
-
-- 기존 팀 변경 카드 유지. 좌측: LG 로고(32px) + "LG 트윈스" 16px #FFFFFF, 우측 chevron
-
-**섹션 6 — 알림 플레이북 / Moment Subscription** (상단 마진 24px):
-
-- 기준 산출물: `docs/UI_UX_NOTIFICATION_OUTSIDE_APP_TRENDS_2026-05-19.md`
-- 라벨: "알림 플레이북" 14px #B0B0B0, 하단 마진 8px
-- 요약 카드: #1A1A1A, 라운드 8px, 패딩 14px
-  - 타이틀: "내 팀 핵심 장면" 16px NanumSquareRound SemiBold #FFFFFF
-  - 설명: "장면마다 바로 알림, 요약, Live 표면, 끄기를 고릅니다" 12px #B0B0B0
-  - 구형 "알림 강도" 다이얼 또는 단순 ON/OFF 목록으로 표현하지 말 것
-- Moment row 카드:
-  - 각 행 높이 64px, 좌우 패딩 16px, 행 사이 구분선 #252525
-  - 좌측: Moment 이름 15px #FFFFFF + 예시 문구 11px #666666
-  - 우측: 현재 delivery pill + chevron. 탭 시 bottom sheet 로 delivery 선택
-  - delivery 옵션: "바로" / "요약" / "Live만" / "끄기"
-  - delivery pill 색상: 바로 #FF4444, 요약 팀 Primary, Live만 #2979FF, 끄기 #666666
-  - 필수 Moment:
-    - 경기 시작 — 요약, "플레이볼 직후는 요약으로 두는 것을 권장합니다"
-    - 득점 — 바로, "마이팀이 점수를 올릴 때 즉시 알립니다"
-    - 홈런 — 바로, "홈런 상황은 별도 즉시 알림으로 분리합니다"
-    - 역전 — 바로, "리드가 바뀌는 순간만 강하게 알립니다"
-    - 경기 종료 — 요약, "최종 결과는 바로 또는 요약으로 받을 수 있습니다"
-    - 라인업 — 요약, "선발 라인업 공개 또는 변경을 묶어서 봅니다"
-    - 이닝 교대 — Live만, "알림 대신 Live 표면에서 상태만 갱신합니다"
-
-**섹션 7 — 권한 / 따라가기 원칙** (상단 마진 20px):
+**섹션 3 — 권한 / 따라가기 원칙** (상단 마진 20px):
 
 - "경기 따라가기" CTA 는 설정 화면의 전역 토글이 아니라 경기 상세 화면의 session action 으로 설계
 - Permission preview sheet:
@@ -577,13 +537,15 @@ Figma 파일에 아래 순서로 페이지를 만들고, 각 페이지 안에 �
   - 버튼: "허용하고 따라가기" / "나중에"
   - 첫 실행 onboarding 에서 push permission 을 요청하지 말 것
 
-**섹션 8 — 세부 설정 및 지원** (상단 마진 24px):
+**섹션 4 — 세부 설정 및 지원** (상단 마진 24px):
 
-- 라벨: "앱 정보 및 지원" 14px #B0B0B0, 하단 마진 8px
+- 라벨: "세부 설정 및 지원" 14px #B0B0B0, 하단 마진 8px
 - 카드: #1A1A1A, 라운드 12px
   - 각 행: 높이 48px, 좌우 패딩 16px
   - 항목:
+    - "API 진단" #FFFFFF — 우측 ">" #666666
     - "버전" #FFFFFF — 우측 실제 앱 버전 #666666
+    - "업데이트 소식" #FFFFFF — 우측 ">" #666666
     - "이용약관" #FFFFFF — 우측 ">" #666666
     - "개인정보처리방침" #FFFFFF — 우측 ">" #666666
     - "오픈소스 라이선스" #FFFFFF — 우측 ">" #666666

@@ -10,10 +10,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/app_config.dart';
 import 'core/bootstrap/startup_prep_state.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/theme_mode_controller.dart';
 import 'core/router/app_router.dart';
 import 'core/router/app_route_sanitizer.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
+import 'features/settings/release_notes_prompt.dart';
 import 'services/game_event_alert_service.dart';
 import 'services/live_activity_service.dart';
 import 'services/push_notification_service.dart';
@@ -138,6 +140,7 @@ class KboFansApp extends ConsumerStatefulWidget {
 class _KboFansAppState extends ConsumerState<KboFansApp> {
   bool _didLogFirstFrame = false;
   bool _didScheduleBootstrap = false;
+  bool _didScheduleReleaseNotesPrompt = false;
   StreamSubscription<Uri?>? _homeWidgetClickSubscription;
   StreamSubscription<String>? _pushNotificationRouteSubscription;
   Uri? _pendingHomeWidgetUri;
@@ -149,6 +152,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   @override
   void initState() {
     super.initState();
+    unawaited(ref.read(appThemeModeProvider.notifier).load());
     if (!kIsWeb && !_isWidgetTestBinding()) {
       WidgetsBinding.instance.addObserver(_lifecycleObserver);
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -230,6 +234,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final onboardingDone = ref.watch(onboardingDoneProvider);
+    final themeMode = ref.watch(appThemeModeProvider);
 
     if (!_didScheduleBootstrap) {
       _didScheduleBootstrap = true;
@@ -257,11 +262,16 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     if (onboardingDone == true) {
       _routePendingHomeWidgetLaunch(router);
       _routePendingPushNotificationLaunch(router);
+      _scheduleReleaseNotesPrompt();
     }
 
     return MaterialApp.router(
       title: 'KBO Fans',
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode.themeMode,
+      highContrastTheme: AppTheme.light,
+      highContrastDarkTheme: AppTheme.dark,
       routerConfig: router,
       debugShowCheckedModeBanner: !AppConfig.instance.isRelease,
       builder: (context, child) {
@@ -272,6 +282,36 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
         return DevConsoleOverlay(child: child ?? const SizedBox.shrink());
       },
     );
+  }
+
+  void _scheduleReleaseNotesPrompt() {
+    if (_didScheduleReleaseNotesPrompt) {
+      return;
+    }
+    _didScheduleReleaseNotesPrompt = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(_showReleaseNotesPromptSafely());
+    });
+  }
+
+  Future<void> _showReleaseNotesPromptSafely() async {
+    try {
+      final navigatorContext = appRootNavigatorContext;
+      if (navigatorContext == null) {
+        DevConsole.instance.warn('Release notes prompt skipped: no navigator');
+        return;
+      }
+      await showReleaseNotesPromptIfNeeded(
+        navigatorContext,
+        router: ref.read(routerProvider),
+      );
+    } catch (error, stack) {
+      DevConsole.instance.warn('Release notes prompt failed: $error');
+      DevConsole.instance.warn(stack.toString());
+    }
   }
 
   String _todayKey() {

@@ -2,6 +2,518 @@
 
 ---
 
+## 2026-06-30: 0.1.9 릴리즈 준비
+
+### 기준
+- 현재 공개 baseline은 `0.1.8+75` / tag `0.1.8`이다.
+- 현재 diff는 앱 업데이트 소식 팝업, 홈/잠금화면 위젯 확장, 설정/라이트모드, 푸시 알림 모드, 홈/경기 상세 UX, 하이라이트, Live Activity/문자중계 종료 상태, backend push/topic 계산을 포함하므로 tester-facing 새 버전이 필요하다.
+- 목표 버전은 `0.1.9+76`, Git tag는 `0.1.9`로 결정했다.
+
+### 진행
+- [x] `app/pubspec.yaml` 버전을 `0.1.9+76`으로 증가
+- [x] `CHANGELOG.md`의 Unreleased 항목을 `0.1.9 - 2026-06-30` 릴리즈 항목으로 승격
+- [x] 앱 내 `업데이트 소식`은 `새로워졌어요` / `고쳤어요` / `빨라졌어요` / `작게 다듬었어요` 기준으로 `0.1.9+76` 항목 추가
+- [x] `docs/VERSIONING.md` current baseline과 numeric release map을 `0.1.9` 기준으로 갱신
+
+### 1차 검증
+- [x] `git diff --check`
+- [x] `test -f app/assets/fonts/Jua-Regular.ttf`
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q` (`231 passed`)
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `cd app && fvm flutter test` (`All tests passed!`, 237 tests)
+
+### 남은 릴리즈 체크포인트
+- [ ] 버전 갱신 후 최종 검증 재실행
+- [ ] 작업 단위 커밋 분리 및 `main` push
+- [ ] tag `0.1.9` / GitHub Release 발행
+- [ ] TestFlight 업로드
+- [ ] Apple processing `VALID`
+- [ ] `External Testers` 최신 build 연결 및 이전 build 관계 제거
+- [ ] Beta App Review 제출/상태 확인
+- [ ] 외부 테스터 설치 가능성 확인
+- [ ] 운영 backend API/worker 배포 및 release API health gate 재확인
+
+---
+
+## 2026-06-30: 업데이트 소식 작성 기준 보강
+
+### 원인
+- 사장님 요청: 앞으로 릴리즈 노트는 유저가 더 보기 편해야 하고, 사소한 변경·어떤 버그를 고쳤는지·성능 개선도 알 수 있어야 한다.
+- 기존 기준은 `사용자-facing`까지만 명시되어 있어, 실제 작성 때 큰 기능만 적거나 `여러 버그 수정`처럼 뭉뚱그릴 여지가 있었다.
+
+### 진행
+- [x] `.claude/skills/kbo-version-release/SKILL.md`에 앱 내 업데이트 소식 작성 기준 추가.
+- [x] `docs/VERSIONING.md`에 `새로워졌어요`, `고쳤어요`, `빨라졌어요`, `작게 다듬었어요` 분류와 작성 금지 표현 기준 추가.
+- [x] `docs/APP_SPEC.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/SKILL_REFERENCE.md`에 같은 릴리즈 노트 작성 원칙 연결.
+
+### 검증
+- [x] `git diff --check -- .claude/skills/kbo-version-release/SKILL.md docs/VERSIONING.md docs/APP_SPEC.md AGENTS.md CLAUDE.md .claude/SKILL_REFERENCE.md docs/WORKLOG.md`
+
+---
+
+## 2026-06-30: 종료 경기 스코어탭 하이라이트 자동 재생 보강
+
+### 원인
+- 사장님 지적: 이미 지난 경기의 스코어탭에 들어갔을 때 하이라이트가 바로 뜨지 않는 경우가 있었다.
+- 확인 결과 앱 스코어탭 하이라이트 섹션은 명시 요청 전까지 `/highlights`를 조회하지 않는 지연 로드 상태였다.
+- 백엔드 YouTube 검색 relevance도 `KT 위즈`, `LG 트윈스` 같은 전체 팀명 기준이어서 `KT vs LG 하이라이트`처럼 짧은 팀명 제목을 놓칠 수 있었다.
+- 검색 결과가 비면 앱은 공식 링크 외에 바로 누를 수 있는 영상/검색 카드가 없어, 지난 경기 하이라이트 진입점이 빈약했다.
+
+### 진행
+- [x] 종료/과거 경기 스코어탭 진입 시 `highlightInfoProvider(gameId)`를 자동 조회하도록 변경.
+- [x] YouTube 영상 ID가 있으면 기존 인라인 플레이어로 바로 재생하고, 영상 ID가 없으면 앱 안 브라우저로 유튜브 검색/공식 하이라이트를 열도록 보강.
+- [x] 백엔드 `/api/game/{gameId}/highlights`가 비어 있는 YouTube 검색 결과 대신 `youtube_search_fallback` 카드를 내려주도록 추가.
+- [x] YouTube relevance matcher가 KBO 팀 전체명뿐 아니라 짧은 팀 alias(`KT`, `LG` 등)도 인식하도록 보정.
+- [x] 현재 worktree의 테스트 로딩을 막던 `relay_tab.dart`, `dev_console.dart`, `app_artwork_card.dart` 컴파일/lint 오류를 최소 범위로 정리.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 종료 경기 하이라이트 자동 조회와 앱 안 재생/검색 fallback 계약 반영.
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_games.py::test_get_highlights_returns_youtube_search_fallback_when_video_search_is_empty backend/tests/test_youtube_highlight_service.py::test_relevant_title_accepts_short_team_aliases` (`2 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/widgets/dev_console.dart lib/core/widgets/app_artwork_card.dart lib/features/game_detail/tabs/relay_tab.dart lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart` (`No issues found!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart --plain-name '종료 경기 스코어탭은 하이라이트를 자동 로드하고 앱 안 재생 버튼을 노출한다' -r expanded` (`All tests passed!`)
+
+---
+
+## 2026-06-30: 문자중계 선수 사진 선로딩 보강
+
+### 원인
+- 사장님 지적: 경기 상세 문자중계에 들어왔을 때 최신 플레이 선수 사진이 나중에 뜨지 말고 이미 로딩된 상태로 보여야 했다.
+- 확인 결과 홈에서 상세로 들어가기 전 `gameProvider`/`relayDataProvider`는 선조회하지만, 실제 선수 이미지 바이트는 화면의 `CachedNetworkImage`가 그려질 때 처음 요청했다.
+- 동시 변경으로 문자중계 선수 카드 이미지 렌더링이 fallback-only 상태가 된 경로도 확인했다.
+
+### 진행
+- [x] 홈에서 live 경기 상세 문자중계 진입 전 relay 현재 타석과 최신 중계 actor 이름을 기준으로 선수 이미지 URL을 계산하고 `precacheImage`로 cache warm-up 하도록 추가.
+- [x] KBO 선수 이미지 request header를 공용 helper로 분리하고, relay/lineup 이미지 렌더링이 같은 header를 쓰도록 정리.
+- [x] 문자중계 현재 타석 카드와 중계 이벤트 actor 카드가 roster/direct image URL을 받아 `CachedNetworkImage`로 선수 사진을 렌더하도록 복구.
+- [x] home/relay 테스트 기대값을 선수 사진 렌더링 및 prefetch 후보 계산 기준으로 갱신.
+
+### 검증
+- [ ] `cd app && fvm flutter test test/features/home/home_screen_test.dart --plain-name '경기 상세 진입 전 relay 선수 사진 prefetch 후보를 계산한다'`는 현재 worktree의 `dev_console.dart` static 선언 누락 및 `app_theme.dart` `AppColors._*` 참조 불일치로 컴파일 실패.
+- [ ] `cd app && fvm flutter test test/features/game_detail/relay_tab_test.dart test/features/game_detail/lineup_tab_test.dart`는 현재 worktree의 `AppColors` getter/theme migration으로 기존 `const AppColors.*` 사용부가 대량 컴파일 실패해 완료하지 못함. 제 변경 직접 오류였던 `_MomentPlayerSummary imageUrl` 연결은 보정했으나, 전체 탭 테스트는 theme const 정리 후 재실행 필요.
+
+---
+
+## 2026-06-30: 홈/잠금화면 위젯 다양화
+
+### 원인
+- 사장님 요청: 앱 밖에서도 유저가 골라 쓸 수 있는 위젯 종류를 더 다양하게 만들어야 했다.
+- 확인 결과 iOS WidgetKit은 하나의 정적 점수 위젯이 `systemSmall/systemMedium`만 지원했고, Android도 하나의 resizable 점수 위젯만 등록되어 있었다.
+- 기존 backend `/scoreboard/compact`는 위젯용 lightweight 경로이므로, 다양한 위젯을 위해 새 상세 크롤링을 추가하면 첫 로딩/백그라운드 갱신 비용이 커질 수 있었다.
+
+### 진행
+- [x] Flutter `WidgetSyncService`가 선택 경기 외에 오늘 경기 summary line, 보조 경기, live/전체 경기 수를 shared widget storage에 저장하도록 확장.
+- [x] 홈 위젯 선택 우선순위가 live/라인업 공개 경기만 보던 상태에서 일반 예정 마이팀 경기와 오늘 예정 경기까지 상태판으로 표시하도록 보강.
+- [x] iOS WidgetKit을 `systemSmall`, `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular` family별 레이아웃으로 확장.
+- [x] Android에 기존 점수 위젯과 별개로 오늘 경기 목록을 보여주는 `KboFansSlateWidgetProvider` / `kbo_slate_widget` 등록.
+- [x] `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `CHANGELOG.md`에 위젯 family/상태판 계약 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/services/widget_sync_service.dart test/services/widget_sync_service_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/services/widget_sync_service_test.dart -r expanded` (`All tests passed!`, 6 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/services/widget_sync_service.dart test/services/widget_sync_service_test.dart` (`No issues found!`)
+- [x] `xcodebuild -project app/ios/Runner.xcodeproj -target KboFansWidget -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` (`BUILD SUCCEEDED`; destination warning은 target-only build라 scheme destination이 무시된 것)
+- [x] `cd app/android && ./gradlew :app:processDebugResources :app:compileDebugKotlin -x compileFlutterBuildDebug` (`BUILD SUCCESSFUL`)
+- [ ] `cd app/android && ./gradlew :app:assembleDebug`는 기존 Dart 컴파일 오류 `AppColors.sync` / `_MomentPlayerSummary imageUrl`로 실패해 전체 APK 검증은 별도 수정 후 재실행 필요.
+
+---
+
+## 2026-06-30: 종료 경기 문자중계/Live Activity 타석 상태 초기화
+
+### 원인
+- 사장님 요청: 경기 종료 화면의 문자중계/Live Activity에서 마지막 타석의 스트라이크·아웃·타자/투수 정보가 계속 보이면 진행 중인 타석처럼 보이므로 종료 시 초기화하는 편이 맞는지 확인이 필요했다.
+- 확인 결과 `RelayService`는 final 경기에서도 공식 relay full play-by-play를 확보하면 `currentAtBat`을 그대로 payload/snapshot에 실을 수 있었고, 앱 문자중계 탭도 `currentAtBat`이 있으면 경기 상태와 무관하게 현재 타석 카드를 렌더링했다.
+- Live Activity end payload도 final state에서는 최종 이닝/스코어만 유지하고 타석 field를 비워야 같은 혼동을 막을 수 있다.
+
+### 진행
+- [x] final full relay와 final relay snapshot에서 `currentAtBat`을 `null`로 반환하도록 backend source contract 보정.
+- [x] 문자중계 탭은 `GameStatus.live`일 때만 현재 타석 카드와 B/S/O를 표시하도록 방어선 추가.
+- [x] Live Activity app/backend final payload는 batter/pitcher/pitchCount/B/S/O/situationText를 비우는 회귀 테스트로 고정.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 종료 경기 타석 초기화 계약 반영.
+
+### 검증
+- [x] `backend/.venv/bin/pytest backend/tests/test_relay_service.py -k "clears_current_at_bat"` (`2 passed`)
+- [x] `backend/.venv/bin/pytest backend/tests/test_push_service.py -k "clears_current_at_bat_for_final_update"` (`1 passed`)
+- [x] `cd app && fvm flutter test test/services/live_activity_service_test.dart --plain-name "Live Activity payload clears current at-bat for final games"` (`All tests passed!`)
+- [x] `cd app && fvm flutter test test/features/game_detail/relay_tab_test.dart --plain-name "종료 경기는 stale 현재 타석 카드를 노출하지 않는다"` (`All tests passed!`)
+
+---
+
+## 2026-06-30: 알림함 설정 링크 빈 화면 보정
+
+### 원인
+- 사장님 제보: 알림 설정 페이지로 들어가면 본문이 비어 있고 하단 탭만 남는 화면이 계속 보였다.
+- 재현 결과 알림함의 `설정` 링크가 root push 화면 위에서 shell 탭 경로인 `/settings`를 `context.push()`로 열고 있었다.
+- shell 탭 화면은 새 root page로 쌓는 대상이 아니라 현재 탭 상태를 `/settings`로 재구성해야 하므로, 해당 경로에서 설정 본문이 안정적으로 보이지 않았다.
+- 동시에 설정 화면 쪽 변경에는 `SizedBox(minHeight:)` 사용이 남아 있어 Flutter 컴파일을 막을 수 있었다.
+
+### 진행
+- [x] 알림함의 `설정` 링크를 `context.go('/settings')`로 변경해 설정 탭 본문으로 직접 이동하도록 수정.
+- [x] 알림함에서 설정으로 이동했을 때 `마이팀을 선택하세요`와 푸시 알림 모드가 보이는 회귀 테스트 추가.
+- [x] 설정 화면의 `SizedBox(minHeight:)`를 `ConstrainedBox`로 교체.
+- [x] 전역 분석을 막던 최신 워크트리의 `relay_tab.dart` / `patch_notes_screen.dart` 분석 오류도 현재 코드 상태에 맞게 정리.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/notifications/notification_inbox_screen_test.dart test/features/settings/settings_screen_test.dart -r expanded` (`All tests passed!`, 10 tests)
+- [ ] `cd app && fvm flutter analyze --no-pub` (현재 워크트리의 `AppColors` getter 기반 라이트모드 변경 때문에 기존 `const AppColors.*` 사용처 43개가 `invalid_constant`로 실패)
+- [ ] `cd app && fvm flutter test --no-pub -r expanded` (235개 중 1개 실패: `game_detail_navigation_test.dart`의 종료 경기 스코어탭 RenderFlex overflow, 알림/설정 경로와 별도)
+
+---
+
+## 2026-06-30: 설정 화면 라이트모드와 화면 모드 선택 추가
+
+### 원인
+- 사장님 요청: 기존 앱은 다크모드가 기본이지만 라이트모드도 필요하고, 설정에서 시스템 설정 / 라이트모드 / 다크모드를 직접 토글할 수 있어야 했다.
+- 확인 결과 앱 루트는 `AppTheme.dark`만 사용하고 있었고, 설정 화면은 `AppColors` 다크 상수를 직접 참조해 라이트모드에서 설정 화면 완성도를 보장할 수 없었다.
+
+### 진행
+- [x] `AppTheme.light`와 `AppThemeColors` 테마 확장 토큰을 추가해 라이트/다크 색상 기준을 분리.
+- [x] `AppThemeModePreference` / `appThemeModeProvider`를 추가해 `system`, `light`, `dark` 선택을 `SharedPreferences`의 `appearance.theme_mode`에 저장.
+- [x] `MaterialApp.router`에 `theme`, `darkTheme`, `themeMode`를 연결하고 저장값이 없는 기존 설치는 `dark` 기본값을 유지.
+- [x] 설정 화면에 `화면 모드` 카드를 추가하고 `시스템`, `라이트`, `다크` 버튼을 제공.
+- [x] 설정 화면과 하단 내비게이션의 주요 배경/텍스트/보더 색상을 새 테마 토큰으로 전환.
+- [x] 기존 화면들의 `AppColors.*` 직접 참조도 현재 테마 색상으로 동기화되도록 legacy color shim을 추가하고, 동적 색상 getter에 맞게 UI const 충돌을 정리.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 설정 화면 모드 선택 계약 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/theme/app_theme.dart lib/core/theme/theme_mode_controller.dart lib/core/widgets/main_scaffold.dart lib/main.dart lib/features/settings/settings_screen.dart test/core/theme/app_theme_test.dart test/features/settings/settings_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib` (`No issues found!`)
+- [x] `cd app && fvm flutter test --no-pub test/core/theme/app_theme_test.dart test/features/settings/settings_screen_test.dart -r expanded` (`All tests passed!`, 14 tests)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart test/features/news/news_screen_test.dart test/features/game_detail/relay_tab_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/game_detail_navigation_test.dart test/features/schedule/schedule_screen_test.dart test/features/standings/standings_screen_test.dart test/features/notifications/notification_inbox_screen_test.dart test/features/records/player_image_surfaces_test.dart -r expanded` (`All tests passed!`, 59 tests)
+- [x] `git diff --check -- app/lib app/test/core/theme/app_theme_test.dart app/test/features/settings/settings_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md README.md`
+
+---
+
+## 2026-06-30: 홈 KBO 소식 예정 경기 LIVE 표시 보정
+
+### 원인
+- 홈 `오늘의 KBO 소식`에서 예정 경기(`big_match`) 데이터는 정상적으로 들어왔지만, 큰 경기 스트립 위젯이 상태와 무관하게 왼쪽 배지를 `LIVE`로 고정하고 B/S/O·주자 그래픽을 항상 렌더링했다.
+- 그래서 화면에서 같은 롯데 vs 두산 예정 경기가 왼쪽은 `LIVE`, 오른쪽은 `예정`으로 동시에 보였다.
+
+### 진행
+- [x] 예정 경기 brief가 `LIVE`로 렌더링되지 않는 회귀 테스트 추가.
+- [x] `_KboInsightScoreStrip`가 item의 `type`/`eyebrow` 기준으로 진행 중 여부를 판별하게 보정.
+- [x] 진행 중 경기일 때만 `LIVE` 배지와 B/S/O·주자 그래픽을 표시하고, 예정/종료성 스트립은 일반 상태 배지로 표시.
+- [x] `CHANGELOG.md`에 사용자-visible 수정 내역 반영.
+
+### 검증
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart --plain-name "KBO brief scheduled feature does not render as LIVE"` (`All tests passed!`)
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart` (`20 tests passed`)
+- [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+
+---
+
+## 2026-06-30: 업데이트 후 릴리즈노트 팝업
+
+### 원인
+- 사장님 요청: 앱이 업데이트된 뒤 최초 접속했을 때 해당 버전의 업데이트 소식을 바로 보여줘야 한다.
+- 기존에는 `설정 > 업데이트 소식` 화면에서 사용자가 직접 눌러야만 버전별 변경사항을 볼 수 있었다.
+
+### 진행
+- [x] `patch_notes.md` 파서와 현재 앱 버전 로더를 공용 `release_notes.dart`로 분리해 기존 화면과 팝업이 같은 데이터 원천을 쓰도록 정리.
+- [x] 온보딩 완료 후 앱 루트에서 현재 설치 버전의 업데이트 소식을 1회 팝업으로 표시하고, `SharedPreferences`에 표시한 버전을 저장.
+- [x] 팝업의 `전체 보기`는 기존 `/release-notes` 화면으로 연결하고, 닫기/전체 보기 이후 같은 설치 버전은 다시 자동 노출하지 않도록 처리.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 업데이트 후 1회 팝업 UX를 동기화.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/settings/release_notes.dart lib/features/settings/release_notes_prompt.dart lib/features/settings/patch_notes_screen.dart lib/main.dart test/features/settings/release_notes_test.dart test/features/settings/release_notes_prompt_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/settings/release_notes_test.dart test/features/settings/release_notes_prompt_test.dart -r expanded` (`All tests passed!`, 3 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/settings/release_notes.dart lib/features/settings/release_notes_prompt.dart lib/features/settings/patch_notes_screen.dart test/features/settings/release_notes_test.dart test/features/settings/release_notes_prompt_test.dart` (`No issues found!`)
+- [ ] `cd app && fvm flutter test --no-pub test/core/router/app_router_test.dart test/features/settings/settings_screen_test.dart test/features/settings/release_notes_test.dart test/features/settings/release_notes_prompt_test.dart -r expanded` 현재 별도 테마 마이그레이션의 전역 `AppColors` const 오류로 compile 실패
+- [ ] 넓은 앱 analyze는 현재 별도 테마 마이그레이션의 전역 `AppColors` const 오류로 실패
+- [x] `git diff --check -- app/lib/features/settings/release_notes.dart app/lib/features/settings/release_notes_prompt.dart app/lib/features/settings/patch_notes_screen.dart app/lib/features/settings/settings_screen.dart app/lib/features/game_detail/tabs/relay_tab.dart app/lib/main.dart app/test/features/settings/release_notes_test.dart app/test/features/settings/release_notes_prompt_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-30: 뉴스 탭 필터/브리프 문구 정리
+
+### 원인
+- 사장님 요청: 뉴스 탭의 선택 필터가 밑줄처럼 보이는 것보다 탭 자체에 하이라이트가 들어가는 편이 낫고, `오늘의 3분 브리핑`, `경기 전 체크포인트` 같은 문구가 AI스럽게 느껴졌다.
+
+### 진행
+- [x] 뉴스 탭 필터 selected state를 밑줄에서 배경/테두리 하이라이트로 변경.
+- [x] 뉴스 상단 lead 카드에서 raw KBO brief title/subtitle과 `오늘의 3분 브리핑` 라벨을 노출하지 않고 `주요 소식`만 표시하도록 정리.
+- [x] 앱 로컬 aggregate와 백엔드 KBO brief 기본 문구에서 `관전 포인트` / `체크포인트` 표현 제거.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 뉴스 탭 표시 계약 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/news/news_screen.dart lib/data/models/home_aggregate.dart test/features/news/news_screen_test.dart test/data/models/home_aggregate_test.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart test/data/models/home_aggregate_test.dart -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/news/news_screen.dart lib/data/models/home_aggregate.dart test/features/news/news_screen_test.dart test/data/models/home_aggregate_test.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+- [x] `cd backend && .venv/bin/pytest -q tests/test_home.py` (`15 passed`)
+- [x] `cd backend && .venv/bin/ruff check src/kbo_fans_backend/services/home.py tests/test_home.py` (`All checks passed!`)
+- [x] `git diff --check -- app/lib/features/news/news_screen.dart app/lib/data/models/home_aggregate.dart app/test/features/news/news_screen_test.dart app/test/data/models/home_aggregate_test.dart app/test/features/home/home_screen_test.dart backend/src/kbo_fans_backend/services/home.py backend/tests/test_home.py docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-30: 푸시 알림 설정 3단계 모드와 세부 토글 정리
+
+### 원인
+- 사장님 요청: 설정 탭에서 알림 설정 접근성이 떨어지고, 푸시 알림을 `경기 전후 요약만 받기` / `경기 중 실시간 알림받기` / `안받기` 3개 큰 선택지로 나눈 뒤 선택에 따라 세부 토글을 제공해야 했다.
+- 확인 결과 기존 설정 화면은 알림함 진입 카드만 노출하고, 실제 `PushNotificationSettings`의 moment/delivery 값을 조정하는 UI가 없었다.
+- 기존 topic 계산은 마이팀 경기 moment를 저장된 `off`와 무관하게 항상 team topic으로 만들고 있어, `안받기`가 실제 푸시 구독 해제까지 보장하지 못했다.
+
+### 진행
+- [x] 설정 첫 화면의 마이팀 카드 아래에 푸시 알림 카드 추가.
+- [x] 큰 모드 3개를 `경기 전후 요약만 받기`, `경기 중 실시간 알림받기`, `안받기`로 구성.
+- [x] 전후 요약 토글은 라인업 공개, 경기 시작/시작 임박, 경기 종료 결과, 야구 브리프로 제한.
+- [x] 실시간 토글은 전후 요약에 득점, 안타, 홈런, 역전, 이닝 전환, 타석 변화를 추가.
+- [x] `안받기`는 모든 moment boolean과 delivery를 `off`로 저장하고, app/backend topic 계산 모두 마이팀 team topic과 selected-game GAME topic을 만들지 않도록 정리.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 현재 설정/푸시 topic 계약 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/services/push_notification_service.dart lib/features/settings/settings_screen.dart test/services/push_notification_service_test.dart test/features/settings/settings_screen_test.dart`
+- [x] `backend/.venv/bin/ruff format backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart test/features/settings/settings_screen_test.dart` (`All tests passed!`, 34 tests)
+- [x] `PYTHONPATH=backend/src backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`89 passed`)
+- [x] `backend/.venv/bin/python -m black ...`는 현재 backend venv에 `black`이 없어 실행 불가 확인. Python 포맷은 `ruff format`으로 대체.
+
+---
+
+## 2026-06-30: 문자중계 스코어보드 R/H/E 합계 표시
+
+### 원인
+- 사장님 요청: 경기 상세 `문자중계` 탭 상단의 스코어보드에서 이닝별 점수뿐 아니라 `R/H/E` 합계도 바로 보이면 좋겠다는 피드백.
+- 확인 결과 문자중계 탭은 팀 점수와 이닝별 득점표를 이미 보여주고 있었지만, 안타/실책은 문장형 요약에만 있어 야구 스코어보드처럼 한눈에 비교하기 어려웠다.
+
+### 진행
+- [x] 문자중계 상단 이닝별 득점표 오른쪽에 표준 `R/H/E` 열 추가.
+- [x] `H/E` 원천값이 없는 팀은 기존 데이터 원칙대로 `0`이 아니라 `-`로 표시.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 문자중계 스코어보드 표시 계약 반영.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/relay_tab_test.dart --plain-name '문자중계 상단 스코어보드는 R/H/E 합계를 같이 보여준다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart` (`No issues found!`)
+
+---
+
+## 2026-06-30: 홈 KBO brief 남은 경기 제거
+
+### 원인
+- 사장님 요청: 홈 `오늘의 KBO 소식` 카드 안의 `오늘 남은 경기` 노출이 불필요했다.
+- 확인 결과 실제 backend 생성 로직은 `schedule_remaining` 항목을 만들지 않지만, 홈 UI footer가 `big_match` subtitle에서 `오늘 남은 경기 N` 문구를 다시 만들고 있었고, 오래된 reference/API 캐시에는 `schedule_remaining` 항목이 남을 수 있었다.
+
+### 진행
+- [x] 홈 KBO brief footer를 제거해 `오늘 남은 경기` / `중계 바로가기` 행이 렌더링되지 않도록 변경.
+- [x] 홈 KBO brief 렌더와 API parser에서 stale `schedule_remaining` 항목을 제외.
+- [x] `scripts/kbo-reference-api.py` reference 응답에서 남은 경기 전용 brief item을 제거.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 홈 KBO brief 표시 계약을 동기화.
+
+### 검증
+- [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart lib/data/repositories/api_home_repository.dart test/features/home/home_screen_test.dart test/data/api_client_test.dart` (`No issues found!`)
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart test/data/api_client_test.dart` (`All tests passed!`, 33 tests)
+- [x] `python3 -m py_compile scripts/kbo-reference-api.py`
+- [x] `git diff --check`
+
+---
+
+## 2026-06-30: Live Activity 경기 시작 10분 전 자동 시작
+
+### 원인
+- 사장님 요청: 앱을 미리 열어두지 않아도 Live Activity / Dynamic Island가 경기 시작 10분 전부터 떠서 실시간 업데이트되어야 했다.
+- 확인 결과 iOS push-to-start token 등록과 backend registry는 이미 있었지만, scheduler의 APNs `event=start` 발송 조건이 `LIVE` 상태에만 묶여 있었다.
+
+### 진행
+- [x] backend scoreboard sync가 KST `startTime` 기준 10분 전 `SCHEDULED` window에서도 push-to-start Live Activity를 시작하도록 보강.
+- [x] 10분 전 시작 payload를 `isPregame=true`, `inning=경기전`, 순위 텍스트 포함 상태로 만들고, start alert 문구는 `경기 곧 시작`으로 분리.
+- [x] app foreground/resume 자동 선택도 라인업 공개 예정 경기뿐 아니라 시작 10분 전 예정 경기를 Live Activity pregame 대상으로 보도록 조정.
+- [x] 종료/취소/서스펜디드 Live Activity end payload에 남아 있던 타석/B-S-O 정보를 backend/app 양쪽에서 비우도록 보정.
+- [x] APP_SPEC, PUSH_LIVE_ACTIVITY_BACKEND_SETUP, README, ENGINEERING_NOTES, CHANGELOG를 같은 계약으로 동기화.
+
+### 검증
+- [x] RED: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_live_activity_scoreboard_sync_starts_my_team_activity_ten_minutes_before_first_pitch`가 기존 `LIVE` 전용 조건 때문에 `startedGames` empty로 실패.
+- [x] RED: `cd app && fvm flutter test test/services/live_activity_service_test.dart`가 새 `now` 테스트 인자 미지원으로 실패.
+- [x] GREEN: `backend/.venv/bin/pytest -q backend/tests/test_push_service.py::test_live_activity_scoreboard_sync_starts_my_team_live_activity_from_start_token backend/tests/test_push_service.py::test_live_activity_scoreboard_sync_starts_my_team_activity_ten_minutes_before_first_pitch backend/tests/test_push_service.py::test_scoreboard_sync_pushes_game_start_soon_once_within_ten_minutes` (`3 passed`)
+- [x] GREEN: `cd app && fvm flutter test test/services/live_activity_service_test.dart` (`All tests passed!`, 12 tests)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_push_service.py` (`90 passed`)
+- [x] `backend/.venv/bin/python -m compileall -q backend/src`
+- [x] `backend/.venv/bin/ruff check backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py` (`All checks passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/services/live_activity_service_test.dart` (`All tests passed!`, 13 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/services/live_activity_service.dart test/services/live_activity_service_test.dart` (`No issues found!`)
+- [x] `git diff --check -- backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py app/lib/services/live_activity_service.dart app/test/services/live_activity_service_test.dart docs/APP_SPEC.md docs/PUSH_LIVE_ACTIVITY_BACKEND_SETUP.md README.md docs/ENGINEERING_NOTES.md CHANGELOG.md docs/WORKLOG.md`
+
+---
+
+## 2026-06-30: 홈 인사이트/정보 카드 글자 잘림 제거
+
+### 원인
+- 사장님 요청: 홈 `인사이트`와 `지금 보면 좋은 정보` 카드에서 긴 팀명/문구가 말줄임 또는 줄바꿈 잘림으로 보였다.
+- 확인 결과 인사이트 topic 카드가 3열 고정 + 92px 고정 높이를 쓰고, quick card도 2열 고정폭/고정높이 안에서 `5위 · 두산 베어스` 같은 문구를 처리하고 있었다.
+- `1위 LG 트윈스` 순위 인사이트는 `teamIds`가 있어도 시각 fallback이 숫자/첫 글자 배지라 LG 팀 로고가 나오지 않았다.
+
+### 진행
+- [x] 홈 KBO brief topic/mini 카드를 전체 폭 row 카드로 바꾸고, 고정 높이와 핵심 문구 말줄임을 제거
+- [x] `지금 보면 좋은 정보` quick card를 2열 카드에서 전체 폭 row 카드로 바꿔 긴 팀명/전적 문구가 줄바꿈으로 보이도록 정리
+- [x] KBO brief visual fallback이 `teamIds`의 첫 팀 로고를 우선 사용하도록 변경해 `1위 LG 트윈스` 인사이트에 LG 로고 노출
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 홈 row 카드/로고 기준 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name 'home insight and quick cards keep long copy visible' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/test/features/home/home_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-30: 홈 live 마이팀 문자중계 카드
+
+### 원인
+- 사장님 요청: 오늘 마이팀 경기가 진행 중이면 홈에서 마이팀 브리프 바로 아래, `오늘 경기` 위에 현재 경기 진입점을 분리해 보여주고 바로 문자중계로 이어져야 했다.
+- 확인 결과 기존 마이팀 브리프와 오늘 경기 row는 상세로 이동할 수 있었지만, live 마이팀 경기만 독립적으로 강조하는 홈 surface는 없었다.
+
+### 진행
+- [x] scoreboard의 오늘 경기 목록에서 live 상태인 마이팀 경기를 중복 제거 후 찾아 `내 경기 진행 중` compact 카드를 표시
+- [x] 카드는 마이팀 브리프 아래, `오늘 경기` 헤더 위에만 노출하고 scheduled/final/cancelled 경기에는 만들지 않음
+- [x] 카드 탭 시 기존 홈 상세 진입 pre-refresh를 재사용해 `gameProvider(gameId)`와 `relayDataProvider(gameId)`를 갱신한 뒤 `/game/{gameId}?tab=relay&focus=relay`로 이동
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name 'shows live my-team relay card above today games and opens relay' -r expanded` (`home-live-my-team-game` 없음)
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name 'shows live my-team relay card above today games and opens relay' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`All tests passed!`, 20 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/test/features/home/home_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-30: 문자중계/박스스코어 사진 제거
+
+### 원인
+- 사장님 요청: 경기 상세의 문자중계 탭과 박스스코어 탭 아래쪽에 보이는 사진/이미지 요소가 불필요했다.
+- 확인 결과 두 탭 모두 선수 사진 썸네일을 렌더하고, 빈 상태/요약 패널에는 장식용 artwork가 들어가 있었다.
+
+### 진행
+- [x] 문자중계 탭에서 현재 타석/중계 이벤트 선수 사진 렌더링을 제거하고 첫 글자 fallback 중심으로 정리
+- [x] 박스스코어 탭에서 핵심 선수/기록 row 선수 사진 렌더링을 제거하고 icon/번호 배지 중심으로 정리
+- [x] 문자중계/박스스코어의 빈 상태 및 박스스코어 요약 패널에서 장식용 artwork 이미지 제거
+- [x] 위젯 테스트를 “이미지 URL이 있어도 사진을 렌더하지 않는다” 계약으로 갱신
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/relay_tab_test.dart test/features/game_detail/boxscore_tab_test.dart -r expanded` (`All tests passed!`, 14 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/game_detail/tabs/relay_tab.dart lib/features/game_detail/tabs/boxscore_tab.dart test/features/game_detail/relay_tab_test.dart test/features/game_detail/boxscore_tab_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/features/game_detail/tabs/relay_tab.dart app/lib/features/game_detail/tabs/boxscore_tab.dart app/test/features/game_detail/relay_tab_test.dart app/test/features/game_detail/boxscore_tab_test.dart docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-30: 앱 전역 폰트 Jua 전환
+
+### 원인
+- 사장님 요청: 기존 전역 폰트가 여전히 AI처럼 정돈돼 보여, 더 아기자기한 톤이 필요했다.
+- 확인 결과 `NanumSquareRound`는 이미 theme/pubspec에 정상 등록돼 있어 미적용 문제가 아니라 폰트 인상 자체의 문제로 판단했다.
+
+### 진행
+- [x] Google Fonts의 OFL `Jua-Regular.ttf`와 라이선스를 앱 font asset에 추가.
+- [x] `AppTypography.primaryFontFamily`를 `Jua`로 전환하고, `NanumSquareRound`와 `Pretendard`를 fallback으로 유지.
+- [x] 디자인/작업 문서의 전역 폰트 기준을 `Jua` 중심으로 동기화.
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/theme/app_theme.dart test/core/theme/app_theme_test.dart` (`0 changed`)
+- [x] `cd app && fvm flutter test --no-pub test/core/theme/app_theme_test.dart` (`All tests passed!`, 2 tests)
+- [x] `app/build/unit_test_assets/FontManifest.json`에서 `Jua` family와 `assets/fonts/Jua-Regular.ttf` 포함 확인
+- [x] `git diff --check -- AGENTS.md CLAUDE.md CHANGELOG.md docs/FIGMA_PROMPT.md docs/WORKLOG.md app/lib/core/theme/app_theme.dart app/pubspec.yaml app/test/core/theme/app_theme_test.dart`
+- [ ] `cd app && fvm flutter build web --debug --no-wasm-dry-run`는 현재 worktree의 기존 컴파일 오류(`patch_notes_screen.dart` `_PatchNotesData`, `relay_tab.dart` `imageMap` parameter mismatch)로 실패. 폰트 변경과 별도.
+
+---
+
+## 2026-06-30: 설정 허브 빠른 이동 제거
+
+### 원인
+- 사장님 요청: 설정/더보기 화면의 `빠른 이동` 섹션이 다른 하단 탭과 이동 경로를 반복해 화면 밀도를 불필요하게 올리고 있었다.
+
+### 진행
+- [x] 설정 화면에서 `빠른 이동` shortcut grid와 전용 shortcut card/type 제거
+- [x] 설정 허브 테스트를 `빠른 이동`, `경기 일정`, `순위표`, `기록실`, `뉴스` shortcut이 노출되지 않는 조건으로 보강
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 현재 설정 허브 구조 반영
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/settings/settings_screen.dart test/features/settings/settings_screen_test.dart`
+- [x] `git diff --check -- app/lib/features/settings/settings_screen.dart app/test/features/settings/settings_screen_test.dart docs/APP_SPEC.md CHANGELOG.md`
+- [x] `cd app && fvm flutter test --no-pub test/features/settings/settings_screen_test.dart -r expanded` (`All tests passed!`, 5 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/settings/settings_screen.dart test/features/settings/settings_screen_test.dart` (`No issues found!`)
+
+---
+
+## 2026-06-30: 홈 최근 흐름 전체 팀 노출
+
+### 원인
+- 사장님 요청: 홈의 `최근 흐름`을 일부 팀이 아니라 모든 팀 기준으로 보여주고, 위치도 `순위` 바로 밑으로 붙여야 했다.
+- 확인 결과 `/home.standingsPreview`는 이미 전체 순위 리스트로 확장된 변경이 있었지만, 홈 `최근 흐름` 카드는 여전히 마이팀 + 일부 팀 3행으로 제한하고 KBO brief 아래에 배치되어 있었다.
+
+### 진행
+- [x] 홈 섹션 순서를 `마이팀 브리프 → 오늘 경기 → 순위 → 최근 흐름 → KBO 브리프 → 빠른 콘텐츠`로 조정.
+- [x] `최근 흐름`이 `/home.standingsPreview` 전체 팀을 rank 순서로 렌더링하도록 변경.
+- [x] 마이팀 행은 `myTeamBrief.recentSummaries`가 있으면 실제 최근 경기 결과 버블을 우선 사용하고, 나머지 팀은 standings `streak` 기반 버블을 사용.
+- [x] APP_SPEC에 순위/최근 흐름 배치와 `standingsPreview` 전체 팀 계약을 동기화.
+
+### 검증
+- [x] 회귀 테스트 추가: `recent flow renders every standings team below standings`.
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart` (`All tests passed!`, 17 tests)
+- [x] `python3 -m compileall backend/src`
+
+---
+
+## 2026-06-30: 홈 오늘 경기와 순위 전체 노출
+
+### 원인
+- 사장님 요청: 홈의 `오늘 경기`와 `순위` 섹션은 화면이 더 길어져도 되니 `전체 보기`로 숨기지 말고 모든 경기/팀을 바로 보여주는 편이 낫다.
+- 확인 결과 홈 UI에서 오늘 경기는 `take(3)`, 순위는 앱/로컬 aggregate/backend `/home.standingsPreview`에서 5개 preview로 잘리고 있었다.
+
+### 진행
+- [x] 홈 `오늘 경기` 섹션에서 `전체 보기` CTA와 3경기 제한을 제거하고, 중복 제거/마이팀 우선 정렬 후 모든 오늘 경기 row를 표시.
+- [x] 홈 `순위` 섹션에서 `전체 보기` CTA와 5팀 제한을 제거하고, `/home.standingsPreview` 전체를 순위순으로 표시.
+- [x] backend `HomeService._build_standings_preview`와 app local aggregate fallback도 전체 순위를 반환하도록 동기화.
+- [x] APP_SPEC, CHANGELOG에 홈 전체 노출 기준 반영.
+
+### 검증
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart --plain-name 'home shows all today games and standings without view-all CTAs'` (`All tests passed!`)
+- [x] `cd app && fvm flutter test test/data/models/home_aggregate_test.dart --plain-name 'local home aggregate keeps every standings row in rank order'` (`All tests passed!`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py::test_standings_preview_returns_all_teams_in_rank_order` (`1 passed`)
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart test/data/models/home_aggregate_test.dart` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze lib/features/home/home_screen.dart lib/data/models/home_aggregate.dart test/features/home/home_screen_test.dart test/data/models/home_aggregate_test.dart` (`No issues found!`)
+- [x] `backend/.venv/bin/python -m ruff check backend/src/kbo_fans_backend/services/home.py backend/tests/test_home.py` (`All checks passed!`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py` (`15 passed`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/lib/data/models/home_aggregate.dart app/test/features/home/home_screen_test.dart app/test/data/models/home_aggregate_test.dart backend/src/kbo_fans_backend/services/home.py backend/tests/test_home.py docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-30: 더보기 탭 명칭 설정으로 정리
+
+### 원인
+- 사장님 요청: 하단 탭과 설정 화면이 `더보기`로 보이는 것이 실제 역할과 맞지 않아 `설정`으로 바꿔야 했다.
+- 현재 `/settings` 화면은 마이팀, 푸시 알림, 알림함, 세부 설정/지원 중심의 설정 표면이므로 `설정` 라벨이 더 직접적이다.
+
+### 진행
+- [x] 하단 탭 `/settings` 라벨을 `설정`으로 바꾸고 아이콘도 설정 아이콘으로 교체.
+- [x] 설정 화면 상단 제목과 widget test 명칭/기대값을 `설정` 기준으로 동기화.
+- [x] 설정 화면에서 중복 이동 섹션을 반복하지 않는 현재 구조에 맞춰 `APP_SPEC`, `FIGMA_PROMPT`, `CHANGELOG`, 앱 내 업데이트 소식 문구 갱신.
+- [x] 새로 추가된 푸시 알림 설정 카드의 Flutter API 오용을 `ConstrainedBox`와 최신 `Switch` 색상 파라미터로 보정.
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/widgets/main_scaffold.dart lib/features/settings/settings_screen.dart test/features/settings/settings_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/widgets/main_scaffold.dart lib/features/settings/settings_screen.dart test/features/settings/settings_screen_test.dart` (`No issues found!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/settings/settings_screen_test.dart -r expanded` (`All tests passed!`, 7 tests)
+- [x] `rg -n "더보기" app/lib/core/widgets/main_scaffold.dart app/lib/features/settings/settings_screen.dart app/test/features/settings/settings_screen_test.dart app/assets/bootstrap/patch_notes.md docs/APP_SPEC.md docs/FIGMA_PROMPT.md`
+- [x] `git diff --check -- app/lib/core/widgets/main_scaffold.dart app/lib/features/settings/settings_screen.dart app/test/features/settings/settings_screen_test.dart docs/APP_SPEC.md docs/FIGMA_PROMPT.md CHANGELOG.md app/assets/bootstrap/patch_notes.md`
+
+---
+
+## 2026-06-30: 홈 KBO brief 제목 정리
+
+### 원인
+- 사장님 요청: 홈 카드의 `오늘의 KBO 인사이트 팩` 문구가 무겁게 느껴져 `오늘의 KBO 소식`으로 바꾸는 방향이 더 맞다고 판단.
+
+### 진행
+- [x] 홈 KBO brief 카드 제목을 `오늘의 KBO 소식`으로 변경.
+- [x] 홈/뉴스 테스트 fixture, `scripts/kbo-reference-api.py` 레퍼런스 응답, 앱 내 업데이트 소식 자산의 runtime 문구를 같은 방향으로 동기화.
+
+### 검증
+- [x] `rg -n "오늘의 KBO 인사이트 팩|오늘의 KBO 소식" app scripts docs CHANGELOG.md README.md CLAUDE.md .claude -g '!output/**'`
+- [x] `git diff --check`
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart test/features/news/news_screen_test.dart` (`All tests passed!`, 18 tests)
+
+---
+
 ## 2026-06-30: 0.1.8 릴리즈 준비
 
 ### 기준

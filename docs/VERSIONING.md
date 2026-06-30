@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.8+75`
-- Current release tag: `0.1.8`
+- Flutter app version: `0.1.9+76`
+- Current release tag: `0.1.9`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -36,6 +36,19 @@ Every version or release change must update these surfaces in the same work unit
 - GitHub Release title and body.
 - `docs/WORKLOG.md` for engineering decisions and verification.
 - `README.md`, `AGENTS.md`, `CLAUDE.md`, or `.claude/skills/` when release workflow rules changed.
+
+## In-App Update Notes Writing Standard
+
+- 앱 안 `업데이트 소식`은 유저가 업데이트 직후 바로 읽는 문장으로 쓴다.
+- 기술 단어, endpoint, 배포 checkpoint, 테스트명, 내부 구현 설명은 넣지 않는다.
+- 큰 기능만 쓰지 말고 유저가 체감하는 작은 변경, 구체적인 버그 수정, 성능/안정성 개선도 남긴다.
+- 권장 bullet prefix:
+  - `새로워졌어요:` 새 화면, 새 기능, 새 알림, 새 위젯
+  - `고쳤어요:` 사용자가 겪던 구체적인 문제와 해결 결과
+  - `빨라졌어요:` 로딩, 갱신, 화면 전환, 캐시, 스크롤 체감 개선
+  - `작게 다듬었어요:` 문구, 간격, 아이콘, 탭, 작은 화면 표시 개선
+- `여러 버그 수정`, `성능 개선`, `기타 개선`처럼 뭉뚱그린 문구만 쓰지 않는다. 가능하면 `어디에서 무엇이 좋아졌는지`를 한 문장으로 적는다.
+- 정렬 순서는 유저 영향도가 큰 변화, 중요한 버그 수정, 성능/안정성, 작은 polish 순서를 기본으로 한다.
 
 ## Release Rules
 
@@ -125,6 +138,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.6`: my-team automatic game notification release. My-team subscriptions include every enabled game moment on team topics without requiring `푸쉬 중계 받기`, followed other-team games add only the selected GAME topic, scheduler scoreboard diff sends `lineup_opened`, the sync worker schedules KST smart daily `baseball_info`, and the missing notification-inbox reference image is committed.
 - `0.1.7`: notification copy and screen-flow polish release. Onboarding shows a submitting state and removes the standalone hero image, More becomes an action-focused hub, player images are restored across detail/records surfaces, push/Live Activity/widget copy uses fan-facing short team names, and hit/homerun/scoring/reversal/cancelled/suspended messages are normalized for live game context.
 - `0.1.8`: live alert and game-detail freshness release. My-team game topics now include every game moment regardless of saved delivery/off settings, iOS 17.2+ push-to-start Live Activity registration and backend APNs start dispatch are added, stale push baselines are re-anchored without backfill, home-to-detail navigation waits for fresh detail/tab data, live detail tab switches refresh visible data immediately, live boxscore context can show relay-derived at-bats/hits/AVG, lineup/player image fallbacks are reinforced, and Live Activity/Dynamic Island/widget text fitting is tightened.
+- `0.1.9`: widget/settings/game-surface polish release. In-app update prompts, expanded iOS/Android widgets, light/system/dark theme mode, simplified settings, push notification presets, Jua typography, home full-list sections, live-game shortcuts, relay/boxscore visual cleanup, highlight fallback links, final-game at-bat clearing, and push topic preference enforcement are bundled with current app build `0.1.9+76`.
 
 ## GitHub Release Note Template
 

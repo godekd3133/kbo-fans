@@ -9,12 +9,13 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/team_data.dart';
-import '../../core/router/app_route_sanitizer.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/theme_mode_controller.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../data/providers.dart';
 import '../../services/notification_inbox_service.dart';
+import '../../services/push_notification_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -57,7 +58,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final myTeamId = ref.watch(myTeamProvider);
     final team = myTeamId != null ? KboTeams.byId(myTeamId) : null;
-    final teamColor = team?.primaryColor ?? AppColors.live;
+    final colors = AppTheme.colorsOf(context);
+    final teamColor = team?.primaryColor ?? colors.live;
 
     return Scaffold(
       body: SafeArea(
@@ -65,12 +67,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
             children: [
-              const Text(
-                '더보기',
+              Text(
+                '설정',
                 style: TextStyle(
                   fontSize: 23,
                   fontWeight: FontWeight.w900,
                   height: 1.05,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 16),
@@ -82,22 +85,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 16),
 
-              const _NotificationInboxPreviewCard(),
+              _AppearanceSettingsCard(),
               const SizedBox(height: 16),
 
-              const _MoreShortcutGrid(),
+              _PushNotificationSettingsCard(team: team),
+              const SizedBox(height: 16),
+
+              const _NotificationInboxPreviewCard(),
               const SizedBox(height: 20),
 
-              const Text(
+              Text(
                 '세부 설정 및 지원',
-                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 14, color: colors.textSecondary),
               ),
               const SizedBox(height: 6),
               Container(
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: colors.card,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.divider),
+                  border: Border.all(color: colors.divider),
                 ),
                 child: Column(
                   children: [
@@ -158,7 +164,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
-      backgroundColor: AppColors.card,
+      backgroundColor: AppTheme.colorsOf(context).card,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
@@ -226,6 +232,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     bool hasArrow = false,
     VoidCallback? onTap,
   }) {
+    final colors = AppTheme.colorsOf(context);
     final row = SizedBox(
       height: 48,
       child: Padding(
@@ -238,23 +245,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                ),
+                ).copyWith(color: colors.textPrimary),
               ),
             ),
             if (trailing != null)
               Text(
                 trailing,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textDisabled,
-                ),
+                style: TextStyle(fontSize: 14, color: colors.textDisabled),
               ),
             if (hasArrow)
-              const Icon(
-                Icons.chevron_right,
-                color: AppColors.textDisabled,
-                size: 20,
-              ),
+              Icon(Icons.chevron_right, color: colors.textDisabled, size: 20),
           ],
         ),
       ),
@@ -268,15 +268,132 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _divider() => const Divider(
-    color: AppColors.cardSub,
-    height: 1,
-    indent: 16,
-    endIndent: 16,
-  );
+  Widget _divider() {
+    final colors = AppTheme.colorsOf(context);
+    return Divider(color: colors.cardSub, height: 1, indent: 16, endIndent: 16);
+  }
 }
 
-enum _MoreIconKind { game, standings, records, news, team }
+enum _MoreIconKind { team }
+
+class _AppearanceSettingsCard extends ConsumerWidget {
+  const _AppearanceSettingsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = AppTheme.colorsOf(context);
+    final selectedMode = ref.watch(appThemeModeProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(title: '화면 모드', actionLabel: selectedMode.label),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.card,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.divider),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '휴대폰 설정을 따르거나 앱 화면을 직접 고정합니다.',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.25,
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  for (final mode in AppThemeModePreference.values) ...[
+                    Expanded(
+                      child: _AppearanceModeButton(
+                        mode: mode,
+                        selected: selectedMode == mode,
+                        onTap: () => unawaited(
+                          ref.read(appThemeModeProvider.notifier).setMode(mode),
+                        ),
+                      ),
+                    ),
+                    if (mode != AppThemeModePreference.values.last)
+                      const SizedBox(width: 8),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AppearanceModeButton extends StatelessWidget {
+  final AppThemeModePreference mode;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AppearanceModeButton({
+    required this.mode,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    final foreground = selected ? colors.live : colors.textSecondary;
+    final background = selected
+        ? colors.live.withValues(alpha: 0.12)
+        : colors.cardSub;
+    final border = selected ? colors.live : colors.divider;
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${mode.label} 모드',
+      child: AppPressable(
+        onTap: onTap,
+        pressedScale: 0.98,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutQuart,
+          constraints: const BoxConstraints(minHeight: 68),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: border),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(mode.icon, size: 20, color: foreground),
+              const SizedBox(height: 5),
+              Text(
+                mode.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: foreground,
+                  fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _MoreHeroCard extends StatelessWidget {
   final KboTeam? team;
@@ -291,6 +408,7 @@ class _MoreHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     final teamName = team?.name ?? '마이팀을 선택하세요';
     final teamSubtitle = team == null
         ? '홈과 알림 기준을 맞추려면 팀을 먼저 선택하세요.'
@@ -300,9 +418,9 @@ class _MoreHeroCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.card,
+        color: colors.card,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
+        border: Border.all(color: colors.divider),
         boxShadow: [
           BoxShadow(
             color: teamColor.withValues(alpha: 0.12),
@@ -333,12 +451,12 @@ class _MoreHeroCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Text(
+                        Text(
                           '마이팀',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
-                            color: AppColors.textDisabled,
+                            color: colors.textDisabled,
                             letterSpacing: 0,
                           ),
                         ),
@@ -349,10 +467,11 @@ class _MoreHeroCard extends StatelessWidget {
                       teamName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                         height: 1.05,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -360,9 +479,9 @@ class _MoreHeroCard extends StatelessWidget {
                       teamSubtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textSecondary,
+                        color: colors.textSecondary,
                       ),
                     ),
                   ],
@@ -375,15 +494,15 @@ class _MoreHeroCard extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: onEditTeam,
-              icon: const _MoreGlyph(
+              icon: _MoreGlyph(
                 kind: _MoreIconKind.team,
-                color: AppColors.textPrimary,
+                color: colors.textPrimary,
                 size: 16,
               ),
               label: Text(team == null ? '마이팀 선택' : '마이팀 변경'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                side: const BorderSide(color: AppColors.divider),
+                foregroundColor: colors.textPrimary,
+                side: BorderSide(color: colors.divider),
                 padding: const EdgeInsets.symmetric(vertical: 11),
               ),
             ),
@@ -394,109 +513,550 @@ class _MoreHeroCard extends StatelessWidget {
   }
 }
 
-class _MoreShortcutGrid extends StatelessWidget {
-  const _MoreShortcutGrid();
+class _PushNotificationSettingsCard extends ConsumerStatefulWidget {
+  final KboTeam? team;
 
-  static const _items = [
-    _ShortcutItem(
-      title: '경기 일정',
-      route: '/schedule',
-      icon: _MoreIconKind.game,
-      color: AppColors.live,
-    ),
-    _ShortcutItem(
-      title: '순위표',
-      route: '/standings',
-      icon: _MoreIconKind.standings,
-      color: AppColors.accent,
-    ),
-    _ShortcutItem(
-      title: '기록실',
-      route: '/records',
-      icon: _MoreIconKind.records,
-      color: AppColors.positive,
-    ),
-    _ShortcutItem(
-      title: '뉴스',
-      route: '/news',
-      icon: _MoreIconKind.news,
-      color: AppColors.ballYellow,
-    ),
-  ];
+  const _PushNotificationSettingsCard({required this.team});
+
+  @override
+  ConsumerState<_PushNotificationSettingsCard> createState() =>
+      _PushNotificationSettingsCardState();
+}
+
+class _PushNotificationSettingsCardState
+    extends ConsumerState<_PushNotificationSettingsCard> {
+  late Future<PushNotificationSettings> _settingsFuture;
+  PushNotificationSettings? _settings;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _settingsFuture = _loadSettings();
+  }
+
+  Future<PushNotificationSettings> _loadSettings() async {
+    final settings = await PushNotificationService.instance.loadSettings();
+    _settings = settings;
+    return settings;
+  }
+
+  Future<void> _save(PushNotificationSettings settings) async {
+    setState(() {
+      _settings = settings;
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await PushNotificationService.instance.saveSettings(
+        settings,
+        myTeam: ref.read(myTeamProvider),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _error = '저장하지 못했습니다';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+        });
+      }
+    }
+  }
+
+  void _changeMode(PushNotificationMode mode) {
+    final current = _settings ?? const PushNotificationSettings.defaults();
+    if (_saving || current.mode == mode) {
+      return;
+    }
+    unawaited(_save(current.withMode(mode)));
+  }
+
+  void _toggleMoment(PushNotificationMoment moment, bool value) {
+    final current = _settings ?? const PushNotificationSettings.defaults();
+    if (_saving) {
+      return;
+    }
+    unawaited(_save(current.withMomentEnabled(moment, value)));
+  }
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<PushNotificationSettings>(
+      future: _settingsFuture,
+      builder: (context, snapshot) {
+        final colors = AppTheme.colorsOf(context);
+        final settings = _settings ?? snapshot.data;
+        if (settings == null) {
+          return _NotificationSettingsShell(
+            status: '불러오는 중',
+            child: const SizedBox(
+              height: 118,
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+          );
+        }
+
+        final mode = settings.mode;
+        final accent = widget.team?.primaryColor ?? colors.accent;
+        return _NotificationSettingsShell(
+          status: _saving ? '저장 중' : _modeLabel(mode),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _NotificationTargetStrip(team: widget.team, accent: accent),
+              const SizedBox(height: 12),
+              _PushModeOption(
+                key: const ValueKey('push_mode_summary'),
+                title: '경기 전후 요약만 받기',
+                subtitle: '라인업, 시작, 종료, 야구 브리프',
+                icon: Icons.summarize_outlined,
+                selected: mode == PushNotificationMode.summary,
+                accent: accent,
+                onTap: _saving
+                    ? null
+                    : () => _changeMode(PushNotificationMode.summary),
+              ),
+              const SizedBox(height: 8),
+              _PushModeOption(
+                key: const ValueKey('push_mode_live'),
+                title: '경기 중 실시간 알림받기',
+                subtitle: '득점, 안타, 홈런, 역전, 이닝, 타석',
+                icon: Icons.sports_baseball_outlined,
+                selected: mode == PushNotificationMode.live,
+                accent: accent,
+                onTap: _saving
+                    ? null
+                    : () => _changeMode(PushNotificationMode.live),
+              ),
+              const SizedBox(height: 8),
+              _PushModeOption(
+                key: const ValueKey('push_mode_off'),
+                title: '안받기',
+                subtitle: '마이팀과 따라가기 푸시를 끕니다',
+                icon: Icons.notifications_off_outlined,
+                selected: mode == PushNotificationMode.off,
+                accent: colors.textDisabled,
+                onTap: _saving
+                    ? null
+                    : () => _changeMode(PushNotificationMode.off),
+              ),
+              if (mode != PushNotificationMode.off) ...[
+                const SizedBox(height: 16),
+                _NotificationToggleGroup(
+                  title: '경기 전후',
+                  items: const [
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.lineupOpened,
+                      label: '선발 라인업 공개',
+                    ),
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.gameStart,
+                      label: '경기 시작과 시작 임박',
+                    ),
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.gameEnd,
+                      label: '경기 종료 결과',
+                    ),
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.baseballInfo,
+                      label: '야구 브리프',
+                    ),
+                  ],
+                  settings: settings,
+                  enabled: !_saving,
+                  onChanged: _toggleMoment,
+                ),
+              ],
+              if (mode == PushNotificationMode.live) ...[
+                const SizedBox(height: 14),
+                _NotificationToggleGroup(
+                  title: '경기 중 실시간',
+                  items: const [
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.scoring,
+                      label: '득점',
+                    ),
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.hit,
+                      label: '안타',
+                    ),
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.homerun,
+                      label: '홈런',
+                    ),
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.reversal,
+                      label: '역전',
+                    ),
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.inningChange,
+                      label: '이닝 전환',
+                    ),
+                    _NotificationToggleItem(
+                      moment: PushNotificationMoment.atBat,
+                      label: '타석 변화',
+                    ),
+                  ],
+                  settings: settings,
+                  enabled: !_saving,
+                  onChanged: _toggleMoment,
+                ),
+              ],
+              if (mode == PushNotificationMode.off) ...[
+                const SizedBox(height: 14),
+                const _NotificationOffState(),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  _error!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colors.live,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _NotificationSettingsShell extends StatelessWidget {
+  final String status;
+  final Widget child;
+
+  const _NotificationSettingsShell({required this.status, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionHeader(title: '빠른 이동'),
+        _SectionHeader(title: '푸시 알림', actionLabel: status),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: _ShortcutCard(item: _items[0])),
-            const SizedBox(width: 10),
-            Expanded(child: _ShortcutCard(item: _items[1])),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(child: _ShortcutCard(item: _items[2])),
-            const SizedBox(width: 10),
-            Expanded(child: _ShortcutCard(item: _items[3])),
-          ],
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.card,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.divider),
+          ),
+          child: child,
         ),
       ],
     );
   }
 }
 
-class _ShortcutCard extends StatelessWidget {
-  final _ShortcutItem item;
+class _NotificationTargetStrip extends StatelessWidget {
+  final KboTeam? team;
+  final Color accent;
 
-  const _ShortcutCard({required this.item});
+  const _NotificationTargetStrip({required this.team, required this.accent});
 
   @override
   Widget build(BuildContext context) {
-    return AppPressable(
-      onTap: () => context.go(
-        sanitizeAppRoute(item.route, fallback: '/settings') ?? '/settings',
+    final colors = AppTheme.colorsOf(context);
+    final target = team == null ? '마이팀 선택 전' : '${team!.shortName} 경기';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: colors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.divider),
       ),
-      pressedScale: 0.97,
-      child: Container(
-        height: 68,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
+      child: Row(
+        children: [
+          Icon(Icons.push_pin_outlined, size: 17, color: accent),
+          const SizedBox(width: 8),
+          Text(
+            '기본 대상',
+            style: TextStyle(
+              fontSize: 12,
+              color: colors.textDisabled,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const Spacer(),
+          Flexible(
+            child: Text(
+              target,
+              textAlign: TextAlign.right,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                color: colors.textPrimary,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PushModeOption extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final Color accent;
+  final VoidCallback? onTap;
+
+  const _PushModeOption({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    final borderColor = selected ? accent : colors.divider;
+    final backgroundColor = selected
+        ? accent.withValues(alpha: 0.14)
+        : colors.cardSub;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: title,
+      child: AppPressable(
+        onTap: onTap,
+        pressedScale: 0.985,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOutQuart,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 22,
+                color: selected ? accent : colors.textSecondary,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: colors.textDisabled,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                size: 20,
+                color: selected ? accent : colors.textDisabled,
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _NotificationToggleGroup extends StatelessWidget {
+  final String title;
+  final List<_NotificationToggleItem> items;
+  final PushNotificationSettings settings;
+  final bool enabled;
+  final void Function(PushNotificationMoment moment, bool value) onChanged;
+
+  const _NotificationToggleGroup({
+    required this.title,
+    required this.items,
+    required this.settings,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            color: colors.textSecondary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 7),
+        Container(
+          decoration: BoxDecoration(
+            color: colors.cardSub,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.divider),
+          ),
+          child: Column(
+            children: [
+              for (var index = 0; index < items.length; index++) ...[
+                _NotificationToggleRow(
+                  item: items[index],
+                  value: settings.isMomentEnabled(items[index].moment),
+                  enabled: enabled,
+                  onChanged: onChanged,
+                ),
+                if (index != items.length - 1)
+                  Divider(
+                    height: 1,
+                    color: colors.divider,
+                    indent: 12,
+                    endIndent: 12,
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NotificationToggleRow extends StatelessWidget {
+  final _NotificationToggleItem item;
+  final bool value;
+  final bool enabled;
+  final void Function(PushNotificationMoment moment, bool value) onChanged;
+
+  const _NotificationToggleRow({
+    required this.item,
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
         child: Row(
           children: [
-            _MoreGlyph(kind: item.icon, color: item.color, size: 21),
-            const SizedBox(width: 10),
             Expanded(
               child: Text(
-                item.title,
+                item.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: enabled ? colors.textPrimary : colors.textDisabled,
                 ),
               ),
             ),
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.chevron_right,
-              size: 18,
-              color: AppColors.textDisabled,
+            Switch.adaptive(
+              value: value,
+              onChanged: enabled
+                  ? (nextValue) => onChanged(item.moment, nextValue)
+                  : null,
+              activeThumbColor: colors.accent,
+              activeTrackColor: colors.accent.withValues(alpha: 0.36),
             ),
           ],
         ),
       ),
     );
   }
+}
+
+class _NotificationOffState extends StatelessWidget {
+  const _NotificationOffState();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Text(
+        '푸시 알림이 꺼져 있습니다',
+        style: TextStyle(
+          fontSize: 13,
+          color: colors.textSecondary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationToggleItem {
+  final PushNotificationMoment moment;
+  final String label;
+
+  const _NotificationToggleItem({required this.moment, required this.label});
+}
+
+String _modeLabel(PushNotificationMode mode) {
+  return switch (mode) {
+    PushNotificationMode.summary => '전후 요약',
+    PushNotificationMode.live => '실시간',
+    PushNotificationMode.off => '꺼짐',
+  };
 }
 
 class _NotificationInboxPreviewCard extends StatelessWidget {
@@ -504,6 +1064,7 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return FutureBuilder<List<NotificationInboxEntry>>(
       future: NotificationInboxService.instance.loadEntries(),
       builder: (context, snapshot) {
@@ -525,9 +1086,9 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: colors.card,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.divider),
+                  border: Border.all(color: colors.divider),
                 ),
                 child: Row(
                   children: [
@@ -535,15 +1096,15 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: AppColors.live.withValues(alpha: 0.16),
+                        color: colors.live.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: AppColors.live.withValues(alpha: 0.36),
+                          color: colors.live.withValues(alpha: 0.36),
                         ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.notifications_active_outlined,
-                        color: AppColors.live,
+                        color: colors.live,
                         size: 22,
                       ),
                     ),
@@ -552,19 +1113,20 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             '푸시 알림 모아보기',
                             style: TextStyle(
                               fontSize: 15,
+                              color: colors.textPrimary,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
+                          Text(
                             '최근 받은 알림을 확인합니다',
                             style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textDisabled,
+                              color: colors.textDisabled,
                             ),
                           ),
                         ],
@@ -578,9 +1140,9 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.cardSub,
+                        color: colors.cardSub,
                         borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: AppColors.divider),
+                        border: Border.all(color: colors.divider),
                       ),
                       child: Text(
                         unreadCount == 0
@@ -592,17 +1154,17 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           color: unreadCount == 0
-                              ? AppColors.textSecondary
-                              : AppColors.live,
+                              ? colors.textSecondary
+                              : colors.live,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right,
                       size: 20,
-                      color: AppColors.textDisabled,
+                      color: colors.textDisabled,
                     ),
                   ],
                 ),
@@ -651,65 +1213,8 @@ class _MoreGlyphPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
-    final fill = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
 
     switch (kind) {
-      case _MoreIconKind.game:
-        canvas.drawCircle(Offset(w * 0.5, h * 0.5), w * 0.36, stroke);
-        final leftSeam = Path()
-          ..moveTo(w * 0.36, h * 0.22)
-          ..cubicTo(w * 0.24, h * 0.36, w * 0.24, h * 0.64, w * 0.36, h * 0.78);
-        final rightSeam = Path()
-          ..moveTo(w * 0.64, h * 0.22)
-          ..cubicTo(w * 0.76, h * 0.36, w * 0.76, h * 0.64, w * 0.64, h * 0.78);
-        canvas.drawPath(leftSeam, stroke);
-        canvas.drawPath(rightSeam, stroke);
-        break;
-      case _MoreIconKind.standings:
-        _drawRoundedBar(canvas, fill, w * 0.18, h * 0.50, w * 0.15, h * 0.30);
-        _drawRoundedBar(canvas, fill, w * 0.43, h * 0.32, w * 0.15, h * 0.48);
-        _drawRoundedBar(canvas, fill, w * 0.68, h * 0.20, w * 0.15, h * 0.60);
-        break;
-      case _MoreIconKind.records:
-        final trend = Path()
-          ..moveTo(w * 0.16, h * 0.72)
-          ..lineTo(w * 0.38, h * 0.50)
-          ..lineTo(w * 0.58, h * 0.57)
-          ..lineTo(w * 0.82, h * 0.28);
-        canvas.drawPath(trend, stroke);
-        for (final point in [
-          Offset(w * 0.16, h * 0.72),
-          Offset(w * 0.38, h * 0.50),
-          Offset(w * 0.58, h * 0.57),
-          Offset(w * 0.82, h * 0.28),
-        ]) {
-          canvas.drawCircle(point, strokeWidth * 0.72, fill);
-        }
-        break;
-      case _MoreIconKind.news:
-        final page = RRect.fromRectAndRadius(
-          Rect.fromLTWH(w * 0.2, h * 0.12, w * 0.6, h * 0.76),
-          Radius.circular(w * 0.08),
-        );
-        canvas.drawRRect(page, stroke);
-        canvas.drawLine(
-          Offset(w * 0.34, h * 0.36),
-          Offset(w * 0.66, h * 0.36),
-          stroke,
-        );
-        canvas.drawLine(
-          Offset(w * 0.34, h * 0.52),
-          Offset(w * 0.66, h * 0.52),
-          stroke,
-        );
-        canvas.drawLine(
-          Offset(w * 0.34, h * 0.68),
-          Offset(w * 0.54, h * 0.68),
-          stroke,
-        );
-        break;
       case _MoreIconKind.team:
         final shield = Path()
           ..moveTo(w * 0.5, h * 0.12)
@@ -722,23 +1227,6 @@ class _MoreGlyphPainter extends CustomPainter {
         canvas.drawPath(shield, stroke);
         break;
     }
-  }
-
-  void _drawRoundedBar(
-    Canvas canvas,
-    Paint paint,
-    double left,
-    double top,
-    double width,
-    double height,
-  ) {
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(left, top, width, height),
-        Radius.circular(width * 0.5),
-      ),
-      paint,
-    );
   }
 
   @override
@@ -756,18 +1244,28 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return Row(
       children: [
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: colors.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
         ),
+        if (actionLabel != null && onAction == null)
+          Text(
+            actionLabel!,
+            style: TextStyle(
+              fontSize: 12,
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         if (actionLabel != null && onAction != null)
           AppPressable(
             onTap: onAction,
@@ -775,17 +1273,17 @@ class _SectionHeader extends StatelessWidget {
               children: [
                 Text(
                   actionLabel!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textSecondary,
+                    color: colors.textSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(width: 2),
-                const Icon(
+                Icon(
                   Icons.chevron_right,
                   size: 18,
-                  color: AppColors.textSecondary,
+                  color: colors.textSecondary,
                 ),
               ],
             ),
@@ -803,18 +1301,19 @@ class _TeamLogoMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     if (team == null) {
       return Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppColors.cardSub,
+          color: colors.cardSub,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: colors.divider),
         ),
-        child: const Icon(
+        child: Icon(
           Icons.shield_outlined,
-          color: AppColors.textSecondary,
+          color: colors.textSecondary,
           size: 26,
         ),
       );
@@ -825,9 +1324,9 @@ class _TeamLogoMark extends StatelessWidget {
       height: size,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: AppColors.cardSub,
+        color: colors.cardSub,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
+        border: Border.all(color: colors.divider),
       ),
       child: CachedNetworkImage(
         imageUrl: team!.logoUrl,
@@ -836,30 +1335,16 @@ class _TeamLogoMark extends StatelessWidget {
         errorWidget: (_, _, _) => Center(
           child: Text(
             team!.shortName,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w900,
-              color: AppColors.textSecondary,
+              color: colors.textSecondary,
             ),
           ),
         ),
       ),
     );
   }
-}
-
-class _ShortcutItem {
-  final String title;
-  final String route;
-  final _MoreIconKind icon;
-  final Color color;
-
-  const _ShortcutItem({
-    required this.title,
-    required this.route,
-    required this.icon,
-    required this.color,
-  });
 }
 
 class _LegalDocumentSheet extends StatelessWidget {
@@ -875,6 +1360,7 @@ class _LegalDocumentSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return ConstrainedBox(
       constraints: BoxConstraints(
         maxHeight: MediaQuery.sizeOf(context).height * 0.86,
@@ -891,17 +1377,18 @@ class _LegalDocumentSheet extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
+                          color: colors.textPrimary,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Text(
                         '시행일 $updatedAt',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textDisabled,
+                          color: colors.textDisabled,
                         ),
                       ),
                     ],
@@ -915,7 +1402,7 @@ class _LegalDocumentSheet extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(color: AppColors.divider, height: 1),
+          Divider(color: colors.divider, height: 1),
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
@@ -926,17 +1413,18 @@ class _LegalDocumentSheet extends StatelessWidget {
                   children: [
                     Text(
                       section.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       section.body,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSecondary,
+                        color: colors.textSecondary,
                         height: 1.45,
                       ),
                     ),

@@ -140,7 +140,7 @@
   - Positive accent: `#00C853`
   - Action accent: `#2979FF`
   - Ball count yellow: `#FFD600`
-- Use Pretendard for Korean-first UI copy and SF Pro-style numeric emphasis when drafting designs or frontend UI.
+- Use Jua for the Korean-first app UI baseline, with NanumSquareRound and Pretendard as stable fallbacks when drafting designs or frontend UI.
 - Do not use emoji in app UI copy or labels. Prefer text, color, badges, or icons.
 
 ## Reusable Patterns
@@ -190,6 +190,7 @@
 ## Repeatable Workflows
 - Reuse `.claude/skills/ios-live-activity-widget/SKILL.md` when touching iOS WidgetKit / Live Activity / Dynamic Island logic.
 - Reuse `.claude/skills/kbo-version-release/SKILL.md` when changing versions, tags, release notes, or in-app update notes.
+- In-app update notes should be easy for users to scan: include small visible changes, concrete bug fixes, and performance/stability improvements with wording like `새로워졌어요`, `고쳤어요`, `빨라졌어요`, and `작게 다듬었어요`; keep deploy/test/internal details out.
 - Reuse `.claude/skills/mobile-preview-release/SKILL.md` only as a legacy checklist when preparing TestFlight readiness or Android signing docs; release tags now follow plain numeric `0.0.x` policy in `kbo-version-release`.
 
 ## Known Document Notes

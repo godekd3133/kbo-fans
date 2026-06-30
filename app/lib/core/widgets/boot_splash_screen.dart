@@ -60,7 +60,7 @@ class BootSplashScreen extends ConsumerWidget {
                 child: Text(
                   prep.message,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondary,
                     height: 1.45,
@@ -104,14 +104,14 @@ class BootSplashScreen extends ConsumerWidget {
                       prep.blocking
                           ? '${prep.completedSteps}/${prep.totalSteps} 단계'
                           : '곧 시작합니다',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textDisabled,
                       ),
                     ),
                     Text(
                       progressLabel,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w800,

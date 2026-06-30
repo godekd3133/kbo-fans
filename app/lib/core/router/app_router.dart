@@ -28,6 +28,8 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 int? _lastTabIndex;
 
+BuildContext? get appRootNavigatorContext => _rootNavigatorKey.currentContext;
+
 final routerProvider = Provider<GoRouter>((ref) {
   final onboardingDoneRefresh = ref.watch(onboardingDoneRefreshProvider);
   _lastTabIndex = null;

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/core/theme/theme_mode_controller.dart';
 import 'package:kbo_fans/features/settings/settings_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,7 +20,7 @@ void main() {
     );
   });
 
-  testWidgets('더보기 허브는 필수 액션만 보여주고 다른 탭 정보를 중복 노출하지 않는다', (tester) async {
+  testWidgets('설정 허브는 필수 액션만 보여주고 다른 탭 정보를 중복 노출하지 않는다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -30,7 +31,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('더보기'), findsOneWidget);
+    expect(find.text('설정'), findsOneWidget);
     expect(find.text('마이팀을 선택하세요'), findsOneWidget);
     expect(find.text('마이팀 선택'), findsOneWidget);
     expect(find.text('오늘 챙길 정보'), findsNothing);
@@ -41,12 +42,11 @@ void main() {
     expect(find.text('알림 플레이북'), findsNothing);
     expect(find.text('리그 전체 알림'), findsNothing);
     expect(find.text('프리셋 적용'), findsNothing);
-    await tester.scrollUntilVisible(
-      find.text('빠른 이동'),
-      500,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('빠른 이동'), findsOneWidget);
+    expect(find.text('빠른 이동'), findsNothing);
+    expect(find.text('경기 일정'), findsNothing);
+    expect(find.text('순위표'), findsNothing);
+    expect(find.text('기록실'), findsNothing);
+    expect(find.text('뉴스'), findsNothing);
     expect(find.text('오늘과 이번 주'), findsNothing);
     expect(find.text('게임차와 흐름'), findsNothing);
     expect(find.text('선수와 팀 기록'), findsNothing);
@@ -77,7 +77,101 @@ void main() {
     expect(find.text('라이브 액티비티'), findsNothing);
   });
 
-  testWidgets('더보기 알림함 카드로 알림함에 진입한다', (tester) async {
+  testWidgets('화면 모드는 시스템 라이트 다크 옵션을 제공하고 선택을 저장한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: Consumer(
+          builder: (context, ref, _) {
+            final preference = ref.watch(appThemeModeProvider);
+            return MaterialApp(
+              theme: AppTheme.light,
+              darkTheme: AppTheme.dark,
+              themeMode: preference.themeMode,
+              home: const SettingsScreen(),
+            );
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('화면 모드'), findsOneWidget);
+    expect(find.text('시스템'), findsOneWidget);
+    expect(find.text('라이트'), findsOneWidget);
+    expect(find.text('다크'), findsWidgets);
+
+    await tester.tap(find.text('라이트'));
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.getString(AppThemeModeNotifier.prefsKey),
+      AppThemeModePreference.light.storageValue,
+    );
+    expect(find.text('라이트'), findsWidgets);
+  });
+
+  testWidgets('푸시 알림은 큰 모드와 세부 토글을 설정 첫 화면에서 제공한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('푸시 알림'), findsOneWidget);
+    expect(find.text('기본 대상'), findsOneWidget);
+    expect(find.text('마이팀 선택 전'), findsOneWidget);
+    expect(find.text('경기 전후 요약만 받기'), findsOneWidget);
+    expect(find.text('경기 중 실시간 알림받기'), findsOneWidget);
+    expect(find.text('안받기'), findsOneWidget);
+    expect(find.text('경기 전후'), findsOneWidget);
+    expect(find.text('경기 중 실시간'), findsOneWidget);
+    expect(find.text('선발 라인업 공개'), findsOneWidget);
+    expect(find.text('경기 시작과 시작 임박'), findsOneWidget);
+    expect(find.text('경기 종료 결과'), findsOneWidget);
+    expect(find.text('야구 브리프'), findsOneWidget);
+    expect(find.text('득점'), findsOneWidget);
+    expect(find.text('안타'), findsOneWidget);
+    expect(find.text('홈런'), findsOneWidget);
+    expect(find.text('역전'), findsOneWidget);
+    expect(find.text('이닝 전환'), findsOneWidget);
+    expect(find.text('타석 변화'), findsOneWidget);
+  });
+
+  testWidgets('안받기 선택은 저장된 moment와 delivery를 모두 끈다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('안받기'));
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('push_notifications.game_start'), isFalse);
+    expect(prefs.getBool('push_notifications.scoring'), isFalse);
+    expect(prefs.getBool('push_notifications.hit'), isFalse);
+    expect(prefs.getBool('push_notifications.baseball_info'), isFalse);
+    expect(prefs.getString('push_notifications.game_start.delivery'), 'off');
+    expect(prefs.getString('push_notifications.scoring.delivery'), 'off');
+    expect(prefs.getString('push_notifications.hit.delivery'), 'off');
+    expect(prefs.getString('push_notifications.baseball_info.delivery'), 'off');
+    expect(find.text('푸시 알림이 꺼져 있습니다'), findsOneWidget);
+  });
+
+  testWidgets('설정 알림함 카드로 알림함에 진입한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final router = GoRouter(
@@ -125,7 +219,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('더보기'), findsOneWidget);
+    expect(find.text('설정'), findsOneWidget);
     expect(find.text('현재 프리셋: 커스텀'), findsNothing);
     expect(find.text('알림 플레이북'), findsNothing);
     expect(find.text('프리셋 적용'), findsNothing);

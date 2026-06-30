@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:kbo_fans/core/widgets/main_scaffold.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/features/notifications/notification_inbox_screen.dart';
+import 'package:kbo_fans/features/settings/settings_screen.dart';
 import 'package:kbo_fans/services/notification_inbox_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    PackageInfo.setMockInitialValues(
+      appName: 'KBO Fans',
+      packageName: 'com.kbofans.app',
+      version: '0.1.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
   });
 
   testWidgets('renders stored push notifications as an inbox timeline', (
@@ -65,5 +77,51 @@ void main() {
 
     expect(find.text('정리됨'), findsOneWidget);
     expect(find.text('새 알림'), findsNothing);
+  });
+
+  testWidgets('inbox settings link returns to the settings tab body', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/notifications',
+      routes: [
+        ShellRoute(
+          builder: (context, state, child) => MainScaffold(child: child),
+          routes: [
+            GoRoute(
+              path: '/settings',
+              builder: (_, _) => const SettingsScreen(),
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/notifications',
+          builder: (_, _) => const NotificationInboxScreen(),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('알림함'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('설정'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('설정'));
+    await tester.pumpAndSettle();
+
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/settings');
+    expect(find.text('마이팀을 선택하세요'), findsOneWidget);
+    expect(find.text('경기 중 실시간 알림받기'), findsOneWidget);
   });
 }

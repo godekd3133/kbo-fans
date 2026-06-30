@@ -156,7 +156,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
         builder: (context, snapshot) {
           Widget child;
           if (!snapshot.hasData) {
-            child = const Center(
+            child = Center(
               key: ValueKey('api-diagnostics-loading'),
               child: CircularProgressIndicator(color: AppColors.live),
             );
@@ -168,7 +168,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
             key: const ValueKey('api-diagnostics-ready'),
             padding: const EdgeInsets.all(16),
             children: [
-              const AppMotionListItem(
+              AppMotionListItem(
                 index: 0,
                 child: Text(
                   'health / scoreboard / schedule 상태를 한 번에 확인합니다.',
@@ -337,29 +337,20 @@ class _DiagnosticCard extends StatelessWidget {
               const Spacer(),
               Text(
                 '${result.elapsedMs.toStringAsFixed(0)}ms',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             result.detail,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           if (result.note != null) ...[
             const SizedBox(height: 6),
             Text(
               result.note!,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textDisabled,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
             ),
           ],
         ],

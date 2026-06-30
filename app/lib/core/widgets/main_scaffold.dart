@@ -10,10 +10,10 @@ class MainScaffold extends StatelessWidget {
 
   static const _tabs = [
     (icon: Icons.home_rounded, label: '홈', path: '/home'),
-    (icon: Icons.sports_baseball_rounded, label: '경기', path: '/schedule'),
+    (icon: Icons.sports_baseball_rounded, label: '일정', path: '/schedule'),
     (icon: Icons.bar_chart_rounded, label: '기록', path: '/records'),
     (icon: Icons.article_outlined, label: '뉴스', path: '/news'),
-    (icon: Icons.more_horiz_rounded, label: '더보기', path: '/settings'),
+    (icon: Icons.settings_rounded, label: '설정', path: '/settings'),
   ];
 
   int _currentIndex(BuildContext context) {
@@ -25,6 +25,7 @@ class MainScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = _currentIndex(context);
+    final colors = AppTheme.colorsOf(context);
     return Scaffold(
       body: child,
       bottomNavigationBar: SafeArea(
@@ -32,11 +33,11 @@ class MainScaffold extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
           decoration: BoxDecoration(
-            color: AppColors.background.withValues(alpha: 0.98),
-            border: const Border(top: BorderSide(color: AppColors.divider)),
+            color: colors.background.withValues(alpha: 0.98),
+            border: Border(top: BorderSide(color: colors.divider)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.36),
+                color: colors.navShadow,
                 blurRadius: 18,
                 offset: const Offset(0, -8),
               ),
@@ -65,7 +66,7 @@ class MainScaffold extends StatelessWidget {
                 width: 128,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -92,8 +93,9 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = selected ? AppColors.live : AppColors.textDisabled;
-    final labelColor = selected ? AppColors.live : AppColors.textDisabled;
+    final colors = AppTheme.colorsOf(context);
+    final iconColor = selected ? colors.live : colors.textDisabled;
+    final labelColor = selected ? colors.live : colors.textDisabled;
     const animationDuration = Duration(milliseconds: 180);
     const animationCurve = Curves.easeOutCubic;
 
