@@ -390,6 +390,8 @@ class PushService:
         state: LiveActivityContentState,
         stale_date: Optional[int] = None,
         relevance_score: Optional[float] = None,
+        alert_title: Optional[str] = None,
+        alert_body: Optional[str] = None,
     ) -> dict[str, Any]:
         registrations = self.registry.live_activity_start_registrations_for_game(
             game_id=game_id,
@@ -399,14 +401,14 @@ class PushService:
         if not registrations:
             return {"sent": False, "gameId": game_id, "messages": []}
 
-        title = "경기 시작"
+        title = alert_title or "경기 시작"
         matchup = _game_matchup_display(
             away_team_id=away_team_id,
             away_team_name=away_team_name,
             home_team_id=home_team_id,
             home_team_name=home_team_name,
         )
-        body = f"{matchup} 경기가 시작됐습니다."
+        body = alert_body or f"{matchup} 경기가 시작됐습니다."
         messages = []
         for registration in registrations:
             token = str(registration.get("pushToStartToken") or "")
@@ -614,7 +616,11 @@ class PushService:
         for topic_name, (setting_enabled, delivery) in topic_flags.items():
             is_game_moment = topic_name in GAME_MOMENT_TOPIC_NAMES
 
-            if is_game_moment and has_my_team:
+            if (
+                is_game_moment
+                and has_my_team
+                and _enabled_for_game_moment_topic(setting_enabled, delivery)
+            ):
                 topics.append(f"{topic_name}_{my_team}")
 
             if payload.notifications.allGames:

@@ -17,6 +17,8 @@ import '../data/models/schedule.dart';
 import '../data/repositories/game_repository.dart';
 import 'push_notification_service.dart';
 
+const _pregameLiveActivityLeadTime = Duration(minutes: 10);
+
 @pragma('vm:entry-point')
 void liveActivityNotificationTapBackground(NotificationResponse response) {
   LiveActivityService.handleAndroidNotificationResponse(response);
@@ -202,7 +204,7 @@ class LiveActivityService {
       return;
     }
 
-    final isPregame = game.isPregameLineupOpen;
+    final isPregame = _isLiveActivityPregame(game);
     if (game.status != GameStatus.live && !isPregame) {
       await endCurrentScore();
       return;
@@ -278,8 +280,12 @@ class LiveActivityService {
     required String apiBaseUrl,
     CurrentAtBat? currentAtBat,
     _LiveActivityRankLabels rankLabels = const _LiveActivityRankLabels(),
+    DateTime? now,
   }) {
-    final isPregame = targetGame.isPregameLineupOpen;
+    final isTerminal = isTerminalGameStatus(targetGame.status);
+    final effectiveAtBat = isTerminal ? null : currentAtBat;
+    final isPregame =
+        !isTerminal && _isLiveActivityPregame(targetGame, now: now);
     return {
       'gameId': targetGame.gameId,
       'awayTeamId': targetGame.away.teamId,
@@ -288,18 +294,22 @@ class LiveActivityService {
       'homeTeam': _liveActivityTeamLabel(targetGame.home),
       'awayScore': targetGame.away.score,
       'homeScore': targetGame.home.score,
-      'inning': _inningTextForLiveActivity(targetGame, currentAtBat),
-      'batter': currentAtBat?.batterName ?? '',
-      'batterAverage': currentAtBat?.batterAverage ?? '',
-      'pitcher': currentAtBat?.pitcherName ?? '',
-      'pitcherEra': currentAtBat?.pitcherEra ?? '',
-      'pitchCount': currentAtBat?.pitchCount ?? 0,
-      'balls': currentAtBat?.balls ?? 0,
-      'strikes': currentAtBat?.strikes ?? 0,
-      'outs': currentAtBat?.outs ?? 0,
+      'inning': _inningTextForLiveActivity(
+        targetGame,
+        effectiveAtBat,
+        isPregame: isPregame,
+      ),
+      'batter': effectiveAtBat?.batterName ?? '',
+      'batterAverage': effectiveAtBat?.batterAverage ?? '',
+      'pitcher': effectiveAtBat?.pitcherName ?? '',
+      'pitcherEra': effectiveAtBat?.pitcherEra ?? '',
+      'pitchCount': effectiveAtBat?.pitchCount ?? 0,
+      'balls': effectiveAtBat?.balls ?? 0,
+      'strikes': effectiveAtBat?.strikes ?? 0,
+      'outs': effectiveAtBat?.outs ?? 0,
       'stadium': targetGame.stadium,
       'updatedAt': updatedAt,
-      'situationText': _situationText(currentAtBat),
+      'situationText': _situationText(effectiveAtBat),
       'playText': '',
       'isPregame': isPregame,
       'awayRankText': isPregame ? rankLabels.away : '',
@@ -310,13 +320,14 @@ class LiveActivityService {
 
   String _inningTextForLiveActivity(
     Game targetGame,
-    CurrentAtBat? currentAtBat,
-  ) {
+    CurrentAtBat? currentAtBat, {
+    required bool isPregame,
+  }) {
     final atBatInning = currentAtBat?.inningText.trim() ?? '';
     if (atBatInning.isNotEmpty) {
       return atBatInning;
     }
-    if (targetGame.isPregameLineupOpen) {
+    if (isPregame) {
       return '경기전';
     }
     return secondaryTextForGameStatus(
@@ -649,7 +660,8 @@ class LiveActivityService {
       targetGame,
       rankLabels: rankLabels,
     );
-    final statusText = targetGame.isPregameLineupOpen
+    final isPregame = _isLiveActivityPregame(targetGame);
+    final statusText = isPregame
         ? '경기전'
         : secondaryTextForGameStatus(
             targetGame.status,
@@ -705,7 +717,7 @@ class LiveActivityService {
           host: 'game',
           queryParameters: {
             'gameId': targetGame.gameId,
-            'tab': targetGame.isPregameLineupOpen ? 'lineup' : 'relay',
+            'tab': isPregame ? 'lineup' : 'relay',
           },
         ).toString(),
       );
@@ -754,7 +766,7 @@ String _androidFollowNotificationTitle(
 }) {
   final away = _liveActivityTeamLabel(game.away);
   final home = _liveActivityTeamLabel(game.home);
-  if (game.isPregameLineupOpen) {
+  if (_isLiveActivityPregame(game)) {
     return '$away ${rankLabels.awayOrDash} · ${rankLabels.homeOrDash} $home';
   }
   return '$away ${game.away.score}:${game.home.score} $home';
@@ -779,14 +791,62 @@ _LiveActivityRankLabels _rankLabelsForGame(
   );
 }
 
+bool _isLiveActivityPregame(Game game, {DateTime? now}) {
+  return game.isPregameLineupOpen ||
+      _isWithinPregameLiveActivityWindow(game, now: now);
+}
+
+bool _isWithinPregameLiveActivityWindow(Game game, {DateTime? now}) {
+  if (game.status != GameStatus.scheduled) {
+    return false;
+  }
+  final startAt = _gameStartDateTimeForLiveActivity(game);
+  if (startAt == null) {
+    return false;
+  }
+  final current = now ?? DateTime.now();
+  final windowStart = startAt.subtract(_pregameLiveActivityLeadTime);
+  return !current.isBefore(windowStart) && !current.isAfter(startAt);
+}
+
+DateTime? _gameStartDateTimeForLiveActivity(Game game) {
+  final gameId = game.gameId;
+  if (gameId.length < 8) {
+    return null;
+  }
+  final year = int.tryParse(gameId.substring(0, 4));
+  final month = int.tryParse(gameId.substring(4, 6));
+  final day = int.tryParse(gameId.substring(6, 8));
+  final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(game.startTime.trim());
+  if (year == null || month == null || day == null || match == null) {
+    return null;
+  }
+  final hour = int.tryParse(match.group(1)!);
+  final minute = int.tryParse(match.group(2)!);
+  if (hour == null || minute == null || hour > 23 || minute > 59) {
+    return null;
+  }
+  final parsed = DateTime(year, month, day, hour, minute);
+  if (parsed.year != year ||
+      parsed.month != month ||
+      parsed.day != day ||
+      parsed.hour != hour ||
+      parsed.minute != minute) {
+    return null;
+  }
+  return parsed;
+}
+
 @visibleForTesting
 Game? selectAutoLiveActivityGame({
   required List<Game> games,
   required String? myTeamId,
+  DateTime? now,
 }) {
   final myTeamGame = selectMyTeamLiveActivityGame(
     games: games,
     myTeamId: myTeamId,
+    now: now,
   );
   if (myTeamGame != null) {
     return myTeamGame;
@@ -797,13 +857,14 @@ Game? selectAutoLiveActivityGame({
     return liveOther;
   }
 
-  return _findAutoFollowCandidate(games, requirePregameLineup: true);
+  return _findAutoFollowCandidate(games, requirePregameLineup: true, now: now);
 }
 
 @visibleForTesting
 Game? selectMyTeamLiveActivityGame({
   required List<Game> games,
   required String? myTeamId,
+  DateTime? now,
 }) {
   final normalizedMyTeamId = myTeamId?.trim();
   if (normalizedMyTeamId == null || normalizedMyTeamId.isEmpty) {
@@ -823,6 +884,7 @@ Game? selectMyTeamLiveActivityGame({
     games,
     myTeamId: normalizedMyTeamId,
     requirePregameLineup: true,
+    now: now,
   );
 }
 
@@ -831,12 +893,13 @@ Game? _findAutoFollowCandidate(
   String? myTeamId,
   GameStatus? status,
   bool requirePregameLineup = false,
+  DateTime? now,
 }) {
   for (final game in games) {
     if (status != null && game.status != status) {
       continue;
     }
-    if (requirePregameLineup && !game.isPregameLineupOpen) {
+    if (requirePregameLineup && !_isLiveActivityPregame(game, now: now)) {
       continue;
     }
     if (myTeamId != null &&
@@ -857,6 +920,7 @@ Map<String, dynamic> buildLiveActivityScorePayloadForTesting({
   List<TeamStanding> standings = const [],
   String updatedAt = '12:34:56',
   String apiBaseUrl = 'https://api.example.test',
+  DateTime? now,
 }) {
   return LiveActivityService.instance._scorePayloadForGame(
     game,
@@ -864,6 +928,7 @@ Map<String, dynamic> buildLiveActivityScorePayloadForTesting({
     rankLabels: _rankLabelsForGame(game, standings),
     updatedAt: updatedAt,
     apiBaseUrl: apiBaseUrl,
+    now: now,
   );
 }
 

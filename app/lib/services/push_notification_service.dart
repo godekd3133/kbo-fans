@@ -28,6 +28,8 @@ enum PushNotificationMoment {
 
 enum PushNotificationDelivery { immediate, summary, liveOnly, off }
 
+enum PushNotificationMode { summary, live, off }
+
 class PushDiagnosticTestResult {
   final bool sent;
   final String message;
@@ -55,6 +57,30 @@ PushNotificationDelivery _deliveryFromStorage(
     'live_only' => PushNotificationDelivery.liveOnly,
     'off' => PushNotificationDelivery.off,
     _ => legacyEnabled ? enabledFallback : PushNotificationDelivery.off,
+  };
+}
+
+PushNotificationDelivery _defaultDeliveryForMoment(
+  PushNotificationMoment moment,
+  PushNotificationMode mode,
+) {
+  if (mode == PushNotificationMode.off) {
+    return PushNotificationDelivery.off;
+  }
+  if (mode == PushNotificationMode.summary) {
+    return switch (moment) {
+      PushNotificationMoment.gameStart ||
+      PushNotificationMoment.gameEnd ||
+      PushNotificationMoment.lineupOpened => PushNotificationDelivery.summary,
+      PushNotificationMoment.baseballInfo => PushNotificationDelivery.immediate,
+      _ => PushNotificationDelivery.off,
+    };
+  }
+  return switch (moment) {
+    PushNotificationMoment.gameEnd ||
+    PushNotificationMoment.lineupOpened => PushNotificationDelivery.summary,
+    PushNotificationMoment.inningChange => PushNotificationDelivery.liveOnly,
+    _ => PushNotificationDelivery.immediate,
   };
 }
 
@@ -270,6 +296,83 @@ class PushNotificationSettings {
       atBatDelivery = PushNotificationDelivery.immediate,
       baseballInfoDelivery = PushNotificationDelivery.immediate;
 
+  factory PushNotificationSettings.forMode(
+    PushNotificationMode mode, {
+    bool allGames = false,
+  }) {
+    return switch (mode) {
+      PushNotificationMode.summary => PushNotificationSettings(
+        gameStart: true,
+        scoring: false,
+        hit: false,
+        homerun: false,
+        reversal: false,
+        gameEnd: true,
+        lineupOpened: true,
+        inningChange: false,
+        atBat: false,
+        baseballInfo: true,
+        allGames: allGames,
+        gameStartDelivery: PushNotificationDelivery.summary,
+        scoringDelivery: PushNotificationDelivery.off,
+        hitDelivery: PushNotificationDelivery.off,
+        homerunDelivery: PushNotificationDelivery.off,
+        reversalDelivery: PushNotificationDelivery.off,
+        gameEndDelivery: PushNotificationDelivery.summary,
+        lineupOpenedDelivery: PushNotificationDelivery.summary,
+        inningChangeDelivery: PushNotificationDelivery.off,
+        atBatDelivery: PushNotificationDelivery.off,
+        baseballInfoDelivery: PushNotificationDelivery.immediate,
+      ),
+      PushNotificationMode.live => PushNotificationSettings(
+        gameStart: true,
+        scoring: true,
+        hit: true,
+        homerun: true,
+        reversal: true,
+        gameEnd: true,
+        lineupOpened: true,
+        inningChange: true,
+        atBat: true,
+        baseballInfo: true,
+        allGames: allGames,
+        gameStartDelivery: PushNotificationDelivery.immediate,
+        scoringDelivery: PushNotificationDelivery.immediate,
+        hitDelivery: PushNotificationDelivery.immediate,
+        homerunDelivery: PushNotificationDelivery.immediate,
+        reversalDelivery: PushNotificationDelivery.immediate,
+        gameEndDelivery: PushNotificationDelivery.summary,
+        lineupOpenedDelivery: PushNotificationDelivery.summary,
+        inningChangeDelivery: PushNotificationDelivery.liveOnly,
+        atBatDelivery: PushNotificationDelivery.immediate,
+        baseballInfoDelivery: PushNotificationDelivery.immediate,
+      ),
+      PushNotificationMode.off => PushNotificationSettings(
+        gameStart: false,
+        scoring: false,
+        hit: false,
+        homerun: false,
+        reversal: false,
+        gameEnd: false,
+        lineupOpened: false,
+        inningChange: false,
+        atBat: false,
+        baseballInfo: false,
+        allGames: allGames,
+        gameStartDelivery: PushNotificationDelivery.off,
+        scoringDelivery: PushNotificationDelivery.off,
+        hitDelivery: PushNotificationDelivery.off,
+        homerunDelivery: PushNotificationDelivery.off,
+        reversalDelivery: PushNotificationDelivery.off,
+        gameEndDelivery: PushNotificationDelivery.off,
+        lineupOpenedDelivery: PushNotificationDelivery.off,
+        inningChangeDelivery: PushNotificationDelivery.off,
+        atBatDelivery: PushNotificationDelivery.off,
+        baseballInfoDelivery: PushNotificationDelivery.off,
+      ),
+    };
+  }
+
   PushNotificationSettings copyWith({
     bool? gameStart,
     bool? scoring,
@@ -316,6 +419,104 @@ class PushNotificationSettings {
       atBatDelivery: atBatDelivery ?? this.atBatDelivery,
       baseballInfoDelivery: baseballInfoDelivery ?? this.baseballInfoDelivery,
     );
+  }
+
+  PushNotificationMode get mode {
+    if (!_hasDeliverableMoments) {
+      return PushNotificationMode.off;
+    }
+    if (_hasRealtimeMoments) {
+      return PushNotificationMode.live;
+    }
+    return PushNotificationMode.summary;
+  }
+
+  PushNotificationSettings withMode(PushNotificationMode mode) {
+    return PushNotificationSettings.forMode(mode, allGames: allGames);
+  }
+
+  PushNotificationSettings withMomentEnabled(
+    PushNotificationMoment moment,
+    bool enabled,
+  ) {
+    final delivery = enabled
+        ? _defaultDeliveryForMoment(moment, mode)
+        : PushNotificationDelivery.off;
+    return switch (moment) {
+      PushNotificationMoment.gameStart => copyWith(
+        gameStart: enabled,
+        gameStartDelivery: delivery,
+      ),
+      PushNotificationMoment.scoring => copyWith(
+        scoring: enabled,
+        scoringDelivery: delivery,
+      ),
+      PushNotificationMoment.hit => copyWith(
+        hit: enabled,
+        hitDelivery: delivery,
+      ),
+      PushNotificationMoment.homerun => copyWith(
+        homerun: enabled,
+        homerunDelivery: delivery,
+      ),
+      PushNotificationMoment.reversal => copyWith(
+        reversal: enabled,
+        reversalDelivery: delivery,
+      ),
+      PushNotificationMoment.gameEnd => copyWith(
+        gameEnd: enabled,
+        gameEndDelivery: delivery,
+      ),
+      PushNotificationMoment.lineupOpened => copyWith(
+        lineupOpened: enabled,
+        lineupOpenedDelivery: delivery,
+      ),
+      PushNotificationMoment.inningChange => copyWith(
+        inningChange: enabled,
+        inningChangeDelivery: delivery,
+      ),
+      PushNotificationMoment.atBat => copyWith(
+        atBat: enabled,
+        atBatDelivery: delivery,
+      ),
+      PushNotificationMoment.baseballInfo => copyWith(
+        baseballInfo: enabled,
+        baseballInfoDelivery: delivery,
+      ),
+    };
+  }
+
+  bool isMomentEnabled(PushNotificationMoment moment) {
+    if (deliveryFor(moment) == PushNotificationDelivery.off) {
+      return false;
+    }
+    return switch (moment) {
+      PushNotificationMoment.gameStart => gameStart,
+      PushNotificationMoment.scoring => scoring,
+      PushNotificationMoment.hit => hit,
+      PushNotificationMoment.homerun => homerun,
+      PushNotificationMoment.reversal => reversal,
+      PushNotificationMoment.gameEnd => gameEnd,
+      PushNotificationMoment.lineupOpened => lineupOpened,
+      PushNotificationMoment.inningChange => inningChange,
+      PushNotificationMoment.atBat => atBat,
+      PushNotificationMoment.baseballInfo => baseballInfo,
+    };
+  }
+
+  bool get _hasDeliverableMoments {
+    return PushNotificationMoment.values.any(isMomentEnabled);
+  }
+
+  bool get _hasRealtimeMoments {
+    return const {
+      PushNotificationMoment.scoring,
+      PushNotificationMoment.hit,
+      PushNotificationMoment.homerun,
+      PushNotificationMoment.reversal,
+      PushNotificationMoment.inningChange,
+      PushNotificationMoment.atBat,
+    }.any(isMomentEnabled);
   }
 
   PushNotificationDelivery deliveryFor(PushNotificationMoment moment) {
@@ -1219,7 +1420,7 @@ Set<String> buildPushTopics({
   topicMoments.forEach((topicName, moment) {
     final isGameMoment = _gameMomentTopicNames.contains(topicName);
 
-    if (isGameMoment && hasMyTeam) {
+    if (isGameMoment && hasMyTeam && settings.enablesFollowedGamePush(moment)) {
       topics.add('${topicName}_$normalizedMyTeam');
     }
 

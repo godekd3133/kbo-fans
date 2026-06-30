@@ -75,7 +75,7 @@ def test_build_topics_returns_all_topics_when_all_games_enabled() -> None:
     assert "game_start_ALL" in topics
     assert "all_games_enabled" in topics
     assert "game_start_LG" in topics
-    assert "inning_change_LG" in topics
+    assert "inning_change_LG" not in topics
 
 
 def test_build_topics_respects_delivery_modes() -> None:
@@ -114,14 +114,51 @@ def test_build_topics_respects_delivery_modes() -> None:
         "game_start_LG",
         "game_start_soon_LG",
         "scoring_LG",
-        "hit_LG",
         "homerun_LG",
-        "reversal_LG",
         "game_end_LG",
         "lineup_opened_LG",
         "inning_change_LG",
         "at_bat_LG",
     ]
+
+
+def test_build_topics_respects_off_mode_for_my_team_game_moments() -> None:
+    service = PushService()
+    payload = PushRegisterRequest(
+        deviceToken="token",
+        platform="flutter",
+        myTeam="LG",
+        followedGameIds=["20260612KTOB0"],
+        notifications=NotificationSettings(
+            gameStart=False,
+            scoring=False,
+            hit=False,
+            homerun=False,
+            reversal=False,
+            gameEnd=False,
+            lineupOpened=False,
+            inningChange=False,
+            atBat=False,
+            baseballInfo=False,
+            allGames=False,
+            deliveryModes=NotificationDeliveryModes(
+                gameStart="off",
+                scoring="off",
+                hit="off",
+                homerun="off",
+                reversal="off",
+                gameEnd="off",
+                lineupOpened="off",
+                inningChange="off",
+                atBat="off",
+                baseballInfo="off",
+            ),
+        ),
+    )
+
+    topics = service._build_topics(payload)
+
+    assert topics == []
 
 
 def test_build_topics_keeps_my_team_game_moments_without_follow_action() -> None:
@@ -1730,6 +1767,77 @@ def test_live_activity_scoreboard_sync_starts_my_team_live_activity_from_start_t
     assert response["startedGames"][0]["sent"] is True
     assert sender.start_calls[0]["push_to_start_token"] == "start-token"
     assert sender.start_calls[0]["state"].inning == "7회말"
+    assert sender.start_calls[0]["alert_title"] == "경기 시작"
+    assert second_response["startedGames"] == []
+    assert len(sender.start_calls) == 1
+
+
+def test_live_activity_scoreboard_sync_starts_my_team_activity_ten_minutes_before_first_pitch(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            installationId="install-1",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+            notificationsAllowed=True,
+        )
+    )
+    push_service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token",
+            installationId="install-1",
+        )
+    )
+    now = datetime(2026, 6, 4, 18, 20, tzinfo=timezone(timedelta(hours=9)))
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    away_score=0,
+                    home_score=0,
+                    inning="18:30 예정",
+                    status="SCHEDULED",
+                    start_time="18:30",
+                    lineup_opened=False,
+                ),
+                _scoreboard_game(
+                    away_score=0,
+                    home_score=0,
+                    inning="18:30 예정",
+                    status="SCHEDULED",
+                    start_time="18:30",
+                    lineup_opened=False,
+                ),
+            ]
+        ),
+        push_service=push_service,
+        now_provider=lambda: now,
+    )
+
+    response = sync_service.sync_date("2026-06-04")
+    second_response = sync_service.sync_date("2026-06-04")
+
+    assert response["startedGames"][0]["sent"] is True
+    assert sender.start_calls[0]["push_to_start_token"] == "start-token"
+    assert sender.start_calls[0]["alert_title"] == "경기 곧 시작"
+    assert sender.start_calls[0]["alert_body"] == "LG vs KT 경기가 곧 시작됩니다. 18:30 · 수원"
+    assert sender.start_calls[0]["state"].isPregame is True
+    assert sender.start_calls[0]["state"].inning == "경기전"
     assert second_response["startedGames"] == []
     assert len(sender.start_calls) == 1
 
@@ -1860,6 +1968,58 @@ def test_live_activity_scoreboard_sync_enriches_current_at_bat_from_relay(
     assert state.strikes == 2
     assert state.outs == 2
     assert state.situationText == "2사 2루"
+
+
+def test_live_activity_scoreboard_sync_clears_current_at_bat_for_final_update(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260629SSLG0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    game_id="20260629SSLG0",
+                    away_team_id="SS",
+                    away_short_name="삼성",
+                    home_team_id="LG",
+                    home_short_name="LG",
+                    away_score=3,
+                    home_score=4,
+                    inning="경기종료",
+                    status="FINAL",
+                    batter_name="디아즈",
+                    pitcher_name="손주영",
+                    balls=1,
+                    strikes=3,
+                    outs=3,
+                )
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    response = sync_service.sync_date("2026-06-29")
+
+    assert response["updatedGames"][0]["sent"] is True
+    assert sender.calls[0]["event"] == "end"
+    state = sender.calls[0]["state"]
+    assert state.inning == "경기종료"
+    assert state.batter == ""
+    assert state.pitcher == ""
+    assert state.pitchCount == 0
+    assert state.balls == 0
+    assert state.strikes == 0
+    assert state.outs == 0
+    assert state.situationText == ""
 
 
 def test_scoreboard_sync_pushes_score_moments_after_baseline(tmp_path) -> None:
@@ -3347,6 +3507,9 @@ def _scoreboard_game(
     start_time: str = "",
     batter_name: str = "",
     pitcher_name: str = "",
+    balls: int = 0,
+    strikes: int = 0,
+    outs: int = 0,
     lineup_opened: bool = False,
 ) -> dict:
     return {
@@ -3359,9 +3522,9 @@ def _scoreboard_game(
         "current": {
             "batterName": batter_name,
             "pitcherName": pitcher_name,
-            "balls": 0,
-            "strikes": 0,
-            "outs": 0,
+            "balls": balls,
+            "strikes": strikes,
+            "outs": outs,
         },
         "away": {
             "teamId": away_team_id,

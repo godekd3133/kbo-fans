@@ -386,19 +386,20 @@ iOS release/TestFlight 앱은 아래가 필요하다.
 - App Group: `group.com.kbofans.kbo_fans`
 - Widget extension 포함 provisioning profile
 
-앱은 사용자가 경기 상세에서 `경기 따라가기`를 누르면 ActivityKit push token을 backend에 등록한다. 이후 앱이 꺼져 있어도 backend가 APNs `liveactivity` push를 보내면 Dynamic Island가 갱신된다. 일반 푸시 설정은 FCM topic subscription으로 동작하며, backend scheduler가 scoreboard diff를 보고 득점/역전/종료/타석 같은 moment push를 발행하고 relay diff로 홈런 push를 발행한다.
+앱은 사용자가 경기 상세에서 `경기 따라가기`를 누르면 ActivityKit push token을 backend에 등록한다. iOS 17.2+에서는 앱 시작 시 push-to-start token도 등록하므로, backend scheduler는 마이팀/선택 경기가 KST `startTime` 기준 10분 전 window에 들어오면 앱을 다시 열지 않아도 APNs `liveactivity` `event=start`로 Live Activity / Dynamic Island를 시작한다. 이후 backend가 APNs `liveactivity` update/end push를 보내면 앱이 꺼져 있어도 Dynamic Island가 갱신된다. 일반 푸시 설정은 FCM topic subscription으로 동작하며, backend scheduler가 scoreboard diff를 보고 시작 임박/득점/역전/종료/타석 같은 moment push를 발행하고 relay diff로 홈런 push를 발행한다.
 
 ## 완료 확인
 
 - `POST /api/push/register`가 FCM token을 registry에 저장
 - `POST /api/push/live-activity/register`가 ActivityKit token을 registry에 저장
+- `POST /api/push/live-activity/start-token/register`가 iOS 17.2+ push-to-start token과 같은 `installationId`를 registry에 저장
 - `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`가 실패 0개로 통과
 - `GET /api/push/config-status`의 `readyForIphoneOnlyDemo`가 `true`
 - `GET /api/push/config-status`의 `registry.registeredDeviceCount`, `registry.topicCounts.game_start_soon_<팀>`, `registry.topicCounts.hit_<팀>`이 기대 단말/topic 등록과 일치
 - `GET /api/push/config-status`의 `registry.deviceSummaries`가 기대 단말의 `installationIdSuffix`, `notificationsAllowed=true`, `authorizationStatus=authorized` 또는 `provisional`, iOS `apnsTokenReady=true`, 최신 앱 등록 `updatedAt`, topic 재동기화 `topicsUpdatedAt`을 token 원문 없이 보여줌
 - `GET /api/push/config-status`의 `scheduler.lastSyncAt`이 sync worker 주기에 맞춰 갱신
 - `PUSH_SYNC_SECRET=<...> ./scripts/push-readiness-check.sh https://api.kbofans.com/api` 통과
-- `POST /api/push/live-activity/sync-scoreboard`가 등록된 live game에 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff와 relay diff 기반 FCM moment push를 보냄
+- `POST /api/push/live-activity/sync-scoreboard`가 시작 10분 전 예정 경기에는 APNs start를, 등록된 live game에는 APNs update/end를 보내고, 일반 푸시 등록 기기가 있으면 scoreboard diff와 relay diff 기반 FCM moment push를 보냄
 - iPhone 실기기에서 앱을 종료한 뒤에도 Live Activity `updatedAt`이 서버 sync 주기에 맞춰 변경
 - 일반 push 발송은 Firebase Console, `X-Kbo-Push-Sync-Secret`이 포함된 `/api/push/test`, `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>`, GitHub Actions `Push Test Notification`, 또는 scheduler의 `pushedMoments` 응답으로 확인
 - 일반 visible push의 iOS APNs payload에는 alert/sound와 함께 `content-available=1`이 있어야 하며, 앱에는 `remote-notification` background mode와 Firebase background handler가 있어야 한다.
