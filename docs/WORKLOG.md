@@ -21,10 +21,10 @@
 - [x] `python3 -m compileall backend/src`
 - [x] `git diff --check`
 - [x] `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` (`Release API health gate passed`)
-- [ ] iOS release archive / IPA build
-- [ ] TestFlight upload
-- [ ] Apple processing `VALID`
-- [ ] `External Testers` 최신 build 연결 / 이전 build 제거 / Beta App Review 상태 확인
+- [x] iOS release archive / IPA build: `0.1.10 (77)`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, exported IPA 기준 `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, widget `0.1.10/77` 확인. 첫 archive는 Flutter native asset `objective_c.framework` 산출물 위치 불일치로 실패했고, generated `build/native_assets/ios/objective_c.framework`를 hook output의 최신 iOS arm64 dylib로 맞춘 뒤 재빌드 성공.
+- [x] TestFlight upload: IPA `0.1.10+77`, App Store Connect `Upload succeeded` / `Uploaded package is processing`; `objective_c.framework` dSYM warning은 기존과 같은 비차단 경고.
+- [x] Apple processing `VALID`: build id `ae710610-7aaa-4fb6-9c99-8736eef7028c`, build number `77`, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-09-28T01:45:56-07:00`.
+- [x] `External Testers` 최신 build 연결 / 이전 build 제거 / Beta App Review 상태 확인: group `81506852-9006-4a43-b152-067ac78a1736`에 build `77` 연결, 이전 build `76` 관계 제거, 최종 그룹 build 목록은 `77` 단독 연결, Beta App Review `WAITING_FOR_REVIEW`, tester 1명 `na***@naver.com` `INSTALLED`.
 
 ---
 
