@@ -432,8 +432,8 @@ def _home_payload(date: str, my_team: Optional[str]) -> dict:
             ],
         },
         "kboBrief": {
-            "title": "오늘의 KBO 인사이트 팩",
-            "subtitle": "지금 볼 장면 8개",
+            "title": "오늘의 KBO 소식",
+            "subtitle": "지금 볼 장면 7개",
             "items": [
                 {
                     "type": "game_flow",
@@ -500,15 +500,6 @@ def _home_payload(date: str, my_team: Optional[str]) -> dict:
                     "route": "/game/20260619OBSK0",
                     "gameId": "20260619OBSK0",
                     "teamIds": ["OB", "SK"],
-                },
-                {
-                    "type": "schedule_remaining",
-                    "eyebrow": "남은 경기",
-                    "title": "SSG vs 두산 외 1경기",
-                    "subtitle": "18:30 시작 · 중계 바로가기",
-                    "route": "/schedule",
-                    "gameId": None,
-                    "teamIds": ["SK", "OB"],
                 },
             ],
         },

@@ -115,6 +115,28 @@ void main() {
   );
 
   test(
+    'auto Live Activity target includes scheduled my-team game within ten minutes',
+    () {
+      final games = [
+        _game(
+          gameId: '20260520LGKT0',
+          awayTeamId: 'LG',
+          homeTeamId: 'KT',
+          status: GameStatus.scheduled,
+        ),
+      ];
+
+      final selected = selectAutoLiveActivityGame(
+        games: games,
+        myTeamId: 'LG',
+        now: DateTime(2026, 5, 20, 18, 20),
+      );
+
+      expect(selected?.gameId, '20260520LGKT0');
+    },
+  );
+
+  test(
     'auto Live Activity target keeps my-team lineup-open games above other live games',
     () {
       final games = [
@@ -181,6 +203,43 @@ void main() {
     },
   );
 
+  test('Live Activity payload clears current at-bat for final games', () {
+    final payload = buildLiveActivityScorePayloadForTesting(
+      game: _game(
+        gameId: '20260620SSHH0',
+        awayTeamId: 'SS',
+        homeTeamId: 'HH',
+        status: GameStatus.final_,
+        inning: '경기종료',
+      ),
+      currentAtBat: const CurrentAtBat(
+        batterName: '디아즈',
+        batterNumber: 4,
+        batterHand: '좌타',
+        batterAverage: '0.312',
+        pitcherName: '손주영',
+        pitcherNumber: 29,
+        pitcherHand: '좌투',
+        pitcherEra: '3.21',
+        pitchCount: 37,
+        inningText: '9회 초',
+        baseState: '주자없음',
+        balls: 1,
+        strikes: 3,
+        outs: 3,
+      ),
+    );
+
+    expect(payload['inning'], '경기종료');
+    expect(payload['batter'], '');
+    expect(payload['pitcher'], '');
+    expect(payload['pitchCount'], 0);
+    expect(payload['balls'], 0);
+    expect(payload['strikes'], 0);
+    expect(payload['outs'], 0);
+    expect(payload['situationText'], '');
+  });
+
   test('Live Activity payload shows pregame rank text after lineup opens', () {
     final payload = buildLiveActivityScorePayloadForTesting(
       game: _game(
@@ -219,6 +278,48 @@ void main() {
     expect(payload['awayRankText'], '2위');
     expect(payload['homeRankText'], '5위');
   });
+
+  test(
+    'Live Activity payload treats scheduled game within ten minutes as pregame',
+    () {
+      final payload = buildLiveActivityScorePayloadForTesting(
+        game: _game(
+          gameId: '20260620LGKT0',
+          awayTeamId: 'LG',
+          homeTeamId: 'KT',
+          status: GameStatus.scheduled,
+        ),
+        standings: const [
+          TeamStanding(
+            rank: 2,
+            teamId: 'LG',
+            teamName: 'LG 트윈스',
+            wins: 40,
+            losses: 28,
+            draws: 2,
+            pct: '.588',
+            gb: '1.5',
+          ),
+          TeamStanding(
+            rank: 5,
+            teamId: 'KT',
+            teamName: 'KT 위즈',
+            wins: 34,
+            losses: 34,
+            draws: 1,
+            pct: '.500',
+            gb: '7.0',
+          ),
+        ],
+        now: DateTime(2026, 6, 20, 18, 20),
+      );
+
+      expect(payload['isPregame'], isTrue);
+      expect(payload['inning'], '경기전');
+      expect(payload['awayRankText'], '2위');
+      expect(payload['homeRankText'], '5위');
+    },
+  );
 
   test('Live Activity payload normalizes KBO team IDs for display labels', () {
     final payload = buildLiveActivityScorePayloadForTesting(

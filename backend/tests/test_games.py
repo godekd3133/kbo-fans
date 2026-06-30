@@ -59,6 +59,36 @@ def test_get_game_returns_404_when_missing(monkeypatch) -> None:
     assert body["detail"] == "해당 경기를 찾을 수 없습니다"
 
 
+def test_get_highlights_returns_youtube_search_fallback_when_video_search_is_empty(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        games.schedule_service,
+        "get_schedule_game",
+        lambda game_id: {
+            "gameId": game_id,
+            "status": "FINAL",
+            "awayName": "KT 위즈",
+            "homeName": "LG 트윈스",
+        },
+    )
+    monkeypatch.setattr(
+        games.youtube_highlight_service,
+        "fetch_highlights",
+        lambda **_: [],
+    )
+    client = TestClient(app)
+
+    response = client.get("/api/game/20260629KTLG0/highlights")
+
+    assert response.status_code == 200
+    body = response.json()
+    videos = body["data"]["highlightInfo"]["youtubeVideos"]
+    assert videos[0]["source"] == "youtube_search_fallback"
+    assert videos[0]["videoId"] == ""
+    assert "youtube.com/results" in videos[0]["videoUrl"]
+
+
 def test_get_relay_returns_empty_payload() -> None:
     client = TestClient(app)
 

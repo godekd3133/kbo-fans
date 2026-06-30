@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/team_data.dart';
-import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_artwork_card.dart';
+import '../../../core/utils/kbo_player_image_cache.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/boxscore.dart';
@@ -55,14 +54,14 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     final relayDataAsync = ref.watch(relayDataProvider(widget.gameId));
     final season = DateTime.now().year;
     final awayPlayers = widget.game.away.teamId.isEmpty
-        ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
+        ? AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
         : ref.watch(teamPlayersProvider('${widget.game.away.teamId}|$season'));
     final homePlayers = widget.game.home.teamId.isEmpty
-        ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
+        ? AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
         : ref.watch(teamPlayersProvider('${widget.game.home.teamId}|$season'));
     final teamPlayers = [
-      ...awayPlayers.asData?.value ?? const <PlayerProfile>[],
-      ...homePlayers.asData?.value ?? const <PlayerProfile>[],
+      ...awayPlayers.asData?.value ?? <PlayerProfile>[],
+      ...homePlayers.asData?.value ?? <PlayerProfile>[],
     ];
     final playersByName = {
       for (final player in teamPlayers)
@@ -77,23 +76,27 @@ class _RelayTabState extends ConsumerState<RelayTab> {
       color: AppColors.live,
       child: relayDataAsync.when(
         loading: () => _buildRefreshPlaceholder(
-          const CircularProgressIndicator(color: AppColors.live),
+          CircularProgressIndicator(color: AppColors.live),
         ),
         error: (_, _) => _buildUnavailableState(),
         data: (relayData) {
-          if (relayData.relayItems.isEmpty && relayData.currentAtBat == null) {
+          final currentAtBat = _currentAtBatForGame(
+            latestGame,
+            relayData.currentAtBat,
+          );
+          if (relayData.relayItems.isEmpty && currentAtBat == null) {
             return _buildFallbackContent(latestGame);
           }
           _trackRelayUpdates(relayData.relayItems);
           final imageMap = _buildRelayPlayerImageMap(
             teamPlayers: teamPlayers,
             season: season,
-            currentAtBat: relayData.currentAtBat,
+            currentAtBat: currentAtBat,
           );
           return _buildContent(
             latestGame,
             relayData.relayItems,
-            relayData.currentAtBat,
+            currentAtBat,
             imageMap,
             playersByName,
             lineupData,
@@ -103,9 +106,13 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     );
   }
 
+  CurrentAtBat? _currentAtBatForGame(Game game, CurrentAtBat? atBat) {
+    return game.status == GameStatus.live ? atBat : null;
+  }
+
   Widget _buildRefreshPlaceholder(Widget child) {
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: AlwaysScrollableScrollPhysics(),
       children: [SizedBox(height: 520, child: Center(child: child))],
     );
   }
@@ -121,25 +128,28 @@ class _RelayTabState extends ConsumerState<RelayTab> {
 
     return _buildRefreshPlaceholder(
       Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: AppArtworkCard(
-          assetName: VisualAssets.liveRelayField,
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: Container(
           height: 178,
+          width: double.infinity,
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              const Text(
+              Text(
                 '문자중계',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 message,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -175,18 +185,18 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     return CustomScrollView(
       key: _scrollViewKey,
       controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: _RelayGameSummary(game: game),
           ),
         ),
         if (atBat != null)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
               child: _CurrentAtBatHero(
                 game: game,
                 atBat: atBat,
@@ -199,28 +209,28 @@ class _RelayTabState extends ConsumerState<RelayTab> {
         if (sortedItems.isNotEmpty)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.only(top: 14),
+              padding: EdgeInsets.only(top: 14),
               child: _buildInningChips(sortedItems),
             ),
           ),
         if (moments.isNotEmpty)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.only(top: 10),
+              padding: EdgeInsets.only(top: 10),
               child: _buildMomentFilterChips(moments),
             ),
           ),
         if (_hasNewRelay)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: _NewRelayBanner(onTap: _jumpToLatestRelay),
             ),
           ),
         if (_selectedInningLabel != null)
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+              padding: EdgeInsets.fromLTRB(16, 18, 16, 0),
               child: _SelectedInningHeader(
                 label: _selectedInningLabel!,
                 game: game,
@@ -230,7 +240,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
           ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 24),
             child: Column(
               children: [
                 for (
@@ -252,8 +262,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                       lineupData: lineupData,
                     ),
                   ),
-                  if (index != filteredMoments.length - 1)
-                    const SizedBox(height: 12),
+                  if (index != filteredMoments.length - 1) SizedBox(height: 12),
                 ],
                 if (filteredMoments.isEmpty)
                   Padding(
@@ -311,17 +320,17 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     return CustomScrollView(
       key: _scrollViewKey,
       controller: _scrollController,
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: _RelayGameSummary(game: game),
           ),
         ),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 0),
             child: _RelayFallbackNotice(
               game: game,
               gameStatus: widget.gameStatus,
@@ -382,15 +391,15 @@ class _RelayTabState extends ConsumerState<RelayTab> {
       }
     }
 
-    if (chips.isEmpty) return const SizedBox.shrink();
+    if (chips.isEmpty) return SizedBox.shrink();
 
     return SizedBox(
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16),
         itemCount: chips.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => SizedBox(width: 8),
         itemBuilder: (context, index) {
           final label = chips[index];
           final isActive = label == '전체'
@@ -400,9 +409,9 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             onTap: () => _selectInning(label),
             pressedScale: 0.94,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: isActive ? AppColors.textPrimary : AppColors.cardSub,
                 borderRadius: BorderRadius.circular(14),
@@ -428,14 +437,14 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   }
 
   Widget _buildMomentFilterChips(List<_RelayMoment> moments) {
-    const filters = _RelayMomentFilter.values;
+    final filters = _RelayMomentFilter.values;
     return SizedBox(
       height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16),
         itemCount: filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => SizedBox(width: 8),
         itemBuilder: (context, index) {
           final filter = filters[index];
           final isActive = filter == _selectedMomentFilter;
@@ -446,9 +455,9 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             onTap: () => _selectMomentFilter(filter),
             pressedScale: 0.94,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: isActive ? AppColors.live : AppColors.cardSub,
                 borderRadius: BorderRadius.circular(8),
@@ -484,7 +493,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
 
     _scrollController.animateTo(
       0,
-      duration: const Duration(milliseconds: 220),
+      duration: Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
     );
   }
@@ -500,7 +509,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
 
     _scrollController.animateTo(
       0,
-      duration: const Duration(milliseconds: 220),
+      duration: Duration(milliseconds: 220),
       curve: Curves.easeOutCubic,
     );
   }
@@ -518,7 +527,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
 
     _scrollController.animateTo(
       0,
-      duration: const Duration(milliseconds: 260),
+      duration: Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
     );
   }
@@ -664,7 +673,7 @@ class _RelayGameSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(8),
@@ -678,15 +687,12 @@ class _RelayGameSummary extends StatelessWidget {
               Expanded(
                 child: Text(
                   '${game.away.shortName} ${game.away.score} : ${game.home.score} ${game.home.shortName}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
               ),
               Text(
                 game.inning,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: AppColors.live,
@@ -694,14 +700,14 @@ class _RelayGameSummary extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _RelayStatRow(
             leftLabel: game.away.shortName,
             leftValue: _teamStatSummary(game.away),
             rightLabel: game.home.shortName,
             rightValue: _teamStatSummary(game.home),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _LineScoreStrip(away: game.away, home: game.home),
         ],
       ),
@@ -730,25 +736,27 @@ class _RelayFallbackNotice extends StatelessWidget {
       _ => '문자중계 데이터가 아직 준비되지 않았습니다',
     };
 
-    return AppArtworkCard(
-      assetName: VisualAssets.liveRelayField,
+    return Container(
       height: 156,
-      alignment: Alignment.center,
+      width: double.infinity,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          const Text(
+          Text(
             '문자중계 요약',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Text(
             message,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],
       ),
@@ -780,7 +788,7 @@ class _RelayStatRow extends StatelessWidget {
             alignEnd: false,
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Expanded(
           child: _RelayStatCell(
             label: rightLabel,
@@ -813,17 +821,17 @@ class _RelayStatCell extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             color: AppColors.textDisabled,
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4),
         Text(
           value,
           textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w600,
@@ -835,6 +843,8 @@ class _RelayStatCell extends StatelessWidget {
 }
 
 class _LineScoreStrip extends StatelessWidget {
+  static final _totalLabels = ['R', 'H', 'E'];
+
   final TeamScore away;
   final TeamScore home;
 
@@ -846,13 +856,26 @@ class _LineScoreStrip extends StatelessWidget {
         ? away.innings.length
         : home.innings.length;
     if (inningCount == 0) {
-      return const SizedBox.shrink();
+      return SizedBox.shrink();
     }
 
     String scoreOf(List<int?> innings, int index) {
       if (index >= innings.length) return '-';
       return innings[index]?.toString() ?? '-';
     }
+
+    List<String> totalsOf(TeamScore team) {
+      return [
+        team.score.toString(),
+        team.hasStats ? team.hits.toString() : '-',
+        team.hasStats ? team.errors.toString() : '-',
+      ];
+    }
+
+    final headerLabels = [
+      for (var i = 0; i < inningCount; i++) '${i + 1}',
+      ..._totalLabels,
+    ];
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -861,36 +884,43 @@ class _LineScoreStrip extends StatelessWidget {
         children: [
           Row(
             children: [
-              const SizedBox(width: 40),
-              for (var i = 0; i < inningCount; i++)
+              SizedBox(width: 40),
+              for (var i = 0; i < headerLabels.length; i++) ...[
+                if (i == inningCount) SizedBox(width: 4),
                 Padding(
-                  padding: const EdgeInsets.only(right: 10),
+                  padding: EdgeInsets.only(right: 10),
                   child: SizedBox(
-                    width: 18,
+                    width: i >= inningCount ? 22 : 18,
                     child: Text(
-                      '${i + 1}',
+                      headerLabels[i],
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textDisabled,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 ),
+              ],
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           _LineScoreRow(
             label: away.shortName,
+            totalStartIndex: inningCount,
             scores: [
               for (var i = 0; i < inningCount; i++) scoreOf(away.innings, i),
+              ...totalsOf(away),
             ],
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           _LineScoreRow(
             label: home.shortName,
+            totalStartIndex: inningCount,
             scores: [
               for (var i = 0; i < inningCount; i++) scoreOf(home.innings, i),
+              ...totalsOf(home),
             ],
           ),
         ],
@@ -902,8 +932,13 @@ class _LineScoreStrip extends StatelessWidget {
 class _LineScoreRow extends StatelessWidget {
   final String label;
   final List<String> scores;
+  final int totalStartIndex;
 
-  const _LineScoreRow({required this.label, required this.scores});
+  const _LineScoreRow({
+    required this.label,
+    required this.scores,
+    required this.totalStartIndex,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -913,18 +948,19 @@ class _LineScoreRow extends StatelessWidget {
           width: 40,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
           ),
         ),
-        for (final score in scores)
+        for (var i = 0; i < scores.length; i++) ...[
+          if (i == totalStartIndex) SizedBox(width: 4),
           Padding(
-            padding: const EdgeInsets.only(right: 10),
+            padding: EdgeInsets.only(right: 10),
             child: SizedBox(
-              width: 18,
+              width: i >= totalStartIndex ? 22 : 18,
               child: Text(
-                score,
+                scores[i],
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w600,
@@ -932,6 +968,7 @@ class _LineScoreRow extends StatelessWidget {
               ),
             ),
           ),
+        ],
       ],
     );
   }
@@ -949,14 +986,14 @@ class _NewRelayBanner extends StatelessWidget {
       pressedScale: 0.98,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: AppColors.accent.withValues(alpha: 0.16),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.accent.withValues(alpha: 0.34)),
         ),
         child: Row(
-          children: const [
+          children: [
             Expanded(
               child: Text(
                 '새 중계가 들어왔습니다',
@@ -1005,7 +1042,7 @@ class _SelectedInningHeader extends StatelessWidget {
         Expanded(
           child: Text(
             '$label - $offenseTeam 공격',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
           ),
         ),
         if (matchesCurrentInning) _OutStateIndicator(outs: currentAtBat!.outs),
@@ -1050,7 +1087,7 @@ class _RelayBroadcastScorebug extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        padding: EdgeInsets.fromLTRB(14, 14, 14, 12),
         child: Column(
           children: [
             Row(
@@ -1071,19 +1108,19 @@ class _RelayBroadcastScorebug extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _ScorebugScore(score: game.away.score),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           _RelayBaseDiamond(
                             occupiedBases: _occupiedBasesForBaseState(
                               baseState,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: 8),
                           _ScorebugScore(score: game.home.score),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(
+                        padding: EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 6,
                         ),
@@ -1095,14 +1132,14 @@ class _RelayBroadcastScorebug extends StatelessWidget {
                           atBat.inningText.isEmpty
                               ? _safeDetail(game.inning, '경기 중')
                               : atBat.inningText,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 9),
+                      SizedBox(height: 9),
                       _RelayCountDotsRow(
                         balls: atBat.balls,
                         strikes: atBat.strikes,
@@ -1121,10 +1158,10 @@ class _RelayBroadcastScorebug extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: AppColors.textPrimary.withValues(alpha: 0.13),
                 borderRadius: BorderRadius.circular(999),
@@ -1134,7 +1171,7 @@ class _RelayBroadcastScorebug extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
@@ -1191,31 +1228,31 @@ class _ScorebugSide extends StatelessWidget {
             team,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 22),
+          SizedBox(height: 22),
           Text(
             primary,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 5),
+          SizedBox(height: 5),
           Text(
             secondary,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w600,
@@ -1239,7 +1276,7 @@ class _ScorebugScore extends StatelessWidget {
       child: Text(
         score?.toString() ?? '-',
         textAlign: TextAlign.center,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 34,
           color: AppColors.textPrimary,
           fontWeight: FontWeight.w900,
@@ -1263,9 +1300,9 @@ class _RelayBaseDiamond extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          _base(index: 2, offset: const Offset(0, -14)),
-          _base(index: 3, offset: const Offset(-18, 5)),
-          _base(index: 1, offset: const Offset(18, 5)),
+          _base(index: 2, offset: Offset(0, -14)),
+          _base(index: 3, offset: Offset(-18, 5)),
+          _base(index: 1, offset: Offset(18, 5)),
         ],
       ),
     );
@@ -1354,13 +1391,13 @@ class _RelayCountDots extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 13,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(width: 5),
+        SizedBox(width: 5),
         for (int index = 0; index < total; index++)
           Container(
             width: 8,
@@ -1403,7 +1440,7 @@ class _CurrentAtBatHero extends StatelessWidget {
 
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.card,
             borderRadius: BorderRadius.circular(8),
@@ -1418,13 +1455,13 @@ class _CurrentAtBatHero extends StatelessWidget {
                 baseState: baseStateLabel,
                 latestPlay: latestPlay,
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     '현재 타석',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
@@ -1443,7 +1480,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               if (isCompact) ...[
                 _ParticipantCard(
                   title: '타자',
@@ -1453,7 +1490,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                       ? atBat.batterImageUrl
                       : _resolveImageUrl(imageMap, atBat.batterName),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 _ParticipantCard(
                   title: '상대투수',
                   name: _formatPitcherLabel(atBat),
@@ -1475,7 +1512,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                             : _resolveImageUrl(imageMap, atBat.batterName),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: _ParticipantCard(
                         title: '상대투수',
@@ -1489,12 +1526,12 @@ class _CurrentAtBatHero extends StatelessWidget {
                   ],
                 ),
               if (_runnerEntries.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Text(
+                SizedBox(height: 12),
+                Text(
                   '루상 주자',
                   style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -1504,7 +1541,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                   ],
                 ),
               ],
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
@@ -1516,7 +1553,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                       activeColor: AppColors.positive,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: _CountSummaryCard(
                       label: '스트라이크',
@@ -1526,7 +1563,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                       activeColor: AppColors.ballYellow,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: _CountSummaryCard(
                       label: '아웃',
@@ -1538,7 +1575,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Wrap(
                 spacing: 16,
                 runSpacing: 8,
@@ -1549,10 +1586,10 @@ class _CurrentAtBatHero extends StatelessWidget {
                 ],
               ),
               if (latestSubstitution != null || latestPlay != null) ...[
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: AppColors.cardSub,
                     borderRadius: BorderRadius.circular(8),
@@ -1571,7 +1608,7 @@ class _CurrentAtBatHero extends StatelessWidget {
                           accent: AppColors.accent,
                         ),
                       if (latestSubstitution != null && latestPlay != null)
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                       if (latestPlay != null)
                         _HeroSummaryLine(
                           label: '직전 플레이',
@@ -1746,7 +1783,7 @@ class _ParticipantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
         borderRadius: BorderRadius.circular(8),
@@ -1754,34 +1791,28 @@ class _ParticipantCard extends StatelessWidget {
       child: Row(
         children: [
           _RelayPlayerAvatar(imageUrl: imageUrl, fallbackLabel: name),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textDisabled,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   detail,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
@@ -1796,19 +1827,13 @@ class _ParticipantCard extends StatelessWidget {
 }
 
 class _RelayPlayerAvatar extends StatelessWidget {
-  static const _imageHeaders = {
-    'Referer': 'https://www.koreabaseball.com/',
-    'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-  };
-
   final String? imageUrl;
   final String fallbackLabel;
   final double size;
   final double radius;
 
   const _RelayPlayerAvatar({
-    required this.imageUrl,
+    this.imageUrl,
     required this.fallbackLabel,
     this.size = 54,
     this.radius = 8,
@@ -1822,7 +1847,7 @@ class _RelayPlayerAvatar extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         child: CachedNetworkImage(
           imageUrl: imageUrl!,
-          httpHeaders: _imageHeaders,
+          httpHeaders: kboPlayerImageHeaders,
           width: size,
           height: size,
           memCacheWidth: cacheSize,
@@ -1850,7 +1875,7 @@ class _RelayPlayerAvatar extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         initial,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -1865,7 +1890,7 @@ class _RunnerPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(999),
@@ -1873,18 +1898,18 @@ class _RunnerPill extends StatelessWidget {
       ),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
           children: [
             TextSpan(
               text: '$baseLabel ',
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.accent,
                 fontWeight: FontWeight.w800,
               ),
             ),
             TextSpan(
               text: name,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w700,
               ),
@@ -1913,16 +1938,16 @@ class _HeroSummaryLine extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          margin: const EdgeInsets.only(top: 2),
+          margin: EdgeInsets.only(top: 2),
           width: 8,
           height: 8,
           decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         Expanded(
           child: RichText(
             text: TextSpan(
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.4,
                 color: AppColors.textSecondary,
@@ -1934,7 +1959,7 @@ class _HeroSummaryLine extends StatelessWidget {
                 ),
                 TextSpan(
                   text: value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1962,14 +1987,14 @@ class _CountMeter extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: 6),
         for (int i = 0; i < total; i++)
           Container(
             width: 12,
             height: 12,
-            margin: const EdgeInsets.only(right: 4),
+            margin: EdgeInsets.only(right: 4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: i < filled ? activeColor : Colors.transparent,
@@ -1998,7 +2023,7 @@ class _CompactBsoSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.background,
         borderRadius: BorderRadius.circular(999),
@@ -2036,7 +2061,7 @@ class _MiniCountBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return RichText(
       text: TextSpan(
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 11,
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w700,
@@ -2046,10 +2071,10 @@ class _MiniCountBadge extends StatelessWidget {
             text: label,
             style: TextStyle(color: color),
           ),
-          const TextSpan(text: ' '),
+          TextSpan(text: ' '),
           TextSpan(
             text: '$value',
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: AppColors.textPrimary),
           ),
         ],
       ),
@@ -2075,7 +2100,7 @@ class _CountSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
         borderRadius: BorderRadius.circular(8),
@@ -2098,10 +2123,10 @@ class _CountSummaryCard extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
+              SizedBox(width: 4),
               Text(
                 '$filled',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
@@ -2117,7 +2142,7 @@ class _CountSummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: [
               for (int i = 0; i < total; i++)
@@ -2186,9 +2211,9 @@ class _RelayMomentCard extends StatelessWidget {
     final pitchLogs = _buildPitchLogs(moment.pitchItems);
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: moment.isScoring
@@ -2209,11 +2234,11 @@ class _RelayMomentCard extends StatelessWidget {
                 subtle: true,
               ),
               if (moment.isScoring)
-                const _RelayPill(label: '득점 장면', color: AppColors.live),
+                _RelayPill(label: '득점 장면', color: AppColors.live),
               if (moment.isSubstitution)
-                const _RelayPill(label: '교체', color: AppColors.accent),
+                _RelayPill(label: '교체', color: AppColors.accent),
               if (moment.isGameEnd)
-                const _RelayPill(label: '경기 종료', color: AppColors.textPrimary),
+                _RelayPill(label: '경기 종료', color: AppColors.textPrimary),
               if (!moment.isSubstitution &&
                   !moment.isGameEnd &&
                   eventLabel != null &&
@@ -2222,7 +2247,7 @@ class _RelayMomentCard extends StatelessWidget {
             ],
           ),
           if (actorLabel != null) ...[
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             _MomentPlayerSummary(
               playerName: actorLabel,
               imageUrl: actorImageUrl,
@@ -2233,7 +2258,7 @@ class _RelayMomentCard extends StatelessWidget {
               pitcherName: pitcherName,
             ),
           ],
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _RelayResultBar(
             label: eventLabel ?? (moment.isGameEnd ? '종료' : '플레이'),
             value: moment.lead.text,
@@ -2241,12 +2266,12 @@ class _RelayMomentCard extends StatelessWidget {
             emphasized: moment.isScoring || moment.isGameEnd,
           ),
           if (moment.lead.text.contains(':')) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               _cleanRelayPlayText(moment.lead.text),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
@@ -2255,15 +2280,15 @@ class _RelayMomentCard extends StatelessWidget {
             ),
           ],
           if (pitchLogs.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             for (int index = 0; index < pitchLogs.length; index++) ...[
               _PitchLogRow(log: pitchLogs[index]),
-              if (index != pitchLogs.length - 1) const SizedBox(height: 8),
+              if (index != pitchLogs.length - 1) SizedBox(height: 8),
             ],
           ],
           if (moment.lead.pitchSequence != null &&
               moment.lead.pitchSequence!.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _SequencePill(sequence: moment.lead.pitchSequence!),
           ],
         ],
@@ -2284,7 +2309,7 @@ class _RelayMomentCard extends StatelessWidget {
   List<LineupEntry> _offenseLineup() {
     final data = lineupData;
     if (data == null) {
-      return const [];
+      return [];
     }
     return moment.lead.half == 'top' ? data.away.lineup : data.home.lineup;
   }
@@ -2385,7 +2410,7 @@ class _RelayMomentCard extends StatelessWidget {
 
   List<_PitchLogViewData> _buildPitchLogsFromSequence(String? pitchSequence) {
     if (pitchSequence == null || pitchSequence.isEmpty) {
-      return const [];
+      return [];
     }
 
     final tokens = pitchSequence
@@ -2394,7 +2419,7 @@ class _RelayMomentCard extends StatelessWidget {
         .where((token) => token.isNotEmpty)
         .toList();
     if (tokens.isEmpty) {
-      return const [];
+      return [];
     }
 
     var balls = 0;
@@ -2584,7 +2609,7 @@ class _RelayResultBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.48),
         borderRadius: BorderRadius.circular(8),
@@ -2594,8 +2619,8 @@ class _RelayResultBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            constraints: const BoxConstraints(minWidth: 42),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            constraints: BoxConstraints(minWidth: 42),
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
               color: accent.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(6),
@@ -2611,7 +2636,7 @@ class _RelayResultBar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          SizedBox(width: 10),
           Expanded(
             child: Text(
               value,
@@ -2663,7 +2688,7 @@ class _MomentPlayerSummary extends StatelessWidget {
           size: 64,
           radius: 8,
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2677,13 +2702,13 @@ class _MomentPlayerSummary extends StatelessWidget {
                       size: 22,
                       padding: 1,
                     ),
-                  if (offenseTeam != null) const SizedBox(width: 8),
+                  if (offenseTeam != null) SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _nameLine(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
@@ -2692,12 +2717,12 @@ class _MomentPlayerSummary extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 _statLine(),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
                   height: 1.45,
@@ -2706,23 +2731,23 @@ class _MomentPlayerSummary extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
               pitcherName == null ? '상대팀' : '상대투수',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 color: AppColors.textDisabled,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               pitcherName ?? defenseTeam?.shortName ?? '-',
               textAlign: TextAlign.right,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w700,
@@ -2801,7 +2826,7 @@ class _OutStateIndicator extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               '$i',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
@@ -2809,7 +2834,7 @@ class _OutStateIndicator extends StatelessWidget {
             ),
           ),
         ],
-        const Text(
+        Text(
           'OUT',
           style: TextStyle(
             fontSize: 13,
@@ -2831,14 +2856,14 @@ class _SequencePill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.64),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         sequence,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w600,
@@ -2857,7 +2882,7 @@ class _PitchLogRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.55)),
@@ -2876,28 +2901,28 @@ class _PitchLogRow extends StatelessWidget {
             alignment: Alignment.center,
             child: Text(
               '${log.pitchNumber ?? '-'}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
                 color: AppColors.background,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Expanded(
             child: Text(
               log.text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Text(
             log.countText ?? '',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,
               fontWeight: FontWeight.w700,
@@ -2916,7 +2941,7 @@ class _PitchLogViewData {
   final Color actionColor;
   final String? countText;
 
-  const _PitchLogViewData({
+  _PitchLogViewData({
     required this.text,
     this.pitchNumber,
     required this.actionLabel,
@@ -2941,7 +2966,7 @@ class _RelayPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: subtle ? AppColors.background : color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
@@ -2971,7 +2996,7 @@ class _BaseStateBadge extends StatelessWidget {
     final occupiedBases = _occupiedBasesForBaseState(baseState);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.accent.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
@@ -2999,16 +3024,16 @@ class _BaseStateBadge extends StatelessWidget {
                     ),
                   ),
                 ),
-                _baseDot(occupiedBases.contains(2), const Offset(0, -5)),
-                _baseDot(occupiedBases.contains(1), const Offset(5, 0)),
-                _baseDot(occupiedBases.contains(3), const Offset(-5, 0)),
+                _baseDot(occupiedBases.contains(2), Offset(0, -5)),
+                _baseDot(occupiedBases.contains(1), Offset(5, 0)),
+                _baseDot(occupiedBases.contains(3), Offset(-5, 0)),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(
             baseState,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: AppColors.accent,
@@ -3097,7 +3122,7 @@ class _RelayMoment {
   final bool isGameEnd;
   final bool isSubstitution;
 
-  const _RelayMoment({
+  _RelayMoment({
     required this.inningLabel,
     required this.lead,
     required this.pitchItems,

@@ -57,13 +57,13 @@ class ScoreTab extends StatelessWidget {
       'E',
       'B',
     ];
-    const headerStyle = TextStyle(
+    final headerStyle = TextStyle(
       fontSize: 12,
       color: AppColors.textDisabled,
       fontWeight: FontWeight.w500,
     );
-    const dataStyle = TextStyle(fontSize: 14, color: AppColors.textPrimary);
-    const boldStyle = TextStyle(
+    final dataStyle = TextStyle(fontSize: 14, color: AppColors.textPrimary);
+    final boldStyle = TextStyle(
       fontSize: 14,
       color: AppColors.textPrimary,
       fontWeight: FontWeight.w700,
@@ -79,10 +79,7 @@ class ScoreTab extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
               '이닝을 누르면 해당 회차 주요 장면을 볼 수 있습니다.',
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
           ),
         Container(
@@ -130,7 +127,7 @@ class ScoreTab extends StatelessWidget {
                   TableRow(
                     children: List.generate(
                       14,
-                      (_) => const Divider(height: 1, color: AppColors.divider),
+                      (_) => Divider(height: 1, color: AppColors.divider),
                     ),
                   ),
                   _scoreRow(
@@ -144,7 +141,7 @@ class ScoreTab extends StatelessWidget {
                   TableRow(
                     children: List.generate(
                       14,
-                      (_) => const Divider(height: 1, color: AppColors.divider),
+                      (_) => Divider(height: 1, color: AppColors.divider),
                     ),
                   ),
                   _scoreRow(
@@ -254,7 +251,7 @@ class ScoreTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 if (items.isEmpty)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Text(
                       '이 회차에 기록된 이벤트가 없습니다.',
@@ -299,7 +296,7 @@ class ScoreTab extends StatelessWidget {
                                 const SizedBox(height: 6),
                                 Text(
                                   item.pitchSequence!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,
                                   ),

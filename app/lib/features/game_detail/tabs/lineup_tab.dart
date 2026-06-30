@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/team_data.dart';
 import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/kbo_player_image_cache.dart';
 import '../../../core/widgets/app_artwork_card.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/kbo_team_logo_image.dart';
@@ -16,12 +17,6 @@ import '../../../data/models/records_overview.dart';
 import '../../../data/models/schedule.dart';
 import '../../../data/models/team_stats.dart';
 import '../../../data/providers.dart';
-
-const _kboImageHeaders = {
-  'Referer': 'https://www.koreabaseball.com/',
-  'User-Agent':
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-};
 
 class LineupTab extends ConsumerWidget {
   final String gameId;
@@ -77,7 +72,7 @@ class LineupTab extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 child: AppMotionSwitcher(
                   child: gameLineupAsync.when(
-                    loading: () => const Padding(
+                    loading: () => Padding(
                       key: ValueKey('lineup-loading'),
                       padding: EdgeInsets.all(28),
                       child: Center(
@@ -87,7 +82,7 @@ class LineupTab extends ConsumerWidget {
                     error: (error, _) => Text(
                       '라인업 데이터 로딩 실패: $error',
                       key: const ValueKey('lineup-error'),
-                      style: const TextStyle(color: AppColors.textDisabled),
+                      style: TextStyle(color: AppColors.textDisabled),
                     ),
                     data: (gameLineup) {
                       if (gameStatus == GameStatus.scheduled &&
@@ -234,10 +229,7 @@ class LineupTab extends ConsumerWidget {
             const SizedBox(height: 6),
             Text(
               message,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -426,6 +418,8 @@ class _MatchupCompareSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasTrendData = _hasTrendData(data.away, data.home);
+
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
@@ -444,18 +438,21 @@ class _MatchupCompareSection extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(22, 24, 22, 26),
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
             child: Column(
               children: [
                 _MatchupHeader(data: data),
-                const SizedBox(height: 22),
-                _RecentTrendSection(
-                  away: data.away,
-                  home: data.home,
-                  awayAccent: awayAccent,
-                  homeAccent: homeAccent,
-                ),
-                const SizedBox(height: 28),
+                if (hasTrendData) ...[
+                  const SizedBox(height: 18),
+                  _RecentTrendSection(
+                    away: data.away,
+                    home: data.home,
+                    awayAccent: awayAccent,
+                    homeAccent: homeAccent,
+                  ),
+                  const SizedBox(height: 20),
+                ] else
+                  const SizedBox(height: 16),
                 _StarterDuelSection(
                   away: data.away.starter,
                   home: data.home.starter,
@@ -492,20 +489,14 @@ class _MatchupHeader extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               team.standingText,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             ),
           ],
           if (team.recordText.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               team.recordText,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             ),
           ],
         ],
@@ -547,26 +538,15 @@ class _RecentTrendSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasRecent =
-        away.recentResults.isNotEmpty || home.recentResults.isNotEmpty;
-    final hasMetrics =
-        away.winPct != '-' ||
-        home.winPct != '-' ||
-        away.avg != '-' ||
-        home.avg != '-' ||
-        away.era != '-' ||
-        home.era != '-';
-    final hasHeadToHead =
-        away.headToHead.isNotEmpty || home.headToHead.isNotEmpty;
-    if (!hasRecent && !hasMetrics && !hasHeadToHead) {
+    if (!_hasTrendData(away, home)) {
       return const SizedBox.shrink();
     }
 
     return Column(
       children: [
-        const Divider(color: AppColors.divider, height: 1),
+        Divider(color: AppColors.divider, height: 1),
         const SizedBox(height: 20),
-        const Text(
+        Text(
           '최근 5경기',
           style: TextStyle(
             fontSize: 18,
@@ -627,13 +607,10 @@ class _RecentTrendSection extends StatelessWidget {
               child: Text(
                 away.headToHead,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
               ),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 '상대전적',
@@ -644,10 +621,7 @@ class _RecentTrendSection extends StatelessWidget {
               child: Text(
                 home.headToHead,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textPrimary,
-                ),
+                style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
               ),
             ),
           ],
@@ -773,10 +747,7 @@ class _CompareMetricBarRow extends StatelessWidget {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
           ),
         ),
         Expanded(
@@ -860,31 +831,31 @@ class _StarterDuelSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const Divider(color: AppColors.divider, height: 1),
-        const SizedBox(height: 26),
+        Divider(color: AppColors.divider, height: 1),
+        const SizedBox(height: 18),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               child: _StarterHeroCard(data: away, accent: awayAccent),
             ),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(18, 34, 18, 0),
+            Padding(
+              padding: EdgeInsets.fromLTRB(12, 24, 12, 0),
               child: Column(
                 children: [
                   Text(
                     '선발',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 17,
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(height: 8),
                   Text(
                     'VS',
                     style: TextStyle(
-                      fontSize: 56,
+                      fontSize: 48,
                       color: Color(0xFF555555),
                       fontWeight: FontWeight.w900,
                     ),
@@ -897,20 +868,20 @@ class _StarterDuelSection extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
         Row(
           children: [
             Expanded(child: _StarterStatColumn(data: away, alignEnd: true)),
             const SizedBox(
-              width: 116,
+              width: 104,
               child: Column(
                 children: [
                   _CenterStatLabel('승패'),
-                  SizedBox(height: 18),
+                  SizedBox(height: 12),
                   _CenterStatLabel('이닝'),
-                  SizedBox(height: 18),
+                  SizedBox(height: 12),
                   _CenterStatLabel('평균자책'),
-                  SizedBox(height: 18),
+                  SizedBox(height: 12),
                   _CenterStatLabel('WHIP'),
                 ],
               ),
@@ -934,7 +905,7 @@ class _StarterHeroCard extends StatelessWidget {
     return Column(
       children: [
         Container(
-          height: 148,
+          height: 132,
           decoration: BoxDecoration(
             color: AppColors.cardSub,
             borderRadius: BorderRadius.circular(16),
@@ -955,7 +926,7 @@ class _StarterHeroCard extends StatelessWidget {
                         alignment: Alignment.bottomCenter,
                         child: CachedNetworkImage(
                           imageUrl: data.imageUrl!,
-                          httpHeaders: _kboImageHeaders,
+                          httpHeaders: kboPlayerImageHeaders,
                           fit: BoxFit.contain,
                           width: double.infinity,
                           height: double.infinity,
@@ -973,11 +944,11 @@ class _StarterHeroCard extends StatelessWidget {
                 : _starterFallback(accent, data.name),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           data.name,
           textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
         ),
       ],
     );
@@ -1008,7 +979,7 @@ class _StarterStatColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     TextStyle style = const TextStyle(
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: FontWeight.w700,
     );
     return Column(
@@ -1017,11 +988,11 @@ class _StarterStatColumn extends StatelessWidget {
           : CrossAxisAlignment.start,
       children: [
         Text(data.winsLosses, style: style),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         Text(data.innings, style: style),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         Text(data.era, style: style),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
         Text(data.whip, style: style),
       ],
     );
@@ -1038,9 +1009,24 @@ class _CenterStatLabel extends StatelessWidget {
     return Text(
       label,
       textAlign: TextAlign.center,
-      style: const TextStyle(fontSize: 16, color: AppColors.textSecondary),
+      style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
     );
   }
+}
+
+bool _hasTrendData(_TeamCompareData away, _TeamCompareData home) {
+  final hasRecent =
+      away.recentResults.isNotEmpty || home.recentResults.isNotEmpty;
+  final hasMetrics =
+      away.winPct != '-' ||
+      home.winPct != '-' ||
+      away.avg != '-' ||
+      home.avg != '-' ||
+      away.era != '-' ||
+      home.era != '-';
+  final hasHeadToHead =
+      away.headToHead.isNotEmpty || home.headToHead.isNotEmpty;
+  return hasRecent || hasMetrics || hasHeadToHead;
 }
 
 class _MatchupCompareData {
@@ -1325,7 +1311,7 @@ class _LineupColumn extends StatelessWidget {
                       ),
                     ),
                     if (index != bullpenNames.length - 1)
-                      const Divider(color: AppColors.divider, height: 14),
+                      Divider(color: AppColors.divider, height: 14),
                   ],
                 ],
               ),
@@ -1351,7 +1337,7 @@ class _LineupColumn extends StatelessWidget {
               ),
             ),
             if (index != displayedLineup.length - 1)
-              const Divider(color: AppColors.divider, height: 14),
+              Divider(color: AppColors.divider, height: 14),
           ],
         ],
       ),
@@ -1734,7 +1720,7 @@ class _StarterRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   detail,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
@@ -1833,10 +1819,7 @@ class _LineupRow extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 detailParts.join(' · '),
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -1869,7 +1852,7 @@ class _LineupAvatar extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             child: CachedNetworkImage(
               imageUrl: imageUrl!,
-              httpHeaders: _kboImageHeaders,
+              httpHeaders: kboPlayerImageHeaders,
               width: 42,
               height: 42,
               memCacheWidth: 126,
@@ -1902,7 +1885,7 @@ class _LineupAvatar extends StatelessWidget {
         ),
         child: Text(
           badgeLabel!,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w800,
             color: AppColors.textPrimary,
@@ -1938,7 +1921,7 @@ class _EmptyLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
+      style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
     );
   }
 }

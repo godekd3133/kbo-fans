@@ -1,24 +1,15 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/team_data.dart';
-import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/app_artwork_card.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
 import '../../../data/providers.dart';
-
-const _kboImageHeaders = {
-  'Referer': 'https://www.koreabaseball.com/',
-  'User-Agent':
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-};
 
 class BoxscoreTab extends ConsumerStatefulWidget {
   final String gameId;
@@ -64,7 +55,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
 
     final boxscoreAsync = ref.watch(gameBoxscoreProvider(widget.gameId));
     final content = boxscoreAsync.when(
-      loading: () => const Center(
+      loading: () => Center(
         child: Padding(
           padding: EdgeInsets.all(24),
           child: CircularProgressIndicator(color: AppColors.live),
@@ -148,9 +139,15 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   Widget _buildUnavailableState(String message) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: AppArtworkCard(
-        assetName: VisualAssets.boxscoreAnalytics,
+      child: Container(
         height: 178,
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.end,
@@ -162,10 +159,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             const SizedBox(height: 6),
             Text(
               message,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -241,7 +235,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final liveBattingAverage = liveAtBats > 0 ? liveHits / liveAtBats : 0.0;
     final keyBatter = _keyBatter(batters, isLiveContext: isLiveContext);
     final keyPitcher = _keyPitcher(pitchers, isLiveContext: isLiveContext);
-    final playerImageMap = _playerImageMap(playersByName);
     final keyBatterPlayer = keyBatter == null
         ? null
         : _resolvePlayer(playersByName, keyBatter.name);
@@ -307,7 +300,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           ),
           const SizedBox(height: 8),
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(color: AppColors.divider),
                 bottom: BorderSide(color: AppColors.divider),
@@ -331,9 +324,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         ? _liveBatterMetricLabel(keyBatter)
                         : '생산 +$productionScore',
                     accent: accent,
-                    imageUrl:
-                        _resolvedPlayerImageUrl(keyBatterPlayer) ??
-                        _resolveImageUrl(playerImageMap, keyBatter.name),
                     badgeLabel: (keyBatterPlayer?.number ?? 0) > 0
                         ? '${keyBatterPlayer!.number}'
                         : null,
@@ -360,9 +350,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         ? (keyPitcher.decision ?? 'LIVE')
                         : '효율 +$efficiencyScore',
                     accent: AppColors.live,
-                    imageUrl:
-                        _resolvedPlayerImageUrl(keyPitcherPlayer) ??
-                        _resolveImageUrl(playerImageMap, keyPitcher.name),
                     badgeLabel: (keyPitcherPlayer?.number ?? 0) > 0
                         ? '${keyPitcherPlayer!.number}'
                         : null,
@@ -424,7 +411,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final todayAvg = batter.atBats > 0 ? (batter.hits / batter.atBats) : 0.0;
     return _RecordDataRow(
       onTap: player == null ? null : () => _pushPlayerDetail(player),
-      imageUrl: _resolvedPlayerImageUrl(player),
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
       name: batter.name,
       meta: batter.liveContext
@@ -492,7 +478,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final player = _resolvePlayer(playersByName, pitcher.name);
     return _RecordDataRow(
       onTap: player == null ? null : () => _pushPlayerDetail(player),
-      imageUrl: _resolvedPlayerImageUrl(player),
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
       name: pitcher.name,
       meta: pitcher.liveContext ? pitcher.contextLabel ?? '투수 정보' : '투수 기록',
@@ -584,21 +569,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     context.push('/records/player/${player.id}?season=${DateTime.now().year}');
   }
 
-  Map<String, String> _playerImageMap(
-    Map<String, PlayerProfile> playersByName,
-  ) => {
-    for (final entry in playersByName.entries)
-      if (_resolvedPlayerImageUrl(entry.value) != null)
-        entry.key: _resolvedPlayerImageUrl(entry.value)!,
-  };
-
-  String? _resolvedPlayerImageUrl(PlayerProfile? player) {
-    if (player == null) {
-      return null;
-    }
-    return playerProfileImageUrl(player, season: DateTime.now().year);
-  }
-
   PlayerProfile? _resolvePlayer(
     Map<String, PlayerProfile> playersByName,
     String rawName,
@@ -611,26 +581,6 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     }
     final normalizedTarget = _normalizeName(rawName);
     for (final entry in playersByName.entries) {
-      final normalizedKey = _normalizeName(entry.key);
-      if (normalizedKey == normalizedTarget ||
-          normalizedKey.contains(normalizedTarget) ||
-          normalizedTarget.contains(normalizedKey)) {
-        return entry.value;
-      }
-    }
-    return null;
-  }
-
-  String? _resolveImageUrl(Map<String, String> imageMap, String rawName) {
-    if (rawName.isEmpty) {
-      return null;
-    }
-    if (imageMap.containsKey(rawName)) {
-      return imageMap[rawName];
-    }
-
-    final normalizedTarget = _normalizeName(rawName);
-    for (final entry in imageMap.entries) {
       final normalizedKey = _normalizeName(entry.key);
       if (normalizedKey == normalizedTarget ||
           normalizedKey.contains(normalizedTarget) ||
@@ -680,76 +630,61 @@ class _BoxscoreSummaryPanel extends StatelessWidget {
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
         border: Border(
           top: BorderSide(color: AppColors.divider),
           bottom: BorderSide(color: AppColors.divider),
         ),
       ),
-      child: Stack(
-        children: [
-          const Positioned.fill(
-            child: AppArtworkLayer(
-              assetName: VisualAssets.boxscoreAnalytics,
-              alignment: Alignment.centerRight,
-              opacity: 0.14,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    _TeamLogo(teamId: teamId, fallback: teamName, size: 38),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
-                              height: 1.1,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            teamName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: accent,
-                              fontWeight: FontWeight.w900,
-                              height: 1.1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    for (int i = 0; i < metrics.length; i++) ...[
-                      Expanded(child: _SummaryMetricTile(metric: metrics[i])),
-                      if (i != metrics.length - 1)
-                        Container(
-                          width: 1,
-                          height: 34,
-                          color: AppColors.divider,
+                _TeamLogo(teamId: teamId, fallback: teamName, size: 38),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 19,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
                         ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        teamName,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: accent,
+                          fontWeight: FontWeight.w900,
+                          height: 1.1,
+                        ),
+                      ),
                     ],
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                for (int i = 0; i < metrics.length; i++) ...[
+                  Expanded(child: _SummaryMetricTile(metric: metrics[i])),
+                  if (i != metrics.length - 1)
+                    Container(width: 1, height: 34, color: AppColors.divider),
+                ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -769,7 +704,7 @@ class _SummaryMetricTile extends StatelessWidget {
           metric.label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w800,
@@ -780,7 +715,7 @@ class _SummaryMetricTile extends StatelessWidget {
           metric.value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w900,
@@ -827,7 +762,6 @@ class _RecordHighlightRow extends StatelessWidget {
   final String summary;
   final String metricLabel;
   final Color accent;
-  final String? imageUrl;
   final String? badgeLabel;
   final String? actionLabel;
   final VoidCallback? onTap;
@@ -839,7 +773,6 @@ class _RecordHighlightRow extends StatelessWidget {
     required this.summary,
     required this.metricLabel,
     required this.accent,
-    this.imageUrl,
     this.badgeLabel,
     this.actionLabel,
     this.onTap,
@@ -853,17 +786,12 @@ class _RecordHighlightRow extends StatelessWidget {
       child: Container(
         constraints: const BoxConstraints(minHeight: 84),
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: AppColors.divider)),
         ),
         child: Row(
           children: [
-            _PlayerAvatar(
-              imageUrl: imageUrl,
-              fallbackLabel: name,
-              accent: accent,
-              badgeLabel: badgeLabel,
-            ),
+            _PlayerAvatar(accent: accent, badgeLabel: badgeLabel),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -892,7 +820,7 @@ class _RecordHighlightRow extends StatelessWidget {
                     summary,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w800,
@@ -974,7 +902,7 @@ class _RecordTableHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 34,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
       child: Row(
@@ -982,7 +910,7 @@ class _RecordTableHeader extends StatelessWidget {
           Expanded(
             child: Text(
               labels.first,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w800,
@@ -997,7 +925,7 @@ class _RecordTableHeader extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
                   fontWeight: FontWeight.w800,
@@ -1013,7 +941,6 @@ class _RecordTableHeader extends StatelessWidget {
 
 class _RecordDataRow extends StatelessWidget {
   final VoidCallback? onTap;
-  final String? imageUrl;
   final String? badgeLabel;
   final String name;
   final String meta;
@@ -1023,7 +950,6 @@ class _RecordDataRow extends StatelessWidget {
 
   const _RecordDataRow({
     required this.onTap,
-    required this.imageUrl,
     required this.badgeLabel,
     required this.name,
     required this.meta,
@@ -1040,14 +966,12 @@ class _RecordDataRow extends StatelessWidget {
       child: Container(
         constraints: BoxConstraints(minHeight: actionLabel == null ? 58 : 68),
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: AppColors.divider)),
         ),
         child: Row(
           children: [
             _PlayerAvatar(
-              imageUrl: imageUrl,
-              fallbackLabel: name,
               accent: accent,
               badgeLabel: badgeLabel,
               size: 42,
@@ -1077,7 +1001,7 @@ class _RecordDataRow extends StatelessWidget {
                           meta,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                             fontWeight: FontWeight.w800,
@@ -1167,11 +1091,7 @@ class _InlineAction extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        const Icon(
-          Icons.chevron_right_rounded,
-          size: 20,
-          color: AppColors.accent,
-        ),
+        Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.accent),
       ],
     );
   }
@@ -1280,16 +1200,12 @@ class _TeamLogo extends StatelessWidget {
 }
 
 class _PlayerAvatar extends StatelessWidget {
-  final String? imageUrl;
-  final String fallbackLabel;
   final Color accent;
   final String? badgeLabel;
   final double size;
   final double radius;
 
   const _PlayerAvatar({
-    required this.imageUrl,
-    required this.fallbackLabel,
     required this.accent,
     this.badgeLabel,
     this.size = 52,
@@ -1298,28 +1214,6 @@ class _PlayerAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(radius),
-            child: CachedNetworkImage(
-              imageUrl: imageUrl!,
-              httpHeaders: _kboImageHeaders,
-              width: size,
-              height: size,
-              memCacheWidth: (size * 3).round(),
-              memCacheHeight: (size * 3).round(),
-              fit: BoxFit.cover,
-              placeholder: (_, _) => _fallbackAvatar(),
-              errorWidget: (_, _, _) => _fallbackAvatar(),
-            ),
-          ),
-          if (badgeLabel != null) _numberBadge(),
-        ],
-      );
-    }
     return Stack(
       clipBehavior: Clip.none,
       children: [_fallbackAvatar(), if (badgeLabel != null) _numberBadge()],

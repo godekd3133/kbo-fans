@@ -29,6 +29,7 @@ class RelayService:
             and snapshot is not None
             and self._has_detailed_items(snapshot.get("relayItems", []))
         ):
+            snapshot = self._without_current_at_bat(snapshot)
             if after is not None:
                 snapshot = {
                     **snapshot,
@@ -55,7 +56,9 @@ class RelayService:
             current_at_bat = relay.get("currentAtBat")
 
             if game is not None:
-                if current_at_bat is None:
+                if game_status != "LIVE":
+                    current_at_bat = None
+                elif current_at_bat is None:
                     current_at_bat = self._build_current_at_bat(game)
 
             if after is not None:
@@ -74,6 +77,7 @@ class RelayService:
                 and snapshot is not None
                 and self._has_detailed_items(snapshot.get("relayItems", []))
             ):
+                snapshot = self._without_current_at_bat(snapshot)
                 if after is not None:
                     snapshot = {
                         **snapshot,
@@ -212,6 +216,12 @@ class RelayService:
             if ":" in text or item.get("pitchSequence"):
                 return True
         return False
+
+    @staticmethod
+    def _without_current_at_bat(payload: dict[str, Any]) -> dict[str, Any]:
+        if payload.get("currentAtBat") is None:
+            return payload
+        return {**payload, "currentAtBat": None}
 
 
 def _team_short_display_name(team: dict[str, Any], fallback: str) -> str:

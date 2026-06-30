@@ -66,7 +66,7 @@ class LiveActivityScoreboardSyncService:
             if game_id not in registered_game_ids:
                 continue
 
-            if status == "SCHEDULED" and not _lineup_opened(game):
+            if status == "SCHEDULED" and not self._should_sync_scheduled_activity(game):
                 continue
 
             update = self._update_request_for_game(game, status)
@@ -102,7 +102,8 @@ class LiveActivityScoreboardSyncService:
         game: dict[str, Any],
         status: str,
     ) -> Optional[dict[str, Any]]:
-        if status != "LIVE":
+        is_pregame_start = self._should_start_scheduled_activity(game, status)
+        if status != "LIVE" and not is_pregame_start:
             return None
         update = self._update_request_for_game(game, status)
         if update is None:
@@ -121,6 +122,12 @@ class LiveActivityScoreboardSyncService:
                 state=update.state,
                 stale_date=update.staleDate,
                 relevance_score=update.relevanceScore,
+                alert_title="경기 곧 시작" if is_pregame_start else None,
+                alert_body=(
+                    self._game_start_soon_alert_body(game, away=away, home=home)
+                    if is_pregame_start
+                    else None
+                ),
             )
         except Exception as error:
             return {
@@ -132,6 +139,44 @@ class LiveActivityScoreboardSyncService:
         if not response.get("messages"):
             return None
         return response
+
+    def _should_start_scheduled_activity(self, game: dict[str, Any], status: str) -> bool:
+        if status != "SCHEDULED":
+            return False
+        return self._scheduled_activity_start_at(game) is not None
+
+    def _should_sync_scheduled_activity(self, game: dict[str, Any]) -> bool:
+        return _lineup_opened(game) or self._scheduled_activity_start_at(game) is not None
+
+    def _scheduled_activity_start_at(self, game: dict[str, Any]) -> Optional[datetime]:
+        current_state = _scoreboard_state(game)
+        start_at = _scheduled_start_at(game, current_state)
+        if start_at is None:
+            return None
+
+        now = self.now_provider().astimezone(self._KST)
+        until_start = start_at - now
+        if until_start < timedelta(0) or until_start > self._PREGAME_ALERT_WINDOW:
+            return None
+        return start_at
+
+    def _game_start_soon_alert_body(
+        self,
+        game: dict[str, Any],
+        *,
+        away: dict[str, Any],
+        home: dict[str, Any],
+    ) -> str:
+        matchup = (
+            f"{_team_short_display_name(away)} vs {_team_short_display_name(home)}"
+        )
+        start_at = self._scheduled_activity_start_at(game)
+        start_time = start_at.strftime("%H:%M") if start_at is not None else ""
+        stadium = str(game.get("stadium") or "").strip()
+        suffix = " · ".join(part for part in [start_time, stadium] if part)
+        if suffix:
+            return f"{matchup} 경기가 곧 시작됩니다. {suffix}"
+        return f"{matchup} 경기가 곧 시작됩니다."
 
     def _push_moments_for_game(self, game: dict[str, Any]) -> list[dict[str, Any]]:
         game_id = str(game.get("gameId") or "")
@@ -311,10 +356,10 @@ class LiveActivityScoreboardSyncService:
         if not game_id or not away or not home:
             return None
 
-        now = datetime.now(timezone.utc)
+        now = self.now_provider().astimezone(timezone.utc)
         event = "end" if status in {"FINAL", "CANCELLED", "SUSPENDED"} else "update"
         current = self._live_activity_current_payload(game, status)
-        is_pregame = status == "SCHEDULED" and _lineup_opened(game)
+        is_pregame = status == "SCHEDULED" and self._should_sync_scheduled_activity(game)
         ranks = self._rank_labels_for_game(game) if is_pregame else {}
         state = LiveActivityContentState(
             awayTeamId=str(away.get("teamId") or ""),
@@ -357,6 +402,20 @@ class LiveActivityScoreboardSyncService:
         status: str,
     ) -> dict[str, Any]:
         current = _current_payload(game)
+        if status in {"FINAL", "CANCELLED", "SUSPENDED"}:
+            return {
+                **current,
+                "batterName": "",
+                "pitcherName": "",
+                "batterAverage": "",
+                "pitcherEra": "",
+                "pitchCount": 0,
+                "balls": 0,
+                "strikes": 0,
+                "outs": 0,
+                "situationText": "",
+                "playText": "",
+            }
         game_id = str(game.get("gameId") or "")
         if self.relay_service is None or status != "LIVE" or not game_id:
             return current

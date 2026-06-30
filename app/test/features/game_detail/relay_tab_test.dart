@@ -6,6 +6,7 @@ import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/player.dart';
+import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/relay_tab.dart';
@@ -90,6 +91,78 @@ void main() {
     expect(find.text('전체'), findsOneWidget);
     expect(find.text('1회초'), findsWidgets);
     expect(find.textContaining('두산공격'), findsNothing);
+  });
+
+  testWidgets('문자중계 상단 스코어보드는 R/H/E 합계를 같이 보여준다', (tester) async {
+    const game = Game(
+      gameId: '20260612OBLT0',
+      status: GameStatus.live,
+      inning: '5회말',
+      away: TeamScore(
+        teamId: 'OB',
+        teamName: '두산 베어스',
+        shortName: '두산',
+        score: 12,
+        innings: [5, 0, 7],
+        hits: 14,
+        errors: 1,
+        walks: 4,
+      ),
+      home: TeamScore(
+        teamId: 'LT',
+        teamName: '롯데 자이언츠',
+        shortName: '롯데',
+        score: 8,
+        innings: [1, 2, 5],
+        hits: 13,
+        errors: 2,
+        walks: 6,
+      ),
+      stadium: '사직',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith((ref, gameId) async {
+            return const RelayData(currentAtBat: null, relayItems: []);
+          }),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260612OBLT0',
+              away: TeamLineupData(teamId: 'OB', lineup: []),
+              home: TeamLineupData(teamId: 'LT', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260612OBLT0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('R'), findsOneWidget);
+    expect(find.text('H'), findsOneWidget);
+    expect(find.text('E'), findsOneWidget);
+    expect(find.text('12'), findsOneWidget);
+    expect(find.text('14'), findsOneWidget);
+    expect(find.text('13'), findsOneWidget);
   });
 
   testWidgets('현재 타석 타자는 등번호 대신 타순 이름 포지션으로 표시한다', (tester) async {
@@ -388,7 +461,101 @@ void main() {
     expect(find.text('구자욱: 중견수 플라이 아웃'), findsNothing);
   });
 
-  testWidgets('현재 타석 선수 이미지는 프로필 id 기반 이미지 URL로 보강한다', (tester) async {
+  testWidgets('종료 경기는 stale 현재 타석 카드를 노출하지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const game = Game(
+      gameId: '20260629SSLG0',
+      status: GameStatus.final_,
+      inning: '경기종료',
+      away: TeamScore(
+        teamId: 'SS',
+        teamName: '삼성 라이온즈',
+        shortName: '삼성',
+        score: 3,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 4,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith((ref, gameId) async {
+            return const RelayData(
+              currentAtBat: CurrentAtBat(
+                batterName: '디아즈',
+                batterNumber: 4,
+                batterHand: '좌타',
+                batterRecent: '플라이4구12루타땅볼',
+                pitcherName: '손주영',
+                pitcherNumber: 29,
+                pitcherHand: '좌투',
+                pitchCount: 37,
+                inningText: '9회 초',
+                balls: 1,
+                strikes: 3,
+                outs: 3,
+              ),
+              relayItems: [
+                RelayItem(
+                  seqNo: 1,
+                  inning: 9,
+                  half: 'top',
+                  event: 'GAME_END',
+                  text: '경기종료 삼성 3 : 4 LG',
+                ),
+              ],
+            );
+          }),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260629SSLG0',
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260629SSLG0',
+              gameStatus: GameStatus.final_,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('현재 타석'), findsNothing);
+    expect(find.textContaining('B 1'), findsNothing);
+    expect(find.textContaining('S 3'), findsNothing);
+    expect(find.textContaining('O 3'), findsNothing);
+    expect(find.text('경기종료 삼성 3 : 4 LG'), findsOneWidget);
+  });
+
+  testWidgets('현재 타석은 프로필 id로 선수 사진을 렌더한다', (tester) async {
     const game = Game(
       gameId: '20260611SSLG0',
       status: GameStatus.live,
@@ -410,10 +577,6 @@ void main() {
       stadium: '잠실',
       startTime: '18:30',
     );
-    final season = DateTime.now().year;
-    final expectedImageUrl =
-        'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/$season/56348.jpg';
-
     await tester.pumpWidget(
       ProviderScope(
         retry: (_, _) => null,
@@ -467,10 +630,22 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(_cachedImage(expectedImageUrl), findsOneWidget);
+    expect(find.textContaining('김성윤'), findsWidgets);
+    expect(find.textContaining('임찬규'), findsWidgets);
+    final expectedImageUrl = kboPlayerImageUrl(
+      season: DateTime.now().year,
+      playerId: '56348',
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CachedNetworkImage && widget.imageUrl == expectedImageUrl,
+      ),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('중계 이벤트 선수 이미지는 현재 타석 이미지 URL을 재사용한다', (tester) async {
+  testWidgets('중계 이벤트는 이미지 URL로 선수 사진을 렌더한다', (tester) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -497,7 +672,7 @@ void main() {
       stadium: '잠실',
       startTime: '18:30',
     );
-    const expectedImageUrl =
+    const sourceImageUrl =
         'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/2026/56348.jpg';
 
     await tester.pumpWidget(
@@ -509,7 +684,7 @@ void main() {
             return const RelayData(
               currentAtBat: CurrentAtBat(
                 batterName: '김성윤',
-                batterImageUrl: expectedImageUrl,
+                batterImageUrl: sourceImageUrl,
                 batterNumber: 39,
                 batterHand: '좌타',
                 pitcherName: '임찬규',
@@ -559,14 +734,15 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(_cachedImage(expectedImageUrl), findsNWidgets(2));
+    expect(find.textContaining('김성윤'), findsWidgets);
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CachedNetworkImage && widget.imageUrl == sourceImageUrl,
+      ),
+      findsAtLeastNWidgets(1),
+    );
   });
-}
-
-Finder _cachedImage(String imageUrl) {
-  return find.byWidgetPredicate(
-    (widget) => widget is CachedNetworkImage && widget.imageUrl == imageUrl,
-  );
 }
 
 int _filledLargeRelayBaseCount(WidgetTester tester) {

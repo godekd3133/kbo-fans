@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/data/api/api_client.dart';
 import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/repositories/api_game_repository.dart';
+import 'package:kbo_fans/data/repositories/api_home_repository.dart';
 import 'package:kbo_fans/data/repositories/api_player_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -398,6 +399,51 @@ void main() {
 
     expect(standings.single.streak, 'W3');
     expect(standings.single.streakLabel, '3연승');
+  });
+
+  test('home aggregate drops stale schedule remaining brief items', () async {
+    SharedPreferences.setMockInitialValues({});
+    final repository = ApiHomeRepository(
+      ApiClient(
+        dio: _dioWithAdapter(
+          _SuccessAdapter({
+            'date': '2026-06-19',
+            'myTeam': 'LG',
+            'myTeamBrief': null,
+            'kboBrief': {
+              'title': '오늘의 KBO 소식',
+              'subtitle': '지금 볼 장면 2개',
+              'items': [
+                {
+                  'type': 'big_match',
+                  'eyebrow': '오늘 일정',
+                  'title': '삼성 vs LG',
+                  'subtitle': '18:30 · 잠실 · 오늘 2경기 예정',
+                  'route': '/game/20260619SSLG0',
+                },
+                {
+                  'type': 'schedule_remaining',
+                  'eyebrow': '남은 경기',
+                  'title': 'SSG vs 두산 외 1경기',
+                  'subtitle': '18:30 시작 · 중계 바로가기',
+                  'route': '/schedule',
+                },
+              ],
+            },
+            'quickItems': [],
+            'standingsPreview': [],
+          }),
+        ),
+        enableRequestTiming: false,
+      ),
+    );
+
+    final aggregate = await repository.getHomeAggregate(
+      date: '2026-06-19',
+      myTeam: 'LG',
+    );
+
+    expect(aggregate.kboBrief!.items.map((item) => item.type), ['big_match']);
   });
 
   test(

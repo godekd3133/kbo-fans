@@ -36,7 +36,7 @@ def get_game(game_id: str) -> ApiEnvelope[dict]:
         game = {
             "gameId": scheduled_game["gameId"],
             "status": scheduled_game["status"],
-            "inning": f'{scheduled_game["time"]} 예정',
+            "inning": f"{scheduled_game['time']} 예정",
             "stadium": scheduled_game["stadium"],
             "startTime": scheduled_game["time"],
             "crowd": None,
@@ -67,8 +67,8 @@ def get_game(game_id: str) -> ApiEnvelope[dict]:
         game["highlightInfo"] = {
             "officialUrl": (
                 "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
-                f'?gameDate={scheduled_game["gameId"][:8]}'
-                f'&gameId={scheduled_game["gameId"]}&section=HIGHLIGHT'
+                f"?gameDate={scheduled_game['gameId'][:8]}"
+                f"&gameId={scheduled_game['gameId']}&section=HIGHLIGHT"
             ),
             "youtubeVideos": [],
         }
@@ -85,19 +85,29 @@ def get_highlights(game_id: str) -> ApiEnvelope[dict]:
             detail="해당 경기의 하이라이트 정보를 찾을 수 없습니다",
         )
 
-    highlight_info = {
-        "officialUrl": (
-            "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
-            f'?gameDate={scheduled_game["gameId"][:8]}'
-            f'&gameId={scheduled_game["gameId"]}&section=HIGHLIGHT'
-        ),
-        "youtubeVideos": []
-        if scheduled_game.get("status") == "SCHEDULED"
-        else youtube_highlight_service.fetch_highlights(
+    youtube_videos = []
+    if scheduled_game.get("status") != "SCHEDULED":
+        youtube_videos = youtube_highlight_service.fetch_highlights(
             game_id=scheduled_game["gameId"],
             away_name=scheduled_game["awayName"],
             home_name=scheduled_game["homeName"],
+        )
+        if not youtube_videos:
+            youtube_videos = [
+                youtube_highlight_service.build_search_fallback(
+                    game_id=scheduled_game["gameId"],
+                    away_name=scheduled_game["awayName"],
+                    home_name=scheduled_game["homeName"],
+                )
+            ]
+
+    highlight_info = {
+        "officialUrl": (
+            "https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx"
+            f"?gameDate={scheduled_game['gameId'][:8]}"
+            f"&gameId={scheduled_game['gameId']}&section=HIGHLIGHT"
         ),
+        "youtubeVideos": youtube_videos,
     }
     return ApiEnvelope.success_response({"highlightInfo": highlight_info})
 

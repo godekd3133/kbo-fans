@@ -6,6 +6,7 @@ import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/highlight_info.dart';
+import 'package:kbo_fans/data/models/highlight_video.dart';
 import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
@@ -224,6 +225,62 @@ void main() {
 
     expect(repository.boxscoreCallCount, greaterThan(firstBoxscoreCallCount));
   });
+
+  testWidgets('종료 경기 스코어탭은 하이라이트를 자동 로드하고 앱 안 재생 버튼을 노출한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _finalGame();
+    final repository = _FakeGameRepository(
+      game,
+      highlightInfo: const HighlightInfo(
+        officialUrl:
+            'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=20260629&gameId=20260629KTLG0&section=HIGHLIGHT',
+        youtubeVideos: [
+          HighlightVideo(
+            videoId: 'tyo0j_fyPMU',
+            title: 'KT vs LG 하이라이트',
+            thumbnailUrl: '',
+            videoUrl: 'https://www.youtube.com/watch?v=tyo0j_fyPMU',
+          ),
+        ],
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(repository.highlightCallCount, 1);
+    expect(find.text('보기'), findsNothing);
+    expect(find.text('바로 재생'), findsOneWidget);
+  });
 }
 
 Game _liveGame() {
@@ -250,13 +307,43 @@ Game _liveGame() {
   );
 }
 
+Game _finalGame() {
+  return const Game(
+    gameId: '20260629KTLG0',
+    status: GameStatus.final_,
+    inning: '경기종료',
+    away: TeamScore(
+      teamId: 'KT',
+      teamName: 'KT 위즈',
+      shortName: 'KT',
+      score: 5,
+      innings: [0, 1, 0, 0, 2, 0, 0, 1, 1],
+    ),
+    home: TeamScore(
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      shortName: 'LG',
+      score: 3,
+      innings: [0, 0, 0, 1, 0, 0, 2, 0, 0],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
+}
+
 class _FakeGameRepository implements GameRepository {
-  _FakeGameRepository(this.game, {this.failGameRefreshAfterFirstLoad = false});
+  _FakeGameRepository(
+    this.game, {
+    this.failGameRefreshAfterFirstLoad = false,
+    this.highlightInfo,
+  });
 
   final Game game;
   final bool failGameRefreshAfterFirstLoad;
+  final HighlightInfo? highlightInfo;
   int _getGameCallCount = 0;
   int boxscoreCallCount = 0;
+  int highlightCallCount = 0;
 
   @override
   Future<List<Game>> getScoreboard(String date) async => [game];
@@ -271,7 +358,10 @@ class _FakeGameRepository implements GameRepository {
   }
 
   @override
-  Future<HighlightInfo?> getHighlightInfo(String gameId) async => null;
+  Future<HighlightInfo?> getHighlightInfo(String gameId) async {
+    highlightCallCount += 1;
+    return highlightInfo;
+  }
 
   @override
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {

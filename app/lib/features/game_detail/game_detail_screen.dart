@@ -126,7 +126,7 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
               ),
             );
           }
-          return const KeyedSubtree(
+          return KeyedSubtree(
             key: ValueKey('game-detail-loading'),
             child: Scaffold(
               body: SafeArea(
@@ -306,6 +306,12 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
 
       if (refreshVisibleTab) {
         switch (_tabController.index) {
+          case 0:
+            if (widget.game.status == GameStatus.final_) {
+              ref.invalidate(highlightInfoProvider(gameId));
+              futures.add(ref.read(highlightInfoProvider(gameId).future));
+            }
+            break;
           case 1:
             ref.invalidate(relayDataProvider(gameId));
             futures.add(ref.read(relayDataProvider(gameId).future));
@@ -412,7 +418,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     final tabBar = TabBar(
       controller: _tabController,
       indicatorSize: TabBarIndicatorSize.tab,
-      indicator: const UnderlineTabIndicator(
+      indicator: UnderlineTabIndicator(
         borderSide: BorderSide(color: AppColors.accent, width: 3),
         insets: EdgeInsets.symmetric(horizontal: 18),
       ),
@@ -463,7 +469,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                           child: Text(
                             _displayStadiumName(game.stadium),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               color: AppColors.textSecondary,
                             ),
@@ -615,7 +621,7 @@ class _GameScorebug extends StatelessWidget {
     return Container(
       width: double.infinity,
       clipBehavior: Clip.antiAlias,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
@@ -655,7 +661,7 @@ class _GameScorebug extends StatelessWidget {
                         'KBO 리그 | $metaText',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w800,
@@ -829,7 +835,7 @@ class _ScorebugTeam extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             color: AppColors.textPrimary,
             fontWeight: FontWeight.w900,
@@ -927,7 +933,7 @@ class _ScorebugInfoPill extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w800,
@@ -967,7 +973,7 @@ class _FollowGameCard extends StatelessWidget {
       child: ElevatedButton.icon(
         onPressed: isLoading ? null : onPressed,
         icon: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
@@ -1056,7 +1062,7 @@ class _TicketInfoCard extends ConsumerWidget {
                           await launchUrl(uri, mode: mode);
                         },
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.divider),
+                    side: BorderSide(color: AppColors.divider),
                     foregroundColor: AppColors.textPrimary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
@@ -1128,10 +1134,7 @@ class _TicketInfoCard extends ConsumerWidget {
             width: 72,
             child: Text(
               label,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ),
           Expanded(
@@ -1222,13 +1225,13 @@ class _HighlightCardState extends State<_HighlightCard> {
                     kIsWeb
                         ? '기본은 스크롤 모드이며, 필요할 때만 플레이어 조작 모드로 전환할 수 있습니다.'
                         : '여러 영상을 좌우로 넘기면서 바로 재생할 수 있습니다.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
                     ),
                   )
                 else
-                  const Text(
+                  Text(
                     '공식 하이라이트 페이지에서 확인할 수 있습니다.',
                     style: TextStyle(
                       fontSize: 12,
@@ -1255,7 +1258,7 @@ class _HighlightCardState extends State<_HighlightCard> {
                     child: OutlinedButton(
                       onPressed: () => _openUrl(highlight.officialUrl!),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.divider),
+                        side: BorderSide(color: AppColors.divider),
                         foregroundColor: AppColors.textPrimary,
                         padding: const EdgeInsets.symmetric(
                           vertical: 12,
@@ -1364,8 +1367,8 @@ class _HighlightCardState extends State<_HighlightCard> {
                   ),
                   if (isSearchFallback) ...[
                     const SizedBox(height: 4),
-                    const Text(
-                      '앱 밖에서 유튜브 검색 결과를 엽니다.',
+                    Text(
+                      '앱 안 브라우저에서 유튜브 검색 결과를 엽니다.',
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -1425,7 +1428,7 @@ class _HighlightCardState extends State<_HighlightCard> {
     return Container(
       color: AppColors.cardSub,
       alignment: Alignment.center,
-      child: const Icon(
+      child: Icon(
         Icons.ondemand_video_rounded,
         color: AppColors.textSecondary,
         size: 42,
@@ -1452,14 +1455,14 @@ class _HighlightCardState extends State<_HighlightCard> {
           KboTeamLogoImage(
             teamId: team?.id,
             fallback: shortName,
-            size: 34,
+            size: 28,
             padding: 1.5,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             shortName,
-            style: const TextStyle(
-              fontSize: 12,
+            style: TextStyle(
+              fontSize: 11,
               fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
@@ -1498,57 +1501,64 @@ class _HighlightCardState extends State<_HighlightCard> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Column(
               children: [
-                const Align(
+                Align(
                   alignment: Alignment.topLeft,
                   child: Text(
-                    'YOUTUBE SEARCH',
+                    '유튜브 검색',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textDisabled,
-                      letterSpacing: 0.6,
+                      letterSpacing: 0,
                     ),
                   ),
                 ),
-                const Spacer(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    teamBadge(awayTeam, widget.game.away.shortName),
-                    const Text(
-                      'VS',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textDisabled,
-                      ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        teamBadge(awayTeam, widget.game.away.shortName),
+                        Text(
+                          'VS',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textDisabled,
+                          ),
+                        ),
+                        teamBadge(homeTeam, widget.game.home.shortName),
+                      ],
                     ),
-                    teamBadge(homeTeam, widget.game.home.shortName),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 Text(
                   '${widget.game.away.shortName} vs ${widget.game.home.shortName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
+                const SizedBox(height: 2),
+                Text(
                   '유튜브 검색 결과로 이동',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
                 ),
-                const Spacer(),
               ],
             ),
           ),
@@ -1561,8 +1571,11 @@ class _HighlightCardState extends State<_HighlightCard> {
     final uri = Uri.parse(url);
     final mode = kIsWeb
         ? LaunchMode.platformDefault
-        : LaunchMode.externalApplication;
-    await launchUrl(uri, mode: mode);
+        : LaunchMode.inAppBrowserView;
+    final launched = await launchUrl(uri, mode: mode);
+    if (!launched && !kIsWeb) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   void _playInline(String videoId) {
@@ -1683,13 +1696,13 @@ class _HighlightSection extends ConsumerStatefulWidget {
 }
 
 class _HighlightSectionState extends ConsumerState<_HighlightSection> {
-  bool _loadRequested = false;
-
   @override
   Widget build(BuildContext context) {
-    final highlightAsync = _loadRequested
-        ? ref.watch(highlightInfoProvider(widget.gameId))
-        : const AsyncValue<HighlightInfo?>.data(null);
+    final highlightAsync = ref.watch(highlightInfoProvider(widget.gameId));
+    final highlightInfo = _resolveHighlightInfo(
+      game: widget.game,
+      fetched: highlightAsync.asData?.value,
+    );
     final mergedGame = Game(
       gameId: widget.game.gameId,
       status: widget.game.status,
@@ -1701,85 +1714,89 @@ class _HighlightSectionState extends ConsumerState<_HighlightSection> {
       statusLabel: widget.game.statusLabel,
       crowd: widget.game.crowd,
       ticketInfo: widget.game.ticketInfo,
-      highlightInfo: highlightAsync.asData?.value ?? widget.game.highlightInfo,
+      highlightInfo: highlightInfo,
     );
-
-    if (highlightAsync.isLoading && mergedGame.highlightInfo == null) {
-      return Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: const Row(
-          children: [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppColors.live,
-              ),
-            ),
-            SizedBox(width: 12),
-            Text('하이라이트 불러오는 중'),
-          ],
-        ),
-      );
-    }
-
-    if (mergedGame.highlightInfo == null) {
-      return _LoadHighlightCard(
-        onPressed: () {
-          setState(() {
-            _loadRequested = true;
-          });
-        },
-      );
-    }
 
     return _HighlightCard(game: mergedGame, gameId: widget.gameId);
   }
 }
 
-class _LoadHighlightCard extends StatelessWidget {
-  final VoidCallback onPressed;
+HighlightInfo _resolveHighlightInfo({
+  required Game game,
+  HighlightInfo? fetched,
+}) {
+  final existing = game.highlightInfo;
+  final fallback = _fallbackHighlightInfoForGame(game);
+  final videos = fetched?.youtubeVideos.isNotEmpty == true
+      ? fetched!.youtubeVideos
+      : existing?.youtubeVideos.isNotEmpty == true
+      ? existing!.youtubeVideos
+      : fallback.youtubeVideos;
+  final officialUrl = _firstNonEmptyString([
+    fetched?.officialUrl,
+    existing?.officialUrl,
+    fallback.officialUrl,
+  ]);
 
-  const _LoadHighlightCard({required this.onPressed});
+  return HighlightInfo(officialUrl: officialUrl, youtubeVideos: videos);
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
+HighlightInfo _fallbackHighlightInfoForGame(Game game) {
+  final query = _highlightSearchQuery(game);
+  return HighlightInfo(
+    officialUrl: _officialHighlightUrlForGame(game.gameId),
+    youtubeVideos: [
+      HighlightVideo(
+        videoId: '',
+        title: '${game.away.shortName} vs ${game.home.shortName} 하이라이트 검색',
+        thumbnailUrl: '',
+        videoUrl: Uri.https('www.youtube.com', '/results', {
+          'search_query': query,
+        }).toString(),
+        source: 'youtube_search_fallback',
       ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              '하이라이트',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
-            ),
-          ),
-          OutlinedButton(
-            onPressed: onPressed,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textPrimary,
-              side: const BorderSide(color: AppColors.divider),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('보기'),
-          ),
-        ],
-      ),
-    );
+    ],
+  );
+}
+
+String _highlightSearchQuery(Game game) {
+  final dateLabel = _highlightDateLabel(game.gameId);
+  final away = game.away.teamName.isNotEmpty
+      ? game.away.teamName
+      : game.away.shortName;
+  final home = game.home.teamName.isNotEmpty
+      ? game.home.teamName
+      : game.home.shortName;
+  return '$dateLabel $away $home 하이라이트'.trim();
+}
+
+String _highlightDateLabel(String gameId) {
+  if (gameId.length < 8) {
+    return '';
   }
+  final month = int.tryParse(gameId.substring(4, 6));
+  final day = int.tryParse(gameId.substring(6, 8));
+  if (month == null || day == null) {
+    return '';
+  }
+  return '$month월 $day일';
+}
+
+String _officialHighlightUrlForGame(String gameId) {
+  if (gameId.length < 8) {
+    return 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx';
+  }
+  return 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=${gameId.substring(0, 8)}&gameId=$gameId&section=HIGHLIGHT';
+}
+
+String? _firstNonEmptyString(List<String?> values) {
+  for (final value in values) {
+    final trimmed = value?.trim() ?? '';
+    if (trimmed.isNotEmpty) {
+      return trimmed;
+    }
+  }
+  return null;
 }
 
 class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
@@ -1800,7 +1817,7 @@ class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.background,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),

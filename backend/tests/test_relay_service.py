@@ -167,6 +167,92 @@ def test_relay_service_uses_full_relay_for_final_game_when_available() -> None:
     assert relay["relayItems"][1]["event"] == "SUBSTITUTION"
 
 
+def test_relay_service_clears_current_at_bat_for_final_full_relay() -> None:
+    service = RelayService(
+        relay_crawler=_StubRelayCrawler(
+            {
+                "gameId": "20260629SSLG0",
+                "currentAtBat": {
+                    "inningText": "9회 초",
+                    "batter": {"name": "디아즈"},
+                    "pitcher": {"name": "손주영"},
+                    "ballCount": {"balls": 1, "strikes": 3, "outs": 3},
+                    "baseState": "주자없음",
+                },
+                "relayItems": [
+                    {
+                        "seqNo": 142,
+                        "inning": 9,
+                        "half": "top",
+                        "event": "OUT",
+                        "isScoring": False,
+                        "text": "디아즈: 플라이 아웃",
+                        "pitchSequence": "B-S-F-OUT",
+                    }
+                ],
+            }
+        ),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": "20260629SSLG0",
+                "status": "FINAL",
+                "away": {"shortName": "삼성", "score": 3, "scores": [0]},
+                "home": {"shortName": "LG", "score": 4, "scores": [0]},
+            }
+        ),
+    )
+
+    relay = service.get_relay("20260629SSLG0")
+
+    assert relay["currentAtBat"] is None
+    assert relay["relayItems"][0]["event"] == "OUT"
+
+
+def test_relay_service_clears_current_at_bat_from_final_snapshot(tmp_path: Path) -> None:
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "relay",
+        "20260629SSLG0",
+        {
+            "gameId": "20260629SSLG0",
+            "currentAtBat": {
+                "inningText": "9회 초",
+                "batter": {"name": "디아즈"},
+                "pitcher": {"name": "손주영"},
+                "ballCount": {"balls": 1, "strikes": 3, "outs": 3},
+            },
+            "relayItems": [
+                {
+                    "seqNo": 142,
+                    "inning": 9,
+                    "half": "top",
+                    "event": "OUT",
+                    "isScoring": False,
+                    "text": "디아즈: 플라이 아웃",
+                    "pitchSequence": "B-S-F-OUT",
+                }
+            ],
+        },
+    )
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": "20260629SSLG0",
+                "status": "FINAL",
+                "away": {"shortName": "삼성", "score": 3, "scores": [0]},
+                "home": {"shortName": "LG", "score": 4, "scores": [0]},
+            }
+        ),
+        snapshot_store=snapshot_store,
+    )
+
+    relay = service.get_relay("20260629SSLG0")
+
+    assert relay["currentAtBat"] is None
+    assert relay["relayItems"][0]["event"] == "OUT"
+
+
 def test_relay_service_uses_snapshot_first_for_final_game(tmp_path: Path) -> None:
     snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
     snapshot_store.save(

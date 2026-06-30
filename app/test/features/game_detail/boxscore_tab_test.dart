@@ -6,7 +6,6 @@ import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/player.dart';
-import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/boxscore_tab.dart';
 
@@ -85,7 +84,7 @@ void main() {
     expect(find.text('삼진 0'), findsNothing);
   });
 
-  testWidgets('매칭된 박스스코어 선수는 선수 기록 보기 CTA를 보여준다', (tester) async {
+  testWidgets('매칭된 박스스코어 선수는 CTA를 보여주고 사진은 렌더하지 않는다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -102,27 +101,14 @@ void main() {
 
     expect(find.text('오늘 기록 요약'), findsWidgets);
     expect(find.text('선수 기록 보기'), findsWidgets);
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is CachedNetworkImage &&
-            widget.imageUrl == 'https://example.test/no.png',
-      ),
-      findsWidgets,
-    );
+    expect(find.byType(CachedNetworkImage), findsNothing);
   });
 
-  testWidgets('박스스코어 선수 이미지는 프로필 id 기반 URL로 보강한다', (tester) async {
+  testWidgets('박스스코어는 프로필 id가 있어도 선수 사진을 렌더하지 않는다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-
-    final season = DateTime.now().year;
-    final expectedImageUrl = kboPlayerImageUrl(
-      season: season,
-      playerId: '69102',
-    );
 
     await _pumpBoxscoreTab(
       tester,
@@ -133,13 +119,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is CachedNetworkImage && widget.imageUrl == expectedImageUrl,
-      ),
-      findsWidgets,
-    );
+    expect(find.text('문보경'), findsWidgets);
+    expect(find.byType(CachedNetworkImage), findsNothing);
   });
 
   testWidgets('LIVE context 박스스코어는 경기 중 탭 콘텐츠로 보여준다', (tester) async {

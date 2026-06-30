@@ -64,7 +64,7 @@ class LogEntry {
   final LogLevel level;
   final DateTime time;
   final int count;
-  const LogEntry({
+  LogEntry({
     required this.message,
     required this.level,
     required this.time,
@@ -219,14 +219,14 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                       child: Container(
                         width: 16,
                         height: 16,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           color: AppColors.live,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
                           child: Text(
                             '$_errorCount',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 9,
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
@@ -251,7 +251,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
               color: Colors.transparent,
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xF0111111),
+                  color: Color(0xF0111111),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.divider),
                 ),
@@ -259,11 +259,11 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                   children: [
                     // 헤더
                     Container(
-                      padding: const EdgeInsets.symmetric(
+                      padding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 10,
                       ),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         color: Color(0xFF1A1A1A),
                         borderRadius: BorderRadius.vertical(
                           top: Radius.circular(12),
@@ -278,7 +278,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
+                                    Text(
                                       'Dev Console',
                                       style: TextStyle(
                                         fontSize: 13,
@@ -286,12 +286,12 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                         color: AppColors.textPrimary,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
+                                    SizedBox(height: 2),
                                     Text(
                                       'API ${AppConfig.instance.apiBaseUrl}',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
                                         color: AppColors.textDisabled,
                                       ),
@@ -311,22 +311,22 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                       .join('\n');
                                   Clipboard.setData(ClipboardData(text: text));
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
+                                    SnackBar(
                                       content: Text('로그 복사됨'),
                                       duration: Duration(seconds: 1),
                                     ),
                                   );
                                 },
-                                child: const Icon(
+                                child: Icon(
                                   Icons.copy,
                                   size: 16,
                                   color: AppColors.accent,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               GestureDetector(
                                 onTap: () => DevConsole.instance.clear(),
-                                child: const Text(
+                                child: Text(
                                   'Clear',
                                   style: TextStyle(
                                     fontSize: 12,
@@ -334,10 +334,10 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               GestureDetector(
                                 onTap: () => setState(() => _isOpen = false),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.close,
                                   size: 18,
                                   color: AppColors.textDisabled,
@@ -345,7 +345,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           Row(
                             children: [
                               _quickChip(
@@ -356,7 +356,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                   _persistFilters();
                                 },
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               _quickChip(
                                 selected: _apiOnly,
                                 label: 'API',
@@ -365,7 +365,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                   _persistFilters();
                                 },
                               ),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               _quickChip(
                                 selected: _collapseOldLogs,
                                 label: '최근',
@@ -373,15 +373,15 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                   () => _collapseOldLogs = !_collapseOldLogs,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               _filterChip(LogLevel.info, 'INFO'),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               _filterChip(LogLevel.warn, 'WARN'),
-                              const SizedBox(width: 8),
+                              SizedBox(width: 8),
                               _filterChip(LogLevel.error, 'ERROR'),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           Row(
                             children: [
                               Expanded(
@@ -390,18 +390,18 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                   onChanged: (value) {
                                     setState(() => _query = value.trim());
                                   },
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textPrimary,
                                   ),
                                   decoration: InputDecoration(
                                     isDense: true,
                                     hintText: '로그 검색',
-                                    hintStyle: const TextStyle(
+                                    hintStyle: TextStyle(
                                       fontSize: 12,
                                       color: AppColors.textDisabled,
                                     ),
-                                    prefixIcon: const Icon(
+                                    prefixIcon: Icon(
                                       Icons.search,
                                       size: 16,
                                       color: AppColors.textDisabled,
@@ -413,7 +413,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                               _searchController.clear();
                                               setState(() => _query = '');
                                             },
-                                            child: const Icon(
+                                            child: Icon(
                                               Icons.close,
                                               size: 16,
                                               color: AppColors.textDisabled,
@@ -425,19 +425,19 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                     ),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AppColors.divider,
                                       ),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AppColors.divider,
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      borderSide: const BorderSide(
+                                      borderSide: BorderSide(
                                         color: AppColors.accent,
                                       ),
                                     ),
@@ -446,19 +446,19 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: [
                                 _categoryChip(LogCategory.all, 'ALL'),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 _categoryChip(LogCategory.api, 'API'),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 _categoryChip(LogCategory.kbo, 'KBO'),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 _categoryChip(LogCategory.ui, 'UI'),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 _categoryChip(LogCategory.push, 'PUSH'),
                               ],
                             ),
@@ -469,7 +469,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                     // 로그 리스트
                     Expanded(
                       child: _filteredLogs.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Text(
                                 '표시할 로그가 없습니다',
                                 style: TextStyle(
@@ -479,7 +479,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                               ),
                             )
                           : ListView.builder(
-                              padding: const EdgeInsets.all(8),
+                              padding: EdgeInsets.all(8),
                               itemCount: _filteredLogs.length,
                               itemBuilder: (_, i) {
                                 final entry = _filteredLogs[i];
@@ -495,7 +495,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                     ? ' ×${entry.count}'
                                     : '';
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
+                                  padding: EdgeInsets.only(bottom: 4),
                                   child: GestureDetector(
                                     onLongPress: () async {
                                       await Clipboard.setData(
@@ -508,7 +508,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                         ScaffoldMessenger.of(
                                           context,
                                         ).showSnackBar(
-                                          const SnackBar(
+                                          SnackBar(
                                             content: Text('로그 1건 복사됨'),
                                             duration: Duration(seconds: 1),
                                           ),
@@ -517,7 +517,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                     },
                                     child: Container(
                                       width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(
+                                      padding: EdgeInsets.symmetric(
                                         horizontal: 8,
                                         vertical: 6,
                                       ),
@@ -570,7 +570,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
         _persistFilters();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: selected ? AppColors.cardSub : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
@@ -598,7 +598,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.accent.withValues(alpha: 0.16)
@@ -647,7 +647,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
   }
 
   bool _isRecent(DateTime time) {
-    return DateTime.now().difference(time) <= const Duration(minutes: 2);
+    return DateTime.now().difference(time) <= Duration(minutes: 2);
   }
 
   Widget _categoryChip(LogCategory category, String label) {
@@ -659,7 +659,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
         _persistFilters();
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: selected ? accent.withValues(alpha: 0.16) : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
