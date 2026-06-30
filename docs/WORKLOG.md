@@ -23,16 +23,18 @@
 - [x] `cd app && fvm flutter analyze` (`No issues found!`)
 - [x] `cd app && fvm flutter test` (`All tests passed!`, 237 tests)
 
-### 남은 릴리즈 체크포인트
-- [ ] 버전 갱신 후 최종 검증 재실행
-- [ ] 작업 단위 커밋 분리 및 `main` push
-- [ ] tag `0.1.9` / GitHub Release 발행
-- [ ] TestFlight 업로드
-- [ ] Apple processing `VALID`
-- [ ] `External Testers` 최신 build 연결 및 이전 build 관계 제거
-- [ ] Beta App Review 제출/상태 확인
-- [ ] 외부 테스터 설치 가능성 확인
-- [ ] 운영 backend API/worker 배포 및 release API health gate 재확인
+### 릴리즈 체크포인트
+- [x] 버전 갱신 후 최종 검증 재실행: `git diff --check HEAD~4..HEAD`, `python3 -m compileall backend/src`, `backend/.venv/bin/pytest -q` (`231 passed`), `cd app && fvm flutter analyze` (`No issues found!`), `cd app && fvm flutter test` (`All tests passed!`, 237 tests), `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` 통과
+- [x] 작업 단위 커밋 분리 및 `main` push: `823dbee` 설정 테마와 업데이트 소식 흐름 정리, `c6b1955` 홈 위젯과 주요 화면 정보 흐름 정리, `ee09489` 경기 상세 중계와 하이라이트 상태 보강, `789ca90` 푸시 알림 모드와 라이브 액티비티 기준 정리
+- [x] tag `0.1.9` / GitHub Release 발행: `https://github.com/godekd3133/kbo-fans/releases/tag/0.1.9`, tag/main 기준 commit `789ca901845b02015d290b5bcd9c56cc57719870`
+- [x] TestFlight 업로드: IPA `0.1.9+76`, delivery/build id `5b2c141c-88f7-4184-99cd-9fa587b8a33a`, `UPLOAD SUCCEEDED`
+- [x] Apple processing `VALID`: `build-status=VALID`, `import-status=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-09-28 15:27`
+- [x] `External Testers` 최신 build 연결 및 이전 build 관계 제거: group `81506852-9006-4a43-b152-067ac78a1736`, final build number `76`, 이전 build `75` id `45c1a773-7415-4f37-8f16-f34742464332` 관계 제거
+- [x] Beta App Review 제출/상태 확인: submission/build id `5b2c141c-88f7-4184-99cd-9fa587b8a33a`, state `WAITING_FOR_REVIEW`
+- [x] 외부 테스터 설치 가능성 확인: `External Testers` tester 1명, masked email `na***@naver.com`, inviteType `EMAIL`, state `INSTALLED`
+- [x] 운영 backend API/worker 배포: GitHub Actions `Push Demo Deploy` run `28425386262`, head `789ca901845b02015d290b5bcd9c56cc57719870`, image tag `0.1.9`, digest `sha256:5b617e1eca18fe8100c08405f07615021cc865d2de66810abaef1822b2fc58b8`, `push_live_preflight=status=ok checks=46 warnings=7 failures=0`, `aws_push_image=status=ok`, `aws_push_cloudformation=status=ok`, `aws_push_demo_deploy=status=ok`, `push_config=status=ok readyForIphoneOnlyDemo=true`, `scheduler=status=ok ageSeconds=1`
+- [x] 운영 topic 재구독: `push_topic_resubscribe=status=ok registeredDevices=32 eligibleDevices=32 subscriptionsAttempted=362 unsubscriptionsAttempted=0`
+- [x] 배포 후 release API health gate 재확인: `/api/health`, `/api/scoreboard/home`, `/api/game/20260630LTOB0/relay`, `/api/home`, `/api/schedule`, `/api/standings`, `/api/records/overview` 모두 `status=ok`
 
 ---
 
