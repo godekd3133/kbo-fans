@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import date as date_type
 from typing import Any, Optional
 
@@ -9,13 +10,11 @@ from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.player_images import kbo_player_image_url
 
 
 class LineupService:
     _LINEUP_OPENED_ALERT_KEY = "lineup_opened"
-    _PLAYER_IMAGE_URL = (
-        "https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle/{season}/{player_id}.jpg"
-    )
 
     def __init__(
         self,
@@ -40,7 +39,13 @@ class LineupService:
             and self._is_past_game_id(game_id)
             and self._has_ready_lineup(snapshot)
         ):
-            return snapshot
+            enriched_snapshot = self._enrich_snapshot_if_missing_player_images(
+                snapshot,
+                game_id,
+            )
+            if enriched_snapshot != snapshot:
+                self.snapshot_store.save("lineup", game_id, enriched_snapshot)
+            return enriched_snapshot
 
         try:
             lineup = self.lineup_crawler.get_lineup(game_id)
@@ -152,7 +157,10 @@ class LineupService:
     def _starter_image_url(self, game_id: str, starter_id: Optional[str]) -> Optional[str]:
         if not starter_id:
             return None
-        return self._PLAYER_IMAGE_URL.format(season=game_id[:4], player_id=starter_id)
+        season = self._season_from_game_id(game_id)
+        if season is None:
+            return None
+        return kbo_player_image_url(season, starter_id)
 
     def _enrich_lineup_rows(self, lineup: dict[str, Any], game_id: str) -> None:
         season = self._season_from_game_id(game_id)
@@ -183,12 +191,39 @@ class LineupService:
                 if player_id and not row.get("id"):
                     row["id"] = player_id
                 if not image_url and player_id:
-                    image_url = self._PLAYER_IMAGE_URL.format(
-                        season=season,
-                        player_id=player_id,
-                    )
+                    image_url = kbo_player_image_url(season, player_id)
                 if image_url and not row.get("imageUrl"):
                     row["imageUrl"] = image_url
+
+    def _enrich_snapshot_if_missing_player_images(
+        self,
+        snapshot: dict[str, Any],
+        game_id: str,
+    ) -> dict[str, Any]:
+        if self._has_lineup_player_image_handles(snapshot):
+            return snapshot
+        enriched = deepcopy(snapshot)
+        self._enrich_lineup_rows(enriched, game_id)
+        return enriched
+
+    @staticmethod
+    def _has_lineup_player_image_handles(payload: dict[str, Any]) -> bool:
+        for side in ("away", "home"):
+            rows = payload.get(side, {}).get("lineup")
+            if not isinstance(rows, list):
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                if not str(row.get("name") or "").strip():
+                    continue
+                has_player_id = bool(
+                    str(row.get("id") or row.get("playerId") or "").strip()
+                )
+                has_image_url = bool(str(row.get("imageUrl") or "").strip())
+                if not has_player_id and not has_image_url:
+                    return False
+        return True
 
     def _team_players_by_name(self, team_id: str, season: int) -> dict[str, dict[str, Any]]:
         try:

@@ -65,6 +65,11 @@ class _StubPlayerStatsService:
         return {"teamId": team_id, "season": season, "players": players.get(team_id, [])}
 
 
+class _EmptyPlayerStatsService:
+    def get_team_players(self, team_id: str, season: int):
+        return {"teamId": team_id, "season": season, "players": []}
+
+
 class _NoopPushService:
     def send_lineup_opened(self, **kwargs):
         return None
@@ -143,12 +148,51 @@ def test_lineup_service_uses_snapshot_first_for_past_game(tmp_path) -> None:
         main_crawler=_StubMainCrawler(),
         snapshot_store=snapshot_store,
         push_service=_NoopPushService(),
+        player_stats_service=_EmptyPlayerStatsService(),
     )
 
     payload = service.get_lineup("20260425LGOB0")
 
     assert payload["away"]["lineup"] == [{"name": "홍창기"}]
     assert payload["home"]["lineup"] == [{"name": "박준영"}]
+
+
+def test_lineup_service_enriches_past_snapshot_with_missing_player_images(tmp_path) -> None:
+    class FailingLineupCrawler:
+        def get_lineup(self, game_id: str):
+            raise AssertionError("lineup crawler should not be called")
+
+    class FailingBoxscoreCrawler:
+        def get_boxscore(self, game_id: str):
+            raise AssertionError("boxscore crawler should not be called")
+
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
+    snapshot_store.save(
+        "lineup",
+        "20260425LGOB0",
+        {
+            "gameId": "20260425LGOB0",
+            "away": {"teamId": "LG", "lineup": [{"name": "홍창기"}]},
+            "home": {"teamId": "OB", "lineup": [{"name": "박준영"}]},
+        },
+    )
+    service = LineupService(
+        lineup_crawler=FailingLineupCrawler(),
+        boxscore_crawler=FailingBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=snapshot_store,
+        push_service=_NoopPushService(),
+        player_stats_service=_StubPlayerStatsService(),
+    )
+
+    payload = service.get_lineup("20260425LGOB0")
+
+    assert payload["away"]["lineup"][0]["id"] == "78224"
+    assert payload["away"]["lineup"][0]["imageUrl"] == "https://img.test/2026/78224.jpg"
+    assert payload["home"]["lineup"][0]["id"] == "66203"
+    assert payload["home"]["lineup"][0]["imageUrl"] == "https://img.test/2026/66203.jpg"
+    saved = snapshot_store.load_payload("lineup", "20260425LGOB0")
+    assert saved["away"]["lineup"][0]["id"] == "78224"
 
 
 def test_lineup_service_does_not_use_snapshot_for_current_game_failure(tmp_path) -> None:

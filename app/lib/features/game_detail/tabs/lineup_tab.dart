@@ -12,6 +12,7 @@ import '../../../data/models/game.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/player.dart';
 import '../../../data/models/relay.dart';
+import '../../../data/models/records_overview.dart';
 import '../../../data/models/schedule.dart';
 import '../../../data/models/team_stats.dart';
 import '../../../data/providers.dart';
@@ -21,8 +22,6 @@ const _kboImageHeaders = {
   'User-Agent':
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
 };
-const _kboPersonImageBase =
-    'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
 
 class LineupTab extends ConsumerWidget {
   final String gameId;
@@ -51,7 +50,7 @@ class LineupTab extends ConsumerWidget {
     }
 
     final gameLineupAsync = ref.watch(gameLineupProvider(gameId));
-    final season = DateTime.now().year;
+    final season = _seasonFromGameId(gameId);
     final awayPlayersAsync = awayTeamId.isEmpty
         ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
         : ref.watch(teamPlayersProvider('$awayTeamId|$season'));
@@ -1551,7 +1550,17 @@ String? _playerImageUrl({required int season, required String? playerId}) {
   if (cleaned.isEmpty) {
     return null;
   }
-  return '$_kboPersonImageBase/$season/$cleaned.jpg';
+  return kboPlayerImageUrl(season: season, playerId: cleaned);
+}
+
+int _seasonFromGameId(String gameId) {
+  if (gameId.length >= 4) {
+    final parsed = int.tryParse(gameId.substring(0, 4));
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+  return DateTime.now().year;
 }
 
 String? _resolveLineupEntryImageUrl(

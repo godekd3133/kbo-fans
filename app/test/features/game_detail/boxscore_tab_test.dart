@@ -166,6 +166,26 @@ void main() {
     expect(find.text('집계중'), findsOneWidget);
   });
 
+  testWidgets('LIVE context에 계산된 타수/안타가 있으면 숫자로 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpBoxscoreTab(
+      tester,
+      boxscore: _computedLiveContextBoxscore,
+      players: const <PlayerProfile>[],
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('실시간 기록 추적'), findsOneWidget);
+    expect(find.text('0.500'), findsAtLeastNWidgets(1));
+    expect(find.text('2타수 1안타'), findsOneWidget);
+  });
+
   testWidgets('미매칭 박스스코어 선수는 선수 기록 보기 CTA를 숨긴다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -326,6 +346,57 @@ const _liveContextBoxscore = GameBoxscoreData(
         atBats: 0,
         runs: 0,
         hits: 0,
+        rbi: 0,
+        liveContext: true,
+        contextLabel: '3회초 현재 타자',
+      ),
+    ],
+    pitchers: [
+      PitcherRecord(
+        name: '곽빈',
+        innings: '',
+        hits: 0,
+        strikeouts: 0,
+        walks: 0,
+        earnedRuns: 0,
+        liveContext: true,
+        contextLabel: '선발 투수',
+      ),
+    ],
+  ),
+  home: TeamBoxscoreData(
+    teamId: 'LG',
+    batters: [],
+    pitchers: [
+      PitcherRecord(
+        name: '임찬규',
+        innings: '',
+        hits: 0,
+        strikeouts: 0,
+        walks: 0,
+        earnedRuns: 0,
+        decision: 'LIVE',
+        liveContext: true,
+        contextLabel: '3회초 현재 투수',
+      ),
+    ],
+  ),
+);
+
+const _computedLiveContextBoxscore = GameBoxscoreData(
+  gameId: '20260620OBLG0',
+  officialAvailable: false,
+  liveContextAvailable: true,
+  away: TeamBoxscoreData(
+    teamId: 'OB',
+    batters: [
+      BatterRecord(
+        order: 0,
+        position: '타자',
+        name: '양석환',
+        atBats: 2,
+        runs: 0,
+        hits: 1,
         rbi: 0,
         liveContext: true,
         contextLabel: '3회초 현재 타자',

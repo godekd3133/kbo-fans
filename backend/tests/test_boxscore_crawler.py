@@ -13,15 +13,26 @@ class _PayloadBoxscoreCrawler(BoxscoreCrawler):
 
 
 class _RoutePayloadBoxscoreCrawler(BoxscoreCrawler):
-    def __init__(self, boxscore_payload, main_payload):
+    def __init__(self, boxscore_payload, main_payload, relay_payload=None):
         super().__init__()
         self.boxscore_payload = boxscore_payload
         self.main_payload = main_payload
+        self.relay_crawler = _StubRelayCrawler(relay_payload)
 
     def _post_json(self, url, *args, **kwargs):
         if "GetKboGameList" in url:
             return self.main_payload
         return self.boxscore_payload
+
+
+class _StubRelayCrawler:
+    def __init__(self, relay_payload):
+        self.relay_payload = relay_payload
+
+    def get_relay(self, game_id: str):
+        if self.relay_payload is None:
+            raise RuntimeError("relay unavailable")
+        return self.relay_payload
 
 
 def test_boxscore_crawler_marks_pitcher_placeholder_only_payload_unofficial() -> None:
@@ -77,6 +88,48 @@ def test_boxscore_crawler_returns_live_context_when_official_endpoint_empty() ->
     assert payload["away"]["pitchers"][0]["liveContext"] is True
     assert payload["home"]["pitchers"][0]["name"] == "임찬규"
     assert payload["home"]["pitchers"][0]["decision"] == "LIVE"
+
+
+def test_boxscore_crawler_enriches_live_context_with_relay_today_batting_line() -> None:
+    crawler = _RoutePayloadBoxscoreCrawler(
+        boxscore_payload={"arrHitter": [], "arrPitcher": []},
+        main_payload={
+            "game": [
+                {
+                    "G_ID": "20260620OBLG0",
+                    "GAME_STATE_SC": "2",
+                    "GAME_INN_NO": "3",
+                    "GAME_TB_SC": "T",
+                    "GAME_TB_SC_NM": "초",
+                    "T_P_NM": "양석환",
+                    "B_P_NM": "임찬규",
+                    "T_PIT_P_NM": "곽빈",
+                    "B_PIT_P_NM": "임찬규",
+                }
+            ]
+        },
+        relay_payload={
+            "gameId": "20260620OBLG0",
+            "currentAtBat": {
+                "batter": {
+                    "name": "양석환",
+                    "todayAtBats": 2,
+                    "todayHits": 1,
+                },
+                "pitcher": {"name": "임찬규"},
+                "inningText": "3회초",
+            },
+            "relayItems": [],
+        },
+    )
+
+    payload = crawler.get_boxscore("20260620OBLG0")
+
+    assert payload["source"] == "live_context"
+    assert payload["away"]["batters"][0]["name"] == "양석환"
+    assert payload["away"]["batters"][0]["atBats"] == 2
+    assert payload["away"]["batters"][0]["hits"] == 1
+    assert payload["away"]["batters"][0]["liveStatsAvailable"] is True
 
 
 def test_boxscore_crawler_keeps_zero_value_batter_rows_official() -> None:

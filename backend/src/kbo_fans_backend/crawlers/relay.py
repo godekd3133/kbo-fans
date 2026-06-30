@@ -235,6 +235,8 @@ class RelayCrawler(BaseCrawler):
                 "hand": batter_meta["hand"],
                 "recent": batter_meta["recent"],
                 "average": batter_meta["average"],
+                "todayAtBats": batter_meta["today_at_bats"],
+                "todayHits": batter_meta["today_hits"],
                 "imageUrl": batter_meta["image_url"],
             },
             "pitcher": {
@@ -352,6 +354,7 @@ class RelayCrawler(BaseCrawler):
 
         today_text = RelayCrawler._player_text(player_wrap.select_one(".today span"))
         pitch_count_match = re.search(r"(\d+)투구", today_text)
+        today_at_bats, today_hits = RelayCrawler._parse_today_batting_line(today_text)
         image = player_wrap.select_one(".player-img img.pic") or player_wrap.select_one(
             "img.pic"
         )
@@ -372,6 +375,8 @@ class RelayCrawler(BaseCrawler):
             "pitch_count": int(pitch_count_match.group(1)) if pitch_count_match else 0,
             "recent": "" if pitch_count_match or today_text == "-" else today_text,
             "average": RelayCrawler._parse_live_batting_average(element, today_text),
+            "today_at_bats": today_at_bats,
+            "today_hits": today_hits,
             "era": RelayCrawler._parse_season_stat(element, ("ERA", "평균자책", "평균자책점")),
             "image_url": RelayCrawler._normalize_player_image_url(image_src),
         }

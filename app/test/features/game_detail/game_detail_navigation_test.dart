@@ -170,6 +170,60 @@ void main() {
     expect(find.text('경기 따라가기'), findsNothing);
     expect(find.text('중계만 보기'), findsNothing);
   });
+
+  testWidgets('라이브 경기 상세는 탭을 다시 열 때 visible 탭 데이터를 즉시 새로고침한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final repository = _FakeGameRepository(game);
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    await tester.tap(find.text('박스스코어'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    final firstBoxscoreCallCount = repository.boxscoreCallCount;
+    expect(firstBoxscoreCallCount, greaterThan(0));
+
+    await tester.tap(find.text('스코어'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    await tester.tap(find.text('박스스코어'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(repository.boxscoreCallCount, greaterThan(firstBoxscoreCallCount));
+  });
 }
 
 Game _liveGame() {
@@ -202,6 +256,7 @@ class _FakeGameRepository implements GameRepository {
   final Game game;
   final bool failGameRefreshAfterFirstLoad;
   int _getGameCallCount = 0;
+  int boxscoreCallCount = 0;
 
   @override
   Future<List<Game>> getScoreboard(String date) async => [game];
@@ -233,6 +288,7 @@ class _FakeGameRepository implements GameRepository {
 
   @override
   Future<GameBoxscoreData> getBoxscoreData(String gameId) async {
+    boxscoreCallCount += 1;
     return GameBoxscoreData(
       gameId: gameId,
       officialAvailable: false,

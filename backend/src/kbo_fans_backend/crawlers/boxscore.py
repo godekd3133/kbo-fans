@@ -11,6 +11,10 @@ from kbo_fans_backend.utils.html import strip_tags
 class BoxscoreCrawler(BaseCrawler):
     """Fetches boxscore data."""
 
+    def __init__(self, relay_crawler: Optional[Any] = None) -> None:
+        super().__init__()
+        self.relay_crawler = relay_crawler
+
     def get_boxscore(self, game_id: str) -> dict[str, Any]:
         payload = self._post_json(
             f"{self.base_url}/ws/Schedule.asmx/GetBoxScoreScroll",
@@ -112,6 +116,7 @@ class BoxscoreCrawler(BaseCrawler):
         away_id, home_id = self._derive_team_ids(game_id)
         inning_text = self._format_inning(main_game)
         is_top = self._is_top_inning(main_game, inning_text)
+        relay_current_at_bat = self._relay_current_at_bat(game_id)
         away_batters: list[dict[str, Any]] = []
         home_batters: list[dict[str, Any]] = []
         away_pitchers: list[dict[str, Any]] = []
@@ -120,6 +125,14 @@ class BoxscoreCrawler(BaseCrawler):
         current_batter = self._clean_name(
             main_game.get("T_P_NM") if is_top else main_game.get("B_P_NM")
         )
+        relay_batter = (
+            relay_current_at_bat.get("batter", {})
+            if isinstance(relay_current_at_bat, dict)
+            else {}
+        )
+        relay_batter_name = self._clean_name(relay_batter.get("name"))
+        if not current_batter and relay_batter_name:
+            current_batter = relay_batter_name
         current_pitcher = self._clean_name(
             main_game.get("B_P_NM") if is_top else main_game.get("T_P_NM")
         )
@@ -127,7 +140,16 @@ class BoxscoreCrawler(BaseCrawler):
         pitcher_label = f"{inning_text} 현재 투수" if inning_text else "현재 투수"
 
         if current_batter:
-            batter = self._live_batter(current_batter, batter_label)
+            at_bats, hits = self._relay_today_batter_stats(
+                relay_batter,
+                current_batter,
+            )
+            batter = self._live_batter(
+                current_batter,
+                batter_label,
+                at_bats=at_bats,
+                hits=hits,
+            )
             if is_top:
                 away_batters.append(batter)
             else:
@@ -176,6 +198,36 @@ class BoxscoreCrawler(BaseCrawler):
             },
         }
 
+    def _relay_current_at_bat(self, game_id: str) -> Optional[dict[str, Any]]:
+        relay_crawler = self.relay_crawler
+        if relay_crawler is None:
+            try:
+                from kbo_fans_backend.crawlers.relay import RelayCrawler
+
+                relay_crawler = RelayCrawler()
+                self.relay_crawler = relay_crawler
+            except Exception:
+                return None
+        try:
+            relay = relay_crawler.get_relay(game_id)
+        except Exception:
+            return None
+        current_at_bat = relay.get("currentAtBat") if isinstance(relay, dict) else None
+        return current_at_bat if isinstance(current_at_bat, dict) else None
+
+    @classmethod
+    def _relay_today_batter_stats(
+        cls,
+        relay_batter: dict[str, Any],
+        current_batter: str,
+    ) -> tuple[int, int]:
+        relay_batter_name = cls._clean_name(relay_batter.get("name"))
+        if relay_batter_name != cls._clean_name(current_batter):
+            return 0, 0
+        at_bats = cls._safe_int(relay_batter.get("todayAtBats"))
+        hits = cls._safe_int(relay_batter.get("todayHits"))
+        return at_bats, hits
+
     def _main_game_for_game(self, game_id: str) -> Optional[dict[str, Any]]:
         if len(game_id) < 8:
             return None
@@ -213,16 +265,23 @@ class BoxscoreCrawler(BaseCrawler):
         }
 
     @staticmethod
-    def _live_batter(name: str, context_label: str) -> dict[str, Any]:
+    def _live_batter(
+        name: str,
+        context_label: str,
+        *,
+        at_bats: int = 0,
+        hits: int = 0,
+    ) -> dict[str, Any]:
         return {
             "order": 0,
             "position": "타자",
             "name": name,
-            "atBats": 0,
+            "atBats": at_bats,
             "runs": 0,
-            "hits": 0,
+            "hits": hits,
             "rbi": 0,
             "liveContext": True,
+            "liveStatsAvailable": at_bats > 0 or hits > 0,
             "contextLabel": context_label,
         }
 
@@ -262,6 +321,15 @@ class BoxscoreCrawler(BaseCrawler):
     def _clean_name(value: Any) -> Optional[str]:
         text = str(value or "").replace("\xa0", " ").strip()
         return text or None
+
+    @staticmethod
+    def _safe_int(value: Any) -> int:
+        if value in (None, "", "-", "&nbsp;"):
+            return 0
+        try:
+            return int(str(value).replace(",", ""))
+        except (TypeError, ValueError):
+            return 0
 
     @staticmethod
     def _format_inning(main_game: dict[str, Any]) -> str:

@@ -228,6 +228,17 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final teamBattingAverage = totalAtBats > 0
         ? (totalHits / totalAtBats)
         : 0.0;
+    final liveBattersWithStats = batters.where(_hasLiveBatterStats).toList();
+    final liveAtBats = liveBattersWithStats.fold<int>(
+      0,
+      (sum, batter) => sum + batter.atBats,
+    );
+    final liveHits = liveBattersWithStats.fold<int>(
+      0,
+      (sum, batter) => sum + batter.hits,
+    );
+    final hasLiveBatterStats = liveAtBats > 0 || liveHits > 0;
+    final liveBattingAverage = liveAtBats > 0 ? liveHits / liveAtBats : 0.0;
     final keyBatter = _keyBatter(batters, isLiveContext: isLiveContext);
     final keyPitcher = _keyPitcher(pitchers, isLiveContext: isLiveContext);
     final playerImageMap = _playerImageMap(playersByName);
@@ -253,13 +264,27 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           accent: accent,
           title: isLiveContext ? '실시간 기록 추적' : '오늘 기록 요약',
           metrics: isLiveContext
-              ? [
-                  const _SummaryMetric(label: '상태', value: 'LIVE'),
-                  _SummaryMetric(label: '타자', value: '${batters.length}'),
-                  _SummaryMetric(label: '투수', value: '${pitchers.length}'),
-                  const _SummaryMetric(label: '출처', value: '실시간'),
-                  const _SummaryMetric(label: '기록', value: '집계중'),
-                ]
+              ? hasLiveBatterStats
+                    ? [
+                        const _SummaryMetric(label: '상태', value: 'LIVE'),
+                        _SummaryMetric(label: '타수', value: '$liveAtBats'),
+                        _SummaryMetric(label: '안타', value: '$liveHits'),
+                        _SummaryMetric(
+                          label: '타율',
+                          value: liveBattingAverage.toStringAsFixed(3),
+                        ),
+                        const _SummaryMetric(label: '출처', value: '실시간'),
+                      ]
+                    : [
+                        const _SummaryMetric(label: '상태', value: 'LIVE'),
+                        _SummaryMetric(label: '타자', value: '${batters.length}'),
+                        _SummaryMetric(
+                          label: '투수',
+                          value: '${pitchers.length}',
+                        ),
+                        const _SummaryMetric(label: '출처', value: '실시간'),
+                        const _SummaryMetric(label: '기록', value: '집계중'),
+                      ]
               : [
                   _SummaryMetric(label: '타수', value: '$totalAtBats'),
                   _SummaryMetric(label: '득점', value: '$totalRuns'),
@@ -298,10 +323,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         ? keyBatter.contextLabel ?? '현재 타자'
                         : '${keyBatter.position}  ${keyBatter.order}번',
                     summary: keyBatter.liveContext
-                        ? '공식 누적 기록 집계 전'
+                        ? _hasLiveBatterStats(keyBatter)
+                              ? '${keyBatter.atBats}타수 ${keyBatter.hits}안타'
+                              : '공식 누적 기록 집계 전'
                         : '${keyBatter.atBats}타수 ${keyBatter.hits}안타  ${keyBatter.rbi}타점  ${keyBatter.runs}득점',
                     metricLabel: keyBatter.liveContext
-                        ? 'LIVE'
+                        ? _liveBatterMetricLabel(keyBatter)
                         : '생산 +$productionScore',
                     accent: accent,
                     imageUrl:
@@ -406,13 +433,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       actionLabel: player == null ? null : '선수 기록 보기',
       accent: accent,
       values: batter.liveContext
-          ? const [
-              _RecordCell(value: '-', width: 38),
-              _RecordCell(value: '-', width: 38),
-              _RecordCell(value: '-', width: 38),
-              _RecordCell(value: '-', width: 38),
-              _RecordCell(value: '-', width: 54),
-            ]
+          ? _liveBatterRecordCells(batter, accent)
           : [
               _RecordCell(value: '${batter.atBats}', width: 38),
               _RecordCell(value: '${batter.hits}', width: 38),
@@ -425,6 +446,42 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
               ),
             ],
     );
+  }
+
+  bool _hasLiveBatterStats(BatterRecord batter) {
+    return batter.liveContext && (batter.atBats > 0 || batter.hits > 0);
+  }
+
+  String _liveBatterMetricLabel(BatterRecord batter) {
+    if (!_hasLiveBatterStats(batter) || batter.atBats <= 0) {
+      return 'LIVE';
+    }
+    return (batter.hits / batter.atBats).toStringAsFixed(3);
+  }
+
+  List<_RecordCell> _liveBatterRecordCells(BatterRecord batter, Color accent) {
+    if (!_hasLiveBatterStats(batter)) {
+      return const [
+        _RecordCell(value: '-', width: 38),
+        _RecordCell(value: '-', width: 38),
+        _RecordCell(value: '-', width: 38),
+        _RecordCell(value: '-', width: 38),
+        _RecordCell(value: '-', width: 54),
+      ];
+    }
+    return [
+      _RecordCell(value: '${batter.atBats}', width: 38),
+      _RecordCell(value: '${batter.hits}', width: 38),
+      const _RecordCell(value: '-', width: 38),
+      const _RecordCell(value: '-', width: 38),
+      _RecordCell(
+        value: batter.atBats > 0
+            ? (batter.hits / batter.atBats).toStringAsFixed(3)
+            : '-',
+        width: 54,
+        color: batter.atBats > 0 ? accent : AppColors.textDisabled,
+      ),
+    ];
   }
 
   Widget _buildPitcherRecordRow(

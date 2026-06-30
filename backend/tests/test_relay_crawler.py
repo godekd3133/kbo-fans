@@ -37,14 +37,16 @@ def test_parse_current_at_bat_from_live_text_view() -> None:
     current_at_bat = RelayCrawler()._parse_current_at_bat(html)
 
     assert current_at_bat == {
-        "batter": {
-            "name": "김지찬",
-            "number": 58,
-            "hand": "좌타",
-            "recent": "땅볼|4구|2루타|",
-            "average": "",
-            "imageUrl": "https://www.koreabaseball.com/batter.jpg",
-        },
+            "batter": {
+                "name": "김지찬",
+                "number": 58,
+                "hand": "좌타",
+                "recent": "땅볼|4구|2루타|",
+                "average": "",
+                "todayAtBats": 2,
+                "todayHits": 1,
+                "imageUrl": "https://www.koreabaseball.com/batter.jpg",
+            },
         "pitcher": {
             "name": "김원중",
             "number": 34,
@@ -107,14 +109,16 @@ def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
     current_at_bat = RelayCrawler()._parse_current_at_bat(html)
 
     assert current_at_bat == {
-        "batter": {
-            "name": "디아즈",
-            "number": 61,
-            "hand": "좌타",
-            "recent": "땅볼|4구|2루타|",
-            "average": "0.245",
-            "imageUrl": "",
-        },
+            "batter": {
+                "name": "디아즈",
+                "number": 61,
+                "hand": "좌타",
+                "recent": "땅볼|4구|2루타|",
+                "average": "0.245",
+                "todayAtBats": 2,
+                "todayHits": 1,
+                "imageUrl": "",
+            },
         "pitcher": {
             "name": "박준영",
             "number": 68,

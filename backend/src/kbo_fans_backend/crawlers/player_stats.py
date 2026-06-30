@@ -47,7 +47,7 @@ class PlayerStatsCrawler(BaseCrawler):
 
     def get_team_players(self, team_id: str, season: int) -> List[Dict[str, Any]]:
         entry_keys = self._parse_register_all_entries(team_id)
-        players = []
+        players: List[Dict[str, Any]] = []
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=len(self._POSITION_GROUPS)
         ) as executor:
@@ -57,6 +57,9 @@ class PlayerStatsCrawler(BaseCrawler):
             )
             for group_players in grouped_players:
                 players.extend(group_players)
+
+        if not players:
+            players = self._fetch_register_roster_players(team_id)
 
         def enrich(player: Dict[str, Any]) -> Dict[str, Any]:
             try:
@@ -242,6 +245,73 @@ class PlayerStatsCrawler(BaseCrawler):
                     "heightWeight": strip_tags(cells[4]).replace(",", " / "),
                 }
             )
+        return players
+
+    def _fetch_register_roster_players(self, team_id: str) -> List[Dict[str, Any]]:
+        html = self._fetch_register_page(team_id)
+        return self._parse_register_roster_players(html, team_id)
+
+    @staticmethod
+    def _parse_register_roster_players(html: str, team_id: str) -> List[Dict[str, Any]]:
+        players: List[Dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        position_groups = {"투수", "포수", "내야수", "외야수"}
+        tables = re.findall(
+            r'<table\b[^>]*class="[^"]*\btNData\b[^"]*"[^>]*>(.*?)</table>',
+            html,
+            re.S,
+        )
+
+        for table in tables:
+            header_match = re.search(r"<thead>(.*?)</thead>", table, re.S)
+            if not header_match:
+                continue
+            headers = [
+                strip_tags(cell)
+                for cell in re.findall(r"<th[^>]*>(.*?)</th>", header_match.group(1), re.S)
+            ]
+            if len(headers) < 2:
+                continue
+            position = headers[1].strip()
+            if position not in position_groups:
+                continue
+
+            body_match = re.search(r"<tbody>(.*?)</tbody>", table, re.S)
+            if not body_match:
+                continue
+            for row in re.findall(r"<tr[^>]*>(.*?)</tr>", body_match.group(1), re.S):
+                cells = re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", row, re.S)
+                if len(cells) < 5:
+                    continue
+                href_match = re.search(
+                    r'href=["\'][^"\']*/Record/Player/(Pitcher|Hitter)Detail'
+                    r'/Basic\.aspx\?playerId=(\d+)["\']',
+                    cells[1],
+                )
+                if not href_match:
+                    continue
+
+                player_id = href_match.group(2)
+                name = strip_tags(cells[1])
+                if not player_id or not name or player_id in seen_ids:
+                    continue
+                seen_ids.add(player_id)
+                players.append(
+                    {
+                        "id": player_id,
+                        "teamId": team_id,
+                        "playerType": (
+                            "pitcher" if href_match.group(1) == "Pitcher" else "hitter"
+                        ),
+                        "name": name,
+                        "number": PlayerStatsCrawler._parse_int(strip_tags(cells[0])) or 0,
+                        "position": position,
+                        "roleLabel": position,
+                        "handedness": strip_tags(cells[2]),
+                        "birthDate": strip_tags(cells[3]),
+                        "heightWeight": strip_tags(cells[4]).replace(",", " / "),
+                    }
+                )
         return players
 
     def _parse_register_all_entries(self, team_id: str) -> set[Tuple[str, int]]:

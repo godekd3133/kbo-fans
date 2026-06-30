@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
+import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/home/home_screen.dart';
@@ -509,6 +512,98 @@ void main() {
     expect(uri.queryParameters['tab'], 'relay');
     expect(uri.queryParameters['focus'], 'relay');
   });
+
+  testWidgets('홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    final liveGame = _liveGame(
+      gameId: '20260611SSLG0',
+      awayTeamId: 'SS',
+      homeTeamId: 'LG',
+    );
+    final freshDetail = Game(
+      gameId: liveGame.gameId,
+      status: GameStatus.live,
+      inning: '8회초',
+      away: const TeamScore(
+        teamId: 'SS',
+        teamName: 'SS',
+        shortName: 'SS',
+        score: 3,
+        innings: [],
+      ),
+      home: const TeamScore(
+        teamId: 'LG',
+        teamName: 'LG',
+        shortName: 'LG',
+        score: 4,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+    final detailCompleter = Completer<Game?>();
+    final relayCompleter = Completer<RelayData>();
+    var detailFetches = 0;
+    var relayFetches = 0;
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        scoreboardGames: [liveGame],
+        child: ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            gameProvider.overrideWith((ref, gameId) async {
+              detailFetches++;
+              return detailCompleter.future;
+            }),
+            relayDataProvider.overrideWith((ref, gameId) async {
+              relayFetches++;
+              return relayCompleter.future;
+            }),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(ValueKey('home-today-game-${liveGame.gameId}'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
+    expect(
+      find.byKey(const ValueKey('home-game-detail-loading')),
+      findsOneWidget,
+    );
+    expect(find.text('game-detail-${liveGame.gameId}-tab-relay'), findsNothing);
+    expect(detailFetches, 1);
+    expect(relayFetches, 1);
+
+    detailCompleter.complete(freshDetail);
+    relayCompleter.complete(
+      const RelayData(currentAtBat: null, relayItems: []),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('game-detail-${liveGame.gameId}-tab-relay'),
+      findsOneWidget,
+    );
+  });
 }
 
 String _todayKey() {
@@ -554,6 +649,12 @@ GoRouter _homeInteractionRouter() {
         path: '/notifications',
         builder: (_, _) => const Text('notifications'),
       ),
+      GoRoute(
+        path: '/game/:gameId',
+        builder: (_, state) => Text(
+          'game-detail-${state.pathParameters['gameId']}-tab-${state.uri.queryParameters['tab'] ?? ''}',
+        ),
+      ),
     ],
   );
 }
@@ -562,6 +663,7 @@ Widget _homeInteractionScope({
   required Widget child,
   HomeKboBrief? kboBrief,
   List<HomeQuickItem> quickItems = const [],
+  List<Game>? scoreboardGames,
 }) {
   final standings = [
     _standing(
@@ -603,16 +705,17 @@ Widget _homeInteractionScope({
     overrides: [
       myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
       scoreboardProvider.overrideWith((ref, date) async {
-        return [
-          _scheduledGame(
-            gameId: '20260619SSLG0',
-            awayTeamId: 'SS',
-            awayShortName: '삼성',
-            homeTeamId: 'LG',
-            homeShortName: 'LG',
-            stadium: '잠실',
-          ),
-        ];
+        return scoreboardGames ??
+            [
+              _scheduledGame(
+                gameId: '20260619SSLG0',
+                awayTeamId: 'SS',
+                awayShortName: '삼성',
+                homeTeamId: 'LG',
+                homeShortName: 'LG',
+                stadium: '잠실',
+              ),
+            ];
       }),
       homeAggregateProvider.overrideWith((ref, key) async {
         return HomeAggregate(

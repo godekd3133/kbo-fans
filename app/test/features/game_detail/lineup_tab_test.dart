@@ -186,4 +186,67 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('라인업 row는 playerId만 있으면 경기 연도 기준 KBO 이미지 URL을 만든다', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20210425SKLG0',
+              away: TeamLineupData(teamId: 'SK', lineup: []),
+              home: TeamLineupData(
+                teamId: 'LG',
+                lineup: [
+                  LineupEntry(
+                    order: 4,
+                    position: '3B',
+                    positionKo: '3루수',
+                    name: '문보경',
+                    playerId: '69102',
+                  ),
+                ],
+              ),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: LineupTab(
+              gameId: '20210425SKLG0',
+              gameStatus: GameStatus.scheduled,
+              awayName: 'SSG',
+              homeName: 'LG',
+              awayTeamId: 'SK',
+              homeTeamId: 'LG',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CachedNetworkImage &&
+            widget.imageUrl.endsWith('/2022/69102.jpg'),
+      ),
+      findsOneWidget,
+    );
+  });
 }

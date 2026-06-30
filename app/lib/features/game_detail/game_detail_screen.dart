@@ -282,6 +282,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       return;
     }
     _startRefreshTimer();
+    if (widget.game.status == GameStatus.live) {
+      unawaited(_refreshGameDetail());
+    }
   }
 
   Future<void> _refreshGameDetail() async {

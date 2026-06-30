@@ -93,6 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<Game>? _lastScoreboardGames;
   String? _lastScoreboardDate;
   String? _lastScoreboardRefreshErrorLogKey;
+  String? _openingGameDetailId;
 
   @override
   void initState() {
@@ -118,106 +119,116 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: AppMotionSwitcher(
-          child: scoreboardAsync.when(
-            loading: () {
-              if (fallbackGames != null) {
-                return KeyedSubtree(
-                  key: ValueKey(
-                    'home-scoreboard-$today-${fallbackGames.length}',
-                  ),
-                  child: _buildScoreboardContent(
-                    context,
-                    fallbackGames,
-                    myTeamId,
-                    today,
-                    isFresh: false,
-                  ),
-                );
-              }
-              return KeyedSubtree(
-                key: const ValueKey('home-loading'),
-                child: _buildLoadingShell(context),
-              );
-            },
-            error: (error, _) {
-              if (fallbackGames != null) {
-                _logScoreboardRefreshFailure(today, error);
-                return KeyedSubtree(
-                  key: ValueKey(
-                    'home-scoreboard-$today-${fallbackGames.length}',
-                  ),
-                  child: _buildScoreboardContent(
-                    context,
-                    fallbackGames,
-                    myTeamId,
-                    today,
-                    isFresh: false,
-                  ),
-                );
-              }
-              return KeyedSubtree(
-                key: const ValueKey('home-error'),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: AppArtworkCard(
-                      assetName: VisualAssets.dataRetry,
-                      height: 184,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '데이터를 불러올 수 없습니다',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: AppMotionSwitcher(
+                child: scoreboardAsync.when(
+                  loading: () {
+                    if (fallbackGames != null) {
+                      return KeyedSubtree(
+                        key: ValueKey(
+                          'home-scoreboard-$today-${fallbackGames.length}',
+                        ),
+                        child: _buildScoreboardContent(
+                          context,
+                          fallbackGames,
+                          myTeamId,
+                          today,
+                          isFresh: false,
+                        ),
+                      );
+                    }
+                    return KeyedSubtree(
+                      key: const ValueKey('home-loading'),
+                      child: _buildLoadingShell(context),
+                    );
+                  },
+                  error: (error, _) {
+                    if (fallbackGames != null) {
+                      _logScoreboardRefreshFailure(today, error);
+                      return KeyedSubtree(
+                        key: ValueKey(
+                          'home-scoreboard-$today-${fallbackGames.length}',
+                        ),
+                        child: _buildScoreboardContent(
+                          context,
+                          fallbackGames,
+                          myTeamId,
+                          today,
+                          isFresh: false,
+                        ),
+                      );
+                    }
+                    return KeyedSubtree(
+                      key: const ValueKey('home-error'),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: AppArtworkCard(
+                            assetName: VisualAssets.dataRetry,
+                            height: 184,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  '데이터를 불러올 수 없습니다',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  describeAsyncError(error),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                    height: 1.35,
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 12),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: TextButton(
+                                    onPressed: _invalidateTodayScoreboard,
+                                    child: const Text('다시 시도'),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            describeAsyncError(error),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                              height: 1.35,
-                            ),
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton(
-                              onPressed: _invalidateTodayScoreboard,
-                              child: const Text('다시 시도'),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
+                  data: (games) {
+                    final displayGames = _uniqueGamesById(games);
+                    _lastScoreboardDate = today;
+                    _lastScoreboardGames = displayGames;
+                    _lastScoreboardRefreshErrorLogKey = null;
+                    return KeyedSubtree(
+                      key: ValueKey(
+                        'home-scoreboard-$today-${displayGames.length}',
+                      ),
+                      child: _buildScoreboardContent(
+                        context,
+                        displayGames,
+                        myTeamId,
+                        today,
+                        isFresh: true,
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-            data: (games) {
-              final displayGames = _uniqueGamesById(games);
-              _lastScoreboardDate = today;
-              _lastScoreboardGames = displayGames;
-              _lastScoreboardRefreshErrorLogKey = null;
-              return KeyedSubtree(
-                key: ValueKey('home-scoreboard-$today-${displayGames.length}'),
-                child: _buildScoreboardContent(
-                  context,
-                  displayGames,
-                  myTeamId,
-                  today,
-                  isFresh: true,
-                ),
-              );
-            },
-          ),
+              ),
+            ),
+            if (_openingGameDetailId != null)
+              Positioned.fill(child: _buildGameDetailLoadingOverlay(context)),
+          ],
         ),
       ),
     );
@@ -347,6 +358,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           color: AppColors.cardSub,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.divider.withValues(alpha: 0.35)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGameDetailLoadingOverlay(BuildContext context) {
+    return ColoredBox(
+      key: const ValueKey('home-game-detail-loading'),
+      color: AppColors.background.withValues(alpha: 0.72),
+      child: Center(
+        child: Container(
+          width: 184,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: AppColors.live,
+                ),
+              ),
+              SizedBox(height: 12),
+              Text(
+                '경기 정보 갱신 중',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -498,6 +545,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 myTeamId: myTeamId,
                                 brief: myTeamBrief,
                                 todayGame: myGame,
+                                onOpenGame: _openGameDetail,
                               )
                             : const _DeferredSectionCard(
                                 title: '마이팀 브리프',
@@ -562,10 +610,80 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _openGameDetail(Game game, {String? tab, bool focusRelay = false}) {
-    context.push(
-      gameDetailLocationFor(game, tab: tab, focusRelay: focusRelay),
-      extra: game,
+    if (_openingGameDetailId != null) {
+      return;
+    }
+    unawaited(
+      _openGameDetailAfterRefresh(game, tab: tab, focusRelay: focusRelay),
     );
+  }
+
+  Future<void> _openGameDetailAfterRefresh(
+    Game game, {
+    String? tab,
+    required bool focusRelay,
+  }) async {
+    setState(() {
+      _openingGameDetailId = game.gameId;
+    });
+
+    try {
+      final refreshedGame = await _refreshGameDetailBeforeOpen(game, tab: tab);
+      if (!mounted) {
+        return;
+      }
+      GoRouter.of(context).push(
+        gameDetailLocationFor(refreshedGame, tab: tab, focusRelay: focusRelay),
+        extra: refreshedGame,
+      );
+    } catch (error) {
+      DevConsole.instance.warn(
+        'HOME game detail open refresh failed: ${game.gameId} $error',
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('경기 정보를 새로고침하지 못했습니다')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _openingGameDetailId = null;
+        });
+      }
+    }
+  }
+
+  Future<Game> _refreshGameDetailBeforeOpen(Game game, {String? tab}) async {
+    final gameId = game.gameId;
+    final targetTab = tab ?? (game.status == GameStatus.live ? 'relay' : null);
+
+    ref.invalidate(gameProvider(gameId));
+    final gameFuture = ref.read(gameProvider(gameId).future);
+    final futures = <Future<Object?>>[gameFuture];
+
+    switch (targetTab) {
+      case 'relay':
+        ref.invalidate(relayDataProvider(gameId));
+        futures.add(ref.read(relayDataProvider(gameId).future));
+        break;
+      case 'boxscore':
+        ref.invalidate(gameBoxscoreProvider(gameId));
+        futures.add(ref.read(gameBoxscoreProvider(gameId).future));
+        break;
+      case 'lineup':
+        ref.invalidate(gameLineupProvider(gameId));
+        futures.add(ref.read(gameLineupProvider(gameId).future));
+        break;
+    }
+
+    await Future.wait(futures).timeout(const Duration(seconds: 25));
+    final refreshedGame = await gameFuture;
+    if (refreshedGame == null) {
+      throw StateError('game detail missing: $gameId');
+    }
+    return refreshedGame;
   }
 
   Future<void> _loadFollowState() async {
@@ -972,11 +1090,13 @@ class _MyTeamBriefCard extends StatelessWidget {
   final String? myTeamId;
   final _MyTeamBriefData? brief;
   final Game? todayGame;
+  final ValueChanged<Game> onOpenGame;
 
   const _MyTeamBriefCard({
     required this.myTeamId,
     required this.brief,
     required this.todayGame,
+    required this.onOpenGame,
   });
 
   @override
@@ -1051,7 +1171,7 @@ class _MyTeamBriefCard extends StatelessWidget {
     );
     void openPrimaryDestination() {
       if (todayGame != null) {
-        context.push(gameDetailLocationFor(todayGame!), extra: todayGame);
+        onOpenGame(todayGame!);
       } else {
         context.go('/schedule');
       }
