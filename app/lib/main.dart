@@ -15,6 +15,7 @@ import 'core/router/app_route_sanitizer.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
 import 'services/game_event_alert_service.dart';
+import 'services/live_activity_service.dart';
 import 'services/push_notification_service.dart';
 import 'services/ticket_alert_service.dart';
 import 'services/widget_sync_service.dart';
@@ -107,6 +108,7 @@ Future<void> _initializePlatformServices() async {
       await PushNotificationService.instance.initialize(
         myTeam: prefs.getString('myTeam'),
       );
+      await LiveActivityService.instance.syncPushToStartToken();
     } else {
       DevConsole.instance.info('Push init skipped: no remote push endpoint');
     }

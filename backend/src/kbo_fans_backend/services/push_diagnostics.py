@@ -137,6 +137,7 @@ class PushConfigurationDiagnostics:
             registry = PushRegistry(self.settings.push_registry_path)
             registrations = registry.device_registrations()
             live_activity_game_ids = registry.live_activity_game_ids()
+            live_activity_start_token_count = registry.live_activity_start_token_count()
             recent_push_receipts = registry.recent_push_receipts()
             recent_device_test_results = registry.recent_device_test_results()
         except Exception as exc:
@@ -145,6 +146,7 @@ class PushConfigurationDiagnostics:
                 "readError": exc.__class__.__name__,
                 "registeredDeviceCount": 0,
                 "activeLiveActivityGameCount": 0,
+                "liveActivityStartTokenCount": 0,
                 "followedGameCount": 0,
                 "topicCounts": {},
                 "myTeamCounts": {},
@@ -182,6 +184,7 @@ class PushConfigurationDiagnostics:
             "readError": "",
             "registeredDeviceCount": len(registrations),
             "activeLiveActivityGameCount": len(live_activity_game_ids),
+            "liveActivityStartTokenCount": live_activity_start_token_count,
             "followedGameCount": len(followed_game_ids),
             "topicCounts": dict(sorted(topic_counts.items())),
             "myTeamCounts": dict(sorted(my_team_counts.items())),
@@ -212,6 +215,7 @@ class PushConfigurationDiagnostics:
             "lastSyncAt": heartbeat.get("updatedAt"),
             "lastSyncDate": heartbeat.get("date"),
             "lastCheckedGames": heartbeat.get("checkedGames"),
+            "lastStartedGames": heartbeat.get("startedGames"),
             "lastUpdatedGames": heartbeat.get("updatedGames"),
             "lastPushedMoments": heartbeat.get("pushedMoments"),
             "ready": not missing,

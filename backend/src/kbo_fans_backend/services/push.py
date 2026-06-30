@@ -7,7 +7,9 @@ from typing import Any, Optional, Union
 
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.schemas.push import (
+    LiveActivityContentState,
     LiveActivityRegisterRequest,
+    LiveActivityStartTokenRegisterRequest,
     LiveActivityUnregisterRequest,
     LiveActivityUpdateRequest,
     PushDeviceTestRequest,
@@ -321,6 +323,17 @@ class PushService:
             "activityId": registration.get("activityId"),
         }
 
+    def register_live_activity_start_token(
+        self,
+        payload: LiveActivityStartTokenRegisterRequest,
+    ) -> dict[str, Any]:
+        registration = self.registry.save_live_activity_start_token(payload)
+        return {
+            "registered": True,
+            "installationId": registration.get("installationId"),
+            "tokenSuffix": str(registration.get("pushToStartToken") or "")[-8:],
+        }
+
     def unregister_live_activity(self, payload: LiveActivityUnregisterRequest) -> dict[str, Any]:
         removed = self.registry.remove_live_activity(payload)
         return {
@@ -363,6 +376,67 @@ class PushService:
         return {
             "sent": any(message.get("sent") for message in messages),
             "gameId": payload.gameId,
+            "messages": messages,
+        }
+
+    def send_live_activity_start(
+        self,
+        *,
+        game_id: str,
+        away_team_id: str,
+        away_team_name: str,
+        home_team_id: str,
+        home_team_name: str,
+        state: LiveActivityContentState,
+        stale_date: Optional[int] = None,
+        relevance_score: Optional[float] = None,
+    ) -> dict[str, Any]:
+        registrations = self.registry.live_activity_start_registrations_for_game(
+            game_id=game_id,
+            away_team_id=away_team_id,
+            home_team_id=home_team_id,
+        )
+        if not registrations:
+            return {"sent": False, "gameId": game_id, "messages": []}
+
+        title = "경기 시작"
+        matchup = _game_matchup_display(
+            away_team_id=away_team_id,
+            away_team_name=away_team_name,
+            home_team_id=home_team_id,
+            home_team_name=home_team_name,
+        )
+        body = f"{matchup} 경기가 시작됐습니다."
+        messages = []
+        for registration in registrations:
+            token = str(registration.get("pushToStartToken") or "")
+            try:
+                response = self.live_activity_sender.send_start(
+                    push_to_start_token=token,
+                    game_id=game_id,
+                    state=state,
+                    alert_title=title,
+                    alert_body=body,
+                    stale_date=stale_date,
+                    relevance_score=relevance_score,
+                )
+                self.registry.mark_live_activity_start_sent(
+                    game_id=game_id,
+                    push_to_start_token=token,
+                )
+                messages.append({"pushToStartToken": token, **response})
+            except Exception as error:
+                messages.append(
+                    {
+                        "pushToStartToken": token,
+                        "sent": False,
+                        "error": str(error),
+                    }
+                )
+
+        return {
+            "sent": any(message.get("sent") for message in messages),
+            "gameId": game_id,
             "messages": messages,
         }
 
@@ -538,17 +612,19 @@ class PushService:
         }
 
         for topic_name, (setting_enabled, delivery) in topic_flags.items():
+            is_game_moment = topic_name in GAME_MOMENT_TOPIC_NAMES
+
+            if is_game_moment and has_my_team:
+                topics.append(f"{topic_name}_{my_team}")
+
             if payload.notifications.allGames:
                 if _sends_immediately(setting_enabled, delivery):
                     topics.append(f"{topic_name}_ALL")
                 continue
 
-            if topic_name in GAME_MOMENT_TOPIC_NAMES:
+            if is_game_moment:
                 if not _enabled_for_game_moment_topic(setting_enabled, delivery):
                     continue
-
-                if has_my_team:
-                    topics.append(f"{topic_name}_{my_team}")
 
                 if followed_game_ids:
                     topics.extend(
@@ -840,19 +916,14 @@ def _push_send_error_reason(error: Exception) -> str:
         or "invalid registration" in lower_text
     ):
         return (
-            "FCM 토큰이 만료되었거나 무효입니다. "
-            "앱을 완전히 종료한 뒤 다시 열고 다시 시도해주세요."
+            "FCM 토큰이 만료되었거나 무효입니다. 앱을 완전히 종료한 뒤 다시 열고 다시 시도해주세요."
         )
     if "senderid" in lower_text or "sender id" in lower_text or "mismatch" in lower_text:
         return (
             "Firebase 프로젝트 설정이 앱 토큰과 맞지 않습니다. "
             "서버 Firebase 설정 확인이 필요합니다."
         )
-    if (
-        "thirdpartyauth" in error_type
-        or "apns" in lower_text
-        or "third-party auth" in lower_text
-    ):
+    if "thirdpartyauth" in error_type or "apns" in lower_text or "third-party auth" in lower_text:
         return (
             "Firebase/APNs 인증 설정 문제로 iOS 원격 푸시를 발송하지 못했습니다. "
             "Firebase Console의 iOS 앱 Cloud Messaging APNs 키 확인이 필요합니다."

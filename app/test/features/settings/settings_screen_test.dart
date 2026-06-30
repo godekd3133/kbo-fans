@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/features/settings/settings_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -74,6 +75,40 @@ void main() {
     expect(find.text('최근 받은 알림을 확인합니다'), findsOneWidget);
     expect(find.text('득점, 홈런, 타석, 브리프가 수신 순서로 쌓입니다'), findsNothing);
     expect(find.text('라이브 액티비티'), findsNothing);
+  });
+
+  testWidgets('더보기 알림함 카드로 알림함에 진입한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final router = GoRouter(
+      initialLocation: '/settings',
+      routes: [
+        GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+        GoRoute(
+          path: '/notifications',
+          builder: (_, _) => const Text('notifications'),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final mainScroll = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('푸시 알림 모아보기'),
+      500,
+      scrollable: mainScroll,
+    );
+    await tester.tap(find.text('푸시 알림 모아보기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('notifications'), findsOneWidget);
   });
 
   testWidgets('저장된 커스텀 알림 설정이 있어도 플레이북 UI를 노출하지 않는다', (tester) async {

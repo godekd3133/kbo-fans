@@ -58,6 +58,49 @@ class ApnsLiveActivitySender:
             "statusCode": response.status_code,
         }
 
+    def send_start(
+        self,
+        *,
+        push_to_start_token: str,
+        game_id: str,
+        state: LiveActivityContentState,
+        alert_title: str,
+        alert_body: str,
+        stale_date: Optional[int] = None,
+        relevance_score: Optional[float] = None,
+    ) -> dict[str, Any]:
+        payload = self._build_start_payload(
+            game_id=game_id,
+            state=state,
+            alert_title=alert_title,
+            alert_body=alert_body,
+            stale_date=stale_date,
+            relevance_score=relevance_score,
+        )
+        headers = self._headers(game_id=game_id)
+        host = (
+            "api.sandbox.push.apple.com" if self.settings.apns_use_sandbox else "api.push.apple.com"
+        )
+        url = f"https://{host}/3/device/{push_to_start_token}"
+
+        try:
+            import httpx
+        except ImportError as error:
+            raise ValueError("httpx is not installed") from error
+
+        with httpx.Client(http2=True, timeout=10) as client:
+            response = client.post(url, json=payload, headers=headers)
+        if response.status_code >= 400:
+            raise ValueError(
+                f"APNs live activity start failed: {response.status_code} {response.text}"
+            )
+
+        return {
+            "sent": True,
+            "apnsId": response.headers.get("apns-id"),
+            "statusCode": response.status_code,
+        }
+
     def _headers(self, *, game_id: str) -> dict[str, str]:
         return {
             "authorization": f"bearer {self._provider_token()}",
@@ -113,6 +156,31 @@ class ApnsLiveActivitySender:
             aps["stale-date"] = stale_date
         if dismissal_date is not None:
             aps["dismissal-date"] = dismissal_date
+        if relevance_score is not None:
+            aps["relevance-score"] = relevance_score
+        return {"aps": aps}
+
+    def _build_start_payload(
+        self,
+        *,
+        game_id: str,
+        state: LiveActivityContentState,
+        alert_title: str,
+        alert_body: str,
+        stale_date: Optional[int],
+        relevance_score: Optional[float],
+    ) -> dict[str, Any]:
+        aps: dict[str, Any] = {
+            "timestamp": int(time.time()),
+            "event": "start",
+            "content-state": _model_to_dict(state),
+            "attributes-type": "KboFansScoreAttributes",
+            "attributes": {"gameId": game_id},
+            "alert": {"title": alert_title, "body": alert_body},
+            "input-push-token": 1,
+        }
+        if stale_date is not None:
+            aps["stale-date"] = stale_date
         if relevance_score is not None:
             aps["relevance-score"] = relevance_score
         return {"aps": aps}

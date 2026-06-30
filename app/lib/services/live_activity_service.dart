@@ -30,10 +30,11 @@ class LiveActivityService {
   static const _followedGameIdKey = 'live_activity.followed_game_id';
   static const _activityPushTokenPrefix = 'live_activity.activity_push_token.';
   static const _activityIdPrefix = 'live_activity.activity_id.';
+  static const _pushToStartTokenKey = 'live_activity.push_to_start_token';
   static const _androidNotificationId = 4420;
   static const _androidChannelId = 'followed_game_live_surface';
-  static const _androidChannelName = '경기 따라가기';
-  static const _androidChannelDescription = '따라가는 경기의 진행형 스코어 알림';
+  static const _androidChannelName = '라이브 경기 알림';
+  static const _androidChannelDescription = '라이브 경기의 진행형 스코어 알림';
   static const _androidStopActionId = 'stop_following_game';
 
   final FlutterLocalNotificationsPlugin _androidNotifications =
@@ -103,6 +104,32 @@ class LiveActivityService {
     return _requestAndroidNotificationPermission();
   }
 
+  Future<void> syncPushToStartToken() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS ||
+        !shouldUseRemotePushServices(
+          isWeb: kIsWeb,
+          useBackendApi: AppConfig.instance.shouldUseBackendApi,
+        )) {
+      return;
+    }
+
+    try {
+      _ensureChannelHandler();
+      final response = await _channel.invokeMapMethod<String, dynamic>(
+        'syncPushToStartToken',
+      );
+      await _registerPushToStartTokenFromNativeResponse(response);
+    } on PlatformException {
+      DevConsole.instance.warn(
+        'Live Activity push-to-start sync failed: platform exception',
+      );
+    } on MissingPluginException {
+      DevConsole.instance.warn(
+        'Live Activity push-to-start sync failed: missing plugin',
+      );
+    }
+  }
+
   Future<void> syncCurrentScore({
     required List<Game> games,
     required String? myTeamId,
@@ -113,6 +140,19 @@ class LiveActivityService {
     }
 
     final followedId = await followedGameId();
+    final myTeamTarget = selectMyTeamLiveActivityGame(
+      games: games,
+      myTeamId: myTeamId,
+    );
+    if (myTeamTarget != null && followedId != myTeamTarget.gameId) {
+      await followGame(myTeamTarget.gameId);
+      DevConsole.instance.info(
+        'Live Activity my-team target: ${myTeamTarget.gameId}',
+      );
+      await syncFollowedGame(myTeamTarget, repository: repository);
+      return;
+    }
+
     if (followedId == null) {
       final autoTarget = selectAutoLiveActivityGame(
         games: games,
@@ -350,20 +390,74 @@ class LiveActivityService {
       return;
     }
     _channel.setMethodCallHandler((call) async {
-      if (call.method != 'liveActivityPushToken') {
-        return null;
+      if (call.method == 'liveActivityPushToken') {
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        await _registerLiveActivityToken(
+          gameId: args['gameId']?.toString() ?? '',
+          activityId: args['activityId']?.toString(),
+          activityPushToken: args['activityPushToken']?.toString() ?? '',
+          previousActivityPushToken: args['previousActivityPushToken']
+              ?.toString(),
+        );
+        return true;
       }
-      final args = Map<String, dynamic>.from(call.arguments as Map);
-      await _registerLiveActivityToken(
-        gameId: args['gameId']?.toString() ?? '',
-        activityId: args['activityId']?.toString(),
-        activityPushToken: args['activityPushToken']?.toString() ?? '',
-        previousActivityPushToken: args['previousActivityPushToken']
-            ?.toString(),
-      );
-      return true;
+      if (call.method == 'liveActivityPushToStartToken') {
+        final args = Map<String, dynamic>.from(call.arguments as Map);
+        await _registerPushToStartToken(
+          pushToStartToken: args['pushToStartToken']?.toString() ?? '',
+          previousPushToStartToken: args['previousPushToStartToken']
+              ?.toString(),
+        );
+        return true;
+      }
+      return null;
     });
     _channelHandlerInitialized = true;
+  }
+
+  Future<void> _registerPushToStartTokenFromNativeResponse(
+    Map<String, dynamic>? response,
+  ) async {
+    if (response == null) {
+      return;
+    }
+    await _registerPushToStartToken(
+      pushToStartToken: response['pushToStartToken']?.toString() ?? '',
+      previousPushToStartToken: response['previousPushToStartToken']
+          ?.toString(),
+    );
+  }
+
+  Future<void> _registerPushToStartToken({
+    required String pushToStartToken,
+    String? previousPushToStartToken,
+  }) async {
+    if (pushToStartToken.isEmpty) {
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final previousToken =
+        previousPushToStartToken ?? prefs.getString(_pushToStartTokenKey);
+
+    try {
+      await ApiClient().post(
+        '/push/live-activity/start-token/register',
+        data: {
+          'pushToStartToken': pushToStartToken,
+          'previousPushToStartToken': previousToken,
+          'installationId': await PushNotificationService.instance
+              .installationId(),
+          'platform': 'ios',
+        },
+      );
+      await prefs.setString(_pushToStartTokenKey, pushToStartToken);
+      DevConsole.instance.info('Live Activity push-to-start token registered');
+    } catch (error) {
+      DevConsole.instance.warn(
+        'Live Activity push-to-start token registration failed: $error',
+      );
+    }
   }
 
   Future<void> _registerLiveActivityFromNativeResponse(
@@ -404,6 +498,8 @@ class LiveActivityService {
           'activityId': activityId,
           'activityPushToken': activityPushToken,
           'previousActivityPushToken': previousToken,
+          'installationId': await PushNotificationService.instance
+              .installationId(),
           'platform': 'ios',
         },
       );
@@ -588,8 +684,8 @@ class LiveActivityService {
             enableVibration: false,
             channelShowBadge: false,
             silent: true,
-            ticker: '경기 따라가기',
-            subText: '경기 따라가기',
+            ticker: '라이브 경기 알림',
+            subText: '라이브 경기 알림',
             actions: const <AndroidNotificationAction>[
               AndroidNotificationAction(
                 _androidStopActionId,
@@ -600,7 +696,7 @@ class LiveActivityService {
             styleInformation: BigTextStyleInformation(
               body,
               contentTitle: title,
-              summaryText: '경기 따라가기',
+              summaryText: '라이브 경기 알림',
             ),
           ),
         ),
@@ -688,13 +784,12 @@ Game? selectAutoLiveActivityGame({
   required List<Game> games,
   required String? myTeamId,
 }) {
-  final liveMyTeam = _findAutoFollowCandidate(
-    games,
+  final myTeamGame = selectMyTeamLiveActivityGame(
+    games: games,
     myTeamId: myTeamId,
-    status: GameStatus.live,
   );
-  if (liveMyTeam != null) {
-    return liveMyTeam;
+  if (myTeamGame != null) {
+    return myTeamGame;
   }
 
   final liveOther = _findAutoFollowCandidate(games, status: GameStatus.live);
@@ -702,16 +797,33 @@ Game? selectAutoLiveActivityGame({
     return liveOther;
   }
 
-  final pregameMyTeam = _findAutoFollowCandidate(
-    games,
-    myTeamId: myTeamId,
-    requirePregameLineup: true,
-  );
-  if (pregameMyTeam != null) {
-    return pregameMyTeam;
+  return _findAutoFollowCandidate(games, requirePregameLineup: true);
+}
+
+@visibleForTesting
+Game? selectMyTeamLiveActivityGame({
+  required List<Game> games,
+  required String? myTeamId,
+}) {
+  final normalizedMyTeamId = myTeamId?.trim();
+  if (normalizedMyTeamId == null || normalizedMyTeamId.isEmpty) {
+    return null;
   }
 
-  return _findAutoFollowCandidate(games, requirePregameLineup: true);
+  final liveMyTeam = _findAutoFollowCandidate(
+    games,
+    myTeamId: normalizedMyTeamId,
+    status: GameStatus.live,
+  );
+  if (liveMyTeam != null) {
+    return liveMyTeam;
+  }
+
+  return _findAutoFollowCandidate(
+    games,
+    myTeamId: normalizedMyTeamId,
+    requirePregameLineup: true,
+  );
 }
 
 Game? _findAutoFollowCandidate(

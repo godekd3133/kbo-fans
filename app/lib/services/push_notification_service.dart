@@ -619,6 +619,10 @@ class PushNotificationService {
     );
   }
 
+  Future<String> installationId() {
+    return _loadOrCreateInstallationId();
+  }
+
   Future<void> _attachNotificationOpenHandlers(
     FirebaseMessaging messaging,
   ) async {
@@ -1213,6 +1217,12 @@ Set<String> buildPushTopics({
   };
 
   topicMoments.forEach((topicName, moment) {
+    final isGameMoment = _gameMomentTopicNames.contains(topicName);
+
+    if (isGameMoment && hasMyTeam) {
+      topics.add('${topicName}_$normalizedMyTeam');
+    }
+
     if (settings.allGames) {
       if (settings.sendsImmediately(moment)) {
         topics.add('${topicName}_ALL');
@@ -1220,13 +1230,9 @@ Set<String> buildPushTopics({
       return;
     }
 
-    if (_gameMomentTopicNames.contains(topicName)) {
+    if (isGameMoment) {
       if (!settings.enablesFollowedGamePush(moment)) {
         return;
-      }
-
-      if (hasMyTeam) {
-        topics.add('${topicName}_$normalizedMyTeam');
       }
 
       if (hasFollowedGames) {

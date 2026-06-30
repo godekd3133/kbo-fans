@@ -28,6 +28,7 @@ class GameEventAlertService {
   static const _channelDescription = '경기 이벤트 로컬 알림';
   static const _scheduledLineupCheckInterval = Duration(minutes: 5);
   static const _liveLineupCheckInterval = Duration(minutes: 20);
+  static const _snapshotFreshWindow = Duration(minutes: 10);
 
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
@@ -135,10 +136,8 @@ class GameEventAlertService {
     }
 
     await initialize();
-    if (!_notificationsAllowed) {
-      return;
-    }
     final settings = await PushNotificationService.instance.loadSettings();
+    final settingsSignature = _settingsSignature(settings);
     final prefs = await SharedPreferences.getInstance();
     final snapshots = _readSnapshots(prefs);
     final trackedGames = _trackedGames(
@@ -155,6 +154,15 @@ class GameEventAlertService {
 
     for (final game in trackedGames) {
       final previous = snapshots[game.gameId];
+      final currentObservedAtMs = DateTime.now().millisecondsSinceEpoch;
+      final allowNotifications =
+          _notificationsAllowed &&
+          shouldNotifyFromGameEventSnapshot(
+            previousUpdatedAtMs: previous?.updatedAtMs ?? 0,
+            currentAtMs: currentObservedAtMs,
+            previousSettingsSignature: previous?.settingsSignature ?? '',
+            currentSettingsSignature: settingsSignature,
+          );
       final previousRelaySeq = previous?.lastRelaySeq ?? 0;
       final nextRelaySeq = await _processRelayEvents(
         repository: repository,
@@ -162,12 +170,14 @@ class GameEventAlertService {
         previous: previous,
         settings: settings,
         myTeamId: myTeamId,
+        allowNotifications: allowNotifications,
       );
       final lineupResult = await _processLineupEvents(
         repository: repository,
         game: game,
         previous: previous,
         settings: settings,
+        allowNotifications: allowNotifications,
       );
 
       final current = _GameAlertSnapshot.fromGame(
@@ -177,9 +187,11 @@ class GameEventAlertService {
             lineupResult.signature ?? previous?.lineupSignature ?? '',
         lastLineupCheckedAtMs:
             lineupResult.checkedAtMs ?? previous?.lastLineupCheckedAtMs ?? 0,
+        updatedAtMs: currentObservedAtMs,
+        settingsSignature: settingsSignature,
       );
 
-      if (previous != null) {
+      if (previous != null && allowNotifications) {
         await _maybeNotifyScoreboardEvents(
           previous: previous,
           current: current,
@@ -224,6 +236,7 @@ class GameEventAlertService {
     required _GameAlertSnapshot? previous,
     required PushNotificationSettings settings,
     required String? myTeamId,
+    required bool allowNotifications,
   }) async {
     final notifyHomerun = settings.sendsImmediately(
       PushNotificationMoment.homerun,
@@ -249,7 +262,7 @@ class GameEventAlertService {
       final matchupLabel = _gameEventMatchupLabel(game);
 
       var maxSeq = previous?.lastRelaySeq ?? 0;
-      final shouldNotify = previous != null && maxSeq > 0;
+      final shouldNotify = allowNotifications && previous != null && maxSeq > 0;
       for (final item in relayItems) {
         if (item.seqNo > maxSeq) {
           maxSeq = item.seqNo;
@@ -301,6 +314,7 @@ class GameEventAlertService {
     required Game game,
     required _GameAlertSnapshot? previous,
     required PushNotificationSettings settings,
+    required bool allowNotifications,
   }) async {
     if (!settings.sendsImmediately(PushNotificationMoment.lineupOpened)) {
       return _LineupCheckResult(
@@ -334,7 +348,9 @@ class GameEventAlertService {
         );
       }
 
-      if (previous != null && previous.lineupSignature != signature) {
+      if (allowNotifications &&
+          previous != null &&
+          previous.lineupSignature != signature) {
         final title = previous.lineupSignature.isEmpty
             ? '선발 라인업 공개'
             : '선발 라인업 변경';
@@ -633,6 +649,10 @@ class GameEventAlertService {
       }),
     );
   }
+
+  String _settingsSignature(PushNotificationSettings settings) {
+    return jsonEncode(settings.toJson());
+  }
 }
 
 String _gameEventTeamLabel(TeamScore team) {
@@ -700,6 +720,8 @@ class _GameAlertSnapshot {
   final int lastRelaySeq;
   final String lineupSignature;
   final int lastLineupCheckedAtMs;
+  final int updatedAtMs;
+  final String settingsSignature;
 
   const _GameAlertSnapshot({
     required this.status,
@@ -711,6 +733,8 @@ class _GameAlertSnapshot {
     required this.lastRelaySeq,
     required this.lineupSignature,
     required this.lastLineupCheckedAtMs,
+    required this.updatedAtMs,
+    required this.settingsSignature,
   });
 
   factory _GameAlertSnapshot.fromGame(
@@ -718,6 +742,8 @@ class _GameAlertSnapshot {
     required int lastRelaySeq,
     required String lineupSignature,
     required int lastLineupCheckedAtMs,
+    required int updatedAtMs,
+    required String settingsSignature,
   }) {
     return _GameAlertSnapshot(
       status: game.status,
@@ -729,6 +755,8 @@ class _GameAlertSnapshot {
       lastRelaySeq: lastRelaySeq,
       lineupSignature: lineupSignature,
       lastLineupCheckedAtMs: lastLineupCheckedAtMs,
+      updatedAtMs: updatedAtMs,
+      settingsSignature: settingsSignature,
     );
   }
 
@@ -746,6 +774,8 @@ class _GameAlertSnapshot {
       lastRelaySeq: json['lastRelaySeq'] as int? ?? 0,
       lineupSignature: json['lineupSignature'] as String? ?? '',
       lastLineupCheckedAtMs: json['lastLineupCheckedAtMs'] as int? ?? 0,
+      updatedAtMs: json['updatedAtMs'] as int? ?? 0,
+      settingsSignature: json['settingsSignature'] as String? ?? '',
     );
   }
 
@@ -777,6 +807,8 @@ class _GameAlertSnapshot {
       'lastRelaySeq': lastRelaySeq,
       'lineupSignature': lineupSignature,
       'lastLineupCheckedAtMs': lastLineupCheckedAtMs,
+      'updatedAtMs': updatedAtMs,
+      'settingsSignature': settingsSignature,
     };
   }
 }
@@ -899,4 +931,21 @@ bool shouldProcessLocalGameEventAlerts({
   required bool forceEnabled,
 }) {
   return !isWeb && (isLocal || forceEnabled);
+}
+
+@visibleForTesting
+bool shouldNotifyFromGameEventSnapshot({
+  required int previousUpdatedAtMs,
+  required int currentAtMs,
+  required String previousSettingsSignature,
+  required String currentSettingsSignature,
+}) {
+  if (previousUpdatedAtMs <= 0 || currentAtMs <= 0) {
+    return false;
+  }
+  if (previousSettingsSignature != currentSettingsSignature) {
+    return false;
+  }
+  final ageMs = currentAtMs - previousUpdatedAtMs;
+  return ageMs <= GameEventAlertService._snapshotFreshWindow.inMilliseconds;
 }

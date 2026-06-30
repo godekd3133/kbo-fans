@@ -17,6 +17,9 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
   private var liveActivityStateTasks: [String: Task<Void, Never>] = [:]
   private var liveActivityBackendContexts: [String: LiveActivityBackendContext] = [:]
   private var liveActivityLastTokens: [String: String] = [:]
+  private var liveActivityUpdatesTask: Task<Void, Never>?
+  private var liveActivityPushToStartTokenTask: Task<Void, Never>?
+  private var liveActivityLastPushToStartToken: String?
 
   override func application(
     _ application: UIApplication,
@@ -77,6 +80,9 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
         }
 
         switch call.method {
+        case "syncPushToStartToken":
+          NSLog("[KBOFansLiveActivity] syncPushToStartToken call received")
+          self.syncPushToStartToken(result: result)
         case "syncCurrentScore":
           NSLog("[KBOFansLiveActivity] syncCurrentScore call received")
           guard let args = call.arguments as? [String: Any] else {
@@ -98,6 +104,103 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
         }
       }
     }
+  }
+
+  private func syncPushToStartToken(result: @escaping FlutterResult) {
+    guard #available(iOS 17.2, *) else {
+      NSLog("[KBOFansLiveActivity] push-to-start unavailable on this iOS version")
+      result(["supported": false, "pushToStartToken": ""])
+      return
+    }
+
+    guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+      NSLog("[KBOFansLiveActivity] push-to-start skipped: Activities disabled")
+      result(["supported": true, "pushToStartToken": ""])
+      return
+    }
+
+    let backendContext = LiveActivityBackendContext(apiBaseUrl: "")
+    observeExistingLiveActivities(context: backendContext)
+    observeLiveActivityUpdates(context: backendContext)
+    observeLiveActivityPushToStartTokenUpdates()
+    if let token = Activity<KboFansScoreAttributes>.pushToStartToken {
+      let tokenString = token.hexString
+      let previousToken = liveActivityLastPushToStartToken
+      liveActivityLastPushToStartToken = tokenString
+      result(
+        [
+          "supported": true,
+          "pushToStartToken": tokenString,
+          "previousPushToStartToken": previousToken ?? ""
+        ]
+      )
+      return
+    }
+
+    result(["supported": true, "pushToStartToken": ""])
+  }
+
+  @available(iOS 16.1, *)
+  private func observeExistingLiveActivities(context: LiveActivityBackendContext) {
+    for activity in Activity<KboFansScoreAttributes>.activities {
+      observeLiveActivity(
+        activity,
+        gameId: activity.attributes.gameId,
+        context: context
+      )
+    }
+  }
+
+  @available(iOS 16.1, *)
+  private func observeLiveActivityUpdates(context: LiveActivityBackendContext) {
+    if liveActivityUpdatesTask != nil {
+      return
+    }
+
+    liveActivityUpdatesTask = Task { [weak self] in
+      for await activity in Activity<KboFansScoreAttributes>.activityUpdates {
+        DispatchQueue.main.async {
+          guard let self else { return }
+          self.observeLiveActivity(
+            activity,
+            gameId: activity.attributes.gameId,
+            context: context
+          )
+        }
+      }
+    }
+  }
+
+  @available(iOS 17.2, *)
+  private func observeLiveActivityPushToStartTokenUpdates() {
+    if liveActivityPushToStartTokenTask != nil {
+      return
+    }
+
+    liveActivityPushToStartTokenTask = Task { [weak self] in
+      for await token in Activity<KboFansScoreAttributes>.pushToStartTokenUpdates {
+        let tokenString = token.hexString
+        DispatchQueue.main.async {
+          self?.handleLiveActivityPushToStartToken(tokenString)
+        }
+      }
+    }
+  }
+
+  private func handleLiveActivityPushToStartToken(_ token: String) {
+    let previousToken = liveActivityLastPushToStartToken
+    if previousToken == token {
+      return
+    }
+    liveActivityLastPushToStartToken = token
+
+    liveActivityChannel?.invokeMethod(
+      "liveActivityPushToStartToken",
+      arguments: [
+        "pushToStartToken": token,
+        "previousPushToStartToken": previousToken ?? ""
+      ]
+    )
   }
 
   private func syncCurrentScoreActivity(

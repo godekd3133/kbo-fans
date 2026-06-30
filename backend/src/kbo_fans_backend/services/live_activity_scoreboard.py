@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 class LiveActivityScoreboardSyncService:
     _KST = timezone(timedelta(hours=9))
     _PREGAME_ALERT_WINDOW = timedelta(minutes=10)
+    _STALE_BASELINE_WINDOW = timedelta(minutes=2)
 
     def __init__(
         self,
@@ -35,23 +36,36 @@ class LiveActivityScoreboardSyncService:
     def sync_date(self, date: str) -> dict[str, Any]:
         registered_game_ids = set(self.push_service.registry.live_activity_game_ids())
         has_push_registrations = self.push_service.registry.has_device_registrations()
-        if not registered_game_ids and not has_push_registrations:
+        has_start_tokens = self.push_service.registry.has_live_activity_start_tokens()
+        if not registered_game_ids and not has_push_registrations and not has_start_tokens:
             return self._record_heartbeat(
-                {"date": date, "checkedGames": 0, "updatedGames": [], "pushedMoments": []}
+                {
+                    "date": date,
+                    "checkedGames": 0,
+                    "startedGames": [],
+                    "updatedGames": [],
+                    "pushedMoments": [],
+                }
             )
 
         scoreboard = self.scoreboard_service.get_home_scoreboard(date)
+        started_games = []
         updated_games = []
         pushed_moments = []
         for game in scoreboard.get("games", []):
             game_id = str(game.get("gameId") or "")
+            status = _status_value(game)
             if has_push_registrations:
                 pushed_moments.extend(self._push_moments_for_game(game))
+
+            if has_start_tokens:
+                start_response = self._start_live_activity_for_game(game, status)
+                if start_response is not None:
+                    started_games.append(start_response)
 
             if game_id not in registered_game_ids:
                 continue
 
-            status = _status_value(game)
             if status == "SCHEDULED" and not _lineup_opened(game):
                 continue
 
@@ -65,6 +79,7 @@ class LiveActivityScoreboardSyncService:
             {
                 "date": scoreboard.get("date", date),
                 "checkedGames": len(scoreboard.get("games", [])),
+                "startedGames": started_games,
                 "updatedGames": updated_games,
                 "pushedMoments": pushed_moments,
             }
@@ -75,11 +90,48 @@ class LiveActivityScoreboardSyncService:
             {
                 "date": result.get("date"),
                 "checkedGames": result.get("checkedGames"),
+                "startedGames": len(result.get("startedGames") or []),
                 "updatedGames": len(result.get("updatedGames") or []),
                 "pushedMoments": len(result.get("pushedMoments") or []),
             }
         )
         return result
+
+    def _start_live_activity_for_game(
+        self,
+        game: dict[str, Any],
+        status: str,
+    ) -> Optional[dict[str, Any]]:
+        if status != "LIVE":
+            return None
+        update = self._update_request_for_game(game, status)
+        if update is None:
+            return None
+
+        away = game.get("away") or {}
+        home = game.get("home") or {}
+        game_id = str(game.get("gameId") or "")
+        try:
+            response = self.push_service.send_live_activity_start(
+                game_id=game_id,
+                away_team_id=str(away.get("teamId") or ""),
+                away_team_name=_team_short_display_name(away),
+                home_team_id=str(home.get("teamId") or ""),
+                home_team_name=_team_short_display_name(home),
+                state=update.state,
+                stale_date=update.staleDate,
+                relevance_score=update.relevanceScore,
+            )
+        except Exception as error:
+            return {
+                "sent": False,
+                "gameId": game_id,
+                "messages": [],
+                "error": str(error),
+            }
+        if not response.get("messages"):
+            return None
+        return response
 
     def _push_moments_for_game(self, game: dict[str, Any]) -> list[dict[str, Any]]:
         game_id = str(game.get("gameId") or "")
@@ -88,11 +140,16 @@ class LiveActivityScoreboardSyncService:
 
         current_state = _scoreboard_state(game)
         previous_state = self.push_service.registry.replace_scoreboard_state(game_id, current_state)
+        previous_state_fresh = _is_fresh_baseline(
+            previous_state,
+            now=self.now_provider(),
+            max_age=self._STALE_BASELINE_WINDOW,
+        )
         pushed = []
 
         pushed.extend(self._push_pregame_moments_for_game(game, current_state))
 
-        if previous_state is not None:
+        if previous_state_fresh:
             for moment in _moments_from_state(previous_state, current_state):
                 response = self._send_game_moment(moment, game_id, current_state)
                 if moment == "lineup_opened" and response.get("sent"):
@@ -116,6 +173,11 @@ class LiveActivityScoreboardSyncService:
         previous_relay_state = self.push_service.registry.relay_state(game_id)
         last_seq = _int_value(previous_relay_state.get("lastSeq")) if previous_relay_state else 0
         after = last_seq if previous_relay_state is not None else None
+        previous_relay_state_fresh = _is_fresh_baseline(
+            previous_relay_state,
+            now=self.now_provider(),
+            max_age=self._STALE_BASELINE_WINDOW,
+        )
 
         try:
             relay = self.relay_service.get_relay(game_id, after=after)
@@ -140,7 +202,7 @@ class LiveActivityScoreboardSyncService:
             item_seq = _int_value(item.get("seqNo"))
             if item_seq > max_seq:
                 max_seq = item_seq
-            if previous_relay_state is None:
+            if not previous_relay_state_fresh:
                 continue
             if _is_homerun_relay_item(item):
                 homerun_state = {
@@ -262,9 +324,7 @@ class LiveActivityScoreboardSyncService:
             awayScore=_int_value(away.get("score")),
             homeScore=_int_value(home.get("score")),
             inning=(
-                "경기전"
-                if is_pregame
-                else str(current.get("inning") or _inning_text(game, status))
+                "경기전" if is_pregame else str(current.get("inning") or _inning_text(game, status))
             ),
             batter=current["batterName"],
             batterAverage=str(current.get("batterAverage") or ""),
@@ -492,12 +552,38 @@ def _lineup_opened(game: dict[str, Any]) -> bool:
             return True
         if isinstance(value, str) and value.strip().lower() == "true":
             return True
-    text = " ".join(
-        str(value or "") for value in (game.get("statusLabel"), game.get("inning"))
-    )
+    text = " ".join(str(value or "") for value in (game.get("statusLabel"), game.get("inning")))
     if "라인업" not in text:
         return False
     return "공개" in text or "발표" in text
+
+
+def _is_fresh_baseline(
+    state: Optional[dict[str, Any]],
+    *,
+    now: datetime,
+    max_age: timedelta,
+) -> bool:
+    if not isinstance(state, dict):
+        return False
+    observed_at = _state_updated_at(state)
+    if observed_at is None:
+        return False
+    age = now.astimezone(timezone.utc) - observed_at.astimezone(timezone.utc)
+    return age <= max_age
+
+
+def _state_updated_at(state: dict[str, Any]) -> Optional[datetime]:
+    raw_value = str(state.get("updatedAt") or "").strip()
+    if not raw_value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def _season_from_game(game: dict[str, Any]) -> Optional[int]:

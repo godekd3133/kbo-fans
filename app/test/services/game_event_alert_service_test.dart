@@ -117,4 +117,45 @@ void main() {
       isFalse,
     );
   });
+
+  test('로컬 경기 이벤트 알림은 오래된 snapshot이나 설정 변경 직후 backfill하지 않는다', () {
+    final nowMs = DateTime(2026, 6, 30, 18, 30).millisecondsSinceEpoch;
+
+    expect(
+      shouldNotifyFromGameEventSnapshot(
+        previousUpdatedAtMs: nowMs - const Duration(minutes: 5).inMilliseconds,
+        currentAtMs: nowMs,
+        previousSettingsSignature: 'same',
+        currentSettingsSignature: 'same',
+      ),
+      isTrue,
+    );
+    expect(
+      shouldNotifyFromGameEventSnapshot(
+        previousUpdatedAtMs: nowMs - const Duration(minutes: 20).inMilliseconds,
+        currentAtMs: nowMs,
+        previousSettingsSignature: 'same',
+        currentSettingsSignature: 'same',
+      ),
+      isFalse,
+    );
+    expect(
+      shouldNotifyFromGameEventSnapshot(
+        previousUpdatedAtMs: nowMs - const Duration(minutes: 1).inMilliseconds,
+        currentAtMs: nowMs,
+        previousSettingsSignature: 'old',
+        currentSettingsSignature: 'new',
+      ),
+      isFalse,
+    );
+    expect(
+      shouldNotifyFromGameEventSnapshot(
+        previousUpdatedAtMs: 0,
+        currentAtMs: nowMs,
+        previousSettingsSignature: 'same',
+        currentSettingsSignature: 'same',
+      ),
+      isFalse,
+    );
+  });
 }

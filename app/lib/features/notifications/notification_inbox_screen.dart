@@ -878,7 +878,7 @@ List<_MomentInboxItem> _momentItems(PushNotificationSettings settings) {
     ),
     _MomentInboxItem(
       label: '이닝 교대',
-      description: '따라가기 화면 갱신',
+      description: '라이브 표면 갱신',
       delivery: settings.inningChangeDelivery,
       icon: Icons.repeat_rounded,
     ),
@@ -951,7 +951,7 @@ String _deliveryLabel(PushNotificationDelivery delivery) {
   return switch (delivery) {
     PushNotificationDelivery.immediate => '바로',
     PushNotificationDelivery.summary => '요약',
-    PushNotificationDelivery.liveOnly => '따라가기',
+    PushNotificationDelivery.liveOnly => '라이브',
     PushNotificationDelivery.off => '끔',
   };
 }

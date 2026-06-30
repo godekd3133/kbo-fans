@@ -285,7 +285,7 @@ class MyTeamGameCard extends StatelessWidget {
     final detail = onOpenDetail;
     return switch (game.status) {
       GameStatus.live => _CardAction(
-        label: isFollowing ? '따라가는 중' : '따라가기',
+        label: isFollowing ? '마이팀 알림 중' : '알림 받기',
         icon: isFollowing
             ? Icons.check_circle_rounded
             : Icons.notifications_active_outlined,

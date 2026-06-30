@@ -13,6 +13,7 @@ from typing import Any, Iterator, Optional
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.schemas.push import (
     LiveActivityRegisterRequest,
+    LiveActivityStartTokenRegisterRequest,
     LiveActivityUnregisterRequest,
     PushReceiptRequest,
     PushRegisterRequest,
@@ -112,11 +113,36 @@ class PushRegistry:
                 "gameId": payload.gameId,
                 "activityId": payload.activityId,
                 "activityPushToken": payload.activityPushToken,
+                "installationId": _clean_optional_string(payload.installationId),
                 "platform": payload.platform,
                 "updatedAt": now,
                 "createdAt": existing.get("createdAt", now),
             }
             return activities[payload.activityPushToken]
+
+    def save_live_activity_start_token(
+        self,
+        payload: LiveActivityStartTokenRegisterRequest,
+    ) -> dict[str, Any]:
+        with self._mutate_data() as data:
+            tokens = data.setdefault("liveActivityStartTokens", {})
+            if payload.previousPushToStartToken:
+                tokens.pop(payload.previousPushToStartToken, None)
+
+            now = _now_iso()
+            existing = tokens.get(payload.pushToStartToken, {})
+            tokens[payload.pushToStartToken] = {
+                **existing,
+                "pushToStartToken": payload.pushToStartToken,
+                "previousPushToStartToken": _clean_optional_string(
+                    payload.previousPushToStartToken
+                ),
+                "installationId": _clean_optional_string(payload.installationId),
+                "platform": payload.platform,
+                "updatedAt": now,
+                "createdAt": existing.get("createdAt", now),
+            }
+            return tokens[payload.pushToStartToken]
 
     def remove_live_activity(
         self,
@@ -157,6 +183,121 @@ class PushRegistry:
             if activity.get("gameId")
         }
         return sorted(game_ids)
+
+    def live_activity_start_token_count(self) -> int:
+        data = self._load()
+        tokens = data.get("liveActivityStartTokens", {})
+        if not isinstance(tokens, dict):
+            return 0
+        return sum(1 for value in tokens.values() if isinstance(value, dict))
+
+    def has_live_activity_start_tokens(self) -> bool:
+        return self.live_activity_start_token_count() > 0
+
+    def live_activity_start_registrations_for_game(
+        self,
+        *,
+        game_id: str,
+        away_team_id: str,
+        home_team_id: str,
+    ) -> list[dict[str, Any]]:
+        data = self._load()
+        tokens = data.get("liveActivityStartTokens", {})
+        devices = data.get("devices", {})
+        if not isinstance(tokens, dict) or not isinstance(devices, dict):
+            return []
+
+        active_installations = self._live_activity_installation_ids_for_game(data, game_id)
+        registrations_by_installation: dict[str, list[dict[str, Any]]] = {}
+        for registration in devices.values():
+            if not isinstance(registration, dict):
+                continue
+            installation_id = _clean_optional_string(registration.get("installationId"))
+            if not installation_id:
+                continue
+            registrations_by_installation.setdefault(installation_id, []).append(registration)
+
+        eligible = []
+        seen_tokens = set()
+        for token, registration in tokens.items():
+            if not isinstance(registration, dict):
+                continue
+            push_to_start_token = _clean_optional_string(
+                registration.get("pushToStartToken") or token
+            )
+            if not push_to_start_token or push_to_start_token in seen_tokens:
+                continue
+            installation_id = _clean_optional_string(registration.get("installationId"))
+            if not installation_id or installation_id in active_installations:
+                continue
+            if self._live_activity_start_sent(data, game_id, push_to_start_token):
+                continue
+            device_registrations = registrations_by_installation.get(installation_id, [])
+            if not any(
+                _device_allows_live_activity_auto_start(
+                    device,
+                    game_id=game_id,
+                    away_team_id=away_team_id,
+                    home_team_id=home_team_id,
+                )
+                for device in device_registrations
+            ):
+                continue
+            seen_tokens.add(push_to_start_token)
+            eligible.append(
+                {
+                    **registration,
+                    "pushToStartToken": push_to_start_token,
+                    "installationId": installation_id,
+                }
+            )
+        eligible.sort(key=lambda item: str(item.get("pushToStartToken", "")))
+        return eligible
+
+    def mark_live_activity_start_sent(
+        self,
+        *,
+        game_id: str,
+        push_to_start_token: str,
+    ) -> dict[str, Any]:
+        token = _clean_optional_string(push_to_start_token)
+        with self._mutate_data() as data:
+            states = data.setdefault("liveActivityStartStates", {})
+            game_state = states.setdefault(game_id, {})
+            state = {
+                "pushToStartTokenSuffix": token[-8:],
+                "sentAt": _now_iso(),
+            }
+            game_state[token] = state
+            return state
+
+    @staticmethod
+    def _live_activity_installation_ids_for_game(
+        data: dict[str, Any],
+        game_id: str,
+    ) -> set[str]:
+        activities = data.get("liveActivities", {})
+        if not isinstance(activities, dict):
+            return set()
+        return {
+            _clean_optional_string(activity.get("installationId"))
+            for activity in activities.values()
+            if isinstance(activity, dict)
+            and activity.get("gameId") == game_id
+            and _clean_optional_string(activity.get("installationId"))
+        }
+
+    @staticmethod
+    def _live_activity_start_sent(
+        data: dict[str, Any],
+        game_id: str,
+        push_to_start_token: str,
+    ) -> bool:
+        states = data.get("liveActivityStartStates", {})
+        if not isinstance(states, dict):
+            return False
+        game_state = states.get(game_id)
+        return isinstance(game_state, dict) and push_to_start_token in game_state
 
     def has_device_registrations(self) -> bool:
         data = self._load()
@@ -419,6 +560,8 @@ class PushRegistry:
         data.setdefault("scoreboardStates", {})
         data.setdefault("relayStates", {})
         data.setdefault("pregameAlertStates", {})
+        data.setdefault("liveActivityStartTokens", {})
+        data.setdefault("liveActivityStartStates", {})
         data.setdefault("pushReceipts", [])
         data.setdefault("deviceTestResults", [])
         data.setdefault("syncHeartbeat", {})
@@ -459,6 +602,8 @@ def _empty_registry() -> dict[str, Any]:
         "scoreboardStates": {},
         "relayStates": {},
         "pregameAlertStates": {},
+        "liveActivityStartTokens": {},
+        "liveActivityStartStates": {},
         "pushReceipts": [],
         "deviceTestResults": [],
         "syncHeartbeat": {},
@@ -498,6 +643,37 @@ def _clean_string_list(values: list[str]) -> list[str]:
 
 def _clean_optional_string(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _device_allows_live_activity_auto_start(
+    registration: dict[str, Any],
+    *,
+    game_id: str,
+    away_team_id: str,
+    home_team_id: str,
+) -> bool:
+    if str(registration.get("platform") or "").lower() != "ios":
+        return False
+    if registration.get("notificationsAllowed") is not True:
+        return False
+    notifications = registration.get("notifications")
+    if not isinstance(notifications, dict):
+        return False
+    if notifications.get("gameStart") is not True:
+        return False
+    delivery_modes = notifications.get("deliveryModes")
+    if isinstance(delivery_modes, dict) and delivery_modes.get("gameStart") == "off":
+        return False
+
+    team_ids = {away_team_id, home_team_id}
+    my_team = _clean_optional_string(registration.get("myTeam"))
+    if my_team and my_team in team_ids:
+        return True
+
+    followed_game_ids = registration.get("followedGameIds")
+    if isinstance(followed_game_ids, list):
+        return game_id in {_clean_optional_string(value) for value in followed_game_ids}
+    return False
 
 
 def _receipt_data(values: dict[str, Any]) -> dict[str, str]:

@@ -115,7 +115,7 @@ void main() {
   );
 
   test(
-    'auto Live Activity target prefers live games over lineup-open scheduled games',
+    'auto Live Activity target keeps my-team lineup-open games above other live games',
     () {
       final games = [
         _game(
@@ -135,7 +135,7 @@ void main() {
 
       final selected = selectAutoLiveActivityGame(games: games, myTeamId: 'LG');
 
-      expect(selected?.gameId, '20260520SSOB0');
+      expect(selected?.gameId, '20260520LGKT0');
     },
   );
 

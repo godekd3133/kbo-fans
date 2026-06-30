@@ -115,6 +115,14 @@ class LiveActivityRegisterRequest(BaseModel):
     activityPushToken: str
     activityId: Optional[str] = None
     previousActivityPushToken: Optional[str] = None
+    installationId: Optional[str] = None
+    platform: str = "ios"
+
+
+class LiveActivityStartTokenRegisterRequest(BaseModel):
+    pushToStartToken: str
+    previousPushToStartToken: Optional[str] = None
+    installationId: str
     platform: str = "ios"
 
 

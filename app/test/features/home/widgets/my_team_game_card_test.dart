@@ -154,9 +154,9 @@ void main() {
       ),
     );
 
-    expect(find.text('따라가는 중'), findsOneWidget);
+    expect(find.text('마이팀 알림 중'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
-    expect(find.text('따라가기'), findsNothing);
+    expect(find.text('알림 받기'), findsNothing);
   });
 
   testWidgets('uses concise LIVE badge for live games', (tester) async {

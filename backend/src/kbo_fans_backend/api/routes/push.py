@@ -12,6 +12,7 @@ from kbo_fans_backend.scheduler.live_activity_sync import current_kbo_date
 from kbo_fans_backend.schemas.common import ApiEnvelope
 from kbo_fans_backend.schemas.push import (
     LiveActivityRegisterRequest,
+    LiveActivityStartTokenRegisterRequest,
     LiveActivityUnregisterRequest,
     LiveActivityUpdateRequest,
     PushBaseballInfoRequest,
@@ -97,6 +98,13 @@ def get_push_config_status(
 @router.post("/live-activity/register", response_model=ApiEnvelope[dict])
 def register_live_activity(payload: LiveActivityRegisterRequest) -> ApiEnvelope[dict]:
     return ApiEnvelope.success_response(service.register_live_activity(payload))
+
+
+@router.post("/live-activity/start-token/register", response_model=ApiEnvelope[dict])
+def register_live_activity_start_token(
+    payload: LiveActivityStartTokenRegisterRequest,
+) -> ApiEnvelope[dict]:
+    return ApiEnvelope.success_response(service.register_live_activity_start_token(payload))
 
 
 @router.post("/live-activity/unregister", response_model=ApiEnvelope[dict])

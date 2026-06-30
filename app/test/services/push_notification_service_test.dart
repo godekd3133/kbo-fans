@@ -89,7 +89,7 @@ void main() {
     expect(topics, isNot(contains('inning_change_GAME_20260612KTLG0')));
   });
 
-  test('allGames가 켜져 있으면 ALL 토픽과 플래그를 만든다', () {
+  test('allGames가 켜져 있어도 마이팀 경기 토픽은 유지한다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       allGames: true,
     );
@@ -105,7 +105,8 @@ void main() {
     expect(topics, contains('at_bat_ALL'));
     expect(topics, contains('baseball_info_ALL'));
     expect(topics, contains('all_games_enabled'));
-    expect(topics, isNot(contains('scoring_LG')));
+    expect(topics, contains('scoring_LG'));
+    expect(topics, contains('inning_change_LG'));
   });
 
   test('따라가는 경기가 마이팀 경기이면 일반 경기 push는 마이팀 team topic으로 받는다', () {
@@ -238,7 +239,7 @@ void main() {
     );
   });
 
-  test('마이팀 game moment는 summary/liveOnly여도 topic을 만들고 off는 제외한다', () {
+  test('마이팀 game moment는 delivery가 off여도 topic을 만든다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       scoringDelivery: PushNotificationDelivery.summary,
       hitDelivery: PushNotificationDelivery.off,
@@ -252,9 +253,9 @@ void main() {
     final topics = buildPushTopics(settings: settings, myTeam: 'LG');
 
     expect(topics, contains('scoring_LG'));
-    expect(topics, isNot(contains('hit_LG')));
+    expect(topics, contains('hit_LG'));
     expect(topics, contains('homerun_LG'));
-    expect(topics, isNot(contains('reversal_LG')));
+    expect(topics, contains('reversal_LG'));
     expect(topics, contains('game_end_LG'));
     expect(topics, contains('lineup_opened_LG'));
     expect(topics, contains('at_bat_LG'));
@@ -262,7 +263,7 @@ void main() {
     expect(topics, isNot(contains('baseball_info_LG')));
   });
 
-  test('마이팀 자동 game topic도 off 또는 disabled 항목은 구독하지 않는다', () {
+  test('마이팀 자동 game topic은 off 또는 disabled 항목도 구독한다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       scoringDelivery: PushNotificationDelivery.off,
       hitDelivery: PushNotificationDelivery.off,
@@ -274,12 +275,12 @@ void main() {
 
     final topics = buildPushTopics(settings: settings, myTeam: 'LG');
 
-    expect(topics, isNot(contains('hit_LG')));
-    expect(topics, isNot(contains('scoring_LG')));
-    expect(topics, isNot(contains('homerun_LG')));
-    expect(topics, isNot(contains('game_end_LG')));
-    expect(topics, isNot(contains('lineup_opened_LG')));
-    expect(topics, isNot(contains('inning_change_LG')));
+    expect(topics, contains('hit_LG'));
+    expect(topics, contains('scoring_LG'));
+    expect(topics, contains('homerun_LG'));
+    expect(topics, contains('game_end_LG'));
+    expect(topics, contains('lineup_opened_LG'));
+    expect(topics, contains('inning_change_LG'));
   });
 
   test('push 등록 payload는 현재 따라가는 경기 id를 포함한다', () {
