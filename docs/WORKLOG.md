@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-06-30: 0.1.10 릴리즈 준비
+
+### 원인
+- 사장님 목표: 모든 브랜치 작업을 main으로 병합하고, 다시 빌드/릴리즈/TestFlight 업로드까지 진행.
+- `0.1.9+76` 이후 앱 동작, 화면, 알림, 박스스코어 계약, 앱 내 업데이트 소식이 바뀌었으므로 tester-facing 새 버전이 필요하다.
+
+### 진행
+- [x] main에서 `codex/boxscore-records-link` 브랜치 3개 커밋을 수동 통합하고 `-s ours` merge commit으로 git ancestry 병합 기록까지 남김.
+- [x] `codex/kbo-brief-record-radar`, `codex/20260330-current-work`, `origin/codex/20260330-current-work`는 main 대비 남은 커밋 없음 확인.
+- [x] 앱 버전을 `0.1.10+77`로 bump.
+- [x] `CHANGELOG.md`, 앱 내 `업데이트 소식`, `docs/VERSIONING.md`를 0.1.10 기준으로 동기화.
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found!`)
+- [x] `cd app && fvm flutter test --no-pub` (`All tests passed!`, 272 tests)
+- [x] `backend/.venv/bin/pytest -q` (`241 passed`)
+- [x] `python3 -m compileall backend/src`
+- [x] `git diff --check`
+- [x] `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` (`Release API health gate passed`)
+- [ ] iOS release archive / IPA build
+- [ ] TestFlight upload
+- [ ] Apple processing `VALID`
+- [ ] `External Testers` 최신 build 연결 / 이전 build 제거 / Beta App Review 상태 확인
+
+---
+
 ## 2026-06-30: boxscore 브랜치 확장 지표 main 통합
 
 ### 원인

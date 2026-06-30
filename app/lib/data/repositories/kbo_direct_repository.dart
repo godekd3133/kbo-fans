@@ -2038,6 +2038,44 @@ class KboDirectRepository implements GameRepository {
   }
 
   @visibleForTesting
+  GameBoxscoreData parseBoxscoreScrollForTesting(
+    String gameId,
+    Map<String, dynamic> payload,
+  ) {
+    final hitterPayload = payload['arrHitter'] as List<dynamic>? ?? const [];
+    final pitcherPayload = payload['arrPitcher'] as List<dynamic>? ?? const [];
+    final away = TeamBoxscoreData(
+      teamId: gameId.substring(8, 10),
+      batters: hitterPayload.isNotEmpty
+          ? _parseHitterTeamFromTables(hitterPayload[0] as Map<String, dynamic>)
+          : const <BatterRecord>[],
+      pitchers: pitcherPayload.isNotEmpty
+          ? _parsePitcherTeamFromTable(
+              pitcherPayload[0] as Map<String, dynamic>,
+            )
+          : const <PitcherRecord>[],
+    );
+    final home = TeamBoxscoreData(
+      teamId: gameId.substring(10, 12),
+      batters: hitterPayload.length > 1
+          ? _parseHitterTeamFromTables(hitterPayload[1] as Map<String, dynamic>)
+          : const <BatterRecord>[],
+      pitchers: pitcherPayload.length > 1
+          ? _parsePitcherTeamFromTable(
+              pitcherPayload[1] as Map<String, dynamic>,
+            )
+          : const <PitcherRecord>[],
+    );
+    return GameBoxscoreData(
+      gameId: gameId,
+      officialAvailable:
+          away.hasDisplayableRecords || home.hasDisplayableRecords,
+      away: away,
+      home: home,
+    );
+  }
+
+  @visibleForTesting
   String deriveScheduleStatusForTesting(
     String actionHtml, {
     String statusText = '',
