@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 
 import '../models/player.dart';
 import '../models/records_overview.dart';
@@ -34,6 +34,12 @@ class KboDirectPlayerRepository implements PlayerRepository {
       '$_kboBase/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT';
   static const _pitcherEraUrl =
       '$_kboBase/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT';
+  static const _pitcherWinsUrl =
+      '$_kboBase/Record/Player/PitcherBasic/Basic1.aspx?sort=W_CN';
+  static const _pitcherSavesUrl =
+      '$_kboBase/Record/Player/PitcherBasic/Basic1.aspx?sort=SV_CN';
+  static const _pitcherStrikeoutsUrl =
+      '$_kboBase/Record/Player/PitcherBasic/Basic1.aspx?sort=KK_CN';
   static const _seasonField =
       'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlSeason\$ddlSeason';
   static const _teamField =
@@ -45,6 +51,9 @@ class KboDirectPlayerRepository implements PlayerRepository {
         LeaderboardMetric.ops: (_hitterOpsUrl, 'OPS', 'hitter'),
         LeaderboardMetric.opsPlus: (_hitterOpsUrl, 'OPS', 'hitter'),
         LeaderboardMetric.era: (_pitcherEraUrl, 'ERA', 'pitcher'),
+        LeaderboardMetric.wins: (_pitcherWinsUrl, 'W', 'pitcher'),
+        LeaderboardMetric.saves: (_pitcherSavesUrl, 'SV', 'pitcher'),
+        LeaderboardMetric.strikeouts: (_pitcherStrikeoutsUrl, 'SO', 'pitcher'),
       };
   static final _recordPlayerLinkPattern = RegExp(
     r'href="/Record/(?:Player/(?:Hitter|Pitcher)Detail/Basic|Retire/(?:Hitter|Pitcher))\.aspx\?playerId=(\d+)"',
@@ -158,7 +167,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
 
     final profile = _parseProfile(responses[0], playerId, playerType, season);
     final seasonStats = _parseSeasonStats(responses[1], season);
-    final currentSeason = _extractCurrentSeason(responses[0]);
+    final currentSeason = _resolveRecentGamesSeason(responses[0]);
     final recentGames = _parseRecentGames(
       responses[0],
       includeRecent: season == currentSeason,
@@ -229,6 +238,9 @@ class KboDirectPlayerRepository implements PlayerRepository {
       _fetchLeaders(_hitterOpsUrl, season, 'OPS', 'hitter'),
       _fetchLeaderboard(_hitterOpsUrl, season, 'OPS', 'hitter'),
       _fetchLeaders(_pitcherEraUrl, season, 'ERA', 'pitcher'),
+      _fetchLeaders(_pitcherWinsUrl, season, 'W', 'pitcher'),
+      _fetchLeaders(_pitcherSavesUrl, season, 'SV', 'pitcher'),
+      _fetchLeaders(_pitcherStrikeoutsUrl, season, 'SO', 'pitcher'),
     ]);
 
     final avgLeaders = results[0];
@@ -236,6 +248,9 @@ class KboDirectPlayerRepository implements PlayerRepository {
     final opsLeaders = results[2];
     final opsPlusLeaders = computeOpsPlusLeaders(results[3]);
     final eraLeaders = results[4];
+    final winLeaders = results[5];
+    final saveLeaders = results[6];
+    final strikeoutLeaders = results[7];
 
     return RecordsOverview(
       season: season,
@@ -244,6 +259,9 @@ class KboDirectPlayerRepository implements PlayerRepository {
       opsLeaders: opsLeaders,
       opsPlusLeaders: opsPlusLeaders.take(5).toList(),
       eraLeaders: eraLeaders,
+      winLeaders: winLeaders,
+      saveLeaders: saveLeaders,
+      strikeoutLeaders: strikeoutLeaders,
       todayHitter: _buildFeaturedPlayer(
         season: season,
         label: '오늘의 타자',
@@ -267,8 +285,8 @@ class KboDirectPlayerRepository implements PlayerRepository {
       ),
       monthPitcher: _buildFeaturedPlayer(
         season: season,
-        label: '이달의 투수',
-        leaderGroups: {'era': eraLeaders},
+        label: '탈삼진 리더',
+        leaderGroups: {'strikeouts': strikeoutLeaders, 'era': eraLeaders},
         targetType: 'pitcher',
         periodLabel: '이달',
       ),
@@ -316,6 +334,21 @@ class KboDirectPlayerRepository implements PlayerRepository {
   bool isSupportedOfficialPlayerRecordSeasonForTesting(int season) =>
       _isSupportedOfficialPlayerRecordSeason(season);
 
+  @visibleForTesting
+  List<PlayerRecentGame> parseRecentGamesForTesting({
+    required String html,
+    required int season,
+    required PlayerType playerType,
+    DateTime? now,
+  }) {
+    final currentSeason = _resolveRecentGamesSeason(html, now: now);
+    return _parseRecentGames(
+      html,
+      includeRecent: season == currentSeason,
+      playerType: playerType,
+    );
+  }
+
   bool _isSupportedOfficialPlayerRecordSeason(int season) =>
       season >= _minSupportedOfficialPlayerRecordSeason;
 
@@ -327,6 +360,9 @@ class KboDirectPlayerRepository implements PlayerRepository {
       opsLeaders: const [],
       opsPlusLeaders: const [],
       eraLeaders: const [],
+      winLeaders: const [],
+      saveLeaders: const [],
+      strikeoutLeaders: const [],
       todayHitter: const FeaturedPlayerCard(label: '오늘의 타자'),
       todayPitcher: const FeaturedPlayerCard(label: '오늘의 투수'),
       monthHitter: const FeaturedPlayerCard(label: '이달의 타자'),
@@ -835,6 +871,15 @@ class KboDirectPlayerRepository implements PlayerRepository {
     return int.tryParse(match?.group(1) ?? '') ?? 0;
   }
 
+  int _resolveRecentGamesSeason(String html, {DateTime? now}) {
+    final extracted = _extractCurrentSeason(html);
+    if (extracted > 0) {
+      return extracted;
+    }
+    final base = now ?? DateTime.now();
+    return base.toUtc().add(const Duration(hours: 9)).year;
+  }
+
   List<PlayerRecentGame> _parseRecentGames(
     String html, {
     required bool includeRecent,
@@ -1030,6 +1075,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
           rank: int.tryParse(_stripTags(cells[0])) ?? 0,
           playerId: playerLink.playerId,
           playerType: playerType,
+          metricKey: metricKey,
           name: _stripTags(cells[1]),
           teamId: _teamNameToId(_stripTags(cells[2])),
           value: _stripTags(cells[valueIndex]),
@@ -1075,6 +1121,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
           rank: int.tryParse(_stripTags(cells[0])) ?? 0,
           playerId: playerLink.playerId,
           playerType: playerType,
+          metricKey: metricKey,
           name: _stripTags(cells[1]),
           teamId: _teamNameToId(_stripTags(cells[2])),
           value: _stripTags(cells[valueIndex]),
@@ -1106,7 +1153,15 @@ class KboDirectPlayerRepository implements PlayerRepository {
     required String targetType,
     required String periodLabel,
   }) {
-    final weights = {'avg': 3, 'hr': 2, 'ops': 3, 'era': 3};
+    final weights = {
+      'avg': 3,
+      'hr': 2,
+      'ops': 3,
+      'era': 3,
+      'strikeouts': 2,
+      'wins': 2,
+      'saves': 2,
+    };
     final scores = <(String, String), int>{};
     final lookup = <(String, String), RecordLeader>{};
 
@@ -1154,7 +1209,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
     leaderGroups.forEach((metric, leaders) {
       for (final leader in leaders) {
         if (leader.playerId == playerId && leader.playerType == targetType) {
-          reasons.add('${metric.toUpperCase()} ${leader.rank}위');
+          reasons.add('${_metricReasonLabel(metric)} ${leader.rank}위');
         }
       }
     });
@@ -1165,14 +1220,29 @@ class KboDirectPlayerRepository implements PlayerRepository {
   }
 
   String _headlineForLeader(RecordLeader leader) {
-    switch (leader.playerType) {
-      case 'pitcher':
-        return 'ERA ${leader.value}';
-      default:
-        return leader.value.startsWith('.')
-            ? '타율 ${leader.value}'
-            : '홈런 ${leader.value}';
-    }
+    return switch (leader.metricKey.toUpperCase()) {
+      'AVG' => '타율 ${leader.value}',
+      'HR' => '홈런 ${leader.value}',
+      'OPS' => 'OPS ${leader.value}',
+      'ERA' => 'ERA ${leader.value}',
+      'W' => '다승 ${leader.value}',
+      'SV' => '세이브 ${leader.value}',
+      'SO' => '탈삼진 ${leader.value}',
+      _ => leader.value,
+    };
+  }
+
+  String _metricReasonLabel(String metric) {
+    return switch (metric) {
+      'avg' => 'AVG',
+      'hr' => 'HR',
+      'ops' => 'OPS',
+      'era' => 'ERA',
+      'wins' => '다승',
+      'saves' => '세이브',
+      'strikeouts' => '탈삼진',
+      _ => metric.toUpperCase(),
+    };
   }
 
   PlayerProfile _buildPlayerSummary({

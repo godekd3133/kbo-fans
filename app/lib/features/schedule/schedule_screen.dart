@@ -79,6 +79,16 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       '${_currentMonth.year}-${_currentMonth.month.toString().padLeft(2, '0')}';
 
   Future<void> _refreshSchedule() async {
+    if (_viewMode == ScheduleViewMode.matchup) {
+      final season = _currentMonth.year;
+      for (final yearMonth in kboScheduleSeasonMonths(season)) {
+        ref.invalidate(scheduleProvider(yearMonth));
+      }
+      ref.invalidate(seasonScheduleProvider(season));
+      await ref.read(seasonScheduleProvider(season).future);
+      return;
+    }
+
     ref.invalidate(scheduleProvider(_yearMonth));
     await ref.read(scheduleProvider(_yearMonth).future);
   }
@@ -300,7 +310,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       children: [
         _buildControls(),
         Divider(color: AppColors.divider, height: 1),
-        Expanded(child: _buildMatchupPager()),
+        Expanded(child: _buildMatchupBody()),
       ],
     );
   }
@@ -846,43 +856,29 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildMatchupPager() {
+  Widget _buildMatchupBody() {
     final myTeamId = ref.watch(myTeamProvider);
     final firstTeamId = _effectiveMatchupFirstTeamId(myTeamId);
     final secondTeamId = _effectiveMatchupSecondTeamId(firstTeamId);
+    final season = _currentMonth.year;
+    final scheduleAsync = ref.watch(seasonScheduleProvider(season));
 
-    return PageView.builder(
-      controller: _calendarPageController,
-      onPageChanged: (page) {
-        final nextMonth = _monthForPage(page);
-        final selectedDay = _pendingSelectedDay;
-        _pendingSelectedDay = null;
-        _applyVisibleMonth(nextMonth, selectedDay: selectedDay);
-      },
-      itemBuilder: (context, index) {
-        final month = _monthForPage(index);
-        final yearMonth =
-            '${month.year}-${month.month.toString().padLeft(2, '0')}';
-        final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
-
-        return scheduleAsync.when(
-          loading: _buildGameListLoading,
-          error: (error, _) => RefreshIndicator(
-            onRefresh: _refreshSchedule,
-            color: AppColors.live,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: [_buildScheduleErrorContent(error)],
-            ),
-          ),
-          data: (days) => _buildMatchupList(
-            yearMonth: yearMonth,
-            items: _matchupItems(days, firstTeamId, secondTeamId),
-            firstTeamId: firstTeamId,
-            secondTeamId: secondTeamId,
-          ),
-        );
-      },
+    return scheduleAsync.when(
+      loading: _buildGameListLoading,
+      error: (error, _) => RefreshIndicator(
+        onRefresh: _refreshSchedule,
+        color: AppColors.live,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [_buildScheduleErrorContent(error)],
+        ),
+      ),
+      data: (days) => _buildMatchupList(
+        season: season,
+        items: _matchupItems(days, firstTeamId, secondTeamId),
+        firstTeamId: firstTeamId,
+        secondTeamId: secondTeamId,
+      ),
     );
   }
 
@@ -901,7 +897,52 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         }
       }
     }
+    items.sort(_compareMatchupItemsByDistanceFromToday);
     return items;
+  }
+
+  int _compareMatchupItemsByDistanceFromToday(
+    _MatchupScheduleItem a,
+    _MatchupScheduleItem b,
+  ) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final aDate = _parseScheduleDate(a.date);
+    final bDate = _parseScheduleDate(b.date);
+    final aDelta = aDate.difference(todayDate).inDays;
+    final bDelta = bDate.difference(todayDate).inDays;
+    final distanceComparison = aDelta.abs().compareTo(bDelta.abs());
+    if (distanceComparison != 0) {
+      return distanceComparison;
+    }
+
+    final aIsUpcoming = aDelta >= 0;
+    final bIsUpcoming = bDelta >= 0;
+    if (aIsUpcoming != bIsUpcoming) {
+      return aIsUpcoming ? -1 : 1;
+    }
+
+    final dateComparison = aIsUpcoming
+        ? aDate.compareTo(bDate)
+        : bDate.compareTo(aDate);
+    if (dateComparison != 0) {
+      return dateComparison;
+    }
+    return a.game.time.compareTo(b.game.time);
+  }
+
+  DateTime _parseScheduleDate(String date) {
+    final parsed = DateTime.tryParse(date);
+    if (parsed == null) {
+      return DateTime(9999);
+    }
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  bool _isPastScheduleDate(String date) {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    return _parseScheduleDate(date).isBefore(todayDate);
   }
 
   Widget _buildCalendar(
@@ -1311,7 +1352,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _buildMatchupList({
-    required String yearMonth,
+    required int season,
     required List<_MatchupScheduleItem> items,
     required String firstTeamId,
     required String secondTeamId,
@@ -1332,11 +1373,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             _buildMatchupSummary(
               matchupLabel: matchupLabel,
               gameCount: 0,
-              yearMonth: yearMonth,
+              season: season,
             ),
             _buildScheduleEmptyArtwork(
               title: '매치업 일정 없음',
-              message: '$matchupLabel 경기가 이 달에 없습니다',
+              message: '$matchupLabel 경기가 이번 시즌 일정에 없습니다',
             ),
           ],
         ),
@@ -1353,31 +1394,37 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           _buildMatchupSummary(
             matchupLabel: matchupLabel,
             gameCount: items.length,
-            yearMonth: yearMonth,
+            season: season,
           ),
           const SizedBox(height: 12),
-          ...items.asMap().entries.map(
-            (entry) => Padding(
+          ...items.asMap().entries.map((entry) {
+            final item = entry.value;
+            final isPast = _isPastScheduleDate(item.date);
+            return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: AppMotionListItem(
-                key: ValueKey('matchup-game-${entry.value.game.gameId}'),
+                key: ValueKey('matchup-game-${item.game.gameId}'),
                 index: entry.key,
-                child: ScheduleGameCard(
-                  game: entry.value.game,
-                  dateLabel: _formatDateLabel(entry.value.date),
-                  myTeamId: myTeamId,
-                  onTap: () => _openGameDetail(entry.value.game.gameId),
-                  ticketSummary:
-                      entry.value.game.ticketInfo == null ||
-                          !shouldShowTicketInfoForScheduleStatus(
-                            entry.value.game.status,
-                          )
-                      ? null
-                      : _ticketSummary(entry.value.game.ticketInfo!),
+                child: Opacity(
+                  key: ValueKey('matchup-game-opacity-${item.game.gameId}'),
+                  opacity: isPast ? 0.52 : 1,
+                  child: ScheduleGameCard(
+                    game: item.game,
+                    dateLabel: _formatDateLabel(item.date),
+                    myTeamId: myTeamId,
+                    onTap: () => _openGameDetail(item.game.gameId),
+                    ticketSummary:
+                        item.game.ticketInfo == null ||
+                            !shouldShowTicketInfoForScheduleStatus(
+                              item.game.status,
+                            )
+                        ? null
+                        : _ticketSummary(item.game.ticketInfo!),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
@@ -1386,7 +1433,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   Widget _buildMatchupSummary({
     required String matchupLabel,
     required int gameCount,
-    required String yearMonth,
+    required int season,
   }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
@@ -1408,7 +1455,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            '$yearMonth · $gameCount경기 · 홈/원정 무관',
+            '$season 시즌 · $gameCount경기 · 가까운 날짜순 · 홈/원정 무관',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,

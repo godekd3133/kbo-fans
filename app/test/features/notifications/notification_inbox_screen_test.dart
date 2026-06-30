@@ -122,6 +122,7 @@ void main() {
 
     expect(router.routerDelegate.currentConfiguration.uri.path, '/settings');
     expect(find.text('마이팀을 선택하세요'), findsOneWidget);
-    expect(find.text('경기 중 실시간 알림받기'), findsOneWidget);
+    expect(find.text('경기 중'), findsOneWidget);
+    expect(find.text('경기 중 실시간 알림받기'), findsNothing);
   });
 }

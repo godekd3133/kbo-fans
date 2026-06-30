@@ -573,6 +573,52 @@ void main() {
     expect(avgItems.first.route, '/records/player/64166?season=2026');
     expect(avgItems.first.imageUrl, endsWith('/2026/64166.jpg'));
   });
+
+  test('local KBO brief surfaces my-team record milestone', () {
+    final aggregate = buildLocalHomeAggregate(
+      date: '2026-07-01',
+      myTeam: 'HT',
+      games: const [],
+      scheduleDays: const [],
+      standings: const [],
+      overview: const RecordsOverview(
+        season: 2026,
+        avgLeaders: [],
+        hrLeaders: [],
+        opsLeaders: [],
+        opsPlusLeaders: [],
+        eraLeaders: [],
+        milestoneLeaders: [
+          RecordLeader(
+            rank: 3,
+            playerId: '78224',
+            playerType: 'hitter',
+            metricKey: 'TB',
+            name: '최형우',
+            teamId: 'HT',
+            value: '2000',
+            milestoneLabel: '2000루타',
+            allTimeRank: 3,
+          ),
+        ],
+        todayHitter: FeaturedPlayerCard(label: 'today hitter'),
+        todayPitcher: FeaturedPlayerCard(label: 'today pitcher'),
+        monthHitter: FeaturedPlayerCard(label: 'month hitter'),
+        monthPitcher: FeaturedPlayerCard(label: 'month pitcher'),
+      ),
+    );
+
+    final milestoneItems = aggregate.kboBrief!.items.where(
+      (item) => item.type == 'record_milestone',
+    );
+
+    expect(milestoneItems, isNotEmpty);
+    expect(milestoneItems.first.eyebrow, '기록 달성');
+    expect(milestoneItems.first.title, '최형우 2000루타 달성');
+    expect(milestoneItems.first.subtitle, 'KIA · 역대 3번째');
+    expect(milestoneItems.first.route, '/records/player/78224?season=2026');
+    expect(milestoneItems.first.teamIds, ['HT']);
+  });
 }
 
 RecordsOverview _emptyOverview() {

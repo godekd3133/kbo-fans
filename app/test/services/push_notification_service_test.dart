@@ -89,7 +89,7 @@ void main() {
     expect(topics, isNot(contains('inning_change_GAME_20260612KTLG0')));
   });
 
-  test('allGames가 켜져 있어도 마이팀 경기 토픽은 유지한다', () {
+  test('allGames가 켜진 즉시 경기 알림은 ALL 토픽만 만들어 중복 수신을 피한다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       allGames: true,
     );
@@ -105,7 +105,30 @@ void main() {
     expect(topics, contains('at_bat_ALL'));
     expect(topics, contains('baseball_info_ALL'));
     expect(topics, contains('all_games_enabled'));
-    expect(topics, contains('scoring_LG'));
+    expect(topics, isNot(contains('game_start_LG')));
+    expect(topics, isNot(contains('scoring_LG')));
+    expect(topics, isNot(contains('homerun_LG')));
+    expect(topics, isNot(contains('at_bat_LG')));
+    expect(topics, isNot(contains('baseball_info_LG')));
+  });
+
+  test('allGames가 켜져도 ALL로 보내지 않는 마이팀 요약 토픽은 유지한다', () {
+    final settings = const PushNotificationSettings.defaults().copyWith(
+      allGames: true,
+      gameEndDelivery: PushNotificationDelivery.summary,
+      lineupOpenedDelivery: PushNotificationDelivery.summary,
+      inningChangeDelivery: PushNotificationDelivery.liveOnly,
+    );
+
+    final topics = buildPushTopics(settings: settings, myTeam: 'LG');
+
+    expect(topics, contains('game_start_ALL'));
+    expect(topics, isNot(contains('game_start_LG')));
+    expect(topics, isNot(contains('game_end_ALL')));
+    expect(topics, contains('game_end_LG'));
+    expect(topics, isNot(contains('lineup_opened_ALL')));
+    expect(topics, contains('lineup_opened_LG'));
+    expect(topics, isNot(contains('inning_change_ALL')));
     expect(topics, contains('inning_change_LG'));
   });
 
@@ -293,6 +316,28 @@ void main() {
     );
 
     expect(topics, isEmpty);
+  });
+
+  test('토글식 설정은 전체 off 상태에서 개별 moment를 다시 켤 수 있다', () {
+    final offSettings = PushNotificationSettings.forMode(
+      PushNotificationMode.off,
+    );
+
+    final scoring = offSettings.withMomentEnabled(
+      PushNotificationMoment.scoring,
+      true,
+    );
+    final lineup = offSettings.withMomentEnabled(
+      PushNotificationMoment.lineupOpened,
+      true,
+    );
+
+    expect(scoring.isMomentEnabled(PushNotificationMoment.scoring), isTrue);
+    expect(scoring.scoringDelivery, PushNotificationDelivery.immediate);
+    expect(scoring.mode, PushNotificationMode.live);
+    expect(lineup.isMomentEnabled(PushNotificationMoment.lineupOpened), isTrue);
+    expect(lineup.lineupOpenedDelivery, PushNotificationDelivery.summary);
+    expect(lineup.mode, PushNotificationMode.summary);
   });
 
   test('경기 전후 요약 프리셋은 전후 알림만 마이팀 topic으로 만든다', () {

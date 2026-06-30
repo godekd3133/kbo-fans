@@ -122,6 +122,51 @@ void main() {
     expect(find.text('사직 롯데-두산'), findsNothing);
   });
 
+  testWidgets('매치업 탭은 시즌 전체 일정을 오늘 가까운 순으로 보여주고 지난 경기를 어둡게 표시한다', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final today = DateTime.now();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith(
+            (_, month) async => _seasonWideMatchupSchedule(today, month),
+          ),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('매치업'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('오늘 LG-KT'), findsOneWidget);
+    expect(find.text('내일 LG-KT'), findsOneWidget);
+    expect(find.text('어제 LG-KT'), findsOneWidget);
+    expect(find.text('다음달 LG-KT'), findsOneWidget);
+    expect(find.text('LG-SSG 제외'), findsNothing);
+
+    final todayTop = tester.getTopLeft(find.text('오늘 LG-KT')).dy;
+    final tomorrowTop = tester.getTopLeft(find.text('내일 LG-KT')).dy;
+    final yesterdayTop = tester.getTopLeft(find.text('어제 LG-KT')).dy;
+    final nextMonthTop = tester.getTopLeft(find.text('다음달 LG-KT')).dy;
+
+    expect(todayTop, lessThan(tomorrowTop));
+    expect(tomorrowTop, lessThan(yesterdayTop));
+    expect(yesterdayTop, lessThan(nextMonthTop));
+
+    final pastOpacity = tester.widget<Opacity>(
+      find.byKey(const ValueKey('matchup-game-opacity-yesterday-lg-kt')),
+    );
+    expect(pastOpacity.opacity, lessThan(1));
+  });
+
   testWidgets('캘린더 영역에서 위로 밀어도 선택일 경기 목록이 스크롤된다', (tester) async {
     final now = DateTime.now();
 
@@ -318,6 +363,94 @@ List<ScheduleDay> _matchupScheduleForMonth(
       ],
     ),
   ];
+}
+
+List<ScheduleDay> _seasonWideMatchupSchedule(
+  DateTime today,
+  String requestedYearMonth,
+) {
+  final dateToday = _dateOnly(today);
+  final yesterday = dateToday.subtract(const Duration(days: 1));
+  final tomorrow = dateToday.add(const Duration(days: 1));
+  final nextMonth = DateTime(dateToday.year, dateToday.month + 1, 10);
+
+  final days = <DateTime, List<ScheduleGame>>{
+    dateToday: const [
+      ScheduleGame(
+        gameId: 'today-lg-kt',
+        time: '18:30',
+        awayId: 'LG',
+        awayName: 'LG 트윈스',
+        homeId: 'KT',
+        homeName: 'KT 위즈',
+        stadium: '오늘 LG-KT',
+      ),
+      ScheduleGame(
+        gameId: 'today-lg-sk',
+        time: '18:30',
+        awayId: 'LG',
+        awayName: 'LG 트윈스',
+        homeId: 'SK',
+        homeName: 'SSG 랜더스',
+        stadium: 'LG-SSG 제외',
+      ),
+    ],
+    tomorrow: const [
+      ScheduleGame(
+        gameId: 'tomorrow-lg-kt',
+        time: '18:30',
+        awayId: 'KT',
+        awayName: 'KT 위즈',
+        homeId: 'LG',
+        homeName: 'LG 트윈스',
+        stadium: '내일 LG-KT',
+      ),
+    ],
+    yesterday: const [
+      ScheduleGame(
+        gameId: 'yesterday-lg-kt',
+        time: '18:30',
+        awayId: 'LG',
+        awayName: 'LG 트윈스',
+        homeId: 'KT',
+        homeName: 'KT 위즈',
+        stadium: '어제 LG-KT',
+        status: 'FINAL',
+        awayScore: 4,
+        homeScore: 2,
+      ),
+    ],
+    nextMonth: const [
+      ScheduleGame(
+        gameId: 'next-month-lg-kt',
+        time: '18:30',
+        awayId: 'KT',
+        awayName: 'KT 위즈',
+        homeId: 'LG',
+        homeName: 'LG 트윈스',
+        stadium: '다음달 LG-KT',
+      ),
+    ],
+  };
+
+  return days.entries
+      .where((entry) => _yearMonthKey(entry.key) == requestedYearMonth)
+      .map(
+        (entry) => ScheduleDay(date: _dateKey(entry.key), games: entry.value),
+      )
+      .toList();
+}
+
+DateTime _dateOnly(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
+String _yearMonthKey(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}';
+}
+
+String _dateKey(DateTime date) {
+  return '${_yearMonthKey(date)}-${date.day.toString().padLeft(2, '0')}';
 }
 
 List<ScheduleDay> _longScheduleForToday(DateTime today, String yearMonth) {

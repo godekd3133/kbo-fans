@@ -114,7 +114,7 @@ void main() {
     expect(find.text('라이트'), findsWidgets);
   });
 
-  testWidgets('푸시 알림은 큰 모드와 세부 토글을 설정 첫 화면에서 제공한다', (tester) async {
+  testWidgets('푸시 알림은 프리셋 없이 항목별 토글을 설정 첫 화면에서 제공한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -128,13 +128,13 @@ void main() {
     expect(find.text('푸시 알림'), findsOneWidget);
     expect(find.text('기본 대상'), findsOneWidget);
     expect(find.text('마이팀 선택 전'), findsOneWidget);
-    expect(find.text('경기 전후 요약만 받기'), findsOneWidget);
-    expect(find.text('경기 중 실시간 알림받기'), findsOneWidget);
-    expect(find.text('안받기'), findsOneWidget);
+    expect(find.text('경기 전후 요약만 받기'), findsNothing);
+    expect(find.text('경기 중 실시간 알림받기'), findsNothing);
+    expect(find.text('안받기'), findsNothing);
     expect(find.text('요약 디테일'), findsNothing);
-    expect(find.text('실시간 디테일'), findsOneWidget);
+    expect(find.text('실시간 디테일'), findsNothing);
     expect(find.text('경기 전후'), findsOneWidget);
-    expect(find.text('경기 중 실시간'), findsOneWidget);
+    expect(find.text('경기 중'), findsOneWidget);
     expect(find.text('점수 변화 즉시'), findsOneWidget);
     expect(find.text('주자 상황 포함'), findsOneWidget);
     expect(find.text('선발 라인업 공개'), findsOneWidget);
@@ -149,7 +149,7 @@ void main() {
     expect(find.text('타석 변화'), findsOneWidget);
   });
 
-  testWidgets('경기 전후 요약 모드는 디테일 단계를 저장한다', (tester) async {
+  testWidgets('푸시 알림은 항목별 토글 변경을 저장한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -160,90 +160,59 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('경기 전후 요약만 받기'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('요약 디테일'), findsOneWidget);
-    expect(find.text('핵심'), findsOneWidget);
-    expect(find.text('기본'), findsOneWidget);
-    expect(find.text('자세히'), findsOneWidget);
-
-    await tester.tap(find.text('기본'));
+    await tester.tap(find.byKey(const ValueKey('push_toggle_hit')));
     await tester.pumpAndSettle();
 
     final prefs = await SharedPreferences.getInstance();
-    expect(
-      prefs.getString('push_notifications.summary_detail_level'),
-      'standard',
-    );
-    expect(prefs.getBool('push_notifications.game_start'), isTrue);
-    expect(prefs.getBool('push_notifications.game_end'), isTrue);
-    expect(prefs.getBool('push_notifications.lineup_opened'), isTrue);
-    expect(prefs.getBool('push_notifications.baseball_info'), isFalse);
-    expect(
-      prefs.getString('push_notifications.lineup_opened.delivery'),
-      'summary',
-    );
-    expect(prefs.getString('push_notifications.baseball_info.delivery'), 'off');
-  });
-
-  testWidgets('경기 중 실시간 모드는 디테일 단계를 저장한다', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(390, 1200));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('실시간 디테일'), findsOneWidget);
-    expect(find.text('핵심'), findsOneWidget);
-    expect(find.text('기본'), findsOneWidget);
-    expect(find.text('자세히'), findsOneWidget);
-
-    await tester.tap(find.text('기본'));
-    await tester.pumpAndSettle();
-
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString('push_notifications.live_detail_level'), 'standard');
-    expect(prefs.getBool('push_notifications.scoring'), isTrue);
-    expect(prefs.getBool('push_notifications.hit'), isTrue);
-    expect(prefs.getBool('push_notifications.homerun'), isTrue);
-    expect(prefs.getBool('push_notifications.reversal'), isTrue);
-    expect(prefs.getBool('push_notifications.lineup_opened'), isTrue);
-    expect(prefs.getBool('push_notifications.inning_change'), isFalse);
-    expect(prefs.getBool('push_notifications.at_bat'), isFalse);
-    expect(prefs.getBool('push_notifications.baseball_info'), isFalse);
-    expect(prefs.getString('push_notifications.hit.delivery'), 'immediate');
-    expect(prefs.getString('push_notifications.at_bat.delivery'), 'off');
-  });
-
-  testWidgets('안받기 선택은 저장된 moment와 delivery를 모두 끈다', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(390, 1200));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await tester.pumpWidget(
-      ProviderScope(
-        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('안받기'));
-    await tester.pumpAndSettle();
-
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getBool('push_notifications.game_start'), isFalse);
-    expect(prefs.getBool('push_notifications.scoring'), isFalse);
     expect(prefs.getBool('push_notifications.hit'), isFalse);
-    expect(prefs.getBool('push_notifications.baseball_info'), isFalse);
-    expect(prefs.getString('push_notifications.game_start.delivery'), 'off');
-    expect(prefs.getString('push_notifications.scoring.delivery'), 'off');
     expect(prefs.getString('push_notifications.hit.delivery'), 'off');
-    expect(prefs.getString('push_notifications.baseball_info.delivery'), 'off');
+
+    await tester.tap(find.byKey(const ValueKey('push_toggle_hit')));
+    await tester.pumpAndSettle();
+
+    expect(prefs.getBool('push_notifications.hit'), isTrue);
+    expect(prefs.getString('push_notifications.hit.delivery'), 'immediate');
+  });
+
+  testWidgets('모든 알림이 꺼진 상태에서도 개별 토글을 다시 켤 수 있다', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      for (final key in [
+        'game_start',
+        'scoring',
+        'hit',
+        'homerun',
+        'reversal',
+        'game_end',
+        'lineup_opened',
+        'inning_change',
+        'at_bat',
+        'baseball_info',
+      ]) ...{
+        'push_notifications.$key': false,
+        'push_notifications.$key.delivery': 'off',
+      },
+    });
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('모두 꺼짐'), findsOneWidget);
     expect(find.text('푸시 알림이 꺼져 있습니다'), findsOneWidget);
+    expect(find.text('득점'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('push_toggle_scoring')));
+    await tester.pumpAndSettle();
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool('push_notifications.scoring'), isTrue);
+    expect(prefs.getString('push_notifications.scoring.delivery'), 'immediate');
+    expect(find.text('1개 켜짐'), findsOneWidget);
   });
 
   testWidgets('설정 알림함 카드로 알림함에 진입한다', (tester) async {

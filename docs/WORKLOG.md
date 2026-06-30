@@ -2,6 +2,452 @@
 
 ---
 
+## 2026-07-01: 0.1.11 릴리즈 준비 및 TestFlight 외부 배포
+
+### 원인
+- 사장님 요청: 현재 변경분을 push하고 GitHub Release를 올린 뒤 TestFlight에 업로드하며 외부 테스터까지 최신 빌드로 공개해야 한다.
+- 확인 결과 `main`은 `0.1.10+77` / tag `0.1.10` 상태였고, 이후 뉴스/기록실/일정/홈/푸시/상세 화면 변경이 tracked diff로 남아 있어 새 tester-facing numeric release가 필요했다.
+
+### 진행
+- [x] release 기준을 `0.1.11+78` / tag `0.1.11`로 결정.
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`에 릴리즈 기준과 사용자-facing 업데이트 소식 반영.
+- [x] app/backend 검증 재실행.
+- [ ] `main` push, tag push, GitHub Release 생성.
+- [ ] iOS release IPA archive/export/upload.
+- [ ] App Store Connect processing `VALID`, `External Testers` 최신 build 단독 연결, Beta App Review/설치 가능성 확인.
+
+### 검증
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `cd app && fvm flutter test` (`293 passed`)
+- [x] `python3 -m compileall backend/src && backend/.venv/bin/pytest -q` (`244 passed`)
+- [x] `git diff --check`
+- [x] `./scripts/release-api-health-check.sh`는 운영 `API_BASE_URL`이 기존 임시 HTTP ALB라 HTTPS gate에서 중단됨.
+- [x] `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh` (`/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings`, `/records/overview` 200 OK)
+
+---
+
+## 2026-07-01: 기록실 마운드 체크 투수 리더 노출
+
+### 원인
+- 사장님 제보: 기록실 첫 화면에서 투수 정보가 충분히 보이지 않았다.
+- 확인 결과 backend records overview는 `era`와 `todayPitcher`를 내려주고 있었지만, 첫 화면 리더 구성은 타자 지표 중심이고 투수 정보는 ERA 1개가 가로 rail 끝에 묻히는 구조였다.
+- backend canonical featured에서 `monthPitcher`가 OPS 타자 리더를 가리키는 오분류도 확인했다.
+
+### 진행
+- [x] records overview에 투수 리더 `wins`, `saves`, `strikeouts`를 추가하고 backend/direct KBO 경로 모두 공식 PitcherBasic source에서 가져오도록 연결.
+- [x] 기록실 첫 화면에 `마운드 체크` compact panel을 추가해 ERA/다승/세이브/탈삼진 리더와 각 전체 리더보드 진입을 별도로 노출.
+- [x] `monthPitcher` canonical featured가 투수 리더를 보도록 보정.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 사용자-facing 기록실 동작 반영.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/records/player_image_surfaces_test.dart --plain-name '기록실 첫 화면은 투수 리더를 별도 마운드 체크로 보여준다' -r expanded` (`records-pitching-leader-panel` 없음으로 실패)
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py::test_overview_keeps_pitching_leaders_and_pitcher_featured` (`monthPitcher`가 `Ops Hitter`로 실패)
+- [x] GREEN 확인: 같은 app widget test 통과.
+- [x] GREEN 확인: 같은 backend pytest 통과.
+- [x] `cd app && fvm flutter analyze --no-pub lib/data/models/records_overview.dart lib/data/repositories/api_player_repository.dart lib/data/repositories/local_asset_player_repository.dart lib/data/repositories/kbo_direct_player_repository.dart lib/data/repositories/device_snapshot_player_repository.dart lib/features/records/records_screen.dart test/features/records/player_image_surfaces_test.dart test/data/api_client_test.dart` (`No issues found!`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py::test_records_overview_falls_back_to_snapshot` (`18 passed`)
+- [x] `backend/.venv/bin/python -m compileall backend/src`
+
+---
+
+## 2026-07-01: 뉴스 기록 달성 브리프 계약 추가
+
+### 원인
+- 사장님 요청: 마이팀 맞춤형 정보에서 선수가 의미 있는 기록을 달성하면 뉴스 탭에 `최형우 2000루타 달성`, `역대 n번째`처럼 보여줘야 했다.
+- 확인 결과 뉴스 탭은 `/home` aggregate의 `kboBrief.items`를 기사형 카드로 쓰고 있어, 새 화면보다 `record_milestone` 브리프 타입을 추가하는 편이 단순했다.
+- 단, 현재 records overview에는 통산 기록 달성 판정 source가 없으므로 `역대 n번째` 같은 역사적 문구는 source가 `allTimeRank`를 제공할 때만 표시하도록 제한했다.
+
+### 진행
+- [x] backend `HomeService`가 `leaders.milestones[]` 또는 `milestones[]`를 받으면 `record_milestone` KBO 브리프 item을 생성하도록 추가.
+- [x] 앱 `RecordsOverview`/`RecordLeader`가 `milestoneLeaders`, `metricKey`, `milestoneLabel`, `allTimeRank`를 보존하도록 확장.
+- [x] 로컬 home aggregate와 뉴스 필터가 `record_milestone`을 기록 뉴스로 노출하도록 동기화.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 source-provided milestone 계약을 기록.
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_home.py -k "record_milestone"` (`record_milestone` item 미생성으로 실패)
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/data/models/home_aggregate_test.dart --plain-name 'local KBO brief surfaces my-team record milestone' -r expanded` (`metricKey`/`milestoneLeaders` 미지원 compile 실패)
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart --plain-name 'classifies defense and batting brief items as records news' -r expanded` (`기록` 필터에서 마일스톤 카드가 리스트에 포함되지 않아 실패)
+- [x] GREEN 확인: 위 세 테스트 각각 `All tests passed!`
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py` (`20 passed`)
+- [x] `cd app && fvm dart format lib/data/models/records_overview.dart lib/data/models/home_aggregate.dart lib/data/repositories/api_player_repository.dart lib/data/repositories/local_asset_player_repository.dart lib/data/repositories/device_snapshot_player_repository.dart test/data/models/home_aggregate_test.dart test/features/news/news_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/data/models/home_aggregate_test.dart test/features/news/news_screen_test.dart -r expanded` (`18 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/data/models/records_overview.dart lib/data/models/home_aggregate.dart lib/data/repositories/api_player_repository.dart lib/data/repositories/local_asset_player_repository.dart lib/data/repositories/device_snapshot_player_repository.dart lib/data/repositories/kbo_direct_player_repository.dart test/data/models/home_aggregate_test.dart test/features/news/news_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- backend/src/kbo_fans_backend/services/home.py backend/tests/test_home.py app/lib/data/models/records_overview.dart app/lib/data/models/home_aggregate.dart app/lib/data/repositories/api_player_repository.dart app/lib/data/repositories/local_asset_player_repository.dart app/lib/data/repositories/device_snapshot_player_repository.dart app/lib/data/repositories/kbo_direct_player_repository.dart app/test/data/models/home_aggregate_test.dart app/test/features/news/news_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-07-01: 뉴스 탭 계산형 페이스 소식 추가
+
+### 원인
+- 사장님 요청: 뉴스/오늘의 소식이 단순 정보 나열에 그치지 말고, `이 추세면 몇 홈런`처럼 이미 볼 수 있는 수치에서 유추 가능한 정보를 더 다양하게 보여줘야 했다.
+- 추가 요청: 뉴스 탭은 최소 25개 이상 노출하고, `1위 LG 트윈스` 같은 건조한 나열보다 `선두가 위태로운 LG 트윈스` 같은 기사형 문구가 필요했다.
+- 추가 요청: `팀 ERA는 높은데 불펜 ERA는 1등`처럼 전체 지표와 세부 지표가 어긋나는 특이 기록도 뉴스에 보여줘야 했다.
+- 확인 결과 뉴스 탭은 이미 `homeAggregateProvider`의 `kboBrief`, `quickItems`, `standingsPreview`를 모아 기사형 row로 보여주고 있어 새 크롤링보다 기존 aggregate 값을 조합하는 편이 안전했다.
+- 홈런 페이스는 홈런왕 quick item의 현재 홈런 수와 해당 팀의 순위표 경기 수(`wins + losses + draws`)가 함께 있을 때만 계산 가능했다.
+- 현재 `/home` aggregate에는 불펜 ERA 같은 전 팀 세부 투수 지표가 없으므로, 이번 변경에서는 standingsPreview로 검증 가능한 상위권 연패/중하위권 연승 반전 카드부터 추가하고 불펜 ERA류는 데이터 계약 확장 대상으로 분리했다.
+
+### 진행
+- [x] 뉴스 탭에서 홈런왕 quick item과 standingsPreview를 조합해 `지금 페이스면 N홈런` 계산형 기록 카드를 추가.
+- [x] standingsPreview 전적에서 `지금 페이스면 N승` 순위 카드를 추가.
+- [x] standingsPreview 전체 10팀을 기사형 순위 row로 쓰고, 순위권 구도/팀별 승수 페이스 row를 추가해 전체 탭의 `최신 뉴스` 목록이 25개 이상 남도록 확장.
+- [x] standingsPreview의 `rank`와 `streak`를 조합해 `상위권 KIA 타이거즈, 3연패로 흔들림`, `순위보다 뜨거운 LG 트윈스의 4연승` 같은 특이 흐름 카드를 추가.
+- [x] `1위 팀명` 형태의 순위 brief를 뉴스 탭에서 기사형 제목으로 정규화하고, backend/app local aggregate의 선두권 brief 원천 문구도 같은 톤으로 보정.
+- [x] `record_milestone` 타입을 기록 뉴스로 분류해 기록 달성 카드가 기록 필터에서도 빠지지 않게 보강.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 새 API 없이 기존 aggregate에서 계산하는 조건, 25개 이상 노출 기준, 기사형 제목 기준, 세부 팀 지표 데이터 한계를 반영.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart --plain-name 'derives pace news from home run leader and standings' -r expanded` (`김도영, 지금 페이스면 51홈런` 미표시로 실패)
+- [x] GREEN 확인: 같은 테스트가 `All tests passed!`
+- [x] `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart --plain-name 'expands standings into at least 25 visible latest news rows' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/news/news_screen_test.dart -r expanded` (`All tests passed!`, 7 tests)
+- [x] `cd app && fvm flutter test --no-pub test/data/models/home_aggregate_test.dart -r expanded` (`All tests passed!`, 11 tests)
+- [x] `cd app && fvm dart format lib/features/news/news_screen.dart lib/data/models/home_aggregate.dart test/features/news/news_screen_test.dart`
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/news/news_screen.dart lib/data/models/home_aggregate.dart test/features/news/news_screen_test.dart` (`No issues found!`)
+- [x] `python3 -m compileall backend/src`
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py` (`20 passed`)
+- [x] `git diff --check -- app/lib/features/news/news_screen.dart app/lib/data/models/home_aggregate.dart app/test/features/news/news_screen_test.dart backend/src/kbo_fans_backend/services/home.py docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-07-01: 일정 매치업 시즌 전체 리스트 정렬 보정
+
+### 원인
+- 사장님 요청: 매치업 보기는 현재 월이 아니라 모든 일정에서 팀1/팀2 맞대결을 찾아 보여줘야 했다.
+- 기존 일정 화면의 `매치업` 보기는 월별 `PageView` 안에서 현재 월 `scheduleProvider(yearMonth)`만 필터링했다.
+- 팀1 기본값은 이미 `myTeamProvider`를 우선하도록 구성되어 있었지만, 목록 범위가 월 단위라 지난달/다음달 맞대결이 한 리스트에 잡히지 않았다.
+
+### 진행
+- [x] 시즌 월간 일정(3월~11월)을 합치는 `seasonScheduleProvider` 추가.
+- [x] 매치업 보기를 월별 PageView에서 시즌 전체 리스트로 전환하고, 팀1 기본값은 마이팀 우선 규칙 유지.
+- [x] 매치업 결과를 오늘과의 날짜 거리순으로 정렬하고, 동률이면 다가오는 경기를 지난 경기보다 먼저 표시.
+- [x] 이미 지난 날짜의 매치업 카드는 opacity를 낮춰 어둡게 표시.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 시즌 전체 매치업 계약 반영.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart --plain-name '매치업 탭은 시즌 전체 일정을 오늘 가까운 순으로 보여주고 지난 경기를 어둡게 표시한다' -r expanded`가 `어제 LG-KT` 미표시로 실패.
+- [x] GREEN 확인: 같은 테스트가 `All tests passed!`.
+- [x] `cd app && fvm dart format lib/data/providers.dart lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart` (`Formatted 3 files (2 changed)`)
+- [x] `cd app && fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart -r expanded` (`All tests passed!`, 8 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/data/providers.dart lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/data/providers.dart app/lib/features/schedule/schedule_screen.dart app/test/features/schedule/schedule_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-07-01: 홈 자정 이후 어제 경기 결과 보조 노출
+
+### 원인
+- 사장님 제보: 자정이 지나 오늘 경기는 아직 시작 전인 시간대에 홈이 오늘 예정 경기만 보여주면서, 직전 경기 결과를 바로 확인하기 어려웠다.
+- 확인 결과 홈은 `DateTime.now()` 기준 오늘 날짜만 `scoreboardProvider(today)`로 읽고, 오늘 경기 row를 그대로 렌더링했다. 오늘 경기가 모두 scheduled 상태이면 어제 종료 경기 결과를 볼 경로가 홈에 없었다.
+
+### 진행
+- [x] 오늘 경기가 비어 있거나 모두 경기 전 상태일 때만 전날 `scoreboardProvider(yesterday)`를 보조 구독하도록 변경.
+- [x] 전날 스코어보드에서는 `final` 경기만 골라 `어제 결과` 그룹으로 홈 `오늘 경기` 카드에 붙이도록 정리.
+- [x] 오늘 live/final 경기가 하나라도 있으면 어제 스코어보드를 추가 조회하지 않아 현재 경기 표면과 섞이지 않게 제한.
+- [x] 전날 스코어보드 조회 실패는 홈 오류로 승격하지 않고 Dev Console 경고만 남긴 뒤 오늘 경기만 유지.
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 홈 자정 이후 결과 노출 정책 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name 'shows yesterday final results while today games have not started' -r expanded`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`All tests passed!`, 32 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/test/features/home/home_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-07-01: 기록실 오늘 읽을 기록 내부 메타 제거
+
+### 원인
+- 사장님 지적: 기록실 `오늘 읽을 기록`의 `활성 지표`, `TOP5 선수`, `소스 공식+계산`은 사용자가 알 필요 없는 내부 메타였다.
+- 확인 결과 해당 문구는 `RecordsScreen._recordsBriefingPanel()`에서 리그 overview를 렌더링할 때 직접 계산해 사용자-facing 카드 3칸으로 노출하고 있었다.
+
+### 진행
+- [x] 내부 메타 3칸을 제거하고, 같은 공간을 `타율 1위`, `홈런 1위`, `ERA 1위` 같은 실제 리더 요약과 2위 격차로 대체.
+- [x] 리더가 부족한 경우 OPS/wRC+ 리더로 채우도록 overview 데이터 안에서만 조합.
+- [x] 내부 메타 문구가 다시 노출되지 않도록 기록실 위젯 회귀 테스트 추가.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 현재 기록실 UX 계약 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/records/records_screen.dart test/features/records/player_image_surfaces_test.dart` (`Formatted 2 files (0 changed)`)
+- [x] `cd app && fvm flutter test --no-pub test/features/records/player_image_surfaces_test.dart -r expanded` (`All tests passed!`, 7 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/records/records_screen.dart test/features/records/player_image_surfaces_test.dart` (`No issues found!`)
+
+---
+
+## 2026-07-01: 두산 팀 로고 라이트모드 대비 보정
+
+### 원인
+- 사장님 제보: 라이트모드에서 두산 베어스 팀 아이콘이 너무 어둡게 보였다.
+- 확인 결과 공용 `KboTeamLogoImage`는 두산(`OB`)처럼 어두운 로고에만 대비판을 깔고 있었지만, 대비판 색을 `AppColors.textPrimary`로 잡고 있었다.
+- 라이트모드에서는 `textPrimary`가 검정 계열이므로 두산의 진한 남색 로고 뒤에 어두운 원형 받침이 생겨 전체 아이콘이 과하게 어두워졌다.
+
+### 진행
+- [x] 두산 전용 대비판을 라이트/다크 공통 밝은 받침으로 바꾸고, 테마별 border/shadow alpha만 조정.
+- [x] 라이트모드에서도 두산 대비판 fill luminance가 밝게 유지되는 위젯 회귀 테스트 추가.
+- [x] `CHANGELOG.md`에 사용자-visible bug fix 기록.
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/widgets/kbo_team_logo_image.dart test/core/widgets/kbo_team_logo_image_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/core/widgets/kbo_team_logo_image_test.dart -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/widgets/kbo_team_logo_image.dart test/core/widgets/kbo_team_logo_image_test.dart` (`No issues found!`)
+
+---
+
+## 2026-07-01: 선수 상세 direct 최근 5경기 보정
+
+### 원인
+- 사장님 제보: 선수 프로필에서 최근 5경기 아래가 여전히 `기록이 없습니다`로 표시됐다.
+- 확인 결과 backend `PlayerStatsService().get_player_detail('52605', 2026)`는 실제 KBO HTML에서 최근 5경기를 정상 파싱했다.
+- 하지만 backend API를 끈 direct KBO 앱 경로는 6월 30일 backend 보정과 달리 상세 HTML 안의 `YYYY 시즌` 라벨만 보고 현재 시즌을 판단했다.
+- 실제 공식 상세 HTML에는 시즌 라벨이 없을 수 있어 direct 경로에서는 `currentSeason=0`이 되고 `recentGames` 파싱이 꺼졌다.
+
+### 진행
+- [x] `KboDirectPlayerRepository`도 시즌 라벨이 없으면 KBO 시간대 현재 연도를 최근 경기 시즌 판정에 사용하도록 보정.
+- [x] 시즌 라벨 없는 `최근 10경기` HTML fixture를 app direct repository 회귀 테스트로 추가.
+- [x] 실데이터 로컬 service/FastAPI route 호출 기준 `playerId=52605` 최근 5경기 응답을 확인.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/data/kbo_direct_player_repository_test.dart -r expanded`가 direct recentGames `[]`로 실패.
+- [x] GREEN 확인: 같은 테스트가 `All tests passed!`.
+- [x] `cd app && fvm flutter analyze --no-pub lib/data/repositories/kbo_direct_player_repository.dart test/data/kbo_direct_player_repository_test.dart` (`No issues found!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/records/player_image_surfaces_test.dart -r expanded` (`All tests passed!`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_player_stats_crawler.py::test_player_detail_includes_current_recent_games_when_page_omits_season_label` (`1 passed`)
+- [x] 배포 전 운영 ALB API `http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api/player/52605?season=2026`는 `recent_count=0`으로 확인.
+- [x] GitHub Actions `Push Demo Deploy` run `28467467732`, image tag `0.1.10-player-recent-1f6c547` 배포 성공.
+- [x] 배포 후 같은 운영 ALB API에서 `recent_count=5`, 첫 항목 `06.30 SSG`로 확인.
+
+---
+
+## 2026-07-01: 화면 이동 전환 속도 2배 완화
+
+### 원인
+- 사장님 요청: 화면 이동 시 전환 속도가 너무 빨라 현재보다 두 배 느리게 보여야 했다.
+- 확인 결과 앱 전환은 [app_router.dart](/Users/kimminkyu/Bagelcode/Repository_Bagelcode/kbo_fans/app/lib/core/router/app_router.dart)에 집중되어 있었다. 부트/온보딩 fade, 하단 탭 전환은 `CustomTransitionPage` duration으로 제어되고, 상세/뉴스 push 화면은 iOS 스와이프 백 보존을 위해 `CupertinoPage` 계열 route를 사용하고 있었다.
+
+### 진행
+- [x] 부트/온보딩 fade 전환을 180/140ms에서 360/280ms로 조정.
+- [x] 하단 탭 전환을 380/280ms에서 760/560ms로 조정.
+- [x] root push 전환은 `CupertinoPage` 타입과 iOS edge-swipe 계약을 유지하면서 500ms에서 1000ms로 조정.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 현재 화면 이동 모션 기준 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/router/app_router.dart test/core/router/app_router_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/core/router/app_router_test.dart -r expanded` (`All tests passed!`, 5 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/router/app_router.dart test/core/router/app_router_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/core/router/app_router.dart app/test/core/router/app_router_test.dart docs/APP_SPEC.md CHANGELOG.md docs/WORKLOG.md`
+
+---
+
+## 2026-07-01: 푸시 알림 설정 프리셋 제거 및 항목별 토글화
+
+### 원인
+- 사장님 요청: 푸시 알림의 `실시간 디테일` 같은 프리셋/디테일 단계 문구를 빼고, 사용자가 받을 알림을 하나씩 토글로 설정해야 했다.
+- 확인 결과 설정 화면은 이미 moment별 토글을 갖고 있었지만, 상단 `경기 전후 요약만 받기` / `경기 중 실시간 알림받기` / `안받기` 프리셋과 `요약/실시간 디테일` 세그먼트가 실제 주 설정처럼 노출되고 있었다.
+- 모든 알림이 꺼진 상태에서 토글을 다시 켜는 경우, 기존 `withMomentEnabled`가 현재 mode `off`를 따라 delivery도 계속 `off`로 둘 수 있어 토글식 UX와 맞지 않았다.
+
+### 진행
+- [x] 설정 화면의 프리셋 카드와 `요약 디테일`/`실시간 디테일` 세그먼트를 제거하고, `경기 전후` / `경기 중` 토글 그룹을 항상 노출.
+- [x] 상단 상태를 mode 이름 대신 켜진 항목 수 또는 `모두 꺼짐`으로 표시.
+- [x] 전체 off 상태에서 개별 moment를 다시 켜면 moment별 기본 delivery를 복구하도록 `PushNotificationSettings.withMomentEnabled` 보정.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 현재 설정 UX 계약 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/settings/settings_screen.dart lib/services/push_notification_service.dart test/features/settings/settings_screen_test.dart test/features/notifications/notification_inbox_screen_test.dart test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/settings/settings_screen_test.dart test/features/notifications/notification_inbox_screen_test.dart test/services/push_notification_service_test.dart -r expanded` (`All tests passed!`, 45 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/settings/settings_screen.dart lib/services/push_notification_service.dart test/features/settings/settings_screen_test.dart test/features/notifications/notification_inbox_screen_test.dart test/services/push_notification_service_test.dart` (`No issues found!`)
+
+---
+
+## 2026-07-01: 종료 경기 라인업 선발 투수 기록 표시 보정
+
+### 원인
+- 사장님 제보: 경기 종료 후 라인업 페이지 선발 비교에서 승패, 이닝, 평균자책, WHIP가 모두 `-`로 보였다.
+- 확인 결과 라인업 탭은 `gameLineupProvider`의 선발명/이미지만 사용하고, 실제 투수 기록이 있는 `gameBoxscoreProvider`의 `PitcherRecord`를 상단 선발 비교에 넘기지 않았다.
+- 기존 평균자책 표시도 `earnedRuns`를 그대로 소수점 표시하고 있어, 박스스코어 모델의 경기 ERA/WHIP 계산 getter와 맞지 않았다.
+
+### 진행
+- [x] 종료/진행 경기 라인업 탭에서 공식 박스스코어 투수 기록을 보조로 읽어 선발 비교 카드에 연결.
+- [x] live context 또는 0값 placeholder 투수 row는 공식 선발 기록처럼 쓰지 않도록 필터링.
+- [x] 선발명 매칭은 공백/기호 차이를 흡수하도록 정규화 후 비교.
+- [x] APP_SPEC/CHANGELOG에 라인업 선발 비교 기록 표시 정책 반영.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test test/features/game_detail/lineup_tab_test.dart --plain-name '종료 경기 라인업 선발 비교는 박스스코어 투수 기록을 보여준다' -r expanded`가 `W` 미표시로 실패.
+- [x] GREEN 확인: 같은 테스트가 `All tests passed!`.
+- [x] `cd app && fvm flutter test test/features/game_detail/lineup_tab_test.dart -r expanded` (`All tests passed!`, 6 tests)
+- [x] `cd app && fvm flutter analyze lib/features/game_detail/tabs/lineup_tab.dart test/features/game_detail/lineup_tab_test.dart` (`No issues found!`)
+
+---
+
+## 2026-07-01: 뉴스 진입 화면 스와이프 백 보정
+
+### 원인
+- 사장님 요청: 뉴스에서 어떤 화면으로 들어가면 왼쪽 스와이프로 이전 화면으로 돌아갈 수 있어야 했다.
+- 확인 결과 경기 상세/선수 상세/리더보드 같은 root push 화면은 이미 `CupertinoPage`라 iOS edge-swipe가 가능했다.
+- 반면 뉴스 카드가 `/standings`, `/records`, `/schedule` 같은 shell 탭 화면을 `push`하면 하단 탭 전환용 `CustomTransitionPage`가 쓰여 edge-swipe pop이 되지 않았다.
+
+### 진행
+- [x] 뉴스 카드와 뉴스 빈 상태 CTA가 route sanitizer를 거친 뒤 `AppRoutePresentation.swipeBack` 의도를 함께 넘기도록 변경.
+- [x] shell 탭 route는 일반 하단 탭 `go` 이동에서는 기존 380ms 탭 전환을 유지하고, swipe-back 의도를 받은 `push`에서만 `CupertinoPage`로 쌓이도록 분기.
+- [x] 게임 상세 route의 `extra` 처리를 `Game` 타입일 때만 사용하게 보강해 route presentation 의도와 충돌하지 않게 정리.
+- [x] 검증 중 기존 워크트리의 `LeaderboardMetric.wins/saves/strikeouts` switch 누락이 라우터 테스트 컴파일을 막아, 기록실/로컬 asset 리더보드 매핑을 현재 enum에 맞게 보강.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 뉴스 진입 화면의 스와이프 백 기준 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/router/app_route_sanitizer.dart lib/core/router/app_router.dart lib/features/news/news_screen.dart test/core/router/app_router_test.dart test/features/news/news_screen_test.dart lib/features/records/records_screen.dart lib/data/repositories/local_asset_player_repository.dart`
+- [x] `cd app && fvm flutter test --no-pub test/core/router/app_router_test.dart test/features/news/news_screen_test.dart -r expanded` (`All tests passed!`, 12 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/core/router/app_route_sanitizer.dart lib/core/router/app_router.dart lib/features/news/news_screen.dart lib/features/records/records_screen.dart lib/data/repositories/local_asset_player_repository.dart test/core/router/app_router_test.dart test/features/news/news_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/core/router/app_route_sanitizer.dart app/lib/core/router/app_router.dart app/lib/features/news/news_screen.dart app/test/core/router/app_router_test.dart app/test/features/news/news_screen_test.dart app/lib/features/records/records_screen.dart app/lib/data/repositories/local_asset_player_repository.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-07-01: 리그 전체 푸시 중복 수신 보정
+
+### 원인
+- 사장님 제보: 푸시알림이 같은 이벤트에서 두 번씩 오는 경우가 있었다. 재현 스텝은 없었지만, 코드 추적 결과 backend는 경기 moment를 원정팀/홈팀/ALL/GAME topic에 각각 발송하고 있었다.
+- 앱과 backend topic builder가 `allGames=true`인 단말을 즉시 game moment에서 `*_ALL`과 `*_<마이팀>` topic에 동시에 넣어, 마이팀 경기는 같은 FCM event를 두 topic으로 받을 수 있었다.
+- 로컬 경기 이벤트 알림은 `APP_ENV=local` 또는 `ENABLE_LOCAL_GAME_EVENT_ALERTS=true`에서만 처리되므로 release/dev 중복의 1차 원인은 아니었다.
+
+### 진행
+- [x] Flutter `buildPushTopics`에서 `allGames=true`이고 즉시 발송되는 game moment는 `*_ALL`만 구독하도록 변경.
+- [x] backend `PushService._build_topics`도 같은 규칙으로 맞춰 registry 기반 resubscribe가 기존 단말 topic을 정리할 수 있게 보정.
+- [x] `summary` / `live_only`처럼 ALL topic으로 즉시 발송하지 않는 마이팀 moment는 team topic을 유지해 수신 누락을 피함.
+- [x] `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `CHANGELOG.md`에 중복 방지 topic 계약 반영.
+
+### 검증
+- [x] RED 확인: `cd backend && ./.venv/bin/python -m pytest tests/test_push_service.py -q -k "all_topics or all_games_enabled"`가 `game_start_LG` 잔존으로 실패.
+- [x] RED 확인: `cd app && fvm flutter test test/services/push_notification_service_test.dart --plain-name 'allGames'`가 `game_start_LG` 잔존으로 실패.
+- [x] GREEN 확인: 같은 backend pytest가 `2 passed`.
+- [x] GREEN 확인: 같은 Flutter test가 `All tests passed!`.
+- [x] `cd backend && ./.venv/bin/python -m pytest tests/test_push_service.py -q` (`94 passed`)
+- [x] `cd backend && ./.venv/bin/python -m ruff check src/kbo_fans_backend/services/push.py tests/test_push_service.py` (`All checks passed!`)
+- [x] `cd backend && ./.venv/bin/python -m compileall -q src/kbo_fans_backend/services/push.py`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart` (`All tests passed!`, 33 tests)
+- [x] `cd app && fvm flutter analyze lib/services/push_notification_service.dart test/services/push_notification_service_test.dart` (`No issues found!`)
+- [x] `git diff --check -- backend/src/kbo_fans_backend/services/push.py backend/tests/test_push_service.py app/lib/services/push_notification_service.dart app/test/services/push_notification_service_test.dart docs/APP_SPEC.md docs/ENGINEERING_NOTES.md CHANGELOG.md docs/WORKLOG.md`
+
+---
+
+## 2026-07-01: 종료 경기 하이라이트 초기 로드 보정
+
+### 원인
+- 사장님 제보: 경기 상세에 들어간 뒤 스코어 탭에서 refresh를 눌러야만 하이라이트 검색 결과가 나타났다.
+- 확인 결과 종료 경기 상세를 `tab=lineup` 등 스코어가 아닌 탭으로 처음 열면 `_HighlightSection`이 아직 widget tree에 붙지 않아 `highlightInfoProvider(gameId)`가 시작되지 않았다.
+- 수동 refresh 경로는 스코어 탭에서 provider를 명시적으로 invalidate/read하므로 그때서야 하이라이트 검색/영상 로드가 시작됐다.
+
+### 진행
+- [x] 종료 경기 상세 body가 만들어지면 현재 탭과 무관하게 `highlightInfoProvider(gameId)`를 백그라운드로 한 번 warmup하도록 변경.
+- [x] preview body와 data body가 순차 생성될 때 중복 네트워크 호출이 생기지 않도록 provider invalidate 없이 같은 FutureProvider future를 공유하게 정리.
+- [x] 스코어가 아닌 탭으로 종료 경기 상세를 열어도 스코어 탭 진입 전 하이라이트 provider가 시작되는 회귀 테스트 추가.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart --name "종료 경기 상세는 스코어 탭 진입 전에 하이라이트를 미리 로드한다"`에서 `highlightCallCount` 0회로 실패.
+- [x] GREEN 확인: 같은 테스트가 `All tests passed!`.
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart -r expanded` (`All tests passed!`, 9 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart` (`No issues found!`)
+
+---
+
+## 2026-07-01: 홈 최근 5경기 섹션명 정리
+
+### 원인
+- 사장님 요청: 홈의 전체 팀 결과 버블 섹션을 `최근 흐름`이 아니라 `최근 5경기`로 보여줘야 했다.
+- 확인 결과 홈 UI는 이미 5개 결과 버블을 렌더링하지만, 섹션 title과 상태/empty copy가 `최근 흐름`으로 남아 있었다.
+
+### 진행
+- [x] 홈 섹션 title, loading/error/empty copy, 마이팀 미선택 안내 copy를 `최근 5경기` 기준으로 정리.
+- [x] 홈 회귀 테스트에 `최근 5경기` 노출과 `최근 흐름` 미노출 기대값을 추가.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 홈 섹션명을 `최근 5경기`로 동기화.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name 'recent 5 games row opens team records with press interaction' -r expanded` (`All tests passed!`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/test/features/home/home_screen_test.dart docs/APP_SPEC.md CHANGELOG.md docs/WORKLOG.md`
+
+---
+
+## 2026-07-01: 홈 경기 상세 진입 pre-refresh 실패 fallback
+
+### 원인
+- 사장님 제보: 앱을 오래 최소화했다가 다시 들어오면 `경기 정보 갱신 중`이 보인 뒤 경기정보 갱신 실패 메시지가 떠 상세 진입이 막혔다.
+- 확인 결과 경기 상세 화면 자체는 refresh 실패 시 마지막 정상 `Game`을 유지하지만, 홈에서 경기 row/마이팀 경기 카드를 열기 전 pre-refresh 경로는 `gameProvider(gameId)` 또는 첫 탭 provider가 실패하면 `SnackBar`를 띄우고 홈에 머물렀다.
+
+### 진행
+- [x] 홈 pre-refresh 실패 시 실패 SnackBar로 진입을 막지 않고, 홈에 이미 표시된 `Game`을 fallback으로 상세 화면에 넘기도록 변경.
+- [x] 실패는 사용자 차단 대신 Dev Console 경고로 남기고, 상세 화면의 자체 refresh가 이후 최신화를 담당하도록 정리.
+- [x] 검증 중 드러난 종료 경기 하이라이트 선로딩의 Riverpod lifecycle 오류를 첫 프레임 이후 실행으로 보정.
+- [x] `docs/APP_SPEC.md`와 `CHANGELOG.md`에 홈 상세 진입 fallback 정책 반영.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입 refresh 실패 시 기존 경기정보로 이동한다' -r expanded`가 상세 route 미진입으로 실패.
+- [x] GREEN 확인: 같은 테스트가 `All tests passed!`.
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`All tests passed!`, 30 tests)
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart -r expanded` (`All tests passed!`, 9 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart lib/features/game_detail/game_detail_screen.dart test/features/home/home_screen_test.dart test/features/game_detail/game_detail_navigation_test.dart` (`No issues found!`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-30: 박스스코어 선수사진 선로딩 및 렌더 복구
+
+### 원인
+- 사장님 제보: TestFlight 박스스코어의 핵심 기록/선수 row가 번호 badge placeholder로 보이고, 선수사진도 미리 준비되어 쓰이지 않았다.
+- 확인 결과 홈에서 상세로 들어가기 전 image prefetch는 relay/lineup 후보만 모았고, 박스스코어 탭은 player profile을 매칭하면서도 avatar 렌더링은 사진 없이 fallback icon만 사용하고 있었다.
+
+### 진행
+- [x] 홈의 경기 상세 진입 전 prefetch 후보에 `gameBoxscoreProvider` row 이름과 팀 선수 profile 매칭 결과를 추가.
+- [x] 박스스코어 탭이 경기 id 시즌 기준으로 `PlayerProfile.imageUrl` 우선, 없으면 선수 id 기반 KBO CDN URL을 사용해 핵심 기록/타자/투수 row avatar를 렌더하도록 변경.
+- [x] 박스스코어 탭 내부에서도 선택 팀 row 이미지 URL을 post-frame best-effort로 `DefaultCacheManager.downloadFile` + `precacheImage` 경로에 태우도록 보강.
+- [x] APP_SPEC/CHANGELOG에 박스스코어 선수사진 렌더 및 진입 전 prefetch 정책 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart -r expanded` (`All tests passed!`, 36 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/lib/features/game_detail/tabs/boxscore_tab.dart app/test/features/home/home_screen_test.dart app/test/features/game_detail/boxscore_tab_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-06-30: 홈 마이팀 브리프 팀 지표 로딩 경계 분리
+
+### 원인
+- 사장님 제보: TestFlight 홈 마이팀 브리프에서 팀 타율/팀 ERA와 팀 홈런 1위/뜨는 선수가 계속 `불러오는 중`으로 보였다.
+- 확인 결과 홈 카드는 팀 타율/ERA처럼 가벼운 팀 지표까지 선수 하이라이트용 `teamRecordsProvider` 합본 완료에 묶고 있었다.
+- 백엔드 `/team/{teamId}/records`도 선수 목록과 팀 지표를 함께 기다리므로, 선수 목록 크롤링이 느리면 이미 표시 가능한 팀 지표까지 로딩 placeholder에 갇힐 수 있었다.
+
+### 진행
+- [x] 홈 마이팀 브리프의 팀 타율/ERA는 `teamStatsProvider`(`/api/team/{teamId}/stats`)에서 먼저 표시하도록 분리.
+- [x] 팀 홈런 1위/뜨는 선수는 `teamPlayersProvider`(`/api/team/{teamId}/players`)가 도착하면 별도로 보강하도록 변경.
+- [x] 선수 provider가 pending이어도 팀 타율/ERA와 순위가 먼저 보이는 회귀 테스트 추가.
+- [x] `docs/APP_SPEC.md`, `README.md`, `CHANGELOG.md`의 홈 브리프 데이터 정책 문구 동기화.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test test/features/home/home_screen_test.dart --name "my team brief shows team AVG and ERA while player highlights are still loading"`에서 `0.281` 미표시로 실패.
+- [x] `cd app && fvm flutter test test/features/home/home_screen_test.dart --name "my team brief shows team AVG and ERA while player highlights are still loading"` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart` (`All tests passed!`, 29 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check`
+
+---
+
+## 2026-06-30: 경기 상세 상단 두 자리 점수 표시 보정
+
+### 원인
+- 사장님 제보: TestFlight 경기 상세 상단에서 KIA 12점처럼 두 자리 점수가 `1` / `2`로 세로 줄바꿈되어 보였다.
+- 확인 결과 `_GameScorebug`의 점수 영역이 `SizedBox(width: 46)`으로 고정되어 있었고, `fontSize: 48` 점수 텍스트가 두 자리일 때 폭을 넘어서 줄바꿈됐다.
+
+### 진행
+- [x] 경기 상세 상단 점수 렌더링을 `_ScorebugScore`로 분리.
+- [x] `FittedBox(BoxFit.scaleDown)`, `maxLines: 1`, `softWrap: false`로 두 자리 이상 점수도 한 줄 안에서 축소 표시되도록 보정.
+- [x] 390x844 화면에서 `12:1` 종료 경기 상단 점수가 한 줄로 유지되는 회귀 테스트 추가.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart` (`No issues found!`)
+
+---
+
 ## 2026-06-30: 0.1.10 릴리즈 준비
 
 ### 원인

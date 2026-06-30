@@ -183,6 +183,26 @@ final scheduleProvider = FutureProvider.family<List<ScheduleDay>, String>((
   return ref.watch(gameRepositoryProvider).getSchedule(yearMonth);
 });
 
+List<String> kboScheduleSeasonMonths(int season) {
+  return [
+    for (var month = 3; month <= 11; month += 1)
+      '$season-${month.toString().padLeft(2, '0')}',
+  ];
+}
+
+final seasonScheduleProvider = FutureProvider.family<List<ScheduleDay>, int>((
+  ref,
+  season,
+) async {
+  final monthSchedules = await Future.wait(
+    kboScheduleSeasonMonths(
+      season,
+    ).map((yearMonth) => ref.watch(scheduleProvider(yearMonth).future)),
+  );
+
+  return [for (final days in monthSchedules) ...days];
+});
+
 final standingsProvider = FutureProvider.family<List<TeamStanding>, int>((
   ref,
   season,

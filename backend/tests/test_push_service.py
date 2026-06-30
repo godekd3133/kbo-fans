@@ -52,7 +52,7 @@ def test_build_topics_returns_empty_without_team_when_all_games_disabled() -> No
     assert topics == []
 
 
-def test_build_topics_returns_all_topics_when_all_games_enabled() -> None:
+def test_build_topics_uses_all_topics_without_my_team_immediate_duplicates() -> None:
     service = PushService()
     payload = PushRegisterRequest(
         deviceToken="token",
@@ -74,8 +74,46 @@ def test_build_topics_returns_all_topics_when_all_games_enabled() -> None:
 
     assert "game_start_ALL" in topics
     assert "all_games_enabled" in topics
-    assert "game_start_LG" in topics
+    assert "game_start_LG" not in topics
+    assert "scoring_LG" not in topics
+    assert "homerun_LG" not in topics
+    assert "game_end_LG" not in topics
     assert "inning_change_LG" not in topics
+
+
+def test_build_topics_keeps_non_immediate_my_team_topics_when_all_games_enabled() -> None:
+    service = PushService()
+    payload = PushRegisterRequest(
+        deviceToken="token",
+        platform="flutter",
+        myTeam="LG",
+        notifications=NotificationSettings(
+            gameStart=True,
+            scoring=True,
+            homerun=True,
+            reversal=True,
+            gameEnd=True,
+            lineupOpened=True,
+            inningChange=True,
+            allGames=True,
+            deliveryModes=NotificationDeliveryModes(
+                gameEnd="summary",
+                lineupOpened="summary",
+                inningChange="live_only",
+            ),
+        ),
+    )
+
+    topics = service._build_topics(payload)
+
+    assert "game_start_ALL" in topics
+    assert "game_start_LG" not in topics
+    assert "game_end_ALL" not in topics
+    assert "game_end_LG" in topics
+    assert "lineup_opened_ALL" not in topics
+    assert "lineup_opened_LG" in topics
+    assert "inning_change_ALL" not in topics
+    assert "inning_change_LG" in topics
 
 
 def test_build_topics_respects_delivery_modes() -> None:

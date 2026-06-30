@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-06-30
+> Updated: 2026-07-01
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.10+77`
-- Current release tag: `0.1.10`
+- Flutter app version: `0.1.11+78`
+- Current release tag: `0.1.11`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -140,6 +140,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.8`: live alert and game-detail freshness release. My-team game topics now include every game moment regardless of saved delivery/off settings, iOS 17.2+ push-to-start Live Activity registration and backend APNs start dispatch are added, stale push baselines are re-anchored without backfill, home-to-detail navigation waits for fresh detail/tab data, live detail tab switches refresh visible data immediately, live boxscore context can show relay-derived at-bats/hits/AVG, lineup/player image fallbacks are reinforced, and Live Activity/Dynamic Island/widget text fitting is tightened.
 - `0.1.9`: widget/settings/game-surface polish release. In-app update prompts, expanded iOS/Android widgets, light/system/dark theme mode, simplified settings, push notification presets, Jua typography, home full-list sections, live-game shortcuts, relay/boxscore visual cleanup, highlight fallback links, final-game at-bat clearing, and push topic preference enforcement are bundled with current app build `0.1.9+76`.
 - `0.1.10`: matchup schedule, KBO brief, notification detail, and boxscore density release. Schedule matchup view, richer home/news KBO brief items, my-team record summary, push detail levels, lineup/baseball-info push copy correction, light/dark contrast fixes, boxscore team comparison and extended stats, and selected branch integrations are bundled with current app build `0.1.10+77`.
+- `0.1.11`: news, records, schedule, and notification polish release. News now derives record milestones, pace, and streak stories from existing KBO data; records adds pitching leaders and clearer readable summaries; matchup schedule spans the season; home can show yesterday finals before today's games start; direct player recent games, lineups, boxscore photos, score fitting, light-mode Doosan logo contrast, duplicate all-game/my-team push topics, per-item push settings, and route transition pacing are bundled with current app build `0.1.11+78`.
 
 ## GitHub Release Note Template
 

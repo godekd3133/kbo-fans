@@ -122,20 +122,7 @@ PushNotificationLiveDetailLevel _liveDetailFromStorage(
 
 PushNotificationDelivery _defaultDeliveryForMoment(
   PushNotificationMoment moment,
-  PushNotificationMode mode,
 ) {
-  if (mode == PushNotificationMode.off) {
-    return PushNotificationDelivery.off;
-  }
-  if (mode == PushNotificationMode.summary) {
-    return switch (moment) {
-      PushNotificationMoment.gameStart ||
-      PushNotificationMoment.gameEnd ||
-      PushNotificationMoment.lineupOpened => PushNotificationDelivery.summary,
-      PushNotificationMoment.baseballInfo => PushNotificationDelivery.immediate,
-      _ => PushNotificationDelivery.off,
-    };
-  }
   return switch (moment) {
     PushNotificationMoment.gameEnd ||
     PushNotificationMoment.lineupOpened => PushNotificationDelivery.summary,
@@ -513,7 +500,7 @@ class PushNotificationSettings {
     bool enabled,
   ) {
     final delivery = enabled
-        ? _defaultDeliveryForMoment(moment, mode)
+        ? _defaultDeliveryForMoment(moment)
         : PushNotificationDelivery.off;
     final next = switch (moment) {
       PushNotificationMoment.gameStart => copyWith(
@@ -1641,13 +1628,18 @@ Set<String> buildPushTopics({
 
   topicMoments.forEach((topicName, moment) {
     final isGameMoment = _gameMomentTopicNames.contains(topicName);
+    final sendsImmediately = settings.sendsImmediately(moment);
+    final usesAllGameTopic = settings.allGames && sendsImmediately;
 
-    if (isGameMoment && hasMyTeam && settings.enablesFollowedGamePush(moment)) {
+    if (isGameMoment &&
+        hasMyTeam &&
+        settings.enablesFollowedGamePush(moment) &&
+        !usesAllGameTopic) {
       topics.add('${topicName}_$normalizedMyTeam');
     }
 
     if (settings.allGames) {
-      if (settings.sendsImmediately(moment)) {
+      if (sendsImmediately) {
         topics.add('${topicName}_ALL');
       }
       return;
@@ -1669,7 +1661,7 @@ Set<String> buildPushTopics({
       return;
     }
 
-    if (hasMyTeam && settings.sendsImmediately(moment)) {
+    if (hasMyTeam && sendsImmediately) {
       topics.add('${topicName}_$normalizedMyTeam');
     }
   });

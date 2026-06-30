@@ -404,6 +404,14 @@ class HomeService:
         if standings_item is not None:
             add(standings_item)
 
+        milestone_item = self._build_record_milestone_brief_item(
+            overview,
+            season=int(today[:4]),
+            my_team=my_team,
+        )
+        if milestone_item is not None:
+            add(milestone_item)
+
         record_item = self._build_record_brief_item(overview, int(today[:4]))
         if record_item is not None:
             add(record_item)
@@ -587,10 +595,16 @@ class HomeService:
             if second is not None and second_gap and second_gap != "-"
             else "선두권 흐름 확인"
         )
+        second_gap_value = self._as_float(second_gap)
+        title = (
+            f"선두가 위태로운 {leader.get('teamName')}"
+            if second_gap_value is not None and second_gap_value <= 2
+            else f"선두 지키는 {leader.get('teamName')}"
+        )
         return {
             "type": "standings",
             "eyebrow": "선두권",
-            "title": f"{leader.get('rank')}위 {leader.get('teamName')}",
+            "title": title,
             "subtitle": subtitle,
             "route": "/standings",
             "gameId": None,
@@ -653,6 +667,86 @@ class HomeService:
             "imageUrl": self._record_leader_image_url(leader, season),
             "fallbackLabel": leader.get("name"),
         }
+
+    def _build_record_milestone_brief_item(
+        self,
+        overview: Dict[str, Any],
+        *,
+        season: int,
+        my_team: Optional[str],
+    ) -> Optional[Dict[str, Any]]:
+        raw_leaders = (
+            (overview.get("leaders") or {}).get("milestones")
+            or overview.get("milestones")
+            or []
+        )
+        leaders = [
+            leader
+            for leader in raw_leaders
+            if isinstance(leader, dict)
+            and str(leader.get("name") or "").strip()
+            and str(leader.get("value") or leader.get("milestoneLabel") or "").strip()
+        ]
+        if not leaders:
+            return None
+
+        leader = next(
+            (
+                item
+                for item in leaders
+                if my_team and str(item.get("teamId") or "") == my_team
+            ),
+            leaders[0],
+        )
+        player_id = str(leader.get("playerId") or "")
+        team_id = str(leader.get("teamId") or "")
+        milestone_label = self._record_milestone_label(leader)
+        route = f"/records/player/{player_id}?season={season}" if player_id else "/records"
+        subtitle_parts = [
+            self._TEAM_LABELS.get(team_id, team_id),
+            self._record_milestone_rank_label(leader),
+        ]
+        return {
+            "type": "record_milestone",
+            "eyebrow": "기록 달성",
+            "title": f"{leader.get('name')} {milestone_label} 달성",
+            "subtitle": " · ".join(part for part in subtitle_parts if part),
+            "route": route,
+            "gameId": None,
+            "teamIds": [team_id] if team_id else [],
+            "imageUrl": self._record_leader_image_url(leader, season),
+            "fallbackLabel": leader.get("name"),
+        }
+
+    @staticmethod
+    def _record_milestone_label(leader: Dict[str, Any]) -> str:
+        explicit = str(leader.get("milestoneLabel") or "").strip()
+        if explicit:
+            return explicit
+
+        value = str(leader.get("value") or "").strip()
+        metric_key = str(leader.get("metricKey") or "").upper()
+        unit = {
+            "TB": "루타",
+            "TOTAL_BASES": "루타",
+            "H": "안타",
+            "HIT": "안타",
+            "HITS": "안타",
+            "HR": "홈런",
+            "RBI": "타점",
+            "SB": "도루",
+            "SV": "세이브",
+            "W": "승",
+        }.get(metric_key, "")
+        return f"{value}{unit}" if unit else value
+
+    @staticmethod
+    def _record_milestone_rank_label(leader: Dict[str, Any]) -> str:
+        rank = HomeService._as_int(
+            leader.get("allTimeRank") or leader.get("milestoneRank"),
+            fallback=0,
+        )
+        return f"역대 {rank}번째" if rank > 0 else ""
 
     def _build_error_rank_brief_item(
         self,
@@ -895,6 +989,15 @@ class HomeService:
             return int(str(value).replace(",", ""))
         except (TypeError, ValueError):
             return fallback
+
+    @staticmethod
+    def _as_float(value: Any) -> Optional[float]:
+        if value in (None, "", "-"):
+            return None
+        try:
+            return float(str(value).replace(",", ""))
+        except (TypeError, ValueError):
+            return None
 
     @staticmethod
     def _section_result(

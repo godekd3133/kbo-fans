@@ -309,6 +309,113 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('종료 경기 라인업 선발 비교는 박스스코어 투수 기록을 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260612KTLG0',
+              away: TeamLineupData(
+                teamId: 'KT',
+                starterName: '고영표',
+                lineup: [
+                  LineupEntry(
+                    order: 1,
+                    position: 'CF',
+                    positionKo: '중견수',
+                    name: '배정대',
+                  ),
+                ],
+              ),
+              home: TeamLineupData(
+                teamId: 'LG',
+                starterName: '임찬규',
+                lineup: [
+                  LineupEntry(
+                    order: 1,
+                    position: 'RF',
+                    positionKo: '우익수',
+                    name: '홍창기',
+                  ),
+                ],
+              ),
+            );
+          }),
+          gameBoxscoreProvider.overrideWith((ref, gameId) async {
+            return GameBoxscoreData(
+              gameId: gameId,
+              away: const TeamBoxscoreData(
+                teamId: 'KT',
+                batters: [],
+                pitchers: [
+                  PitcherRecord(
+                    name: '고영표',
+                    innings: '6.0',
+                    hits: 6,
+                    strikeouts: 4,
+                    walks: 1,
+                    earnedRuns: 2,
+                    decision: 'W',
+                  ),
+                ],
+              ),
+              home: const TeamBoxscoreData(
+                teamId: 'LG',
+                batters: [],
+                pitchers: [
+                  PitcherRecord(
+                    name: '임찬규',
+                    innings: '4.2',
+                    hits: 7,
+                    strikeouts: 3,
+                    walks: 3,
+                    earnedRuns: 4,
+                    decision: 'L',
+                  ),
+                ],
+              ),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: LineupTab(
+              gameId: '20260612KTLG0',
+              gameStatus: GameStatus.final_,
+              awayName: 'KT',
+              homeName: 'LG',
+              awayTeamId: 'KT',
+              homeTeamId: 'LG',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('W'), findsOneWidget);
+    expect(find.text('6.0'), findsOneWidget);
+    expect(find.text('3.00'), findsOneWidget);
+    expect(find.text('1.17'), findsOneWidget);
+    expect(find.text('L'), findsOneWidget);
+    expect(find.text('4.2'), findsOneWidget);
+    expect(find.text('7.71'), findsOneWidget);
+    expect(find.text('2.14'), findsOneWidget);
+  });
 }
 
 double _contrastRatio(Color foreground, Color background) {

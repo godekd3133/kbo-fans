@@ -54,6 +54,86 @@ class _FreshRecordsCrawler:
         ]
 
 
+class _PitchingFeaturedRecordsCrawler:
+    def get_overview(self, season: int):
+        return {
+            "season": season,
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 1,
+                        "playerId": "avg",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Avg Hitter",
+                        "teamId": "LG",
+                        "value": ".400",
+                    }
+                ],
+                "hr": [],
+                "ops": [
+                    {
+                        "rank": 1,
+                        "playerId": "ops",
+                        "playerType": "hitter",
+                        "metricKey": "OPS",
+                        "name": "Ops Hitter",
+                        "teamId": "KT",
+                        "value": "1.000",
+                    }
+                ],
+                "era": [
+                    {
+                        "rank": 1,
+                        "playerId": "era",
+                        "playerType": "pitcher",
+                        "metricKey": "ERA",
+                        "name": "Era Pitcher",
+                        "teamId": "HT",
+                        "value": "2.36",
+                    }
+                ],
+                "wins": [
+                    {
+                        "rank": 1,
+                        "playerId": "wins",
+                        "playerType": "pitcher",
+                        "metricKey": "W",
+                        "name": "Win Pitcher",
+                        "teamId": "HH",
+                        "value": "9",
+                    }
+                ],
+                "saves": [
+                    {
+                        "rank": 1,
+                        "playerId": "saves",
+                        "playerType": "pitcher",
+                        "metricKey": "SV",
+                        "name": "Save Pitcher",
+                        "teamId": "SS",
+                        "value": "20",
+                    }
+                ],
+                "strikeouts": [
+                    {
+                        "rank": 1,
+                        "playerId": "strikeouts",
+                        "playerType": "pitcher",
+                        "metricKey": "SO",
+                        "name": "Strikeout Pitcher",
+                        "teamId": "OB",
+                        "value": "108",
+                    }
+                ],
+            },
+            "featured": {},
+        }
+
+    def get_leaderboard(self, season: int, metric: str):
+        return []
+
+
 class _UnexpectedRecordsCrawler:
     def get_overview(self, season: int):
         raise AssertionError("unsupported records season should not crawl")
@@ -391,6 +471,22 @@ def test_overview_normalizes_leader_order_before_featured(tmp_path) -> None:
     assert [leader["rank"] for leader in payload["leaders"]["avg"]] == [1, 2, 29]
     assert payload["featured"]["todayHitter"]["name"] == "Top"
     assert [leader["rank"] for leader in payload["leaders"]["ops"]] == [1, 2]
+
+
+def test_overview_keeps_pitching_leaders_and_pitcher_featured(tmp_path) -> None:
+    service = RecordsOverviewService(
+        crawler=_PitchingFeaturedRecordsCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_overview(2026)
+
+    assert payload["leaders"]["wins"][0]["name"] == "Win Pitcher"
+    assert payload["leaders"]["saves"][0]["metricKey"] == "SV"
+    assert payload["leaders"]["strikeouts"][0]["playerType"] == "pitcher"
+    assert payload["featured"]["todayPitcher"]["playerType"] == "pitcher"
+    assert payload["featured"]["monthPitcher"]["name"] == "Strikeout Pitcher"
+    assert payload["featured"]["monthPitcher"]["playerType"] == "pitcher"
 
 
 def test_leaderboard_normalizes_leader_order(tmp_path) -> None:

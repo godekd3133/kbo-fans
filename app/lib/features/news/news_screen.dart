@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/router/app_route_sanitizer.dart';
@@ -23,6 +22,9 @@ enum _NewsFilter {
   final String label;
   const _NewsFilter({required this.label});
 }
+
+const int _kboRegularSeasonGames = 144;
+const int _editorialLeadCount = 3;
 
 class NewsScreen extends ConsumerStatefulWidget {
   const NewsScreen({super.key});
@@ -345,9 +347,7 @@ class _LeadRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPressable(
-      onTap: () => context.push(
-        sanitizeAppRoute(item.route, fallback: '/news') ?? '/news',
-      ),
+      onTap: () => _pushNewsRoute(context, item.route),
       pressedScale: 0.985,
       child: Row(
         children: [
@@ -445,9 +445,7 @@ class _NewsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppPressable(
-      onTap: () => context.push(
-        sanitizeAppRoute(item.route, fallback: '/news') ?? '/news',
-      ),
+      onTap: () => _pushNewsRoute(context, item.route),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Container(
@@ -694,7 +692,11 @@ class _NewsEmptyState extends StatelessWidget {
           onShowAll();
           return;
         }
-        context.go('/schedule');
+        context.pushAppRoute(
+          '/schedule',
+          fallback: '/news',
+          presentation: AppRoutePresentation.swipeBack,
+        );
       },
     );
   }
@@ -759,15 +761,39 @@ class _StateCard extends StatelessWidget {
   }
 }
 
+void _pushNewsRoute(BuildContext context, String route) {
+  context.pushAppRoute(
+    route,
+    fallback: '/news',
+    presentation: AppRoutePresentation.swipeBack,
+  );
+}
+
 List<_NewsCardData> _newsItems(HomeAggregate aggregate) {
   final items = <_NewsCardData>[];
+  final standingsByTeamId = _standingsByTeamId(aggregate.standingsPreview);
 
   void add(_NewsCardData item) {
-    final duplicate = items.any(
-      (current) =>
-          current.route == item.route &&
-          (current.title == item.title || current.label == item.label),
-    );
+    final duplicate = items.any((current) {
+      if (current.route != item.route) {
+        return false;
+      }
+      if (current.title == item.title) {
+        return true;
+      }
+      if (current.label != item.label) {
+        return false;
+      }
+      final currentTeamId = current.teamId;
+      final itemTeamId = item.teamId;
+      if (currentTeamId == null ||
+          currentTeamId.isEmpty ||
+          itemTeamId == null ||
+          itemTeamId.isEmpty) {
+        return true;
+      }
+      return currentTeamId == itemTeamId;
+    });
     if (!duplicate && item.title.trim().isNotEmpty) {
       items.add(item);
     }
@@ -776,6 +802,13 @@ List<_NewsCardData> _newsItems(HomeAggregate aggregate) {
   final briefItems = aggregate.kboBrief?.items ?? const <HomeKboBriefItem>[];
   for (final item in briefItems) {
     add(_NewsCardData.fromBriefItem(item));
+  }
+  final homeRunPaceItem = _homeRunPaceItem(
+    aggregate.quickItems,
+    standingsByTeamId,
+  );
+  if (homeRunPaceItem != null) {
+    add(homeRunPaceItem);
   }
   if (aggregate.myTeamBrief != null) {
     final myTeamBrief = aggregate.myTeamBrief!;
@@ -799,14 +832,325 @@ List<_NewsCardData> _newsItems(HomeAggregate aggregate) {
   if (standingsItem != null) {
     add(standingsItem);
   }
-  for (final standing in aggregate.standingsPreview.take(5)) {
+  for (final standing in aggregate.standingsPreview) {
     add(_NewsCardData.fromStanding(standing));
+  }
+  for (final item in _standingsRaceItems(aggregate.standingsPreview)) {
+    add(item);
+  }
+  for (final item in _streakContrastItems(aggregate.standingsPreview)) {
+    add(item);
+  }
+  for (final item in _winPaceItems(aggregate.standingsPreview)) {
+    add(item);
   }
   for (final item in aggregate.quickItems) {
     add(_NewsCardData.fromQuickItem(item));
   }
 
   return items;
+}
+
+Map<String, TeamStanding> _standingsByTeamId(List<TeamStanding> standings) {
+  final map = <String, TeamStanding>{};
+  for (final standing in standings) {
+    if (standing.teamId.isNotEmpty) {
+      map[standing.teamId] = standing;
+    }
+  }
+  return map;
+}
+
+_NewsCardData? _homeRunPaceItem(
+  List<HomeQuickItem> quickItems,
+  Map<String, TeamStanding> standingsByTeamId,
+) {
+  for (final item in quickItems) {
+    if (!_isHomeRunLeaderItem(item)) {
+      continue;
+    }
+    final teamId = item.teamId;
+    if (teamId == null || teamId.isEmpty) {
+      continue;
+    }
+    final standing = standingsByTeamId[teamId];
+    if (standing == null) {
+      continue;
+    }
+    final homeRuns = _homeRunCountFromTitle(item.title);
+    final gamesPlayed = _gamesPlayed(standing);
+    if (homeRuns == null || gamesPlayed <= 0) {
+      continue;
+    }
+    final projectedHomeRuns = _projectSeasonTotal(homeRuns, gamesPlayed);
+    final playerName = _homeRunLeaderName(item, homeRuns);
+    final teamName = standing.teamName;
+    final projectedHomeRunsText = '$projectedHomeRuns홈런';
+    return _NewsCardData(
+      filter: _NewsFilter.records,
+      label: '홈런 페이스',
+      title: '$playerName, 지금 페이스면 $projectedHomeRunsText',
+      subtitle: '$teamName $gamesPlayed경기 기준 · 현재 $homeRuns홈런',
+      sourceLabel: '기록실',
+      actionLabel: _actionLabelForRoute(item.route),
+      route: item.route,
+      storyKind: 'record',
+      teamId: teamId,
+      imageUrl: item.imageUrl,
+      fallbackLabel: playerName,
+    );
+  }
+  return null;
+}
+
+bool _isHomeRunLeaderItem(HomeQuickItem item) {
+  return item.eyebrow.contains('홈런') || item.title.contains('홈런');
+}
+
+int? _homeRunCountFromTitle(String title) {
+  final match = RegExp(r'(\d+)\s*(?:개|홈런)').firstMatch(title);
+  if (match == null) {
+    return null;
+  }
+  return int.tryParse(match.group(1)!);
+}
+
+String _homeRunLeaderName(HomeQuickItem item, int homeRuns) {
+  final fallback = item.fallbackLabel?.trim();
+  if (fallback != null && fallback.isNotEmpty) {
+    return fallback;
+  }
+  final pattern = RegExp('\\s*$homeRuns\\s*(?:개|홈런).*');
+  final name = item.title.replaceFirst(pattern, '').trim();
+  return name.isEmpty ? item.title : name;
+}
+
+List<_NewsCardData> _winPaceItems(List<TeamStanding> standings) {
+  if (standings.isEmpty) {
+    return const [];
+  }
+  final sorted = [...standings]..sort((a, b) => a.rank.compareTo(b.rank));
+  final items = <_NewsCardData>[];
+  for (final standing in sorted) {
+    final item = _winPaceItem(standing);
+    if (item != null) {
+      items.add(item);
+    }
+  }
+  return items;
+}
+
+_NewsCardData? _winPaceItem(TeamStanding standing) {
+  final gamesPlayed = _gamesPlayed(standing);
+  if (gamesPlayed <= 0 || standing.wins <= 0) {
+    return null;
+  }
+  final projectedWins = _projectSeasonTotal(standing.wins, gamesPlayed);
+  final teamName = standing.teamName;
+  final recordText = '${standing.wins}승 ${standing.losses}패 ${standing.draws}무';
+  return _NewsCardData(
+    filter: _NewsFilter.standings,
+    label: '승수 페이스',
+    title: '$teamName, 지금 페이스면 $projectedWins승',
+    subtitle: '현재 $recordText · 144경기 환산',
+    sourceLabel: '순위표',
+    actionLabel: '순위 보기',
+    route: '/standings',
+    storyKind: 'standings',
+    teamId: standing.teamId,
+    fallbackLabel: standing.teamName,
+  );
+}
+
+int _gamesPlayed(TeamStanding standing) {
+  return standing.wins + standing.losses + standing.draws;
+}
+
+int _projectSeasonTotal(int value, int gamesPlayed) {
+  return (value * _kboRegularSeasonGames / gamesPlayed).round();
+}
+
+List<_NewsCardData> _standingsRaceItems(List<TeamStanding> standings) {
+  if (standings.length < 2) {
+    return const [];
+  }
+  final sorted = [...standings]..sort((a, b) => a.rank.compareTo(b.rank));
+  return [
+    for (var index = 0; index < sorted.length - 1; index++)
+      _standingsRaceItem(upper: sorted[index], lower: sorted[index + 1]),
+  ];
+}
+
+_NewsCardData _standingsRaceItem({
+  required TeamStanding upper,
+  required TeamStanding lower,
+}) {
+  final lowerGap = lower.gb.isEmpty || lower.gb == '-'
+      ? '선두권'
+      : '선두와 ${lower.gb}G차';
+  final title = upper.rank == 1
+      ? '${upper.teamName} 턱밑까지 쫓는 ${lower.teamName}'
+      : '${upper.teamName}-${lower.teamName}, 순위권 압박 계속';
+  return _NewsCardData(
+    filter: _NewsFilter.standings,
+    label: '순위권 구도',
+    title: title,
+    subtitle: '${lower.rank}위 ${lower.teamName} · $lowerGap',
+    sourceLabel: '순위표',
+    actionLabel: '순위 보기',
+    route: '/standings',
+    storyKind: 'standings',
+    teamId: lower.teamId,
+    fallbackLabel: lower.teamName,
+  );
+}
+
+List<_NewsCardData> _streakContrastItems(List<TeamStanding> standings) {
+  if (standings.isEmpty) {
+    return const [];
+  }
+  final sorted = [...standings]..sort((a, b) => a.rank.compareTo(b.rank));
+  final items = <_NewsCardData>[];
+
+  for (final standing in sorted) {
+    final signal = _streakSignal(standing);
+    if (signal == null || signal.count < 2) {
+      continue;
+    }
+    if (standing.rank >= 6 && signal.isWinning) {
+      items.add(
+        _streakContrastItem(
+          standing: standing,
+          signal: signal,
+          title: '${standing.teamName}, ${standing.rank}위인데 ${signal.label}',
+          subtitle: '전적은 중하위권이지만 최근 결과만 보면 흐름이 다릅니다.',
+        ),
+      );
+    } else if (standing.rank <= 3 && signal.isLosing) {
+      items.add(
+        _streakContrastItem(
+          standing: standing,
+          signal: signal,
+          title: '${standing.teamName}, ${standing.rank}위인데 ${signal.label}',
+          subtitle: '상위권을 지키고 있지만 최근 결과는 다시 확인할 타이밍입니다.',
+        ),
+      );
+    }
+  }
+
+  items.sort((a, b) => a.title.compareTo(b.title));
+  return items.take(3).toList();
+}
+
+_NewsCardData _streakContrastItem({
+  required TeamStanding standing,
+  required _StreakSignal signal,
+  required String title,
+  required String subtitle,
+}) {
+  return _NewsCardData(
+    filter: _NewsFilter.standings,
+    label: '특이 흐름',
+    title: title,
+    subtitle:
+        '${standing.wins}승 ${standing.losses}패 ${standing.draws}무 · $subtitle',
+    sourceLabel: '순위표',
+    actionLabel: '순위 보기',
+    route: '/standings',
+    storyKind: 'standings',
+    teamId: standing.teamId,
+    fallbackLabel: standing.teamName,
+  );
+}
+
+_StreakSignal? _streakSignal(TeamStanding standing) {
+  final label = standing.streakLabel;
+  final match = RegExp(r'^(\d+)(연승|연패)$').firstMatch(label);
+  if (match == null) {
+    return null;
+  }
+  final count = int.tryParse(match.group(1)!);
+  if (count == null || count <= 0) {
+    return null;
+  }
+  return _StreakSignal(
+    count: count,
+    label: label,
+    isWinning: match.group(2) == '연승',
+  );
+}
+
+class _StreakSignal {
+  final int count;
+  final String label;
+  final bool isWinning;
+
+  const _StreakSignal({
+    required this.count,
+    required this.label,
+    required this.isWinning,
+  });
+
+  bool get isLosing => !isWinning;
+}
+
+String _standingArticleTitle(TeamStanding standing) {
+  if (standing.rank == 1) {
+    final streak = standing.streakLabel;
+    if (streak.endsWith('연패')) {
+      return '선두가 흔들리는 ${standing.teamName}';
+    }
+    return '선두 지키는 ${standing.teamName}';
+  }
+  if (standing.rank == 2) {
+    return '선두 추격하는 ${standing.teamName}';
+  }
+  if (standing.rank <= 5) {
+    return '상위권 버티는 ${standing.teamName}';
+  }
+  if (standing.rank <= 8) {
+    return '중위권 반등 노리는 ${standing.teamName}';
+  }
+  return '하위권 탈출 급한 ${standing.teamName}';
+}
+
+double? _parseGamesBehind(String value) {
+  final normalized = value.trim();
+  if (normalized.isEmpty || normalized == '-') {
+    return null;
+  }
+  return double.tryParse(normalized);
+}
+
+String _briefNewsTitle(HomeKboBriefItem item) {
+  if (item.type != 'standings') {
+    return item.title;
+  }
+  final teamName = _teamNameFromStandingBriefTitle(item.title);
+  if (teamName == null) {
+    return item.title;
+  }
+  final gap = _gapFromText(item.subtitle);
+  if (gap != null && gap <= 2) {
+    return '선두가 위태로운 $teamName';
+  }
+  return '선두 지키는 $teamName';
+}
+
+String? _teamNameFromStandingBriefTitle(String title) {
+  var normalized = title.trim();
+  normalized = normalized.replaceFirst(RegExp(r'^[0-9]+위\s*'), '');
+  normalized = normalized.replaceFirst(RegExp(r'\s*[0-9]+위.*$'), '');
+  normalized = normalized.replaceAll('선두권 체크', '').replaceAll('유지', '').trim();
+  return normalized.isEmpty ? null : normalized;
+}
+
+double? _gapFromText(String text) {
+  final match = RegExp(r'([0-9]+(?:\.[0-9]+)?)G차').firstMatch(text);
+  if (match == null) {
+    return null;
+  }
+  return double.tryParse(match.group(1)!);
 }
 
 List<_NewsCardData> _editorialLeadItems(List<_NewsCardData> items) {
@@ -818,7 +1162,7 @@ List<_NewsCardData> _editorialLeadItems(List<_NewsCardData> items) {
       }
       return a.title.compareTo(b.title);
     });
-  return ordered.take(3).toList();
+  return ordered.take(_editorialLeadCount).toList();
 }
 
 int _leadPriority(_NewsCardData item) {
@@ -921,7 +1265,7 @@ class _NewsCardData {
     return _NewsCardData(
       filter: filter,
       label: item.eyebrow,
-      title: item.title,
+      title: _briefNewsTitle(item),
       subtitle: item.subtitle,
       sourceLabel: _sourceLabelForFilter(filter),
       actionLabel: _actionLabelForRoute(item.route),
@@ -964,11 +1308,14 @@ class _NewsCardData {
     final gap = second == null || second.gb.isEmpty || second.gb == '-'
         ? '상위권 흐름과 마이팀 위치를 같이 확인하세요.'
         : '${second.teamName}와 ${second.gb}G차 · 상위 ${sorted.length}팀 압축';
+    final secondGap = second == null ? null : _parseGamesBehind(second.gb);
 
     return _NewsCardData(
       filter: _NewsFilter.standings,
       label: '순위 압축',
-      title: '${leader.rank}위 ${leader.teamName} 선두권 체크',
+      title: secondGap != null && secondGap <= 2
+          ? '선두가 위태로운 ${leader.teamName}'
+          : '선두 굳히는 ${leader.teamName}',
       subtitle: gap,
       sourceLabel: '순위표',
       actionLabel: '순위 보기',
@@ -982,14 +1329,14 @@ class _NewsCardData {
   factory _NewsCardData.fromStanding(TeamStanding standing) {
     final gb = standing.gb.isEmpty || standing.gb == '-'
         ? '선두권'
-        : '${standing.gb}G차';
+        : '선두와 ${standing.gb}G차';
     final streak = standing.streakLabel == '-'
         ? '최근 흐름 확인'
         : standing.streakLabel;
     return _NewsCardData(
       filter: _NewsFilter.standings,
       label: '${standing.rank}위',
-      title: '${standing.teamName} ${standing.rank}위',
+      title: _standingArticleTitle(standing),
       subtitle:
           '${standing.wins}승 ${standing.losses}패 ${standing.draws}무 · $gb · $streak',
       sourceLabel: '순위표',
@@ -1020,7 +1367,8 @@ String _storyKindForBriefType(String type, String route) {
     'record_radar' ||
     'batting_leader' ||
     'defense_issue' ||
-    'defense_rank' => 'record',
+    'defense_rank' ||
+    'record_milestone' => 'record',
     'standings' || 'team_trend' => 'standings',
     'big_match' || 'schedule_remaining' || 'offday' => 'schedule',
     'live' || 'league_now' || 'game_flow' => 'live',
@@ -1064,6 +1412,7 @@ _NewsFilter _filterForBriefType(String type) {
     'batting_leader' ||
     'defense_issue' ||
     'defense_rank' ||
+    'record_milestone' ||
     'player_performance' ||
     'pitcher_check' => _NewsFilter.records,
     'offday' => _NewsFilter.records,

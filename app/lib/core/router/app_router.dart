@@ -26,6 +26,11 @@ export 'onboarding_state.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
+const _fadeTransitionDuration = Duration(milliseconds: 360);
+const _fadeReverseTransitionDuration = Duration(milliseconds: 280);
+const _tabTransitionDuration = Duration(milliseconds: 760);
+const _tabReverseTransitionDuration = Duration(milliseconds: 560);
+const _swipeBackTransitionDuration = Duration(milliseconds: 1000);
 int? _lastTabIndex;
 
 BuildContext? get appRootNavigatorContext => _rootNavigatorKey.currentContext;
@@ -103,7 +108,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/home',
-            pageBuilder: (context, state) => _tabTransitionPage(
+            pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: 0,
               child: const HomeScreen(),
@@ -111,7 +116,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/schedule',
-            pageBuilder: (context, state) => _tabTransitionPage(
+            pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: 1,
               child: const ScheduleScreen(),
@@ -119,7 +124,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/news',
-            pageBuilder: (context, state) => _tabTransitionPage(
+            pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: 3,
               child: const NewsScreen(),
@@ -127,7 +132,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/standings',
-            pageBuilder: (context, state) => _tabTransitionPage(
+            pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: 3,
               child: const StandingsScreen(),
@@ -135,7 +140,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/records',
-            pageBuilder: (context, state) => _tabTransitionPage(
+            pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: 2,
               child: const RecordsScreen(),
@@ -143,7 +148,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/records/team/:teamId',
-            pageBuilder: (context, state) => _tabTransitionPage(
+            pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: 2,
               child: RecordsScreen(teamId: state.pathParameters['teamId']!),
@@ -151,7 +156,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/settings',
-            pageBuilder: (context, state) => _tabTransitionPage(
+            pageBuilder: (context, state) => _shellTransitionPage(
               state,
               tabIndex: 4,
               child: const SettingsScreen(),
@@ -196,7 +201,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           state,
           child: GameDetailScreen(
             gameId: state.pathParameters['gameId']!,
-            game: state.extra as Game?,
+            game: state.extra is Game ? state.extra as Game : null,
             initialTab: state.uri.queryParameters['tab'],
             focusRelay: state.uri.queryParameters['focus'] == 'relay',
           ),
@@ -255,8 +260,8 @@ CustomTransitionPage<void> _fadeTransitionPage(
     state,
     child: child,
     beginOffset: Offset.zero,
-    transitionDuration: const Duration(milliseconds: 180),
-    reverseTransitionDuration: const Duration(milliseconds: 140),
+    transitionDuration: _fadeTransitionDuration,
+    reverseTransitionDuration: _fadeReverseTransitionDuration,
   );
 }
 
@@ -278,9 +283,20 @@ CustomTransitionPage<void> _tabTransitionPage(
     outgoingOffset: outgoingOffset,
     outgoingOpacity: 0.97,
     outgoingScale: 0.998,
-    transitionDuration: const Duration(milliseconds: 380),
-    reverseTransitionDuration: const Duration(milliseconds: 280),
+    transitionDuration: _tabTransitionDuration,
+    reverseTransitionDuration: _tabReverseTransitionDuration,
   );
+}
+
+Page<void> _shellTransitionPage(
+  GoRouterState state, {
+  required int tabIndex,
+  required Widget child,
+}) {
+  if (shouldUseSwipeBackPage(state)) {
+    return _swipeBackPage(state, child: child);
+  }
+  return _tabTransitionPage(state, tabIndex: tabIndex, child: child);
 }
 
 int _consumeTabSlideDirection(int nextIndex) {
@@ -296,11 +312,52 @@ CupertinoPage<void> _swipeBackPage(
   GoRouterState state, {
   required Widget child,
 }) {
-  return CupertinoPage<void>(
+  return _SlowSwipeBackPage<void>(
     key: state.pageKey,
     name: state.uri.toString(),
     child: child,
   );
+}
+
+class _SlowSwipeBackPage<T> extends CupertinoPage<T> {
+  const _SlowSwipeBackPage({required super.child, super.key, super.name});
+
+  @override
+  Route<T> createRoute(BuildContext context) {
+    return _SlowSwipeBackRoute<T>(page: this);
+  }
+}
+
+class _SlowSwipeBackRoute<T> extends PageRoute<T>
+    with CupertinoRouteTransitionMixin<T> {
+  _SlowSwipeBackRoute({required _SlowSwipeBackPage<T> page})
+    : super(settings: page, allowSnapshotting: page.allowSnapshotting) {
+    assert(opaque);
+  }
+
+  _SlowSwipeBackPage<T> get _page => settings as _SlowSwipeBackPage<T>;
+
+  @override
+  DelegatedTransitionBuilder? get delegatedTransition =>
+      fullscreenDialog ? null : CupertinoPageTransition.delegatedTransition;
+
+  @override
+  Duration get transitionDuration => _swipeBackTransitionDuration;
+
+  @override
+  Widget buildContent(BuildContext context) => _page.child;
+
+  @override
+  String? get title => _page.title;
+
+  @override
+  bool get maintainState => _page.maintainState;
+
+  @override
+  bool get fullscreenDialog => _page.fullscreenDialog;
+
+  @override
+  String get debugLabel => '${super.debugLabel}(${_page.name})';
 }
 
 CustomTransitionPage<void> _animatedPage(

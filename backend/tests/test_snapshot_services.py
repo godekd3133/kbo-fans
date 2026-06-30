@@ -335,14 +335,23 @@ def test_records_overview_falls_back_to_snapshot(tmp_path) -> None:
     season = datetime.now(timezone.utc).year - 1
     expected = {
         "season": season,
-        "leaders": {"avg": [], "hr": [], "ops": [], "era": [], "opsPlus": []},
+            "leaders": {
+                "avg": [],
+                "hr": [],
+                "ops": [],
+                "era": [],
+                "opsPlus": [],
+                "wins": [],
+                "saves": [],
+                "strikeouts": [],
+            },
         "featured": {
             "todayHitter": {"label": "시즌 타율 리더"},
             "todayPitcher": {"label": "시즌 ERA 리더"},
             "monthHitter": {"label": "시즌 홈런왕"},
-            "monthPitcher": {"label": "시즌 OPS 리더"},
-        },
-    }
+                "monthPitcher": {"label": "시즌 ERA 리더"},
+            },
+        }
     store.save("records_overview", str(season), expected)
 
     service = RecordsOverviewService(

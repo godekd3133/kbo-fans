@@ -200,6 +200,12 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                             ),
                             const SizedBox(height: 6),
                             _metricHub(overview),
+                            if (_pitcherMetricSnapshots(
+                              overview,
+                            ).isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              _pitcherLeaderPanel(overview),
+                            ],
                             const SizedBox(height: 18),
                             _recordsSectionHeader(
                               title: '팀 기록실',
@@ -1334,16 +1340,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _recordsBriefingPanel(RecordsOverview overview) {
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final snapshots = _metricSnapshots(overview);
     final headline = _headlineLeader(overview);
     final todayFeatured = _todayFeaturedCards(overview);
-    final uniqueTopFive = {
-      for (final snapshot in snapshots)
-        for (final leader in snapshot.leaders.take(5)) leader.playerId,
-    }.length;
-    final activeMetricCount = snapshots
-        .where((snapshot) => snapshot.leaders.isNotEmpty)
-        .length;
+    final briefStats = _briefStats(overview);
     final briefLines = _recordBriefLines(overview);
 
     return Container(
@@ -1430,16 +1429,23 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               _todayFeaturedPlayerStrip(todayFeatured),
             ],
           ],
-          const SizedBox(height: 7),
-          Row(
-            children: [
-              Expanded(child: _briefStat('활성 지표', '$activeMetricCount/5')),
-              const SizedBox(width: 8),
-              Expanded(child: _briefStat('TOP5 선수', '$uniqueTopFive명')),
-              const SizedBox(width: 8),
-              Expanded(child: _briefStat('소스', '공식+계산')),
-            ],
-          ),
+          if (briefStats.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Row(
+              children: [
+                for (var index = 0; index < briefStats.length; index++) ...[
+                  if (index > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: _briefStat(
+                      briefStats[index].label,
+                      briefStats[index].value,
+                      detail: briefStats[index].detail,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
           if (briefLines.isNotEmpty) ...[
             const SizedBox(height: 5),
             for (final line in briefLines)
@@ -1518,6 +1524,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final summary = (card.headline ?? card.summary ?? '').trim();
 
     return Container(
+      key: card.playerType == 'pitcher'
+          ? const ValueKey('records-pitcher-spotlight')
+          : card.playerType == 'hitter'
+          ? const ValueKey('records-hitter-spotlight')
+          : null,
       constraints: const BoxConstraints(minHeight: 72),
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
@@ -1694,10 +1705,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     );
   }
 
-  Widget _briefStat(String label, String value) {
+  Widget _briefStat(String label, String value, {String? detail}) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     return Container(
-      constraints: const BoxConstraints(minHeight: 48),
+      constraints: const BoxConstraints(minHeight: 58),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: isLight
@@ -1732,6 +1743,20 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
             ),
           ),
+          if (detail != null && detail.trim().isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              detail.trim(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                height: 1.1,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1865,6 +1890,192 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pitcherLeaderPanel(RecordsOverview overview) {
+    final snapshots = _pitcherMetricSnapshots(overview);
+    if (snapshots.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final featured = snapshots.first.topLeader;
+
+    return Container(
+      key: const ValueKey('records-pitching-leader-panel'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isLight
+            ? AppColors.card
+            : AppColors.card.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: AppColors.live.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.sports_baseball_rounded,
+                  size: 17,
+                  color: AppColors.live,
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '마운드 체크',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'ERA, 다승, 세이브, 탈삼진 흐름을 함께 봅니다.',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (featured != null) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _leaderPhoto(featured, width: 44, height: 52),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        featured.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _pitchingLeaderSummary(
+                          snapshots.first.metric,
+                          featured,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cellWidth = constraints.maxWidth < 330
+                  ? constraints.maxWidth
+                  : (constraints.maxWidth - 8) / 2;
+              return Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final snapshot in snapshots)
+                    SizedBox(
+                      width: cellWidth,
+                      child: _pitcherMetricCell(snapshot),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pitcherMetricCell(_MetricSnapshot snapshot) {
+    final leader = snapshot.topLeader;
+    return AppPressable(
+      onTap: () => context.push(
+        '/records/leaderboard/${snapshot.metric.key}?season=$_selectedSeason',
+      ),
+      pressedScale: 0.98,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 78),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppColors.background.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: snapshot.color.withValues(alpha: 0.28)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Text(
+                  snapshot.metric.shortLabel,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: snapshot.color,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: AppColors.textDisabled,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              leader?.name ?? '준비 중',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              leader == null
+                  ? '공식 소스 확인 중'
+                  : _pitchingLeaderSummary(snapshot.metric, leader),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -2350,6 +2561,87 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return lines.take(3).toList();
   }
 
+  List<_BriefStatData> _briefStats(RecordsOverview overview) {
+    final snapshots = _metricSnapshots(overview);
+    final byMetric = {
+      for (final snapshot in snapshots) snapshot.metric: snapshot,
+    };
+    const preferredMetrics = [
+      LeaderboardMetric.avg,
+      LeaderboardMetric.hr,
+      LeaderboardMetric.era,
+      LeaderboardMetric.ops,
+      LeaderboardMetric.opsPlus,
+    ];
+
+    final stats = <_BriefStatData>[];
+    for (final metric in preferredMetrics) {
+      final snapshot = byMetric[metric];
+      final leader = snapshot?.topLeader;
+      if (snapshot == null || leader == null) {
+        continue;
+      }
+      stats.add(
+        _BriefStatData(
+          label: _briefMetricLabel(metric),
+          value: _briefMetricValue(metric, leader),
+          detail: _leaderGapText(metric, snapshot.leaders),
+        ),
+      );
+      if (stats.length == 3) {
+        break;
+      }
+    }
+    return stats;
+  }
+
+  String _briefMetricLabel(LeaderboardMetric metric) {
+    return switch (metric) {
+      LeaderboardMetric.avg => '타율 1위',
+      LeaderboardMetric.hr => '홈런 1위',
+      LeaderboardMetric.era => 'ERA 1위',
+      LeaderboardMetric.wins => '다승 1위',
+      LeaderboardMetric.saves => '세이브 1위',
+      LeaderboardMetric.strikeouts => '탈삼진 1위',
+      LeaderboardMetric.ops => 'OPS 1위',
+      LeaderboardMetric.opsPlus => 'wRC+ 1위',
+      LeaderboardMetric.war => 'WAR 1위',
+    };
+  }
+
+  String _briefMetricValue(LeaderboardMetric metric, RecordLeader leader) {
+    if (metric == LeaderboardMetric.hr) {
+      return '${leader.name} ${leader.value}개';
+    }
+    if (metric == LeaderboardMetric.wins) {
+      return '${leader.name} ${leader.value}승';
+    }
+    if (metric == LeaderboardMetric.saves) {
+      return '${leader.name} ${leader.value}SV';
+    }
+    if (metric == LeaderboardMetric.strikeouts) {
+      return '${leader.name} ${leader.value}K';
+    }
+    return '${leader.name} ${leader.value}';
+  }
+
+  String _pitchingLeaderSummary(LeaderboardMetric metric, RecordLeader leader) {
+    return '${_briefMetricLabel(metric)} · ${_pitchingMetricValue(metric, leader)}';
+  }
+
+  String _pitchingMetricValue(LeaderboardMetric metric, RecordLeader leader) {
+    if (metric == LeaderboardMetric.wins) {
+      return '${leader.value}승';
+    }
+    if (metric == LeaderboardMetric.saves) {
+      return '${leader.value}SV';
+    }
+    if (metric == LeaderboardMetric.strikeouts) {
+      return '${leader.value}K';
+    }
+    return leader.value;
+  }
+
   List<_MetricSnapshot> _metricSnapshots(RecordsOverview overview) {
     final colors = AppTheme.colorsOf(context);
     return [
@@ -2391,6 +2683,40 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     ];
   }
 
+  List<_MetricSnapshot> _pitcherMetricSnapshots(RecordsOverview overview) {
+    final colors = AppTheme.colorsOf(context);
+    return [
+      _MetricSnapshot(
+        metric: LeaderboardMetric.era,
+        title: 'ERA',
+        description: '낮을수록 강한 선발 경쟁',
+        leaders: overview.eraLeaders,
+        color: colors.readableAccent(AppColors.live),
+      ),
+      _MetricSnapshot(
+        metric: LeaderboardMetric.wins,
+        title: '다승',
+        description: '선발 승수 흐름',
+        leaders: overview.winLeaders,
+        color: colors.readableAccent(AppColors.positive),
+      ),
+      _MetricSnapshot(
+        metric: LeaderboardMetric.saves,
+        title: '세이브',
+        description: '마무리 경쟁',
+        leaders: overview.saveLeaders,
+        color: colors.readableAccent(AppColors.ballYellow),
+      ),
+      _MetricSnapshot(
+        metric: LeaderboardMetric.strikeouts,
+        title: '탈삼진',
+        description: '구위 지표',
+        leaders: overview.strikeoutLeaders,
+        color: colors.readableAccent(AppColors.accent),
+      ),
+    ].where((snapshot) => snapshot.leaders.isNotEmpty).toList();
+  }
+
   String _leaderGapText(LeaderboardMetric metric, List<RecordLeader> leaders) {
     if (leaders.isEmpty) {
       return '데이터 준비 중';
@@ -2414,7 +2740,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     if (diff <= 0) {
       return '공동 선두권';
     }
-    if (metric == LeaderboardMetric.hr || metric == LeaderboardMetric.opsPlus) {
+    if (metric == LeaderboardMetric.hr ||
+        metric == LeaderboardMetric.opsPlus ||
+        metric == LeaderboardMetric.wins ||
+        metric == LeaderboardMetric.saves ||
+        metric == LeaderboardMetric.strikeouts) {
       return '2위와 +${diff.round()}';
     }
     return '2위와 +${diff.toStringAsFixed(3)}';
@@ -2510,4 +2840,16 @@ class _MetricSnapshot {
   });
 
   RecordLeader? get topLeader => leaders.isEmpty ? null : leaders.first;
+}
+
+class _BriefStatData {
+  final String label;
+  final String value;
+  final String detail;
+
+  const _BriefStatData({
+    required this.label,
+    required this.value,
+    required this.detail,
+  });
 }

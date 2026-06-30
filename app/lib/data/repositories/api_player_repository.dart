@@ -155,7 +155,7 @@ class ApiPlayerRepository implements PlayerRepository {
       data = await _client.getCached(
         '/records/overview',
         queryParameters: {'season': season},
-        cacheKey: 'recordsOverview:v4:$season',
+        cacheKey: 'recordsOverview:v5:$season',
         preferCache: isHistoricalSeason,
         maxAge: _stableCacheAge,
         isValid: _isValidRecordsOverviewPayload,
@@ -180,6 +180,16 @@ class ApiPlayerRepository implements PlayerRepository {
         leaders['opsPlus'] as List<dynamic>? ?? const [],
       ),
       eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
+      winLeaders: _parseLeaders(leaders['wins'] as List<dynamic>? ?? const []),
+      saveLeaders: _parseLeaders(
+        leaders['saves'] as List<dynamic>? ?? const [],
+      ),
+      strikeoutLeaders: _parseLeaders(
+        leaders['strikeouts'] as List<dynamic>? ?? const [],
+      ),
+      milestoneLeaders: _parseLeaders(
+        leaders['milestones'] as List<dynamic>? ?? const [],
+      ),
       todayHitter: _parseFeatured(
         featured['todayHitter'] as Map<String, dynamic>? ??
             const {'label': '오늘의 타자'},
@@ -252,9 +262,12 @@ class ApiPlayerRepository implements PlayerRepository {
               'rank': leader.rank,
               'playerId': leader.playerId,
               'playerType': leader.playerType,
+              'metricKey': leader.metricKey,
               'name': leader.name,
               'teamId': leader.teamId,
               'value': leader.value,
+              'milestoneLabel': leader.milestoneLabel,
+              'allTimeRank': leader.allTimeRank,
               'isRetired': leader.isRetired,
             },
           )
@@ -275,6 +288,9 @@ class ApiPlayerRepository implements PlayerRepository {
       opsLeaders: const [],
       opsPlusLeaders: const [],
       eraLeaders: const [],
+      winLeaders: const [],
+      saveLeaders: const [],
+      strikeoutLeaders: const [],
       todayHitter: const FeaturedPlayerCard(label: '오늘의 타자'),
       todayPitcher: const FeaturedPlayerCard(label: '오늘의 투수'),
       monthHitter: const FeaturedPlayerCard(label: '이달의 타자'),
@@ -414,9 +430,12 @@ class ApiPlayerRepository implements PlayerRepository {
         rank: map['rank'] as int? ?? 0,
         playerId: map['playerId'] as String? ?? '',
         playerType: map['playerType'] as String? ?? '',
+        metricKey: map['metricKey'] as String? ?? '',
         name: map['name'] as String? ?? '',
         teamId: map['teamId'] as String? ?? '',
         value: map['value'] as String? ?? '',
+        milestoneLabel: map['milestoneLabel'] as String?,
+        allTimeRank: (map['allTimeRank'] as num?)?.toInt(),
         isRetired: map['isRetired'] as bool? ?? false,
       );
     }).toList();

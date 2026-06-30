@@ -62,6 +62,10 @@ class _LineupTabState extends ConsumerState<LineupTab> {
     }
 
     final gameLineupAsync = ref.watch(gameLineupProvider(gameId));
+    final gameBoxscoreAsync =
+        gameStatus == GameStatus.scheduled || gameStatus == GameStatus.cancelled
+        ? null
+        : ref.watch(gameBoxscoreProvider(gameId));
     final season = _seasonFromGameId(gameId);
     final awayPlayersAsync = awayTeamId.isEmpty
         ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
@@ -125,16 +129,41 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                         season: season,
                         relayData: null,
                       );
+                      final boxscore = gameBoxscoreAsync?.asData?.value;
+                      final awayPitchers =
+                          boxscore?.away.pitchers
+                              .where(_isOfficialPitcherRecord)
+                              .toList() ??
+                          const <PitcherRecord>[];
+                      final homePitchers =
+                          boxscore?.home.pitchers
+                              .where(_isOfficialPitcherRecord)
+                              .toList() ??
+                          const <PitcherRecord>[];
+                      final awayStarter = _starterPitcher(
+                        awayPitchers,
+                        gameLineup.away.starterName,
+                      );
+                      final homeStarter = _starterPitcher(
+                        homePitchers,
+                        gameLineup.home.starterName,
+                      );
                       final awayStarterImageUrl = _resolveStarterImageUrl(
                         awayImageMap,
-                        name: gameLineup.away.starterName ?? '',
+                        name:
+                            gameLineup.away.starterName ??
+                            awayStarter?.name ??
+                            '',
                         starterId: gameLineup.away.starterId,
                         starterImageUrl: gameLineup.away.starterImageUrl,
                         season: season,
                       );
                       final homeStarterImageUrl = _resolveStarterImageUrl(
                         homeImageMap,
-                        name: gameLineup.home.starterName ?? '',
+                        name:
+                            gameLineup.home.starterName ??
+                            homeStarter?.name ??
+                            '',
                         starterId: gameLineup.home.starterId,
                         starterImageUrl: gameLineup.home.starterImageUrl,
                         season: season,
@@ -148,8 +177,8 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                         scheduleDays: const [],
                         awayTeamStats: null,
                         homeTeamStats: null,
-                        awayStarter: null,
-                        homeStarter: null,
+                        awayStarter: awayStarter,
+                        homeStarter: homeStarter,
                         awayStarterName: gameLineup.away.starterName,
                         homeStarterName: gameLineup.home.starterName,
                         awayStarterImageUrl: awayStarterImageUrl,
@@ -210,7 +239,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                                     gameLineup.away.starterImageUrl,
                                 lineup: gameLineup.away.lineup,
                                 batterFallback: const <BatterRecord>[],
-                                pitchers: const <PitcherRecord>[],
+                                pitchers: awayPitchers,
                                 relayData: null,
                                 imageMap: awayImageMap,
                                 showBullpen: false,
@@ -228,7 +257,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                                     gameLineup.home.starterImageUrl,
                                 lineup: gameLineup.home.lineup,
                                 batterFallback: const <BatterRecord>[],
-                                pitchers: const <PitcherRecord>[],
+                                pitchers: homePitchers,
                                 relayData: null,
                                 imageMap: homeImageMap,
                                 showBullpen: false,
@@ -411,12 +440,10 @@ _MatchupCompareData _buildMatchupCompareData({
       starter: _StarterCompareData(
         name: awayStarterName ?? awayStarter?.name ?? '선발 미발표',
         imageUrl: awayStarterImageUrl,
-        winsLosses: awayStarter?.decision ?? '-',
-        innings: awayStarter?.innings ?? '-',
-        era: awayStarter == null
-            ? '-'
-            : awayStarter.earnedRuns.toStringAsFixed(2),
-        whip: awayStarter == null ? '-' : _pitcherWhip(awayStarter),
+        winsLosses: _pitcherDecision(awayStarter),
+        innings: _pitcherInnings(awayStarter),
+        era: _formatPitcherMetric(awayStarter?.gameEra),
+        whip: _formatPitcherMetric(awayStarter?.gameWhip),
       ),
     ),
     home: _TeamCompareData(
@@ -436,35 +463,43 @@ _MatchupCompareData _buildMatchupCompareData({
       starter: _StarterCompareData(
         name: homeStarterName ?? homeStarter?.name ?? '선발 미발표',
         imageUrl: homeStarterImageUrl,
-        winsLosses: homeStarter?.decision ?? '-',
-        innings: homeStarter?.innings ?? '-',
-        era: homeStarter == null
-            ? '-'
-            : homeStarter.earnedRuns.toStringAsFixed(2),
-        whip: homeStarter == null ? '-' : _pitcherWhip(homeStarter),
+        winsLosses: _pitcherDecision(homeStarter),
+        innings: _pitcherInnings(homeStarter),
+        era: _formatPitcherMetric(homeStarter?.gameEra),
+        whip: _formatPitcherMetric(homeStarter?.gameWhip),
       ),
     ),
   );
 }
 
-String _pitcherWhip(PitcherRecord pitcher) {
-  final outs = _inningsTextToOuts(pitcher.innings);
-  if (outs <= 0) {
-    return '0.00';
-  }
-  final innings = outs / 3;
-  final whip = (pitcher.hits + pitcher.walks) / innings;
-  return whip.toStringAsFixed(2);
+bool _isOfficialPitcherRecord(PitcherRecord pitcher) {
+  return !pitcher.liveContext && pitcher.hasDisplayableLine;
 }
 
-int _inningsTextToOuts(String innings) {
-  if (innings.isEmpty) {
-    return 0;
+String _pitcherDecision(PitcherRecord? pitcher) {
+  final decision = pitcher?.decision?.trim();
+  if (decision == null ||
+      decision.isEmpty ||
+      decision == '-' ||
+      decision.toUpperCase() == 'LIVE') {
+    return '-';
   }
-  final parts = innings.split('.');
-  final whole = int.tryParse(parts.first) ?? 0;
-  final fraction = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
-  return whole * 3 + fraction;
+  return decision;
+}
+
+String _pitcherInnings(PitcherRecord? pitcher) {
+  final innings = pitcher?.innings.trim() ?? '';
+  if (innings.isEmpty || innings == '0.0') {
+    return '-';
+  }
+  return innings;
+}
+
+String _formatPitcherMetric(double? value) {
+  if (value == null) {
+    return '-';
+  }
+  return value.toStringAsFixed(2);
 }
 
 class _MatchupCompareSection extends StatelessWidget {
@@ -1655,7 +1690,10 @@ PitcherRecord? _starterPitcher(
   if (starterName == null || starterName.isEmpty) {
     return pitchers.first;
   }
-  return pitchers.where((pitcher) => pitcher.name == starterName).firstOrNull ??
+  final normalizedStarter = _normalizeName(starterName);
+  return pitchers
+          .where((pitcher) => _normalizeName(pitcher.name) == normalizedStarter)
+          .firstOrNull ??
       pitchers.first;
 }
 

@@ -104,7 +104,7 @@ void main() {
     expect(find.text('삼진 0'), findsNothing);
   });
 
-  testWidgets('매칭된 박스스코어 선수는 CTA를 보여주고 사진은 렌더하지 않는다', (tester) async {
+  testWidgets('매칭된 박스스코어 선수는 CTA와 선수 사진을 렌더한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -128,10 +128,10 @@ void main() {
     expect(find.text('SLG 1.500'), findsOneWidget);
     expect(find.text('투구 61'), findsOneWidget);
     expect(find.text('WHIP 1.20'), findsOneWidget);
-    expect(find.byType(CachedNetworkImage), findsNothing);
+    expect(find.byType(CachedNetworkImage), findsWidgets);
   });
 
-  testWidgets('박스스코어는 프로필 id가 있어도 선수 사진을 렌더하지 않는다', (tester) async {
+  testWidgets('박스스코어는 프로필 id 기반 선수 사진도 렌더한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -147,7 +147,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('문보경'), findsWidgets);
-    expect(find.byType(CachedNetworkImage), findsNothing);
+    final images = tester.widgetList<CachedNetworkImage>(
+      find.byType(CachedNetworkImage),
+    );
+    expect(images, isNotEmpty);
+    expect(images.any((image) => image.imageUrl.contains('69102')), isTrue);
   });
 
   testWidgets('LIVE context 박스스코어는 경기 중 탭 콘텐츠로 보여준다', (tester) async {

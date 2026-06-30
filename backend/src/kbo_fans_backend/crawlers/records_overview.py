@@ -15,12 +15,18 @@ class RecordsOverviewCrawler(BaseCrawler):
     _HITTER_HR_URL = "/Record/Player/HitterBasic/Basic1.aspx?sort=HR_CN"
     _HITTER_OPS_URL = "/Record/Player/HitterBasic/Basic2.aspx?sort=OPS_RT"
     _PITCHER_ERA_URL = "/Record/Player/PitcherBasic/Basic1.aspx?sort=ERA_RT"
+    _PITCHER_WINS_URL = "/Record/Player/PitcherBasic/Basic1.aspx?sort=W_CN"
+    _PITCHER_SAVES_URL = "/Record/Player/PitcherBasic/Basic1.aspx?sort=SV_CN"
+    _PITCHER_STRIKEOUTS_URL = "/Record/Player/PitcherBasic/Basic1.aspx?sort=KK_CN"
     _LEADERBOARD_METRICS = {
         "avg": (_HITTER_AVG_URL, "AVG", "hitter"),
         "hr": (_HITTER_HR_URL, "HR", "hitter"),
         "ops": (_HITTER_OPS_URL, "OPS", "hitter"),
         "opsPlus": (_HITTER_OPS_URL, "OPS", "hitter"),
         "era": (_PITCHER_ERA_URL, "ERA", "pitcher"),
+        "wins": (_PITCHER_WINS_URL, "W", "pitcher"),
+        "saves": (_PITCHER_SAVES_URL, "SV", "pitcher"),
+        "strikeouts": (_PITCHER_STRIKEOUTS_URL, "SO", "pitcher"),
     }
     _SEASON_FIELD = "ctl00$ctl00$ctl00$cphContents$cphContents$cphContents$ddlSeason$ddlSeason"
     _PLAYER_LINK_PATTERN = re.compile(
@@ -32,7 +38,7 @@ class RecordsOverviewCrawler(BaseCrawler):
         if not self.is_supported_season(season):
             return self.empty_overview(season)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
             avg_future = executor.submit(
                 self._fetch_leaders, self._HITTER_AVG_URL, season, "AVG", "hitter"
             )
@@ -48,12 +54,28 @@ class RecordsOverviewCrawler(BaseCrawler):
             era_future = executor.submit(
                 self._fetch_leaders, self._PITCHER_ERA_URL, season, "ERA", "pitcher"
             )
+            wins_future = executor.submit(
+                self._fetch_leaders, self._PITCHER_WINS_URL, season, "W", "pitcher"
+            )
+            saves_future = executor.submit(
+                self._fetch_leaders, self._PITCHER_SAVES_URL, season, "SV", "pitcher"
+            )
+            strikeouts_future = executor.submit(
+                self._fetch_leaders,
+                self._PITCHER_STRIKEOUTS_URL,
+                season,
+                "SO",
+                "pitcher",
+            )
 
             avg_leaders = avg_future.result()
             hr_leaders = hr_future.result()
             ops_leaders = ops_future.result()
             ops_plus_leaders = self._build_ops_plus_leaders(ops_plus_future.result())[:5]
             era_leaders = era_future.result()
+            win_leaders = wins_future.result()
+            save_leaders = saves_future.result()
+            strikeout_leaders = strikeouts_future.result()
 
         leaders = {
             "avg": avg_leaders,
@@ -61,6 +83,9 @@ class RecordsOverviewCrawler(BaseCrawler):
             "ops": ops_leaders,
             "opsPlus": ops_plus_leaders,
             "era": era_leaders,
+            "wins": win_leaders,
+            "saves": save_leaders,
+            "strikeouts": strikeout_leaders,
         }
 
         return {
@@ -242,8 +267,15 @@ class RecordsOverviewCrawler(BaseCrawler):
                 season=season,
             ),
             "monthPitcher": self._featured_from_leader(
-                label="시즌 OPS 리더",
-                leader=self._first_leader(leaders, "ops"),
+                label=(
+                    "시즌 탈삼진 리더"
+                    if self._first_leader(leaders, "strikeouts")
+                    else "시즌 ERA 리더"
+                ),
+                leader=(
+                    self._first_leader(leaders, "strikeouts")
+                    or self._first_leader(leaders, "era")
+                ),
                 season=season,
             ),
         }
@@ -283,7 +315,16 @@ class RecordsOverviewCrawler(BaseCrawler):
     def empty_overview(season: int) -> Dict[str, Any]:
         return {
             "season": season,
-            "leaders": {"avg": [], "hr": [], "ops": [], "opsPlus": [], "era": []},
+            "leaders": {
+                "avg": [],
+                "hr": [],
+                "ops": [],
+                "opsPlus": [],
+                "era": [],
+                "wins": [],
+                "saves": [],
+                "strikeouts": [],
+            },
             "featured": {},
         }
 
@@ -317,6 +358,14 @@ class RecordsOverviewCrawler(BaseCrawler):
             return f"OPS+ {value}"
         if metric == "ERA":
             return f"ERA {value}"
+        if metric == "W":
+            return f"다승 {value}"
+        if metric == "SV":
+            return f"세이브 {value}"
+        if metric == "HLD":
+            return f"홀드 {value}"
+        if metric == "SO":
+            return f"탈삼진 {value}"
         return value
 
     @staticmethod

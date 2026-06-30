@@ -85,7 +85,16 @@ class RecordsOverviewService:
         normalized = dict(payload)
         normalized["season"] = normalized.get("season", season)
         leaders = dict(normalized.get("leaders") or {})
-        for metric in ("avg", "hr", "ops", "opsPlus", "era"):
+        for metric in (
+            "avg",
+            "hr",
+            "ops",
+            "opsPlus",
+            "era",
+            "wins",
+            "saves",
+            "strikeouts",
+        ):
             leaders[metric] = self._normalize_leaders(leaders.get(metric), limit=5)
         if not leaders.get("opsPlus"):
             ops_leaders = leaders.get("ops") or []
@@ -166,8 +175,15 @@ class RecordsOverviewService:
                 season=season,
             ),
             "monthPitcher": self._featured_from_leader(
-                label="시즌 OPS 리더",
-                leader=self._first_leader(leaders, "ops"),
+                label=(
+                    "시즌 탈삼진 리더"
+                    if self._first_leader(leaders, "strikeouts")
+                    else "시즌 ERA 리더"
+                ),
+                leader=(
+                    self._first_leader(leaders, "strikeouts")
+                    or self._first_leader(leaders, "era")
+                ),
                 season=season,
             ),
         }

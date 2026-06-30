@@ -61,7 +61,48 @@ void main() {
     expect(stats.hitting, isEmpty);
     expect(stats.pitching, isEmpty);
   });
+
+  test(
+    'direct player detail uses current KBO season when recent page omits season label',
+    () {
+      final repository = KboDirectPlayerRepository();
+
+      final recentGames = repository.parseRecentGamesForTesting(
+        html: _currentPlayerDetailHtmlWithoutSeasonLabel,
+        season: 2026,
+        playerType: PlayerType.hitter,
+        now: DateTime.utc(2026, 5, 20),
+      );
+
+      expect([for (final game in recentGames) game.date], ['06.28', '06.27']);
+      expect(recentGames.first.summary, 'AVG 0.500 · H 2 · HR 1 · RBI 1');
+    },
+  );
 }
+
+const _currentPlayerDetailHtmlWithoutSeasonLabel = '''
+<span id="lblName">김도영</span>
+<span id="lblBackNo">5</span>
+<span id="lblBirthday">2003-10-02</span>
+<span id="lblPosition">내야수(우투우타)</span>
+<span id="lblHeightWeight">183cm/85kg</span>
+<span id="lblCareer">동성고</span>
+<h6>최근 10경기</h6>
+<div class="tbl-type02 mb35">
+  <table class="tbl tt">
+    <tbody>
+      <tr>
+        <td>06.28</td><td>두산</td><td>0.500</td><td>4</td><td>4</td>
+        <td>1</td><td>2</td><td>0</td><td>0</td><td>1</td><td>1</td>
+      </tr>
+      <tr>
+        <td>06.27</td><td>두산</td><td>0.000</td><td>4</td><td>4</td>
+        <td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+''';
 
 PlayerProfile _player({
   required String id,

@@ -354,6 +354,47 @@ def test_kbo_brief_uses_avg_leader_when_available() -> None:
     assert avg_items[0]["imageUrl"].endswith("/2026/64166.jpg")
 
 
+def test_kbo_brief_surfaces_my_team_record_milestone() -> None:
+    service = HomeService.__new__(HomeService)
+
+    brief = service._build_kbo_brief(
+        today="2026-07-01",
+        my_team="HT",
+        games=[],
+        standings=[],
+        overview={
+            "leaders": {
+                "avg": [],
+                "hr": [],
+                "milestones": [
+                    {
+                        "rank": 3,
+                        "playerId": "78224",
+                        "playerType": "hitter",
+                        "metricKey": "TB",
+                        "name": "최형우",
+                        "teamId": "HT",
+                        "value": "2000",
+                        "milestoneLabel": "2000루타",
+                        "allTimeRank": 3,
+                    }
+                ],
+            }
+        },
+    )
+
+    milestone_items = [
+        item for item in brief["items"] if item["type"] == "record_milestone"
+    ]
+
+    assert milestone_items
+    assert milestone_items[0]["eyebrow"] == "기록 달성"
+    assert milestone_items[0]["title"] == "최형우 2000루타 달성"
+    assert milestone_items[0]["subtitle"] == "KIA 타이거즈 · 역대 3번째"
+    assert milestone_items[0]["route"] == "/records/player/78224?season=2026"
+    assert milestone_items[0]["teamIds"] == ["HT"]
+
+
 def test_quick_items_include_hitter_and_pitcher_brief_cards_together() -> None:
     service = HomeService.__new__(HomeService)
 

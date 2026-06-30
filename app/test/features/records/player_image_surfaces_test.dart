@@ -166,6 +166,85 @@ void main() {
     expect(find.text('폰세'), findsOneWidget);
   });
 
+  testWidgets('기록실 첫 화면은 투수 리더를 별도 마운드 체크로 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          recordsOverviewProvider.overrideWith((ref, season) async {
+            return _overviewWithLeaders;
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const RecordsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final panel = find.byKey(const ValueKey('records-pitching-leader-panel'));
+    expect(panel, findsOneWidget);
+    expect(
+      find.descendant(of: panel, matching: find.text('마운드 체크')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('ERA')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('W')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('SV')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('SO')),
+      findsOneWidget,
+    );
+    expect(find.text('폰세'), findsWidgets);
+  });
+
+  testWidgets('오늘 읽을 기록은 내부 메타 대신 실제 리더 요약을 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          recordsOverviewProvider.overrideWith((ref, season) async {
+            return _overviewWithLeaders;
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const RecordsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('활성 지표'), findsNothing);
+    expect(find.text('TOP5 선수'), findsNothing);
+    expect(find.text('소스'), findsNothing);
+    expect(find.text('공식+계산'), findsNothing);
+    expect(find.text('타율 1위'), findsOneWidget);
+    expect(find.text('최원준 0.365'), findsOneWidget);
+    expect(find.text('홈런 1위'), findsOneWidget);
+    expect(find.text('오스틴 24개'), findsOneWidget);
+    expect(find.text('ERA 1위'), findsAtLeastNWidgets(1));
+    expect(find.text('폰세 2.51'), findsOneWidget);
+  });
+
   testWidgets('라이트 모드 기록실은 밝은 카드 표면과 읽히는 텍스트를 유지한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -385,6 +464,39 @@ const _overviewWithLeaders = RecordsOverview(
       value: '2.51',
     ),
   ],
+  winLeaders: [
+    RecordLeader(
+      rank: 1,
+      playerId: '65764',
+      playerType: 'pitcher',
+      metricKey: 'W',
+      name: '폰세',
+      teamId: 'HH',
+      value: '9',
+    ),
+  ],
+  saveLeaders: [
+    RecordLeader(
+      rank: 1,
+      playerId: '65062',
+      playerType: 'pitcher',
+      metricKey: 'SV',
+      name: '김재윤',
+      teamId: 'SS',
+      value: '20',
+    ),
+  ],
+  strikeoutLeaders: [
+    RecordLeader(
+      rank: 1,
+      playerId: '55633',
+      playerType: 'pitcher',
+      metricKey: 'SO',
+      name: '올러',
+      teamId: 'HT',
+      value: '108',
+    ),
+  ],
   todayHitter: FeaturedPlayerCard(
     label: '오늘의 타자',
     playerId: '79192',
@@ -400,7 +512,7 @@ const _overviewWithLeaders = RecordsOverview(
     playerType: 'pitcher',
     name: '폰세',
     teamId: 'HH',
-    headline: 'ERA 1위',
+    headline: '마운드 체크',
     summary: '실점 억제 흐름을 확인합니다.',
   ),
   monthHitter: FeaturedPlayerCard(label: '이달의 타자'),

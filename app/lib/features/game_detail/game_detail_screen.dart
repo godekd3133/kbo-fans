@@ -207,6 +207,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   bool _refreshInFlight = false;
   bool _followStateLoaded = false;
   bool _isFollowingGame = false;
+  String? _highlightWarmupGameId;
   late final TabController _tabController;
   final ScrollController _outerScrollController = ScrollController();
 
@@ -228,6 +229,12 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _warmHighlightInfoForFinalGame();
+  }
+
+  @override
   void didUpdateWidget(covariant _GameDetailBody oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.gameId != widget.gameId ||
@@ -236,6 +243,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       _startRefreshTimer();
       unawaited(_loadFollowState());
     }
+    _warmHighlightInfoForFinalGame();
   }
 
   @override
@@ -289,6 +297,39 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
 
   Future<void> _refreshGameDetail() async {
     return _refreshGameDetailProviders(refreshVisibleTab: true);
+  }
+
+  void _warmHighlightInfoForFinalGame() {
+    if (widget.game.status != GameStatus.final_) {
+      _highlightWarmupGameId = null;
+      return;
+    }
+    if (_highlightWarmupGameId == widget.gameId) {
+      return;
+    }
+    if (widget.game.highlightInfo?.youtubeVideos.isNotEmpty == true) {
+      _highlightWarmupGameId = widget.gameId;
+      return;
+    }
+
+    _highlightWarmupGameId = widget.gameId;
+    final gameId = widget.gameId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _highlightWarmupGameId != gameId) {
+        return;
+      }
+      unawaited(
+        ref.read(highlightInfoProvider(gameId).future).catchError((
+          Object error,
+          StackTrace stackTrace,
+        ) {
+          DevConsole.instance.warn(
+            'GAME DETAIL highlight warmup skipped: $error',
+          );
+          return null;
+        }),
+      );
+    });
   }
 
   Future<void> _refreshGameDetailProviders({
@@ -658,20 +699,10 @@ class _GameScorebug extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    SizedBox(
-                      width: 46,
-                      child: AppMotionValue(
-                        value: '${game.away.score}',
-                        child: Text(
-                          '${game.away.score}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 48,
-                            height: 0.96,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0,
-                          ),
-                        ),
+                    _ScorebugScore(
+                      score: game.away.score,
+                      scoreKey: const ValueKey(
+                        'game-detail-scorebug-away-score',
                       ),
                     ),
                     SizedBox(
@@ -696,20 +727,10 @@ class _GameScorebug extends StatelessWidget {
                         ],
                       ),
                     ),
-                    SizedBox(
-                      width: 46,
-                      child: AppMotionValue(
-                        value: '${game.home.score}',
-                        child: Text(
-                          '${game.home.score}',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 48,
-                            height: 0.96,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0,
-                          ),
-                        ),
+                    _ScorebugScore(
+                      score: game.home.score,
+                      scoreKey: const ValueKey(
+                        'game-detail-scorebug-home-score',
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -827,6 +848,42 @@ class _LiveBadge extends StatelessWidget {
           fontSize: 12,
           color: color,
           fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _ScorebugScore extends StatelessWidget {
+  final int score;
+  final Key scoreKey;
+
+  const _ScorebugScore({required this.score, required this.scoreKey});
+
+  @override
+  Widget build(BuildContext context) {
+    final scoreText = '$score';
+    return SizedBox(
+      width: 56,
+      height: 58,
+      child: AppMotionValue(
+        value: scoreText,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Text(
+            scoreText,
+            key: scoreKey,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 48,
+              height: 0.96,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
         ),
       ),
     );

@@ -121,6 +121,104 @@ void main() {
     ]);
   });
 
+  test('경기 상세 진입 전 boxscore 선수 사진 prefetch 후보를 계산한다', () {
+    final urls = boxscorePlayerImagePrefetchUrlsForTesting(
+      boxscoreData: const GameBoxscoreData(
+        gameId: '20260611SSLG0',
+        away: TeamBoxscoreData(
+          teamId: 'SS',
+          batters: [
+            BatterRecord(
+              order: 1,
+              position: 'CF',
+              name: '김지찬',
+              atBats: 4,
+              runs: 1,
+              hits: 2,
+              rbi: 0,
+            ),
+          ],
+          pitchers: [
+            PitcherRecord(
+              name: '원태인',
+              innings: '6.0',
+              hits: 3,
+              strikeouts: 5,
+              walks: 1,
+              earnedRuns: 1,
+            ),
+          ],
+        ),
+        home: TeamBoxscoreData(
+          teamId: 'LG',
+          batters: [
+            BatterRecord(
+              order: 1,
+              position: 'RF',
+              name: '홍창기',
+              atBats: 4,
+              runs: 0,
+              hits: 1,
+              rbi: 0,
+            ),
+          ],
+          pitchers: [],
+        ),
+      ),
+      awayPlayers: [
+        _playerProfile(name: '김지찬', id: '51454'),
+        _playerProfile(name: '원태인', id: '55268'),
+        _playerProfile(name: '구자욱', id: '62404'),
+      ],
+      homePlayers: [
+        _playerProfile(name: '홍창기', id: '66108'),
+        _playerProfile(name: '문보경', id: '69102'),
+      ],
+      season: 2026,
+    );
+
+    expect(urls, [
+      kboPlayerImageUrl(season: 2026, playerId: '51454'),
+      kboPlayerImageUrl(season: 2026, playerId: '55268'),
+      kboPlayerImageUrl(season: 2026, playerId: '62404'),
+      kboPlayerImageUrl(season: 2026, playerId: '66108'),
+      kboPlayerImageUrl(season: 2026, playerId: '69102'),
+    ]);
+  });
+
+  test('오늘 경기가 시작 전일 때만 어제 종료 경기 후보를 고른다', () {
+    final scheduledGame = _scheduledGame(
+      gameId: '20260701SSLG0',
+      awayTeamId: 'SS',
+      awayShortName: '삼성',
+      homeTeamId: 'LG',
+      homeShortName: 'LG',
+      stadium: '잠실',
+    );
+    final liveGame = _liveGame(
+      gameId: '20260701HTLT0',
+      awayTeamId: 'HT',
+      homeTeamId: 'LT',
+    );
+    final finalGame = _finalGame(
+      gameId: '20260630NCDO0',
+      awayTeamId: 'NC',
+      awayShortName: 'NC',
+      homeTeamId: 'DO',
+      homeShortName: '두산',
+    );
+
+    expect(shouldLoadPreviousScoreboardForTesting([scheduledGame]), isTrue);
+    expect(shouldLoadPreviousScoreboardForTesting([liveGame]), isFalse);
+    expect(
+      previousResultGamesForTesting([
+        finalGame,
+        scheduledGame,
+      ]).map((game) => game.gameId),
+      [finalGame.gameId],
+    );
+  });
+
   testWidgets('light mode syncs home palette and keeps header visible', (
     tester,
   ) async {
@@ -361,6 +459,84 @@ void main() {
     expect(find.text('다시 시도'), findsNothing);
   });
 
+  testWidgets(
+    'shows yesterday final results while today games have not started',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      _ensureAppConfigInitialized();
+      SharedPreferences.setMockInitialValues({});
+      final today = _todayKey();
+      final yesterday = _yesterdayKey();
+      final todayGame = _scheduledGame(
+        gameId: '${today.replaceAll('-', '')}SSLG0',
+        awayTeamId: 'SS',
+        awayShortName: '삼성',
+        homeTeamId: 'LG',
+        homeShortName: 'LG',
+        stadium: '잠실',
+      );
+      final yesterdayGame = _finalGame(
+        gameId: '${yesterday.replaceAll('-', '')}HTLT0',
+        awayTeamId: 'HT',
+        awayShortName: 'KIA',
+        homeTeamId: 'LT',
+        homeShortName: '롯데',
+        awayScore: 5,
+        homeScore: 3,
+      );
+      final requestedDates = <String>[];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            myTeamProvider.overrideWith(() => _FixedMyTeamNotifier(null)),
+            scoreboardProvider.overrideWith((ref, date) async {
+              requestedDates.add(date);
+              if (date == today) {
+                return [todayGame];
+              }
+              if (date == yesterday) {
+                return [yesterdayGame];
+              }
+              return const <Game>[];
+            }),
+            homeAggregateProvider.overrideWith((ref, key) async {
+              return HomeAggregate(
+                date: key.split('|').first,
+                myTeam: null,
+                myTeamBrief: null,
+                kboBrief: null,
+                quickItems: const [],
+              );
+            }),
+          ],
+          child: const MaterialApp(home: HomeScreen()),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(requestedDates, containsAll([today, yesterday]));
+      expect(
+        find.byKey(ValueKey('home-today-game-${todayGame.gameId}')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ValueKey('home-previous-game-${yesterdayGame.gameId}')),
+        findsOneWidget,
+      );
+      expect(find.text('어제 결과'), findsOneWidget);
+      expect(find.text('5 : 3'), findsOneWidget);
+    },
+  );
+
   testWidgets('auto follows a live my team game on home', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -596,6 +772,55 @@ void main() {
   });
 
   testWidgets(
+    'my team brief shows team AVG and ERA while player highlights are still loading',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+      _ensureAppConfigInitialized();
+      final router = _homeInteractionRouter();
+      final pendingRecords = Completer<TeamRecordsBundle>();
+
+      await tester.pumpWidget(
+        _homeInteractionScope(
+          child: MaterialApp.router(routerConfig: router),
+          teamRecordsBundle: TeamRecordsBundle(
+            players: const [],
+            teamStats: _teamStatsForKey(
+              'LG|2026',
+              avg: '.281',
+              avgRank: '8',
+              era: '4.73',
+              eraRank: '9',
+            ),
+          ),
+          teamRecordsForKey: (_) => pendingRecords.future,
+          teamPlayersForKey: (_) =>
+              pendingRecords.future.then((bundle) => bundle.players),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('팀 타율'), findsOneWidget);
+      expect(find.text('0.281'), findsOneWidget);
+      expect(find.text('8위'), findsOneWidget);
+      expect(find.text('팀 ERA'), findsOneWidget);
+      expect(find.text('4.73'), findsOneWidget);
+      expect(find.text('9위'), findsOneWidget);
+      expect(find.text('팀 홈런 1위'), findsOneWidget);
+      expect(find.text('불러오는 중'), findsWidgets);
+    },
+  );
+
+  testWidgets(
     'home shows all today games and standings without view-all CTAs',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
@@ -696,7 +921,7 @@ void main() {
     },
   );
 
-  testWidgets('recent flow row opens team records with press interaction', (
+  testWidgets('recent 5 games row opens team records with press interaction', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -716,13 +941,16 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
+    expect(find.text('최근 5경기'), findsWidgets);
+    expect(find.text('최근 흐름'), findsNothing);
+
     await tester.tap(find.text('4연승'));
     await tester.pumpAndSettle();
 
     expect(find.text('team-record-LG'), findsOneWidget);
   });
 
-  testWidgets('recent flow renders every standings team below standings', (
+  testWidgets('recent 5 games renders every standings team below standings', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -1447,6 +1675,63 @@ void main() {
     );
   });
 
+  testWidgets('홈 경기 상세 진입 refresh 실패 시 기존 경기정보로 이동한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    final liveGame = _liveGame(
+      gameId: '20260611SSLG0',
+      awayTeamId: 'SS',
+      homeTeamId: 'LG',
+    );
+    var detailFetches = 0;
+    var relayFetches = 0;
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        scoreboardGames: [liveGame],
+        child: ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            gameProvider.overrideWith((ref, gameId) async {
+              detailFetches++;
+              throw StateError('stale resume connection');
+            }),
+            relayDataProvider.overrideWith((ref, gameId) async {
+              relayFetches++;
+              throw StateError('stale resume relay');
+            }),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(ValueKey('home-today-game-${liveGame.gameId}'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(detailFetches, 1);
+    expect(relayFetches, 1);
+    expect(
+      find.text('game-detail-${liveGame.gameId}-tab-relay'),
+      findsOneWidget,
+    );
+    expect(find.text('경기 정보를 새로고침하지 못했습니다'), findsNothing);
+  });
+
   testWidgets('홈 기본 상세 진입은 라인업 사진 source 준비 후 이동한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -1578,6 +1863,11 @@ String _todayKey() {
   return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 }
 
+String _yesterdayKey() {
+  final now = DateTime.now().subtract(const Duration(days: 1));
+  return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+}
+
 var _appConfigInitialized = false;
 
 void _ensureAppConfigInitialized() {
@@ -1640,6 +1930,8 @@ Widget _homeInteractionScope({
   List<Game>? scoreboardGames,
   List<TeamStanding>? standingsPreview,
   TeamRecordsBundle teamRecordsBundle = _defaultTeamRecordsBundle,
+  Future<TeamRecordsBundle> Function(String key)? teamRecordsForKey,
+  Future<List<PlayerProfile>> Function(String key)? teamPlayersForKey,
 }) {
   final standings = standingsPreview ?? _defaultHomeStandings();
   return ProviderScope(
@@ -1696,7 +1988,15 @@ Widget _homeInteractionScope({
       teamStatsProvider.overrideWith((ref, key) async {
         return teamRecordsBundle.teamStats;
       }),
-      teamRecordsProvider.overrideWith((ref, key) async => teamRecordsBundle),
+      teamRecordsProvider.overrideWith(
+        (ref, key) =>
+            teamRecordsForKey?.call(key) ?? Future.value(teamRecordsBundle),
+      ),
+      teamPlayersProvider.overrideWith(
+        (ref, key) =>
+            teamPlayersForKey?.call(key) ??
+            Future.value(teamRecordsBundle.players),
+      ),
     ],
     child: child,
   );
@@ -1982,6 +2282,38 @@ Game _scheduledGame({
       innings: const [],
     ),
     stadium: stadium,
+    startTime: '18:30',
+  );
+}
+
+Game _finalGame({
+  required String gameId,
+  required String awayTeamId,
+  required String awayShortName,
+  required String homeTeamId,
+  required String homeShortName,
+  int awayScore = 4,
+  int homeScore = 2,
+}) {
+  return Game(
+    gameId: gameId,
+    status: GameStatus.final_,
+    inning: '경기종료',
+    away: TeamScore(
+      teamId: awayTeamId,
+      teamName: awayShortName,
+      shortName: awayShortName,
+      score: awayScore,
+      innings: const [],
+    ),
+    home: TeamScore(
+      teamId: homeTeamId,
+      teamName: homeShortName,
+      shortName: homeShortName,
+      score: homeScore,
+      innings: const [],
+    ),
+    stadium: '잠실',
     startTime: '18:30',
   );
 }

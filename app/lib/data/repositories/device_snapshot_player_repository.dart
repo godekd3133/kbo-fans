@@ -209,6 +209,9 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
       opsLeaders: const [],
       opsPlusLeaders: const [],
       eraLeaders: const [],
+      winLeaders: const [],
+      saveLeaders: const [],
+      strikeoutLeaders: const [],
       todayHitter: const FeaturedPlayerCard(label: '오늘의 타자'),
       todayPitcher: const FeaturedPlayerCard(label: '오늘의 투수'),
       monthHitter: const FeaturedPlayerCard(label: '이달의 타자'),
@@ -488,6 +491,10 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     'opsLeaders': overview.opsLeaders.map(_encodeLeader).toList(),
     'opsPlusLeaders': overview.opsPlusLeaders.map(_encodeLeader).toList(),
     'eraLeaders': overview.eraLeaders.map(_encodeLeader).toList(),
+    'winLeaders': overview.winLeaders.map(_encodeLeader).toList(),
+    'saveLeaders': overview.saveLeaders.map(_encodeLeader).toList(),
+    'strikeoutLeaders': overview.strikeoutLeaders.map(_encodeLeader).toList(),
+    'milestoneLeaders': overview.milestoneLeaders.map(_encodeLeader).toList(),
     'todayHitter': _encodeFeatured(overview.todayHitter),
     'todayPitcher': _encodeFeatured(overview.todayPitcher),
     'monthHitter': _encodeFeatured(overview.monthHitter),
@@ -504,6 +511,14 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
           json['opsPlusLeaders'] as List<dynamic>?,
         ),
         eraLeaders: _decodeLeaders(json['eraLeaders'] as List<dynamic>?),
+        winLeaders: _decodeLeaders(json['winLeaders'] as List<dynamic>?),
+        saveLeaders: _decodeLeaders(json['saveLeaders'] as List<dynamic>?),
+        strikeoutLeaders: _decodeLeaders(
+          json['strikeoutLeaders'] as List<dynamic>?,
+        ),
+        milestoneLeaders: _decodeLeaders(
+          json['milestoneLeaders'] as List<dynamic>?,
+        ),
         todayHitter: _decodeFeatured(
           json['todayHitter'] as Map<String, dynamic>? ?? const {},
         ),
@@ -522,9 +537,12 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     'rank': leader.rank,
     'playerId': leader.playerId,
     'playerType': leader.playerType,
+    'metricKey': leader.metricKey,
     'name': leader.name,
     'teamId': leader.teamId,
     'value': leader.value,
+    'milestoneLabel': leader.milestoneLabel,
+    'allTimeRank': leader.allTimeRank,
     'isRetired': leader.isRetired,
   };
 
@@ -535,9 +553,12 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
           rank: map['rank'] as int? ?? 0,
           playerId: map['playerId'] as String? ?? '',
           playerType: map['playerType'] as String? ?? '',
+          metricKey: map['metricKey'] as String? ?? '',
           name: map['name'] as String? ?? '',
           teamId: map['teamId'] as String? ?? '',
           value: map['value'] as String? ?? '',
+          milestoneLabel: map['milestoneLabel'] as String?,
+          allTimeRank: (map['allTimeRank'] as num?)?.toInt(),
           isRetired: map['isRetired'] as bool? ?? false,
         );
       }).toList();

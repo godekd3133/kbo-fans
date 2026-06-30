@@ -630,16 +630,19 @@ class PushService:
 
         for topic_name, (setting_enabled, delivery) in topic_flags.items():
             is_game_moment = topic_name in GAME_MOMENT_TOPIC_NAMES
+            sends_immediately = _sends_immediately(setting_enabled, delivery)
+            uses_all_game_topic = payload.notifications.allGames and sends_immediately
 
             if (
                 is_game_moment
                 and has_my_team
                 and _enabled_for_game_moment_topic(setting_enabled, delivery)
+                and not uses_all_game_topic
             ):
                 topics.append(f"{topic_name}_{my_team}")
 
             if payload.notifications.allGames:
-                if _sends_immediately(setting_enabled, delivery):
+                if sends_immediately:
                     topics.append(f"{topic_name}_ALL")
                 continue
 
@@ -655,7 +658,7 @@ class PushService:
                     )
                 continue
 
-            if has_my_team and _sends_immediately(setting_enabled, delivery):
+            if has_my_team and sends_immediately:
                 topics.append(f"{topic_name}_{my_team}")
 
         if payload.notifications.allGames:

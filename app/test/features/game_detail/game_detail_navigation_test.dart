@@ -282,6 +282,65 @@ void main() {
     expect(find.text('바로 재생'), findsOneWidget);
   });
 
+  testWidgets('종료 경기 상세는 스코어 탭 진입 전에 하이라이트를 미리 로드한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _finalGame();
+    final repository = _FakeGameRepository(
+      game,
+      highlightInfo: const HighlightInfo(
+        youtubeVideos: [
+          HighlightVideo(
+            videoId: 'tyo0j_fyPMU',
+            title: 'KT vs LG 하이라이트',
+            thumbnailUrl: '',
+            videoUrl: 'https://www.youtube.com/watch?v=tyo0j_fyPMU',
+          ),
+        ],
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=lineup',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(repository.highlightCallCount, 1);
+
+    await tester.tap(find.text('스코어'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('바로 재생'), findsOneWidget);
+  });
+
   testWidgets('종료 경기 상세 상단은 상태와 시작 시각 대신 이닝을 중심으로 표시한다', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(390, 844);
@@ -325,6 +384,54 @@ void main() {
     expect(find.text('18:30'), findsNothing);
     expect(find.text('최종 기록'), findsNothing);
     expect(find.text('9회'), findsOneWidget);
+  });
+
+  testWidgets('경기 상세 상단은 두 자리 점수를 한 줄로 유지한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _lopsidedFinalGame();
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    final scoreFinder = find.byKey(
+      const ValueKey('game-detail-scorebug-away-score'),
+    );
+    final scoreText = tester.widget<Text>(scoreFinder);
+
+    expect(scoreText.data, '12');
+    expect(scoreText.maxLines, 1);
+    expect(scoreText.softWrap, isFalse);
+    expect(tester.getSize(scoreFinder).height, lessThan(60));
   });
 }
 
@@ -370,6 +477,35 @@ Game _finalGame() {
       shortName: 'LG',
       score: 3,
       innings: [0, 0, 0, 1, 0, 0, 2, 0, 0],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
+}
+
+Game _lopsidedFinalGame() {
+  return const Game(
+    gameId: '20260630KIOB0',
+    status: GameStatus.final_,
+    inning: '경기종료',
+    away: TeamScore(
+      teamId: 'HT',
+      teamName: 'KIA 타이거즈',
+      shortName: 'KIA',
+      score: 12,
+      innings: [0, 0, 0, 0, 2, 7, 0, 0, 3],
+      hits: 12,
+      walks: 7,
+    ),
+    home: TeamScore(
+      teamId: 'OB',
+      teamName: '두산 베어스',
+      shortName: '두산',
+      score: 1,
+      innings: [0, 0, 0, 0, 0, 0, 1, 0, 0],
+      hits: 5,
+      errors: 1,
+      walks: 1,
     ),
     stadium: '잠실',
     startTime: '18:30',

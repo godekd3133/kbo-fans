@@ -136,7 +136,7 @@ void main() {
 
   test('historical records overview ignores cached rank gaps', () async {
     SharedPreferences.setMockInitialValues({
-      'api_cache:recordsOverview:v4:2013': _cachedApiPayload(
+      'api_cache:recordsOverview:v5:2013': _cachedApiPayload(
         _recordsOverviewPayload(season: 2013, firstAvgRank: 2, firstEraRank: 2),
         age: const Duration(days: 3),
       ),
@@ -164,7 +164,7 @@ void main() {
 
   test('API player repository ignores unsupported 2001 cache', () async {
     SharedPreferences.setMockInitialValues({
-      'api_cache:recordsOverview:v4:2001': _cachedApiPayload(
+      'api_cache:recordsOverview:v5:2001': _cachedApiPayload(
         _recordsOverviewPayload(season: 2001, firstAvgRank: 1, firstEraRank: 1),
         age: const Duration(days: 3),
       ),
@@ -548,7 +548,7 @@ void main() {
     () {
       final season = DateTime.now().year;
       SharedPreferences.setMockInitialValues({
-        'api_cache:recordsOverview:v4:$season': _cachedApiPayload(
+        'api_cache:recordsOverview:v5:$season': _cachedApiPayload(
           _recordsOverviewPayload(
             season: season,
             firstAvgRank: 1,

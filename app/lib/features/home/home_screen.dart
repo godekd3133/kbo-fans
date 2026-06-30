@@ -26,7 +26,6 @@ import '../../data/models/player.dart';
 import '../../data/models/records_overview.dart';
 import '../../data/models/relay.dart';
 import '../../data/models/schedule.dart';
-import '../../data/models/team_records_bundle.dart';
 import '../../data/models/team_stats.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
@@ -96,6 +95,31 @@ List<String> lineupPlayerImagePrefetchUrlsForTesting({
     homePlayers: homePlayers,
     season: season,
   );
+}
+
+@visibleForTesting
+List<String> boxscorePlayerImagePrefetchUrlsForTesting({
+  required GameBoxscoreData boxscoreData,
+  required Iterable<PlayerProfile> awayPlayers,
+  required Iterable<PlayerProfile> homePlayers,
+  required int season,
+}) {
+  return _boxscorePlayerImagePrefetchUrls(
+    boxscoreData: boxscoreData,
+    awayPlayers: awayPlayers,
+    homePlayers: homePlayers,
+    season: season,
+  );
+}
+
+@visibleForTesting
+bool shouldLoadPreviousScoreboardForTesting(List<Game> todayGames) {
+  return _shouldLoadPreviousScoreboard(todayGames);
+}
+
+@visibleForTesting
+List<Game> previousResultGamesForTesting(List<Game> games) {
+  return _previousResultGames(games);
 }
 
 List<String> _relayPlayerImagePrefetchUrls({
@@ -189,6 +213,45 @@ List<String> _lineupPlayerImagePrefetchUrls({
 
   addTeamUrls(lineupData.away, awayPlayers);
   addTeamUrls(lineupData.home, homePlayers);
+
+  return imageUrls.take(_gameDetailPlayerImagePrefetchLimit).toList();
+}
+
+List<String> _boxscorePlayerImagePrefetchUrls({
+  required GameBoxscoreData boxscoreData,
+  required Iterable<PlayerProfile> awayPlayers,
+  required Iterable<PlayerProfile> homePlayers,
+  required int season,
+}) {
+  final imageUrls = <String>[];
+  final seen = <String>{};
+
+  void addUrl(String? rawUrl) {
+    final imageUrl = rawUrl?.trim() ?? '';
+    if (imageUrl.isEmpty || !seen.add(imageUrl)) {
+      return;
+    }
+    imageUrls.add(imageUrl);
+  }
+
+  void addTeamUrls(TeamBoxscoreData team, Iterable<PlayerProfile> players) {
+    final imageByName = _playerImageUrlByName(players, season);
+    for (final batter in team.batters) {
+      addUrl(_resolvePlayerImageUrl(imageByName, batter.name));
+    }
+    for (final pitcher in team.pitchers) {
+      addUrl(_resolvePlayerImageUrl(imageByName, pitcher.name));
+    }
+    for (final imageUrl in _playerProfileImageUrlsForPrefetch(
+      players,
+      season,
+    )) {
+      addUrl(imageUrl);
+    }
+  }
+
+  addTeamUrls(boxscoreData.away, awayPlayers);
+  addTeamUrls(boxscoreData.home, homePlayers);
 
   return imageUrls.take(_gameDetailPlayerImagePrefetchLimit).toList();
 }
@@ -313,6 +376,33 @@ List<Game> _uniqueGamesById(List<Game> games) {
   return unique;
 }
 
+String _previousScoreboardDate(String date) {
+  final parsed = DateTime.tryParse(date);
+  if (parsed == null) {
+    return date;
+  }
+  return DateFormat(
+    'yyyy-MM-dd',
+  ).format(parsed.subtract(const Duration(days: 1)));
+}
+
+bool _shouldLoadPreviousScoreboard(List<Game> todayGames) {
+  if (todayGames.isEmpty) {
+    return true;
+  }
+  return todayGames.every(
+    (game) =>
+        game.status == GameStatus.scheduled ||
+        game.status == GameStatus.cancelled,
+  );
+}
+
+List<Game> _previousResultGames(List<Game> games) {
+  return _uniqueGamesById(
+    games.where((game) => game.status == GameStatus.final_).toList(),
+  );
+}
+
 Game? _liveMyTeamGameFor(List<Game> games, String? myTeamId) {
   final teamId = myTeamId?.trim() ?? '';
   if (teamId.isEmpty) {
@@ -351,6 +441,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<Game>? _lastScoreboardGames;
   String? _lastScoreboardDate;
   String? _lastScoreboardRefreshErrorLogKey;
+  String? _lastPreviousScoreboardErrorLogKey;
   String? _openingGameDetailId;
 
   @override
@@ -525,6 +616,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _lastScoreboardRefreshErrorLogKey = key;
     DevConsole.instance.warn(
       'HOME scoreboard refresh failed; keeping last snapshot: $error',
+    );
+  }
+
+  void _logPreviousScoreboardFailure(String date, Object error) {
+    final key = '$date|${error.runtimeType}|$error';
+    if (_lastPreviousScoreboardErrorLogKey == key) {
+      return;
+    }
+    _lastPreviousScoreboardErrorLogKey = key;
+    DevConsole.instance.warn(
+      'HOME previous scoreboard unavailable; keeping today-only view: $error',
     );
   }
 
@@ -793,12 +895,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     );
                   }
                   final season = int.tryParse(today.substring(0, 4)) ?? 2026;
-                  final AsyncValue<TeamRecordsBundle>? teamRecordsAsync =
+                  final teamRecordsKey = myTeamId == null
+                      ? null
+                      : '$myTeamId|$season';
+                  final shouldLoadTeamRecords =
                       _secondarySectionsEnabled &&
-                          myTeamId != null &&
-                          myTeamId.isNotEmpty &&
-                          myTeamBrief != null
-                      ? ref.watch(teamRecordsProvider('$myTeamId|$season'))
+                      teamRecordsKey != null &&
+                      myTeamId?.isNotEmpty == true &&
+                      myTeamBrief != null;
+                  final AsyncValue<TeamStats>? teamStatsAsync =
+                      shouldLoadTeamRecords
+                      ? ref.watch(teamStatsProvider(teamRecordsKey))
+                      : null;
+                  final AsyncValue<List<PlayerProfile>>? teamPlayersAsync =
+                      shouldLoadTeamRecords
+                      ? ref.watch(teamPlayersProvider(teamRecordsKey))
                       : null;
 
                   _logSecondarySectionsLoaded(today: today, brief: myTeamBrief);
@@ -812,7 +923,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 myTeamId: myTeamId,
                                 brief: myTeamBrief,
                                 todayGame: myGame,
-                                teamRecordsAsync: teamRecordsAsync,
+                                teamStatsAsync: teamStatsAsync,
+                                teamPlayersAsync: teamPlayersAsync,
                                 onOpenGame: _openGameDetail,
                               )
                             : const _DeferredSectionCard(
@@ -835,11 +947,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(12, 5, 12, 0),
-                        child: _TodayGamesReferenceCard(
-                          games: games,
-                          myTeamId: myTeamId,
-                          standings: standingsPreview,
-                          onOpenGame: _openGameDetail,
+                        child: Consumer(
+                          builder: (context, ref, _) {
+                            final previousDate = _previousScoreboardDate(today);
+                            final previousScoreboardAsync =
+                                _shouldLoadPreviousScoreboard(games)
+                                ? ref.watch(scoreboardProvider(previousDate))
+                                : null;
+                            previousScoreboardAsync?.whenOrNull(
+                              error: (error, _) =>
+                                  _logPreviousScoreboardFailure(
+                                    previousDate,
+                                    error,
+                                  ),
+                            );
+                            final previousResultGames = _previousResultGames(
+                              previousScoreboardAsync?.asData?.value ??
+                                  const <Game>[],
+                            );
+                            return _TodayGamesReferenceCard(
+                              games: games,
+                              previousResultGames: previousResultGames,
+                              myTeamId: myTeamId,
+                              standings: standingsPreview,
+                              onOpenGame: _openGameDetail,
+                            );
+                          },
                         ),
                       ),
                       Padding(
@@ -909,24 +1042,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
 
     try {
-      final refreshedGame = await _refreshGameDetailBeforeOpen(game, tab: tab);
+      var gameToOpen = game;
+      try {
+        gameToOpen = await _refreshGameDetailBeforeOpen(game, tab: tab);
+      } catch (error) {
+        DevConsole.instance.warn(
+          'HOME game detail open refresh failed; opening existing game: ${game.gameId} $error',
+        );
+      }
       if (!mounted) {
         return;
       }
       GoRouter.of(context).push(
-        gameDetailLocationFor(refreshedGame, tab: tab, focusRelay: focusRelay),
-        extra: refreshedGame,
+        gameDetailLocationFor(gameToOpen, tab: tab, focusRelay: focusRelay),
+        extra: gameToOpen,
       );
-    } catch (error) {
-      DevConsole.instance.warn(
-        'HOME game detail open refresh failed: ${game.gameId} $error',
-      );
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('경기 정보를 새로고침하지 못했습니다')));
     } finally {
       if (mounted) {
         setState(() {
@@ -944,6 +1074,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final gameFuture = ref.read(gameProvider(gameId).future);
     Future<RelayData>? relayFuture;
     Future<GameLineupData>? lineupFuture;
+    Future<GameBoxscoreData>? boxscoreFuture;
     final futures = <Future<Object?>>[
       gameFuture.then<Object?>((value) => value),
     ];
@@ -969,11 +1100,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         break;
       case 'boxscore':
         ref.invalidate(gameBoxscoreProvider(gameId));
-        futures.add(
-          ref
-              .read(gameBoxscoreProvider(gameId).future)
-              .then<Object?>((value) => value),
+        final boxscoreDataFuture = ref.read(
+          gameBoxscoreProvider(gameId).future,
         );
+        boxscoreFuture = boxscoreDataFuture;
+        futures.add(boxscoreDataFuture.then<Object?>((value) => value));
         readLineupForImagePrefetch();
         break;
       case 'lineup':
@@ -994,6 +1125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       targetTab: targetTab,
       relayData: relayFuture == null ? null : await relayFuture,
       lineupData: lineupFuture == null ? null : await lineupFuture,
+      boxscoreData: boxscoreFuture == null ? null : await boxscoreFuture,
     );
     return refreshedGame;
   }
@@ -1003,6 +1135,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     required String? targetTab,
     RelayData? relayData,
     GameLineupData? lineupData,
+    GameBoxscoreData? boxscoreData,
   }) async {
     if (!mounted) {
       return;
@@ -1024,6 +1157,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
           break;
         case 'boxscore':
+          imageUrls.addAll(
+            await _boxscoreImageUrlsBeforeOpen(game, boxscoreData),
+          );
+          imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
+          break;
         case null:
           imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
           break;
@@ -1041,6 +1179,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         'HOME game detail image prefetch skipped: ${game.gameId} $error',
       );
     }
+  }
+
+  Future<List<String>> _boxscoreImageUrlsBeforeOpen(
+    Game game,
+    GameBoxscoreData? boxscoreData,
+  ) async {
+    final season = _seasonFromGameId(game.gameId);
+    if (boxscoreData == null) {
+      final teamPlayers = await _teamPlayersForImagePrefetch(game, season);
+      return _playerProfileImageUrlsForPrefetch(
+        teamPlayers,
+        season,
+      ).take(_gameDetailPlayerImagePrefetchLimit).toList();
+    }
+    final awayTeamId = boxscoreData.away.teamId.isNotEmpty
+        ? boxscoreData.away.teamId
+        : game.away.teamId;
+    final homeTeamId = boxscoreData.home.teamId.isNotEmpty
+        ? boxscoreData.home.teamId
+        : game.home.teamId;
+    final awayPlayers = await _teamPlayersForTeamIds([awayTeamId], season);
+    final homePlayers = await _teamPlayersForTeamIds([homeTeamId], season);
+    return _boxscorePlayerImagePrefetchUrls(
+      boxscoreData: boxscoreData,
+      awayPlayers: awayPlayers,
+      homePlayers: homePlayers,
+      season: season,
+    );
   }
 
   Future<List<String>> _relayImageUrlsBeforeOpen(
@@ -1323,6 +1489,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     final myTeamId = ref.read(myTeamProvider);
     ref.invalidate(scoreboardProvider(today));
+    final lastGames = _lastScoreboardGamesFor(today) ?? const <Game>[];
+    if (_shouldLoadPreviousScoreboard(lastGames)) {
+      ref.invalidate(scoreboardProvider(_previousScoreboardDate(today)));
+    }
     ref.invalidate(homeAggregateProvider('$today|${myTeamId ?? ''}'));
   }
 
@@ -1553,14 +1723,16 @@ class _MyTeamBriefCard extends StatelessWidget {
   final String? myTeamId;
   final _MyTeamBriefData? brief;
   final Game? todayGame;
-  final AsyncValue<TeamRecordsBundle>? teamRecordsAsync;
+  final AsyncValue<TeamStats>? teamStatsAsync;
+  final AsyncValue<List<PlayerProfile>>? teamPlayersAsync;
   final ValueChanged<Game> onOpenGame;
 
   const _MyTeamBriefCard({
     required this.myTeamId,
     required this.brief,
     required this.todayGame,
-    required this.teamRecordsAsync,
+    required this.teamStatsAsync,
+    required this.teamPlayersAsync,
     required this.onOpenGame,
   });
 
@@ -1581,7 +1753,7 @@ class _MyTeamBriefCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '응원팀을 선택하면 오늘 경기, 최근 흐름, 순위를 홈에서 바로 보여줍니다.',
+              '응원팀을 선택하면 오늘 경기, 최근 5경기, 순위를 홈에서 바로 보여줍니다.',
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -1591,7 +1763,7 @@ class _MyTeamBriefCard extends StatelessWidget {
               children: const [
                 _BenefitChip(label: '오늘 경기 우선'),
                 _BenefitChip(label: '예매 오픈 추적'),
-                _BenefitChip(label: '순위/최근 흐름'),
+                _BenefitChip(label: '순위/최근 5경기'),
               ],
             ),
             const SizedBox(height: 14),
@@ -1626,7 +1798,10 @@ class _MyTeamBriefCard extends StatelessWidget {
     final opponent = opponentId != null ? KboTeams.byId(opponentId) : null;
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
-    final recordBrief = _TeamRecordBriefData.resolve(teamRecordsAsync);
+    final recordBrief = _TeamRecordBriefData.resolve(
+      teamStatsAsync: teamStatsAsync,
+      teamPlayersAsync: teamPlayersAsync,
+    );
     final metrics = recordBrief.metrics;
     final view = _MyTeamBriefViewModel.resolve(
       myTeamId: myTeamId!,
@@ -2059,10 +2234,26 @@ class _TeamRecordBriefData {
     this.hasError = false,
   });
 
-  static _TeamRecordBriefData resolve(
-    AsyncValue<TeamRecordsBundle>? recordsAsync,
-  ) {
-    if (recordsAsync == null || recordsAsync.isLoading) {
+  static _TeamRecordBriefData resolve({
+    required AsyncValue<TeamStats>? teamStatsAsync,
+    required AsyncValue<List<PlayerProfile>>? teamPlayersAsync,
+  }) {
+    final teamStats = teamStatsAsync?.asData?.value;
+    final players = teamPlayersAsync?.asData?.value;
+    if (teamStats == null) {
+      if (teamStatsAsync?.hasError == true ||
+          teamPlayersAsync?.hasError == true) {
+        return const _TeamRecordBriefData(
+          metrics: _BriefMetricSnapshot(
+            avg: '-',
+            avgRank: '확인 필요',
+            era: '-',
+            eraRank: '확인 필요',
+          ),
+          hasError: true,
+        );
+      }
+
       return const _TeamRecordBriefData(
         metrics: _BriefMetricSnapshot(
           avg: '-',
@@ -2073,34 +2264,15 @@ class _TeamRecordBriefData {
         isLoading: true,
       );
     }
-    if (recordsAsync.hasError) {
-      return const _TeamRecordBriefData(
-        metrics: _BriefMetricSnapshot(
-          avg: '-',
-          avgRank: '확인 필요',
-          era: '-',
-          eraRank: '확인 필요',
-        ),
-        hasError: true,
-      );
-    }
-
-    final bundle = recordsAsync.asData?.value;
-    if (bundle == null) {
-      return const _TeamRecordBriefData(
-        metrics: _BriefMetricSnapshot(
-          avg: '-',
-          avgRank: '집계 중',
-          era: '-',
-          eraRank: '집계 중',
-        ),
-      );
-    }
 
     return _TeamRecordBriefData(
-      metrics: _BriefMetricSnapshot._fromTeamStats(bundle.teamStats),
-      homeRunLeader: _homeRunLeaderFromPlayers(bundle.players),
-      risingPlayer: _risingPlayerFromPlayers(bundle.players),
+      metrics: _BriefMetricSnapshot._fromTeamStats(teamStats),
+      homeRunLeader: players == null
+          ? null
+          : _homeRunLeaderFromPlayers(players),
+      risingPlayer: players == null ? null : _risingPlayerFromPlayers(players),
+      isLoading: players == null && teamPlayersAsync?.hasError != true,
+      hasError: teamPlayersAsync?.hasError == true,
     );
   }
 
@@ -2455,7 +2627,7 @@ class _MyTeamBriefViewModel {
         icon: Icons.calendar_today_rounded,
         headline: '오늘은 $teamName 경기 없음',
         subline: '${nextGame.time} · ${nextGame.stadium} · vs $opponentName',
-        situation: '다음 경기 전까지 최근 흐름과 현재 순위를 먼저 확인하세요.',
+        situation: '다음 경기 전까지 최근 5경기와 현재 순위를 먼저 확인하세요.',
         metricLabel: '다음 경기',
         metricValue: '${nextGame.time} vs ${opponent?.shortName ?? '상대'}',
         primaryIcon: Icons.calendar_month_rounded,
@@ -2784,12 +2956,14 @@ class _LiveTeamScoreInline extends StatelessWidget {
 
 class _TodayGamesReferenceCard extends StatelessWidget {
   final List<Game> games;
+  final List<Game> previousResultGames;
   final String? myTeamId;
   final List<TeamStanding> standings;
   final ValueChanged<Game> onOpenGame;
 
   const _TodayGamesReferenceCard({
     required this.games,
+    required this.previousResultGames,
     required this.myTeamId,
     required this.standings,
     required this.onOpenGame,
@@ -2797,18 +2971,22 @@ class _TodayGamesReferenceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final orderedGames = _orderedGames();
-    final visibleGames = orderedGames;
+    final orderedTodayGames = _orderedGames(games);
+    final orderedPreviousGames = _orderedGames(previousResultGames);
+    final hasPreviousResults = orderedPreviousGames.isNotEmpty;
     final standingsByTeamId = {
       for (final standing in standings) standing.teamId: standing,
     };
+    final headerTitle = orderedTodayGames.isEmpty && hasPreviousResults
+        ? '어제 결과'
+        : '오늘 경기';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ReferenceSectionHeader(
           key: const ValueKey('home-today-games-header'),
-          title: '오늘 경기',
+          title: headerTitle,
           showAction: false,
         ),
         const SizedBox(height: 8),
@@ -2818,7 +2996,7 @@ class _TodayGamesReferenceCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (visibleGames.isEmpty)
+              if (orderedTodayGames.isEmpty && orderedPreviousGames.isEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
                   child: _ReferenceEmptyState(
@@ -2828,8 +3006,8 @@ class _TodayGamesReferenceCard extends StatelessWidget {
                     onAction: () => context.go('/schedule'),
                   ),
                 )
-              else
-                for (final entry in visibleGames.indexed)
+              else ...[
+                for (final entry in orderedTodayGames.indexed)
                   _TodayGameReferenceRow(
                     key: ValueKey('home-today-game-${entry.$2.gameId}'),
                     game: entry.$2,
@@ -2840,9 +3018,26 @@ class _TodayGamesReferenceCard extends StatelessWidget {
                       standingsByTeamId[entry.$2.home.teamId],
                     ),
                     isMyTeam: _isMyTeam(entry.$2),
-                    showDivider: entry.$1 < visibleGames.length - 1,
+                    showDivider: entry.$1 < orderedTodayGames.length - 1,
                     onTap: () => onOpenGame(entry.$2),
                   ),
+                if (orderedTodayGames.isNotEmpty && hasPreviousResults)
+                  const _TodayGameGroupLabel(label: '어제 결과'),
+                for (final entry in orderedPreviousGames.indexed)
+                  _TodayGameReferenceRow(
+                    key: ValueKey('home-previous-game-${entry.$2.gameId}'),
+                    game: entry.$2,
+                    awayRecord: _teamRecordText(
+                      standingsByTeamId[entry.$2.away.teamId],
+                    ),
+                    homeRecord: _teamRecordText(
+                      standingsByTeamId[entry.$2.home.teamId],
+                    ),
+                    isMyTeam: _isMyTeam(entry.$2),
+                    showDivider: entry.$1 < orderedPreviousGames.length - 1,
+                    onTap: () => onOpenGame(entry.$2),
+                  ),
+              ],
             ],
           ),
         ),
@@ -2857,8 +3052,8 @@ class _TodayGamesReferenceCard extends StatelessWidget {
     return '${standing.wins}-${standing.losses}-${standing.draws}';
   }
 
-  List<Game> _orderedGames() {
-    final uniqueGames = _uniqueGamesById(games);
+  List<Game> _orderedGames(List<Game> sourceGames) {
+    final uniqueGames = _uniqueGamesById(sourceGames);
     if (myTeamId == null || myTeamId!.isEmpty) {
       return uniqueGames;
     }
@@ -2874,6 +3069,33 @@ class _TodayGamesReferenceCard extends StatelessWidget {
       return false;
     }
     return game.away.teamId == teamId || game.home.teamId == teamId;
+  }
+}
+
+class _TodayGameGroupLabel extends StatelessWidget {
+  final String label;
+
+  const _TodayGameGroupLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: AppColors.divider.withValues(alpha: 0.55)),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
   }
 }
 
@@ -3111,7 +3333,7 @@ class _RecentFlowReferenceCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ReferenceSectionHeader(title: '최근 흐름', showAction: false),
+        _ReferenceSectionHeader(title: '최근 5경기', showAction: false),
         const SizedBox(height: 8),
         _sectionCard(
           key: const ValueKey('home-standings-card'),
@@ -3122,13 +3344,13 @@ class _RecentFlowReferenceCard extends StatelessWidget {
               if (isLoading)
                 const Padding(
                   padding: EdgeInsets.all(14),
-                  child: _ReferenceStatusLine(text: '최근 흐름 집계 중입니다.'),
+                  child: _ReferenceStatusLine(text: '최근 5경기 집계 중입니다.'),
                 )
               else if (hasError)
                 Padding(
                   padding: const EdgeInsets.all(14),
                   child: _ReferenceEmptyState(
-                    title: '최근 흐름을 불러오지 못했습니다',
+                    title: '최근 5경기를 불러오지 못했습니다',
                     subtitle: '순위 화면에서 다시 확인해 주세요.',
                     actionLabel: '순위 보기',
                     onAction: () => context.go('/standings'),
@@ -3138,7 +3360,7 @@ class _RecentFlowReferenceCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.all(14),
                   child: _ReferenceEmptyState(
-                    title: '표시할 최근 흐름이 없습니다',
+                    title: '표시할 최근 5경기가 없습니다',
                     subtitle: '순위 데이터가 준비되면 보여줍니다.',
                     actionLabel: '순위 보기',
                     onAction: () => context.go('/standings'),

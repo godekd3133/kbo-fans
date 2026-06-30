@@ -148,7 +148,15 @@ class _DarkLogoContrastPlate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final teamColor = team?.primaryColor ?? AppColors.cardSub;
+    final colors = AppTheme.colorsOf(context);
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final teamColor = team?.primaryColor ?? colors.cardSub;
+    final plateColor = Colors.white.withValues(alpha: isLight ? 0.98 : 0.9);
+    final borderColor = teamColor.withValues(alpha: isLight ? 0.22 : 0.36);
+    final shadowColor = isLight
+        ? const Color(0xFF101828).withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.26);
+    final glowColor = teamColor.withValues(alpha: isLight ? 0.08 : 0.22);
     final plateSize = size * (size < 36 ? 0.92 : 0.88);
     final borderWidth = size < 36 ? 0.8 : 1.0;
     return Center(
@@ -157,22 +165,16 @@ class _DarkLogoContrastPlate extends StatelessWidget {
         width: plateSize,
         height: plateSize,
         decoration: BoxDecoration(
-          color: AppColors.textPrimary.withValues(alpha: 0.9),
+          color: plateColor,
           shape: BoxShape.circle,
-          border: Border.all(
-            color: teamColor.withValues(alpha: 0.36),
-            width: borderWidth,
-          ),
+          border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.26),
+              color: shadowColor,
               blurRadius: size * 0.16,
               offset: Offset(0, size * 0.05),
             ),
-            BoxShadow(
-              color: teamColor.withValues(alpha: 0.22),
-              blurRadius: size * 0.14,
-            ),
+            BoxShadow(color: glowColor, blurRadius: size * 0.14),
           ],
         ),
       ),

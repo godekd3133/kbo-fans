@@ -525,6 +525,11 @@ HomeKboBrief _buildLocalKboBrief({
     add(standingsItem);
   }
 
+  final milestoneItem = _buildRecordMilestoneBriefItem(overview, myTeam);
+  if (milestoneItem != null) {
+    add(milestoneItem);
+  }
+
   final recordItem = _buildRecordBriefItem(overview);
   if (recordItem != null) {
     add(recordItem);
@@ -568,10 +573,13 @@ HomeKboBriefItem? _buildStandingsBriefItem(List<TeamStanding> standings) {
   final gap = second == null || second.gb.isEmpty || second.gb == '-'
       ? '선두권 흐름 확인'
       : '${second.teamName}와 ${second.gb}G차';
+  final secondGap = second == null ? null : double.tryParse(second.gb);
   return HomeKboBriefItem(
     type: 'standings',
     eyebrow: '선두권',
-    title: '${leader.rank}위 ${leader.teamName}',
+    title: secondGap != null && secondGap <= 2
+        ? '선두가 위태로운 ${leader.teamName}'
+        : '선두 지키는 ${leader.teamName}',
     subtitle: gap,
     route: '/standings',
     teamIds: [leader.teamId, if (second != null) second.teamId],
@@ -598,6 +606,68 @@ HomeKboBriefItem? _buildRecordBriefItem(RecordsOverview overview) {
     imageUrl: imageUrl,
     fallbackLabel: leader.name,
   );
+}
+
+HomeKboBriefItem? _buildRecordMilestoneBriefItem(
+  RecordsOverview overview,
+  String? myTeam,
+) {
+  final leaders = overview.milestoneLeaders
+      .where(
+        (leader) =>
+            leader.name.trim().isNotEmpty &&
+            (leader.value.trim().isNotEmpty ||
+                (leader.milestoneLabel ?? '').trim().isNotEmpty),
+      )
+      .toList();
+  if (leaders.isEmpty) {
+    return null;
+  }
+
+  final leader = leaders.firstWhere(
+    (leader) => myTeam != null && leader.teamId == myTeam,
+    orElse: () => leaders.first,
+  );
+  final imageUrl = leader.playerId.isEmpty
+      ? null
+      : kboPlayerImageUrl(season: overview.season, playerId: leader.playerId);
+  final subtitleParts = [
+    _teamShortLabelForId(leader.teamId),
+    if (leader.allTimeRank != null && leader.allTimeRank! > 0)
+      '역대 ${leader.allTimeRank}번째',
+  ].where((part) => part.isNotEmpty).toList();
+
+  return HomeKboBriefItem(
+    type: 'record_milestone',
+    eyebrow: '기록 달성',
+    title: '${leader.name} ${_recordMilestoneLabel(leader)} 달성',
+    subtitle: subtitleParts.join(' · '),
+    route: leader.playerId.isEmpty
+        ? '/records'
+        : '/records/player/${leader.playerId}?season=${overview.season}',
+    teamIds: [leader.teamId],
+    imageUrl: imageUrl,
+    fallbackLabel: leader.name,
+  );
+}
+
+String _recordMilestoneLabel(RecordLeader leader) {
+  final explicit = leader.milestoneLabel?.trim();
+  if (explicit != null && explicit.isNotEmpty) {
+    return explicit;
+  }
+  final value = leader.value.trim();
+  final unit = switch (leader.metricKey.toUpperCase()) {
+    'TB' || 'TOTAL_BASES' => '루타',
+    'H' || 'HIT' || 'HITS' => '안타',
+    'HR' => '홈런',
+    'RBI' => '타점',
+    'SB' => '도루',
+    'SV' => '세이브',
+    'W' => '승',
+    _ => '',
+  };
+  return unit.isEmpty ? value : '$value$unit';
 }
 
 HomeKboBriefItem? _buildErrorRankBriefItem(List<Game> games, String date) {
@@ -762,4 +832,20 @@ String _gameTimeLabel(Game game) {
     return game.startTime;
   }
   return '경기 정보';
+}
+
+String _teamShortLabelForId(String teamId) {
+  return switch (teamId) {
+    'LG' => 'LG',
+    'KT' => 'KT',
+    'SK' => 'SSG',
+    'SS' => '삼성',
+    'NC' => 'NC',
+    'HH' => '한화',
+    'LT' => '롯데',
+    'HT' => 'KIA',
+    'OB' => '두산',
+    'WO' => '키움',
+    _ => teamId,
+  };
 }

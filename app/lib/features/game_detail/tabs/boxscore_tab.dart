@@ -1,9 +1,13 @@
+import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/kbo_player_image_cache.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/boxscore.dart';
@@ -39,6 +43,7 @@ class BoxscoreTab extends ConsumerStatefulWidget {
 
 class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   bool _showAway = true;
+  String? _lastPrefetchedImageSignature;
 
   String get _selectedTeamName => _showAway ? widget.awayName : widget.homeName;
   String get _selectedTeamId =>
@@ -73,7 +78,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           return _buildUnavailableState('공식 박스스코어 업데이트 전입니다');
         }
 
-        final season = DateTime.now().year;
+        final season = _seasonFromGameId(widget.gameId);
         final playersAsync = _selectedTeamId.isEmpty
             ? const AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
             : ref.watch(teamPlayersProvider('$_selectedTeamId|$season'));
@@ -82,18 +87,36 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             selected,
             opponent,
             const {},
+            season: season,
             isLiveContext: isLiveContext,
           ),
           error: (_, _) => _buildContent(
             selected,
             opponent,
             const {},
+            season: season,
             isLiveContext: isLiveContext,
           ),
-          data: (players) => _buildContent(selected, opponent, {
-            for (final player in players)
-              if (player.name.isNotEmpty) player.name: player,
-          }, isLiveContext: isLiveContext),
+          data: (players) {
+            final playersByName = {
+              for (final player in players)
+                if (player.name.isNotEmpty) player.name: player,
+            };
+            _prefetchBoxscorePlayerImages(
+              _boxscorePlayerImageUrlsForRows(
+                selected,
+                playersByName,
+                season: season,
+              ),
+            );
+            return _buildContent(
+              selected,
+              opponent,
+              playersByName,
+              season: season,
+              isLiveContext: isLiveContext,
+            );
+          },
         );
       },
     );
@@ -201,6 +224,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     TeamBoxscoreData selected,
     TeamBoxscoreData opponent,
     Map<String, PlayerProfile> playersByName, {
+    required int season,
     required bool isLiveContext,
   }) {
     final batters = selected.batters;
@@ -250,6 +274,14 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final keyPitcherPlayer = keyPitcher == null
         ? null
         : _resolvePlayer(playersByName, keyPitcher.name);
+    final keyBatterImageUrl = _playerImageUrlFromProfile(
+      keyBatterPlayer,
+      season,
+    );
+    final keyPitcherImageUrl = _playerImageUrlFromProfile(
+      keyPitcherPlayer,
+      season,
+    );
     final productionScore = keyBatter == null
         ? 0
         : _batterProductionScore(keyBatter);
@@ -346,10 +378,11 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                     badgeLabel: (keyBatterPlayer?.number ?? 0) > 0
                         ? '${keyBatterPlayer!.number}'
                         : null,
+                    imageUrl: keyBatterImageUrl,
                     actionLabel: keyBatterPlayer == null ? null : '선수 기록 보기',
                     onTap: keyBatterPlayer == null
                         ? null
-                        : () => _pushPlayerDetail(keyBatterPlayer),
+                        : () => _pushPlayerDetail(keyBatterPlayer, season),
                   ),
                 if (keyPitcher != null)
                   _RecordHighlightRow(
@@ -372,10 +405,11 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                     badgeLabel: (keyPitcherPlayer?.number ?? 0) > 0
                         ? '${keyPitcherPlayer!.number}'
                         : null,
+                    imageUrl: keyPitcherImageUrl,
                     actionLabel: keyPitcherPlayer == null ? null : '선수 기록 보기',
                     onTap: keyPitcherPlayer == null
                         ? null
-                        : () => _pushPlayerDetail(keyPitcherPlayer),
+                        : () => _pushPlayerDetail(keyPitcherPlayer, season),
                   ),
               ],
             ),
@@ -391,7 +425,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         ...batters.asMap().entries.map(
           (entry) => AppMotionListItem(
             index: entry.key,
-            child: _buildBatterRecordRow(entry.value, accent, playersByName),
+            child: _buildBatterRecordRow(
+              entry.value,
+              accent,
+              playersByName,
+              season,
+            ),
           ),
         ),
         const SizedBox(height: 22),
@@ -404,7 +443,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         ...pitchers.asMap().entries.map(
           (entry) => AppMotionListItem(
             index: batters.length + entry.key,
-            child: _buildPitcherRecordRow(entry.value, accent, playersByName),
+            child: _buildPitcherRecordRow(
+              entry.value,
+              accent,
+              playersByName,
+              season,
+            ),
           ),
         ),
         if (_selectedTeamId.isNotEmpty) ...[
@@ -425,12 +469,15 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     BatterRecord batter,
     Color accent,
     Map<String, PlayerProfile> playersByName,
+    int season,
   ) {
     final player = _resolvePlayer(playersByName, batter.name);
+    final imageUrl = _playerImageUrlFromProfile(player, season);
     final todayAvg = batter.atBats > 0 ? (batter.hits / batter.atBats) : 0.0;
     return _RecordDataRow(
-      onTap: player == null ? null : () => _pushPlayerDetail(player),
+      onTap: player == null ? null : () => _pushPlayerDetail(player, season),
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
+      imageUrl: imageUrl,
       name: batter.name,
       meta: batter.liveContext
           ? batter.contextLabel ?? '현재 타자'
@@ -496,11 +543,14 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     PitcherRecord pitcher,
     Color accent,
     Map<String, PlayerProfile> playersByName,
+    int season,
   ) {
     final player = _resolvePlayer(playersByName, pitcher.name);
+    final imageUrl = _playerImageUrlFromProfile(player, season);
     return _RecordDataRow(
-      onTap: player == null ? null : () => _pushPlayerDetail(player),
+      onTap: player == null ? null : () => _pushPlayerDetail(player, season),
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
+      imageUrl: imageUrl,
       name: pitcher.name,
       meta: pitcher.liveContext ? pitcher.contextLabel ?? '투수 정보' : '투수 기록',
       actionLabel: player == null ? null : '선수 기록 보기',
@@ -612,8 +662,66 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     ];
   }
 
-  void _pushPlayerDetail(PlayerProfile player) {
-    context.push('/records/player/${player.id}?season=${DateTime.now().year}');
+  void _prefetchBoxscorePlayerImages(Iterable<String?> imageUrls) {
+    final urls = <String>{
+      for (final rawUrl in imageUrls)
+        if ((rawUrl?.trim() ?? '').isNotEmpty) rawUrl!.trim(),
+    }.toList()..sort();
+    if (urls.isEmpty) {
+      return;
+    }
+    final signature = urls.join('|');
+    if (_lastPrefetchedImageSignature == signature) {
+      return;
+    }
+    _lastPrefetchedImageSignature = signature;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(
+        precacheKboPlayerImageUrls(context, urls, limit: 80).catchError((_) {}),
+      );
+    });
+  }
+
+  List<String> _boxscorePlayerImageUrlsForRows(
+    TeamBoxscoreData team,
+    Map<String, PlayerProfile> playersByName, {
+    required int season,
+  }) {
+    final imageUrls = <String>[];
+    final seen = <String>{};
+
+    void addPlayerByName(String name) {
+      final imageUrl = _playerImageUrlFromProfile(
+        _resolvePlayer(playersByName, name),
+        season,
+      );
+      if (imageUrl == null || imageUrl.isEmpty || !seen.add(imageUrl)) {
+        return;
+      }
+      imageUrls.add(imageUrl);
+    }
+
+    for (final batter in team.batters) {
+      addPlayerByName(batter.name);
+    }
+    for (final pitcher in team.pitchers) {
+      addPlayerByName(pitcher.name);
+    }
+    return imageUrls;
+  }
+
+  String? _playerImageUrlFromProfile(PlayerProfile? player, int season) {
+    if (player == null) {
+      return null;
+    }
+    return playerProfileImageUrl(player, season: season)?.trim();
+  }
+
+  void _pushPlayerDetail(PlayerProfile player, int season) {
+    context.push('/records/player/${player.id}?season=$season');
   }
 
   PlayerProfile? _resolvePlayer(
@@ -648,6 +756,16 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
         .replaceAll(')', '')
         .toLowerCase();
   }
+}
+
+int _seasonFromGameId(String gameId) {
+  if (gameId.length >= 4) {
+    final parsed = int.tryParse(gameId.substring(0, 4));
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+  return DateTime.now().year;
 }
 
 class _SummaryMetric {
@@ -974,6 +1092,7 @@ class _RecordHighlightRow extends StatelessWidget {
   final String metricLabel;
   final Color accent;
   final String? badgeLabel;
+  final String? imageUrl;
   final String? actionLabel;
   final VoidCallback? onTap;
 
@@ -985,6 +1104,7 @@ class _RecordHighlightRow extends StatelessWidget {
     required this.metricLabel,
     required this.accent,
     this.badgeLabel,
+    this.imageUrl,
     this.actionLabel,
     this.onTap,
   });
@@ -1002,7 +1122,11 @@ class _RecordHighlightRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _PlayerAvatar(accent: accent, badgeLabel: badgeLabel),
+            _PlayerAvatar(
+              accent: accent,
+              badgeLabel: badgeLabel,
+              imageUrl: imageUrl,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1153,6 +1277,7 @@ class _RecordTableHeader extends StatelessWidget {
 class _RecordDataRow extends StatelessWidget {
   final VoidCallback? onTap;
   final String? badgeLabel;
+  final String? imageUrl;
   final String name;
   final String meta;
   final String? actionLabel;
@@ -1163,6 +1288,7 @@ class _RecordDataRow extends StatelessWidget {
   const _RecordDataRow({
     required this.onTap,
     required this.badgeLabel,
+    required this.imageUrl,
     required this.name,
     required this.meta,
     required this.actionLabel,
@@ -1187,6 +1313,7 @@ class _RecordDataRow extends StatelessWidget {
             _PlayerAvatar(
               accent: accent,
               badgeLabel: badgeLabel,
+              imageUrl: imageUrl,
               size: 42,
               radius: 10,
             ),
@@ -1450,12 +1577,14 @@ class _TeamLogo extends StatelessWidget {
 class _PlayerAvatar extends StatelessWidget {
   final Color accent;
   final String? badgeLabel;
+  final String? imageUrl;
   final double size;
   final double radius;
 
   const _PlayerAvatar({
     required this.accent,
     this.badgeLabel,
+    this.imageUrl,
     this.size = 52,
     this.radius = 12,
   });
@@ -1465,9 +1594,32 @@ class _PlayerAvatar extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        _fallbackAvatar(),
+        _imageUrl == null ? _fallbackAvatar() : _networkAvatar(),
         if (badgeLabel != null) _numberBadge(context),
       ],
+    );
+  }
+
+  String? get _imageUrl {
+    final value = imageUrl?.trim() ?? '';
+    return value.isEmpty ? null : value;
+  }
+
+  Widget _networkAvatar() {
+    final cacheSize = (size * 3).round();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: CachedNetworkImage(
+        imageUrl: _imageUrl!,
+        httpHeaders: kboPlayerImageHeaders,
+        width: size,
+        height: size,
+        memCacheWidth: cacheSize,
+        memCacheHeight: cacheSize,
+        fit: BoxFit.cover,
+        placeholder: (_, _) => _fallbackAvatar(),
+        errorWidget: (_, _, _) => _fallbackAvatar(),
+      ),
     );
   }
 

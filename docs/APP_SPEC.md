@@ -1,6 +1,6 @@
 # KBO Fans 앱 기획서 (App Specification)
 
-> 최종 수정: 2026-06-30
+> 최종 수정: 2026-07-01
 > 상태: Draft v1
 
 ---
@@ -30,11 +30,12 @@
 
 ### 화면 전환 모션
 
-- 하단 5탭 이동은 즉시 컷 전환하지 않고, 380ms 안팎의 fade + 부드러운 horizontal slide + 얕은 scale 전환을 사용한다.
-- 하단 탭 전환은 탭 순서를 기준으로 좌우 방향을 맞추고, 기존 화면도 아주 약한 parallax/fade로 함께 빠져나가 새 화면이 튀어나오는 느낌을 줄인다.
-- 경기 상세, 선수 상세, 리더보드, 진단, 업데이트 소식처럼 현재 화면 위로 진입하는 root push 화면은 iOS식 slide/parallax 전환을 사용한다.
+- 하단 5탭 이동은 즉시 컷 전환하지 않고, 760ms 안팎의 fade + 부드러운 horizontal slide + 얕은 scale 전환을 사용한다.
+- 하단 탭 전환은 탭 순서를 기준으로 좌우 방향을 맞추고, 기존 화면도 아주 약한 parallax/fade로 함께 빠져나가 새 화면이 튀어나오는 느낌을 줄인다. 기본 진입 760ms, 복귀 560ms를 사용한다.
+- 경기 상세, 선수 상세, 리더보드, 진단, 업데이트 소식처럼 현재 화면 위로 진입하는 root push 화면은 1000ms iOS식 slide/parallax 전환을 사용한다.
 - root push 화면은 이전 화면이 route stack에 있을 때 좌측 edge-swipe로 뒤로갈 수 있어야 한다. 앱 실행 deep link처럼 첫 route로 열린 경우에는 화면의 뒤로가기 버튼이 `/home` 복귀를 담당한다.
-- 부트/온보딩 전환은 콘텐츠 움직임을 최소화한 fade 중심으로 처리한다.
+- 뉴스 카드/CTA가 `/standings`, `/records`, `/schedule`처럼 shell 탭 화면을 현재 뉴스 화면 위로 `push`하는 경우에도 이전 뉴스 화면으로 좌측 edge-swipe 복귀가 가능해야 한다. 하단 탭을 직접 누르는 `go` 이동은 기존 5탭 전환 모션을 유지한다.
+- 부트/온보딩 전환은 콘텐츠 움직임을 최소화한 360ms fade 중심으로 처리한다.
 - 홈/일정/뉴스/순위/기록실/선수 상세의 로딩, 에러, 데이터 상태 전환은 360ms 안팎의 공통 fade + vertical slide + 얕은 scale 모션을 사용해 화면 교체를 분명하게 보여준다.
 - 경기 카드, 일정 카드, 순위 행, 선수/리더보드 행처럼 반복 리스트로 나타나는 정보는 320ms 이상, index별로 조금 길어지는 등장 모션을 허용하되 스크롤 성능과 정보 밀도를 우선한다.
 - 터치 가능한 경기/일정/뉴스/기록실/설정 카드, 홈 보조 카드, 하단 탭, 필터/정렬 chip, 온보딩 팀 카드는 press scale + opacity 피드백을 사용하되 실제 레이아웃 크기는 흔들지 않는다.
@@ -61,7 +62,7 @@
 [온보딩 - 마이팀 선택]
         │
         ▼
-[홈: 마이팀 브리프 + 오늘 경기 + 순위 + 최근 흐름] ──tap 경기 행──▶ [경기 상세]
+[홈: 마이팀 브리프 + 오늘 경기 + 순위 + 최근 5경기] ──tap 경기 행──▶ [경기 상세]
         │                              ├── 탭: 스코어
         │                              ├── 탭: 문자중계
         │                              ├── 탭: 박스스코어
@@ -78,7 +79,7 @@
 [설정: KBO 액션 허브]
    ├── 마이팀 선택/변경
    ├── 화면 모드: 시스템 / 라이트 / 다크
-   ├── 푸시 알림 모드/세부 토글
+   ├── 푸시 알림 항목별 토글
    ├── 알림함
    └── 세부 설정 및 지원
 ```
@@ -97,7 +98,7 @@
 | 경기 전 | 상대, 시간, 구장, 선발 투수, 라인업 공개 여부, 예매/알림 CTA |
 | 경기 중 | 스코어, 이닝, 주자/아웃/카운트, 직전 주요 플레이 |
 | 경기 종료 | 최종 스코어, 승패 요약, 핵심 선수, 박스스코어 진입 |
-| 다음 날 | 순위 변동, 마이팀 최근 흐름, 주요 기록 변화 |
+| 다음 날 | 순위 변동, 마이팀 최근 5경기, 주요 기록 변화 |
 
 ### 정보 깊이
 
@@ -170,7 +171,7 @@
 
 ### 2.2 홈: 마이팀 브리프 대시보드
 
-**목적**: 참조 목업처럼 마이팀 브리프, 오늘 경기, 순위, 최근 흐름을 한 흐름으로 묶어 오늘 야구 상황을 빠르게 확인
+**목적**: 참조 목업처럼 마이팀 브리프, 오늘 경기, 순위, 최근 5경기를 한 흐름으로 묶어 오늘 야구 상황을 빠르게 확인
 
 ```
 ┌─────────────────────────────────────┐
@@ -196,7 +197,7 @@
 │   2  LG  47 28 17 2 .622 2.0        │
 │   ... 전체 10팀                       │
 │                                     │
-│  최근 흐름                          │
+│  최근 5경기                         │
 │  [로고] KIA  승 승 - - -        2연승 │
 │  [로고] LG   승 승 패 승 승      4연승 │
 │  [로고] 삼성 패 승 승 패 승      2연승 │
@@ -213,7 +214,7 @@
 | 진행 중인 내 경기 | 마이팀 오늘 경기가 live 상태이면 마이팀 브리프 바로 아래, `오늘 경기` 위에 현재 스코어/이닝/구장을 compact 카드로 노출하고 탭하면 해당 경기 문자중계로 이동 |
 | 오늘 경기 | scoreboardProvider의 오늘 경기 전체를 compact row로 노출. 마이팀 경기를 우선 정렬하되 `전체 보기` CTA로 축약하지 않는다 |
 | 순위 | secondary section 활성화 이후 `/home.standingsPreview`를 읽어 전체 팀을 순위표로 표시 |
-| 최근 흐름 | 순위 바로 아래에서 `/home.standingsPreview` 전체 팀의 `streak`를 결과 버블과 연승/연패 텍스트로 표시. 마이팀 행은 `myTeamBrief.recentSummaries`가 있으면 실제 최근 경기 요약을 우선 사용 |
+| 최근 5경기 | 순위 바로 아래에서 `/home.standingsPreview` 전체 팀의 `streak`를 5개 결과 버블과 연승/연패 텍스트로 표시. 마이팀 행은 `myTeamBrief.recentSummaries`가 있으면 실제 최근 경기 요약을 우선 사용 |
 | KBO 브리프 | 위 네 섹션 아래에서 그날 리그 전체의 주요 경기/확정 기록/핵심 흐름 요약 |
 | 빠른 콘텐츠 | 홈런왕, 오늘의 플레이어, 마이팀 순위 등 짧은 정보 카드. 첫 화면보다 아래에 배치 |
 
@@ -221,12 +222,12 @@
 | 요소 | 설명 |
 |------|------|
 | 헤더 | `KBO` 브랜드 + 중앙 `홈` + 알림/검색 아이콘. 경기 중이면 중앙 title 옆에 작은 live dot 표시 |
-| 마이팀 브리프 | 마이팀 미선택 시 팀 선택 유도, 선택 시 오늘 경기/다음 경기/최근 흐름/순위/팀 기록 하이라이트 노출. 독립 이미지 strip 없이 카드 background layer와 팀 로고를 사용 |
+| 마이팀 브리프 | 마이팀 미선택 시 팀 선택 유도, 선택 시 오늘 경기/다음 경기/최근 5경기/순위/팀 기록 하이라이트 노출. 독립 이미지 strip 없이 카드 background layer와 팀 로고를 사용 |
 | 진행 중인 내 경기 | live 마이팀 경기가 있을 때만 `내 경기 진행 중`/`문자중계 보기` CTA를 표시하고, scheduled/final/cancelled 경기는 이 독립 카드를 만들지 않는다 |
 | KBO 브리프 | `KBO 소식`, `지금 KBO`, `오늘의 KBO 요약`처럼 날짜/경기 상태별 리그 전체 핵심 이슈 3~5개 노출. 홈에서는 전체 폭 row 카드로 배치해 긴 팀명/전적 문구를 말줄임으로 숨기지 않고, 팀 기반 순위/흐름 항목은 reference team logo를 우선 사용 |
-| 오늘 경기 | 구장/시간, 원정팀 로고/명, 중앙 스코어 또는 `- : -`, 상태 badge, 홈팀 로고/명을 한 행에 표시하고 오늘 편성된 모든 경기 row를 보여준다 |
+| 오늘 경기 | 구장/시간, 원정팀 로고/명, 중앙 스코어 또는 `- : -`, 상태 badge, 홈팀 로고/명을 한 행에 표시하고 오늘 편성된 모든 경기 row를 보여준다. 자정 이후 오늘 경기가 모두 시작 전이면 오늘 스코어보드 첫 렌더 후 전날 스코어보드를 보조 조회해 종료 경기만 `어제 결과` 그룹으로 함께 보여준다. 오늘 live/final 경기가 하나라도 있으면 어제 결과를 추가 조회하거나 섞지 않는다 |
 | 순위 snapshot | 현재 시즌 전체 팀 순위를 compact table로 표시하고 마이팀 행은 팀 컬러 배경으로 강조. 팀 행 탭은 전체 순위 화면으로 이동 |
-| 최근 흐름 | 전체 팀을 순위 순서대로 표시하고, 각 팀의 최근 흐름을 원형 `승`/`패`/`무` 버블과 오른쪽 연승/연패 요약으로 보여준다 |
+| 최근 5경기 | 전체 팀을 순위 순서대로 표시하고, 각 팀의 최근 결과를 원형 `승`/`패`/`무` 버블과 오른쪽 연승/연패 요약으로 보여준다 |
 | 빠른 콘텐츠 | 리그 리더/오늘의 플레이어/마이팀 순위 등 2~3개 카드형 콘텐츠. 홈에서는 전체 폭 row 카드로 배치해 긴 팀명/전적 문구가 잘리지 않게 하고, 선수 카드 탭 시 최근 기록 요약 바텀시트 후 상세 진입 가능 |
 | 경기 상태 뱃지 | `경기 전` / `1회초` ~ `12회말` / `경기종료` / `우천취소` |
 
@@ -234,19 +235,19 @@
 | 상태 | 우선 노출 | CTA |
 |------|-----------|-----|
 | 마이팀 미선택 | 팀 선택 시 달라지는 점, 팀 선택 버튼 | `마이팀 선택` |
-| 경기 없음 | 다음 경기, 현재 순위, 최근 5경기 흐름 | `경기 일정`, `팀 기록` |
+| 경기 없음 | 다음 경기, 현재 순위, 최근 5경기 | `경기 일정`, `팀 기록` |
 | 경기 전 | 상대, 구장, 시작 시간, 선발, 라인업 공개 여부 | `경기 정보`, `알림 설정` |
 | 경기 중 | 스코어, 이닝, 주자/아웃/카운트, 직전 주요 플레이 | `중계 보기`, `마이팀 알림 중` 또는 `알림 받기` |
 | 경기 종료 | 최종 스코어, 승패 요약, 핵심 선수 1~2명 | `경기 기록`, `하이라이트` |
 | 취소/지연 | 취소/지연 사유, 다음 일정 | `일정 보기` |
 
 - 마이팀 브리프는 단순 지표 나열보다 `지금 내 팀 상황`을 먼저 판단하게 한다. 선택된 팀이 있으면 카드 title, 팀 로고, 최근 최대 5경기 결과 버블, 순위/팀 타율/팀 ERA, 팀 홈런 1위, OPS/AVG/ERA 기준 눈에 띄는 선수, `경기 일정`/`팀 기록` CTA 순서로 구성한다.
-- 브리프 문구는 홈 첫 프레임 전략을 해치지 않도록 기존 scoreboard와 지연 로딩된 `/home` aggregate 안의 `myTeamBrief` 데이터를 먼저 사용한다. 팀 타율/ERA와 선수 하이라이트는 secondary section 활성화 뒤 기존 `teamRecordsProvider`(`/api/team/{teamId}/records`)에서 읽고, 홈 첫 데이터 프레임 전에는 구독하지 않는다. 선발/라인업/직전 플레이처럼 별도 상세 fetch가 필요한 정보는 경기 상세/문자중계 진입 뒤에 확인하게 한다.
+- 브리프 문구는 홈 첫 프레임 전략을 해치지 않도록 기존 scoreboard와 지연 로딩된 `/home` aggregate 안의 `myTeamBrief` 데이터를 먼저 사용한다. 팀 타율/ERA는 secondary section 활성화 뒤 `teamStatsProvider`(`/api/team/{teamId}/stats`)로 먼저 표시하고, 팀 홈런 1위/뜨는 선수는 `teamPlayersProvider`(`/api/team/{teamId}/players`)가 도착하면 보강한다. 홈 첫 데이터 프레임 전에는 두 provider를 구독하지 않는다. 선발/라인업/직전 플레이처럼 별도 상세 fetch가 필요한 정보는 경기 상세/문자중계 진입 뒤에 확인하게 한다.
 - 마이팀 브리프의 `my_team_brief_command` 로컬 생성 비주얼은 별도 strip/banner가 아니라 브리프 카드 내부 background layer로 낮게 깔아 개인화 영역의 질감을 만든다. 추가 네트워크 fetch나 로고/구단 엠블럼/읽을 수 있는 임의 텍스트를 포함하지 않는다.
 - 마이팀이 선택되어 있고 오늘 마이팀 경기가 live 상태이거나 라인업 공개/시작 10분 전 예정 상태이면 홈/위젯/재동기화 경로에서 해당 경기를 기본 Live Activity target 으로 맞춘다. 단, 참조형 오늘 경기 행에는 상태 문구를 반복 노출하지 않고 Live Activity / Widget sync target만 조용히 유지한다.
 - 마이팀 오늘 경기가 live 상태이면 scoreboard의 현재 값만으로 `진행 중인 내 경기` 카드를 마이팀 브리프 바로 아래에 표시한다. 이 카드는 홈 첫 화면에서 별도 detail/relay fetch를 시작하지 않고, 탭할 때 기존 상세 진입 pre-refresh를 통해 `gameProvider(gameId)`와 `relayDataProvider(gameId)`를 갱신한 뒤 `/game/{gameId}?tab=relay&focus=relay`로 이동한다.
 - 홈에서 진행 중인 오늘 경기 행을 열면 경기 상세는 기본으로 `문자중계` 탭에서 시작한다.
-- 홈에서 경기 행이나 마이팀 오늘 경기 카드를 열 때는 `gameProvider(gameId)`, 첫 진입 탭 provider, 라인업 선수 이미지 source를 먼저 invalidate/read 하고, 홈 위에 로딩을 표시한 뒤 최신 데이터와 선수사진 cache warm-up이 끝나면 경기 상세로 push 한다. 실패 시 stale 상세로 이동하지 않고 홈에서 실패 상태를 노출한다.
+- 홈에서 경기 행이나 마이팀 오늘 경기 카드를 열 때는 `gameProvider(gameId)`, 첫 진입 탭 provider, 라인업 선수 이미지 source를 먼저 invalidate/read 하고, 홈 위에 로딩을 표시한 뒤 최신 데이터와 선수사진 cache warm-up이 끝나면 경기 상세로 push 한다. 이미 홈에 표시된 경기정보가 있는 상태에서 이 사전 갱신이 실패하면 실패 SnackBar로 진입을 막지 않고 기존 경기정보로 상세에 들어가며, 실패는 Dev Console 경고로만 남긴다.
 
 **KBO 브리프 상태별 규칙**:
 | 상태 | 우선 노출 | 예시 |
@@ -260,13 +261,14 @@
 **KBO 브리프 API 계약**:
 - `GET /api/home`의 `data.kboBrief`로 내려간다.
 - 구조는 `{ title, subtitle, items[] }`이며, `items[]`는 `{ type, eyebrow, title, subtitle, route, gameId, teamIds[], imageUrl, fallbackLabel }`를 가진다.
-- 홈 UI는 오늘 경기/순위/최근 흐름 아래에 `KBO 브리프` 라벨과 상태별 title을 표시하고, 기본 3개 카드 노출 후 4개 이상이면 확장한다.
+- 홈 UI는 오늘 경기/순위/최근 5경기 아래에 `KBO 브리프` 라벨과 상태별 title을 표시하고, 기본 3개 카드 노출 후 4개 이상이면 확장한다.
 - 홈 UI는 별도 `오늘 남은 경기` footer 또는 `schedule_remaining` 카드를 만들지 않는다. 남은 일정 노출이 필요하면 `big_match` 항목의 경기 카드나 일정 화면 진입으로만 처리한다.
 - 홈의 broad CTA는 `/news`로 이동한다. 개별 item tap은 app route sanitizer가 승인한 내부 route만 사용하고, 외부/미지원 route는 `/news` fallback으로 보정한다.
 - 현재 자동 생성 근거는 scoreboard, standings, records overview로 제한한다.
 - `defense_issue`는 scoreboard의 팀별 경기 실책 합계가 확인된 종료/진행 경기에서 생성한다.
 - `defense_rank`는 해당 날짜 scoreboard에 확인된 팀별 실책 수를 내림차순으로 묶어 `팀별 실책` 카드로 노출한다.
 - `batting_leader`는 records overview의 타율 리더를 사용한다.
+- `record_milestone`은 records overview가 검수된 `leaders.milestones[]` 또는 `milestones[]`를 내려줄 때만 생성한다. 각 항목은 `playerId`, `playerType`, `metricKey`, `name`, `teamId`, `value`, 선택 `milestoneLabel`, 선택 `allTimeRank`를 가질 수 있고, `allTimeRank`가 있을 때만 `역대 n번째` 문구를 쓴다.
 - `quickItems`는 홈 화면에서는 기존처럼 최대 4개만 노출하지만, aggregate에는 최대 6개까지 담아 뉴스 탭에서 홈런왕, 오늘의 타자, 오늘의 투수 같은 선수 브리프를 함께 기사형 row로 보여줄 수 있게 한다.
 - 팀별 시즌 누적 실책 순위는 현재 팀 기록 원천에서 실책 컬럼이 검증되기 전까지 자동 생성하지 않는다. 홈에서는 검증 가능한 날짜/경기 단위 실책 이슈와 순위만 노출한다.
 - KBO 최초, 최연소, 개인/KBO 통산 달성 같은 역사적 기록 문구는 검수된 `record_catalog`와 달성/후보 snapshot이 붙기 전까지 자동 생성하지 않는다.
@@ -275,7 +277,7 @@
 - `GET /api/home`의 `data.standingsPreview`로 내려간다.
 - 구조는 `TeamStanding[]`과 동일하며 `rank`, `teamId`, `teamName`, `wins`, `losses`, `draws`, `pct`, `gb`, `streak`를 가진다.
 - 기본은 순위 오름차순 전체 팀이다.
-- 홈 UI는 이 배열만 사용해 순위 프리뷰와 최근 흐름 전체 팀 행을 렌더링하고, 홈 화면에서 별도 current-season standings provider를 추가 호출하지 않는다.
+- 홈 UI는 이 배열만 사용해 순위 프리뷰와 최근 5경기 전체 팀 행을 렌더링하고, 홈 화면에서 별도 current-season standings provider를 추가 호출하지 않는다.
 
 **경기 카드 상태별 표시**:
 | 상태 | 표시 방식 |
@@ -315,8 +317,9 @@ GET /api/scoreboard?date=2026-03-28
 **핵심 구성**:
 | 요소 | 설명 |
 |------|------|
-| 오늘 읽을 기록 | 리그 overview 응답의 `todayHitter` / `todayPitcher` 대표를 함께 노출하고, AVG/HR/OPS/wRC+/ERA 선두를 조합해 가장 강한 1위 선수, 선수 이미지, 활성 지표 수, TOP5 선수 수, source confidence, 핵심 브리프 문장 2~3개를 먼저 노출 |
+| 오늘 읽을 기록 | 리그 overview 응답의 `todayHitter` / `todayPitcher` 대표를 함께 노출하고, AVG/HR/OPS/wRC+/ERA 선두를 조합해 가장 강한 1위 선수와 선수 이미지를 보여준다. 하단 요약은 내부 source confidence나 데이터 개수 대신 타율/홈런/ERA 등 실제 리더와 2위 격차를 먼저 노출 |
 | 지표 spotlight | AVG/HR/OPS/wRC+/ERA를 가로 rail로 보여주고, 각 카드에 1위 순위 badge, 선수/팀/값/2위와 격차를 표시 |
+| 마운드 체크 | 투수 지표가 가로 rail 끝에 묻히지 않도록 ERA, 다승, 세이브, 탈삼진 리더를 별도 compact panel로 표시하고 각 지표별 전체 리더보드로 연결 |
 | 리그 리더보드 preview | 핵심 지표를 tab으로 전환하며 TOP 3 table row와 `공식`/`계산` source badge를 표시하고 전체 리더보드 화면으로 연결 |
 | 팀 기록실 진입 | 검색 전 `팀 기록실` 섹션 헤더를 두고 마이팀을 우선 정렬한 팀 목록으로 연결 |
 | 상단 요약 | 엔트리 수 / 엔트리 제외 수 |
@@ -340,7 +343,8 @@ GET /api/scoreboard?date=2026-03-28
 **데이터 바인딩**:
 ```
 GET /api/records/overview?season=2026
-→ 오늘 읽을 기록 / 지표 spotlight / 리더보드 preview
+→ 오늘 읽을 기록 / 지표 spotlight / 마운드 체크 / 리더보드 preview
+→ leaders: avg, hr, ops, opsPlus, era, wins, saves, strikeouts
 
 GET /api/team/{teamId}/players?season=2026
 → 팀 엔트리 / 말소 / 간단 시즌 지표 / 최근 기록 요약
@@ -564,8 +568,8 @@ GET /api/game/{gameId}/relay
 | 오늘 기록 요약 | 상단 summary surface. 팀 로고, `오늘 기록 요약`, 타수/득점/안타/타점/팀 타율을 5분할로 노출하고 `boxscore_analytics` 생성 이미지를 낮은 opacity 배경으로 사용 |
 | 팀 비교 | 공식 박스스코어가 양 팀에 있으면 득점, 안타, 타점, 장타를 `선택팀 : 상대팀` 형태의 얇은 strip으로 비교 |
 | 핵심 기록 행 | 핵심 타자 / 핵심 투수를 큰 카드 대신 record row로 표시. 선수 프로필 이미지, 역할 tag, 오늘 경기 수치, `생산 +N`/`효율 +N`, 매칭 시 `선수 기록 보기` CTA를 포함 |
-| 타자 기록 | 타순 정렬 dense row. 등번호 badge, 선수명/포지션/타순 + 타수/안타/타점/득점/오늘 타율. 확장 지표가 있으면 루타, 장타, SLG, 볼넷, 사구, 삼진, 도루를 보조 라벨로 표시 |
-| 투수 기록 | 등판 순서 dense row. 등번호 badge, 선수명 + 이닝/피안타/자책/삼진/결과. 확장 지표가 있으면 투구수, 경기 ERA, 경기 WHIP, 실점을 보조 라벨로 표시 |
+| 타자 기록 | 타순 정렬 dense row. 선수 프로필 이미지/등번호 badge, 선수명/포지션/타순 + 타수/안타/타점/득점/오늘 타율. 확장 지표가 있으면 루타, 장타, SLG, 볼넷, 사구, 삼진, 도루를 보조 라벨로 표시 |
+| 투수 기록 | 등판 순서 dense row. 선수 프로필 이미지/등번호 badge, 선수명 + 이닝/피안타/자책/삼진/결과. 확장 지표가 있으면 투구수, 경기 ERA, 경기 WHIP, 실점을 보조 라벨로 표시 |
 | 기록 진입 | 매칭된 선수만 row와 핵심 기록 행에 `선수 기록 보기`를 보여주고 `/records/player/{playerId}?season={YYYY}`로 이동. 미매칭 선수는 CTA와 chevron을 숨긴다 |
 
 **상태 처리**:
@@ -595,6 +599,7 @@ GET /api/game/{gameId}/boxscore
 - 경기 전이라도 KBO 원천이 라인업을 공개한 상태라면 라인업 탭에서 바로 표시한다.
 - 아직 공개되지 않은 경기 전 라인업은 “라인업 공개 전입니다” 빈 상태로 표시하며, “경기 시작 후”로 제한하지 않는다.
 - 라인업 탭 정상 상단에는 `lineup_matchup` 생성 이미지를 사용하고, 라인업 미공개/취소 빈 상태에는 `lineup_dugout` 생성 이미지를 사용해 pre-game 맥락과 실제 라인업 확인 맥락을 분리한다.
+- 종료/진행 경기의 라인업 선발 비교 카드는 공식 박스스코어 투수 row가 있으면 승패, 이닝, 경기 ERA, 경기 WHIP를 보강해 표시한다. 이름만 있는 live context나 0값 placeholder 투수 row는 공식 선발 기록처럼 표시하지 않는다.
 
 ```
 ┌─────────────────────────────────────┐
@@ -677,14 +682,14 @@ GET /api/game/{gameId}/lineup
 | 요소 | 설명 |
 |------|------|
 | 월 네비게이션 | `← 이전월` / `다음월 →` 화살표 |
-| 보기 전환 | `내 팀 먼저 보기` / `구장별` / `매치업` segmented control. 매치업은 현재 월 일정 안에서 선택한 두 팀이 모두 포함된 경기만 보여준다 |
+| 보기 전환 | `내 팀 먼저 보기` / `구장별` / `매치업` segmented control. 매치업은 시즌 전체 일정에서 선택한 두 팀이 모두 포함된 경기를 모아 보여준다 |
 | 캘린더 그리드 | 경기 있는 날은 얇은 live-red outline으로 날짜를 감싸고, 날짜 아래 4px dot을 둔다. 마이팀 경기일 dot은 action blue, 일반 경기일 dot은 muted gray로 표시 |
 | 선택된 날짜 | live-red fill + 더 강한 outline으로 하이라이트하고, 선택 날짜 범례는 white dot으로 설명 |
 | 경기 목록 | 선택 날짜의 경기 리스트. 시간 + 상태(`경기 전/경기 중/경기 종료`) + 팀 로고 + 점수 또는 `vs` + 구장을 8px radius dark card에 조밀하게 배치. 저장된 마이팀 경기 카드는 팀 컬러 좌측 바, 강조 테두리, `마이팀` 배지로 일반 경기와 구분한다 |
 | 마이팀 필터 | 상단 주요 제어로 배치. 전체 / 마이팀 / 마이팀 제외 |
 | 구장별 퀵링크 | 구장별 보기 상단에 구장명 + 경기 수 칩을 표시. 탭하면 해당 구장 섹션으로 즉시 스크롤 |
 | 매치업 팀 선택 | `팀 1`, `팀 2` 가로 팀 chip row에서 두 팀을 선택한다. 같은 팀 중복 선택은 비활성화하고, 마이팀이 있으면 `팀 1` 기본값으로 사용한다 |
-| 매치업 목록 | 선택한 두 팀의 맞대결을 홈/원정 무관으로 모아 날짜 라벨이 있는 일정 카드 목록으로 표시한다. 해당 월에 경기가 없으면 매치업 빈 상태를 보여준다 |
+| 매치업 목록 | 선택한 두 팀의 맞대결을 홈/원정 무관으로 모아 날짜 라벨이 있는 일정 카드 목록으로 표시한다. 오늘로부터 가까운 날짜순으로 정렬하고, 이미 지난 경기는 어둡게 dim 처리한다. 해당 시즌에 경기가 없으면 매치업 빈 상태를 보여준다 |
 | 예매 정보 | 예정 경기 카드에 예매처 + 예매 시작시간 + 알림 상태 배지 표시 |
 | 진행/종료 경기 | 예매 정보는 숨기고 경기 상태/결과/다음 경기 연결을 표시 |
 | 빈 상태 비주얼 | 날짜 미선택, 선택일 경기 없음, 구장별 일정 없음, 매치업 일정 없음 상태는 `schedule_empty_calendar` 생성 이미지와 짧은 안내 문구를 함께 표시 |
@@ -698,7 +703,7 @@ GET /api/game/{gameId}/lineup
 - 캘린더 모드의 필터, 범례, 캘린더, 선택일 경기 목록은 하나의 세로 스크롤 표면으로 묶어 어느 영역에서 위아래로 밀어도 경기 목록 스크롤이 자연스럽게 이어지게 한다.
 - 이미 선택된 하단 `일정` 탭 재탭 → 현재 선택 월/날짜 유지
 - 구장별 보기에서 구장 퀵링크 탭 → 해당 구장 일정 섹션으로 스크롤
-- 매치업 보기에서 팀 chip 탭 → 선택한 두 팀의 현재 월 맞대결 목록으로 즉시 필터링
+- 매치업 보기에서 팀 chip 탭 → 선택한 두 팀의 시즌 전체 맞대결 목록으로 즉시 필터링
 - 오늘 버튼 → 오늘 날짜로 복귀
 
 **데이터 바인딩**:
@@ -706,7 +711,7 @@ GET /api/game/{gameId}/lineup
 GET /api/schedule?month=2026-03
 → {days: [{date, games: [{gameId, time, away, home, awayScore, homeScore, stadium, status, ticketInfo}]}]}
 ```
-- 매치업 보기는 별도 endpoint를 만들지 않고 월간 일정 응답의 `away.teamId` / `home.teamId`를 앱에서 홈/원정 무관으로 필터링한다.
+- 매치업 보기는 별도 endpoint를 만들지 않고 시즌 월간 일정 응답들을 앱에서 합친 뒤 `away.teamId` / `home.teamId`를 홈/원정 무관으로 필터링한다.
 
 **운영 메모**:
 - 월간 일정은 월 단위 prefetch/cache 를 사용하고, 지난 날짜 경기 결과는 경기 종료 후 저장된 schedule snapshot 을 우선 사용한다.
@@ -726,18 +731,18 @@ GET /api/schedule?month=2026-03
 ├─────────────────────────────────────┤
 │  주요 소식                            │
 │  1  [로고] 두산 vs LG                 │
-│  2  [로고] 1위 LG 트윈스              │
+│  2  [로고] 선두가 위태로운 LG 트윈스    │
 │  3  [사진] 김도영 13홈런              │
 │                                     │
 │ 전체  경기  순위  기록  마이팀         │
 │                                     │
-│  최신 뉴스  6개                       │
+│  최신 뉴스  25개 이상                  │
 │  [로고] 경기 · 스코어보드              │
 │  LG vs KIA                            │
 │  7회말 진행 중 · 잠실          경기 보기│
 │                                     │
 │  [로고] 순위 · 순위표                 │
-│  1위 LG 트윈스                        │
+│  선두가 위태로운 LG 트윈스              │
 │  2위와 1.5G차                  순위 보기│
 │                                     │
 ├──────┬──────┬──────┬──────┬──────┤
@@ -751,13 +756,13 @@ GET /api/schedule?month=2026-03
 | 헤더 | 기준일, `뉴스` title, 새로고침 버튼 |
 | 편집 리드 | `주요 소식` 아래 먼저 볼 3개 카드를 rank row로 배치. `homeAggregate.kboBrief.title/subtitle`은 뉴스 화면에서 직접 노출하지 않고, 경기 → 순위 → 기록 → 마이팀 순서로 우선 정렬 |
 | 필터 | 전체 / 경기 / 순위 / 기록 / 마이팀. 레퍼런스형 segmented row와 선택 탭 배경 highlight로 노출 |
-| 뉴스 row | `HomeKboBriefItem`, `HomeAggregate.quickItems`, `HomeAggregate.standingsPreview`, 마이팀 브리프/최근 경기 요약을 기사형 row로 변환. 좌측은 선수 이미지 또는 reference team logo를 우선 사용하고, 팀명 초성 조합 같은 임의 약칭은 만들지 않는다 |
+| 뉴스 row | `HomeKboBriefItem`, `HomeAggregate.quickItems`, `HomeAggregate.standingsPreview`, 마이팀 브리프/최근 경기 요약을 기사형 row로 변환. 순위표가 있으면 10팀 순위, 순위권 구도, 승수 페이스, 상위권 연패/중하위권 연승 같은 특이 흐름을 함께 만들어 전체 탭의 `최신 뉴스` 목록이 25개 이상 남도록 한다. 홈런왕 quick item과 순위표 경기 수가 함께 있으면 144경기 기준 홈런 페이스도 추가한다. 좌측은 선수 이미지 또는 reference team logo를 우선 사용하고, 팀명 초성 조합 같은 임의 약칭은 만들지 않는다 |
 | 빈 상태 | aggregate에 표시 가능한 brief item이 없으면 `오늘 보여줄 뉴스가 없습니다`와 `일정 보기` CTA를 보여준다. 필터 결과만 비어 있으면 해당 필터 empty state와 전체 보기 동선을 둔다 |
 | 오류 상태 | 홈 aggregate 실패 시 별도 기사/placeholder를 만들지 않고 재시도 카드만 보여준다 |
 
 **인터랙션**:
 - 하단 `뉴스` 탭 → `/news`
-- 카드 탭 → app route sanitizer가 승인한 item route 기준으로 경기 상세, `/standings`, `/records` 계열 화면으로 이동. 외부/미지원 route는 뉴스 브리프 fallback으로 보정
+- 카드 탭 → app route sanitizer가 승인한 item route 기준으로 경기 상세, `/standings`, `/records` 계열 화면으로 이동. 외부/미지원 route는 뉴스 브리프 fallback으로 보정하고, push stack이 있는 경우 좌측 edge-swipe로 뉴스 화면에 복귀할 수 있게 한다.
 - Pull-to-refresh / refresh icon → 해당 날짜 `homeAggregateProvider` 재조회
 - `/news`는 `/standings`를 임시 재사용하지 않는다. 순위 화면은 홈/뉴스 카드에서 들어가는 별도 화면으로 유지한다.
 
@@ -773,7 +778,9 @@ homeAggregateProvider("{yyyy-MM-dd}|{myTeamId}")
 
 **운영 메모**:
 - 뉴스 탭은 외부 기사 크롤링 없이 현재 앱이 검증하는 스코어보드/순위/기록실 aggregate에서 만든 짧은 브리프만 보여준다.
-- 기사처럼 보이는 임의 문구나 fake source를 만들지 않는다. 데이터가 없으면 빈 상태를 노출한다.
+- 계산형 소식은 이미 표시 가능한 수치에서만 만든다. 홈런/승수 페이스는 `wins + losses + draws` 경기 수가 1 이상일 때만 노출하고, 새 API 조회나 추정용 임의 데이터를 만들지 않는다.
+- 팀 ERA 대비 불펜 ERA처럼 세부 팀 지표 간 반전 카드는 해당 지표가 `/home` aggregate 또는 별도 검증된 팀 스탯 계약으로 들어온 뒤 자동 생성한다. 현재 뉴스 탭은 standings/quickItems/kboBrief에 이미 포함된 데이터만 재가공한다.
+- `1위 LG 트윈스` 같은 건조한 순위 나열 대신 `선두가 위태로운 LG 트윈스`, `선두 추격하는 한화 이글스`처럼 데이터 기반 기사형 제목을 쓴다. 외부 기사 출처를 가장하거나 데이터 없는 fake source는 만들지 않고, 데이터가 없으면 빈 상태를 노출한다.
 
 ---
 
@@ -858,11 +865,8 @@ GET /api/standings?season=2026
 │  푸시 알림                            │
 │  ┌─────────────────────────────┐    │
 │  │ 기본 대상: LG 경기            │    │
-│  │ 전후 요약 / 실시간 / 안받기    │    │
-│  │ 요약 디테일: 핵심 기본 자세히 │    │
-│  │ 실시간 디테일: 핵심 기본 자세히 │   │
 │  │ 전후: 라인업 시작 종료 브리프  │    │
-│  │ 실시간: 득점 안타 홈런 역전... │    │
+│  │ 경기중: 득점 안타 홈런 역전... │    │
 │  └─────────────────────────────┘    │
 │                                     │
 │  알림함                              │
@@ -889,27 +893,28 @@ GET /api/standings?season=2026
 **UI 요소**:
 | 요소 | 설명 |
 |------|------|
-| 마이팀 | 현재 선택 팀과 `마이팀 선택/변경` 버튼만 표시. 순위, 최근 흐름, 오늘 경기 여부는 홈/일정/순위 탭에서만 다룬다 |
+| 마이팀 | 현재 선택 팀과 `마이팀 선택/변경` 버튼만 표시. 순위, 최근 5경기, 오늘 경기 여부는 홈/일정/순위 탭에서만 다룬다 |
 | 화면 모드 | 설정 첫 화면에서 `시스템`, `라이트`, `다크`를 고른다. `시스템`은 OS 밝기 설정을 따르고, `라이트`/`다크`는 앱 화면을 직접 고정한다 |
-| 푸시 알림 | 설정 첫 화면에서 `경기 전후 요약만 받기`, `경기 중 실시간 알림받기`, `안받기` 3개 큰 모드를 먼저 고른다. 요약 모드에서는 `요약 디테일`, 실시간 모드에서는 `실시간 디테일`을 `핵심` / `기본` / `자세히`로 조정하고, 선택 모드에 맞는 세부 토글도 바로 바꾼다 |
+| 푸시 알림 | 설정 첫 화면에서 프리셋을 먼저 고르지 않고, `경기 전후`와 `경기 중` 항목별 토글을 바로 켜고 끈다. 상단 상태는 켜진 항목 수 또는 `모두 꺼짐`으로만 요약한다 |
 | 알림함 | 수신된 push 목록으로 진입하는 버튼. 설정에서는 최신 알림 본문을 미리 펼치지 않고 unread count만 보조 상태로 둔다 |
-| 경기별 알림 범위 | 기본 대상은 마이팀 경기다. 마이팀 경기 topic과 마이팀 외 선택 경기 `*_GAME_{gameId}` topic 모두 현재 알림 모드와 세부 토글이 켜진 moment만 구독한다 |
+| 경기별 알림 범위 | 기본 대상은 마이팀 경기다. 마이팀 경기 topic과 마이팀 외 선택 경기 `*_GAME_{gameId}` topic 모두 현재 켜진 moment만 구독한다 |
 | 라이브 경기 알림 | 마이팀 live/라인업 공개 예정/시작 10분 전 예정 경기 자동 선택 또는 현재 경기 상세에서 사용자가 직접 시작하는 Live Activity / Android Live Update 세션 |
 | 세부 설정 및 지원 | API 진단, 플랫폼 앱 메타데이터의 실제 버전, 최근 업데이트 소식, 앱 내 법적 문서, 오픈소스 라이선스 페이지, 지원 메일 연결 |
 
 **권한 / 등록 규칙**:
 - 앱은 마이팀이 선택된 non-local 환경에서 최초 1회 OS 알림 권한을 요청하고 FCM token/topic registration을 `/push/register`로 동기화한다.
 - 기존 사용자가 이미 마이팀을 선택한 상태로 앱을 열면 부트스트랩 이후 같은 자동 동기화를 시도한다. 신규 사용자는 마이팀 선택 직후 같은 경로를 탄다.
-- 마이팀이 선택된 사용자의 기본 구독 범위는 마이팀 경기지만, 저장된 delivery/off와 세부 토글을 존중한다. `안받기` 또는 꺼진 moment는 마이팀 team topic에도 포함하지 않는다.
+- 마이팀이 선택된 사용자의 기본 구독 범위는 마이팀 경기지만, 저장된 delivery/off와 세부 토글을 존중한다. 꺼진 moment는 마이팀 team topic에도 포함하지 않는다.
 - `followedGameIds`가 있으면 마이팀 외 경기만 켜진 game moment에 대해 `*_GAME_{gameId}` topic으로 추가한다. 선택한 경기가 마이팀 경기이면 같은 moment의 GAME topic을 만들지 않고 team topic만 유지해 중복 수신을 피한다.
+- `allGames=true`에서 즉시 발송되는 game moment는 `*_ALL` topic 하나로 받는다. 같은 moment의 마이팀 team topic은 만들지 않아 리그 전체와 마이팀 topic 중복 수신을 피하고, `summary` / `live_only`처럼 `*_ALL`로 발송하지 않는 마이팀 moment만 team topic에 남긴다.
 - `baseball_info`는 경기 단건 moment가 아니므로 기존 팀/전체 브리프 topic 정책을 따른다.
-- `inning_change`도 실시간 모드에서 켜져 있으면 마이팀 경기와 마이팀 외 선택 경기 topic에 포함한다.
+- `inning_change`도 켜져 있으면 마이팀 경기와 마이팀 외 선택 경기 topic에 포함한다.
 - local/web 환경은 자동 권한 요청을 하지 않고, 경기 상세의 `푸쉬 중계 받기` 같은 명시적 동작은 계속 수동 sync 진입점으로 유지한다.
 - 화면 모드 선택은 `SharedPreferences`의 `appearance.theme_mode`에 `system` / `light` / `dark` 값으로 저장한다. 저장값이 없는 기존 설치는 현재 앱 경험을 보존하기 위해 `dark`를 기본값으로 사용한다.
 
 **카피 원칙**:
-- 설정 화면은 설명형 정보 카드보다 실제 이동/설정 버튼을 우선한다. 홈/일정/순위/기록/뉴스 탭에서 이미 노출되는 경기 요약, 순위, 최근 흐름, 기록/뉴스 브리프는 설정에서 반복하지 않는다.
-- 설정 화면에는 알림 플레이북이나 리그 전체 알림 토글을 노출하지 않는다. 대신 `경기 전후 요약만 받기`, `경기 중 실시간 알림받기`, `안받기` 3개 모드와 모드별 토글만 노출한다. `경기 전후 요약만 받기` 모드에서는 요약 디테일 세그먼트로, `경기 중 실시간 알림받기` 모드에서는 실시간 디테일 세그먼트로 수신 범위를 빠르게 줄이거나 늘릴 수 있게 한다. 경기 상세 follow CTA는 설명 타일 없이 `푸쉬 중계 받기` / `푸쉬 중계 끄기` 단일 버튼으로 표시한다.
+- 설정 화면은 설명형 정보 카드보다 실제 이동/설정 버튼을 우선한다. 홈/일정/순위/기록/뉴스 탭에서 이미 노출되는 경기 요약, 순위, 최근 5경기, 기록/뉴스 브리프는 설정에서 반복하지 않는다.
+- 설정 화면에는 알림 플레이북, 리그 전체 알림 토글, 프리셋 선택지, `요약 디테일`/`실시간 디테일` 세그먼트를 노출하지 않는다. 대신 `경기 전후`와 `경기 중` 항목별 토글을 모두 보여 사용자가 받을 moment를 하나씩 고르게 한다. 경기 상세 follow CTA는 설명 타일 없이 `푸쉬 중계 받기` / `푸쉬 중계 끄기` 단일 버튼으로 표시한다.
 - 업데이트 소식 화면은 최근 버전별 섹션으로 표시하고 현재 설치 버전과 일치하는 섹션에 `현재 설치됨` 상태를 표시한다.
 - 앱 업데이트 후 첫 접속에서는 현재 설치 버전의 업데이트 소식을 팝업으로 1회 표시한다. 닫기 또는 전체 보기 선택 후에는 같은 설치 버전에서 다시 자동 노출하지 않는다.
 - 앱 안의 업데이트 소식은 사용자가 체감하는 화면/알림/데이터 변화만 남긴다. 배포 checkpoint, 테스트, 서버/워크플로 세부는 `CHANGELOG.md`와 `docs/WORKLOG.md`에 분리한다.
@@ -934,11 +939,12 @@ GET /api/standings?season=2026
 | 타석 | 바로 알림 | 마이팀 또는 선택 경기 | 새 타자가 들어서는 순간 문자중계 탭으로 바로 연결 |
 | 야구 브리프 | 바로 알림 | 마이팀 | 월요일 주간 체크, 비경기일 일정/순위/기록 확인처럼 경기 이벤트가 아닌 야구 정보 확인 신호를 낮은 빈도로 발송 |
 
-**설정 모드와 세부 토글**:
-- `경기 전후 요약만 받기`: 라인업 공개, 경기 시작/시작 임박, 경기 종료 결과, 야구 브리프 토글만 제공한다. 요약 디테일은 `핵심` = 경기 시작/시작 임박 + 경기 종료, `기본` = 핵심 + 라인업 공개, `자세히` = 기본 + 야구 브리프다.
-- `경기 중 실시간 알림받기`: 전후 요약 토글에 더해 득점, 안타, 홈런, 역전, 이닝 전환, 타석 변화 토글을 제공한다. 실시간 디테일은 `핵심` = 경기 시작/시작 임박 + 득점 + 홈런 + 역전 + 경기 종료, `기본` = 핵심 + 안타 + 라인업 공개, `자세히` = 기본 + 이닝 전환 + 타석 변화 + 야구 브리프다.
-- `안받기`: 모든 moment boolean과 delivery를 `off`로 저장하고, 마이팀 team topic 및 마이팀 외 selected-game GAME topic을 만들지 않는다.
-- 기존 설치나 저장값이 없는 사용자는 기존 수신 범위를 줄이지 않기 위해 요약 디테일과 실시간 디테일을 모두 `자세히`로 해석한다.
+**설정 토글**:
+- `경기 전후`: 선발 라인업 공개, 경기 시작/시작 임박, 경기 종료 결과, 야구 브리프를 개별 토글로 제공한다.
+- `경기 중`: 득점, 안타, 홈런, 역전, 이닝 전환, 타석 변화를 개별 토글로 제공한다.
+- 모든 moment를 끄면 상단 상태를 `모두 꺼짐`으로 표시하고, 마이팀 team topic 및 마이팀 외 selected-game GAME topic을 만들지 않는다.
+- 전체 off 상태에서 한 항목을 다시 켜면 해당 moment의 기본 delivery를 복구한다. 경기 종료/라인업은 `summary`, 이닝 전환은 `liveOnly`, 나머지 항목은 `immediate`를 기본값으로 쓴다.
+- 기존 설치나 저장값이 없는 사용자는 기존 수신 범위를 줄이지 않기 위해 모든 기본 moment를 켜진 상태로 해석한다. 내부 `summary_detail_level`/`live_detail_level` 값은 payload 호환성을 위해 남기되, 설정 UI의 사용자-facing 제어로 노출하지 않는다.
 - 새 사용자 기본 범위는 `allGames=false`인 마이팀 경기다. 마이팀 외 경기는 경기 상세의 follow action으로 `followedGameIds`에 들어온 경우에만 추가된다.
 
 **Moment Preference 모델**:
@@ -965,7 +971,7 @@ GET /api/standings?season=2026
 - 마이팀이 선택되지 않은 첫 실행에서는 OS push permission 을 요청하지 않는다
 - 마이팀이 선택된 non-local 앱은 최초 1회 OS push permission 과 FCM registration sync를 자동 시도한다
 - 사용자가 "푸쉬 중계 받기"처럼 명시적 action 을 선택했을 때도 OS permission / registration sync를 재시도할 수 있다
-- 사용자가 푸시 알림 모드, 요약 디테일, 실시간 디테일, 세부 토글을 바꾸면 SharedPreferences의 boolean/delivery/`summary_detail_level`/`live_detail_level` 값을 함께 저장하고 `/push/register` 재동기화를 시도한다.
+- 사용자가 푸시 알림 토글을 바꾸면 SharedPreferences의 boolean/delivery 값을 저장하고, 내부 호환용 `summary_detail_level`/`live_detail_level` 값을 현재 토글 조합에서 다시 계산한 뒤 `/push/register` 재동기화를 시도한다.
 - `야구 브리프`가 바로 알림이면 앱은 `baseball_info_<팀>` 또는 리그 전체 설정 시 `baseball_info_ALL` topic을 구독한다. push data가 `type=baseball_info`이면 `route` 필드가 없어도 홈으로 진입한다.
 - `followedGameIds`가 있으면 마이팀 외 일반 경기 event moment는 해당 moment가 켜져 있을 때만 `scoring_GAME_{gameId}`, `hit_GAME_{gameId}`, `game_start_soon_GAME_{gameId}`처럼 selected-game topic으로 추가한다. 선택한 경기가 마이팀 경기이면 같은 moment의 GAME topic을 만들지 않고 마이팀 team topic만 유지한다. `baseball_info`는 경기 event가 아니므로 계속 `baseball_info_<팀>` 또는 `baseball_info_ALL` 범위를 따른다.
 - `바로 알림`은 push/topic 및 로컬 이벤트 알림 대상이 되고, `묶음 요약`은 summary preference 로 저장하며, `liveOnly`는 마이팀 외 선택 경기의 Live Activity / Android Live Update 중심 선호로만 사용한다
@@ -1214,6 +1220,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 첫 로딩은 오늘 스코어보드 별도 로컬 cache 를 먼저 렌더링하지 않고, 최신 API 응답 또는 명시적 오류 상태를 기준으로 전환한다.
 - 홈이 이미 정상 스코어보드를 한 번 그린 뒤 resumed / timer refresh 가 실패하면, 저장 캐시를 새 정상 데이터처럼 쓰지 않고 화면에 보이던 같은 날짜 스코어보드만 유지한다. 이 경우 `다시 시도` 오류 화면은 첫 데이터가 전혀 없을 때만 노출하고, refresh 실패는 Dev Console 경고로 남긴다.
+- 홈에서 경기 상세 진입 전 `gameProvider(gameId)` 또는 첫 탭 provider 갱신이 실패해도, 홈에 이미 표시된 `Game`이 있으면 그 정보를 `extra`로 넘겨 상세를 열고 상세 화면의 자체 refresh가 이후 최신화를 담당한다. 첫 화면부터 경기정보가 전혀 없는 cold 실패만 사용자 오류 상태로 둔다.
 - 홈 secondary `/home` aggregate provider 는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전 부가 API fan-out 을 만들지 않는다.
 - 홈 자동 refresh timer 는 refresh interval 과 scoreboard signature 가 바뀔 때만 재스케줄해 unrelated rebuild 로 live polling 이 지연되지 않게 한다.
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
@@ -1230,7 +1237,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다. 박스스코어의 adjacent game id fallback 은 과거 경기 canonical id 보정에만 허용하고, current/live 경기는 비어 있으면 `officialAvailable=false` 상태를 노출한다.
 - live 경기의 공식 박스스코어 rows가 비어 있어도 KBO main list가 현재 타자/투수 context를 제공하면 `/game/{gameId}/boxscore`는 `officialAvailable=false`, `liveContextAvailable=true`, `source=live_context`를 반환할 수 있다. 이 payload는 snapshot으로 저장하지 않고 앱에서는 `실시간 기록 추적` 상태로 렌더링한다.
 - LIVE 경기 상세는 탭 전환 시 현재 보이는 탭의 최신 데이터를 즉시 갱신한다. 스코어 탭은 경기 상세, 문자중계 탭은 relay, 박스스코어 탭은 boxscore, 라인업 탭은 lineup provider를 타이머 tick 전에도 refresh한다.
-- 경기 상세 진입 전 image prefetch는 fade-in/placeholder 연출로 문제를 숨기지 않고, 라인업 starter/row와 relay current-at-bat/최근 item에 필요한 선수 이미지 URL을 dedupe한 뒤 `precacheImage` 경로까지 먼저 태운다.
+- 경기 상세 진입 전 image prefetch는 fade-in/placeholder 연출로 문제를 숨기지 않고, 박스스코어 row, 라인업 starter/row, relay current-at-bat/최근 item에 필요한 선수 이미지 URL을 dedupe한 뒤 `precacheImage` 경로까지 먼저 태운다.
 
 ---
 
@@ -1686,7 +1693,7 @@ GET /api/push/config-status
 - `start-token/register`: iOS 17.2+ 앱이 push-to-start token과 stable `installationId`를 등록한다. scheduler는 이 token을 같은 설치 id의 push registration과 매칭해 마이팀/선택 경기가 KST `startTime` 10분 전 window에 들어오거나 LIVE로 전환될 때 APNs `event=start`를 보낸다. 같은 game/token 조합은 한 번만 발송하고, active Live Activity가 이미 같은 설치 id에 등록돼 있으면 다시 시작하지 않는다.
 - `update`: 내부 운영 도구나 worker가 특정 `gameId`의 `content-state`를 APNs로 발송한다.
 - `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon` / `lineup_opened`, 10분 전 push-to-start Live Activity start, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. 단, 저장된 scoreboard/relay baseline이 오래되었거나 해석 불가하면 밀린 moment를 보내지 않고 현재 state/last seq로만 재기준화한다. long-running sync worker는 KST `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES` 슬롯마다 `baseball_info` smart daily 브리프도 하루 한 번씩 계획한다. `date` 생략 시 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
-- 일반 경기 event push는 backend가 매 moment마다 원정팀 topic, 홈팀 topic, 리그 전체 topic, 경기별 topic(`{moment}_GAME_{gameId}`)으로 발송한다. 앱은 `allGames`, `myTeam`, `followedGameIds`, `notifications.deliveryModes`, `notifications.summaryDetailLevel`, `notifications.liveDetailLevel`을 기준으로 필요한 topic을 구독한다. 마이팀 team topic과 selected-game GAME topic은 모두 enabled이고 delivery가 `off`가 아닌 game moment만 포함한다. 선택 경기가 마이팀 경기이면 같은 moment의 GAME topic을 만들지 않고 team topic만 유지해 중복 수신을 피한다. 리그 전체 topic과 `baseball_info`는 기존처럼 `immediate` delivery 기준이다.
+- 일반 경기 event push는 backend가 매 moment마다 원정팀 topic, 홈팀 topic, 리그 전체 topic, 경기별 topic(`{moment}_GAME_{gameId}`)으로 발송한다. 앱은 `allGames`, `myTeam`, `followedGameIds`, `notifications.deliveryModes`, `notifications.summaryDetailLevel`, `notifications.liveDetailLevel`을 기준으로 필요한 topic을 구독한다. 마이팀 team topic과 selected-game GAME topic은 모두 enabled이고 delivery가 `off`가 아닌 game moment만 포함한다. 선택 경기가 마이팀 경기이면 같은 moment의 GAME topic을 만들지 않고 team topic만 유지해 중복 수신을 피한다. `allGames=true`인 단말은 즉시 game moment를 `*_ALL`로만 구독하고 같은 moment의 마이팀 team topic은 구독하지 않는다. 리그 전체 topic과 `baseball_info`는 기존처럼 `immediate` delivery 기준이다.
 - `test`: 운영자가 특정 FCM token 또는 topic으로 테스트 알림을 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다. `hit_GAME_20260620HTKT0`처럼 GAME topic으로 발송하면 receipt 확인을 위해 `type`, `gameId`, `topic`, 상세 `route` data를 함께 싣는다. 반복 push 발송 확인은 `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>` 또는 `--token <fcm-token>`으로 수행한다. 로컬에 secret을 두지 않는 경우 `Push Test Notification` GitHub Actions workflow 또는 `./scripts/github-push-test-notification-run.sh --topic <topic> --watch`로 GitHub secret 컨텍스트에서 실행한다.
 - `test-device`: 앱 API 진단 화면에서 자기 기기에 원격 테스트 push를 요청하는 self-test endpoint다. 앱은 먼저 FCM token을 `/push/register`로 등록한 뒤 `deviceToken`만 보낸다. backend는 registry에 이미 저장된 token에만 고정 문구와 `/diagnostics` route를 담아 발송하며, 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않는다.
 - `receipt`: 앱이 원격 push를 foreground/background/opened 상태로 처리하면 현재 FCM `deviceToken`, `messageId`, `source`, `type`, `gameId`, `route`, 제한된 data 단서를 backend에 보고한다. backend는 registry에 이미 저장된 token만 기록하고 token 원문은 최근 receipt 요약에 노출하지 않는다. 이 endpoint는 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않기 위해 secret을 요구하지 않는다.
@@ -1711,7 +1718,7 @@ GET /api/push/config-status
 **마이그레이션 메모**:
 - 기존 boolean 기반 `notifications` body 는 앱 업데이트 전환 기간 동안만 호환 입력으로 유지할 수 있다.
 - `installationId`는 앱 설치 단위의 stable id다. 같은 설치에서 FCM token이 바뀌면 backend는 같은 `installationId`를 가진 이전 token registration을 제거해 팔로우 경기 push 대상이 stale token에 남지 않도록 한다.
-- `momentPreferences` / `notifications.deliveryModes` / `notifications.summaryDetailLevel` / `notifications.liveDetailLevel` 는 브리프, 마이팀 기본 경기, 마이팀 외 selected-game follow, 향후 운영 확장을 위한 선호 입력으로 유지한다. 마이팀 team topic과 selected-game GAME topic은 enabled이고 delivery가 `off`가 아닌 game moment만 포함한다. 리그 전체 topic과 `baseball_info`는 `immediate` 기준으로 둔다.
+- `momentPreferences` / `notifications.deliveryModes` / `notifications.summaryDetailLevel` / `notifications.liveDetailLevel` 는 브리프, 마이팀 기본 경기, 마이팀 외 selected-game follow, 향후 운영 확장을 위한 선호 입력으로 유지한다. 마이팀 team topic과 selected-game GAME topic은 enabled이고 delivery가 `off`가 아닌 game moment만 포함한다. `allGames=true`에서 즉시 game moment는 `*_ALL` topic이 단독 책임지고, 리그 전체 topic과 `baseball_info`는 `immediate` 기준으로 둔다.
 - `followedGameIds` 는 알림 설정이 아니라 현재 Live surface session 을 표현한다. 홈의 마이팀 live/라인업 공개 예정 경기 자동 target 과 사용자가 직접 시작한 selected-game follow 를 모두 포함하며, 앱은 follow 시작/종료 직후 `/push/register`를 다시 호출해 registry를 정리한다.
 - `followedGameIds`가 비어 있어도 `allGames=false` 사용자는 켜진 마이팀 event topic을 구독한다. `followedGameIds`가 있으면 마이팀 외 경기 event moment는 enabled 상태인 selected-game `*_GAME_{gameId}` 범위로 추가하고, `summary` / `liveOnly` delivery도 GAME topic에는 포함한다. 사용자가 `off`로 끈 항목은 마이팀 team topic과 마이팀 외 selected-game GAME topic에서 모두 제외된다. 야구 브리프처럼 경기 단건에 속하지 않는 정보성 push는 팀/전체 범위를 따른다.
 

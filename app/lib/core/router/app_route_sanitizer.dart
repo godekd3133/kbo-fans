@@ -1,6 +1,14 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+class AppRoutePresentation {
+  final bool useSwipeBackPage;
+
+  const AppRoutePresentation({required this.useSwipeBackPage});
+
+  static const swipeBack = AppRoutePresentation(useSwipeBackPage: true);
+}
+
 String? sanitizeAppRoute(String? route, {String? fallback = '/home'}) {
   final fallbackRoute = _validInternalRoute(fallback) ? fallback : null;
   if (route == null || route.trim().isEmpty) {
@@ -28,12 +36,16 @@ String? sanitizeAppRoute(String? route, {String? fallback = '/home'}) {
 }
 
 extension AppRouteSanitizerContext on BuildContext {
-  void pushAppRoute(String? route, {String? fallback = '/home'}) {
+  void pushAppRoute(
+    String? route, {
+    String? fallback = '/home',
+    AppRoutePresentation? presentation,
+  }) {
     final target = sanitizeAppRoute(route, fallback: fallback);
     if (target == null) {
       return;
     }
-    push(target);
+    push(target, extra: presentation);
   }
 
   void goAppRoute(String? route, {String? fallback = '/home'}) {
@@ -43,6 +55,11 @@ extension AppRouteSanitizerContext on BuildContext {
     }
     go(target);
   }
+}
+
+bool shouldUseSwipeBackPage(GoRouterState state) {
+  final presentation = state.extra;
+  return presentation is AppRoutePresentation && presentation.useSwipeBackPage;
 }
 
 bool _validInternalRoute(String? route) {

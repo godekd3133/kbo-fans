@@ -155,6 +155,16 @@ class LocalAssetPlayerRepository implements PlayerRepository {
         leaders['opsPlus'] as List<dynamic>? ?? const [],
       ),
       eraLeaders: _parseLeaders(leaders['era'] as List<dynamic>? ?? const []),
+      winLeaders: _parseLeaders(leaders['wins'] as List<dynamic>? ?? const []),
+      saveLeaders: _parseLeaders(
+        leaders['saves'] as List<dynamic>? ?? const [],
+      ),
+      strikeoutLeaders: _parseLeaders(
+        leaders['strikeouts'] as List<dynamic>? ?? const [],
+      ),
+      milestoneLeaders: _parseLeaders(
+        leaders['milestones'] as List<dynamic>? ?? const [],
+      ),
       todayHitter: _parseFeatured(
         featured['todayHitter'] as Map<String, dynamic>? ??
             const {'label': '오늘의 타자'},
@@ -186,6 +196,9 @@ class LocalAssetPlayerRepository implements PlayerRepository {
       LeaderboardMetric.ops => overview.opsLeaders,
       LeaderboardMetric.opsPlus => overview.opsPlusLeaders,
       LeaderboardMetric.era => overview.eraLeaders,
+      LeaderboardMetric.wins => overview.winLeaders,
+      LeaderboardMetric.saves => overview.saveLeaders,
+      LeaderboardMetric.strikeouts => overview.strikeoutLeaders,
       LeaderboardMetric.war => const [],
     };
   }
@@ -331,9 +344,12 @@ class LocalAssetPlayerRepository implements PlayerRepository {
         rank: map['rank'] as int? ?? 0,
         playerId: map['playerId'] as String? ?? '',
         playerType: map['playerType'] as String? ?? '',
+        metricKey: map['metricKey'] as String? ?? '',
         name: map['name'] as String? ?? '',
         teamId: map['teamId'] as String? ?? '',
         value: map['value'] as String? ?? '',
+        milestoneLabel: map['milestoneLabel'] as String?,
+        allTimeRank: (map['allTimeRank'] as num?)?.toInt(),
         isRetired: map['isRetired'] as bool? ?? false,
       );
     }).toList();
