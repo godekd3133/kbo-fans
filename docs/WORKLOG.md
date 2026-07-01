@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-07-01: 히스토리 데이터 캐시 정책 강화
+
+### 원인
+- 사장님 지적: live 경기가 아닌 지난 경기정보, 선수 이미지, 작년 기준 기록실 정보는 거의 변하지 않으므로 API 한계처럼 매번 기다리게 둘 필요가 없었다.
+- 확인 결과 앱은 historical 경로를 cached-first로 쓰고 있었지만 과거 경기/일정/순위 cache TTL은 5분이라 background refresh를 자주 만들 수 있었다.
+- backend `RecordsOverviewService`와 `StandingsService`는 historical snapshot이 있어도 memory cache miss 시 crawler를 먼저 시도하고, 실패할 때만 snapshot으로 fallback했다.
+
+### 진행
+- [x] 앱 과거 경기/일정/순위/detail/relay/boxscore/lineup/highlight cache TTL을 30일로 연장.
+- [x] 앱 과거 시즌 기록실/team/player cache TTL을 180일로 연장.
+- [x] backend 기록실 overview/leaderboard가 historical snapshot을 crawler보다 먼저 반환하도록 변경.
+- [x] backend 순위가 historical snapshot을 crawler보다 먼저 반환하도록 변경.
+- [x] current/live 날짜·월·시즌은 기존 fresh-first/fail-visible 정책을 유지.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 historical cache/snapshot-first 정책 반영.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/data/api_client_test.dart -r expanded` (`19 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/data/repositories/api_game_repository.dart lib/data/repositories/api_player_repository.dart test/data/api_client_test.dart` (`No issues found!`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py` (`33 passed`)
+- [x] `python3 -m compileall backend/src/kbo_fans_backend/services/records_overview.py backend/src/kbo_fans_backend/services/standings.py` (pass)
+- [x] `git diff --check -- app/lib/data/repositories/api_game_repository.dart app/lib/data/repositories/api_player_repository.dart app/test/data/api_client_test.dart backend/src/kbo_fans_backend/services/records_overview.py backend/src/kbo_fans_backend/services/standings.py backend/tests/test_records_overview.py backend/tests/test_snapshot_services.py docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md` (pass)
+
+---
+
 ## 2026-07-01: 0.1.12 릴리즈 준비 및 TestFlight 외부 배포
 
 ### 원인
@@ -12,9 +36,10 @@
 - [x] release 기준을 `0.1.12+79` / tag `0.1.12`로 결정.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.12+79` 기준으로 갱신.
 - [x] app analyze/test, backend compile/pytest, diff whitespace, release API health gate 검증.
-- [ ] Git commit/push 및 `0.1.12` GitHub Release 생성.
-- [ ] iOS App Store IPA 빌드와 TestFlight upload.
-- [ ] App Store Connect build `VALID` 확인, `External Testers` 최신 build 연결, 이전 build 관계 제거, Beta App Review 제출/상태 확인.
+- [x] Git commit/push 완료: `ed96f7d 0.1.12 상세 진입과 기록 화면 정리`.
+- [x] iOS App Store IPA 빌드와 TestFlight upload.
+- [x] App Store Connect build `VALID` 확인, `External Testers` 최신 build 연결, 이전 build 관계 제거, Beta App Review 제출/상태 확인.
+- [ ] `0.1.12` GitHub tag / Release 생성.
 
 ### 검증
 - [x] `cd app && fvm flutter analyze` (`No issues found!`)
@@ -22,6 +47,12 @@
 - [x] `python3 -m compileall backend/src && backend/.venv/bin/pytest -q` (`245 passed`)
 - [x] `git diff --check` (pass)
 - [x] `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh` (health, scoreboard/home, relay, home, schedule, standings, records overview pass)
+- [x] iOS release archive / IPA build: `0.1.12 (79)`, `APP_ENV=release`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.12/79`, Runner entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, IPA sha256 `244a1e9cf1feab429c22d6c166feb2ab572d98049daa6c06269a099222f3de3f`.
+- [x] TestFlight upload: IPA `0.1.12+79`, App Store Connect `Upload succeeded` / `Uploaded package is processing`, delivery UUID `132e4d5f-5044-423e-8278-7280731c4dd4`.
+- [x] Apple processing: delivery UUID `132e4d5f-5044-423e-8278-7280731c4dd4`, `build-status=VALID`, `processingState=VALID`, uploaded date `2026-06-30T20:34:22-07:00`.
+- [x] External Testers: group `81506852-9006-4a43-b152-067ac78a1736` final build relation only `132e4d5f-5044-423e-8278-7280731c4dd4` / build `79`; superseded build relations none remaining.
+- [x] Beta App Review: build `79` submission state `WAITING_FOR_REVIEW`.
+- [x] External tester installability signal: masked tester `na***@naver.com`, invite type `EMAIL`, state `INSTALLED`.
 
 ---
 
