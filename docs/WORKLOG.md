@@ -13,7 +13,7 @@
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.15+82` 기준으로 갱신.
 - [x] app/backend/release API 검증.
 - [x] Git commit/push 완료: `274dcca 0.1.15 상세 진입 준비 보강`.
-- [ ] tag/GitHub Release 생성.
+- [x] tag/GitHub Release 생성: `https://github.com/godekd3133/kbo-fans/releases/tag/0.1.15`.
 - [x] iOS IPA build / TestFlight upload / Apple processing 확인.
 - [x] External Testers 최신 build 연결, 이전 build 관계 제거, Beta Review 상태 확인.
 
