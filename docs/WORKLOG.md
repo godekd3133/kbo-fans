@@ -12,9 +12,10 @@
 ### 진행
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.14` 기준으로 갱신.
 - [x] app/backend 검증.
-- [ ] Git commit/push 및 tag/GitHub Release 생성.
-- [ ] backend deploy workflow 실행 및 readiness 확인.
-- [ ] TestFlight upload / Apple processing / External Testers / Beta Review / installability 확인.
+- [x] Git commit/push 및 tag/GitHub Release 생성.
+- [x] backend deploy workflow 실행 및 readiness 확인.
+- [x] TestFlight upload / Apple processing / External Testers / Beta Review 제출 확인.
+- [ ] External tester installability 확인: build `81`은 `externalBuildState=WAITING_FOR_BETA_REVIEW`라 Apple Beta Review 승인 대기.
 
 ### 검증
 - [x] `backend/.venv/bin/pytest -q backend/tests` (`255 passed`)
@@ -23,6 +24,20 @@
 - [x] `cd app && fvm flutter analyze` (`No issues found!`)
 - [x] `cd app && fvm flutter test` (`301 passed`)
 - [x] `git diff --check` (pass)
+
+### 릴리즈/배포 확인
+- [x] commit/tag/push: `daa9b08` / `0.1.14`, GitHub Release `https://github.com/godekd3133/kbo-fans/releases/tag/0.1.14`.
+- [x] backend deploy: GitHub Actions `Push Demo Deploy` run `28494341962` 성공, image tag `0.1.14`, head sha `daa9b089e42b95ff96e98eeac1c1d8935965552f`.
+- [x] release API health: `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-07-01 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh` (`Release API health gate passed`).
+- [x] 운영 API 직접 smoke: `/home?date=2026-07-01&myTeam=OB`가 `recentGamesCount=5`와 `20260630LTOB0` `승` `5:0`을 반환, `/team/OB/players?season=2026`가 `players=29`, `hitters=16`, `hitters_with_stats=16`을 반환.
+- [x] `https://api.kbofans.com/api`는 DNS 미설정으로 실패. 현재 GitHub variable은 `ENABLE_HTTPS=false`, `RELEASE_API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`이며 release/TestFlight 빌드는 임시 HTTP ALB를 사용한다.
+- [x] iOS IPA build: 첫 업로드는 `/Applications/Xcode-beta.app` Xcode `27.0` / SDK `27.0`으로 App Store Connect가 `Unsupported SDK or Xcode version` 거부. `/Applications/Xcode.app` Xcode `26.6` / iPhoneOS SDK `26.5`로 재빌드 후 성공.
+- [x] iOS IPA 산출물: `0.1.14 (81)`, bundle `com.kbofans.kboFans`, `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, IPA sha256 `9219628eebb34e7676151e964f9d3a60356c4fd417c9079e255bb543fce1339b`.
+- [x] TestFlight upload: App Store Connect `Uploaded package is processing` / `Upload succeeded` / `EXPORT SUCCEEDED`. `objective_c.framework` dSYM warning은 기존과 같은 비차단 경고.
+- [x] Apple processing: build id `79d27b2b-770c-4a8d-b058-67168f42a54f`, build `81`, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-09-28T22:16:28-07:00`.
+- [x] External Testers: group `81506852-9006-4a43-b152-067ac78a1736`에 build `81` 연결, 이전 build `79` 관계 제거 후 group builds가 `81`만 남음.
+- [x] Beta App Review: submission 생성 성공, `betaReviewState=WAITING_FOR_REVIEW`, submitted date `2026-06-30T22:19:59-07:00`.
+- [ ] External tester installability: internal은 `internalBuildState=IN_BETA_TESTING`, external은 `externalBuildState=WAITING_FOR_BETA_REVIEW`라 아직 외부 설치 가능 상태가 아니다.
 
 ---
 
