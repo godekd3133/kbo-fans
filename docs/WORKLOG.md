@@ -12,9 +12,10 @@
 ### 진행
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.15+82` 기준으로 갱신.
 - [x] app/backend/release API 검증.
-- [ ] Git commit/push 및 tag/GitHub Release 생성.
-- [ ] iOS IPA build / TestFlight upload / Apple processing 확인.
-- [ ] External Testers 최신 build 연결, 이전 build 관계 제거, Beta Review 상태 확인.
+- [x] Git commit/push 완료: `274dcca 0.1.15 상세 진입 준비 보강`.
+- [ ] tag/GitHub Release 생성.
+- [x] iOS IPA build / TestFlight upload / Apple processing 확인.
+- [x] External Testers 최신 build 연결, 이전 build 관계 제거, Beta Review 상태 확인.
 
 ### 검증
 - [x] `cd app && fvm flutter analyze` (`No issues found!`)
@@ -22,6 +23,12 @@
 - [x] `python3 -m compileall backend/src && backend/.venv/bin/pytest -q` (`256 passed`)
 - [x] `git diff --check` (pass)
 - [x] `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-07-01 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh` (`Release API health gate passed`)
+- [x] iOS release archive / IPA build: `0.1.15 (82)`, `APP_ENV=release`, `USE_BACKEND_API=true`, `API_BASE_URL=http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api`, Runner/Widget `0.1.15/82`, Runner entitlement `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, IPA sha256 `c31f9e5500fab5d6764dba9bb52c823eecb08147e945c1dbd182c0196c29ec06`.
+- [x] TestFlight upload: IPA `0.1.15+82`, App Store Connect `Upload succeeded` / `Uploaded package is processing`, delivery UUID `0fca022e-5bc9-4bf8-adb1-884c98781384`.
+- [x] Apple processing: delivery UUID `0fca022e-5bc9-4bf8-adb1-884c98781384`, `build-status=VALID`, `processingState=VALID`, `usesNonExemptEncryption=false`, uploaded date `2026-07-01T01:32:07-07:00`.
+- [x] External Testers: group `81506852-9006-4a43-b152-067ac78a1736`에 build `82` 연결, 이전 build `81` 관계 `79d27b2b-770c-4a8d-b058-67168f42a54f` 제거 후 group builds가 `82`만 남음.
+- [x] Beta App Review: submission 생성, `betaReviewState=WAITING_FOR_REVIEW`.
+- [x] External tester installability signal: masked tester `na***@naver.com`, invite type `EMAIL`, state `INSTALLED`; build `82` 자체는 Beta Review 승인 대기.
 
 ---
 
