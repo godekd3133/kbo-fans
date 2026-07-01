@@ -98,7 +98,7 @@ Organizer 에서:
 - [ ] processing 완료
 - [ ] App Store Connect 암호화 문서 prompt 없이 내부 테스트 그룹에 연결
 - [ ] tester-facing release라면 build `VALID` 확인 후 최신 빌드를 외부 그룹 `External Testers`에 연결
-- [ ] 외부 그룹에 남은 이전 build 관계 제거 후 최신 build 단독 연결 확인
+- [ ] 최신 build가 승인/외부 설치 가능 상태가 되기 전에는 마지막 승인 build를 외부 그룹에 유지
 - [ ] 외부 그룹 연결 후 Beta App Review 제출 또는 기존 제출/승인 상태 확인
 - [ ] 외부 테스터 설치 가능 여부는 upload/processing과 별도 checkpoint로 보고
 
@@ -133,7 +133,7 @@ GitHub Actions 에서 signed IPA 까지 생성하려면 아래 시크릿이 필�
 
 - [ ] 외부 테스터 그룹 생성
 - [ ] 최신 `VALID` 빌드를 외부 그룹 `External Testers`에 연결
-- [ ] 이전 build 관계 제거 후 최신 build 단독 연결 확인
+- [ ] 최신 build가 승인/외부 설치 가능 상태가 되면 이전 build 관계 제거 후 최신 build 단독 연결 확인
 - [ ] Beta App Review 제출
 - [ ] 승인 후 공개 링크 또는 이메일 공유
 
@@ -150,7 +150,7 @@ GitHub Actions 에서 signed IPA 까지 생성하려면 아래 시크릿이 필�
 - [ ] TestFlight 업로드 성공
 - [ ] 내부 테스터 배포 성공
 - [ ] tester-facing iOS release는 외부 그룹 `External Testers` 최신 build 연결
-- [ ] 외부 그룹 이전 build 관계 제거
+- [ ] 최신 build 승인/외부 설치 가능 확인 후 외부 그룹 이전 build 관계 제거
 - [ ] 외부 테스트 필요 시 Beta App Review 제출
 - [ ] 외부 테스터 installability 확인
 

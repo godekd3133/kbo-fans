@@ -21,7 +21,7 @@ description: Use when changing KBO Fans app versions, creating GitHub releases o
 7. If workflow rules changed, update `README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/SKILL_REFERENCE.md`, and related skills.
 8. Create an immutable tag only after commits are final.
 9. Create or rewrite GitHub release notes from the changelog and in-app update notes.
-10. For tester-facing iOS releases, after TestFlight upload and Apple processing reach `VALID`, attach the newest build to `External Testers`, remove superseded older build relationships from that group, and submit Beta App Review when needed before closing the release.
+10. For tester-facing iOS releases, after TestFlight upload and Apple processing reach `VALID`, attach the newest build to `External Testers` and submit Beta App Review when needed before closing the release. Do not remove the last approved/installable external build until the newest build is approved or otherwise confirmed installable for external testers.
 11. When the Director says "이어서 해", decide whether to create the next numeric version or only reinforce the current release notes. Use a new version for app behavior, API behavior, visible UI, or in-app update-note changes; use release-note reinforcement for wording-only cleanup.
 
 ## Version Rules

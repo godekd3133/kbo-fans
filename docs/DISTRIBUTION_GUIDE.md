@@ -163,7 +163,7 @@ Archive 완료 후:
 - Beta App Review 제출
 - 승인 후 공개 링크 또는 이메일 초대
 
-tester-facing iOS release에서는 TestFlight 업로드 성공에서 멈추지 않는다. App Store Connect processing이 끝나 build가 `VALID`가 되면 최신 build를 외부 그룹 `External Testers`에 즉시 연결하고, 이전 build 관계를 제거해 최신 build 단독 연결 상태로 맞춘다. 해당 build에 Beta App Review submission이 없으면 바로 제출한다. 보고할 때는 업로드 성공, Apple processing/VALID, 외부 그룹 연결, Beta App Review 상태, 실제 외부 테스터 installability를 분리한다.
+tester-facing iOS release에서는 TestFlight 업로드 성공에서 멈추지 않는다. App Store Connect processing이 끝나 build가 `VALID`가 되면 최신 build를 외부 그룹 `External Testers`에 즉시 연결하고, 해당 build에 Beta App Review submission이 없으면 바로 제출한다. 최신 build가 승인되거나 외부 설치 가능 상태로 확인되기 전에는 마지막 승인/설치 가능 build를 제거하지 않는다. 보고할 때는 업로드 성공, Apple processing/VALID, 외부 그룹 연결, Beta App Review 상태, 실제 외부 테스터 installability를 분리한다.
 
 ### iOS 체크리스트 요약
 
@@ -176,7 +176,7 @@ tester-facing iOS release에서는 TestFlight 업로드 성공에서 멈추지 �
 - [ ] TestFlight 빌드 업로드 성공
 - [ ] 내부 테스터 추가
 - [ ] tester-facing release면 최신 `VALID` build를 `External Testers` 그룹에 연결
-- [ ] 외부 그룹 이전 build 관계 제거
+- [ ] 최신 build가 승인/외부 설치 가능 상태가 된 뒤에만 이전 승인 build 관계 제거
 - [ ] 외부 배포 시 Beta App Review 제출
 - [ ] 외부 테스터 installability 확인
 

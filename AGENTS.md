@@ -182,7 +182,7 @@
 ## Distribution Notes
 - For the fastest external sharing, prefer web first.
 - For iPhone tester installs, prefer TestFlight.
-- Whenever a new iOS TestFlight build is uploaded for tester-facing release work, immediately update the external TestFlight group too: wait until the build is `VALID`, attach the newest build to `External Testers`, remove superseded older build relationships from that group, and submit Beta App Review when the build is not already approved/submitted. Report upload, Apple processing, external-group assignment, Beta App Review, and installability as separate checkpoints.
+- Whenever a new iOS TestFlight build is uploaded for tester-facing release work, immediately update the external TestFlight group too: wait until the build is `VALID`, attach the newest build to `External Testers`, and submit Beta App Review when the build is not already approved/submitted. Do not remove the last approved/installable external build until the newest build is approved or otherwise confirmed installable for external testers. Report upload, Apple processing, external-group assignment, Beta App Review, and installability as separate checkpoints.
 - For Android tester installs, prefer Google Play internal testing after release signing is configured.
 - Android release signing secrets live in `app/android/key.properties` and a local keystore; never commit them.
 - iOS destinations depend heavily on active Xcode version and matching runtime/platform support.

@@ -20,7 +20,7 @@ description: Use when preparing commits, pushes, numeric release tags, release n
 - Release artifact creation must be separated from backend-backed behavior validation. A direct-data artifact can be built without release API health, but push / Live Activity token registration still needs a valid `API_BASE_URL`.
 - For backend-backed screen data validation, pass `USE_BACKEND_API=true`, inject the target `API_BASE_URL`, and verify backend health/readiness explicitly.
 - Run `scripts/release-api-health-check.sh` when release API behavior is relevant.
-- For every tester-facing iOS TestFlight upload, immediately complete the external tester handoff after processing: confirm the build is `VALID`, attach the newest build to `External Testers`, remove superseded older build relationships from that group, submit Beta App Review if needed, and report installability separately from upload/processing.
+- For every tester-facing iOS TestFlight upload, immediately complete the external tester handoff after processing: confirm the build is `VALID`, attach the newest build to `External Testers`, submit Beta App Review if needed, and report installability separately from upload/processing. Do not remove the last approved/installable external build until the newest build is approved or otherwise confirmed installable for external testers.
 - If default `origin` SSH push fails, use `git@github-personal:godekd3133/kbo-fans.git`.
 - Use plain numeric tags only, e.g. `0.0.11`. Do not create `*-preview*` tags or GitHub prereleases unless the Director explicitly changes the policy.
 - If the Director says "이어서 해", continue autonomously and decide whether to version up or reinforce the current GitHub release notes based on the actual diff.

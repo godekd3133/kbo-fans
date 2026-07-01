@@ -1,12 +1,12 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-07-01
+> Updated: 2026-07-02
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.15+82`
+- Flutter app version: `0.1.15+83`
 - Current release tag: `0.1.15`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
@@ -58,7 +58,7 @@ Every version or release change must update these surfaces in the same work unit
 - GitHub releases should be normal releases, not prereleases, under the current no-preview policy.
 - Mark only the newest numeric release as `Latest`.
 - `APP_ENV=release` artifacts default to backend API data mode and must carry the production `API_BASE_URL` for screen data, push, and Live Activity token registration. Run `scripts/release-api-health-check.sh` before release-facing validation.
-- Tester-facing iOS TestFlight releases must include the external tester handoff in the same release closeout: wait for the uploaded build to become `VALID`, attach the newest build to the `External Testers` group, remove superseded older build relationships from that group, submit Beta App Review if no submission exists, and report external installability separately from upload/processing.
+- Tester-facing iOS TestFlight releases must include the external tester handoff in the same release closeout: wait for the uploaded build to become `VALID`, attach the newest build to the `External Testers` group, submit Beta App Review if no submission exists, and report external installability separately from upload/processing. Do not remove the last approved/installable external build until the newest build is approved or otherwise confirmed installable for external testers.
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app update notes change.
 
 ## Numeric Release Map
@@ -144,7 +144,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.12`: game-detail entry, records leaderboard, relay, lineup, and matchup schedule polish release. Home-to-detail navigation blocks only on basic game detail refresh while tab data and player image warm-up continue in the background, the loading overlay shows progress, records leaderboards split hitter/pitcher metrics, final games show `경기 종료`, lineup timeout copy is user-safe, relay light mode/player number badges are reinforced, and current app build `0.1.12+79`.
 - `0.1.13`: data-loading speed release. Backend sync worker warms live scoreboard summaries into fresh-only runtime state, scoreboard routes share same-day schedule/main-list source caches, historical game/schedule/standings and past-season records reuse longer app caches, historical records/standings backend paths prefer exact snapshots before crawler calls, and current app build `0.1.13+80`.
 - `0.1.14`: home records display fix release. Home my-team brief recent results can cross month boundaries, current team-player parsing accepts KBO register headers with total counts so team home-run/rising-player highlights recover, records leaderboard errors hide internal cache keys, and current app build `0.1.14+81`.
-- `0.1.15`: game detail prefetch reinforcement release. Home and schedule game-detail entry now waits for the refreshed game plus first tab data/player image warm-up, relay player image URLs use the gameId season, boxscore rows preserve player id/image URL across backend/app contracts, and current app build `0.1.15+82`.
+- `0.1.15`: game detail prefetch reinforcement release. Home and schedule game-detail entry now waits for the refreshed game plus first tab data/player image warm-up, relay player image URLs use the gameId season, boxscore rows preserve player id/image URL across backend/app contracts, and current app build `0.1.15+83`. Build `83` also preserves the last approved external TestFlight build while the newest build waits for Beta Review.
 
 ## GitHub Release Note Template
 

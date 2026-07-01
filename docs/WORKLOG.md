@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-07-02: External Testers 임시 승인 빌드 복구
+
+### 원인
+- 사장님 제보: `nahanlee@naver.com` 외부 테스터 TestFlight 화면에 `사용자가 테스팅 중이던 빌드를 개발자가 제거했습니다` 메시지가 표시됐다.
+- App Store Connect API 확인 결과 `External Testers` 그룹에는 build `82`만 연결돼 있었고, 직전 build `81`은 외부 그룹에서 제거돼 있었다.
+- build `81`과 `82`는 모두 `processingState=VALID`이지만 Beta App Review가 `WAITING_FOR_REVIEW`라 외부 테스터에게 최신 빌드가 바로 보이는 상태가 아니었다.
+- 최근 build 중 외부 테스트 승인 완료 상태인 최신 빌드는 `0.1.10 (77)`이었다.
+- 재발 방지 기준: 새 build가 `VALID`이어도 Beta Review 승인 또는 외부 설치 가능 상태가 확인되기 전에는 마지막 승인/설치 가능 build를 제거하지 않는다.
+
+### 진행
+- [x] `0.1.15 (82)`는 `External Testers` 그룹에 유지.
+- [x] 외부 테스터 화면 공백을 막기 위해 승인 완료된 `0.1.10 (77)` build를 `External Testers` 그룹에 임시 추가.
+- [x] 배포 규칙과 체크리스트에서 "최신 build `VALID` 후 이전 build 즉시 제거" 기준을 제거하고, 최신 build 승인/외부 설치 가능 확인 전까지 마지막 승인 build를 유지하도록 보정.
+- [x] 앱 기능 변경 없이 `0.1.15+83`으로 iOS build number를 증가해 새 TestFlight IPA를 재빌드.
+- [x] App Store Connect에 build `83` 업로드 및 `VALID` 처리 확인.
+- [x] build `83`을 `External Testers` 그룹에 연결. 승인 fallback build `77`은 제거하지 않음.
+
+### 검증
+- [x] App Store Connect API `POST /v1/betaGroups/81506852-9006-4a43-b152-067ac78a1736/relationships/builds`로 build `77` 추가 성공 (`204`).
+- [x] `External Testers` group builds 재조회 결과 build `82`와 build `77`이 함께 연결됨.
+- [x] `git diff --check` (pass).
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found!`).
+- [x] `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-07-02 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh http://kbo-fans-api-469252833.us-east-1.elb.amazonaws.com/api` (`Release API health gate passed`).
+- [x] IPA build: `0.1.15 (83)`, Runner/Widget `0.1.15/83`, `aps-environment=production`, `get-task-allow=false`, `ITSAppUsesNonExemptEncryption=false`, IPA sha256 `aad5d07f919d0831be1bc4e8ae8d273d2147b6eb547f547cb882a37a12c2393c`.
+- [x] TestFlight upload: delivery UUID `4cfb3c0f-e2cc-4ca2-ba58-576ec74c48de`, `UPLOAD SUCCEEDED`, transferred `34966392` bytes.
+- [x] Apple processing: build `83`, `processingState=VALID`, uploaded date `2026-07-01T09:00:22-07:00`.
+- [x] External Testers: group builds are `83`, `82`, `77`. `77` remains as approved/installable fallback.
+- [ ] build `83` Beta App Review 제출: App Store Connect API가 `ENTITY_UNPROCESSABLE.ANOTHER_BUILD_IN_REVIEW`로 거부. 같은 `0.1.15` train의 build `82` review가 끝난 뒤 build `83` 제출 재시도 필요.
+- [ ] build `83` Beta App Review 승인 후 외부 테스터 최신 build 설치 가능 여부 확인.
+- [ ] `nahanlee@naver.com` TestFlight 앱 새로고침 후 표시 상태 확인.
+
+---
+
 ## 2026-07-01: 0.1.15 상세 진입 준비 보강 릴리즈
 
 ### 결정
