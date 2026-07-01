@@ -59,6 +59,7 @@
   - 5초 시연에는 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` long-running worker가 EventBridge 1분 one-shot보다 예측 가능하다.
   - `config-status.scheduler.lastSyncAt`은 sync worker가 실제로 registry에 heartbeat를 남겼는지 보는 운영 신호다. secret readiness와 worker activity를 구분해서 판단한다.
 - 홈 scoreboard 자동 refresh cadence는 live 8초, scheduled 5분, terminal 정지로 둔다.
+- 운영 sync worker는 push/Live Activity 등록이 없더라도 scoreboard warm-up을 수행하고, API service와 같은 runtime filesystem에 `live_scoreboard` state를 남긴다. API는 이 state가 8초 window 안에서 fresh일 때만 `/scoreboard/home` 응답으로 사용하고, stale state는 snapshot처럼 fallback하지 않는다.
 - 경기 상세는 live 기본 탭 8초, 문자중계 foreground 원천 갱신은 5초 cadence로 맞춘다. LIVE 경기에서 스코어/문자중계/박스스코어/라인업 탭을 전환하면 타이머 tick을 기다리지 않고 현재 보이는 탭 provider를 즉시 갱신한다.
 
 ## Backend Lint / Compatibility

@@ -111,6 +111,55 @@ void main() {
     expect(data['source'], 'historical-cache');
   });
 
+  test(
+    'historical game cache avoids background refresh inside long TTL',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'api_cache:scoreboard_home:2013-05-01': _cachedApiPayload({
+          'games': const [],
+        }, age: const Duration(days: 20)),
+      });
+      final adapter = _CountingSuccessAdapter({'games': const []});
+      final repository = ApiGameRepository(
+        ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+      );
+
+      final games = await repository.getScoreboard('2013-05-01');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(games, isEmpty);
+      expect(adapter.calls, 0);
+    },
+  );
+
+  test(
+    'historical records overview cache avoids background refresh inside long TTL',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'api_cache:recordsOverview:v5:2013': _cachedApiPayload(
+          _recordsOverviewPayload(
+            season: 2013,
+            firstAvgRank: 1,
+            firstEraRank: 1,
+          ),
+          age: const Duration(days: 30),
+        ),
+      });
+      final adapter = _CountingSuccessAdapter(
+        _recordsOverviewPayload(season: 2013, firstAvgRank: 1, firstEraRank: 1),
+      );
+      final repository = ApiPlayerRepository(
+        ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+      );
+
+      final overview = await repository.getRecordsOverview(season: 2013);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(overview.avgLeaders.first.rank, 1);
+      expect(adapter.calls, 0);
+    },
+  );
+
   test('cached-first API cache ignores invalid cached payload', () async {
     SharedPreferences.setMockInitialValues({
       'api_cache:test_payload': _cachedApiPayload({
@@ -664,6 +713,22 @@ class _SuccessAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+class _CountingSuccessAdapter extends _SuccessAdapter {
+  _CountingSuccessAdapter(super.data);
+
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    calls += 1;
+    return super.fetch(options, requestStream, cancelFuture);
+  }
 }
 
 Map<String, dynamic> _recordsOverviewPayload({

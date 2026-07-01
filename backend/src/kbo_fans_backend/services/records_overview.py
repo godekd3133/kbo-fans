@@ -36,6 +36,10 @@ class RecordsOverviewService:
 
         snapshot_record = self.snapshot_store.load("records_overview", str(season))
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
+        if self._can_use_snapshot_before_crawling(season, snapshot):
+            payload = self._normalize_overview_payload(snapshot, season)
+            self._overview_cache.set(season, payload)
+            return payload
         try:
             payload = self.crawler.get_overview(season)
         except Exception:
@@ -62,6 +66,10 @@ class RecordsOverviewService:
 
         snapshot_record = self.snapshot_store.load("leaderboard", cache_key)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
+        if self._can_use_snapshot_before_crawling(season, snapshot):
+            payload = self._normalize_leaderboard_payload(snapshot, season, metric)
+            self._leaderboard_cache.set(cache_key, payload)
+            return payload
         try:
             leaders = self.crawler.get_leaderboard(season, metric)
         except Exception:
@@ -143,6 +151,15 @@ class RecordsOverviewService:
         return ranked
 
     def _can_use_snapshot_after_failure(
+        self,
+        season: int,
+        snapshot: Optional[Dict[str, Any]],
+    ) -> bool:
+        if snapshot is None:
+            return False
+        return self._is_historical_season(season)
+
+    def _can_use_snapshot_before_crawling(
         self,
         season: int,
         snapshot: Optional[Dict[str, Any]],

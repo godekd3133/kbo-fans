@@ -10,6 +10,14 @@
 
 ## [Unreleased]
 
+## [0.1.13] - 2026-07-01
+
+### Changed
+
+- backend sync worker가 live scoreboard 요약을 짧은 fresh window의 runtime state로 미리 덥히고, 홈 scoreboard API가 이 값을 즉시 읽어 첫 응답 지연을 줄이도록 개선
+- 같은 날짜 scoreboard 원천 schedule/main list 결과를 backend service 안에서 공유해 home/compact/detail 진입 사이의 중복 KBO 호출을 줄임
+- 지난 경기/일정/순위와 과거 시즌 기록실 데이터는 더 긴 로컬 캐시와 backend snapshot-first 응답을 사용해 불필요한 원천 재조회와 로딩을 줄임
+
 ## [0.1.12] - 2026-07-01
 
 ### Changed

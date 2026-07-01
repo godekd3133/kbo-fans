@@ -12,6 +12,7 @@ from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.crawlers.scoreboard import ScoreboardCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
 from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
@@ -28,12 +29,19 @@ class ScoreboardService:
         scoreboard_crawler: Optional[ScoreboardCrawler] = None,
         ticketing_service: Optional[TicketingService] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
+        live_scoreboard_store: Optional[LiveScoreboardStore] = None,
     ) -> None:
+        provided_snapshot_store = snapshot_store
         self.main_crawler = main_crawler or MainCrawler()
         self.schedule_crawler = schedule_crawler or ScheduleCrawler()
         self.scoreboard_crawler = scoreboard_crawler or ScoreboardCrawler()
         self.ticketing_service = ticketing_service or TicketingService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
+        self.live_scoreboard_store = (
+            live_scoreboard_store
+            if live_scoreboard_store is not None
+            else (LiveScoreboardStore() if provided_snapshot_store is None else None)
+        )
         self._scoreboard_cache: TtlCache[str, dict[str, Any]] = TtlCache(
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
@@ -44,6 +52,12 @@ class ScoreboardService:
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
         self._compact_scoreboard_cache: TtlCache[str, dict[str, Any]] = TtlCache(
+            self._SCOREBOARD_CACHE_TTL_SECONDS
+        )
+        self._schedule_games_cache: TtlCache[str, list[dict[str, Any]]] = TtlCache(
+            self._SCOREBOARD_CACHE_TTL_SECONDS
+        )
+        self._main_game_map_cache: TtlCache[str, dict[str, dict[str, Any]]] = TtlCache(
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
         self._singleflight: SingleFlight[str] = SingleFlight()
@@ -83,7 +97,7 @@ class ScoreboardService:
 
         try:
             schedule_started_at = time.perf_counter()
-            games = self.schedule_crawler.get_games_by_date(date)
+            games = self._get_schedule_games_by_date(date)
             logger.info(
                 "scoreboard schedule %s %.0fms (%s games)",
                 date,
@@ -102,7 +116,7 @@ class ScoreboardService:
 
         try:
             main_started_at = time.perf_counter()
-            game_list = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
+            game_list = self._get_main_game_map(date)
             logger.info(
                 "scoreboard main list %s %.0fms",
                 date,
@@ -159,6 +173,31 @@ class ScoreboardService:
             logger.info("home scoreboard cache hit %s", date)
             return cached
 
+        live_state = self._load_live_home_scoreboard(date)
+        if live_state is not None:
+            logger.info("home scoreboard live state hit %s", date)
+            self._home_scoreboard_cache.set(date, live_state)
+            return live_state
+
+        return self._singleflight.call(
+            f"home_scoreboard:{date}",
+            lambda: self._get_home_scoreboard_uncached(date, snapshot),
+        )
+
+    def prime_home_scoreboard(self, date: str) -> dict[str, Any]:
+        date = self._normalize_date(date)
+        snapshot = self.snapshot_store.load_payload("scoreboard", date)
+        if self._is_historical_date(date) and snapshot is not None:
+            return {
+                "date": snapshot["date"],
+                "games": [self._strip_home_payload(game) for game in snapshot["games"]],
+            }
+
+        cached = self._home_scoreboard_cache.get(date)
+        if cached is not None:
+            self._save_live_home_scoreboard(date, cached)
+            return cached
+
         return self._singleflight.call(
             f"home_scoreboard:{date}",
             lambda: self._get_home_scoreboard_uncached(date, snapshot),
@@ -175,7 +214,7 @@ class ScoreboardService:
             return cached
 
         try:
-            games = self.schedule_crawler.get_games_by_date(date)
+            games = self._get_schedule_games_by_date(date)
         except Exception:
             stale = self._home_scoreboard_cache.get_stale(date)
             if self._is_historical_date(date) and stale is not None:
@@ -189,7 +228,7 @@ class ScoreboardService:
             raise
 
         try:
-            game_list = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
+            game_list = self._get_main_game_map(date)
         except Exception:
             game_list = {}
             logger.warning("home scoreboard main list failed %s", date)
@@ -207,6 +246,7 @@ class ScoreboardService:
             ],
         }
         self._home_scoreboard_cache.set(date, payload)
+        self._save_live_home_scoreboard(date, payload)
         return payload
 
     def get_compact_scoreboard(
@@ -246,7 +286,7 @@ class ScoreboardService:
             return payload
 
         try:
-            games = self.schedule_crawler.get_games_by_date(date)
+            games = self._get_schedule_games_by_date(date)
         except Exception:
             stale = self._compact_scoreboard_cache.get_stale(cache_key)
             if self._is_historical_date(date) and stale is not None:
@@ -257,7 +297,7 @@ class ScoreboardService:
             raise
 
         try:
-            game_list = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
+            game_list = self._get_main_game_map(date)
         except Exception:
             game_list = {}
             logger.warning("compact scoreboard main list failed %s", date)
@@ -323,7 +363,7 @@ class ScoreboardService:
 
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
         try:
-            games = self.schedule_crawler.get_games_by_date(date)
+            games = self._get_schedule_games_by_date(date)
         except Exception:
             return None
 
@@ -335,7 +375,7 @@ class ScoreboardService:
             return None
 
         try:
-            game_list = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
+            game_list = self._get_main_game_map(date)
         except Exception:
             game_list = {}
             logger.warning("game summary main list failed %s %s", date, game_id)
@@ -345,6 +385,36 @@ class ScoreboardService:
         if self._should_persist_snapshot(date, [game]):
             self.snapshot_store.save("games", game_id, game)
         return game
+
+    def _get_schedule_games_by_date(self, date: str) -> list[dict[str, Any]]:
+        cached = self._schedule_games_cache.get(date)
+        if cached is not None:
+            logger.info("scoreboard schedule cache hit %s", date)
+            return cached
+        games = self.schedule_crawler.get_games_by_date(date)
+        self._schedule_games_cache.set(date, games)
+        return games
+
+    def _get_main_game_map(self, date: str) -> dict[str, dict[str, Any]]:
+        cached = self._main_game_map_cache.get(date)
+        if cached is not None:
+            logger.info("scoreboard main list cache hit %s", date)
+            return cached
+        game_map = {
+            game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
+        }
+        self._main_game_map_cache.set(date, game_map)
+        return game_map
+
+    def _load_live_home_scoreboard(self, date: str) -> Optional[dict[str, Any]]:
+        if self.live_scoreboard_store is None or self._is_historical_date(date):
+            return None
+        return self.live_scoreboard_store.load_fresh(date)
+
+    def _save_live_home_scoreboard(self, date: str, payload: dict[str, Any]) -> None:
+        if self.live_scoreboard_store is None or self._is_historical_date(date):
+            return
+        self.live_scoreboard_store.save(date, payload)
 
     def _enrich_game(self, game: dict[str, Any], main_game: dict[str, Any]) -> dict[str, Any]:
         game_id = game.get("gameId")

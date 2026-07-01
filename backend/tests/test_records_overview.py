@@ -54,6 +54,20 @@ class _FreshRecordsCrawler:
         ]
 
 
+class _TrackingFreshRecordsCrawler(_FreshRecordsCrawler):
+    def __init__(self) -> None:
+        self.overview_calls = 0
+        self.leaderboard_calls = 0
+
+    def get_overview(self, season: int):
+        self.overview_calls += 1
+        return super().get_overview(season)
+
+    def get_leaderboard(self, season: int, metric: str):
+        self.leaderboard_calls += 1
+        return super().get_leaderboard(season, metric)
+
+
 class _PitchingFeaturedRecordsCrawler:
     def get_overview(self, season: int):
         return {
@@ -350,6 +364,73 @@ def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:
     )
 
     assert service.get_leaderboard(season, "avg") == expected
+
+
+def test_historical_overview_prefers_snapshot_before_crawler(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year - 1
+    store.save(
+        "records_overview",
+        str(season),
+        {
+            "season": season,
+            "leaders": {
+                "avg": [
+                    {
+                        "rank": 1,
+                        "playerId": "snapshot",
+                        "playerType": "hitter",
+                        "metricKey": "AVG",
+                        "name": "Snapshot",
+                        "teamId": "LT",
+                        "value": ".345",
+                    }
+                ],
+                "hr": [],
+                "ops": [],
+                "era": [],
+            },
+            "featured": {},
+        },
+    )
+    crawler = _TrackingFreshRecordsCrawler()
+    service = RecordsOverviewService(crawler=crawler, snapshot_store=store)
+
+    payload = service.get_overview(season)
+
+    assert payload["leaders"]["avg"][0]["name"] == "Snapshot"
+    assert crawler.overview_calls == 0
+
+
+def test_historical_leaderboard_prefers_snapshot_before_crawler(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year - 1
+    store.save(
+        "leaderboard",
+        f"{season}:avg",
+        {
+            "season": season,
+            "metric": "avg",
+            "leaders": [
+                {
+                    "rank": 1,
+                    "playerId": "snapshot",
+                    "playerType": "hitter",
+                    "metricKey": "AVG",
+                    "name": "Snapshot",
+                    "teamId": "LT",
+                    "value": ".345",
+                }
+            ],
+        },
+    )
+    crawler = _TrackingFreshRecordsCrawler()
+    service = RecordsOverviewService(crawler=crawler, snapshot_store=store)
+
+    payload = service.get_leaderboard(season, "avg")
+
+    assert payload["leaders"][0]["name"] == "Snapshot"
+    assert crawler.leaderboard_calls == 0
 
 
 def test_current_leaderboard_rejects_old_snapshot_on_failure(tmp_path) -> None:

@@ -37,18 +37,19 @@ class LiveActivityScoreboardSyncService:
         registered_game_ids = set(self.push_service.registry.live_activity_game_ids())
         has_push_registrations = self.push_service.registry.has_device_registrations()
         has_start_tokens = self.push_service.registry.has_live_activity_start_tokens()
+        scoreboard = self._warm_scoreboard(date)
         if not registered_game_ids and not has_push_registrations and not has_start_tokens:
             return self._record_heartbeat(
                 {
-                    "date": date,
-                    "checkedGames": 0,
+                    "date": scoreboard.get("date", date),
+                    "checkedGames": len(scoreboard.get("games", [])),
                     "startedGames": [],
                     "updatedGames": [],
                     "pushedMoments": [],
+                    "warmed": True,
                 }
             )
 
-        scoreboard = self.scoreboard_service.get_home_scoreboard(date)
         started_games = []
         updated_games = []
         pushed_moments = []
@@ -84,6 +85,12 @@ class LiveActivityScoreboardSyncService:
                 "pushedMoments": pushed_moments,
             }
         )
+
+    def _warm_scoreboard(self, date: str) -> dict[str, Any]:
+        prime = getattr(self.scoreboard_service, "prime_home_scoreboard", None)
+        if callable(prime):
+            return prime(date)
+        return self.scoreboard_service.get_home_scoreboard(date)
 
     def _record_heartbeat(self, result: dict[str, Any]) -> dict[str, Any]:
         self.push_service.registry.record_sync_heartbeat(

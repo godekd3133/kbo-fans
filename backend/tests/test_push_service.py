@@ -3,6 +3,7 @@ import json
 import os
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -1847,6 +1848,40 @@ def test_live_activity_scoreboard_sync_updates_registered_live_games(tmp_path) -
     assert response["updatedGames"][0]["sent"] is True
     assert sender.calls[0]["event"] == "update"
     assert sender.calls[0]["state"].inning == "7회말"
+    assert registry.sync_heartbeat()["checkedGames"] == 1
+
+
+def test_live_activity_scoreboard_sync_warms_scoreboard_without_registrations(
+    tmp_path,
+) -> None:
+    class WarmScoreboardService:
+        def __init__(self) -> None:
+            self.prime_calls = []
+
+        def prime_home_scoreboard(self, date: str):
+            self.prime_calls.append(date)
+            return {
+                "date": date,
+                "games": [_scoreboard_game(away_score=2, home_score=3, inning="7회말")],
+            }
+
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = PushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    scoreboard_service = WarmScoreboardService()
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=scoreboard_service,
+        push_service=push_service,
+    )
+
+    response = sync_service.sync_date("2026-06-04")
+
+    assert scoreboard_service.prime_calls == ["2026-06-04"]
+    assert response["checkedGames"] == 1
+    assert response["warmed"] is True
+    assert response["updatedGames"] == []
     assert registry.sync_heartbeat()["checkedGames"] == 1
 
 
@@ -3732,4 +3767,8 @@ def _settings(
         apns_auth_key_p8=apns_auth_key_p8,
         apns_use_sandbox=apns_use_sandbox,
         snapshot_dir="",
+        live_scoreboard_state_path=str(
+            Path(push_registry_path).with_name("live_scoreboard.json")
+        ),
+        live_scoreboard_max_age_seconds=8,
     )

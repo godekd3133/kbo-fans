@@ -27,6 +27,9 @@ class StandingsService:
 
         snapshot_record = self.snapshot_store.load("standings_latest", str(season))
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
+        if self._can_use_snapshot_before_crawling(season, snapshot):
+            self._cache.set(season, snapshot)
+            return snapshot
         try:
             payload = self.crawler.get_standings(season)
         except Exception:
@@ -49,6 +52,15 @@ class StandingsService:
         return payload
 
     def _can_use_snapshot_after_failure(
+        self,
+        season: int,
+        snapshot: Optional[dict[str, Any]],
+    ) -> bool:
+        if snapshot is None:
+            return False
+        return self._is_historical_season(season)
+
+    def _can_use_snapshot_before_crawling(
         self,
         season: int,
         snapshot: Optional[dict[str, Any]],

@@ -2,6 +2,31 @@
 
 ---
 
+## 2026-07-01: 0.1.13 데이터 로딩 속도 릴리즈 및 배포
+
+### 원인
+- 사장님 요청: backend warm cache / 원천 호출 축소 작업까지 배포.
+- 현재 diff에는 backend live scoreboard warm cache와 기존 히스토리 cache/snapshot-first 변경이 함께 있어 새 tester-facing/release-facing 버전이 필요했다.
+
+### 진행
+- [x] release target을 `0.1.13+80` / tag `0.1.13`으로 결정.
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.13` 기준으로 갱신.
+- [x] app/backend 검증.
+- [ ] Git commit/push 및 tag/GitHub Release 생성.
+- [ ] backend deploy workflow 실행 및 readiness 확인.
+- [ ] TestFlight upload / Apple processing / External Testers / Beta Review / installability 확인.
+
+### 검증
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `cd app && fvm flutter test` (`300 passed`)
+- [x] `python3 -m compileall -q backend/src` (pass)
+- [x] `backend/.venv/bin/pytest -q backend/tests` (`253 passed`)
+- [x] `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh` (health, scoreboard/home, relay, home, schedule, standings, records overview pass)
+- [x] `git diff --check` (pass)
+- [ ] git/GitHub remote 확인
+
+---
+
 ## 2026-07-01: backend live scoreboard warm cache 및 원천 호출 축소
 
 ### 원인
@@ -17,9 +42,12 @@
 - [x] stale snapshot masking 금지 원칙은 유지하고, runtime live state는 snapshot fallback이 아니라 fresh-only warm cache로 문서화.
 
 ### 검증
-- [ ] backend targeted pytest
-- [ ] backend compileall
-- [ ] diff whitespace check
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_push_service.py::test_live_activity_scoreboard_sync_warms_scoreboard_without_registrations backend/tests/test_push_service.py::test_live_activity_scoreboard_sync_updates_registered_live_games` (`17 passed`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/core/config.py backend/src/kbo_fans_backend/storage/live_scoreboard_store.py backend/src/kbo_fans_backend/services/scoreboard.py backend/src/kbo_fans_backend/services/live_activity_scoreboard.py backend/tests/test_scoreboard_service_cache.py backend/tests/test_push_service.py` (`All checks passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_scoreboard_service_cache.py backend/tests/test_scoreboard_service_live_fallback.py backend/tests/test_home.py backend/tests/test_push_service.py` (`135 passed`)
+- [x] `python3 -m compileall -q backend/src` (pass)
+- [x] `backend/.venv/bin/pytest -q backend/tests` (`253 passed`)
+- [x] `git diff --check` (pass)
 
 ---
 

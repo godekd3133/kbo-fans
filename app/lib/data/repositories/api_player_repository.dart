@@ -10,6 +10,7 @@ class ApiPlayerRepository implements PlayerRepository {
   final ApiClient _client;
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
   static const _stableCacheAge = Duration(minutes: 5);
+  static const _historicalSeasonCacheAge = Duration(days: 180);
   static const _playerCacheVersion = 'v2';
   static const _minSupportedOfficialPlayerRecordSeason = 2002;
 
@@ -30,7 +31,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'teamPlayers:$_playerCacheVersion:$teamId:$season',
       preferCache: isHistoricalSeason,
-      maxAge: _stableCacheAge,
+      maxAge: _cacheAgeForSeason(season),
       allowCacheOnFailure: isHistoricalSeason,
     );
     final players = data['players'] as List<dynamic>? ?? [];
@@ -59,7 +60,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'playerDetail:$_playerCacheVersion:$playerId:$season',
       preferCache: isHistoricalSeason,
-      maxAge: _stableCacheAge,
+      maxAge: _cacheAgeForSeason(season),
       allowCacheOnFailure: isHistoricalSeason,
     );
     return _parsePlayer(data, fallbackSeason: season);
@@ -77,7 +78,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'teamStats:$_playerCacheVersion:$teamId:$season',
       preferCache: isHistoricalSeason,
-      maxAge: _stableCacheAge,
+      maxAge: _cacheAgeForSeason(season),
       allowCacheOnFailure: isHistoricalSeason,
     );
     return _parseTeamStats(
@@ -105,7 +106,7 @@ class ApiPlayerRepository implements PlayerRepository {
       queryParameters: {'season': season},
       cacheKey: 'teamRecords:$_playerCacheVersion:$teamId:$season',
       preferCache: isHistoricalSeason,
-      maxAge: _stableCacheAge,
+      maxAge: _cacheAgeForSeason(season),
       allowCacheOnFailure: isHistoricalSeason,
     );
     final players = data['players'] as List<dynamic>? ?? [];
@@ -157,7 +158,7 @@ class ApiPlayerRepository implements PlayerRepository {
         queryParameters: {'season': season},
         cacheKey: 'recordsOverview:v5:$season',
         preferCache: isHistoricalSeason,
-        maxAge: _stableCacheAge,
+        maxAge: _cacheAgeForSeason(season),
         isValid: _isValidRecordsOverviewPayload,
         allowCacheOnFailure: isHistoricalSeason,
       );
@@ -230,7 +231,7 @@ class ApiPlayerRepository implements PlayerRepository {
         queryParameters: {'season': season, 'metric': metric.key},
         cacheKey: 'leaderboard:v3:${metric.key}:$season',
         preferCache: isHistoricalSeason,
-        maxAge: _stableCacheAge,
+        maxAge: _cacheAgeForSeason(season),
         isValid: _isValidLeaderboardPayload,
         allowCacheOnFailure: isHistoricalSeason,
       );
@@ -455,4 +456,7 @@ class ApiPlayerRepository implements PlayerRepository {
   }
 
   bool _isHistoricalSeason(int season) => season < DateTime.now().year;
+
+  Duration _cacheAgeForSeason(int season) =>
+      _isHistoricalSeason(season) ? _historicalSeasonCacheAge : _stableCacheAge;
 }

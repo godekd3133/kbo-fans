@@ -31,6 +31,19 @@ class _FailingStandingsCrawler:
         raise RuntimeError("standings unavailable")
 
 
+class _FreshStandingsCrawler:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def get_standings(self, season: int):
+        self.calls += 1
+        return {
+            "season": season,
+            "standings": [{"rank": 1, "teamId": "KT", "teamName": "KT 위즈"}],
+            "updatedAt": f"{season}-04-01T16:30:00+09:00",
+        }
+
+
 class _FailingPlayerCrawler:
     def get_team_players(self, team_id: str, season: int):
         raise RuntimeError("players unavailable")
@@ -103,6 +116,26 @@ def test_historical_standings_falls_back_to_snapshot(tmp_path) -> None:
     )
 
     assert service.get_standings(season) == expected
+
+
+def test_historical_standings_uses_snapshot_before_crawling(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = datetime.now(timezone.utc).year - 1
+    expected = {
+        "season": season,
+        "standings": [{"rank": 1, "teamId": "LG", "teamName": "LG 트윈스"}],
+        "updatedAt": f"{season}-03-31T16:30:00+09:00",
+    }
+    store.save("standings_latest", str(season), expected)
+    crawler = _FreshStandingsCrawler()
+
+    service = StandingsService(
+        crawler=crawler,
+        snapshot_store=store,
+    )
+
+    assert service.get_standings(season) == expected
+    assert crawler.calls == 0
 
 
 def test_current_standings_rejects_fresh_snapshot_on_failure(tmp_path) -> None:

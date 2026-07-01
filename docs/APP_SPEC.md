@@ -303,6 +303,7 @@ GET /api/scoreboard?date=2026-03-28
 
 **운영 메모**:
 - 서버는 날짜별 live scoreboard 응답을 `8초 TTL` 캐시로 보관한다.
+- 운영 sync worker는 live scoreboard 요약을 8초 fresh window의 runtime state로 저장하고, `/scoreboard/home`은 이 값이 fresh일 때 원천 KBO 수집 없이 즉시 반환할 수 있다. 이 runtime state는 snapshot fallback이 아니며 stale이면 무시하고 기존 fresh-first 원천 조회/오류 정책으로 돌아간다.
 - 예정 경기일 때 KBO scoreboard 세부 테이블이 비어도 홈 화면은 fallback payload 로 렌더링한다.
 - 예정 경기는 YouTube 검색을 생략하고 KBO 공식 하이라이트 링크만 유지한다.
 - 진단 화면은 `health / scoreboard / schedule / push` 상태를 한 번에 확인하고, push 초기화 실패 사유를 표시한다.
@@ -1215,11 +1216,12 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 순위는 하루 여러 번 snapshot 으로 저장하고, 과거 날짜 조회는 저장된 snapshot 을 우선 반환한다.
 - 원천 KBO 응답이 수정될 가능성이 있으므로 당일/전일 데이터는 재검증 주기를 두고, 시간이 지난 히스토리 데이터는 낮은 빈도로만 재검증한다.
 - 앱이 `지난 경기 / 지난 순위 / 선수 과거 기록`을 요청할 때는 원천 크롤링보다 저장된 정규화 데이터에서 먼저 응답해야 한다.
+- backend 기록실 overview/leaderboard와 순위는 과거 시즌 snapshot이 있으면 crawler를 호출하기 전에 snapshot을 먼저 정규화해 반환한다. current 시즌은 기존처럼 fresh-first/fail-visible 이다.
 
 ### 앱 렌더링 정책
 
 - 앱은 cold start 시 현재 날짜/월/시즌 데이터는 서버 최신 응답을 우선하고, API 실패 시 TTL 안의 로컬 API cache도 정상 데이터처럼 렌더링하지 않는다.
-- 홈/일정/순위/기록실의 히스토리 데이터는 stale-while-revalidate 를 유지하되, current 데이터는 fresh-first/fail-visible 로 처리한다.
+- 홈/일정/순위/기록실의 히스토리 데이터는 stale-while-revalidate 를 유지하되, current 데이터는 fresh-first/fail-visible 로 처리한다. 지난 경기/일정/순위 cache 는 30일, 과거 시즌 기록실/팀/선수 기록 cache 는 180일을 기준으로 조용한 재검증 빈도를 낮춘다.
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 첫 로딩은 오늘 스코어보드 별도 로컬 cache 를 먼저 렌더링하지 않고, 최신 API 응답 또는 명시적 오류 상태를 기준으로 전환한다.
 - 홈이 이미 정상 스코어보드를 한 번 그린 뒤 resumed / timer refresh 가 실패하면, 저장 캐시를 새 정상 데이터처럼 쓰지 않고 화면에 보이던 같은 날짜 스코어보드만 유지한다. 이 경우 `다시 시도` 오류 화면은 첫 데이터가 전혀 없을 때만 노출하고, refresh 실패는 Dev Console 경고로 남긴다.
@@ -1227,7 +1229,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 홈 secondary `/home` aggregate provider 는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전 부가 API fan-out 을 만들지 않는다.
 - 홈 자동 refresh timer 는 refresh interval 과 scoreboard signature 가 바뀔 때만 재스케줄해 unrelated rebuild 로 live polling 이 지연되지 않게 한다.
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
-- backend current data routes 는 공용 runtime service singleton 을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache 를 재사용한다.
+- backend current data routes 는 공용 runtime service singleton 을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache 를 재사용한다. scoreboard service 내부에서도 같은 날짜의 schedule/main list 원천 결과를 짧은 TTL로 공유해 home/compact/game detail 진입이 같은 KBO 원천 호출을 반복하지 않게 한다.
 - LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다.
 - 앱은 scoreboard payload의 팀 합계 H/E/B가 `null`이면 미수집 값으로 처리하고, 이를 `0` 기록처럼 렌더링하지 않는다.
 - direct KBO mode 앱 라인업은 박스스코어 파생보다 KBO `GetLineUpAnalysis`를 우선 사용해 경기 전/진행 중 공개 라인업과 원천 제공 지표를 표시한다. `LINEUP_CK=false`이거나 응답이 비어 있으면 라인업 미공개 상태로 둔다.

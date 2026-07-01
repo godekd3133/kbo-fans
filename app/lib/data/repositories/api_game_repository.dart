@@ -14,7 +14,7 @@ class ApiGameRepository implements GameRepository {
   final ApiClient _client;
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
   static const _liveishCacheAge = Duration(seconds: 8);
-  static const _stableCacheAge = Duration(minutes: 5);
+  static const _historicalCacheAge = Duration(days: 30);
 
   ApiGameRepository(this._client);
 
@@ -26,7 +26,7 @@ class ApiGameRepository implements GameRepository {
       queryParameters: {'date': date},
       cacheKey: 'scoreboard_home:$date',
       preferCache: isHistoricalDate,
-      maxAge: isHistoricalDate ? _stableCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalDate ? _historicalCacheAge : _liveishCacheAge,
       allowCacheOnFailure: isHistoricalDate,
     );
     final games = data['games'] as List<dynamic>? ?? [];
@@ -47,7 +47,7 @@ class ApiGameRepository implements GameRepository {
       queryParameters: params,
       cacheKey: 'scoreboard_compact:$date:${myTeamId ?? ''}',
       preferCache: isHistoricalDate,
-      maxAge: isHistoricalDate ? _stableCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalDate ? _historicalCacheAge : _liveishCacheAge,
       allowCacheOnFailure: isHistoricalDate,
     );
     final games = data['games'] as List<dynamic>? ?? [];
@@ -61,7 +61,7 @@ class ApiGameRepository implements GameRepository {
       '/game/$gameId',
       cacheKey: 'game_detail_v2:$gameId',
       preferCache: isHistoricalGame,
-      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
       allowCacheOnFailure: isHistoricalGame,
     );
     final game = data['game'] as Map<String, dynamic>?;
@@ -78,7 +78,7 @@ class ApiGameRepository implements GameRepository {
       '/game/$gameId/highlights',
       cacheKey: 'highlights:$gameId',
       preferCache: isHistoricalGame,
-      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
       allowCacheOnFailure: isHistoricalGame,
     );
     final highlightInfo = data['highlightInfo'] as Map<String, dynamic>?;
@@ -96,7 +96,7 @@ class ApiGameRepository implements GameRepository {
       queryParameters: params,
       cacheKey: 'relay:$gameId:${afterSeqNo ?? ''}',
       preferCache: isHistoricalGame,
-      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
       allowCacheOnFailure: isHistoricalGame,
     );
     final items = data['relayItems'] as List<dynamic>? ?? [];
@@ -129,7 +129,7 @@ class ApiGameRepository implements GameRepository {
       '/game/$gameId/boxscore',
       cacheKey: 'boxscore:$gameId',
       preferCache: isHistoricalGame,
-      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
       allowCacheOnFailure: isHistoricalGame,
     );
     return GameBoxscoreData(
@@ -170,7 +170,7 @@ class ApiGameRepository implements GameRepository {
       '/game/$gameId/lineup',
       cacheKey: 'lineup:$gameId',
       preferCache: isHistoricalGame,
-      maxAge: isHistoricalGame ? _stableCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
       allowCacheOnFailure: isHistoricalGame,
     );
     return GameLineupData(
@@ -197,7 +197,7 @@ class ApiGameRepository implements GameRepository {
       queryParameters: {'month': yearMonth},
       cacheKey: 'schedule:$yearMonth',
       preferCache: isHistoricalMonth,
-      maxAge: isHistoricalMonth ? _stableCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalMonth ? _historicalCacheAge : _liveishCacheAge,
       allowCacheOnFailure: isHistoricalMonth,
     );
     final days = data['days'] as List<dynamic>? ?? [];
@@ -239,7 +239,7 @@ class ApiGameRepository implements GameRepository {
         queryParameters: {'season': season},
         cacheKey: 'standings:$season',
         preferCache: isHistoricalSeason,
-        maxAge: isHistoricalSeason ? _stableCacheAge : _liveishCacheAge,
+        maxAge: isHistoricalSeason ? _historicalCacheAge : _liveishCacheAge,
         allowCacheOnFailure: isHistoricalSeason,
       );
       return _parseStandings(data);

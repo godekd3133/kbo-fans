@@ -57,11 +57,17 @@ class Settings:
     apns_auth_key_p8: str
     apns_use_sandbox: bool
     snapshot_dir: str
+    live_scoreboard_state_path: str
+    live_scoreboard_max_age_seconds: int
 
 
 @lru_cache
 def get_settings() -> Settings:
     app_env = os.getenv("APP_ENV", "local")
+    push_registry_path = os.getenv(
+        "PUSH_REGISTRY_PATH",
+        str(Path(__file__).resolve().parents[3] / "data" / "runtime" / "push_registry.json"),
+    )
     return Settings(
         app_name=os.getenv("APP_NAME", "KBO Fans API"),
         app_env=app_env,
@@ -78,10 +84,7 @@ def get_settings() -> Settings:
         firebase_service_account_path=os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", ""),
         firebase_service_account_json=os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", ""),
         firebase_project_id=os.getenv("FIREBASE_PROJECT_ID", ""),
-        push_registry_path=os.getenv(
-            "PUSH_REGISTRY_PATH",
-            str(Path(__file__).resolve().parents[3] / "data" / "runtime" / "push_registry.json"),
-        ),
+        push_registry_path=push_registry_path,
         push_sync_secret=os.getenv("PUSH_SYNC_SECRET", ""),
         apns_key_id=os.getenv("APNS_KEY_ID", ""),
         apns_team_id=os.getenv("APNS_TEAM_ID", ""),
@@ -93,4 +96,9 @@ def get_settings() -> Settings:
             "SNAPSHOT_DIR",
             str(Path(__file__).resolve().parents[3] / "data" / "snapshots"),
         ),
+        live_scoreboard_state_path=os.getenv(
+            "LIVE_SCOREBOARD_STATE_PATH",
+            str(Path(push_registry_path).expanduser().with_name("live_scoreboard.json")),
+        ),
+        live_scoreboard_max_age_seconds=_get_int("LIVE_SCOREBOARD_MAX_AGE_SECONDS", 8),
     )

@@ -8,6 +8,7 @@ import pytest
 
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
 
 
 class _StubScheduleCrawler:
@@ -211,6 +212,126 @@ def test_get_home_scoreboard_does_not_fetch_per_game_detail(tmp_path: Path) -> N
     assert schedule.calls == 1
     assert main.calls == 1
     assert scoreboard.game_ids == []
+
+
+def test_get_home_scoreboard_uses_fresh_live_state_without_crawling(
+    tmp_path: Path,
+) -> None:
+    live_store = LiveScoreboardStore(
+        path=str(tmp_path / "runtime" / "live_scoreboard.json"),
+        max_age_seconds=8,
+    )
+    expected = {
+        "date": "2999-03-31",
+        "games": [
+            {
+                "gameId": "29990331HTLG0",
+                "status": "LIVE",
+                "inning": "7회말",
+                "away": {"teamId": "HT", "score": 3},
+                "home": {"teamId": "LG", "score": 4},
+            }
+        ],
+    }
+    live_store.save("2999-03-31", expected)
+    schedule = _FailingScheduleCrawler()
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+        live_scoreboard_store=live_store,
+    )
+
+    payload = service.get_home_scoreboard("2999-03-31")
+
+    assert payload == expected
+
+
+def test_get_home_scoreboard_ignores_stale_live_state_on_failure(
+    tmp_path: Path,
+) -> None:
+    live_path = tmp_path / "runtime" / "live_scoreboard.json"
+    _write_live_scoreboard_record(
+        live_path,
+        "2999-03-31",
+        {
+            "date": "2999-03-31",
+            "games": [
+                {
+                    "gameId": "29990331HTLG0",
+                    "status": "LIVE",
+                    "inning": "7회말",
+                    "away": {"teamId": "HT", "score": 3},
+                    "home": {"teamId": "LG", "score": 4},
+                }
+            ],
+        },
+        saved_at="2000-01-01T00:00:00+00:00",
+    )
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+        live_scoreboard_store=LiveScoreboardStore(
+            path=str(live_path),
+            max_age_seconds=8,
+        ),
+    )
+
+    with pytest.raises(RuntimeError):
+        service.get_home_scoreboard("2999-03-31")
+
+
+def test_prime_home_scoreboard_writes_live_state_for_other_workers(
+    tmp_path: Path,
+) -> None:
+    live_store = LiveScoreboardStore(
+        path=str(tmp_path / "runtime" / "live_scoreboard.json"),
+        max_age_seconds=8,
+    )
+    writer = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "writer_snapshots")),
+        live_scoreboard_store=live_store,
+    )
+
+    expected = writer.prime_home_scoreboard("2999-03-31")
+    reader = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "reader_snapshots")),
+        live_scoreboard_store=LiveScoreboardStore(
+            path=str(tmp_path / "runtime" / "live_scoreboard.json"),
+            max_age_seconds=8,
+        ),
+    )
+
+    assert reader.get_home_scoreboard("2999-03-31") == expected
+
+
+def test_home_and_compact_share_schedule_and_main_source_cache(
+    tmp_path: Path,
+) -> None:
+    schedule = _MultiGameScheduleCrawler()
+    main = _MultiGameMainCrawler()
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_TrackingScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    service.get_home_scoreboard("2999-03-31")
+    compact = service.get_compact_scoreboard("2999-03-31", my_team="SS")
+
+    assert [game["gameId"] for game in compact["games"]] == ["20260331OBSS0"]
+    assert schedule.calls == 1
+    assert main.calls == 1
 
 
 def test_get_game_ignores_snapshot_for_non_historical_game(tmp_path: Path) -> None:
@@ -499,6 +620,30 @@ def _write_snapshot_record(
             {
                 "savedAt": "2000-01-01T00:00:00+00:00",
                 "payload": payload,
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+
+def _write_live_scoreboard_record(
+    path: Path,
+    date: str,
+    payload: dict,
+    *,
+    saved_at: str,
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "scoreboards": {
+                    date: {
+                        "savedAt": saved_at,
+                        "payload": payload,
+                    }
+                }
             },
             ensure_ascii=False,
         ),
