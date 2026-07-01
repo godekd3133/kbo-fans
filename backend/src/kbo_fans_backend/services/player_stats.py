@@ -65,7 +65,11 @@ class PlayerStatsService:
 
         snapshot_key = self._player_detail_snapshot_key(player_id, season, player_type)
         snapshot = self.snapshot_store.load_payload("player_detail", snapshot_key)
-        if snapshot is not None and self._is_historical_season(season):
+        if (
+            snapshot is not None
+            and self._is_historical_season(season)
+            and self._is_consistent_player_detail_payload(snapshot)
+        ):
             return snapshot
 
         try:
@@ -79,7 +83,11 @@ class PlayerStatsService:
             stale = self._player_detail_cache.get_stale(cache_key)
             if self._is_historical_season(season) and stale is not None:
                 return stale
-            if snapshot is not None and self._is_historical_season(season):
+            if (
+                snapshot is not None
+                and self._is_historical_season(season)
+                and self._is_consistent_player_detail_payload(snapshot)
+            ):
                 return snapshot
             raise
 
@@ -145,3 +153,12 @@ class PlayerStatsService:
     @staticmethod
     def _player_detail_snapshot_key(player_id: str, season: int, player_type: Optional[str]) -> str:
         return f"{player_id}-{season}-{player_type or 'auto'}"
+
+    @staticmethod
+    def _is_consistent_player_detail_payload(payload: Dict[str, Any]) -> bool:
+        player_type = str(payload.get("playerType") or "")
+        position = str(payload.get("position") or "")
+        role_label = str(payload.get("roleLabel") or "")
+        if player_type == "hitter" and ("투수" in position or "투수" in role_label):
+            return False
+        return True

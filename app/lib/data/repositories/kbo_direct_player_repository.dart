@@ -764,11 +764,36 @@ class KboDirectPlayerRepository implements PlayerRepository {
   Future<PlayerType> _guessPlayerType(String playerId) async {
     for (final type in [PlayerType.hitter, PlayerType.pitcher]) {
       final html = await _getText(_detailUrl(playerId, type));
-      if (html.contains('선수명:') || html.contains('선수명')) {
-        return type;
+      final resolvedType = _resolveDetailPlayerType(html, type);
+      if (resolvedType != null) {
+        return resolvedType;
       }
     }
     return PlayerType.hitter;
+  }
+
+  @visibleForTesting
+  PlayerType resolveDetailPlayerTypeForTesting({
+    required String html,
+    required PlayerType requestedType,
+  }) {
+    return _resolveDetailPlayerType(html, requestedType) ?? requestedType;
+  }
+
+  PlayerType? _resolveDetailPlayerType(
+    String html,
+    PlayerType requestedType,
+  ) {
+    final name = _extractProfileField(html, 'lblName');
+    if (name.isEmpty && !html.contains('선수명')) {
+      return null;
+    }
+
+    final position = _extractProfileField(html, 'lblPosition').trim();
+    if (position.startsWith('투수')) {
+      return PlayerType.pitcher;
+    }
+    return requestedType;
   }
 
   String _detailUrl(String playerId, PlayerType playerType) {

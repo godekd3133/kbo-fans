@@ -122,9 +122,7 @@ void main() {
     expect(find.text('사직 롯데-두산'), findsNothing);
   });
 
-  testWidgets('매치업 탭은 시즌 전체 일정을 오늘 가까운 순으로 보여주고 지난 경기를 어둡게 표시한다', (
-    tester,
-  ) async {
+  testWidgets('매치업 탭은 시즌 전체 남은 일정을 오늘 기준 가까운 순으로 보여준다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -148,23 +146,16 @@ void main() {
 
     expect(find.text('오늘 LG-KT'), findsOneWidget);
     expect(find.text('내일 LG-KT'), findsOneWidget);
-    expect(find.text('어제 LG-KT'), findsOneWidget);
+    expect(find.text('어제 LG-KT'), findsNothing);
     expect(find.text('다음달 LG-KT'), findsOneWidget);
     expect(find.text('LG-SSG 제외'), findsNothing);
 
     final todayTop = tester.getTopLeft(find.text('오늘 LG-KT')).dy;
     final tomorrowTop = tester.getTopLeft(find.text('내일 LG-KT')).dy;
-    final yesterdayTop = tester.getTopLeft(find.text('어제 LG-KT')).dy;
     final nextMonthTop = tester.getTopLeft(find.text('다음달 LG-KT')).dy;
 
     expect(todayTop, lessThan(tomorrowTop));
-    expect(tomorrowTop, lessThan(yesterdayTop));
-    expect(yesterdayTop, lessThan(nextMonthTop));
-
-    final pastOpacity = tester.widget<Opacity>(
-      find.byKey(const ValueKey('matchup-game-opacity-yesterday-lg-kt')),
-    );
-    expect(pastOpacity.opacity, lessThan(1));
+    expect(tomorrowTop, lessThan(nextMonthTop));
   });
 
   testWidgets('캘린더 영역에서 위로 밀어도 선택일 경기 목록이 스크롤된다', (tester) async {

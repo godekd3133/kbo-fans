@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -100,11 +101,7 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                         child: CircularProgressIndicator(color: AppColors.live),
                       ),
                     ),
-                    error: (error, _) => Text(
-                      '라인업 데이터 로딩 실패: $error',
-                      key: const ValueKey('lineup-error'),
-                      style: TextStyle(color: AppColors.textDisabled),
-                    ),
+                    error: (error, _) => _buildLineupErrorState(error),
                     data: (gameLineup) {
                       if (gameStatus == GameStatus.scheduled &&
                           !_hasPublishedLineup(gameLineup)) {
@@ -279,7 +276,26 @@ class _LineupTabState extends ConsumerState<LineupTab> {
     );
   }
 
-  Widget _buildUnavailableState(String message) {
+  Widget _buildLineupErrorState(Object error) {
+    if (_isTransientLineupLoadError(error)) {
+      return _buildUnavailableState(
+        '라인업을 다시 불러오고 있습니다',
+        detail: '잠시 후 자동으로 갱신됩니다',
+        showProgress: true,
+      );
+    }
+
+    return _buildUnavailableState(
+      '라인업을 불러올 수 없습니다',
+      detail: '화면을 아래로 당겨 다시 시도해 주세요',
+    );
+  }
+
+  Widget _buildUnavailableState(
+    String message, {
+    String? detail,
+    bool showProgress = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: AppArtworkCard(
@@ -299,6 +315,33 @@ class _LineupTabState extends ConsumerState<LineupTab> {
               message,
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
+            if (detail != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  if (showProgress) ...[
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.live,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Text(
+                      detail,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textDisabled,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -327,6 +370,27 @@ class _LineupTabState extends ConsumerState<LineupTab> {
       );
     });
   }
+}
+
+bool _isTransientLineupLoadError(Object error) {
+  if (error is TimeoutException) {
+    return true;
+  }
+  if (error is DioException) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      case DioExceptionType.badCertificate:
+      case DioExceptionType.badResponse:
+      case DioExceptionType.cancel:
+      case DioExceptionType.unknown:
+        return false;
+    }
+  }
+  return false;
 }
 
 bool _hasPublishedLineup(GameLineupData gameLineup) {

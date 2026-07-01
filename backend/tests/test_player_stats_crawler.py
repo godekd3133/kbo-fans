@@ -174,6 +174,35 @@ def test_parse_profile_uses_2022_image_folder_for_old_seasons() -> None:
     assert profile["imageUrl"].endswith("/2022/99999.jpg")
 
 
+def test_guess_player_type_uses_pitcher_position_when_hitter_page_has_profile(
+    monkeypatch,
+) -> None:
+    crawler = PlayerStatsCrawler()
+
+    class _Response:
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+    def _get(url: str, timeout: int):
+        if "HitterDetail" in url:
+            return _Response(
+                """
+                <span id="lblName">이민호</span>
+                <span id="lblPosition">투수(우투우타)</span>
+                """
+            )
+        return _Response(
+            """
+            <span id="lblName">이민호</span>
+            <span id="lblPosition">투수(우투우타)</span>
+            """
+        )
+
+    monkeypatch.setattr(crawler.session, "get", _get)
+
+    assert crawler._guess_player_type("50126") == "pitcher"  # type: ignore[attr-defined]
+
+
 class _CurrentPlayerDetailCrawler(PlayerStatsCrawler):
     def _get_text(self, url: str, *, breaker_key: str) -> str:
         if "Total.aspx" in url:

@@ -46,6 +46,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   PlayerSortOption _sort = PlayerSortOption.avg;
   String _searchQuery = '';
   late int _selectedSeason;
+  LeaderboardPlayerGroup _selectedPreviewGroup = LeaderboardPlayerGroup.hitter;
   LeaderboardMetric _selectedPreviewMetric = LeaderboardMetric.avg;
   int? _teamRecordsLoadStartedAtMicros;
   String? _lastTeamRecordsLogKey;
@@ -2085,10 +2086,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _metricHub(RecordsOverview overview) {
     final isLight = Theme.of(context).brightness == Brightness.light;
-    final snapshots = _metricSnapshots(overview);
+    final snapshots = _metricSnapshotsForGroup(overview, _selectedPreviewGroup);
     final selected = snapshots.firstWhere(
       (snapshot) => snapshot.metric == _selectedPreviewMetric,
-      orElse: () => snapshots.first,
+      orElse: () => snapshots.firstWhere(
+        (snapshot) => snapshot.metric == _selectedPreviewGroup.defaultMetric,
+        orElse: () => snapshots.first,
+      ),
     );
     final leaders = selected.leaders.take(3).toList();
 
@@ -2113,6 +2117,20 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       ),
       child: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: _leaderboardGroupSegment(),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _selectedPreviewGroup.description,
+                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+              ),
+            ),
+          ),
           SizedBox(
             height: 50,
             child: LayoutBuilder(
@@ -2170,7 +2188,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      '${selected.metric.shortLabel} 전체 리더보드 보기',
+                      '${_selectedPreviewGroup.label} ${selected.metric.shortLabel} 전체 보기',
                       style: TextStyle(
                         fontSize: 13,
                         color: selected.color,
@@ -2191,6 +2209,59 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         ],
       ),
     );
+  }
+
+  Widget _leaderboardGroupSegment() {
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.background.withValues(alpha: 0.22),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          for (final group in LeaderboardPlayerGroup.values)
+            Expanded(child: _leaderboardGroupButton(group)),
+        ],
+      ),
+    );
+  }
+
+  Widget _leaderboardGroupButton(LeaderboardPlayerGroup group) {
+    final selected = _selectedPreviewGroup == group;
+    return AppPressable(
+      onTap: selected ? null : () => _selectPreviewGroup(group),
+      pressedScale: 0.98,
+      child: AnimatedContainer(
+        key: ValueKey('records-leaderboard-group-${group.name}'),
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AppColors.textPrimary : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          group.label,
+          style: TextStyle(
+            fontSize: 14,
+            color: selected ? AppColors.background : AppColors.textSecondary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _selectPreviewGroup(LeaderboardPlayerGroup group) {
+    setState(() {
+      _selectedPreviewGroup = group;
+      if (!group.metrics.contains(_selectedPreviewMetric)) {
+        _selectedPreviewMetric = group.defaultMetric;
+      }
+    });
   }
 
   Widget _leaderboardTab(
@@ -2680,19 +2751,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         leaders: overview.eraLeaders,
         color: colors.readableAccent(AppColors.live),
       ),
-    ];
-  }
-
-  List<_MetricSnapshot> _pitcherMetricSnapshots(RecordsOverview overview) {
-    final colors = AppTheme.colorsOf(context);
-    return [
-      _MetricSnapshot(
-        metric: LeaderboardMetric.era,
-        title: 'ERA',
-        description: '낮을수록 강한 선발 경쟁',
-        leaders: overview.eraLeaders,
-        color: colors.readableAccent(AppColors.live),
-      ),
       _MetricSnapshot(
         metric: LeaderboardMetric.wins,
         title: '다승',
@@ -2714,7 +2772,28 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         leaders: overview.strikeoutLeaders,
         color: colors.readableAccent(AppColors.accent),
       ),
-    ].where((snapshot) => snapshot.leaders.isNotEmpty).toList();
+    ];
+  }
+
+  List<_MetricSnapshot> _metricSnapshotsForGroup(
+    RecordsOverview overview,
+    LeaderboardPlayerGroup group,
+  ) {
+    final snapshots = {
+      for (final snapshot in _metricSnapshots(overview))
+        snapshot.metric: snapshot,
+    };
+    return [
+      for (final metric in group.metrics)
+        if (snapshots[metric] != null) snapshots[metric]!,
+    ];
+  }
+
+  List<_MetricSnapshot> _pitcherMetricSnapshots(RecordsOverview overview) {
+    return _metricSnapshotsForGroup(
+      overview,
+      LeaderboardPlayerGroup.pitcher,
+    ).where((snapshot) => snapshot.leaders.isNotEmpty).toList();
   }
 
   String _leaderGapText(LeaderboardMetric metric, List<RecordLeader> leaders) {

@@ -350,9 +350,22 @@ class PlayerStatsCrawler(BaseCrawler):
         for player_type in ("hitter", "pitcher"):
             detail_url = self._detail_url(player_id, player_type)
             html = self.session.get(f"{self.base_url}{detail_url}", timeout=self.timeout).text
-            if "선수명:" in html:
-                return player_type
+            resolved_type = self._resolve_player_type_from_detail_html(html, player_type)
+            if resolved_type is not None:
+                return resolved_type
         return "hitter"
+
+    def _resolve_player_type_from_detail_html(
+        self, html: str, requested_player_type: str
+    ) -> Optional[str]:
+        name = self._extract_profile_field(html, "lblName")
+        if not name and "선수명" not in html:
+            return None
+
+        position = self._extract_profile_field(html, "lblPosition").strip()
+        if position.startswith("투수"):
+            return "pitcher"
+        return requested_player_type
 
     def _detail_url(self, player_id: str, player_type: str) -> str:
         if player_type == "pitcher":

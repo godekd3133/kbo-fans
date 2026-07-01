@@ -760,10 +760,7 @@ class _GameScorebug extends StatelessWidget {
 
 String _scorebugInningLabel(Game game) {
   if (game.status == GameStatus.final_) {
-    final finalInningLabel = _lineScoreInningLabel(game);
-    if (finalInningLabel != null) {
-      return finalInningLabel;
-    }
+    return labelForGameStatus(game.status, statusLabel: game.statusLabel);
   }
 
   final inning = _normalizedInningLabel(game.inning);
@@ -776,7 +773,10 @@ String _scorebugInningLabel(Game game) {
       game.status,
       statusLabel: game.statusLabel,
     ),
-    GameStatus.final_ => '9회',
+    GameStatus.final_ => labelForGameStatus(
+      game.status,
+      statusLabel: game.statusLabel,
+    ),
     GameStatus.scheduled => '경기 전',
     GameStatus.cancelled => labelForGameStatus(
       game.status,
@@ -787,24 +787,6 @@ String _scorebugInningLabel(Game game) {
       statusLabel: game.statusLabel,
     ),
   };
-}
-
-String? _lineScoreInningLabel(Game game) {
-  final maxLength = game.away.innings.length > game.home.innings.length
-      ? game.away.innings.length
-      : game.home.innings.length;
-  for (var index = maxLength - 1; index >= 0; index -= 1) {
-    final awayScore = index < game.away.innings.length
-        ? game.away.innings[index]
-        : null;
-    final homeScore = index < game.home.innings.length
-        ? game.home.innings[index]
-        : null;
-    if (awayScore != null || homeScore != null) {
-      return '${index + 1}회';
-    }
-  }
-  return null;
 }
 
 String? _normalizedInningLabel(String raw) {

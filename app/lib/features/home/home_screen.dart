@@ -66,6 +66,7 @@ String gameDetailLocationFor(
 
 const _gameDetailPlayerImagePrefetchLimit = 80;
 const _gameDetailPlayerImagePrefetchTimeout = Duration(seconds: 8);
+const _gameDetailOpenRefreshTimeout = Duration(seconds: 4);
 const _teamPlayerImagePrefetchTimeout = Duration(seconds: 3);
 const _lineupImagePrefetchSourceTimeout = Duration(seconds: 4);
 
@@ -443,6 +444,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _lastScoreboardRefreshErrorLogKey;
   String? _lastPreviousScoreboardErrorLogKey;
   String? _openingGameDetailId;
+  double _openingGameDetailProgress = 0;
 
   @override
   void initState() {
@@ -725,12 +727,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildGameDetailLoadingOverlay(BuildContext context) {
+    final progress = _openingGameDetailProgress.clamp(0.0, 1.0).toDouble();
+    final percent = (progress * 100).round();
+
     return ColoredBox(
       key: const ValueKey('home-game-detail-loading'),
       color: AppColors.background.withValues(alpha: 0.72),
       child: Center(
         child: Container(
-          width: 184,
+          width: 224,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           decoration: BoxDecoration(
             color: AppColors.card,
@@ -749,9 +754,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               SizedBox(height: 12),
-              Text(
-                '경기 정보 갱신 중',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '경기 정보 갱신 중',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Text(
+                    '$percent%',
+                    key: const ValueKey('home-game-detail-loading-percent'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.live,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  key: const ValueKey('home-game-detail-loading-progress'),
+                  value: progress,
+                  minHeight: 6,
+                  color: AppColors.live,
+                  backgroundColor: AppColors.divider.withValues(alpha: 0.7),
+                ),
               ),
             ],
           ),
@@ -1032,6 +1068,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _updateGameDetailOpenProgress(double progress) {
+    if (!mounted || _openingGameDetailId == null) {
+      return;
+    }
+    final nextProgress = progress.clamp(0.0, 1.0).toDouble();
+    if ((_openingGameDetailProgress - nextProgress).abs() < 0.001) {
+      return;
+    }
+    setState(() {
+      _openingGameDetailProgress = nextProgress;
+    });
+  }
+
   Future<void> _openGameDetailAfterRefresh(
     Game game, {
     String? tab,
@@ -1039,6 +1088,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }) async {
     setState(() {
       _openingGameDetailId = game.gameId;
+      _openingGameDetailProgress = 0;
     });
 
     try {
@@ -1061,6 +1111,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (mounted) {
         setState(() {
           _openingGameDetailId = null;
+          _openingGameDetailProgress = 0;
         });
       }
     }
@@ -1070,72 +1121,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final gameId = game.gameId;
     final targetTab = tab ?? (game.status == GameStatus.live ? 'relay' : null);
 
-    ref.invalidate(gameProvider(gameId));
-    final gameFuture = ref.read(gameProvider(gameId).future);
-    Future<RelayData>? relayFuture;
-    Future<GameLineupData>? lineupFuture;
-    Future<GameBoxscoreData>? boxscoreFuture;
-    final futures = <Future<Object?>>[
-      gameFuture.then<Object?>((value) => value),
-    ];
+    Future<T> trackBlockingProgress<T>(Future<T> future) {
+      return future.whenComplete(() {
+        _updateGameDetailOpenProgress(1);
+      });
+    }
 
-    Future<GameLineupData> readLineupForImagePrefetch() {
-      final existingFuture = lineupFuture;
-      if (existingFuture != null) {
-        return existingFuture;
-      }
-      ref.invalidate(gameLineupProvider(gameId));
-      final nextFuture = ref.read(gameLineupProvider(gameId).future);
-      lineupFuture = nextFuture;
-      futures.add(nextFuture.then<Object?>((value) => value));
-      return nextFuture;
+    ref.invalidate(gameProvider(gameId));
+    final gameFuture = trackBlockingProgress<Game?>(
+      ref.read(gameProvider(gameId).future),
+    );
+    Future<RelayData?>? relayFuture;
+    Future<GameLineupData?>? lineupFuture;
+    Future<GameBoxscoreData?>? boxscoreFuture;
+
+    Future<T?> readWarmupProvider<T>(String label, Future<T> future) {
+      return future.then<T?>((value) => value).catchError((
+        Object error,
+        StackTrace stackTrace,
+      ) {
+        DevConsole.instance.warn(
+          'HOME game detail $label warmup skipped: $gameId $error',
+        );
+        return null;
+      });
+    }
+
+    Future<RelayData?> startRelayWarmup() {
+      relayFuture ??= () {
+        ref.invalidate(relayDataProvider(gameId));
+        return readWarmupProvider<RelayData>(
+          'relay',
+          ref.read(relayDataProvider(gameId).future),
+        );
+      }();
+      return relayFuture!;
+    }
+
+    Future<GameLineupData?> startLineupWarmup() {
+      lineupFuture ??= () {
+        ref.invalidate(gameLineupProvider(gameId));
+        return readWarmupProvider<GameLineupData>(
+          'lineup',
+          ref.read(gameLineupProvider(gameId).future),
+        );
+      }();
+      return lineupFuture!;
+    }
+
+    Future<GameBoxscoreData?> startBoxscoreWarmup() {
+      boxscoreFuture ??= () {
+        ref.invalidate(gameBoxscoreProvider(gameId));
+        return readWarmupProvider<GameBoxscoreData>(
+          'boxscore',
+          ref.read(gameBoxscoreProvider(gameId).future),
+        );
+      }();
+      return boxscoreFuture!;
     }
 
     switch (targetTab) {
       case 'relay':
-        ref.invalidate(relayDataProvider(gameId));
-        final relayDataFuture = ref.read(relayDataProvider(gameId).future);
-        relayFuture = relayDataFuture;
-        futures.add(relayDataFuture.then<Object?>((value) => value));
+        relayFuture = startRelayWarmup();
         break;
       case 'boxscore':
-        ref.invalidate(gameBoxscoreProvider(gameId));
-        final boxscoreDataFuture = ref.read(
-          gameBoxscoreProvider(gameId).future,
-        );
-        boxscoreFuture = boxscoreDataFuture;
-        futures.add(boxscoreDataFuture.then<Object?>((value) => value));
-        readLineupForImagePrefetch();
+        boxscoreFuture = startBoxscoreWarmup();
         break;
       case 'lineup':
-        readLineupForImagePrefetch();
+        lineupFuture = startLineupWarmup();
         break;
       case null:
-        readLineupForImagePrefetch();
         break;
     }
 
-    await Future.wait(futures).timeout(const Duration(seconds: 25));
-    final refreshedGame = await gameFuture;
+    final refreshedGame = await gameFuture.timeout(
+      _gameDetailOpenRefreshTimeout,
+    );
     if (refreshedGame == null) {
       throw StateError('game detail missing: $gameId');
     }
-    await _precacheGameDetailPlayerImagesBeforeOpen(
-      refreshedGame,
-      targetTab: targetTab,
-      relayData: relayFuture == null ? null : await relayFuture,
-      lineupData: lineupFuture == null ? null : await lineupFuture,
-      boxscoreData: boxscoreFuture == null ? null : await boxscoreFuture,
+    unawaited(
+      _precacheGameDetailPlayerImagesInBackground(
+        refreshedGame,
+        targetTab: targetTab,
+        relayDataFuture: relayFuture,
+        lineupDataFuture: lineupFuture,
+        boxscoreDataFuture: boxscoreFuture,
+      ),
     );
     return refreshedGame;
   }
 
-  Future<void> _precacheGameDetailPlayerImagesBeforeOpen(
+  Future<void> _precacheGameDetailPlayerImagesInBackground(
     Game game, {
     required String? targetTab,
-    RelayData? relayData,
-    GameLineupData? lineupData,
-    GameBoxscoreData? boxscoreData,
+    Future<RelayData?>? relayDataFuture,
+    Future<GameLineupData?>? lineupDataFuture,
+    Future<GameBoxscoreData?>? boxscoreDataFuture,
   }) async {
     if (!mounted) {
       return;
@@ -1145,25 +1227,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final imageUrls = <String>[];
       switch (targetTab) {
         case 'relay':
-          imageUrls.addAll(await _relayImageUrlsBeforeOpen(game, relayData));
+          imageUrls.addAll(
+            await _relayImageUrlsBeforeOpen(
+              game,
+              relayDataFuture == null ? null : await relayDataFuture,
+            ),
+          );
           imageUrls.addAll(
             await _lineupImageUrlsBeforeOpen(
               game,
-              lineupData ?? await _lineupDataForImagePrefetch(game.gameId),
+              lineupDataFuture == null
+                  ? await _lineupDataForImagePrefetch(game.gameId)
+                  : await lineupDataFuture,
             ),
           );
           break;
         case 'lineup':
-          imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
+          imageUrls.addAll(
+            await _lineupImageUrlsBeforeOpen(
+              game,
+              lineupDataFuture == null ? null : await lineupDataFuture,
+            ),
+          );
           break;
         case 'boxscore':
           imageUrls.addAll(
-            await _boxscoreImageUrlsBeforeOpen(game, boxscoreData),
+            await _boxscoreImageUrlsBeforeOpen(
+              game,
+              boxscoreDataFuture == null ? null : await boxscoreDataFuture,
+            ),
           );
-          imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
+          imageUrls.addAll(
+            await _lineupImageUrlsBeforeOpen(
+              game,
+              lineupDataFuture == null
+                  ? await _lineupDataForImagePrefetch(game.gameId)
+                  : await lineupDataFuture,
+            ),
+          );
           break;
         case null:
-          imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
+          imageUrls.addAll(
+            await _lineupImageUrlsBeforeOpen(
+              game,
+              lineupDataFuture == null
+                  ? await _lineupDataForImagePrefetch(game.gameId)
+                  : await lineupDataFuture,
+            ),
+          );
           break;
       }
       if (imageUrls.isEmpty || !mounted) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
@@ -184,6 +185,51 @@ void main() {
 
     expect(find.text('경기 시작 후 라인업이 공개됩니다'), findsNothing);
     expect(find.text('라인업 공개 전입니다'), findsOneWidget);
+  });
+
+  testWidgets('라인업 timeout은 Dio 오류 전문 대신 재시도 대기 상태로 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            throw DioException(
+              requestOptions: RequestOptions(path: '/game/$gameId/lineup'),
+              type: DioExceptionType.receiveTimeout,
+              message: 'The request took longer than 0:00:25.000000',
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: LineupTab(
+              gameId: '20260612SKLG0',
+              gameStatus: GameStatus.live,
+              awayName: 'SSG',
+              homeName: 'LG',
+              awayTeamId: 'SK',
+              homeTeamId: 'LG',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('라인업을 다시 불러오고 있습니다'), findsOneWidget);
+    expect(find.textContaining('DioException'), findsNothing);
+    expect(find.textContaining('receive timeout'), findsNothing);
   });
 
   testWidgets('라인업 row는 response의 선수 이미지 URL을 우선 표시한다', (tester) async {

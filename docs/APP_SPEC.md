@@ -245,9 +245,9 @@
 - 브리프 문구는 홈 첫 프레임 전략을 해치지 않도록 기존 scoreboard와 지연 로딩된 `/home` aggregate 안의 `myTeamBrief` 데이터를 먼저 사용한다. 팀 타율/ERA는 secondary section 활성화 뒤 `teamStatsProvider`(`/api/team/{teamId}/stats`)로 먼저 표시하고, 팀 홈런 1위/뜨는 선수는 `teamPlayersProvider`(`/api/team/{teamId}/players`)가 도착하면 보강한다. 홈 첫 데이터 프레임 전에는 두 provider를 구독하지 않는다. 선발/라인업/직전 플레이처럼 별도 상세 fetch가 필요한 정보는 경기 상세/문자중계 진입 뒤에 확인하게 한다.
 - 마이팀 브리프의 `my_team_brief_command` 로컬 생성 비주얼은 별도 strip/banner가 아니라 브리프 카드 내부 background layer로 낮게 깔아 개인화 영역의 질감을 만든다. 추가 네트워크 fetch나 로고/구단 엠블럼/읽을 수 있는 임의 텍스트를 포함하지 않는다.
 - 마이팀이 선택되어 있고 오늘 마이팀 경기가 live 상태이거나 라인업 공개/시작 10분 전 예정 상태이면 홈/위젯/재동기화 경로에서 해당 경기를 기본 Live Activity target 으로 맞춘다. 단, 참조형 오늘 경기 행에는 상태 문구를 반복 노출하지 않고 Live Activity / Widget sync target만 조용히 유지한다.
-- 마이팀 오늘 경기가 live 상태이면 scoreboard의 현재 값만으로 `진행 중인 내 경기` 카드를 마이팀 브리프 바로 아래에 표시한다. 이 카드는 홈 첫 화면에서 별도 detail/relay fetch를 시작하지 않고, 탭할 때 기존 상세 진입 pre-refresh를 통해 `gameProvider(gameId)`와 `relayDataProvider(gameId)`를 갱신한 뒤 `/game/{gameId}?tab=relay&focus=relay`로 이동한다.
+- 마이팀 오늘 경기가 live 상태이면 scoreboard의 현재 값만으로 `진행 중인 내 경기` 카드를 마이팀 브리프 바로 아래에 표시한다. 이 카드는 홈 첫 화면에서 별도 detail/relay fetch를 시작하지 않고, 탭할 때 기존 상세 진입 pre-refresh를 통해 `gameProvider(gameId)`를 갱신하고 `relayDataProvider(gameId)`는 병렬 warm-up으로 시작한 뒤 `/game/{gameId}?tab=relay&focus=relay`로 이동한다.
 - 홈에서 진행 중인 오늘 경기 행을 열면 경기 상세는 기본으로 `문자중계` 탭에서 시작한다.
-- 홈에서 경기 행이나 마이팀 오늘 경기 카드를 열 때는 `gameProvider(gameId)`, 첫 진입 탭 provider, 라인업 선수 이미지 source를 먼저 invalidate/read 하고, 홈 위에 로딩을 표시한 뒤 최신 데이터와 선수사진 cache warm-up이 끝나면 경기 상세로 push 한다. 이미 홈에 표시된 경기정보가 있는 상태에서 이 사전 갱신이 실패하면 실패 SnackBar로 진입을 막지 않고 기존 경기정보로 상세에 들어가며, 실패는 Dev Console 경고로만 남긴다.
+- 홈에서 경기 행이나 마이팀 오늘 경기 카드를 열 때는 `gameProvider(gameId)`를 invalidate/read 하고, 첫 진입 탭 provider는 동시에 시작하되 상세 진입을 막지 않는 warm-up으로 둔다. 홈 위에는 `경기 정보 갱신 중` 로딩과 게이지를 표시하고, 최신 상세 데이터가 준비되면 경기 상세로 push 한다. `gameProvider(gameId)`도 4초 안에 준비되지 않으면 이미 홈에 표시된 경기정보를 `extra`로 넘겨 먼저 상세에 들어가며, 상세 화면의 자체 provider refresh가 이후 최신화를 담당한다. 선수사진 cache warm-up은 상세 진입을 막지 않는 백그라운드 작업으로 수행한다. 이미 홈에 표시된 경기정보가 있는 상태에서 사전 갱신이 실패하면 실패 SnackBar로 진입을 막지 않고 기존 경기정보로 상세에 들어가며, 실패는 Dev Console 경고로만 남긴다.
 
 **KBO 브리프 상태별 규칙**:
 | 상태 | 우선 노출 | 예시 |
@@ -318,9 +318,9 @@ GET /api/scoreboard?date=2026-03-28
 | 요소 | 설명 |
 |------|------|
 | 오늘 읽을 기록 | 리그 overview 응답의 `todayHitter` / `todayPitcher` 대표를 함께 노출하고, AVG/HR/OPS/wRC+/ERA 선두를 조합해 가장 강한 1위 선수와 선수 이미지를 보여준다. 하단 요약은 내부 source confidence나 데이터 개수 대신 타율/홈런/ERA 등 실제 리더와 2위 격차를 먼저 노출 |
-| 지표 spotlight | AVG/HR/OPS/wRC+/ERA를 가로 rail로 보여주고, 각 카드에 1위 순위 badge, 선수/팀/값/2위와 격차를 표시 |
+| 지표 spotlight | AVG/HR/OPS/wRC+/ERA/다승/세이브/탈삼진을 가로 rail로 보여주고, 각 카드에 1위 순위 badge, 선수/팀/값/2위와 격차를 표시 |
 | 마운드 체크 | 투수 지표가 가로 rail 끝에 묻히지 않도록 ERA, 다승, 세이브, 탈삼진 리더를 별도 compact panel로 표시하고 각 지표별 전체 리더보드로 연결 |
-| 리그 리더보드 preview | 핵심 지표를 tab으로 전환하며 TOP 3 table row와 `공식`/`계산` source badge를 표시하고 전체 리더보드 화면으로 연결 |
+| 리그 리더보드 preview | `타자` / `투수` 탭으로 먼저 나눈 뒤 타자는 AVG/HR/OPS/wRC+, 투수는 ERA/다승/세이브/탈삼진 지표를 전환하며 TOP 3 table row를 표시하고 전체 리더보드 화면으로 연결 |
 | 팀 기록실 진입 | 검색 전 `팀 기록실` 섹션 헤더를 두고 마이팀을 우선 정렬한 팀 목록으로 연결 |
 | 상단 요약 | 엔트리 수 / 엔트리 제외 수 |
 | 선수 탭 | `야수` / `투수` 전환 |
@@ -336,7 +336,9 @@ GET /api/scoreboard?date=2026-03-28
 
 **인터랙션**:
 - 리그 지표 카드 탭 → 지표별 전체 리더보드 화면 이동
+- 리그 리더보드 preview 역할 탭 → 같은 화면 안에서 타자/투수 지표 묶음 전환
 - 리그 리더보드 preview 지표 탭 → 같은 화면 안에서 해당 지표 TOP3 table 전환
+- 전체 리더보드 화면 → `타자` / `투수` 탭과 역할별 지표 chip으로 여러 리그 지표를 뒤로 가기 없이 전환
 - 팀 카드 탭 → 팀 기록실 화면 이동
 - 선수 카드 탭 → 선수 상세 화면 이동
 
@@ -414,6 +416,7 @@ GET /api/player/{playerId}?season=2026
 - 뒤로 버튼 + 경기장명 + 관중수
 - 양팀 로고 + 팀명 + 현재 스코어 (큰 폰트)
 - 현재 이닝/경기 상태
+- 종료 경기 상단 중앙 상태는 마지막 회차(`9회`, `연장 10회` 등)가 아니라 `경기 종료`로 표시한다.
 - 예매 정보 카드: 경기 전 상태에서만 노출하되, 경기 상세에서는 경기 시작 2시간 전부터 숨김. 예매처 / 예매 시작시간 / 예매처 바로가기 / 예매 오픈 알림 토글
 - 하이라이트 카드: 유튜브 썸네일 / 영상 제목 / `KBO 하이라이트` / `바로 재생` / `공식 영상` 버튼
 - 진행/종료/취소/서스펜디드 경기에서는 예매 정보 대신 현재 경기 상태, 최종 결과, 승패 요약, 핵심 선수, 주요 이벤트 요약을 우선 노출
@@ -689,7 +692,7 @@ GET /api/game/{gameId}/lineup
 | 마이팀 필터 | 상단 주요 제어로 배치. 전체 / 마이팀 / 마이팀 제외 |
 | 구장별 퀵링크 | 구장별 보기 상단에 구장명 + 경기 수 칩을 표시. 탭하면 해당 구장 섹션으로 즉시 스크롤 |
 | 매치업 팀 선택 | `팀 1`, `팀 2` 가로 팀 chip row에서 두 팀을 선택한다. 같은 팀 중복 선택은 비활성화하고, 마이팀이 있으면 `팀 1` 기본값으로 사용한다 |
-| 매치업 목록 | 선택한 두 팀의 맞대결을 홈/원정 무관으로 모아 날짜 라벨이 있는 일정 카드 목록으로 표시한다. 오늘로부터 가까운 날짜순으로 정렬하고, 이미 지난 경기는 어둡게 dim 처리한다. 해당 시즌에 경기가 없으면 매치업 빈 상태를 보여준다 |
+| 매치업 목록 | 선택한 두 팀의 남은 맞대결을 홈/원정 무관으로 모아 날짜 라벨이 있는 일정 카드 목록으로 표시한다. 오늘을 포함한 앞으로 남은 경기만 오늘 기준 가까운 날짜순으로 정렬한다. 남은 경기가 없으면 매치업 빈 상태를 보여준다 |
 | 예매 정보 | 예정 경기 카드에 예매처 + 예매 시작시간 + 알림 상태 배지 표시 |
 | 진행/종료 경기 | 예매 정보는 숨기고 경기 상태/결과/다음 경기 연결을 표시 |
 | 빈 상태 비주얼 | 날짜 미선택, 선택일 경기 없음, 구장별 일정 없음, 매치업 일정 없음 상태는 `schedule_empty_calendar` 생성 이미지와 짧은 안내 문구를 함께 표시 |
@@ -1220,7 +1223,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 첫 로딩은 오늘 스코어보드 별도 로컬 cache 를 먼저 렌더링하지 않고, 최신 API 응답 또는 명시적 오류 상태를 기준으로 전환한다.
 - 홈이 이미 정상 스코어보드를 한 번 그린 뒤 resumed / timer refresh 가 실패하면, 저장 캐시를 새 정상 데이터처럼 쓰지 않고 화면에 보이던 같은 날짜 스코어보드만 유지한다. 이 경우 `다시 시도` 오류 화면은 첫 데이터가 전혀 없을 때만 노출하고, refresh 실패는 Dev Console 경고로 남긴다.
-- 홈에서 경기 상세 진입 전 `gameProvider(gameId)` 또는 첫 탭 provider 갱신이 실패해도, 홈에 이미 표시된 `Game`이 있으면 그 정보를 `extra`로 넘겨 상세를 열고 상세 화면의 자체 refresh가 이후 최신화를 담당한다. 첫 화면부터 경기정보가 전혀 없는 cold 실패만 사용자 오류 상태로 둔다.
+- 홈에서 경기 상세 진입 전 `gameProvider(gameId)` 갱신이 실패하거나 4초 안에 끝나지 않아도, 홈에 이미 표시된 `Game`이 있으면 그 정보를 `extra`로 넘겨 상세를 열고 상세 화면의 자체 refresh가 이후 최신화를 담당한다. 첫 진입 탭 provider는 병렬 warm-up으로 시작하지만 navigation gate에는 포함하지 않는다. 첫 화면부터 경기정보가 전혀 없는 cold 실패만 사용자 오류 상태로 둔다.
 - 홈 secondary `/home` aggregate provider 는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전 부가 API fan-out 을 만들지 않는다.
 - 홈 자동 refresh timer 는 refresh interval 과 scoreboard signature 가 바뀔 때만 재스케줄해 unrelated rebuild 로 live polling 이 지연되지 않게 한다.
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
@@ -1237,7 +1240,8 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다. 박스스코어의 adjacent game id fallback 은 과거 경기 canonical id 보정에만 허용하고, current/live 경기는 비어 있으면 `officialAvailable=false` 상태를 노출한다.
 - live 경기의 공식 박스스코어 rows가 비어 있어도 KBO main list가 현재 타자/투수 context를 제공하면 `/game/{gameId}/boxscore`는 `officialAvailable=false`, `liveContextAvailable=true`, `source=live_context`를 반환할 수 있다. 이 payload는 snapshot으로 저장하지 않고 앱에서는 `실시간 기록 추적` 상태로 렌더링한다.
 - LIVE 경기 상세는 탭 전환 시 현재 보이는 탭의 최신 데이터를 즉시 갱신한다. 스코어 탭은 경기 상세, 문자중계 탭은 relay, 박스스코어 탭은 boxscore, 라인업 탭은 lineup provider를 타이머 tick 전에도 refresh한다.
-- 경기 상세 진입 전 image prefetch는 fade-in/placeholder 연출로 문제를 숨기지 않고, 박스스코어 row, 라인업 starter/row, relay current-at-bat/최근 item에 필요한 선수 이미지 URL을 dedupe한 뒤 `precacheImage` 경로까지 먼저 태운다.
+- 라인업 탭의 일시적인 timeout/connection 실패는 저장 snapshot으로 정상처럼 대체하지 않고, `라인업을 다시 불러오고 있습니다` 상태와 자동 갱신 안내를 보여준다. 개발용 `DioException` 전문은 사용자 화면에 노출하지 않는다.
+- 경기 상세 image prefetch는 fade-in/placeholder 연출로 문제를 숨기지 않고, 박스스코어 row, 라인업 starter/row, relay current-at-bat/최근 item에 필요한 선수 이미지 URL을 dedupe한 뒤 `precacheImage` 경로까지 태운다. 홈에서 상세로 이동할 때는 `gameProvider(gameId)` 갱신만 짧은 진입 gate로 두고, 첫 탭 provider와 이미지 cache warm-up은 상세 화면 자체 prefetch와 홈 백그라운드 prefetch가 보조한다.
 
 ---
 

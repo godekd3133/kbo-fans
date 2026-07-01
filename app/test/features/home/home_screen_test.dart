@@ -1658,11 +1658,35 @@ void main() {
       find.byKey(const ValueKey('home-game-detail-loading')),
       findsOneWidget,
     );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('home-game-detail-loading-percent')),
+          )
+          .data,
+      '0%',
+    );
+    expect(
+      tester
+          .widget<LinearProgressIndicator>(
+            find.byKey(const ValueKey('home-game-detail-loading-progress')),
+          )
+          .value,
+      0,
+    );
     expect(find.text('game-detail-${liveGame.gameId}-tab-relay'), findsNothing);
     expect(detailFetches, 1);
     expect(relayFetches, 1);
 
     detailCompleter.complete(freshDetail);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('game-detail-${liveGame.gameId}-tab-relay'),
+      findsOneWidget,
+    );
     relayCompleter.complete(
       const RelayData(currentAtBat: null, relayItems: []),
     );
@@ -1732,7 +1756,78 @@ void main() {
     expect(find.text('경기 정보를 새로고침하지 못했습니다'), findsNothing);
   });
 
-  testWidgets('홈 기본 상세 진입은 라인업 사진 source 준비 후 이동한다', (tester) async {
+  testWidgets('홈 경기 상세 진입은 상세 갱신 지연 시 기존 경기정보로 먼저 이동한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    final liveGame = _liveGame(
+      gameId: '20260611SSLG0',
+      awayTeamId: 'SS',
+      homeTeamId: 'LG',
+    );
+    final detailCompleter = Completer<Game?>();
+    final relayCompleter = Completer<RelayData>();
+    var detailFetches = 0;
+    var relayFetches = 0;
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        scoreboardGames: [liveGame],
+        child: ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            gameProvider.overrideWith((ref, gameId) async {
+              detailFetches++;
+              return detailCompleter.future;
+            }),
+            relayDataProvider.overrideWith((ref, gameId) async {
+              relayFetches++;
+              return relayCompleter.future;
+            }),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(ValueKey('home-today-game-${liveGame.gameId}'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+
+    expect(detailFetches, 1);
+    expect(relayFetches, 1);
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
+    expect(
+      find.byKey(const ValueKey('home-game-detail-loading')),
+      findsOneWidget,
+    );
+
+    await tester.pump(const Duration(milliseconds: 4100));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('game-detail-${liveGame.gameId}-tab-relay'),
+      findsOneWidget,
+    );
+
+    detailCompleter.complete(liveGame);
+    relayCompleter.complete(
+      const RelayData(currentAtBat: null, relayItems: []),
+    );
+  });
+
+  testWidgets('홈 기본 상세 진입은 라인업 사진 source를 기다리지 않고 이동한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1801,7 +1896,7 @@ void main() {
     await tester.pump();
 
     expect(detailFetches, 1);
-    expect(lineupFetches, 1);
+    expect(lineupFetches, 0);
     expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
     expect(
       find.byKey(const ValueKey('home-game-detail-loading')),
@@ -1810,10 +1905,11 @@ void main() {
 
     detailCompleter.complete(finalGame);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1200));
 
-    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
-    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsNothing);
+    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsOneWidget);
+    expect(lineupCompleter.isCompleted, isFalse);
 
     lineupCompleter.complete(
       GameLineupData(

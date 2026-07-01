@@ -10,6 +10,40 @@ enum LeaderboardMetric {
   opsPlus,
 }
 
+enum LeaderboardPlayerGroup { hitter, pitcher }
+
+extension LeaderboardPlayerGroupX on LeaderboardPlayerGroup {
+  String get label => switch (this) {
+    LeaderboardPlayerGroup.hitter => '타자',
+    LeaderboardPlayerGroup.pitcher => '투수',
+  };
+
+  String get description => switch (this) {
+    LeaderboardPlayerGroup.hitter => '타율, 홈런, OPS, wRC+',
+    LeaderboardPlayerGroup.pitcher => 'ERA, 다승, 세이브, 탈삼진',
+  };
+
+  LeaderboardMetric get defaultMetric => switch (this) {
+    LeaderboardPlayerGroup.hitter => LeaderboardMetric.avg,
+    LeaderboardPlayerGroup.pitcher => LeaderboardMetric.era,
+  };
+
+  List<LeaderboardMetric> get metrics => switch (this) {
+    LeaderboardPlayerGroup.hitter => const [
+      LeaderboardMetric.avg,
+      LeaderboardMetric.hr,
+      LeaderboardMetric.ops,
+      LeaderboardMetric.opsPlus,
+    ],
+    LeaderboardPlayerGroup.pitcher => const [
+      LeaderboardMetric.era,
+      LeaderboardMetric.wins,
+      LeaderboardMetric.saves,
+      LeaderboardMetric.strikeouts,
+    ],
+  };
+}
+
 const kboPlayerImageBase =
     'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
 const kboPlayerImageMinSeason = 2022;
@@ -67,6 +101,18 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.strikeouts => true,
     LeaderboardMetric.war => false,
     LeaderboardMetric.opsPlus => true,
+  };
+
+  LeaderboardPlayerGroup get playerGroup => switch (this) {
+    LeaderboardMetric.era ||
+    LeaderboardMetric.wins ||
+    LeaderboardMetric.saves ||
+    LeaderboardMetric.strikeouts => LeaderboardPlayerGroup.pitcher,
+    LeaderboardMetric.avg ||
+    LeaderboardMetric.hr ||
+    LeaderboardMetric.ops ||
+    LeaderboardMetric.war ||
+    LeaderboardMetric.opsPlus => LeaderboardPlayerGroup.hitter,
   };
 
   static LeaderboardMetric? fromKey(String value) {

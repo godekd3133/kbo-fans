@@ -893,38 +893,23 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         final gameTeamIds = {game.awayId, game.homeId};
         if (gameTeamIds.contains(firstTeamId) &&
             gameTeamIds.contains(secondTeamId)) {
-          items.add(_MatchupScheduleItem(date: day.date, game: game));
+          if (!_isPastScheduleDate(day.date)) {
+            items.add(_MatchupScheduleItem(date: day.date, game: game));
+          }
         }
       }
     }
-    items.sort(_compareMatchupItemsByDistanceFromToday);
+    items.sort(_compareUpcomingMatchupItemsByDate);
     return items;
   }
 
-  int _compareMatchupItemsByDistanceFromToday(
+  int _compareUpcomingMatchupItemsByDate(
     _MatchupScheduleItem a,
     _MatchupScheduleItem b,
   ) {
-    final today = DateTime.now();
-    final todayDate = DateTime(today.year, today.month, today.day);
     final aDate = _parseScheduleDate(a.date);
     final bDate = _parseScheduleDate(b.date);
-    final aDelta = aDate.difference(todayDate).inDays;
-    final bDelta = bDate.difference(todayDate).inDays;
-    final distanceComparison = aDelta.abs().compareTo(bDelta.abs());
-    if (distanceComparison != 0) {
-      return distanceComparison;
-    }
-
-    final aIsUpcoming = aDelta >= 0;
-    final bIsUpcoming = bDelta >= 0;
-    if (aIsUpcoming != bIsUpcoming) {
-      return aIsUpcoming ? -1 : 1;
-    }
-
-    final dateComparison = aIsUpcoming
-        ? aDate.compareTo(bDate)
-        : bDate.compareTo(aDate);
+    final dateComparison = aDate.compareTo(bDate);
     if (dateComparison != 0) {
       return dateComparison;
     }
@@ -1377,7 +1362,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             ),
             _buildScheduleEmptyArtwork(
               title: '매치업 일정 없음',
-              message: '$matchupLabel 경기가 이번 시즌 일정에 없습니다',
+              message: '$matchupLabel 남은 경기가 이번 시즌 일정에 없습니다',
             ),
           ],
         ),
@@ -1399,28 +1384,23 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           const SizedBox(height: 12),
           ...items.asMap().entries.map((entry) {
             final item = entry.value;
-            final isPast = _isPastScheduleDate(item.date);
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: AppMotionListItem(
                 key: ValueKey('matchup-game-${item.game.gameId}'),
                 index: entry.key,
-                child: Opacity(
-                  key: ValueKey('matchup-game-opacity-${item.game.gameId}'),
-                  opacity: isPast ? 0.52 : 1,
-                  child: ScheduleGameCard(
-                    game: item.game,
-                    dateLabel: _formatDateLabel(item.date),
-                    myTeamId: myTeamId,
-                    onTap: () => _openGameDetail(item.game.gameId),
-                    ticketSummary:
-                        item.game.ticketInfo == null ||
-                            !shouldShowTicketInfoForScheduleStatus(
-                              item.game.status,
-                            )
-                        ? null
-                        : _ticketSummary(item.game.ticketInfo!),
-                  ),
+                child: ScheduleGameCard(
+                  game: item.game,
+                  dateLabel: _formatDateLabel(item.date),
+                  myTeamId: myTeamId,
+                  onTap: () => _openGameDetail(item.game.gameId),
+                  ticketSummary:
+                      item.game.ticketInfo == null ||
+                          !shouldShowTicketInfoForScheduleStatus(
+                            item.game.status,
+                          )
+                      ? null
+                      : _ticketSummary(item.game.ticketInfo!),
                 ),
               ),
             );
@@ -1455,7 +1435,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            '$season 시즌 · $gameCount경기 · 가까운 날짜순 · 홈/원정 무관',
+            '$season 시즌 · 남은 $gameCount경기 · 오늘 기준 가까운 순 · 홈/원정 무관',
             style: TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,

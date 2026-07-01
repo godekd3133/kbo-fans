@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.11+78`
-- Current release tag: `0.1.11`
+- Flutter app version: `0.1.12+79`
+- Current release tag: `0.1.12`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -141,6 +141,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.9`: widget/settings/game-surface polish release. In-app update prompts, expanded iOS/Android widgets, light/system/dark theme mode, simplified settings, push notification presets, Jua typography, home full-list sections, live-game shortcuts, relay/boxscore visual cleanup, highlight fallback links, final-game at-bat clearing, and push topic preference enforcement are bundled with current app build `0.1.9+76`.
 - `0.1.10`: matchup schedule, KBO brief, notification detail, and boxscore density release. Schedule matchup view, richer home/news KBO brief items, my-team record summary, push detail levels, lineup/baseball-info push copy correction, light/dark contrast fixes, boxscore team comparison and extended stats, and selected branch integrations are bundled with current app build `0.1.10+77`.
 - `0.1.11`: news, records, schedule, and notification polish release. News now derives record milestones, pace, and streak stories from existing KBO data; records adds pitching leaders and clearer readable summaries; matchup schedule spans the season; home can show yesterday finals before today's games start; direct player recent games, lineups, boxscore photos, score fitting, light-mode Doosan logo contrast, duplicate all-game/my-team push topics, per-item push settings, and route transition pacing are bundled with current app build `0.1.11+78`.
+- `0.1.12`: game-detail entry, records leaderboard, relay, lineup, and matchup schedule polish release. Home-to-detail navigation blocks only on basic game detail refresh while tab data and player image warm-up continue in the background, the loading overlay shows progress, records leaderboards split hitter/pitcher metrics, final games show `경기 종료`, lineup timeout copy is user-safe, relay light mode/player number badges are reinforced, and current app build `0.1.12+79`.
 
 ## GitHub Release Note Template
 

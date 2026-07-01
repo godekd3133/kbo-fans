@@ -165,7 +165,7 @@ void main() {
     expect(find.text('13'), findsOneWidget);
   });
 
-  testWidgets('현재 타석 타자는 등번호 대신 타순 이름 포지션으로 표시한다', (tester) async {
+  testWidgets('현재 타석 타자는 이름 라벨과 이미지 등번호를 분리한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -254,6 +254,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('9 김성윤 LF'), findsOneWidget);
+    expect(find.text('39'), findsOneWidget);
     expect(find.textContaining('39번 김성윤'), findsNothing);
   });
 
@@ -737,6 +738,128 @@ void main() {
     );
   });
 
+  testWidgets('라이트모드 중계 이벤트는 light surface와 선수 등번호 배지를 쓴다', (tester) async {
+    tester.view.physicalSize = const Size(390, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(() => AppColors.sync(AppTheme.darkColors));
+    AppColors.sync(AppTheme.lightColors);
+
+    const game = Game(
+      gameId: '20260611SSLG0',
+      status: GameStatus.live,
+      inning: '7회초',
+      away: TeamScore(
+        teamId: 'SS',
+        teamName: '삼성 라이온즈',
+        shortName: '삼성',
+        score: 3,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 2,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith((ref, gameId) async {
+            return const RelayData(
+              currentAtBat: null,
+              relayItems: [
+                RelayItem(
+                  seqNo: 1,
+                  inning: 7,
+                  half: 'top',
+                  event: 'HIT',
+                  text: '김성윤: 중전 안타',
+                ),
+              ],
+            );
+          }),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260611SSLG0',
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            if (key.startsWith('SS|')) {
+              return [
+                _playerProfile(
+                  id: '56348',
+                  teamId: 'SS',
+                  name: '김성윤',
+                  number: 39,
+                ),
+              ];
+            }
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260611SSLG0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final expectedImageUrl = kboPlayerImageUrl(
+      season: DateTime.now().year,
+      playerId: '56348',
+    );
+    expect(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is CachedNetworkImage && widget.imageUrl == expectedImageUrl,
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('39'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('전체 1')).style?.color,
+      AppTheme.lightColors.readableForegroundOn(AppTheme.lightColors.live),
+    );
+
+    final darkFixedContainers = tester
+        .widgetList<Container>(find.byType(Container))
+        .where((container) {
+          final decoration = container.decoration;
+          return decoration is BoxDecoration &&
+              decoration.color == const Color(0xFF1E1E1E);
+        });
+    expect(darkFixedContainers, isEmpty);
+
+    final lightSurfaceContainers = tester
+        .widgetList<Container>(find.byType(Container))
+        .where((container) {
+          final decoration = container.decoration;
+          return decoration is BoxDecoration &&
+              decoration.color == AppTheme.lightColors.card;
+        });
+    expect(lightSurfaceContainers, isNotEmpty);
+  });
+
   testWidgets('중계 이벤트는 이미지 URL로 선수 사진을 렌더한다', (tester) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
@@ -865,12 +988,13 @@ PlayerProfile _playerProfile({
   required String id,
   required String teamId,
   required String name,
+  int number = 0,
 }) {
   return PlayerProfile(
     id: id,
     teamId: teamId,
     name: name,
-    number: 0,
+    number: number,
     position: '외야수',
     roleLabel: '외야수',
     handedness: '',

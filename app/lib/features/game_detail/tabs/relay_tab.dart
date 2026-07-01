@@ -465,6 +465,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
 
   Widget _buildMomentFilterChips(List<_RelayMoment> moments) {
     final filters = _RelayMomentFilter.values;
+    final colors = AppTheme.colorsOf(context);
     return SizedBox(
       height: 40,
       child: ListView.separated(
@@ -497,7 +498,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                 style: TextStyle(
                   fontSize: 12,
                   color: isActive
-                      ? AppColors.textPrimary
+                      ? colors.readableForegroundOn(AppColors.live)
                       : AppColors.textDisabled,
                   fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                 ),
@@ -1570,6 +1571,25 @@ class _CurrentAtBatHero extends StatelessWidget {
     final latestPlay = _latestPlay(items);
     final latestSubstitution = _latestSubstitution(items);
     final baseStateLabel = _baseStateLabel;
+    final colors = AppTheme.colorsOf(context);
+    final isTopHalf =
+        _isTopHalfText(atBat.inningText) ?? _isTopHalfText(game.inning);
+    final offenseTeam = switch (isTopHalf) {
+      true => KboTeams.byId(game.away.teamId),
+      false => KboTeams.byId(game.home.teamId),
+      null => null,
+    };
+    final defenseTeam = switch (isTopHalf) {
+      true => KboTeams.byId(game.home.teamId),
+      false => KboTeams.byId(game.away.teamId),
+      null => null,
+    };
+    final batterAccent = colors.readableAccent(
+      offenseTeam?.primaryColor ?? colors.accent,
+    );
+    final pitcherAccent = colors.readableAccent(
+      defenseTeam?.primaryColor ?? colors.live,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -1626,6 +1646,8 @@ class _CurrentAtBatHero extends StatelessWidget {
                   imageUrl: atBat.batterImageUrl.isNotEmpty
                       ? atBat.batterImageUrl
                       : _resolveImageUrl(imageMap, atBat.batterName),
+                  numberLabel: _playerNumberBadgeLabel(atBat.batterNumber),
+                  accent: batterAccent,
                 ),
                 SizedBox(height: 10),
                 _ParticipantCard(
@@ -1635,6 +1657,8 @@ class _CurrentAtBatHero extends StatelessWidget {
                   imageUrl: atBat.pitcherImageUrl.isNotEmpty
                       ? atBat.pitcherImageUrl
                       : _resolveImageUrl(imageMap, atBat.pitcherName),
+                  numberLabel: _playerNumberBadgeLabel(atBat.pitcherNumber),
+                  accent: pitcherAccent,
                 ),
               ] else
                 Row(
@@ -1647,6 +1671,10 @@ class _CurrentAtBatHero extends StatelessWidget {
                         imageUrl: atBat.batterImageUrl.isNotEmpty
                             ? atBat.batterImageUrl
                             : _resolveImageUrl(imageMap, atBat.batterName),
+                        numberLabel: _playerNumberBadgeLabel(
+                          atBat.batterNumber,
+                        ),
+                        accent: batterAccent,
                       ),
                     ),
                     SizedBox(width: 10),
@@ -1658,6 +1686,10 @@ class _CurrentAtBatHero extends StatelessWidget {
                         imageUrl: atBat.pitcherImageUrl.isNotEmpty
                             ? atBat.pitcherImageUrl
                             : _resolveImageUrl(imageMap, atBat.pitcherName),
+                        numberLabel: _playerNumberBadgeLabel(
+                          atBat.pitcherNumber,
+                        ),
+                        accent: pitcherAccent,
                       ),
                     ),
                   ],
@@ -1909,12 +1941,16 @@ class _ParticipantCard extends StatelessWidget {
   final String name;
   final String detail;
   final String? imageUrl;
+  final String? numberLabel;
+  final Color accent;
 
   const _ParticipantCard({
     required this.title,
     required this.name,
     required this.detail,
     this.imageUrl,
+    this.numberLabel,
+    required this.accent,
   });
 
   @override
@@ -1927,7 +1963,12 @@ class _ParticipantCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _RelayPlayerAvatar(imageUrl: imageUrl, fallbackLabel: name),
+          _RelayPlayerAvatar(
+            imageUrl: imageUrl,
+            fallbackLabel: name,
+            badgeLabel: numberLabel,
+            accent: accent,
+          ),
           SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1968,34 +2009,50 @@ class _RelayPlayerAvatar extends StatelessWidget {
   final String fallbackLabel;
   final double size;
   final double radius;
+  final String? badgeLabel;
+  final Color? accent;
 
   const _RelayPlayerAvatar({
     this.imageUrl,
     required this.fallbackLabel,
     this.size = 54,
     this.radius = 8,
+    this.badgeLabel,
+    this.accent,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
-      final cacheSize = (size * 3).round();
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: CachedNetworkImage(
-          imageUrl: imageUrl!,
-          httpHeaders: kboPlayerImageHeaders,
-          width: size,
-          height: size,
-          memCacheWidth: cacheSize,
-          memCacheHeight: cacheSize,
-          fit: BoxFit.cover,
-          errorWidget: (_, _, _) => _fallback(),
-          placeholder: (_, _) => _fallback(),
-        ),
-      );
-    }
-    return _fallback();
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        _imageUrl == null ? _fallback() : _networkAvatar(),
+        if (badgeLabel != null) _numberBadge(context),
+      ],
+    );
+  }
+
+  String? get _imageUrl {
+    final value = imageUrl?.trim() ?? '';
+    return value.isEmpty ? null : value;
+  }
+
+  Widget _networkAvatar() {
+    final cacheSize = (size * 3).round();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: CachedNetworkImage(
+        imageUrl: _imageUrl!,
+        httpHeaders: kboPlayerImageHeaders,
+        width: size,
+        height: size,
+        memCacheWidth: cacheSize,
+        memCacheHeight: cacheSize,
+        fit: BoxFit.cover,
+        errorWidget: (_, _, _) => _fallback(),
+        placeholder: (_, _) => _fallback(),
+      ),
+    );
   }
 
   Widget _fallback() {
@@ -2013,6 +2070,31 @@ class _RelayPlayerAvatar extends StatelessWidget {
       child: Text(
         initial,
         style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+      ),
+    );
+  }
+
+  Widget _numberBadge(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    final fill = accent ?? colors.accent;
+    return Positioned(
+      right: -4,
+      bottom: -4,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: colors.background, width: 1.5),
+        ),
+        child: Text(
+          badgeLabel!,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w900,
+            color: colors.readableForegroundOn(fill),
+          ),
+        ),
       ),
     );
   }
@@ -2339,6 +2421,7 @@ class _RelayMomentCard extends StatelessWidget {
     final actorImageUrl = actorLabel == null
         ? null
         : (actorProfileImageUrl ?? _resolveImageUrl(imageMap, actorLabel));
+    final actorNumber = actorProfile?.number ?? _currentAtBatNumber(actorLabel);
     final offenseTeam = _offenseTeam();
     final defenseTeam = _defenseTeam();
     final actorLineupEntry = actorLabel == null
@@ -2351,7 +2434,7 @@ class _RelayMomentCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Color(0xFF1E1E1E),
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: moment.isScoring
@@ -2390,6 +2473,7 @@ class _RelayMomentCard extends StatelessWidget {
               playerName: actorLabel,
               imageUrl: actorImageUrl,
               playerProfile: actorProfile,
+              playerNumber: actorNumber,
               lineupEntry: actorLineupEntry,
               offenseTeam: offenseTeam,
               defenseTeam: defenseTeam,
@@ -2700,6 +2784,23 @@ class _RelayMomentCard extends StatelessWidget {
     return null;
   }
 
+  int? _currentAtBatNumber(String? rawName) {
+    if (currentAtBat == null || rawName == null || rawName.isEmpty) {
+      return null;
+    }
+    final target = _normalizeName(rawName);
+    if (target.isEmpty) {
+      return null;
+    }
+    if (_normalizeName(currentAtBat!.batterName) == target) {
+      return currentAtBat!.batterNumber;
+    }
+    if (_normalizeName(currentAtBat!.pitcherName) == target) {
+      return currentAtBat!.pitcherNumber;
+    }
+    return null;
+  }
+
   String? _resolveImageUrl(Map<String, String> imageMap, String rawName) {
     final normalizedTarget = _normalizeName(rawName);
     if (normalizedTarget.isEmpty) {
@@ -2747,7 +2848,7 @@ class _RelayResultBar extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.48),
+        color: AppColors.cardSub,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.divider.withValues(alpha: 0.72)),
       ),
@@ -2862,6 +2963,7 @@ class _MomentPlayerSummary extends StatelessWidget {
   final String playerName;
   final String? imageUrl;
   final PlayerProfile? playerProfile;
+  final int? playerNumber;
   final LineupEntry? lineupEntry;
   final KboTeam? offenseTeam;
   final KboTeam? defenseTeam;
@@ -2871,6 +2973,7 @@ class _MomentPlayerSummary extends StatelessWidget {
     required this.playerName,
     required this.imageUrl,
     required this.playerProfile,
+    required this.playerNumber,
     required this.lineupEntry,
     required this.offenseTeam,
     required this.defenseTeam,
@@ -2879,6 +2982,10 @@ class _MomentPlayerSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    final badgeAccent = colors.readableAccent(
+      offenseTeam?.primaryColor ?? colors.accent,
+    );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2887,6 +2994,8 @@ class _MomentPlayerSummary extends StatelessWidget {
           fallbackLabel: playerName,
           size: 64,
           radius: 8,
+          badgeLabel: _playerNumberBadgeLabel(playerNumber ?? 0),
+          accent: badgeAccent,
         ),
         SizedBox(width: 14),
         Expanded(
@@ -3009,6 +3118,7 @@ class _OutStateIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -3029,7 +3139,7 @@ class _OutStateIndicator extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: colors.readableForegroundOn(AppColors.live),
               ),
             ),
           ),
@@ -3058,7 +3168,7 @@ class _SequencePill extends StatelessWidget {
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.background.withValues(alpha: 0.64),
+        color: AppColors.cardSub,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
@@ -3080,6 +3190,7 @@ class _PitchLogRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
     return Container(
       width: double.infinity,
       padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
@@ -3104,7 +3215,7 @@ class _PitchLogRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
-                color: AppColors.background,
+                color: colors.readableForegroundOn(log.actionColor),
               ),
             ),
           ),
@@ -3312,6 +3423,10 @@ String _cleanRelayPlayText(String text) {
     return trimmed.substring(colonIndex + 1).trim();
   }
   return trimmed;
+}
+
+String? _playerNumberBadgeLabel(int number) {
+  return number > 0 ? '$number' : null;
 }
 
 class _ScoringPlayViewData {

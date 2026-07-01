@@ -78,6 +78,17 @@ void main() {
       expect(recentGames.first.summary, 'AVG 0.500 · H 2 · HR 1 · RBI 1');
     },
   );
+
+  test('direct player detail treats pitcher profile on hitter page as pitcher', () {
+    final repository = KboDirectPlayerRepository();
+
+    final playerType = repository.resolveDetailPlayerTypeForTesting(
+      html: _pitcherProfileHtml,
+      requestedType: PlayerType.hitter,
+    );
+
+    expect(playerType, PlayerType.pitcher);
+  });
 }
 
 const _currentPlayerDetailHtmlWithoutSeasonLabel = '''
@@ -102,6 +113,15 @@ const _currentPlayerDetailHtmlWithoutSeasonLabel = '''
     </tbody>
   </table>
 </div>
+''';
+
+const _pitcherProfileHtml = '''
+<span id="lblName">이민호</span>
+<span id="lblBackNo">26</span>
+<span id="lblBirthday">2001-08-30</span>
+<span id="lblPosition">투수(우투우타)</span>
+<span id="lblHeightWeight">189cm/93kg</span>
+<span id="lblCareer">휘문고</span>
 ''';
 
 PlayerProfile _player({

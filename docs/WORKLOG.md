@@ -2,6 +2,155 @@
 
 ---
 
+## 2026-07-01: 0.1.12 릴리즈 준비 및 TestFlight 외부 배포
+
+### 원인
+- 사장님 요청: 직전 TestFlight 배포 뒤 남아 있던 사용자-facing 변경까지 한 번 더 릴리즈해야 했다.
+- 확인 결과 작업 트리에는 홈 경기 상세 진입, 문자중계, 라인업, 기록실 리더보드, 일정 매치업 관련 변경이 남아 있었고, 앱 버전/릴리즈 문서는 아직 `0.1.11+78` 기준이었다.
+
+### 진행
+- [x] release 기준을 `0.1.12+79` / tag `0.1.12`로 결정.
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.12+79` 기준으로 갱신.
+- [x] app analyze/test, backend compile/pytest, diff whitespace, release API health gate 검증.
+- [ ] Git commit/push 및 `0.1.12` GitHub Release 생성.
+- [ ] iOS App Store IPA 빌드와 TestFlight upload.
+- [ ] App Store Connect build `VALID` 확인, `External Testers` 최신 build 연결, 이전 build 관계 제거, Beta App Review 제출/상태 확인.
+
+### 검증
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `cd app && fvm flutter test` (`298 passed`)
+- [x] `python3 -m compileall backend/src && backend/.venv/bin/pytest -q` (`245 passed`)
+- [x] `git diff --check` (pass)
+- [x] `ALLOW_INSECURE_RELEASE_API=true ./scripts/release-api-health-check.sh` (health, scoreboard/home, relay, home, schedule, standings, records overview pass)
+
+---
+
+## 2026-07-01: 홈 경기 상세 진입 gate 단축
+
+### 원인
+- 사장님 제보: 홈에서 경기 상세로 들어갈 때 `경기 정보 갱신 중` 상태가 너무 오래 걸려, 병렬 로딩이나 더 빠른 진입 방식이 필요했다.
+- 확인 결과 기존 홈 상세 진입은 `gameProvider(gameId)`와 첫 진입 탭 provider를 병렬로 시작하더라도 `Future.wait`로 둘 다 끝날 때까지 navigation 자체를 막았다.
+- 특히 LIVE 기본 진입은 relay 원천이 느리면 상세 화면 진입이 relay 완료까지 밀릴 수 있었다.
+
+### 진행
+- [x] 홈 상세 진입 gate를 `gameProvider(gameId)` 중심으로 축소.
+- [x] 첫 진입 탭 provider(`relayDataProvider`, `gameBoxscoreProvider`, `gameLineupProvider`)는 invalidate/read로 동시에 시작하되 상세 진입을 막지 않는 warm-up으로 전환.
+- [x] `gameProvider(gameId)`도 4초 안에 끝나지 않으면 기존 홈 카드의 `Game`을 `extra`로 넘겨 먼저 상세 화면에 들어가도록 보정.
+- [x] 첫 탭 provider 실패는 진입 차단 대신 Dev Console warm-up 경고로 남기도록 정리.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 상세 진입 gate와 병렬 warm-up 정책 반영.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입은 상세 갱신 지연 시 기존 경기정보로 먼저 이동한다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입 refresh 실패 시 기존 경기정보로 이동한다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`33 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+
+---
+
+## 2026-07-01: 문자중계 라이트모드 및 선수 등번호 배지 보정
+
+### 원인
+- 사장님 제보: 문자중계가 라이트모드에서 어색하게 보였고, 박스스코어처럼 선수 프로필 이미지 위에 등번호가 올라와야 했다.
+- 확인 결과 문자중계 이벤트 카드에 다크 고정 배경(`Color(0xFF1E1E1E)`)이 남아 있었고, 일부 활성 배지/피치 로그 전경색이 라이트모드 대비를 직접 보장하지 않았다.
+- `CurrentAtBat`에는 타자/투수 등번호가 이미 있고, 일반 중계 이벤트는 매칭된 `PlayerProfile.number`를 사용할 수 있어 API 변경 없이 앱 렌더링만 보정할 수 있었다.
+
+### 진행
+- [x] 문자중계 이벤트 카드의 다크 고정 배경을 테마 `card` surface로 변경.
+- [x] 주요 장면 필터, 아웃 표시, 피치 로그 원형 배지의 전경색을 현재 테마 기준 readable foreground로 계산하도록 변경.
+- [x] 현재 타석 타자/투수 카드와 일반 중계 이벤트 선수 프로필 아바타에 등번호 배지를 오버레이.
+- [x] `CHANGELOG.md`에 사용자-facing 변경 기록.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/game_detail/relay_tab_test.dart -r expanded` (`10 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/game_detail/tabs/relay_tab.dart test/features/game_detail/relay_tab_test.dart` (`No issues found!`)
+
+---
+
+## 2026-07-01: 종료 경기 상세 상단 회차 표시 제거
+
+### 원인
+- 사장님 제보: 경기 상세 상단에서 종료된 경기인데 `9회`처럼 회차가 계속 보이면 진행 중인 경기처럼 읽힌다.
+- 확인 결과 `GameDetailScreen`의 scorebug label 생성이 종료 경기에서 line score 마지막 회차를 우선 반환하고, fallback도 직접 `9회`로 고정하고 있었다.
+
+### 진행
+- [x] 종료 경기 scorebug 중앙 상태를 line score 회차가 아니라 `labelForGameStatus(GameStatus.final_)` 기준 `경기 종료`로 통일.
+- [x] 종료 경기 상단 widget test를 `9회` 미노출 / `경기 종료` 노출 기준으로 변경.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 종료 경기 상세 상단 표시 기준 반영.
+
+### 검증
+- [x] `cd app && fvm flutter test test/features/game_detail/game_detail_navigation_test.dart --plain-name '종료 경기 상세 상단은 회차 대신 종료 상태를 표시한다'`
+- [x] `cd app && fvm dart format lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart`
+- [x] `cd app && fvm flutter test test/features/game_detail/game_detail_navigation_test.dart`
+- [x] `cd app && fvm flutter analyze lib/features/game_detail/game_detail_screen.dart test/features/game_detail/game_detail_navigation_test.dart`
+- [x] `git diff --check -- app/lib/features/game_detail/game_detail_screen.dart app/test/features/game_detail/game_detail_navigation_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
+## 2026-07-01: 일정 매치업 남은 경기 정렬 보정
+
+### 원인
+- 사장님 요청: 매치업 보기에서 “오늘과 가까운 경기”를 과거 경기까지 절대거리로 섞지 말고, 오늘 기준 앞으로 남은 경기만 가까운 날짜순으로 쭉 볼 수 있어야 했다.
+- 확인 결과 매치업 정렬이 `abs(today - gameDate)` 기준이라 어제 경기가 다음달 예정 경기보다 위로 올라올 수 있었다.
+
+### 진행
+- [x] 매치업 목록 생성 시 오늘보다 이전 날짜의 맞대결은 남은 일정에서 제외.
+- [x] 정렬 기준을 절대거리 기준에서 날짜 오름차순으로 변경해 오늘, 내일, 이후 날짜 순서로 표시.
+- [x] 빈 상태/요약 문구를 `남은 경기`, `오늘 기준 가까운 순` 기준으로 정리.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 매치업 보기의 남은 일정 기준을 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart -r expanded` (`8 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/schedule/schedule_screen.dart test/features/schedule/schedule_screen_test.dart` (`No issues found!`)
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found!`)
+- [x] `cd app && fvm flutter test --no-pub` (`297 passed`)
+- [x] `git diff --check -- app/lib/features/schedule/schedule_screen.dart app/test/features/schedule/schedule_screen_test.dart docs/APP_SPEC.md CHANGELOG.md docs/WORKLOG.md`
+
+---
+
+## 2026-07-01: 라인업 timeout 오류 문구 노출 보정
+
+### 원인
+- 사장님 제보: 경기 상세 라인업 탭에서 `DioException [receive timeout]` 전문이 잠깐 보였다가 조금 기다리면 정상 라인업으로 로딩됐다.
+- 확인 결과 `LineupTab`이 `gameLineupProvider(gameId)` error branch에서 raw exception을 그대로 사용자 화면에 렌더링하고 있었다.
+- backend 라인업 endpoint는 KBO 라인업 호출과 박스스코어 호출을 순차 수행하므로 원본 응답 지연 시 앱의 25초 receive timeout에 걸릴 수 있고, 게임 상세 refresh timer가 다음 tick에서 provider를 다시 읽으면 정상 데이터로 회복될 수 있다.
+
+### 진행
+- [x] 라인업 탭의 timeout/connection성 실패를 `라인업을 다시 불러오고 있습니다` 상태로 표시.
+- [x] 비일시적 라인업 실패도 `라인업을 불러올 수 없습니다` / pull-to-refresh 안내로 바꿔 `DioException` 전문을 사용자에게 노출하지 않도록 정리.
+- [x] timeout 예외가 raw 문구 대신 재시도 대기 상태로 보이는 widget test 추가.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 라인업 실패 상태 정책 반영.
+
+### 검증
+- [x] `cd app && fvm flutter test test/features/game_detail/lineup_tab_test.dart --plain-name '라인업 timeout은 Dio 오류 전문 대신 재시도 대기 상태로 보여준다'`
+- [x] `cd app && fvm flutter test test/features/game_detail/lineup_tab_test.dart`
+- [x] `cd app && fvm flutter analyze lib/features/game_detail/tabs/lineup_tab.dart test/features/game_detail/lineup_tab_test.dart`
+- [x] `cd app && fvm flutter analyze`
+
+---
+
+## 2026-07-01: 홈 경기 정보 갱신 진행률 표시
+
+### 원인
+- 사장님 요청: 홈에서 경기 상세로 들어가기 전 `경기 정보 갱신 중` 상태에서 현재 몇 퍼센트 진행됐는지 숫자와 게이지바가 함께 보여야 했다.
+- 확인 결과 홈 상세 진입 gate는 `gameProvider(gameId)`와 첫 진입 탭 provider를 기다리는 단계형 작업이므로, 실제 byte progress가 아니라 완료된 provider 단계 수 기준으로 진행률을 표시하는 것이 가장 예측 가능했다.
+
+### 진행
+- [x] 홈 상세 진입 pre-refresh에 단계별 진행률 state를 추가.
+- [x] `경기 정보 갱신 중` overlay에 퍼센트 숫자와 `LinearProgressIndicator` 게이지바를 표시.
+- [x] LIVE 경기 기본 진입에서는 상세 provider 완료 후 50%, relay provider 완료 후 이동하도록 위젯 테스트를 보강.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 사용자-facing 진행률 표시 기준 반영.
+
+### 검증
+- [x] `cd app && fvm dart format lib/features/home/home_screen.dart test/features/home/home_screen_test.dart`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`32 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart test/features/home/home_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/test/features/home/home_screen_test.dart docs/APP_SPEC.md docs/WORKLOG.md CHANGELOG.md`
+
+---
+
 ## 2026-07-01: 홈 상세 진입 이미지 prefetch 비차단화
 
 ### 원인
