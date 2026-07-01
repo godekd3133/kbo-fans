@@ -2,6 +2,93 @@
 
 ---
 
+## 2026-07-01: 0.1.14 홈/기록 오류 보정 릴리즈 준비
+
+### 결정
+- 사장님 요청: `기록없음`, `최근 결과 없음`까지 이어서 수정한 뒤 계속 진행.
+- 실제 diff는 홈 마이팀 브리프 recent 결과, 팀 선수 기록 하이라이트, 기록실 리더보드 오류 문구처럼 사용자 화면과 backend API 동작을 바꾸므로 기존 `0.1.13` release note 보강이 아니라 새 tester-facing 버전이 필요하다.
+- release target은 `0.1.14+81` / tag `0.1.14`로 결정.
+
+### 진행
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.14` 기준으로 갱신.
+- [x] app/backend 검증.
+- [ ] Git commit/push 및 tag/GitHub Release 생성.
+- [ ] backend deploy workflow 실행 및 readiness 확인.
+- [ ] TestFlight upload / Apple processing / External Testers / Beta Review / installability 확인.
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q backend/tests` (`255 passed`)
+- [x] `python3 -m compileall backend/src` (pass)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/home.py backend/tests/test_home.py backend/src/kbo_fans_backend/crawlers/player_stats.py backend/tests/test_player_stats_crawler.py` (`All checks passed!`)
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `cd app && fvm flutter test` (`301 passed`)
+- [x] `git diff --check` (pass)
+
+---
+
+## 2026-07-01: 홈 마이팀 브리프 최근 결과 월초 누락 보정
+
+### 원인
+- 사장님 제보: 홈 마이팀 브리프에서 아래 `어제 결과`가 있는데도 상단 카드가 `최근 결과 없음`으로 표시됐다.
+- 확인 결과 app direct/local 경로는 이전 달과 현재 달 일정을 같이 읽지만, backend `/home` aggregate는 요청 날짜의 현재 월 일정만 `myTeamBrief.recentSummaries`에 넘겼다.
+- 2026-07-01처럼 오늘 경기는 7월이고 직전 종료 경기는 2026-06-30이면 backend 브리프가 6월 결과를 보지 못해 `recentGamesCount=0`이 됐다.
+
+### 진행
+- [x] backend `/home`에서 마이팀 최근 종료 경기가 현재 월만으로 5개 미만이면 이전 월 일정도 보조로 붙이도록 보정.
+- [x] 예정 경기 0:0은 기존처럼 최근 결과에서 제외.
+- [x] 월 경계 케이스 회귀 테스트 추가.
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_home.py::test_current_home_my_team_recent_results_cross_month_boundary` (`requested_months == ['2026-07']`로 실패)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_home.py::test_current_home_my_team_recent_results_cross_month_boundary` (`1 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_home.py` (`21 passed`)
+
+---
+
+## 2026-07-01: 홈 마이팀 브리프 선수 기록 없음 보정
+
+### 원인
+- 사장님 제보: TestFlight 홈 마이팀 브리프에서 팀 타율/팀 ERA는 보이지만 `팀 홈런 1위`와 `뜨는 선수`가 계속 `선수 기록 없음`으로 표시됐다.
+- 로컬 재현 결과 `PlayerStatsService.get_team_players('OB', 2026)`가 `players 29 / hitters 16 / hitters_with_stats 0`을 반환했다.
+- 개별 선수 total stat 조회는 양의지 `HR 11`처럼 정상인데, `RegisterAll.aspx`의 팀 헤더가 `두산<br/><br/>40명` 형태로 바뀌어 `_parse_register_all_entries`가 엔트리 키를 0건으로 읽었다.
+- 그 결과 모든 선수가 `reserve`로 분류되어 시즌 기록 fetch를 건너뛰고, 앱은 빈 선수 기록을 정상 응답처럼 받아 `선수 기록 없음`을 표시했다.
+
+### 진행
+- [x] `RegisterAll.aspx` 팀 행 파서를 팀명 뒤의 총 인원 표기까지 허용하도록 보정.
+- [x] 두산 현재 엔트리 헤더 형태를 고정하는 backend 회귀 테스트 추가.
+- [x] current 시즌 team players가 stale snapshot fallback 없이 실제 시즌 기록을 채우는지 로컬 probe로 확인.
+
+### 검증
+- [x] RED 확인: `backend/.venv/bin/pytest -q backend/tests/test_player_stats_crawler.py::test_parse_register_all_entries_accepts_team_total_in_header` (`entries == set()`로 실패)
+- [x] GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_player_stats_crawler.py::test_parse_register_all_entries_accepts_team_total_in_header` (`1 passed`)
+- [x] `PYTHONPATH=backend/src python3 - <<'PY' ... PlayerStatsService().get_team_players('OB', 2026) ... PY` (`hitters_with_stats 16`, 양의지 `HR 11`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_player_stats_crawler.py backend/tests/test_teams.py` (`10 passed`)
+- [x] `python3 -m compileall backend/src` (pass)
+
+---
+
+## 2026-07-01: 기록실 리더보드 내부 오류 문구 노출 보정
+
+### 원인
+- 사장님 제보 화면에서 리그 다승 리더보드가 `Bad state: Invalid API cache payload for leaderboard:v3:wins:2026` 내부 오류 문자열을 그대로 노출했다.
+- 확인 결과 `LeaderboardScreen`은 provider error를 `'$error'`로 직접 렌더링했고, `RecordsScreen`처럼 `describeAsyncError(error)`를 거치지 않았다.
+- 로컬 backend crawler/service의 2026 `wins` 리더보드는 `rank: 1`부터 정상 응답해, 이번 증상은 화면 error state의 내부 예외 노출 문제가 직접 원인이었다.
+
+### 진행
+- [x] 리더보드 화면 error state가 내부 예외 문자열 대신 공통 사용자 오류 문구를 표시하도록 변경.
+- [x] `leaderboard:v3:wins:2026` cache key와 `Bad state` 문구가 화면에 노출되지 않는 회귀 테스트 추가.
+- [x] current 시즌 기록실 실패를 fallback으로 숨기지 않는 기존 정책은 유지.
+
+### 검증
+- [x] `PYTHONPATH=backend/src backend/.venv/bin/python - <<'PY' ... RecordsOverviewCrawler/RecordsOverviewService wins ... PY` (crawler/service 모두 2026 wins first rank 1)
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/records/leaderboard_screen_test.dart --plain-name '리그 리더보드는 내부 API cache 오류를 사용자용 문구로 숨긴다' -r expanded` (사용자용 문구 미노출로 실패)
+- [x] GREEN 확인: `cd app && fvm flutter test --no-pub test/features/records/leaderboard_screen_test.dart --plain-name '리그 리더보드는 내부 API cache 오류를 사용자용 문구로 숨긴다' -r expanded` (`All tests passed!`)
+- [x] `cd app && fvm flutter test --no-pub test/features/records/leaderboard_screen_test.dart -r expanded` (`All tests passed!`, 2 tests)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/records/leaderboard_screen.dart test/features/records/leaderboard_screen_test.dart` (`No issues found!`)
+- [x] `git diff --check` (pass)
+
+---
+
 ## 2026-07-01: 0.1.13 데이터 로딩 속도 릴리즈 및 배포
 
 ### 원인

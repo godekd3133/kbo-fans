@@ -78,6 +78,38 @@ def test_get_team_players_falls_back_to_korean_register_page_when_search_is_empt
     assert players[1]["rosterGroup"] == "reserve"
 
 
+def test_parse_register_all_entries_accepts_team_total_in_header(monkeypatch) -> None:
+    crawler = PlayerStatsCrawler()
+
+    class _Response:
+        text = """
+        <table>
+          <tbody>
+            <tr>
+              <th scope="row" class="fir">두산<br/><br/>40명</th>
+              <td><ul><li>김원형(70)</li></ul></td>
+              <td><ul><li>손시헌(73)</li></ul></td>
+              <td><ul><li>박치국(1)</li></ul></td>
+              <td><ul><li>양의지(25)</li></ul></td>
+              <td><ul><li>강승호(23)</li></ul></td>
+              <td><ul><li>정수빈(31)</li></ul></td>
+            </tr>
+          </tbody>
+        </table>
+        """
+
+    monkeypatch.setattr(crawler.session, "get", lambda url, timeout: _Response())
+
+    entries = crawler._parse_register_all_entries("OB")  # type: ignore[attr-defined]
+
+    assert ("박치국", 1) in entries
+    assert ("양의지", 25) in entries
+    assert ("강승호", 23) in entries
+    assert ("정수빈", 31) in entries
+    assert ("김원형", 70) not in entries
+    assert ("손시헌", 73) not in entries
+
+
 def test_build_player_summary_preserves_profile_fields() -> None:
     crawler = PlayerStatsCrawler()
 

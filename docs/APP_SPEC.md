@@ -242,6 +242,7 @@
 | 취소/지연 | 취소/지연 사유, 다음 일정 | `일정 보기` |
 
 - 마이팀 브리프는 단순 지표 나열보다 `지금 내 팀 상황`을 먼저 판단하게 한다. 선택된 팀이 있으면 카드 title, 팀 로고, 최근 최대 5경기 결과 버블, 순위/팀 타율/팀 ERA, 팀 홈런 1위, OPS/AVG/ERA 기준 눈에 띄는 선수, `경기 일정`/`팀 기록` CTA 순서로 구성한다.
+- 최근 최대 5경기 결과는 오늘이 월초라 현재 월 일정만으로 충분하지 않을 때 이전 월 종료 경기도 함께 사용한다. 예정 경기의 0:0 스코어는 최근 결과로 집계하지 않는다.
 - 브리프 문구는 홈 첫 프레임 전략을 해치지 않도록 기존 scoreboard와 지연 로딩된 `/home` aggregate 안의 `myTeamBrief` 데이터를 먼저 사용한다. 팀 타율/ERA는 secondary section 활성화 뒤 `teamStatsProvider`(`/api/team/{teamId}/stats`)로 먼저 표시하고, 팀 홈런 1위/뜨는 선수는 `teamPlayersProvider`(`/api/team/{teamId}/players`)가 도착하면 보강한다. 홈 첫 데이터 프레임 전에는 두 provider를 구독하지 않는다. 선발/라인업/직전 플레이처럼 별도 상세 fetch가 필요한 정보는 경기 상세/문자중계 진입 뒤에 확인하게 한다.
 - 마이팀 브리프의 `my_team_brief_command` 로컬 생성 비주얼은 별도 strip/banner가 아니라 브리프 카드 내부 background layer로 낮게 깔아 개인화 영역의 질감을 만든다. 추가 네트워크 fetch나 로고/구단 엠블럼/읽을 수 있는 임의 텍스트를 포함하지 않는다.
 - 마이팀이 선택되어 있고 오늘 마이팀 경기가 live 상태이거나 라인업 공개/시작 10분 전 예정 상태이면 홈/위젯/재동기화 경로에서 해당 경기를 기본 Live Activity target 으로 맞춘다. 단, 참조형 오늘 경기 행에는 상태 문구를 반복 노출하지 않고 Live Activity / Widget sync target만 조용히 유지한다.
@@ -360,6 +361,7 @@ GET /api/team/{teamId}/players?season=2026
 - 현재 시즌 기록실 요약 번들은 `generatedAt` 기준 6시간 이내일 때만 fallback 으로 사용한다.
 - 기록실 요약/리더보드 API cache 와 기기 snapshot 은 핵심 리더보드 첫 항목이 1위일 때만 재사용하거나 저장한다.
 - 명시적 API-backed 앱 모드에서는 현재 시즌 기록실 요약/리더보드 API 실패를 앱 번들 bootstrap, fresh local API cache, backend current snapshot 으로 대체하지 않는다.
+- 리더보드 API/cache shape 오류는 현재 시즌 실패로 노출하되, 화면에는 내부 cache key나 `Bad state` 전문을 표시하지 않고 공통 사용자 오류 문구를 사용한다.
 - 다른 시즌 기록으로 대체 표시하지 않는다. exact snapshot 이 없거나 비어 있으면 빈 상태/오류를 노출해 가짜 리더가 재유입되지 않게 한다.
 - KBO 선수 기록 원천은 2001년 이하 요청에서 현재 시즌 rows를 반환할 수 있어, 앱 기록실 시즌 선택과 backend/direct 기록실 크롤링은 2002년 이후만 지원한다.
 - 팀 선수/팀 스탯 local asset 은 요청한 팀/시즌의 exact snapshot 만 사용한다. 해당 시즌 snapshot 이 없거나 팀 스탯의 타격/투구 중 한쪽만 있으면 다른 시즌 데이터를 빌리지 않고 빈 상태로 처리한다.

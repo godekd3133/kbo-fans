@@ -7,6 +7,7 @@ import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
+import '../../data/api/api_client.dart';
 import '../../data/models/records_overview.dart';
 import '../../data/providers.dart';
 
@@ -106,7 +107,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                         ),
                         error: (error, _) => Center(
                           child: Text(
-                            '$error',
+                            describeAsyncError(error),
                             style: TextStyle(color: AppColors.textDisabled),
                             textAlign: TextAlign.center,
                           ),

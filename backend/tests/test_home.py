@@ -28,6 +28,57 @@ class _EmptyScheduleService:
         return {"month": month, "days": []}
 
 
+class _MonthBoundaryScheduleService:
+    def __init__(self) -> None:
+        self.requested_months = []
+
+    def get_month_schedule(self, month: str):
+        self.requested_months.append(month)
+        if month == "2026-06":
+            return {
+                "month": month,
+                "days": [
+                    {
+                        "date": "2026-06-30",
+                        "games": [
+                            {
+                                "gameId": "20260630LTOB0",
+                                "awayId": "LT",
+                                "awayName": "롯데",
+                                "awayScore": 0,
+                                "homeId": "OB",
+                                "homeName": "두산",
+                                "homeScore": 5,
+                                "stadium": "잠실",
+                                "status": "FINAL",
+                            }
+                        ],
+                    }
+                ],
+            }
+        return {
+            "month": month,
+            "days": [
+                {
+                    "date": "2026-07-01",
+                    "games": [
+                        {
+                            "gameId": "20260701LTOB0",
+                            "awayId": "LT",
+                            "awayName": "롯데",
+                            "awayScore": 0,
+                            "homeId": "OB",
+                            "homeName": "두산",
+                            "homeScore": 0,
+                            "stadium": "잠실",
+                            "status": "SCHEDULED",
+                        }
+                    ],
+                }
+            ],
+        }
+
+
 class _FailingStandingsService:
     def get_standings(self, season: int):
         raise RuntimeError("standings unavailable")
@@ -151,6 +202,31 @@ def test_current_home_does_not_mask_records_overview_failure() -> None:
 
     with pytest.raises(RuntimeError, match="records unavailable"):
         service.get_home("2999-01-01", my_team="LG")
+
+
+def test_current_home_my_team_recent_results_cross_month_boundary() -> None:
+    schedule_service = _MonthBoundaryScheduleService()
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=schedule_service,
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_EmptyRecordsOverviewService(),
+    )
+
+    payload = service.get_home("2026-07-01", my_team="OB")
+
+    brief = payload["myTeamBrief"]
+    assert schedule_service.requested_months == ["2026-07", "2026-06"]
+    assert brief["recentGamesCount"] == 1
+    assert brief["recentWins"] == 1
+    assert brief["recentSummaries"] == [
+        {
+            "gameId": "20260630LTOB0",
+            "result": "승",
+            "opponentName": "롯데",
+            "score": "5:0",
+        }
+    ]
 
 
 def test_historical_home_keeps_partial_section_fallback() -> None:

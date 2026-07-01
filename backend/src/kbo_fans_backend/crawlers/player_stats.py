@@ -9,7 +9,6 @@ from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
 
-
 _KBO_TIMEZONE = timezone(timedelta(hours=9))
 
 
@@ -323,15 +322,20 @@ class PlayerStatsCrawler(BaseCrawler):
             f"{self.base_url}{self._REGISTER_ALL_URL}", timeout=self.timeout
         ).text
         team_name = self._REGISTER_TEAM_NAME_MAP.get(team_id, team_id)
-        row_match = re.search(
-            r'<tr>\s*<th scope="row" class="fir">%s</th>(.*?)</tr>' % re.escape(team_name),
-            html,
-            re.S,
-        )
-        if not row_match:
+        row_html = None
+        for row in re.findall(r"<tr\b[^>]*>(.*?)</tr>", html, re.S):
+            header_match = re.search(
+                r'<th\b[^>]*scope="row"[^>]*>(.*?)</th>',
+                row,
+                re.S,
+            )
+            if header_match and strip_tags(header_match.group(1)).startswith(team_name):
+                row_html = row
+                break
+        if row_html is None:
             return set()
 
-        cells = re.findall(r"<td[^>]*>(.*?)</td>", row_match.group(1), re.S)
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", row_html, re.S)
         entry_keys: set[Tuple[str, int]] = set()
         for cell in cells[2:]:
             for item in re.findall(r"<li>(.*?)</li>", cell, re.S):

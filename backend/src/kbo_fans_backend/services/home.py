@@ -102,10 +102,16 @@ class HomeService:
                 allow_fallback=allow_partial_sections,
             )
 
+        schedule_days = self._schedule_days_with_recent_context(
+            today=date,
+            my_team=my_team,
+            current_schedule_payload=schedule_payload,
+        )
+
         my_team_brief = self._build_my_team_brief(
             my_team=my_team,
             games=games,
-            schedule_days=schedule_payload.get("days", []),
+            schedule_days=schedule_days,
             standings=standings_payload.get("standings", []),
             today=date,
         )
@@ -142,6 +148,34 @@ class HomeService:
         else:
             self._stable_cache.set(cache_key, payload)
         return payload
+
+    def _schedule_days_with_recent_context(
+        self,
+        *,
+        today: str,
+        my_team: Optional[str],
+        current_schedule_payload: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        schedule_days = list(current_schedule_payload.get("days", []))
+        if not my_team:
+            return schedule_days
+
+        if self._recent_result_count(
+            schedule_days=schedule_days,
+            my_team=my_team,
+            today=today,
+        ) >= 5:
+            return schedule_days
+
+        previous_month = self._previous_year_month(today)
+        if previous_month is None:
+            return schedule_days
+
+        try:
+            previous_payload = self.schedule_service.get_month_schedule(previous_month)
+        except Exception:
+            return schedule_days
+        return [*previous_payload.get("days", []), *schedule_days]
 
     def _build_my_team_brief(
         self,
@@ -236,6 +270,24 @@ class HomeService:
             "recentGamesCount": len(recent_summaries),
             "recentSummaries": recent_summaries,
         }
+
+    def _recent_result_count(
+        self,
+        *,
+        schedule_days: List[Dict[str, Any]],
+        my_team: str,
+        today: str,
+    ) -> int:
+        return sum(
+            1
+            for day in schedule_days
+            for game in day.get("games", [])
+            if day.get("date", "") <= today
+            and (game.get("awayId") == my_team or game.get("homeId") == my_team)
+            and self._is_completed_schedule_game(game)
+            and game.get("awayScore") is not None
+            and game.get("homeScore") is not None
+        )
 
     def _build_kbo_brief(
         self,
@@ -1020,6 +1072,15 @@ class HomeService:
         except ValueError:
             return False
         return target < date_type.today()
+
+    @staticmethod
+    def _previous_year_month(value: str) -> Optional[str]:
+        try:
+            target = date_type.fromisoformat(value)
+        except ValueError:
+            return None
+        previous_month_day = target.replace(day=1) - timedelta(days=1)
+        return previous_month_day.strftime("%Y-%m")
 
     @staticmethod
     def _is_completed_schedule_game(game: Dict[str, Any]) -> bool:
