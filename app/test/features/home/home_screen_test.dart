@@ -186,6 +186,51 @@ void main() {
     ]);
   });
 
+  test('경기 상세 진입 전 boxscore 선수 사진은 row id와 image URL을 우선 사용한다', () {
+    const sourceImageUrl = 'https://img.example.com/pitcher.jpg';
+    final urls = boxscorePlayerImagePrefetchUrlsForTesting(
+      boxscoreData: const GameBoxscoreData(
+        gameId: '20260611SSLG0',
+        away: TeamBoxscoreData(
+          teamId: 'SS',
+          batters: [
+            BatterRecord(
+              order: 1,
+              position: 'CF',
+              name: '김지찬',
+              playerId: '51454',
+              atBats: 4,
+              runs: 1,
+              hits: 2,
+              rbi: 0,
+            ),
+          ],
+          pitchers: [
+            PitcherRecord(
+              name: '원태인',
+              playerId: '55268',
+              imageUrl: sourceImageUrl,
+              innings: '6.0',
+              hits: 3,
+              strikeouts: 5,
+              walks: 1,
+              earnedRuns: 1,
+            ),
+          ],
+        ),
+        home: TeamBoxscoreData(teamId: 'LG', batters: [], pitchers: []),
+      ),
+      awayPlayers: const [],
+      homePlayers: const [],
+      season: 2026,
+    );
+
+    expect(urls, [
+      kboPlayerImageUrl(season: 2026, playerId: '51454'),
+      sourceImageUrl,
+    ]);
+  });
+
   test('오늘 경기가 시작 전일 때만 어제 종료 경기 후보를 고른다', () {
     final scheduledGame = _scheduledGame(
       gameId: '20260701SSLG0',
@@ -1681,12 +1726,13 @@ void main() {
     detailCompleter.complete(freshDetail);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
-    await tester.pumpAndSettle();
 
     expect(
-      find.text('game-detail-${liveGame.gameId}-tab-relay'),
+      find.byKey(const ValueKey('home-game-detail-loading')),
       findsOneWidget,
     );
+    expect(find.text('game-detail-${liveGame.gameId}-tab-relay'), findsNothing);
+
     relayCompleter.complete(
       const RelayData(currentAtBat: null, relayItems: []),
     );
@@ -1827,7 +1873,78 @@ void main() {
     );
   });
 
-  testWidgets('홈 기본 상세 진입은 라인업 사진 source를 기다리지 않고 이동한다', (tester) async {
+  testWidgets('홈 경기 상세 진입은 첫 탭 지연을 image prefetch 단계에서 다시 기다리지 않는다', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+    final liveGame = _liveGame(
+      gameId: '20260611SSLG0',
+      awayTeamId: 'SS',
+      homeTeamId: 'LG',
+    );
+    var detailFetches = 0;
+    var relayFetches = 0;
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        scoreboardGames: [liveGame],
+        child: ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            gameProvider.overrideWith((ref, gameId) async {
+              detailFetches++;
+              return liveGame;
+            }),
+            relayDataProvider.overrideWith((ref, gameId) async {
+              relayFetches++;
+              return Completer<RelayData>().future;
+            }),
+            gameLineupProvider.overrideWith(
+              (ref, gameId) async => _emptyLineupForGame(liveGame),
+            ),
+            teamPlayersProvider.overrideWith(
+              (ref, key) async => const <PlayerProfile>[],
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(ValueKey('home-today-game-${liveGame.gameId}'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+
+    expect(detailFetches, 1);
+    expect(relayFetches, 1);
+    expect(
+      find.byKey(const ValueKey('home-game-detail-loading')),
+      findsOneWidget,
+    );
+
+    await tester.pump(const Duration(milliseconds: 4100));
+    await tester.pump();
+
+    expect(
+      find.text('game-detail-${liveGame.gameId}-tab-relay'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('홈 기본 상세 진입은 라인업 사진 source 준비 후 이동한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1896,7 +2013,6 @@ void main() {
     await tester.pump();
 
     expect(detailFetches, 1);
-    expect(lineupFetches, 0);
     expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
     expect(
       find.byKey(const ValueKey('home-game-detail-loading')),
@@ -1908,7 +2024,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1200));
 
-    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsOneWidget);
+    expect(lineupFetches, 1);
+    expect(
+      find.byKey(const ValueKey('home-game-detail-loading')),
+      findsOneWidget,
+    );
+    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsNothing);
     expect(lineupCompleter.isCompleted, isFalse);
 
     lineupCompleter.complete(

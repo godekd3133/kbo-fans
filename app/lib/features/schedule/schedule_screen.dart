@@ -8,12 +8,18 @@ import 'package:intl/intl.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
 import '../../data/api/api_client.dart';
+import '../../data/models/boxscore.dart';
+import '../../data/models/game.dart';
+import '../../data/models/player.dart';
+import '../../data/models/records_overview.dart';
+import '../../data/models/relay.dart';
 import '../../data/models/schedule.dart';
 import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
@@ -22,6 +28,110 @@ import 'widgets/schedule_game_card.dart';
 enum ScheduleViewMode { calendar, stadium, matchup }
 
 enum ScheduleTeamFilter { all, myTeamOnly, otherTeamsOnly }
+
+const _scheduleGameDetailOpenTimeout = Duration(seconds: 4);
+const _scheduleGameDetailPlayerImagePrefetchTimeout = Duration(seconds: 8);
+const _scheduleTeamPlayerImagePrefetchTimeout = Duration(seconds: 3);
+const _scheduleGameDetailPlayerImagePrefetchLimit = 80;
+
+int _seasonFromGameId(String gameId) {
+  if (gameId.length >= 4) {
+    final parsed = int.tryParse(gameId.substring(0, 4));
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+  return DateTime.now().year;
+}
+
+String _normalizePlayerNameForImagePrefetch(String value) {
+  return value
+      .replaceFirst(RegExp(r'^\d+\s*번?\s*타자\s*'), '')
+      .replaceFirst(RegExp(r'^\d+번\s*'), '')
+      .replaceFirst(RegExp(r'^(대타|대주자|투수|타자)\s+'), '')
+      .replaceAll(RegExp(r'\s+'), '')
+      .replaceAll(RegExp(r'[·ㆍ.]'), '')
+      .trim();
+}
+
+Map<String, String> _playerImageUrlByName(
+  Iterable<PlayerProfile> players,
+  int season,
+) {
+  return {
+    for (final player in players)
+      if (player.name.isNotEmpty)
+        _normalizePlayerNameForImagePrefetch(player.name):
+            playerProfileImageUrl(player, season: season) ?? '',
+  }..removeWhere((_, imageUrl) => imageUrl.isEmpty);
+}
+
+String? _resolvePlayerImageUrl(
+  Map<String, String> imageByName,
+  String rawName,
+) {
+  final normalizedTarget = _normalizePlayerNameForImagePrefetch(rawName);
+  if (normalizedTarget.isEmpty) {
+    return null;
+  }
+  final exact = imageByName[normalizedTarget];
+  if (exact != null && exact.isNotEmpty) {
+    return exact;
+  }
+  for (final entry in imageByName.entries) {
+    if (entry.key.contains(normalizedTarget) ||
+        normalizedTarget.contains(entry.key)) {
+      return entry.value;
+    }
+  }
+  return null;
+}
+
+String? _lineupStarterImageUrl(
+  TeamLineupData teamLineup, {
+  required Map<String, String> imageByName,
+  required int season,
+}) {
+  final starterImageUrl = teamLineup.starterImageUrl?.trim() ?? '';
+  if (starterImageUrl.isNotEmpty) {
+    return starterImageUrl;
+  }
+  final starterId = teamLineup.starterId?.trim() ?? '';
+  if (starterId.isNotEmpty) {
+    return kboPlayerImageUrl(season: season, playerId: starterId);
+  }
+  return _resolvePlayerImageUrl(imageByName, teamLineup.starterName ?? '');
+}
+
+String? _lineupEntryImageUrl(
+  LineupEntry entry, {
+  required Map<String, String> imageByName,
+  required int season,
+}) {
+  final imageUrl = entry.imageUrl?.trim() ?? '';
+  if (imageUrl.isNotEmpty) {
+    return imageUrl;
+  }
+  final playerId = entry.playerId?.trim() ?? '';
+  if (playerId.isNotEmpty) {
+    return kboPlayerImageUrl(season: season, playerId: playerId);
+  }
+  return _resolvePlayerImageUrl(imageByName, entry.name);
+}
+
+List<String> _playerProfileImageUrlsForPrefetch(
+  Iterable<PlayerProfile> players,
+  int season,
+) {
+  final imageUrls = <String>[];
+  for (final player in players) {
+    final imageUrl = playerProfileImageUrl(player, season: season)?.trim();
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      imageUrls.add(imageUrl);
+    }
+  }
+  return imageUrls;
+}
 
 class _StadiumScheduleItem {
   final String date;
@@ -58,6 +168,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   int? _scheduleLoadStartedAtMicros;
   String? _lastScheduleLoadLogKey;
   int? _pendingSelectedDay;
+  String? _openingGameDetailId;
 
   @override
   void initState() {
@@ -93,8 +204,265 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     await ref.read(scheduleProvider(_yearMonth).future);
   }
 
-  void _openGameDetail(String gameId) {
-    context.push('/game/$gameId');
+  void _openGameDetail(ScheduleGame scheduleGame) {
+    if (_openingGameDetailId != null) {
+      return;
+    }
+    unawaited(_openGameDetailAfterRefresh(scheduleGame));
+  }
+
+  Future<void> _openGameDetailAfterRefresh(ScheduleGame scheduleGame) async {
+    final gameId = scheduleGame.gameId;
+    setState(() {
+      _openingGameDetailId = gameId;
+    });
+
+    try {
+      ref.invalidate(gameProvider(gameId));
+      final game = await ref
+          .read(gameProvider(gameId).future)
+          .timeout(_scheduleGameDetailOpenTimeout);
+      if (!mounted) {
+        return;
+      }
+
+      final tab = _defaultTabForGame(game, fallback: scheduleGame);
+      if (game != null) {
+        await _warmGameDetailFirstTab(game, tab: tab);
+      }
+      if (!mounted) {
+        return;
+      }
+
+      context.push(_gameDetailLocation(gameId, tab: tab), extra: game);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'SCHEDULE game detail open refresh failed; opening route: $gameId $error',
+      );
+      if (mounted) {
+        context.push(
+          _gameDetailLocation(
+            gameId,
+            tab: _defaultTabForScheduleGame(scheduleGame),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _openingGameDetailId = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _warmGameDetailFirstTab(
+    Game game, {
+    required String? tab,
+  }) async {
+    RelayData? relayData;
+    switch (tab) {
+      case 'relay':
+        ref.invalidate(relayDataProvider(game.gameId));
+        relayData = await _readScheduleWarmupProvider<RelayData>(
+          'relay',
+          ref.read(relayDataProvider(game.gameId).future),
+        );
+        break;
+      case null:
+        break;
+    }
+    await _warmGameDetailPlayerImages(game, relayData: relayData);
+  }
+
+  Future<T?> _readScheduleWarmupProvider<T>(String label, Future<T> future) {
+    return future
+        .timeout(_scheduleGameDetailOpenTimeout)
+        .then<T?>((value) {
+          return value;
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          DevConsole.instance.warn(
+            'SCHEDULE game detail $label warmup skipped: $error',
+          );
+          return null;
+        });
+  }
+
+  String _gameDetailLocation(String gameId, {required String? tab}) {
+    return Uri(
+      path: '/game/$gameId',
+      queryParameters: tab == null ? null : {'tab': tab},
+    ).toString();
+  }
+
+  String? _defaultTabForGame(Game? game, {required ScheduleGame fallback}) {
+    if (game?.status == GameStatus.live) {
+      return 'relay';
+    }
+    return _defaultTabForScheduleGame(fallback);
+  }
+
+  String? _defaultTabForScheduleGame(ScheduleGame game) {
+    return _isLiveScheduleGame(game) ? 'relay' : null;
+  }
+
+  bool _isLiveScheduleGame(ScheduleGame game) {
+    final status = game.status.trim().toUpperCase();
+    if (status == 'LIVE' || status == 'IN_PROGRESS') {
+      return true;
+    }
+    final label = game.statusLabel?.trim() ?? '';
+    return label.contains('진행') || label.toUpperCase().contains('LIVE');
+  }
+
+  Future<void> _warmGameDetailPlayerImages(
+    Game game, {
+    required RelayData? relayData,
+  }) async {
+    if (!mounted) {
+      return;
+    }
+
+    try {
+      final season = _seasonFromGameId(game.gameId);
+      final teamPlayersFuture = _teamPlayersForImagePrefetch(game, season);
+      ref.invalidate(gameLineupProvider(game.gameId));
+      final lineupDataFuture = _readScheduleWarmupProvider<GameLineupData>(
+        'lineup image source',
+        ref.read(gameLineupProvider(game.gameId).future),
+      );
+      final teamPlayers = await teamPlayersFuture;
+      final lineupData = await lineupDataFuture;
+      if (!mounted) {
+        return;
+      }
+
+      final imageUrls = _gameDetailPlayerImageUrls(
+        relayData: relayData,
+        lineupData: lineupData,
+        teamPlayers: teamPlayers,
+        season: season,
+      );
+      if (imageUrls.isEmpty) {
+        return;
+      }
+      await precacheKboPlayerImageUrls(
+        context,
+        imageUrls,
+        limit: _scheduleGameDetailPlayerImagePrefetchLimit,
+      ).timeout(
+        _scheduleGameDetailPlayerImagePrefetchTimeout,
+        onTimeout: () {},
+      );
+    } catch (error) {
+      DevConsole.instance.warn(
+        'SCHEDULE game detail image prefetch skipped: ${game.gameId} $error',
+      );
+    }
+  }
+
+  Future<List<PlayerProfile>> _teamPlayersForImagePrefetch(
+    Game game,
+    int season,
+  ) async {
+    final groups = await Future.wait([
+      _readTeamPlayersForImagePrefetch(game.away.teamId, season),
+      _readTeamPlayersForImagePrefetch(game.home.teamId, season),
+    ]);
+    return [for (final group in groups) ...group];
+  }
+
+  Future<List<PlayerProfile>> _readTeamPlayersForImagePrefetch(
+    String teamId,
+    int season,
+  ) async {
+    if (teamId.isEmpty) {
+      return const [];
+    }
+    try {
+      return await ref
+          .read(teamPlayersProvider('$teamId|$season').future)
+          .timeout(_scheduleTeamPlayerImagePrefetchTimeout);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'SCHEDULE game detail team image source skipped: $teamId $season $error',
+      );
+      return const [];
+    }
+  }
+
+  List<String> _gameDetailPlayerImageUrls({
+    required RelayData? relayData,
+    required GameLineupData? lineupData,
+    required Iterable<PlayerProfile> teamPlayers,
+    required int season,
+  }) {
+    final imageUrls = <String>[];
+    final seen = <String>{};
+    final imageByName = _playerImageUrlByName(teamPlayers, season);
+
+    void addUrl(String? rawUrl) {
+      final imageUrl = rawUrl?.trim() ?? '';
+      if (imageUrl.isEmpty || !seen.add(imageUrl)) {
+        return;
+      }
+      imageUrls.add(imageUrl);
+    }
+
+    final currentAtBat = relayData?.currentAtBat;
+    if (currentAtBat != null) {
+      addUrl(
+        currentAtBat.batterImageUrl.isNotEmpty
+            ? currentAtBat.batterImageUrl
+            : _resolvePlayerImageUrl(imageByName, currentAtBat.batterName),
+      );
+      addUrl(
+        currentAtBat.pitcherImageUrl.isNotEmpty
+            ? currentAtBat.pitcherImageUrl
+            : _resolvePlayerImageUrl(imageByName, currentAtBat.pitcherName),
+      );
+    }
+
+    void addLineupUrls(TeamLineupData lineup, Iterable<PlayerProfile> players) {
+      final lineupImageByName = _playerImageUrlByName(players, season);
+      addUrl(
+        _lineupStarterImageUrl(
+          lineup,
+          imageByName: lineupImageByName,
+          season: season,
+        ),
+      );
+      for (final entry in lineup.lineup) {
+        addUrl(
+          _lineupEntryImageUrl(
+            entry,
+            imageByName: lineupImageByName,
+            season: season,
+          ),
+        );
+      }
+    }
+
+    if (lineupData != null) {
+      final awayPlayers = teamPlayers.where(
+        (player) => player.teamId == lineupData.away.teamId,
+      );
+      final homePlayers = teamPlayers.where(
+        (player) => player.teamId == lineupData.home.teamId,
+      );
+      addLineupUrls(lineupData.away, awayPlayers);
+      addLineupUrls(lineupData.home, homePlayers);
+    }
+
+    for (final imageUrl in _playerProfileImageUrlsForPrefetch(
+      teamPlayers,
+      season,
+    )) {
+      addUrl(imageUrl);
+    }
+
+    return imageUrls.take(_scheduleGameDetailPlayerImagePrefetchLimit).toList();
   }
 
   GlobalKey _stadiumSectionKey(String yearMonth, String stadium) {
@@ -204,11 +572,56 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: AppPageFrame(
-          child: Column(
+        child: Stack(
+          children: [
+            AppPageFrame(
+              child: Column(
+                children: [
+                  _buildMonthHeader(),
+                  Expanded(child: _buildBody(scheduleAsync)),
+                ],
+              ),
+            ),
+            if (_openingGameDetailId != null)
+              Positioned.fill(child: _buildGameDetailLoadingOverlay()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGameDetailLoadingOverlay() {
+    return ColoredBox(
+      key: const ValueKey('schedule-game-detail-loading'),
+      color: AppColors.background.withValues(alpha: 0.72),
+      child: Center(
+        child: Container(
+          width: 224,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _buildMonthHeader(),
-              Expanded(child: _buildBody(scheduleAsync)),
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: AppColors.live,
+                ),
+              ),
+              SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  '경기 정보 갱신 중',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
         ),
@@ -1147,7 +1560,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             child: ScheduleGameCard(
               game: entry.value,
               myTeamId: myTeamId,
-              onTap: () => _openGameDetail(entry.value.gameId),
+              onTap: () => _openGameDetail(entry.value),
               ticketSummary:
                   entry.value.ticketInfo == null ||
                       !shouldShowTicketInfoForScheduleStatus(entry.value.status)
@@ -1318,7 +1731,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     game: entry.value.game,
                     dateLabel: _formatDateLabel(entry.value.date),
                     myTeamId: myTeamId,
-                    onTap: () => _openGameDetail(entry.value.game.gameId),
+                    onTap: () => _openGameDetail(entry.value.game),
                     ticketSummary:
                         entry.value.game.ticketInfo == null ||
                             !shouldShowTicketInfoForScheduleStatus(
@@ -1393,7 +1806,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   game: item.game,
                   dateLabel: _formatDateLabel(item.date),
                   myTeamId: myTeamId,
-                  onTap: () => _openGameDetail(item.game.gameId),
+                  onTap: () => _openGameDetail(item.game),
                   ticketSummary:
                       item.game.ticketInfo == null ||
                           !shouldShowTicketInfoForScheduleStatus(

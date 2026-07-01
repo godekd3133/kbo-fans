@@ -238,10 +238,26 @@ List<String> _boxscorePlayerImagePrefetchUrls({
   void addTeamUrls(TeamBoxscoreData team, Iterable<PlayerProfile> players) {
     final imageByName = _playerImageUrlByName(players, season);
     for (final batter in team.batters) {
-      addUrl(_resolvePlayerImageUrl(imageByName, batter.name));
+      addUrl(
+        _boxscoreRowImageUrl(
+          imageUrl: batter.imageUrl,
+          playerId: batter.playerId,
+          name: batter.name,
+          imageByName: imageByName,
+          season: season,
+        ),
+      );
     }
     for (final pitcher in team.pitchers) {
-      addUrl(_resolvePlayerImageUrl(imageByName, pitcher.name));
+      addUrl(
+        _boxscoreRowImageUrl(
+          imageUrl: pitcher.imageUrl,
+          playerId: pitcher.playerId,
+          name: pitcher.name,
+          imageByName: imageByName,
+          season: season,
+        ),
+      );
     }
     for (final imageUrl in _playerProfileImageUrlsForPrefetch(
       players,
@@ -255,6 +271,24 @@ List<String> _boxscorePlayerImagePrefetchUrls({
   addTeamUrls(boxscoreData.home, homePlayers);
 
   return imageUrls.take(_gameDetailPlayerImagePrefetchLimit).toList();
+}
+
+String? _boxscoreRowImageUrl({
+  required String? imageUrl,
+  required String? playerId,
+  required String name,
+  required Map<String, String> imageByName,
+  required int season,
+}) {
+  final sourceImageUrl = imageUrl?.trim() ?? '';
+  if (sourceImageUrl.isNotEmpty) {
+    return sourceImageUrl;
+  }
+  final cleanedPlayerId = playerId?.trim() ?? '';
+  if (cleanedPlayerId.isNotEmpty) {
+    return kboPlayerImageUrl(season: season, playerId: cleanedPlayerId);
+  }
+  return _resolvePlayerImageUrl(imageByName, name);
 }
 
 List<String> _playerProfileImageUrlsForPrefetch(
@@ -1121,19 +1155,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final gameId = game.gameId;
     final targetTab = tab ?? (game.status == GameStatus.live ? 'relay' : null);
 
-    Future<T> trackBlockingProgress<T>(Future<T> future) {
-      return future.whenComplete(() {
-        _updateGameDetailOpenProgress(1);
-      });
-    }
-
     ref.invalidate(gameProvider(gameId));
-    final gameFuture = trackBlockingProgress<Game?>(
-      ref.read(gameProvider(gameId).future),
-    );
+    final gameFuture = ref.read(gameProvider(gameId).future);
     Future<RelayData?>? relayFuture;
     Future<GameLineupData?>? lineupFuture;
     Future<GameBoxscoreData?>? boxscoreFuture;
+    RelayData? relayData;
+    GameLineupData? lineupData;
+    GameBoxscoreData? boxscoreData;
 
     Future<T?> readWarmupProvider<T>(String label, Future<T> future) {
       return future.then<T?>((value) => value).catchError((
@@ -1180,17 +1209,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return boxscoreFuture!;
     }
 
+    Future<void> waitForFirstTab<T>(
+      Future<T?> future,
+      void Function(T?) assignValue,
+    ) async {
+      final value = await future.timeout(
+        _gameDetailOpenRefreshTimeout,
+        onTimeout: () => null,
+      );
+      assignValue(value);
+    }
+
+    final firstTabFutures = <Future<void>>[];
     switch (targetTab) {
       case 'relay':
         relayFuture = startRelayWarmup();
+        firstTabFutures.add(
+          waitForFirstTab<RelayData>(relayFuture!, (value) {
+            relayData = value;
+          }),
+        );
         break;
       case 'boxscore':
         boxscoreFuture = startBoxscoreWarmup();
+        firstTabFutures.add(
+          waitForFirstTab<GameBoxscoreData>(boxscoreFuture!, (value) {
+            boxscoreData = value;
+          }),
+        );
         break;
       case 'lineup':
         lineupFuture = startLineupWarmup();
+        firstTabFutures.add(
+          waitForFirstTab<GameLineupData>(lineupFuture!, (value) {
+            lineupData = value;
+          }),
+        );
         break;
       case null:
+        lineupFuture = startLineupWarmup();
+        firstTabFutures.add(
+          waitForFirstTab<GameLineupData>(lineupFuture!, (value) {
+            lineupData = value;
+          }),
+        );
         break;
     }
 
@@ -1200,24 +1262,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (refreshedGame == null) {
       throw StateError('game detail missing: $gameId');
     }
-    unawaited(
-      _precacheGameDetailPlayerImagesInBackground(
-        refreshedGame,
-        targetTab: targetTab,
-        relayDataFuture: relayFuture,
-        lineupDataFuture: lineupFuture,
-        boxscoreDataFuture: boxscoreFuture,
-      ),
-    );
+    _updateGameDetailOpenProgress(0.35);
+
+    await Future.wait(firstTabFutures);
+    _updateGameDetailOpenProgress(0.7);
+
+    await _precacheGameDetailPlayerImagesBeforeOpen(
+      refreshedGame,
+      targetTab: targetTab,
+      relayData: relayData,
+      lineupData: lineupData,
+      boxscoreData: boxscoreData,
+    ).timeout(_gameDetailPlayerImagePrefetchTimeout, onTimeout: () {});
+    _updateGameDetailOpenProgress(1);
     return refreshedGame;
   }
 
-  Future<void> _precacheGameDetailPlayerImagesInBackground(
+  Future<void> _precacheGameDetailPlayerImagesBeforeOpen(
     Game game, {
     required String? targetTab,
-    Future<RelayData?>? relayDataFuture,
-    Future<GameLineupData?>? lineupDataFuture,
-    Future<GameBoxscoreData?>? boxscoreDataFuture,
+    RelayData? relayData,
+    GameLineupData? lineupData,
+    GameBoxscoreData? boxscoreData,
   }) async {
     if (!mounted) {
       return;
@@ -1227,54 +1293,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final imageUrls = <String>[];
       switch (targetTab) {
         case 'relay':
-          imageUrls.addAll(
-            await _relayImageUrlsBeforeOpen(
-              game,
-              relayDataFuture == null ? null : await relayDataFuture,
-            ),
-          );
+          imageUrls.addAll(await _relayImageUrlsBeforeOpen(game, relayData));
           imageUrls.addAll(
             await _lineupImageUrlsBeforeOpen(
               game,
-              lineupDataFuture == null
-                  ? await _lineupDataForImagePrefetch(game.gameId)
-                  : await lineupDataFuture,
+              lineupData ?? await _lineupDataForImagePrefetch(game.gameId),
             ),
           );
           break;
         case 'lineup':
-          imageUrls.addAll(
-            await _lineupImageUrlsBeforeOpen(
-              game,
-              lineupDataFuture == null ? null : await lineupDataFuture,
-            ),
-          );
+          imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
           break;
         case 'boxscore':
           imageUrls.addAll(
-            await _boxscoreImageUrlsBeforeOpen(
-              game,
-              boxscoreDataFuture == null ? null : await boxscoreDataFuture,
-            ),
+            await _boxscoreImageUrlsBeforeOpen(game, boxscoreData),
           );
           imageUrls.addAll(
             await _lineupImageUrlsBeforeOpen(
               game,
-              lineupDataFuture == null
-                  ? await _lineupDataForImagePrefetch(game.gameId)
-                  : await lineupDataFuture,
+              lineupData ?? await _lineupDataForImagePrefetch(game.gameId),
             ),
           );
           break;
         case null:
-          imageUrls.addAll(
-            await _lineupImageUrlsBeforeOpen(
-              game,
-              lineupDataFuture == null
-                  ? await _lineupDataForImagePrefetch(game.gameId)
-                  : await lineupDataFuture,
-            ),
-          );
+          imageUrls.addAll(await _lineupImageUrlsBeforeOpen(game, lineupData));
           break;
       }
       if (imageUrls.isEmpty || !mounted) {

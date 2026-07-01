@@ -55,7 +55,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     final latestGame =
         ref.watch(gameProvider(widget.gameId)).asData?.value ?? widget.game;
     final relayDataAsync = ref.watch(relayDataProvider(widget.gameId));
-    final season = DateTime.now().year;
+    final season = _seasonFromGameId(widget.gameId);
     final awayPlayers = widget.game.away.teamId.isEmpty
         ? AsyncValue<List<PlayerProfile>>.data(<PlayerProfile>[])
         : ref.watch(teamPlayersProvider('${widget.game.away.teamId}|$season'));
@@ -104,6 +104,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             imageMap,
             playersByName,
             lineupData,
+            season: season,
           );
         },
       ),
@@ -191,8 +192,9 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     CurrentAtBat? atBat,
     Map<String, String> imageMap,
     Map<String, PlayerProfile> playersByName,
-    GameLineupData? lineupData,
-  ) {
+    GameLineupData? lineupData, {
+    required int season,
+  }) {
     final sortedItems = List<RelayItem>.from(items)
       ..sort((a, b) => b.seqNo.compareTo(a.seqNo));
     final moments = _buildMoments(sortedItems);
@@ -287,6 +289,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                       playersByName: playersByName,
                       currentAtBat: atBat,
                       lineupData: lineupData,
+                      season: season,
                     ),
                   ),
                   if (index != filteredMoments.length - 1) SizedBox(height: 12),
@@ -797,6 +800,16 @@ String? _playerImageUrlFromProfile(PlayerProfile player, int season) {
     return null;
   }
   return kboPlayerImageUrl(season: season, playerId: playerId);
+}
+
+int _seasonFromGameId(String gameId) {
+  if (gameId.length >= 4) {
+    final parsed = int.tryParse(gameId.substring(0, 4));
+    if (parsed != null) {
+      return parsed;
+    }
+  }
+  return DateTime.now().year;
 }
 
 class _RelayGameSummary extends StatelessWidget {
@@ -2393,6 +2406,7 @@ class _RelayMomentCard extends StatelessWidget {
   final Map<String, PlayerProfile> playersByName;
   final CurrentAtBat? currentAtBat;
   final GameLineupData? lineupData;
+  final int season;
 
   const _RelayMomentCard({
     required this.moment,
@@ -2401,6 +2415,7 @@ class _RelayMomentCard extends StatelessWidget {
     required this.playersByName,
     required this.currentAtBat,
     required this.lineupData,
+    required this.season,
   });
 
   @override
@@ -2417,7 +2432,7 @@ class _RelayMomentCard extends StatelessWidget {
         : _resolvePlayerProfile(playersByName, actorLabel);
     final actorProfileImageUrl = actorProfile == null
         ? null
-        : playerProfileImageUrl(actorProfile, season: DateTime.now().year);
+        : playerProfileImageUrl(actorProfile, season: season);
     final actorImageUrl = actorLabel == null
         ? null
         : (actorProfileImageUrl ?? _resolveImageUrl(imageMap, actorLabel));

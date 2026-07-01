@@ -2,6 +2,63 @@
 
 ---
 
+## 2026-07-01: 0.1.15 상세 진입 준비 보강 릴리즈
+
+### 결정
+- 사장님 요청: 직전 릴리즈 뒤 남은 경기 상세 진입 준비/선수사진 prefetch 보강 diff까지 한 번 더 TestFlight에 올린다.
+- 실제 diff는 홈/일정 경기 상세 진입 UX, 문자중계 선수사진 URL, 박스스코어 row 계약, backend boxscore 보강을 바꾸므로 새 tester-facing version이 필요하다.
+- release target은 `0.1.15+82` / tag `0.1.15`로 결정.
+
+### 진행
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.15+82` 기준으로 갱신.
+- [x] app/backend/release API 검증.
+- [ ] Git commit/push 및 tag/GitHub Release 생성.
+- [ ] iOS IPA build / TestFlight upload / Apple processing 확인.
+- [ ] External Testers 최신 build 연결, 이전 build 관계 제거, Beta Review 상태 확인.
+
+### 검증
+- [x] `cd app && fvm flutter analyze` (`No issues found!`)
+- [x] `cd app && fvm flutter test` (`306 passed`)
+- [x] `python3 -m compileall backend/src && backend/.venv/bin/pytest -q` (`256 passed`)
+- [x] `git diff --check` (pass)
+- [x] `ALLOW_INSECURE_RELEASE_API=true RELEASE_API_HEALTH_DATE=2026-07-01 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh` (`Release API health gate passed`)
+
+---
+
+## 2026-07-01: 경기 상세 진입 전 선수사진/첫 탭 prefetch 재보강
+
+### 원인
+- 사장님 제보: 선수 이미지를 미리 불러오고 경기 상세 페이지를 준비한 뒤 진입하는 동작이 아직 체감되지 않았다.
+- 확인 결과 홈 상세 진입 overlay는 `gameProvider(gameId)`만 blocking으로 기다리고, 실제 첫 진입 탭 provider(`relayDataProvider`/`gameBoxscoreProvider`/`gameLineupProvider`)와 선수 이미지 cache warm-up은 background로 넘겼다. 그래서 overlay가 사라진 뒤 상세 화면에서 다시 탭 로딩이나 사진 late load가 보일 수 있었다.
+- 일정 화면은 홈 pre-refresh 경로를 쓰지 않고 바로 `/game/{gameId}`로 push했다.
+- `RelayTab` 일부 선수 이미지 URL은 `gameId` 시즌이 아니라 `DateTime.now().year`로 만들어 과거 경기에서 홈 prefetch URL과 렌더 URL이 어긋날 수 있었다.
+- backend/app 박스스코어 row 계약에는 `playerId`/`imageUrl`이 없어 teamPlayers 이름 매칭이 실패하면 boxscore 선수사진 후보가 비었다.
+
+### 진행
+- [x] 홈 경기 상세 진입 gate를 `gameProvider` 완료 후 첫 진입 탭 provider와 선수사진 cache warm-up까지 기다리는 방식으로 재보강.
+- [x] 일정 화면 경기 카드도 `gameProvider`와 live 기본 탭 `relayDataProvider`를 준비한 뒤 이동하도록 overlay gate 추가.
+- [x] relay 선수사진 URL 생성 시즌을 `gameId` 기준으로 통일.
+- [x] `BatterRecord`/`PitcherRecord`에 optional `playerId`/`imageUrl`을 추가하고, app API parser와 boxscore/home prefetch 후보 수집이 row-native 값을 우선 사용하도록 수정.
+- [x] backend `BoxscoreService`가 team players payload로 boxscore batter/pitcher row의 `playerId`/`imageUrl`을 보강하도록 추가.
+
+### 검증
+- [x] RED 확인: `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다' -r expanded` (`home-game-detail-loading`이 사라져 실패)
+- [x] GREEN 확인: `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다' -r expanded` (`All tests passed!`)
+- [x] RED/GREEN 확인: `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '홈 기본 상세 진입은 라인업 사진 source 준비 후 이동한다' -r expanded`
+- [x] RED/GREEN 확인: `cd app && fvm flutter test --no-pub test/features/game_detail/relay_tab_test.dart --plain-name '현재 타석은 프로필 id로 선수 사진을 gameId 시즌에 맞춰 렌더한다' -r expanded`
+- [x] RED/GREEN 확인: `cd app && fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart --plain-name '일정 경기 상세 진입은 최신 상세와 첫 탭 데이터 준비 후 이동한다' -r expanded`
+- [x] RED/GREEN 확인: `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart --plain-name '경기 상세 진입 전 boxscore 선수 사진은 row id와 image URL을 우선 사용한다' -r expanded`
+- [x] RED/GREEN 확인: `backend/.venv/bin/pytest -q backend/tests/test_boxscore_service.py::test_boxscore_service_enriches_player_ids_and_images`
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found!`)
+- [x] `cd app && fvm flutter test --no-pub` (`306 passed`)
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_boxscore_service.py backend/tests/test_games.py backend/tests/test_lineup.py` (`20 passed`)
+- [x] `backend/.venv/bin/ruff check --select E,F,I,B backend/src/kbo_fans_backend/services/boxscore.py backend/src/kbo_fans_backend/api/runtime_services.py backend/src/kbo_fans_backend/api/routes/games.py backend/tests/test_boxscore_service.py` (`All checks passed!`)
+- [x] `python3 -m compileall backend/src` (pass)
+- [x] `backend/.venv/bin/pytest -q backend/tests` (`256 passed`)
+- [x] `git diff --check` (pass)
+
+---
+
 ## 2026-07-01: 0.1.14 홈/기록 오류 보정 릴리즈 준비
 
 ### 결정

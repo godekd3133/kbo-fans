@@ -465,6 +465,8 @@ void main() {
                   'order': 4,
                   'position': 'DH',
                   'name': '강백호',
+                  'playerId': '50054',
+                  'imageUrl': 'https://img.test/2026/50054.jpg',
                   'atBats': 4,
                   'runs': 2,
                   'hits': 3,
@@ -482,6 +484,8 @@ void main() {
               'pitchers': [
                 {
                   'name': '선발투수',
+                  'playerId': '60123',
+                  'imageUrl': 'https://img.test/2026/60123.jpg',
                   'innings': '5.2',
                   'hits': 4,
                   'strikeouts': 6,
@@ -505,10 +509,14 @@ void main() {
     final pitcher = boxscore.away.pitchers.single;
 
     expect(batter.plateAppearances, 5);
+    expect(batter.playerId, '50054');
+    expect(batter.imageUrl, 'https://img.test/2026/50054.jpg');
     expect(batter.extraBaseHits, 2);
     expect(batter.slugging, 1.75);
     expect(batter.stolenBases, 1);
     expect(pitcher.pitchCount, 92);
+    expect(pitcher.playerId, '60123');
+    expect(pitcher.imageUrl, 'https://img.test/2026/60123.jpg');
     expect(pitcher.runs, 2);
     expect(pitcher.gameWhip, closeTo(1.06, 0.01));
   });

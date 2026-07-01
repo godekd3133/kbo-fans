@@ -648,9 +648,9 @@ void main() {
     expect(find.text('경기종료 삼성 3 : 4 LG'), findsOneWidget);
   });
 
-  testWidgets('현재 타석은 프로필 id로 선수 사진을 렌더한다', (tester) async {
+  testWidgets('현재 타석은 프로필 id로 선수 사진을 gameId 시즌에 맞춰 렌더한다', (tester) async {
     const game = Game(
-      gameId: '20260611SSLG0',
+      gameId: '20250611SSLG0',
       status: GameStatus.live,
       inning: '7회초',
       away: TeamScore(
@@ -695,7 +695,7 @@ void main() {
           }),
           gameLineupProvider.overrideWith((ref, gameId) async {
             return const GameLineupData(
-              gameId: '20260611SSLG0',
+              gameId: '20250611SSLG0',
               away: TeamLineupData(teamId: 'SS', lineup: []),
               home: TeamLineupData(teamId: 'LG', lineup: []),
             );
@@ -711,7 +711,7 @@ void main() {
           theme: AppTheme.dark,
           home: const Scaffold(
             body: RelayTab(
-              gameId: '20260611SSLG0',
+              gameId: '20250611SSLG0',
               gameStatus: GameStatus.live,
               game: game,
             ),
@@ -725,10 +725,7 @@ void main() {
 
     expect(find.textContaining('김성윤'), findsWidgets);
     expect(find.textContaining('임찬규'), findsWidgets);
-    final expectedImageUrl = kboPlayerImageUrl(
-      season: DateTime.now().year,
-      playerId: '56348',
-    );
+    final expectedImageUrl = kboPlayerImageUrl(season: 2025, playerId: '56348');
     expect(
       find.byWidgetPredicate(
         (widget) =>

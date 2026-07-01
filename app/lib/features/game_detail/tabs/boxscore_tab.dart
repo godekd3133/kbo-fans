@@ -13,6 +13,7 @@ import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/boxscore.dart';
 import '../../../data/models/game.dart';
 import '../../../data/models/player.dart';
+import '../../../data/models/records_overview.dart';
 import '../../../data/providers.dart';
 
 class BoxscoreTab extends ConsumerStatefulWidget {
@@ -472,7 +473,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     int season,
   ) {
     final player = _resolvePlayer(playersByName, batter.name);
-    final imageUrl = _playerImageUrlFromProfile(player, season);
+    final imageUrl = _boxscoreRowImageUrl(
+      imageUrl: batter.imageUrl,
+      playerId: batter.playerId,
+      fallbackPlayer: player,
+      season: season,
+    );
     final todayAvg = batter.atBats > 0 ? (batter.hits / batter.atBats) : 0.0;
     return _RecordDataRow(
       onTap: player == null ? null : () => _pushPlayerDetail(player, season),
@@ -546,7 +552,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     int season,
   ) {
     final player = _resolvePlayer(playersByName, pitcher.name);
-    final imageUrl = _playerImageUrlFromProfile(player, season);
+    final imageUrl = _boxscoreRowImageUrl(
+      imageUrl: pitcher.imageUrl,
+      playerId: pitcher.playerId,
+      fallbackPlayer: player,
+      season: season,
+    );
     return _RecordDataRow(
       onTap: player == null ? null : () => _pushPlayerDetail(player, season),
       badgeLabel: (player?.number ?? 0) > 0 ? '${player!.number}' : null,
@@ -693,24 +704,52 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final imageUrls = <String>[];
     final seen = <String>{};
 
-    void addPlayerByName(String name) {
-      final imageUrl = _playerImageUrlFromProfile(
-        _resolvePlayer(playersByName, name),
-        season,
-      );
-      if (imageUrl == null || imageUrl.isEmpty || !seen.add(imageUrl)) {
+    void addUrl(String? rawUrl) {
+      final imageUrl = rawUrl?.trim() ?? '';
+      if (imageUrl.isEmpty || !seen.add(imageUrl)) {
         return;
       }
       imageUrls.add(imageUrl);
     }
 
     for (final batter in team.batters) {
-      addPlayerByName(batter.name);
+      addUrl(
+        _boxscoreRowImageUrl(
+          imageUrl: batter.imageUrl,
+          playerId: batter.playerId,
+          fallbackPlayer: _resolvePlayer(playersByName, batter.name),
+          season: season,
+        ),
+      );
     }
     for (final pitcher in team.pitchers) {
-      addPlayerByName(pitcher.name);
+      addUrl(
+        _boxscoreRowImageUrl(
+          imageUrl: pitcher.imageUrl,
+          playerId: pitcher.playerId,
+          fallbackPlayer: _resolvePlayer(playersByName, pitcher.name),
+          season: season,
+        ),
+      );
     }
     return imageUrls;
+  }
+
+  String? _boxscoreRowImageUrl({
+    required String? imageUrl,
+    required String? playerId,
+    required PlayerProfile? fallbackPlayer,
+    required int season,
+  }) {
+    final sourceImageUrl = imageUrl?.trim() ?? '';
+    if (sourceImageUrl.isNotEmpty) {
+      return sourceImageUrl;
+    }
+    final cleanedPlayerId = playerId?.trim() ?? '';
+    if (cleanedPlayerId.isNotEmpty) {
+      return kboPlayerImageUrl(season: season, playerId: cleanedPlayerId);
+    }
+    return _playerImageUrlFromProfile(fallbackPlayer, season);
   }
 
   String? _playerImageUrlFromProfile(PlayerProfile? player, int season) {

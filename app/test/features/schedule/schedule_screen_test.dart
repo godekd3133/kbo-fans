@@ -7,6 +7,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/core/widgets/main_scaffold.dart';
+import 'package:kbo_fans/data/models/boxscore.dart';
+import 'package:kbo_fans/data/models/game.dart';
+import 'package:kbo_fans/data/models/player.dart';
+import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/schedule/schedule_screen.dart';
@@ -266,6 +270,244 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('일정 경기 상세 진입은 최신 상세와 첫 탭 데이터 준비 후 이동한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final today = DateTime.now();
+    final yearMonth = '${today.year}-${today.month.toString().padLeft(2, '0')}';
+    const gameId = '20260701SSLG0';
+    final detailCompleter = Completer<Game?>();
+    final relayCompleter = Completer<RelayData>();
+    var detailFetches = 0;
+    var relayFetches = 0;
+    final router = GoRouter(
+      initialLocation: '/schedule',
+      routes: [
+        GoRoute(
+          path: '/schedule',
+          builder: (context, state) => const ScheduleScreen(),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (context, state) => Text(
+            'schedule-detail-${state.pathParameters['gameId']}-${state.uri.queryParameters['tab'] ?? ''}',
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          scheduleProvider.overrideWith((_, month) async {
+            if (month != yearMonth) {
+              return const <ScheduleDay>[];
+            }
+            return [
+              ScheduleDay(
+                date: '$yearMonth-${today.day.toString().padLeft(2, '0')}',
+                games: const [
+                  ScheduleGame(
+                    gameId: gameId,
+                    time: '18:30',
+                    awayId: 'SS',
+                    awayName: '삼성',
+                    homeId: 'LG',
+                    homeName: 'LG',
+                    stadium: '잠실',
+                    status: 'LIVE',
+                  ),
+                ],
+              ),
+            ];
+          }),
+          gameProvider.overrideWith((ref, requestedGameId) async {
+            detailFetches++;
+            return detailCompleter.future;
+          }),
+          relayDataProvider.overrideWith((ref, requestedGameId) async {
+            relayFetches++;
+            return relayCompleter.future;
+          }),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(const ValueKey('schedule-game-$gameId'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+
+    expect(detailFetches, 1);
+    expect(
+      find.byKey(const ValueKey('schedule-game-detail-loading')),
+      findsOneWidget,
+    );
+    expect(find.text('schedule-detail-$gameId-relay'), findsNothing);
+
+    detailCompleter.complete(_liveGame(gameId));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(relayFetches, 1);
+    expect(
+      find.byKey(const ValueKey('schedule-game-detail-loading')),
+      findsOneWidget,
+    );
+    expect(find.text('schedule-detail-$gameId-relay'), findsNothing);
+
+    relayCompleter.complete(
+      const RelayData(currentAtBat: null, relayItems: []),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
+  });
+
+  testWidgets('일정 경기 상세 진입 refresh 실패 시 live 일정은 중계 탭으로 이동한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final today = DateTime.now();
+    final yearMonth = '${today.year}-${today.month.toString().padLeft(2, '0')}';
+    const gameId = '20260701SSLG0';
+    final router = _scheduleTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          scheduleProvider.overrideWith(
+            (_, month) async => month == yearMonth
+                ? _singleScheduleGameForDate(
+                    today,
+                    const ScheduleGame(
+                      gameId: gameId,
+                      time: '18:30',
+                      awayId: 'SS',
+                      awayName: '삼성',
+                      homeId: 'LG',
+                      homeName: 'LG',
+                      stadium: '잠실',
+                      status: 'LIVE',
+                    ),
+                  )
+                : const <ScheduleDay>[],
+          ),
+          gameProvider.overrideWith((ref, requestedGameId) async {
+            throw StateError('detail unavailable');
+          }),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(const ValueKey('schedule-game-$gameId'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
+  });
+
+  testWidgets('일정 live 상세 진입은 선수 이미지 source provider를 준비한 뒤 이동한다', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final today = DateTime.now();
+    final yearMonth = '${today.year}-${today.month.toString().padLeft(2, '0')}';
+    const gameId = '20260701SSLG0';
+    final relayCompleter = Completer<RelayData>();
+    final lineupCompleter = Completer<GameLineupData>();
+    var teamPlayerFetches = 0;
+    final router = _scheduleTestRouter();
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          scheduleProvider.overrideWith(
+            (_, month) async => month == yearMonth
+                ? _singleScheduleGameForDate(
+                    today,
+                    const ScheduleGame(
+                      gameId: gameId,
+                      time: '18:30',
+                      awayId: 'SS',
+                      awayName: '삼성',
+                      homeId: 'LG',
+                      homeName: 'LG',
+                      stadium: '잠실',
+                      status: 'LIVE',
+                    ),
+                  )
+                : const <ScheduleDay>[],
+          ),
+          gameProvider.overrideWith(
+            (ref, requestedGameId) async => _liveGame(gameId),
+          ),
+          relayDataProvider.overrideWith((ref, requestedGameId) async {
+            return relayCompleter.future;
+          }),
+          gameLineupProvider.overrideWith((ref, requestedGameId) async {
+            return lineupCompleter.future;
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            teamPlayerFetches++;
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(const ValueKey('schedule-game-$gameId'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('schedule-game-detail-loading')),
+      findsOneWidget,
+    );
+    relayCompleter.complete(
+      const RelayData(currentAtBat: null, relayItems: []),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('schedule-detail-$gameId-relay'), findsNothing);
+    expect(teamPlayerFetches, greaterThanOrEqualTo(2));
+
+    lineupCompleter.complete(
+      const GameLineupData(
+        gameId: gameId,
+        away: TeamLineupData(teamId: 'SS', lineup: []),
+        home: TeamLineupData(teamId: 'LG', lineup: []),
+      ),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
+  });
 }
 
 String _monthLabel(DateTime month) {
@@ -286,6 +528,58 @@ DateTime _monthWithVisibleNextMonthDay(DateTime start) {
 
 List<ScheduleDay> _scheduleForMonth(String yearMonth) {
   return [ScheduleDay(date: '$yearMonth-01', games: const [])];
+}
+
+GoRouter _scheduleTestRouter() {
+  return GoRouter(
+    initialLocation: '/schedule',
+    routes: [
+      GoRoute(
+        path: '/schedule',
+        builder: (context, state) => const ScheduleScreen(),
+      ),
+      GoRoute(
+        path: '/game/:gameId',
+        builder: (context, state) => Text(
+          'schedule-detail-${state.pathParameters['gameId']}-${state.uri.queryParameters['tab'] ?? ''}',
+        ),
+      ),
+    ],
+  );
+}
+
+List<ScheduleDay> _singleScheduleGameForDate(DateTime date, ScheduleGame game) {
+  final yearMonth = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+  return [
+    ScheduleDay(
+      date: '$yearMonth-${date.day.toString().padLeft(2, '0')}',
+      games: [game],
+    ),
+  ];
+}
+
+Game _liveGame(String gameId) {
+  return Game(
+    gameId: gameId,
+    status: GameStatus.live,
+    inning: '7회초',
+    away: const TeamScore(
+      teamId: 'SS',
+      teamName: '삼성',
+      shortName: '삼성',
+      score: 3,
+      innings: [],
+    ),
+    home: const TeamScore(
+      teamId: 'LG',
+      teamName: 'LG',
+      shortName: 'LG',
+      score: 2,
+      innings: [],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
 }
 
 List<ScheduleDay> _singleGameOnFirstDaySchedule(String yearMonth) {

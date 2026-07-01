@@ -25,9 +25,6 @@ import 'models/team_stats.dart';
 import '../services/push_notification_service.dart';
 import '../services/ticket_alert_service.dart';
 
-const _kboPersonImageBase =
-    'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
-
 /// API 클라이언트 (기본 backend API data mode에서 사용)
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
@@ -300,7 +297,7 @@ final allPlayerImageMapProvider =
               (player.imageUrl != null && player.imageUrl!.isNotEmpty)
               ? player.imageUrl
               : (player.id.isNotEmpty
-                    ? '$_kboPersonImageBase/$season/${player.id}.jpg'
+                    ? kboPlayerImageUrl(season: season, playerId: player.id)
                     : null);
           if (player.name.isEmpty || imageUrl == null || imageUrl.isEmpty) {
             continue;

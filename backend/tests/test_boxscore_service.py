@@ -53,6 +53,42 @@ class _StubScheduleService:
         }
 
 
+class _StubPlayerStatsService:
+    def get_team_players(self, team_id: str, season: int):
+        players_by_team = {
+            "KT": [
+                {
+                    "id": "50054",
+                    "name": "A",
+                    "imageUrl": "https://img.test/2026/50054.jpg",
+                }
+            ],
+            "LG": [
+                {
+                    "id": "60123",
+                    "name": "Q",
+                    "imageUrl": "https://img.test/2026/60123.jpg",
+                }
+            ],
+        }
+        return {"players": players_by_team.get(team_id, [])}
+
+
+def test_boxscore_service_enriches_player_ids_and_images(tmp_path) -> None:
+    service = BoxscoreService(
+        crawler=_StubBoxscoreCrawler(),
+        player_stats_service=_StubPlayerStatsService(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_boxscore("20260329KTLG0")
+
+    assert payload["away"]["batters"][0]["playerId"] == "50054"
+    assert payload["away"]["batters"][0]["imageUrl"].endswith("/2026/50054.jpg")
+    assert payload["home"]["pitchers"][0]["playerId"] == "60123"
+    assert payload["home"]["pitchers"][0]["imageUrl"].endswith("/2026/60123.jpg")
+
+
 def test_boxscore_service_retries_with_adjacent_canonical_game_id(tmp_path) -> None:
     crawler = _StubBoxscoreCrawler()
     service = BoxscoreService(

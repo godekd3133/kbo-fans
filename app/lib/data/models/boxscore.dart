@@ -2,6 +2,8 @@ class BatterRecord {
   final int order;
   final String position;
   final String name;
+  final String? playerId;
+  final String? imageUrl;
   final int atBats;
   final int runs;
   final int hits;
@@ -21,6 +23,8 @@ class BatterRecord {
     required this.order,
     required this.position,
     required this.name,
+    this.playerId,
+    this.imageUrl,
     required this.atBats,
     required this.runs,
     required this.hits,
@@ -106,6 +110,8 @@ class GameBoxscoreData {
 
 class PitcherRecord {
   final String name;
+  final String? playerId;
+  final String? imageUrl;
   final String innings;
   final int hits;
   final int strikeouts;
@@ -119,6 +125,8 @@ class PitcherRecord {
 
   const PitcherRecord({
     required this.name,
+    this.playerId,
+    this.imageUrl,
     required this.innings,
     required this.hits,
     required this.strikeouts,

@@ -14,6 +14,7 @@ import '../models/highlight_info.dart';
 import '../models/highlight_video.dart';
 import '../models/relay.dart';
 import '../models/boxscore.dart';
+import '../models/records_overview.dart';
 import '../models/schedule.dart';
 import 'game_repository.dart';
 
@@ -25,8 +26,6 @@ final _log = DevConsole.instance;
 class KboDirectRepository implements GameRepository {
   static const _kboBase = 'https://www.koreabaseball.com';
   static const _youtubeBase = 'https://www.youtube.com';
-  static const _kboPersonImageBase =
-      'https://6ptotvmi5753.edge.naverncp.com/KBO_IMAGE/person/middle';
   // 웹 CORS 우회용 프록시
   static const _corsProxy = 'https://corsproxy.io/?';
   static const _relayUserId = 'godekd3133';
@@ -1999,7 +1998,11 @@ class KboDirectRepository implements GameRepository {
     if (playerId == null || playerId.isEmpty) {
       return null;
     }
-    return '$_kboPersonImageBase/$season/$playerId.jpg';
+    final parsedSeason = int.tryParse(season);
+    if (parsedSeason == null) {
+      return null;
+    }
+    return kboPlayerImageUrl(season: parsedSeason, playerId: playerId);
   }
 
   String? _cleanPlayerId(Object? value) {

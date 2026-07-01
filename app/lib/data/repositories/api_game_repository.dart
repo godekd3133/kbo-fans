@@ -366,10 +366,13 @@ class ApiGameRepository implements GameRepository {
   }
 
   BatterRecord _parseBatter(Map<String, dynamic> json) {
+    final playerId = (json['id'] ?? json['playerId'])?.toString().trim();
     return BatterRecord(
       order: json['order'] as int? ?? 0,
       position: json['position'] as String? ?? '',
       name: json['name'] as String? ?? '',
+      playerId: playerId == null || playerId.isEmpty ? null : playerId,
+      imageUrl: json['imageUrl'] as String?,
       atBats: json['atBats'] as int? ?? 0,
       runs: json['runs'] as int? ?? 0,
       hits: json['hits'] as int? ?? 0,
@@ -388,8 +391,11 @@ class ApiGameRepository implements GameRepository {
   }
 
   PitcherRecord _parsePitcher(Map<String, dynamic> json) {
+    final playerId = (json['id'] ?? json['playerId'])?.toString().trim();
     return PitcherRecord(
       name: json['name'] as String? ?? '',
+      playerId: playerId == null || playerId.isEmpty ? null : playerId,
+      imageUrl: json['imageUrl'] as String?,
       innings: json['innings'] as String? ?? '0.0',
       hits: json['hits'] as int? ?? 0,
       strikeouts: json['strikeouts'] as int? ?? 0,
