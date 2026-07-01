@@ -2,6 +2,27 @@
 
 ---
 
+## 2026-07-01: backend live scoreboard warm cache 및 원천 호출 축소
+
+### 원인
+- 사장님 요청: 백엔드가 정보를 더 빠르게 수집하고 내려줄 수 있는 방법 중 `1 + 3`을 진행.
+- 확인 결과 `/scoreboard/home`은 이미 경량 endpoint, 8초 TTL, singleflight를 사용하지만 API worker cold path에서는 여전히 schedule/main list 원천 조회가 필요했다.
+- 운영 sync worker는 5초 루프가 있어도 push/Live Activity 등록이 없으면 scoreboard 자체를 조회하지 않았고, 별도 API worker와 공유할 materialized live state를 남기지 않았다.
+
+### 진행
+- [x] `LiveScoreboardStore`를 추가해 sync worker와 API service가 같은 runtime filesystem에서 fresh live scoreboard 요약을 공유하도록 구현.
+- [x] `/scoreboard/home`은 runtime state가 8초 fresh window 안에 있을 때만 원천 KBO 수집 없이 반환하고, stale state는 무시하도록 보정.
+- [x] `LiveActivityScoreboardSyncService`가 push/Live Activity 등록이 없어도 scoreboard warm-up을 먼저 수행하도록 변경.
+- [x] `ScoreboardService` 내부에서 같은 날짜 schedule/main list 원천 결과를 짧은 TTL로 공유해 `/scoreboard/home`, `/scoreboard/compact`, game summary 경로의 중복 KBO 호출을 줄임.
+- [x] stale snapshot masking 금지 원칙은 유지하고, runtime live state는 snapshot fallback이 아니라 fresh-only warm cache로 문서화.
+
+### 검증
+- [ ] backend targeted pytest
+- [ ] backend compileall
+- [ ] diff whitespace check
+
+---
+
 ## 2026-07-01: 히스토리 데이터 캐시 정책 강화
 
 ### 원인
@@ -39,7 +60,7 @@
 - [x] Git commit/push 완료: `ed96f7d 0.1.12 상세 진입과 기록 화면 정리`.
 - [x] iOS App Store IPA 빌드와 TestFlight upload.
 - [x] App Store Connect build `VALID` 확인, `External Testers` 최신 build 연결, 이전 build 관계 제거, Beta App Review 제출/상태 확인.
-- [ ] `0.1.12` GitHub tag / Release 생성.
+- [x] `0.1.12` GitHub tag / Release 생성: `https://github.com/godekd3133/kbo-fans/releases/tag/0.1.12`.
 
 ### 검증
 - [x] `cd app && fvm flutter analyze` (`No issues found!`)
