@@ -18,6 +18,7 @@
 - [x] 앱 기능 변경 없이 `0.1.15+83`으로 iOS build number를 증가해 새 TestFlight IPA를 재빌드.
 - [x] App Store Connect에 build `83` 업로드 및 `VALID` 처리 확인.
 - [x] build `83`을 `External Testers` 그룹에 연결. 승인 fallback build `77`은 제거하지 않음.
+- [x] GitHub Release `0.1.15` notes를 build `83` / fallback build `77` / build `83` Beta Review 재시도 필요 상태로 갱신.
 
 ### 검증
 - [x] App Store Connect API `POST /v1/betaGroups/81506852-9006-4a43-b152-067ac78a1736/relationships/builds`로 build `77` 추가 성공 (`204`).
