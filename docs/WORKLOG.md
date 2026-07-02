@@ -12,11 +12,11 @@
 
 ### 진행
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.16+84` 기준으로 갱신.
-- [ ] Git commit/push 완료.
-- [ ] tag/GitHub Release `0.1.16` 생성.
-- [ ] iOS IPA build / TestFlight upload / Apple processing 확인.
-- [ ] `External Testers` 최신 build 연결. 최신 build 승인/설치 가능 확인 전까지 승인 fallback build `77`은 유지.
-- [ ] Beta App Review 제출 또는 Apple queue blocker 확인.
+- [x] Git commit/push 완료: `3dacd50 0.1.16 Lightsail 백엔드 전환 릴리즈`, `origin/main`.
+- [x] tag/GitHub Release 생성: `https://github.com/godekd3133/kbo-fans/releases/tag/0.1.16`.
+- [x] iOS IPA build / TestFlight upload / Apple processing 확인.
+- [x] `External Testers` 최신 build 연결. 최신 build 승인/설치 가능 확인 전까지 승인 fallback build `77`은 유지.
+- [x] Beta App Review 제출: build `84` review state `WAITING_FOR_REVIEW`.
 
 - [x] `bash -n scripts/lightsail-deploy.sh scripts/aws-cost-guard-deploy.sh`
 - [x] `python3 -m compileall -q backend/src`
@@ -29,8 +29,12 @@
 - [x] `cd app && fvm flutter analyze --no-pub` -> `No issues found!`.
 - [x] `cd app && fvm flutter test --no-pub` -> `306 passed`.
 - [x] `git diff --check`
-- [ ] IPA build metadata: Runner/Widget version, production APNs entitlement, encryption flag, sha256.
-- [ ] TestFlight upload, Apple `VALID`, External Testers group builds, installability fallback.
+- [x] IPA build metadata: `0.1.16 (84)`, Runner/Widget `0.1.16/84`, Runner `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `ITSAppUsesNonExemptEncryption=false`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`, IPA sha256 `ade20d0a7da00ff81a4d2af7e8d00a876eb8b0209613f3918a3999d84244664d`.
+- [x] TestFlight upload: delivery UUID `2c390258-8960-4eb6-9767-84f48447f7aa`, `UPLOAD SUCCEEDED`, transferred `34966514` bytes.
+- [x] Apple processing: build `84`, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, uploaded date `2026-07-02T01:03:58-07:00`.
+- [x] External Testers: group `81506852-9006-4a43-b152-067ac78a1736` builds are `84`, `83`, `82`, `77`. Build `77` remains as approved/installable fallback.
+- [x] Beta App Review: submission id `2c390258-8960-4eb6-9767-84f48447f7aa`, state `WAITING_FOR_REVIEW`, submitted date `2026-07-02T01:08:01-07:00`.
+- [x] External tester installability fallback: `na***@naver.com`, inviteType `EMAIL`, state `INSTALLED`. Build `84` itself still needs Apple Beta Review approval before it can be treated as externally installable.
 
 ---
 
@@ -127,7 +131,7 @@
 - [x] `curl -fsS https://3-39-79-1.sslip.io/api/health` -> `{"success":true,"data":{"status":"ok"}}`
 - [x] `PUSH_SYNC_SECRET=<redacted> ./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api` -> `Push readiness check passed`, TLS `ok`, scheduler age `0s`.
 - [x] `RELEASE_API_HEALTH_DATE=2026-07-02 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api` -> `Release API health gate passed`.
-- [ ] 다음 TestFlight build는 `API_BASE_URL=https://3-39-79-1.sslip.io/api`로 주입 필요.
+- [x] 다음 TestFlight build는 `API_BASE_URL=https://3-39-79-1.sslip.io/api`로 주입 필요. `0.1.16+84` IPA에서 `strings`로 해당 URL 포함 확인.
 - [ ] 장기 운영 전에는 `api.kbofans.com` 또는 사장님 소유 도메인으로 전환하는 것이 안전하다. 현재 `sslip.io`는 비용 0원 tester용 임시 DNS 의존성이다.
 
 ---
