@@ -35,6 +35,8 @@
 - [x] External Testers: group `81506852-9006-4a43-b152-067ac78a1736` builds are `84`, `83`, `82`, `77`. Build `77` remains as approved/installable fallback.
 - [x] Beta App Review: submission id `2c390258-8960-4eb6-9767-84f48447f7aa`, state `WAITING_FOR_REVIEW`, submitted date `2026-07-02T01:08:01-07:00`.
 - [x] External tester installability fallback: `na***@naver.com`, inviteType `EMAIL`, state `INSTALLED`. Build `84` itself still needs Apple Beta Review approval before it can be treated as externally installable.
+- [x] Post-upload backend availability: cost guard가 stale forecast USD `68.472`로 Lightsail을 다시 stop하는 것을 확인. Active guard stack은 USD 10 / prefix scope를 유지하되 `TargetRegions=us-east-1`로 제한해 old ECS/Fargate resource만 감시하도록 운영값을 조정하고 Lightsail을 restart.
+- [x] Cost guard 수동 invoke 후 결과 `threshold-reached`, `actions=[]`, Lightsail `running`; `https://3-39-79-1.sslip.io/api` release API health 재통과.
 
 ---
 
