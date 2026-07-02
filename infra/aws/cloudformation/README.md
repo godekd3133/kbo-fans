@@ -19,6 +19,16 @@ certificates. Those remain external prerequisites for the real HTTPS/release pat
 It can also create the separate GitHub Actions OIDC role used by the repository
 workflow to deploy this stack without long-lived AWS access keys.
 
+Before leaving this paid always-on path running, deploy the USD 10 actual /
+forecast cost guard:
+
+```bash
+./scripts/aws-cost-guard-deploy.sh --apply --invoke-now
+```
+
+For fixed-cost cleanup, including deleting this demo stack during a strict cost
+emergency, follow `docs/AWS_COST_GUARD_RUNBOOK.md`.
+
 ## Prerequisites
 
 1. Firebase Admin service account JSON

@@ -1,0 +1,8 @@
+# Replace api.kbofans.com with the production API host.
+# Caddy will request and renew the certificate automatically after DNS points to
+# the attached Lightsail static IP.
+
+api.kbofans.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:8000
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=KBO Fans push and Live Activity sync worker
+After=network-online.target kbo-fans-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kbo-fans
+Group=kbo-fans
+WorkingDirectory=/opt/kbo-fans/current/backend
+EnvironmentFile=/etc/kbo-fans/backend.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/kbo-fans/venv/bin/python -m kbo_fans_backend.scheduler.live_activity_sync_loop
+Restart=always
+RestartSec=5
+Nice=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

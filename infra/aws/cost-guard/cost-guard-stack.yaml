@@ -1,0 +1,480 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: KBO Fans AWS cost guard. Stops tagged/prefixed runtime resources when actual or forecasted monthly cost reaches the limit.
+
+Parameters:
+  BudgetName:
+    Type: String
+    Default: kbo-fans-cost-kill-switch
+    Description: Monthly AWS Budget name used for actual and forecasted cost alarms.
+  MonthlyLimitUsd:
+    Type: Number
+    Default: 10
+    MinValue: 1
+    Description: Monthly cost limit in USD. Actual or forecasted spend at this amount triggers the guard.
+  ResourcePrefix:
+    Type: String
+    Default: kbo-fans
+    Description: Resource name/tag prefix used when GuardScope is prefix.
+  GuardScope:
+    Type: String
+    Default: prefix
+    AllowedValues:
+      - prefix
+      - account
+    Description: Use prefix for KBO Fans resources only. Use account to stop every supported runtime resource in target regions.
+  TargetRegions:
+    Type: String
+    Default: ap-northeast-2,us-east-1
+    Description: Comma-separated regions for runtime shutdown. Use all to enumerate enabled EC2 regions.
+  ScheduleExpression:
+    Type: String
+    Default: rate(15 minutes)
+    Description: EventBridge schedule for Cost Explorer re-checks.
+  EnableScheduledCheck:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable periodic Cost Explorer checks in addition to AWS Budget SNS notifications.
+  DestructiveMode:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: When true, configured CloudFormation stacks may be deleted.
+  DeleteLightsailInstances:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: When true with DestructiveMode, matching Lightsail instances may be deleted. Otherwise they are only stopped.
+  DeleteCloudFormationStacks:
+    Type: String
+    Default: ""
+    Description: Comma-separated CloudFormation stack names to delete only when DestructiveMode is true.
+
+Conditions:
+  ScheduledCheckEnabled: !Equals [!Ref EnableScheduledCheck, "true"]
+
+Resources:
+  BudgetTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${BudgetName}-topic"
+
+  BudgetTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref BudgetTopic
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowBudgetsToPublish
+            Effect: Allow
+            Principal:
+              Service: budgets.amazonaws.com
+            Action: SNS:Publish
+            Resource: !Ref BudgetTopic
+
+  MonthlyCostBudget:
+    Type: AWS::Budgets::Budget
+    DependsOn:
+      - BudgetTopicPolicy
+    Properties:
+      Budget:
+        BudgetName: !Ref BudgetName
+        BudgetLimit:
+          Amount: !Ref MonthlyLimitUsd
+          Unit: USD
+        TimeUnit: MONTHLY
+        BudgetType: COST
+      NotificationsWithSubscribers:
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: ACTUAL
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref BudgetTopic
+        - Notification:
+            ComparisonOperator: GREATER_THAN
+            NotificationType: FORECASTED
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref BudgetTopic
+
+  CostGuardRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${BudgetName}-lambda-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CostGuardRuntimeStopPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:GetCallerIdentity
+                  - budgets:DescribeBudget
+                  - budgets:ViewBudget
+                  - ce:GetCostAndUsage
+                  - ce:GetCostForecast
+                  - ec2:DescribeRegions
+                  - ec2:DescribeInstances
+                  - ec2:DescribeTags
+                  - ec2:StopInstances
+                  - autoscaling:DescribeAutoScalingGroups
+                  - autoscaling:UpdateAutoScalingGroup
+                  - ecs:ListClusters
+                  - ecs:ListServices
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                  - ecs:ListTasks
+                  - ecs:StopTask
+                  - lightsail:GetInstances
+                  - lightsail:StopInstance
+                  - lightsail:DeleteInstance
+                  - lightsail:GetStaticIps
+                  - lightsail:ReleaseStaticIp
+                  - rds:DescribeDBInstances
+                  - rds:StopDBInstance
+                  - apprunner:ListServices
+                  - apprunner:PauseService
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DeleteStack
+                Resource: "*"
+
+  CostGuardFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${BudgetName}-lambda"
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt CostGuardRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          BUDGET_NAME: !Ref BudgetName
+          THRESHOLD_USD: !Ref MonthlyLimitUsd
+          RESOURCE_PREFIX: !Ref ResourcePrefix
+          GUARD_SCOPE: !Ref GuardScope
+          TARGET_REGIONS: !Ref TargetRegions
+          DESTRUCTIVE_MODE: !Ref DestructiveMode
+          DELETE_LIGHTSAIL_INSTANCES: !Ref DeleteLightsailInstances
+          DELETE_CLOUDFORMATION_STACKS: !Ref DeleteCloudFormationStacks
+      Code:
+        ZipFile: |
+          import calendar
+          import datetime as dt
+          import json
+          import os
+          from typing import Any, Dict, Iterable, List, Optional
+
+          import boto3
+          from botocore.exceptions import ClientError, EndpointConnectionError
+
+          def _float(value: Any) -> float:
+              try:
+                  return float(value)
+              except (TypeError, ValueError):
+                  return 0.0
+
+          def _csv(value: str) -> List[str]:
+              return [item.strip() for item in value.split(",") if item.strip()]
+
+          def _page(client: Any, method_name: str, result_key: str, **kwargs: Any) -> Iterable[Any]:
+              method = getattr(client, method_name)
+              paginator = None
+              try:
+                  paginator = client.get_paginator(method_name)
+              except Exception:
+                  paginator = None
+              if paginator is None:
+                  yield from method(**kwargs).get(result_key, [])
+                  return
+              for page in paginator.paginate(**kwargs):
+                  yield from page.get(result_key, [])
+
+          def _region_name(arn_or_name: str) -> str:
+              return arn_or_name.split("/")[-1]
+
+          def _tag_value(tags: Iterable[Dict[str, Any]], key: str) -> str:
+              for tag in tags or []:
+                  if tag.get("Key") == key or tag.get("key") == key:
+                      return str(tag.get("Value") or tag.get("value") or "")
+              return ""
+
+          def _matches(name: str, tags: Optional[Iterable[Dict[str, Any]]] = None) -> bool:
+              scope = os.environ.get("GUARD_SCOPE", "prefix")
+              if scope == "account":
+                  return True
+              prefix = os.environ.get("RESOURCE_PREFIX", "kbo-fans").lower()
+              candidates = [name or "", _tag_value(tags or [], "Name")]
+              for tag in tags or []:
+                  candidates.append(str(tag.get("Value") or tag.get("value") or ""))
+              return any(candidate.lower().startswith(prefix) for candidate in candidates if candidate)
+
+          def _regions() -> List[str]:
+              configured = os.environ.get("TARGET_REGIONS", "ap-northeast-2,us-east-1")
+              if configured.strip().lower() != "all":
+                  return _csv(configured)
+              ec2 = boto3.client("ec2", region_name="us-east-1")
+              return [r["RegionName"] for r in ec2.describe_regions(AllRegions=False)["Regions"]]
+
+          def _month_bounds(today: dt.date) -> Dict[str, str]:
+              start = today.replace(day=1)
+              last_day = calendar.monthrange(today.year, today.month)[1]
+              end = today.replace(day=last_day) + dt.timedelta(days=1)
+              return {"start": start.isoformat(), "today": today.isoformat(), "end": end.isoformat()}
+
+          def _budget_spend(account_id: str, budget_name: str) -> Dict[str, float]:
+              budgets = boto3.client("budgets", region_name="us-east-1")
+              budget = budgets.describe_budget(AccountId=account_id, BudgetName=budget_name)["Budget"]
+              spend = budget.get("CalculatedSpend", {})
+              return {
+                  "budget_actual": _float(spend.get("ActualSpend", {}).get("Amount")),
+                  "budget_forecast": _float(spend.get("ForecastedSpend", {}).get("Amount")),
+              }
+
+          def _cost_explorer_spend(today: dt.date) -> Dict[str, float]:
+              bounds = _month_bounds(today)
+              ce = boto3.client("ce", region_name="us-east-1")
+              values = {"ce_actual": 0.0, "ce_forecast_remainder": 0.0}
+              if bounds["start"] < bounds["today"]:
+                  actual = ce.get_cost_and_usage(
+                      TimePeriod={"Start": bounds["start"], "End": bounds["today"]},
+                      Granularity="MONTHLY",
+                      Metrics=["UnblendedCost"],
+                  )
+                  totals = actual.get("ResultsByTime", [{}])[0].get("Total", {})
+                  values["ce_actual"] = _float(totals.get("UnblendedCost", {}).get("Amount"))
+              if bounds["today"] < bounds["end"]:
+                  forecast = ce.get_cost_forecast(
+                      TimePeriod={"Start": bounds["today"], "End": bounds["end"]},
+                      Metric="UNBLENDED_COST",
+                      Granularity="MONTHLY",
+                  )
+                  values["ce_forecast_remainder"] = _float(forecast.get("Total", {}).get("Amount"))
+              values["ce_projected_total"] = values["ce_actual"] + values["ce_forecast_remainder"]
+              return values
+
+          def _threshold_reached(event: Dict[str, Any]) -> Dict[str, Any]:
+              threshold = _float(os.environ.get("THRESHOLD_USD", "10"))
+              account_id = boto3.client("sts").get_caller_identity()["Account"]
+              checks: Dict[str, Any] = {"threshold": threshold, "sns_budget_trigger": bool(event.get("Records"))}
+              try:
+                  checks.update(_budget_spend(account_id, os.environ["BUDGET_NAME"]))
+              except Exception as exc:
+                  checks["budget_error"] = f"{type(exc).__name__}: {exc}"
+              try:
+                  checks.update(_cost_explorer_spend(dt.date.today()))
+              except Exception as exc:
+                  checks["ce_error"] = f"{type(exc).__name__}: {exc}"
+              numeric_values = [
+                  value
+                  for key, value in checks.items()
+                  if key not in ("threshold", "sns_budget_trigger") and isinstance(value, (int, float))
+              ]
+              checks["reached"] = checks["sns_budget_trigger"] or any(value >= threshold for value in numeric_values)
+              return checks
+
+          def _stop_ec2(region: str, actions: List[str]) -> None:
+              ec2 = boto3.client("ec2", region_name=region)
+              ids: List[str] = []
+              reservations = ec2.describe_instances(
+                  Filters=[{"Name": "instance-state-name", "Values": ["pending", "running"]}]
+              ).get("Reservations", [])
+              for reservation in reservations:
+                  for instance in reservation.get("Instances", []):
+                      tags = instance.get("Tags", [])
+                      name = _tag_value(tags, "Name") or instance.get("InstanceId", "")
+                      if _matches(name, tags):
+                          ids.append(instance["InstanceId"])
+              if ids:
+                  ec2.stop_instances(InstanceIds=ids)
+                  actions.append(f"{region}:ec2:stop:{','.join(ids)}")
+
+          def _stop_autoscaling(region: str, actions: List[str]) -> None:
+              autoscaling = boto3.client("autoscaling", region_name=region)
+              for group in _page(autoscaling, "describe_auto_scaling_groups", "AutoScalingGroups"):
+                  name = group["AutoScalingGroupName"]
+                  if _matches(name, group.get("Tags", [])):
+                      autoscaling.update_auto_scaling_group(
+                          AutoScalingGroupName=name,
+                          MinSize=0,
+                          MaxSize=0,
+                          DesiredCapacity=0,
+                      )
+                      actions.append(f"{region}:autoscaling:zero:{name}")
+
+          def _stop_ecs(region: str, actions: List[str]) -> None:
+              ecs = boto3.client("ecs", region_name=region)
+              for cluster in _page(ecs, "list_clusters", "clusterArns"):
+                  cluster_name = _region_name(cluster)
+                  cluster_match = _matches(cluster_name)
+                  service_arns = list(_page(ecs, "list_services", "serviceArns", cluster=cluster))
+                  for index in range(0, len(service_arns), 10):
+                      services = ecs.describe_services(cluster=cluster, services=service_arns[index:index + 10]).get("services", [])
+                      for service in services:
+                          service_name = service["serviceName"]
+                          if cluster_match or _matches(service_name):
+                              ecs.update_service(cluster=cluster, service=service_name, desiredCount=0)
+                              actions.append(f"{region}:ecs:desired0:{cluster_name}/{service_name}")
+                              tasks = list(_page(ecs, "list_tasks", "taskArns", cluster=cluster, serviceName=service_name, desiredStatus="RUNNING"))
+                              for task in tasks:
+                                  ecs.stop_task(cluster=cluster, task=task, reason="KBO Fans cost guard threshold reached")
+                                  actions.append(f"{region}:ecs:stop-task:{_region_name(task)}")
+
+          def _stop_lightsail(region: str, actions: List[str]) -> None:
+              lightsail = boto3.client("lightsail", region_name=region)
+              destructive = os.environ.get("DESTRUCTIVE_MODE", "false") == "true"
+              delete_instances = os.environ.get("DELETE_LIGHTSAIL_INSTANCES", "false") == "true"
+              for instance in _page(lightsail, "get_instances", "instances"):
+                  name = instance["name"]
+                  tags = instance.get("tags", [])
+                  if not _matches(name, tags):
+                      continue
+                  if destructive and delete_instances:
+                      try:
+                          lightsail.delete_instance(instanceName=name, forceDeleteAddOns=True)
+                      except TypeError:
+                          lightsail.delete_instance(instanceName=name)
+                      actions.append(f"{region}:lightsail:delete:{name}")
+                  elif instance.get("state", {}).get("name") == "running":
+                      lightsail.stop_instance(instanceName=name)
+                      actions.append(f"{region}:lightsail:stop:{name}")
+              if destructive and delete_instances:
+                  for static_ip in _page(lightsail, "get_static_ips", "staticIps"):
+                      name = static_ip.get("name", "")
+                      if _matches(name) and not static_ip.get("isAttached"):
+                          lightsail.release_static_ip(staticIpName=name)
+                          actions.append(f"{region}:lightsail:release-static-ip:{name}")
+
+          def _stop_rds(region: str, actions: List[str]) -> None:
+              rds = boto3.client("rds", region_name=region)
+              for instance in _page(rds, "describe_db_instances", "DBInstances"):
+                  identifier = instance["DBInstanceIdentifier"]
+                  engine = instance.get("Engine", "")
+                  status = instance.get("DBInstanceStatus", "")
+                  if _matches(identifier) and status == "available" and not engine.startswith("aurora"):
+                      rds.stop_db_instance(DBInstanceIdentifier=identifier)
+                      actions.append(f"{region}:rds:stop:{identifier}")
+
+          def _pause_apprunner(region: str, actions: List[str]) -> None:
+              apprunner = boto3.client("apprunner", region_name=region)
+              for service in _page(apprunner, "list_services", "ServiceSummaryList"):
+                  name = service.get("ServiceName", "")
+                  if _matches(name) and service.get("Status") == "RUNNING":
+                      apprunner.pause_service(ServiceArn=service["ServiceArn"])
+                      actions.append(f"{region}:apprunner:pause:{name}")
+
+          def _delete_configured_stacks(region: str, actions: List[str]) -> None:
+              if os.environ.get("DESTRUCTIVE_MODE", "false") != "true":
+                  return
+              cloudformation = boto3.client("cloudformation", region_name=region)
+              for stack_name in _csv(os.environ.get("DELETE_CLOUDFORMATION_STACKS", "")):
+                  try:
+                      stack = cloudformation.describe_stacks(StackName=stack_name)["Stacks"][0]
+                  except ClientError as exc:
+                      if "does not exist" in str(exc):
+                          continue
+                      raise
+                  status = stack.get("StackStatus", "")
+                  if status.endswith("COMPLETE") and not status.startswith("DELETE_"):
+                      cloudformation.delete_stack(StackName=stack_name)
+                      actions.append(f"{region}:cloudformation:delete:{stack_name}")
+
+          def _shutdown_runtime() -> List[str]:
+              actions: List[str] = []
+              for region in _regions():
+                  for operation in (
+                      _stop_autoscaling,
+                      _stop_ecs,
+                      _stop_ec2,
+                      _stop_rds,
+                      _pause_apprunner,
+                      _stop_lightsail,
+                      _delete_configured_stacks,
+                  ):
+                      try:
+                          operation(region, actions)
+                      except EndpointConnectionError:
+                          actions.append(f"{region}:{operation.__name__}:skip:endpoint-unavailable")
+                      except Exception as exc:
+                          actions.append(f"{region}:{operation.__name__}:error:{type(exc).__name__}:{exc}")
+              return actions
+
+          def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+              checks = _threshold_reached(event)
+              print(json.dumps({"cost_guard": "checks", **checks}, sort_keys=True))
+              if not checks["reached"]:
+                  return {"status": "below-threshold", "checks": checks, "actions": []}
+              actions = _shutdown_runtime()
+              print(json.dumps({"cost_guard": "shutdown", "actions": actions}, sort_keys=True))
+              return {"status": "threshold-reached", "checks": checks, "actions": actions}
+
+  BudgetTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref BudgetTopic
+      Protocol: lambda
+      Endpoint: !GetAtt CostGuardFunction.Arn
+
+  AllowSnsInvokeCostGuard:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CostGuardFunction
+      Action: lambda:InvokeFunction
+      Principal: sns.amazonaws.com
+      SourceArn: !Ref BudgetTopic
+
+  ScheduledCostGuardRule:
+    Type: AWS::Events::Rule
+    Condition: ScheduledCheckEnabled
+    Properties:
+      Name: !Sub "${BudgetName}-scheduled-check"
+      Description: Periodically re-check AWS month-to-date and forecasted costs.
+      ScheduleExpression: !Ref ScheduleExpression
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt CostGuardFunction.Arn
+          Id: CostGuardLambda
+          Input: '{"source":"eventbridge","reason":"scheduled-cost-check"}'
+
+  AllowEventsInvokeCostGuard:
+    Type: AWS::Lambda::Permission
+    Condition: ScheduledCheckEnabled
+    Properties:
+      FunctionName: !Ref CostGuardFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduledCostGuardRule.Arn
+
+Outputs:
+  BudgetName:
+    Value: !Ref BudgetName
+  BudgetTopicArn:
+    Value: !Ref BudgetTopic
+  GuardFunctionName:
+    Value: !Ref CostGuardFunction
+  GuardScope:
+    Value: !Ref GuardScope
+  TargetRegions:
+    Value: !Ref TargetRegions

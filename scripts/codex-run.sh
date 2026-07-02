@@ -36,6 +36,7 @@ Usage:
   ./scripts/codex-run.sh aws-push-demo-deploy [--dry-run]
   ./scripts/codex-run.sh aws-push-tooling
   ./scripts/codex-run.sh aws-github-oidc-role [--env-file /path/to/kbo-fans-aws.env] [--dry-run]
+  ./scripts/codex-run.sh aws-cost-guard-deploy [--apply] [--invoke-now]
   ./scripts/codex-run.sh push-demo-env-bootstrap [--output /tmp/kbo-fans-aws.env] [--repo owner/repo] [--force]
   ./scripts/codex-run.sh push-demo-setup-status [--env-file /tmp/kbo-fans-aws.env] [--repo owner/repo]
   ./scripts/codex-run.sh push-demo-audit [--env-file /path/to/kbo-fans-aws.env]
@@ -70,6 +71,7 @@ Commands:
   aws-push-demo-deploy  Run the secret/image/stack/output/readiness pipeline
   aws-push-tooling  Check local AWS CLI and Docker daemon availability
   aws-github-oidc-role  Create the GitHub Actions OIDC AWS role for push deploy
+  aws-cost-guard-deploy  Deploy or dry-run the USD 10 actual/forecast cost guard
   push-demo-env-bootstrap  Create a local push demo env starter file
   push-demo-setup-status  Create/check the local push demo setup status without deploying
   push-demo-audit  Audit iPhone-only push demo readiness without deploying
@@ -682,6 +684,10 @@ run_aws_github_oidc_role() {
   bash "$ROOT_DIR/scripts/aws-github-oidc-role.sh" "$@"
 }
 
+run_aws_cost_guard_deploy() {
+  bash "$ROOT_DIR/scripts/aws-cost-guard-deploy.sh" "$@"
+}
+
 run_push_demo_env_bootstrap() {
   bash "$ROOT_DIR/scripts/push-demo-env-bootstrap.sh" "$@"
 }
@@ -1129,6 +1135,9 @@ main() {
       ;;
     aws-github-oidc-role)
       run_aws_github_oidc_role "${@:2}"
+      ;;
+    aws-cost-guard-deploy)
+      run_aws_cost_guard_deploy "${@:2}"
       ;;
     push-demo-env-bootstrap)
       run_push_demo_env_bootstrap "${@:2}"

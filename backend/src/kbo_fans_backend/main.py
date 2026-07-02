@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -14,7 +15,7 @@ _SLOW_REQUEST_WARNING_MS = 800
 
 
 def _configure_logging() -> None:
-    log_dir = Path(__file__).resolve().parents[2] / "logs"
+    log_dir = Path(os.getenv("LOG_DIR", Path(__file__).resolve().parents[2] / "logs"))
     log_dir.mkdir(parents=True, exist_ok=True)
 
     app_logger = logging.getLogger("kbo_fans_backend")

@@ -10,7 +10,7 @@ iOS와 Android를 대상으로 하며, 오늘 경기 스코어보드와 마이�
 - State management: Riverpod
 - Navigation: go_router
 - HTTP: dio
-- Infra target: AWS ECS/Fargate for backend API service and sync worker
+- Infra target: AWS Lightsail single-instance backend for low-cost tester operation; ECS/Fargate remains the scale-out path
 - Push: Firebase Cloud Messaging + APNs ActivityKit Live Activity push
 
 ## Current Scope
@@ -70,6 +70,8 @@ kbo_fans/
 - External-facing project summary and setup guide: `README.md`
 - User-visible release history: `CHANGELOG.md`
 - Versioning and release policy: `docs/VERSIONING.md`
+- Low-cost backend runbook: `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`
+- AWS cost guard runbook: `docs/AWS_COST_GUARD_RUNBOOK.md`
 
 문서 간 충돌 시 최신 결정은 `CLAUDE.md`, `docs/WORKLOG.md`, 실제 코드 기준으로 판단합니다.
 
@@ -134,6 +136,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run.sh aws-push-demo-deploy --dry-run
 ./scripts/codex-run.sh aws-push-tooling
 ./scripts/codex-run.sh aws-github-oidc-role --dry-run
+./scripts/codex-run.sh aws-cost-guard-deploy
 ./scripts/codex-run.sh push-demo-env-bootstrap --repo godekd3133/kbo-fans --force
 ./scripts/codex-run.sh push-demo-setup-status --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans
 ./scripts/codex-run.sh push-demo-audit --env-file /path/to/kbo-fans-aws.env
@@ -166,6 +169,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - AWS push stack output env 추출 액션: `./scripts/codex-run.sh aws-push-stack-outputs`
 - AWS push 통합 배포 dry-run/deploy 액션: `./scripts/codex-run.sh aws-push-demo-deploy --dry-run`
 - AWS/Docker 로컬 도구 점검 액션: `./scripts/codex-run.sh aws-push-tooling`
+- AWS 비용 guard dry-run/deploy 액션: `./scripts/codex-run.sh aws-cost-guard-deploy`
 - GitHub Actions push deploy secrets/variables 점검 또는 업로드 액션: `./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env`
 - GitHub Actions push deploy workflow 실행 액션: `./scripts/codex-run.sh github-push-demo-run --dry-run true`
 - GitHub Actions 원격 테스트 푸시 실행 액션: `./scripts/codex-run.sh github-push-test-notification-run --topic baseball_info_ALL --watch`
@@ -281,6 +285,7 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 - `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`: 배포 전 앱 Firebase 설정, iOS APNs/Live Activity capability, release `API_BASE_URL` token-registration handoff, backend secret env, AWS env 형태를 secret 값 노출 없이 점검. 필수 배포값이 obvious placeholder로 남아 있으면 실패합니다.
 - `GET /api/push/config-status`: Firebase/APNs/registry/scheduler 설정 누락을 secret 값 노출 없이 점검
 - `./scripts/push-readiness-check.sh https://api.kbofans.com/api`: 배포 후 `/health`, push config readiness, scheduler heartbeat 최신성을 한 번에 점검. 기본적으로 `scheduler.lastSyncAt`이 180초 이내여야 통과하며, 설정값만 확인할 때는 `PUSH_READINESS_REQUIRE_SCHEDULER=false`로 우회합니다. `PUSH_READINESS_RUN_SYNC=true`로 one-shot sync를 실행하면 sync 후 config-status를 다시 읽어 heartbeat를 확인합니다. 날짜를 생략하면 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용하고, 재현용 날짜가 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정합니다.
+- `./scripts/lightsail-deploy.sh`: Lightsail 512MB/1GB 단일 서버에 backend runtime bundle을 SSH/SCP로 배포하고, API service와 sync worker를 systemd로 재시작합니다. Docker/ECR/ECS/ALB/EFS/Secrets Manager를 쓰지 않는 저비용 운영 경로입니다. 상세 절차는 `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`를 기준으로 합니다.
 - `./scripts/aws-push-secrets.sh`: Firebase Admin JSON / APNs `.p8` / sync secret / KBO relay credential을 AWS Secrets Manager에 생성 또는 갱신하고 `SECRET_ARN_*` export를 생성
 - `./scripts/aws-push-image.sh`: backend Docker image를 ECR에 build/tag/push하고 `CONTAINER_IMAGE_URI` export를 생성
 - `./scripts/aws-push-task-definitions.sh`: AWS secret ARN / role ARN / ECR / EFS 값을 환경변수로 받아 ECS task definition JSON과 execution-role secret-read IAM policy를 `outputs/aws/ecs-fargate/`에 렌더링
@@ -300,7 +305,8 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 - `./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch`: GitHub Actions `Push Test Notification` workflow를 dispatch해 `PUSH_SYNC_SECRET`을 로컬에 두지 않고 원격 테스트 푸시를 보냅니다. FCM token 대상은 `--token <fcm-token>`으로 지정하며, 스크립트는 secret/token 값을 출력하지 않습니다.
 - `POST /api/push/live-activity/start-token/register`: iOS 17.2+ 앱이 ActivityKit push-to-start token과 `installationId`를 등록합니다. 운영 scheduler는 같은 설치 id의 push registration을 기준으로 마이팀/선택 경기가 KST `startTime` 10분 전 window에 들어오거나 LIVE가 되면 APNs `event=start`로 앱을 열지 않아도 Live Activity / Dynamic Island를 시작합니다.
 - `POST /api/push/live-activity/sync-scoreboard`: 운영 scheduler가 5초 간격으로 호출하는 scoreboard/relay sync trigger. 시작 10분 전 예정 경기에는 APNs start를, 등록된 Live Activity에는 APNs update/end를 보내고, scoreboard diff 기반 시작 임박/득점/역전/타석/종료/이닝 교대와 relay diff 기반 안타/홈런은 FCM topic push로 발행합니다. visible push copy는 짧은 사건명 제목과 `현재 1사 1,2루` 상황, `스코어 4:3` 점수 형식을 사용합니다.
-- AWS ECS/Fargate 시연 배포 템플릿은 `infra/aws/ecs-fargate/`와 `infra/aws/cloudformation/`에 있습니다. 권장 구조는 FastAPI API service 1개와 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` sync worker service 1개입니다.
+- Lightsail 저비용 배포 템플릿은 `infra/aws/lightsail/`에 있습니다. 512MB plan에서는 Docker 없이 Python venv + systemd로 API와 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` worker를 같은 인스턴스에서 실행합니다.
+- AWS ECS/Fargate 시연 배포 템플릿은 `infra/aws/ecs-fargate/`와 `infra/aws/cloudformation/`에 있습니다. 이 경로는 ALB/EFS/ECR/Secrets Manager가 필요한 확장/고가용성 경로이며, 2명 규모의 상시 tester backend 비용 절감 경로로는 Lightsail을 우선합니다.
 
 GitHub Actions 배포:
 

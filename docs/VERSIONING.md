@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.15+83`
-- Current release tag: `0.1.15`
+- Flutter app version: `0.1.16+84`
+- Current release tag: `0.1.16`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -145,6 +145,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.13`: data-loading speed release. Backend sync worker warms live scoreboard summaries into fresh-only runtime state, scoreboard routes share same-day schedule/main-list source caches, historical game/schedule/standings and past-season records reuse longer app caches, historical records/standings backend paths prefer exact snapshots before crawler calls, and current app build `0.1.13+80`.
 - `0.1.14`: home records display fix release. Home my-team brief recent results can cross month boundaries, current team-player parsing accepts KBO register headers with total counts so team home-run/rising-player highlights recover, records leaderboard errors hide internal cache keys, and current app build `0.1.14+81`.
 - `0.1.15`: game detail prefetch reinforcement release. Home and schedule game-detail entry now waits for the refreshed game plus first tab data/player image warm-up, relay player image URLs use the gameId season, boxscore rows preserve player id/image URL across backend/app contracts, and current app build `0.1.15+83`. Build `83` also preserves the last approved external TestFlight build while the newest build waits for Beta Review.
+- `0.1.16`: Lightsail backend cutover release. TestFlight build uses the Lightsail HTTPS API base URL, backend logging supports `LOG_DIR` for systemd deployments, Lightsail native runbook/systemd/Caddy deployment files and AWS cost guard are documented, and current app build `0.1.16+84`.
 
 ## GitHub Release Note Template
 

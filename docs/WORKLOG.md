@@ -2,6 +2,136 @@
 
 ---
 
+## 2026-07-02: 0.1.16 Lightsail backend cutover TestFlight 릴리즈
+
+### 결정
+- 사장님 요청: 현재 변경분을 커밋/푸시하고 GitHub Release와 TestFlight 외부테스터 배포까지 완료한다.
+- release target은 `0.1.16+84` / tag `0.1.16`으로 결정.
+- 이유: 기존 `0.1.15+83` TestFlight build는 old ALB API URL을 바라볼 수 있고, 이번 빌드는 `API_BASE_URL=https://3-39-79-1.sslip.io/api`를 주입해 Lightsail backend registry로 push / Live Activity token registration이 들어가야 한다.
+- user-facing 앱 기능 추가는 아니지만 알림, Live Activity, backend API 연결 대상이 바뀌므로 앱 내 업데이트 소식에는 “알림 연결 안정화”로만 표현한다.
+
+### 진행
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.16+84` 기준으로 갱신.
+- [ ] Git commit/push 완료.
+- [ ] tag/GitHub Release `0.1.16` 생성.
+- [ ] iOS IPA build / TestFlight upload / Apple processing 확인.
+- [ ] `External Testers` 최신 build 연결. 최신 build 승인/설치 가능 확인 전까지 승인 fallback build `77`은 유지.
+- [ ] Beta App Review 제출 또는 Apple queue blocker 확인.
+
+- [x] `bash -n scripts/lightsail-deploy.sh scripts/aws-cost-guard-deploy.sh`
+- [x] `python3 -m compileall -q backend/src`
+- [x] `./scripts/lightsail-deploy.sh --dry-run --env-file infra/aws/lightsail/env.example`
+- [x] `./scripts/aws-cost-guard-deploy.sh`
+- [x] `aws cloudformation validate-template --region us-east-1 --template-body file://infra/aws/cost-guard/cost-guard-stack.yaml`
+- [x] Lightsail가 `stopped` 상태라 `start-instance` 후 `curl -fsS https://3-39-79-1.sslip.io/api/health` 통과.
+- [x] `RELEASE_API_HEALTH_DATE=2026-07-02 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api` -> `Release API health gate passed`.
+- [x] `./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api` -> `Push readiness check passed`, `readyForIphoneOnlyDemo=true`, scheduler age `4s`.
+- [x] `cd app && fvm flutter analyze --no-pub` -> `No issues found!`.
+- [x] `cd app && fvm flutter test --no-pub` -> `306 passed`.
+- [x] `git diff --check`
+- [ ] IPA build metadata: Runner/Widget version, production APNs entitlement, encryption flag, sha256.
+- [ ] TestFlight upload, Apple `VALID`, External Testers group builds, installability fallback.
+
+---
+
+## 2026-07-02: ECS/Fargate AWS runtime 정리 및 Lightsail push 검증
+
+### 결정
+- 사장님 요청: Lightsail native backend로 전환했으므로 더 이상 필요 없는 AWS ECS/Fargate/ALB/EFS/ECR/Secrets 리소스를 제거한다.
+- 유지 대상은 Lightsail 인스턴스 `kbo-fans-api-lightsail`, static IP `3.39.79.1`, tester용 HTTPS `https://3-39-79-1.sslip.io/api`다.
+- 기존 TestFlight build가 old ALB 주소를 보고 있으면 push token 등록이 새 Lightsail registry로 들어오지 않으므로, 다음 TestFlight build는 `RELEASE_API_BASE_URL=https://3-39-79-1.sslip.io/api` 기준으로 배포해야 한다.
+
+### 진행
+- [x] `us-east-1`의 old runtime stack `kbo-fans-push-demo` 삭제.
+- [x] `kbo-fans-backend` ECR repository 삭제.
+- [x] ECS/Fargate용 AWS Secrets Manager secret 5개 삭제: Firebase Admin JSON, APNs auth key, push sync secret, KBO relay user id/password.
+- [x] GitHub Actions AWS OIDC stack `kbo-fans-github-actions-oidc` 삭제.
+- [x] Lightsail 전환 후 불필요해진 cost guard stack `kbo-fans-cost-guard` 삭제.
+- [x] CloudFormation 삭제 후 남은 cost guard Lambda/SNS/EventBridge/Budget/IAM role 잔여 리소스를 서비스별로 수동 삭제.
+- [x] GitHub Actions의 old AWS deploy variables/secrets 제거: `AWS_REGION`, `ECR_REPOSITORY_URI`, `ENABLE_HTTPS`, `PUBLIC_SUBNET_A_ID`, `PUBLIC_SUBNET_B_ID`, `VPC_ID`, `AWS_ROLE_TO_ASSUME`.
+- [x] cleanup 중 `kbo-fans-api-lightsail`이 stopped 상태로 확인되어 다시 start했고, `caddy`, `kbo-fans-api`, `kbo-fans-sync-worker`가 모두 active인지 확인.
+
+### 검증
+- [x] `aws cloudformation describe-stacks --stack-name kbo-fans-push-demo --region us-east-1` -> stack not found.
+- [x] `aws ecr describe-repositories --repository-names kbo-fans-backend --region us-east-1` -> repository not found.
+- [x] `aws secretsmanager list-secrets --region us-east-1 --filters Key=name,Values=/kbo-fans` -> `[]`.
+- [x] `aws elbv2 describe-load-balancers --names kbo-fans-api --region us-east-1` -> load balancer not found.
+- [x] `aws ecs list-clusters --region us-east-1` kbo filter -> `[]`.
+- [x] `aws logs describe-log-groups --log-group-name-prefix /ecs/kbo-fans-backend --region us-east-1` -> `[]`.
+- [x] `aws ec2 describe-nat-gateways` / `aws ec2 describe-addresses` in `us-east-1` -> `[]` / `[]`.
+- [x] kbo cost guard Lambda/SNS/EventBridge/Budget/IAM role 조회 -> all removed / role not found.
+- [x] `aws lightsail get-instance-state --instance-name kbo-fans-api-lightsail --region ap-northeast-2` -> `running`.
+- [x] `curl -fsS https://3-39-79-1.sslip.io/api/health` -> `{"success":true,"data":{"status":"ok"}}`.
+- [x] `ssh ubuntu@3.39.79.1 'systemctl is-active caddy kbo-fans-api kbo-fans-sync-worker'` -> all `active`.
+- [x] `PUSH_SYNC_SECRET=<redacted> ./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api` -> `Push readiness check passed`, `readyForIphoneOnlyDemo=true`, scheduler age `3s`.
+
+---
+
+## 2026-07-02: AWS 10달러 cost guard 추가
+
+### 결정
+- 사장님 요청: AWS 실제 청구 비용 또는 예상 비용이 USD 10 이상으로 나오면 즉시 서비스를 중단한다.
+- AWS Cost Explorer / Budgets 비용 데이터는 실시간 hard cap이 아니므로, 기준은 "AWS가 actual/forecast 초과를 관측하는 즉시 runtime shutdown"으로 둔다.
+- AWS에는 계정 전체 서비스를 보편적으로 stop하는 단일 API가 없어서, 기본 guard 범위는 `kbo-fans` 이름/태그가 붙은 런타임 resource로 제한한다.
+- Lightsail stopped 상태와 ALB/EFS/VPC 같은 고정비 resource는 계속 비용이 날 수 있어, hard emergency에서는 destructive mode와 old CloudFormation stack deletion을 명시적으로 사용한다.
+
+### 진행
+- [x] USD 10 monthly budget, actual/forecast 100% SNS notification, Lambda, EventBridge scheduled check를 만드는 `infra/aws/cost-guard/cost-guard-stack.yaml` 추가.
+- [x] `scripts/aws-cost-guard-deploy.sh`와 `./scripts/codex-run.sh aws-cost-guard-deploy` 진입점 추가.
+- [x] `docs/AWS_COST_GUARD_RUNBOOK.md` 추가.
+- [x] README, AGENTS, CLAUDE, engineering notes, Lightsail runbook에 cost guard 운영 기준 동기화.
+
+### 검증
+- [x] `bash -n scripts/aws-cost-guard-deploy.sh`
+- [x] `./scripts/aws-cost-guard-deploy.sh` dry-run: stack `kbo-fans-cost-guard`, threshold USD 10, scope `prefix`, target regions `ap-northeast-2,us-east-1`.
+- [x] Lambda inline Python syntax extraction check: `lambda_inline_python=status=ok`.
+- [x] `aws cloudformation validate-template --region us-east-1 --template-body file://infra/aws/cost-guard/cost-guard-stack.yaml`.
+- [x] `./scripts/aws-cost-guard-deploy.sh --apply --invoke-now --threshold-usd 10 --resource-prefix kbo-fans --scope prefix --target-regions ap-northeast-2,us-east-1`.
+- [x] 첫 배포 후 CloudTrail에서 root AWS CLI가 Lambda/SNS/EventBridge/IAM guard resources를 삭제한 흔적을 확인했고, drifted stack을 delete/recreate로 복구.
+- [x] 최종 guard stack `CREATE_COMPLETE`, drift detection `IN_SYNC`, drifted resource count `0`.
+- [x] 최종 AWS Budget list: `kbo-fans-cost-kill-switch` limit USD 10, actual USD 0.834, forecast USD 68.472.
+- [x] Lambda immediate check 결과: threshold reached, Cost Explorer projected total USD 69.30664699446895.
+- [x] `aws lambda get-function --region us-east-1 --function-name kbo-fans-cost-kill-switch-lambda` -> state `Active`.
+- [x] EventBridge rule `kbo-fans-cost-kill-switch-scheduled-check` -> `ENABLED`, `rate(15 minutes)`.
+- [x] Lightsail `kbo-fans-api-lightsail` -> `stopped`.
+- [x] Fixed-cost follow-up: `kbo-fans` CloudFormation stack은 cost guard만 남음. us-east-1 `kbo-fans` ALB/EFS 없음. us-east-1/ap-northeast-2 ECS cluster 없음.
+
+---
+
+## 2026-07-02: Lightsail 저비용 backend 운영 경로 추가
+
+### 결정
+- 사장님 목표: 2명 안팎 tester 운영 비용을 1인 월 5달러 이하로 낮춘다.
+- AWS 비용 화면 기준 6월 비용 대부분이 ECS/Fargate, Load Balancing, VPC/public IPv4 고정비에서 발생했다.
+- 기능을 줄이지 않고 API-backed data, push notification, Live Activity / Dynamic Island sync를 유지하려면 Docker/ECS/ALB/EFS를 제거하고 Lightsail 단일 인스턴스에서 API와 sync worker를 systemd로 실행하는 경로가 가장 낮은 변경 비용이다.
+
+### 진행
+- [x] Lightsail native env 예시, Caddy reverse proxy 예시, `kbo-fans-api` / `kbo-fans-sync-worker` systemd unit을 `infra/aws/lightsail/`에 추가.
+- [x] backend runtime bundle을 SSH/SCP로 배포하고 서버에서 Python venv + systemd로 재시작하는 `scripts/lightsail-deploy.sh`를 추가.
+- [x] 저비용 운영 runbook `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`를 추가하고, 512MB -> 1GB 승급 기준, readiness 확인, ECS/Fargate cutover 순서를 문서화.
+- [x] README, AGENTS, CLAUDE, backend README, engineering notes, push/Live Activity backend setup, repo-local Live Activity skill을 Lightsail 우선 / ECS-Fargate 확장 경로 기준으로 동기화.
+- [x] Lightsail static IP `3.39.79.1`에 backend API와 push / Live Activity sync worker를 native systemd로 배포.
+- [x] 512MB 인스턴스 첫 배포 안정화를 위해 1GB swapfile을 추가.
+- [x] wheel 설치 후 로그 경로가 venv 내부로 잡히는 문제를 `LOG_DIR=/var/log/kbo-fans` 운영 env로 분리해 수정.
+- [x] AWS 유료 DNS 없이 tester용 HTTPS를 쓰기 위해 Caddy를 `https://3-39-79-1.sslip.io` -> `127.0.0.1:8000` reverse proxy로 설정.
+- [x] release tree가 root-owned라 `/home` aggregate의 schedule snapshot 저장이 실패하던 문제를 `SNAPSHOT_DIR=/var/lib/kbo-fans/snapshots`로 분리해 수정.
+
+### 검증
+- [x] `bash -n scripts/lightsail-deploy.sh`
+- [x] `python3 -m compileall -q backend/src`
+- [x] `./scripts/lightsail-deploy.sh --dry-run --env-file /tmp/kbo-fans-lightsail.env ...`
+- [x] `ssh ubuntu@3.39.79.1 'curl -fsS http://127.0.0.1:8000/api/health'` -> `{"success":true,"data":{"status":"ok"}}`
+- [x] `curl -fsS http://3.39.79.1/api/health` -> `{"success":true,"data":{"status":"ok"}}`
+- [x] `ALLOW_INSECURE_PUSH_READINESS=true ./scripts/push-readiness-check.sh http://3.39.79.1/api` -> `Push readiness check passed`, scheduler age `2s`.
+- [x] `systemctl is-active kbo-fans-api kbo-fans-sync-worker caddy` -> all `active`.
+- [x] `curl -fsS https://3-39-79-1.sslip.io/api/health` -> `{"success":true,"data":{"status":"ok"}}`
+- [x] `PUSH_SYNC_SECRET=<redacted> ./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api` -> `Push readiness check passed`, TLS `ok`, scheduler age `0s`.
+- [x] `RELEASE_API_HEALTH_DATE=2026-07-02 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api` -> `Release API health gate passed`.
+- [ ] 다음 TestFlight build는 `API_BASE_URL=https://3-39-79-1.sslip.io/api`로 주입 필요.
+- [ ] 장기 운영 전에는 `api.kbofans.com` 또는 사장님 소유 도메인으로 전환하는 것이 안전하다. 현재 `sslip.io`는 비용 0원 tester용 임시 DNS 의존성이다.
+
+---
+
 ## 2026-07-02: External Testers 임시 승인 빌드 복구
 
 ### 원인

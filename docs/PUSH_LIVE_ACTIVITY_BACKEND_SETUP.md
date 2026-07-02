@@ -60,7 +60,7 @@ PUSH_SYNC_SECRET=<long-random-secret>
 PUSH_SYNC_INTERVAL_SECONDS=5
 ```
 
-AWS ECS/Fargate에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`과 `APNS_AUTH_KEY_P8`을 AWS Secrets Manager에서 환경변수로 주입하는 방식을 권장한다. 로컬/EC2 파일 배포에서는 기존처럼 `FIREBASE_SERVICE_ACCOUNT_PATH`, `APNS_AUTH_KEY_PATH`를 사용할 수 있다.
+Lightsail/EC2 file secret 배포에서는 `FIREBASE_SERVICE_ACCOUNT_PATH`, `APNS_AUTH_KEY_PATH`를 사용한다. 현재 저비용 tester 운영 목표는 Lightsail 512MB native systemd 경로이며, secret 파일은 `/etc/kbo-fans/`, registry는 `/var/lib/kbo-fans/`에 둔다. AWS ECS/Fargate에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`과 `APNS_AUTH_KEY_P8`을 AWS Secrets Manager에서 환경변수로 주입하는 방식을 권장한다.
 
 개발/실기기 debug에서는 `APNS_USE_SANDBOX=true`를 쓴다. TestFlight / App Store 시연은 `APNS_USE_SANDBOX=false`가 필요하다.
 
@@ -75,9 +75,50 @@ APNS_AUTH_KEY_FILE=/path/AuthKey_<KEY_ID>.p8 \
 
 이 스크립트는 secret 값을 출력하지 않고, task definition renderer에서 쓸 `SECRET_ARN_*` export를 출력하고 `outputs/aws/ecs-fargate/secrets.env`에 저장한다.
 
-## AWS 배포 권장안
+## Lightsail 저비용 배포 권장안
 
-가장 단순한 시연용 구조:
+2명 안팎의 상시 tester 운영은 ECS/Fargate보다 Lightsail 단일 인스턴스를 우선한다. 목표는 512MB Linux public IPv4 plan에서 API와 sync worker를 함께 돌리는 것이다. 메모리 부족, OOM, worker 반복 restart가 확인되면 같은 static IP를 유지한 채 1GB plan으로 올린다.
+
+구조:
+
+1. Lightsail Linux 인스턴스 1대
+2. Lightsail static IP를 인스턴스에 attached 상태로 유지
+3. `api.kbofans.com` DNS를 static IP로 연결하거나, tester 단계에서는 무료 wildcard DNS `https://<ip-with-dashes>.sslip.io` 사용
+4. Caddy가 HTTPS를 terminate하고 `127.0.0.1:8000`으로 reverse proxy
+5. FastAPI API service는 `kbo-fans-api.service`
+6. 5초 sync worker는 `kbo-fans-sync-worker.service`
+7. file secret은 `/etc/kbo-fans/`, runtime registry는 `/var/lib/kbo-fans/`
+
+준비 파일:
+
+```bash
+cp infra/aws/lightsail/env.example /tmp/kbo-fans-lightsail.env
+$EDITOR /tmp/kbo-fans-lightsail.env
+```
+
+배포:
+
+```bash
+./scripts/lightsail-deploy.sh \
+  --host ubuntu@<lightsail-ip-or-host> \
+  --env-file /tmp/kbo-fans-lightsail.env \
+  --firebase-service-account /path/to/firebase-service-account.json \
+  --apns-auth-key /path/to/AuthKey_<KEY_ID>.p8 \
+  --domain 3-39-79-1.sslip.io
+```
+
+검증:
+
+```bash
+PUSH_SYNC_SECRET=<long-random-secret> \
+./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api
+```
+
+상세 운영 절차와 ECS/Fargate에서 넘어오는 cutover 순서는 `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`를 기준으로 한다. 기존 TestFlight build가 old ALB URL을 포함할 수 있으므로, Lightsail endpoint 검증과 새 `API_BASE_URL` build 설치 확인 전에는 기존 CloudFormation stack을 삭제하지 않는다.
+
+## AWS ECS/Fargate 확장 배포 경로
+
+고가용성이나 scale-out이 필요한 경우 ECS/Fargate 구조를 쓴다.
 
 1. AWS ECS Fargate 또는 EC2에 FastAPI backend 배포
 2. HTTPS 도메인 연결

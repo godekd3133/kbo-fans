@@ -135,6 +135,16 @@ Provision ALB / ECS / EFS / IAM as one CloudFormation stack:
 ./scripts/aws-push-demo-deploy.sh
 ```
 
+Install the USD 10 actual/forecast AWS cost guard before leaving paid runtime
+services on:
+
+```bash
+./scripts/aws-cost-guard-deploy.sh --apply --invoke-now
+```
+
+Use `docs/AWS_COST_GUARD_RUNBOOK.md` for strict emergency mode and fixed-cost
+resource cleanup.
+
 Manual stage commands:
 
 ```bash
@@ -164,6 +174,26 @@ Long-running sync worker for ECS/Fargate service deployments:
 ```bash
 python -m kbo_fans_backend.scheduler.live_activity_sync_loop
 ```
+
+## Lightsail native deploy
+
+For low-cost tester operation, the repository supports a Docker-free Lightsail
+path:
+
+```bash
+cp infra/aws/lightsail/env.example /tmp/kbo-fans-lightsail.env
+./scripts/lightsail-deploy.sh \
+  --host ubuntu@<lightsail-ip-or-host> \
+  --env-file /tmp/kbo-fans-lightsail.env \
+  --firebase-service-account /path/firebase-service-account.json \
+  --apns-auth-key /path/AuthKey_<KEY_ID>.p8 \
+  --domain api.kbofans.com
+```
+
+This installs the backend into `/opt/kbo-fans`, stores file secrets under
+`/etc/kbo-fans`, stores runtime registry state under `/var/lib/kbo-fans`, and
+runs both `kbo-fans-api` and `kbo-fans-sync-worker` through systemd. See
+`docs/LIGHTSAIL_BACKEND_RUNBOOK.md` for cutover and verification.
 
 ## Docker
 

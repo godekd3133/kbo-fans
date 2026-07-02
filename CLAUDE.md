@@ -81,11 +81,13 @@ kbo_fans/
 - direct KBO mode는 명시적 parser parity/debug 경로로만 유지한다. 일반 local/dev/release/web/native 빌드나 tester-facing artifact의 기본값으로 쓰지 않는다
 - 앱 종료 후 일반 푸시와 iOS Live Activity / Dynamic Island를 계속 갱신하는 기능은 운영 백엔드가 KBO 상태를 polling하고 FCM/APNs로 발송해야 한다
 - release build는 화면 데이터와 push / Live Activity token registration 모두 운영 backend API 기준으로 검증한다. 운영 `API_BASE_URL`과 backend health/readiness를 함께 확인한다
-- AWS ECS/Fargate 시연 배포는 `infra/aws/ecs-fargate/`의 API service + sync worker service 템플릿을 기준으로 한다. Secrets Manager 값은 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` env로 주입한다
+- 2명 안팎의 저비용 tester 운영은 Lightsail 512MB native systemd 경로를 우선한다. `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`, `infra/aws/lightsail/`, `./scripts/lightsail-deploy.sh` 기준으로 FastAPI API service와 sync worker를 한 인스턴스에서 실행하고, file secret은 `/etc/kbo-fans/`, registry는 `/var/lib/kbo-fans/`를 사용한다
+- AWS ECS/Fargate 시연/확장 배포는 `infra/aws/ecs-fargate/`의 API service + sync worker service 템플릿을 기준으로 한다. Secrets Manager 값은 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` env로 주입한다
 - 시연 배포 전에는 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 앱 Firebase 파일, APNs/Live Activity capability, release `API_BASE_URL` token-registration handoff, backend secret env, AWS env 형태를 secret 출력 없이 점검한다
 - `infra/aws/ecs-fargate/deploy.env.example`를 push preflight, 로컬 AWS 배포, GitHub Actions secrets/variables 업로드의 단일 checklist로 사용한다. untracked env 파일로 복사한 뒤 파일 안 주석을 따라 placeholder를 모두 실제 값으로 바꾸고 `--apply`를 실행한다
 - push demo 준비 흐름이 헷갈리면 `./scripts/push-demo-setup-status.sh --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans`를 먼저 실행한다. env 초안 생성, OIDC dry-run, readiness audit, 다음 명령 안내를 묶고 배포나 workflow dispatch는 하지 않는다
 - `./scripts/push-demo-readiness-audit.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans`로 앱 파일, env checklist, 로컬 tooling, GitHub Actions 입력값, 최신 deploy run을 배포 없이 점검한다. secret 값은 출력하지 않는다
+- AWS 실제 비용 또는 예상 비용이 월 10달러에 도달하면 `./scripts/aws-cost-guard-deploy.sh` 기반 cost guard로 런타임을 중단한다. 기본 범위는 `kbo-fans` 이름/태그 resource이며, account-wide 또는 destructive mode는 해당 AWS 계정이 이 프로젝트 전용이거나 고정비 resource 삭제가 명시적으로 필요한 경우에만 쓴다
 - AWS push secret은 `./scripts/aws-push-secrets.sh`로 생성/갱신하고, 출력되는 `SECRET_ARN_*` 값을 task definition 렌더링에 사용한다
 - backend ECR image는 `./scripts/aws-push-image.sh`로 build/tag/push하고, 특정 tag 배포 시 `outputs/aws/ecr/image.env`의 `CONTAINER_IMAGE_URI`를 사용한다
 - ECS task definition과 execution-role secret-read policy는 placeholder JSON을 직접 편집하지 않고 `./scripts/aws-push-task-definitions.sh` 또는 `./scripts/codex-run.sh aws-push-task-defs`로 렌더링한다

@@ -10,6 +10,20 @@
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-07-02
+
+### Changed
+
+- TestFlight release build가 새 Lightsail HTTPS backend를 운영 API로 사용하도록 배포 기준을 전환
+- 저비용 tester 운영을 위해 Lightsail native systemd backend 경로, Caddy HTTPS reverse proxy, file-secret 기반 push / Live Activity 운영 runbook을 추가
+- AWS ECS/Fargate demo path와 Lightsail low-cost path를 문서와 Codex 실행 entrypoint에서 분리
+
+### Fixed
+
+- Lightsail 배포 backend가 root-owned release tree 안에 로그를 쓰려다 실패하지 않도록 `LOG_DIR` 환경변수 override를 지원
+- Lightsail snapshot 저장 경로와 June 2026 standings snapshot을 backend runtime bundle에 맞게 정리
+- AWS monthly actual/forecast cost가 USD 10에 도달하면 KBO Fans runtime resource를 중단하는 cost guard 배포 절차를 추가
+
 ## [0.1.15] - 2026-07-01
 
 ### Changed
