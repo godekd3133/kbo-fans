@@ -479,7 +479,6 @@ class PushService:
         targets = [
             f"lineup_opened_{away_team_id}",
             f"lineup_opened_{home_team_id}",
-            "lineup_opened_ALL",
         ]
         if game_id:
             targets.append(_game_topic("lineup_opened", game_id))
@@ -542,7 +541,6 @@ class PushService:
         targets = [
             f"{moment}_{away_team_id}",
             f"{moment}_{home_team_id}",
-            f"{moment}_ALL",
         ]
         if game_id:
             targets.append(_game_topic(moment, game_id))
@@ -631,20 +629,13 @@ class PushService:
         for topic_name, (setting_enabled, delivery) in topic_flags.items():
             is_game_moment = topic_name in GAME_MOMENT_TOPIC_NAMES
             sends_immediately = _sends_immediately(setting_enabled, delivery)
-            uses_all_game_topic = payload.notifications.allGames and sends_immediately
 
             if (
                 is_game_moment
                 and has_my_team
                 and _enabled_for_game_moment_topic(setting_enabled, delivery)
-                and not uses_all_game_topic
             ):
                 topics.append(f"{topic_name}_{my_team}")
-
-            if payload.notifications.allGames:
-                if sends_immediately:
-                    topics.append(f"{topic_name}_ALL")
-                continue
 
             if is_game_moment:
                 if not _enabled_for_game_moment_topic(setting_enabled, delivery):
@@ -660,9 +651,6 @@ class PushService:
 
             if has_my_team and sends_immediately:
                 topics.append(f"{topic_name}_{my_team}")
-
-        if payload.notifications.allGames:
-            topics.append("all_games_enabled")
 
         return topics
 

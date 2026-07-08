@@ -89,30 +89,33 @@ void main() {
     expect(topics, isNot(contains('inning_change_GAME_20260612KTLG0')));
   });
 
-  test('allGames가 켜진 즉시 경기 알림은 ALL 토픽만 만들어 중복 수신을 피한다', () {
+  test('allGames가 켜져 있어도 경기 moment는 마이팀과 직접 따라가는 경기만 구독한다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       allGames: true,
     );
 
-    final topics = buildPushTopics(settings: settings, myTeam: 'LG');
+    final topics = buildPushTopics(
+      settings: settings,
+      myTeam: 'LG',
+      followedGameIds: const ['20260612KTOB0'],
+    );
 
-    expect(topics, contains('scoring_ALL'));
-    expect(topics, contains('homerun_ALL'));
-    expect(topics, contains('reversal_ALL'));
-    expect(topics, contains('game_start_ALL'));
-    expect(topics, contains('game_start_soon_ALL'));
-    expect(topics, contains('hit_ALL'));
-    expect(topics, contains('at_bat_ALL'));
-    expect(topics, contains('baseball_info_ALL'));
-    expect(topics, contains('all_games_enabled'));
-    expect(topics, isNot(contains('game_start_LG')));
-    expect(topics, isNot(contains('scoring_LG')));
-    expect(topics, isNot(contains('homerun_LG')));
-    expect(topics, isNot(contains('at_bat_LG')));
-    expect(topics, isNot(contains('baseball_info_LG')));
+    expect(topics, contains('game_start_LG'));
+    expect(topics, contains('game_start_soon_LG'));
+    expect(topics, contains('scoring_LG'));
+    expect(topics, contains('hit_LG'));
+    expect(topics, contains('homerun_LG'));
+    expect(topics, contains('at_bat_LG'));
+    expect(topics, contains('lineup_opened_LG'));
+    expect(topics, contains('game_start_GAME_20260612KTOB0'));
+    expect(topics, contains('scoring_GAME_20260612KTOB0'));
+    expect(topics, contains('lineup_opened_GAME_20260612KTOB0'));
+    expect(topics, contains('baseball_info_LG'));
+    expect(topics.where((topic) => topic.endsWith('_ALL')), isEmpty);
+    expect(topics, isNot(contains('all_games_enabled')));
   });
 
-  test('allGames가 켜져도 ALL로 보내지 않는 마이팀 요약 토픽은 유지한다', () {
+  test('allGames가 켜져도 마이팀 요약 토픽은 team scope로 유지한다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       allGames: true,
       gameEndDelivery: PushNotificationDelivery.summary,
@@ -122,14 +125,15 @@ void main() {
 
     final topics = buildPushTopics(settings: settings, myTeam: 'LG');
 
-    expect(topics, contains('game_start_ALL'));
-    expect(topics, isNot(contains('game_start_LG')));
+    expect(topics, contains('game_start_LG'));
+    expect(topics, contains('game_start_soon_LG'));
     expect(topics, isNot(contains('game_end_ALL')));
     expect(topics, contains('game_end_LG'));
     expect(topics, isNot(contains('lineup_opened_ALL')));
     expect(topics, contains('lineup_opened_LG'));
     expect(topics, isNot(contains('inning_change_ALL')));
     expect(topics, contains('inning_change_LG'));
+    expect(topics.where((topic) => topic.endsWith('_ALL')), isEmpty);
   });
 
   test('따라가는 경기가 마이팀 경기이면 일반 경기 push는 마이팀 team topic으로 받는다', () {
@@ -560,6 +564,15 @@ void main() {
   test('잘못된 push route는 앱 내부 route로 사용하지 않는다', () {
     final route = pushNotificationRouteForData({
       'route': 'https://example.com/game/20260612KTLG0',
+      'gameId': '',
+    });
+
+    expect(route, isNull);
+  });
+
+  test('지원하지 않는 내부 push route도 앱 route로 사용하지 않는다', () {
+    final route = pushNotificationRouteForData({
+      'route': '/game/20260612KTLG0/extra',
       'gameId': '',
     });
 

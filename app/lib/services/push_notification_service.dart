@@ -41,6 +41,18 @@ class PushDiagnosticTestResult {
   const PushDiagnosticTestResult({required this.sent, required this.message});
 }
 
+class PushForegroundNotification {
+  final String title;
+  final String body;
+  final String? route;
+
+  const PushForegroundNotification({
+    required this.title,
+    required this.body,
+    required this.route,
+  });
+}
+
 extension PushNotificationDeliveryX on PushNotificationDelivery {
   String get storageValue => switch (this) {
     PushNotificationDelivery.immediate => 'immediate',
@@ -800,10 +812,15 @@ class PushNotificationService {
   bool _notificationsAllowed = false;
   final StreamController<String> _notificationRouteController =
       StreamController<String>.broadcast();
+  final StreamController<PushForegroundNotification>
+  _foregroundNotificationController =
+      StreamController<PushForegroundNotification>.broadcast();
   final FlutterLocalNotificationsPlugin _localPlugin =
       FlutterLocalNotificationsPlugin();
 
   Stream<String> get notificationRoutes => _notificationRouteController.stream;
+  Stream<PushForegroundNotification> get foregroundNotifications =>
+      _foregroundNotificationController.stream;
 
   void handleNotificationPayload(String? payload) {
     final route = _routeFromPushValue(payload);
@@ -813,6 +830,13 @@ class PushNotificationService {
     }
     _notificationRouteController.add(route);
     DevConsole.instance.info('Notification payload routed: $route');
+  }
+
+  @visibleForTesting
+  void emitForegroundNotificationForTesting(
+    PushForegroundNotification notification,
+  ) {
+    _foregroundNotificationController.add(notification);
   }
 
   Future<void> initialize({String? myTeam}) async {
@@ -845,7 +869,7 @@ class PushNotificationService {
       final messaging = FirebaseMessaging.instance;
       final notificationSettings = await messaging.getNotificationSettings();
       await messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
+        alert: false,
         badge: true,
         sound: true,
       );
@@ -1375,27 +1399,11 @@ class PushNotificationService {
     DevConsole.instance.info(
       'Push foreground: $title ${body.isEmpty ? '' : '· $body'}',
     );
-    if (!_notificationsAllowed ||
-        message.notification == null ||
-        defaultTargetPlatform != TargetPlatform.android) {
-      return;
-    }
-    unawaited(
-      _localPlugin.show(
-        (message.messageId ?? '${title}_$body').hashCode & 0x7fffffff,
-        title,
-        body,
-        const NotificationDetails(
-          android: AndroidNotificationDetails(
-            _channelId,
-            _channelName,
-            channelDescription: _channelDescription,
-            importance: Importance.max,
-            priority: Priority.high,
-          ),
-          iOS: DarwinNotificationDetails(),
-        ),
-        payload: route,
+    _foregroundNotificationController.add(
+      PushForegroundNotification(
+        title: title,
+        body: body,
+        route: route ?? '/notifications',
       ),
     );
   }
@@ -1629,20 +1637,9 @@ Set<String> buildPushTopics({
   topicMoments.forEach((topicName, moment) {
     final isGameMoment = _gameMomentTopicNames.contains(topicName);
     final sendsImmediately = settings.sendsImmediately(moment);
-    final usesAllGameTopic = settings.allGames && sendsImmediately;
 
-    if (isGameMoment &&
-        hasMyTeam &&
-        settings.enablesFollowedGamePush(moment) &&
-        !usesAllGameTopic) {
+    if (isGameMoment && hasMyTeam && settings.enablesFollowedGamePush(moment)) {
       topics.add('${topicName}_$normalizedMyTeam');
-    }
-
-    if (settings.allGames) {
-      if (sendsImmediately) {
-        topics.add('${topicName}_ALL');
-      }
-      return;
     }
 
     if (isGameMoment) {
@@ -1665,10 +1662,6 @@ Set<String> buildPushTopics({
       topics.add('${topicName}_$normalizedMyTeam');
     }
   });
-
-  if (settings.allGames) {
-    topics.add('all_games_enabled');
-  }
 
   return topics;
 }
@@ -1792,7 +1785,38 @@ String? _safeInternalRoute(String route) {
   if (uri.path == '/' || uri.path == '/boot' || uri.path == '/onboarding') {
     return '/home';
   }
+  if (!_validPushInternalPath(uri.path)) {
+    return null;
+  }
   return uri.toString();
+}
+
+bool _validPushInternalPath(String path) {
+  if (path == '/home' ||
+      path == '/schedule' ||
+      path == '/news' ||
+      path == '/standings' ||
+      path == '/records' ||
+      path == '/settings' ||
+      path == '/diagnostics' ||
+      path == '/release-notes' ||
+      path == '/patch-notes' ||
+      path == '/notifications') {
+    return true;
+  }
+  if (RegExp(r'^/game/[^/]+$').hasMatch(path)) {
+    return true;
+  }
+  if (RegExp(r'^/records/team/[^/]+$').hasMatch(path)) {
+    return true;
+  }
+  if (RegExp(r'^/records/player/[^/]+$').hasMatch(path)) {
+    return true;
+  }
+  if (RegExp(r'^/records/leaderboard/[^/]+$').hasMatch(path)) {
+    return true;
+  }
+  return false;
 }
 
 String? _pushString(Object? value) {

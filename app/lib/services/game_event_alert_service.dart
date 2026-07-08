@@ -23,6 +23,7 @@ class GameEventAlertService {
 
   static final GameEventAlertService instance = GameEventAlertService._();
   static const _snapshotKey = 'game_event_alert.snapshots';
+  static const _followedGameIdKey = 'live_activity.followed_game_id';
   static const _channelId = 'game_event_alerts';
   static const _channelName = '경기 이벤트 알림';
   static const _channelDescription = '경기 이벤트 로컬 알림';
@@ -140,9 +141,11 @@ class GameEventAlertService {
     final settingsSignature = _settingsSignature(settings);
     final prefs = await SharedPreferences.getInstance();
     final snapshots = _readSnapshots(prefs);
-    final trackedGames = _trackedGames(
+    final followedGameIds = _readFollowedGameIds(prefs);
+    final trackedGames = selectTrackedGameEventAlertGamesForTesting(
       games: games,
       myTeamId: myTeamId,
+      followedGameIds: followedGameIds,
       trackAllGames: settings.allGames,
     );
     final trackedGameIds = trackedGames.map((game) => game.gameId).toSet();
@@ -207,27 +210,12 @@ class GameEventAlertService {
     await _writeSnapshots(prefs, snapshots);
   }
 
-  List<Game> _trackedGames({
-    required List<Game> games,
-    required String? myTeamId,
-    required bool trackAllGames,
-  }) {
-    final filtered = games.where((game) {
-      if (game.status == GameStatus.cancelled ||
-          game.status == GameStatus.suspended) {
-        return false;
-      }
-      if (trackAllGames) {
-        return true;
-      }
-      if (myTeamId == null || myTeamId.isEmpty) {
-        return false;
-      }
-      return game.away.teamId == myTeamId || game.home.teamId == myTeamId;
-    }).toList();
-
-    filtered.sort((a, b) => a.gameId.compareTo(b.gameId));
-    return filtered;
+  List<String> _readFollowedGameIds(SharedPreferences prefs) {
+    final followedGameId = prefs.getString(_followedGameIdKey)?.trim();
+    if (followedGameId == null || followedGameId.isEmpty) {
+      return const <String>[];
+    }
+    return <String>[followedGameId];
   }
 
   Future<int?> _processRelayEvents({
@@ -931,6 +919,38 @@ bool shouldProcessLocalGameEventAlerts({
   required bool forceEnabled,
 }) {
   return !isWeb && (isLocal || forceEnabled);
+}
+
+@visibleForTesting
+List<Game> selectTrackedGameEventAlertGamesForTesting({
+  required List<Game> games,
+  required String? myTeamId,
+  required Iterable<String> followedGameIds,
+  required bool trackAllGames,
+}) {
+  final normalizedMyTeamId = myTeamId?.trim();
+  final followed = {
+    for (final gameId in followedGameIds)
+      if (gameId.trim().isNotEmpty) gameId.trim(),
+  };
+
+  final filtered = games.where((game) {
+    if (game.status == GameStatus.cancelled ||
+        game.status == GameStatus.suspended) {
+      return false;
+    }
+    if (followed.contains(game.gameId)) {
+      return true;
+    }
+    if (normalizedMyTeamId == null || normalizedMyTeamId.isEmpty) {
+      return false;
+    }
+    return game.away.teamId == normalizedMyTeamId ||
+        game.home.teamId == normalizedMyTeamId;
+  }).toList();
+
+  filtered.sort((a, b) => a.gameId.compareTo(b.gameId));
+  return filtered;
 }
 
 @visibleForTesting

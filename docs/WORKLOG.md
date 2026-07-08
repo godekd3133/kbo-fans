@@ -2,6 +2,33 @@
 
 ---
 
+## 2026-07-08: 경기 푸시 범위 축소와 foreground 인앱 팝업
+
+### 결정
+- 사장님 요청: 경기 시작, 득점, 라인업, 타석 같은 경기 알림은 마이팀 또는 사용자가 직접 `푸쉬 중계 받기`를 누른 경기 외에는 먼저 보내지 않는다.
+- 원인: 앱/backend topic 계산과 backend 발송 target에 legacy `*_ALL` game moment 경로가 남아 있었고, foreground 원격 푸시는 앱 내부 팝업이 아니라 OS/local notification 경로에 의존했다.
+- 운영 기준: game moment push는 team topic과 selected-game `*_GAME_{gameId}` topic만 사용한다. `allGames` legacy 값은 game moment topic 계산에서 무시한다.
+
+### 진행
+- [x] 앱 `buildPushTopics`에서 game moment `*_ALL` topic과 `all_games_enabled` 생성을 제거.
+- [x] backend `_build_topics`, `send_game_moment`, `send_lineup_opened`에서 game moment `*_ALL` 구독/발송 경로를 제거.
+- [x] local `GameEventAlertService`도 all-games 설정을 무시하고 마이팀 또는 직접 follow한 경기만 추적하도록 보정.
+- [x] foreground push stream과 앱 내부 팝업을 추가하고, Firebase foreground OS alert presentation은 끔.
+- [x] 팝업/알림 진입 route sanitizer와 fallback routing을 보강.
+- [x] `CHANGELOG.md`, `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`에 현재 push 범위와 foreground 팝업 정책을 동기화.
+
+### 검증
+- [x] `cd backend && ./.venv/bin/python -m pytest tests/test_push_service.py -q`
+- [x] `cd app && fvm flutter test test/services/push_notification_service_test.dart`
+- [x] `cd app && fvm flutter test test/services/game_event_alert_service_test.dart`
+- [x] `cd app && fvm flutter test test/widget_test.dart --plain-name '포그라운드 push'`
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `python3 -m compileall -q backend/src`
+- [x] `git diff --check`
+- [ ] 실기기 원격 수신, 운영 배포, Firebase topic registry 실환경 확인은 아직 미실행.
+
+---
+
 ## 2026-07-02: 0.1.16 Lightsail backend cutover TestFlight 릴리즈
 
 ### 결정

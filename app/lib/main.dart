@@ -143,10 +143,14 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   bool _didScheduleReleaseNotesPrompt = false;
   StreamSubscription<Uri?>? _homeWidgetClickSubscription;
   StreamSubscription<String>? _pushNotificationRouteSubscription;
+  StreamSubscription<PushForegroundNotification>?
+  _foregroundPushNotificationSubscription;
   Uri? _pendingHomeWidgetUri;
   String? _pendingPushNotificationRoute;
+  PushForegroundNotification? _pendingForegroundPushNotification;
   bool _didInitializeHomeWidgetRouting = false;
   bool _didInitializePushNotificationRouting = false;
+  bool _foregroundPushDialogVisible = false;
   DateTime? _lastResumeSyncAt;
 
   @override
@@ -168,6 +172,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   void dispose() {
     unawaited(_homeWidgetClickSubscription?.cancel());
     unawaited(_pushNotificationRouteSubscription?.cancel());
+    unawaited(_foregroundPushNotificationSubscription?.cancel());
     if (!kIsWeb && !_isWidgetTestBinding()) {
       WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     }
@@ -382,6 +387,15 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
             DevConsole.instance.warn('Push route stream failed: $error');
           },
         );
+    _foregroundPushNotificationSubscription = PushNotificationService
+        .instance
+        .foregroundNotifications
+        .listen(
+          _queueForegroundPushNotification,
+          onError: (Object error) {
+            DevConsole.instance.warn('Foreground push stream failed: $error');
+          },
+        );
   }
 
   void _queueHomeWidgetUri(Uri? uri) {
@@ -411,6 +425,19 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     }
   }
 
+  void _queueForegroundPushNotification(
+    PushForegroundNotification notification,
+  ) {
+    final safeRoute = _safeLaunchRoute(notification.route ?? '/notifications');
+    _pendingForegroundPushNotification = PushForegroundNotification(
+      title: notification.title,
+      body: notification.body,
+      route: safeRoute ?? '/notifications',
+    );
+    DevConsole.instance.info('Foreground push dialog queued');
+    _showPendingForegroundPushNotification();
+  }
+
   void _routePendingHomeWidgetLaunch(GoRouter router) {
     final uri = _pendingHomeWidgetUri;
     final route = _routeForHomeWidgetUri(uri);
@@ -433,12 +460,101 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       return;
     }
     _pendingPushNotificationRoute = null;
+    _routePushNotificationSafely(router, route, source: 'Push launch');
+  }
+
+  void _showPendingForegroundPushNotification() {
+    if (_foregroundPushDialogVisible) {
+      return;
+    }
+    final notification = _pendingForegroundPushNotification;
+    if (notification == null) {
+      return;
+    }
+    _pendingForegroundPushNotification = null;
+    _foregroundPushDialogVisible = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) {
+        _foregroundPushDialogVisible = false;
+        return;
+      }
+      final navigatorContext = appRootNavigatorContext;
+      if (navigatorContext == null) {
+        _foregroundPushDialogVisible = false;
+        DevConsole.instance.warn(
+          'Foreground push dialog skipped: no navigator',
+        );
+        return;
+      }
+
+      final shouldOpen = await showDialog<bool>(
+        context: navigatorContext,
+        barrierDismissible: true,
+        builder: (context) {
+          final body = notification.body.trim();
+          return AlertDialog(
+            title: Text(notification.title),
+            content: body.isEmpty ? null : Text(body),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('닫기'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('보기'),
+              ),
+            ],
+          );
+        },
+      );
+
+      _foregroundPushDialogVisible = false;
+      if (!mounted) {
+        return;
+      }
+      if (shouldOpen == true) {
+        await Future<void>.delayed(Duration.zero);
+        if (!mounted) {
+          return;
+        }
+        _routePushNotificationSafely(
+          ref.read(routerProvider),
+          notification.route ?? '/notifications',
+          source: 'Foreground push',
+        );
+      }
+      if (_pendingForegroundPushNotification != null) {
+        _showPendingForegroundPushNotification();
+      }
+    });
+  }
+
+  void _routePushNotificationSafely(
+    GoRouter router,
+    String route, {
+    required String source,
+  }) {
+    final safeRoute = _safeLaunchRoute(route) ?? '/notifications';
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
         return;
       }
-      router.go(route);
-      DevConsole.instance.info('Push launch routed: $route');
+      try {
+        router.go(safeRoute);
+        DevConsole.instance.info('$source routed: $safeRoute');
+      } catch (error, stack) {
+        DevConsole.instance.warn('$source route failed: $error');
+        DevConsole.instance.warn(stack.toString());
+        try {
+          router.go('/notifications');
+        } catch (fallbackError) {
+          DevConsole.instance.warn(
+            '$source fallback route failed: $fallbackError',
+          );
+        }
+      }
     });
   }
 

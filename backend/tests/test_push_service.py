@@ -53,12 +53,13 @@ def test_build_topics_returns_empty_without_team_when_all_games_disabled() -> No
     assert topics == []
 
 
-def test_build_topics_uses_all_topics_without_my_team_immediate_duplicates() -> None:
+def test_build_topics_ignores_all_games_for_game_moments() -> None:
     service = PushService()
     payload = PushRegisterRequest(
         deviceToken="token",
         platform="flutter",
         myTeam="LG",
+        followedGameIds=["20260612KTOB0"],
         notifications=NotificationSettings(
             gameStart=True,
             scoring=True,
@@ -73,16 +74,21 @@ def test_build_topics_uses_all_topics_without_my_team_immediate_duplicates() -> 
 
     topics = service._build_topics(payload)
 
-    assert "game_start_ALL" in topics
-    assert "all_games_enabled" in topics
-    assert "game_start_LG" not in topics
-    assert "scoring_LG" not in topics
-    assert "homerun_LG" not in topics
-    assert "game_end_LG" not in topics
-    assert "inning_change_LG" not in topics
+    assert "game_start_LG" in topics
+    assert "game_start_soon_LG" in topics
+    assert "scoring_LG" in topics
+    assert "homerun_LG" in topics
+    assert "game_end_LG" in topics
+    assert "lineup_opened_LG" in topics
+    assert "game_start_GAME_20260612KTOB0" in topics
+    assert "scoring_GAME_20260612KTOB0" in topics
+    assert "lineup_opened_GAME_20260612KTOB0" in topics
+    assert "baseball_info_LG" in topics
+    assert not [topic for topic in topics if topic.endswith("_ALL")]
+    assert "all_games_enabled" not in topics
 
 
-def test_build_topics_keeps_non_immediate_my_team_topics_when_all_games_enabled() -> None:
+def test_build_topics_keeps_my_team_topics_when_all_games_enabled() -> None:
     service = PushService()
     payload = PushRegisterRequest(
         deviceToken="token",
@@ -107,14 +113,15 @@ def test_build_topics_keeps_non_immediate_my_team_topics_when_all_games_enabled(
 
     topics = service._build_topics(payload)
 
-    assert "game_start_ALL" in topics
-    assert "game_start_LG" not in topics
+    assert "game_start_LG" in topics
+    assert "game_start_soon_LG" in topics
     assert "game_end_ALL" not in topics
     assert "game_end_LG" in topics
     assert "lineup_opened_ALL" not in topics
     assert "lineup_opened_LG" in topics
     assert "inning_change_ALL" not in topics
     assert "inning_change_LG" in topics
+    assert not [topic for topic in topics if topic.endswith("_ALL")]
 
 
 def test_build_topics_respects_delivery_modes() -> None:
@@ -637,7 +644,6 @@ def test_send_game_moment_hit_includes_play_and_situation_payload(tmp_path) -> N
     assert [message.topic for message in messaging.sent_messages] == [
         "hit_LG",
         "hit_KT",
-        "hit_ALL",
         "hit_GAME_20260604LGKT0",
     ]
     first_message = messaging.sent_messages[0]
@@ -680,7 +686,6 @@ def test_send_game_moment_includes_followed_game_topic(tmp_path) -> None:
     assert [message.topic for message in messaging.sent_messages] == [
         "scoring_LG",
         "scoring_KT",
-        "scoring_ALL",
         "scoring_GAME_20260604LGKT0",
     ]
 
@@ -776,7 +781,6 @@ def test_send_lineup_opened_includes_followed_game_topic(tmp_path) -> None:
     assert [message.topic for message in messaging.sent_messages] == [
         "lineup_opened_LG",
         "lineup_opened_KT",
-        "lineup_opened_ALL",
         "lineup_opened_GAME_20260604LGKT0",
     ]
     first_message = messaging.sent_messages[0]
@@ -801,7 +805,6 @@ def test_send_lineup_opened_copy_normalizes_team_ids(tmp_path) -> None:
     assert [message.topic for message in messaging.sent_messages] == [
         "lineup_opened_SS",
         "lineup_opened_SK",
-        "lineup_opened_ALL",
         "lineup_opened_GAME_20260604SSSK0",
     ]
     first_message = messaging.sent_messages[0]
@@ -830,7 +833,6 @@ def test_send_game_moment_lineup_opened_uses_lineup_copy(tmp_path) -> None:
     assert [message.topic for message in messaging.sent_messages] == [
         "lineup_opened_LG",
         "lineup_opened_KT",
-        "lineup_opened_ALL",
         "lineup_opened_GAME_20260604LGKT0",
     ]
     first_message = messaging.sent_messages[0]
@@ -862,7 +864,6 @@ def test_send_game_moment_start_soon_includes_start_time_payload(tmp_path) -> No
     assert [message.topic for message in messaging.sent_messages] == [
         "game_start_soon_LG",
         "game_start_soon_KT",
-        "game_start_soon_ALL",
         "game_start_soon_GAME_20260604LGKT0",
     ]
     first_message = messaging.sent_messages[0]

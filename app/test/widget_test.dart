@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
+import 'package:kbo_fans/core/router/app_router.dart';
 import 'package:kbo_fans/core/widgets/dev_console.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/records/records_screen.dart';
 import 'package:kbo_fans/main.dart';
+import 'package:kbo_fans/services/push_notification_service.dart';
 
 void main() {
   testWidgets('앱 루트가 렌더링된다', (WidgetTester tester) async {
@@ -17,6 +19,53 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.byType(DevConsoleOverlay), findsOneWidget);
+  });
+
+  testWidgets('포그라운드 push는 인앱 팝업을 띄우고 안전한 route로 이동한다', (tester) async {
+    AppConfig.initialize();
+    SharedPreferences.setMockInitialValues({
+      'onboardingDone': true,
+      'myTeam': 'LG',
+    });
+    final container = ProviderContainer(retry: _disableRetry);
+    addTearDown(container.dispose);
+    container.read(onboardingDoneProvider.notifier).setValue(true);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const KboFansApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 1000));
+
+    PushNotificationService.instance.emitForegroundNotificationForTesting(
+      const PushForegroundNotification(
+        title: '득점',
+        body: 'LG 득점 · 스코어 2:1',
+        route: '/notifications',
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('득점'), findsOneWidget);
+    expect(find.text('LG 득점 · 스코어 2:1'), findsOneWidget);
+
+    await tester.tap(find.text('보기'));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(
+      container
+          .read(routerProvider)
+          .routerDelegate
+          .currentConfiguration
+          .uri
+          .path,
+      '/notifications',
+    );
   });
 
   testWidgets('기록실 리그 요약 오류를 숨기지 않는다', (tester) async {
@@ -39,3 +88,5 @@ void main() {
     expect(find.text('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.'), findsOneWidget);
   });
 }
+
+Duration? _disableRetry(int retryCount, Object error) => null;

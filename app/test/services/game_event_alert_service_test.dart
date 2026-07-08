@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/services/game_event_alert_service.dart';
 
@@ -158,4 +159,47 @@ void main() {
       isFalse,
     );
   });
+
+  test('로컬 경기 이벤트 알림도 allGames를 무시하고 마이팀 또는 직접 따라가는 경기만 추적한다', () {
+    final tracked = selectTrackedGameEventAlertGamesForTesting(
+      games: [
+        _game('20260612KTLG0', awayTeamId: 'KT', homeTeamId: 'LG'),
+        _game('20260612SSOB0', awayTeamId: 'SS', homeTeamId: 'OB'),
+        _game('20260612NCHH0', awayTeamId: 'NC', homeTeamId: 'HH'),
+      ],
+      myTeamId: 'LG',
+      followedGameIds: const ['20260612SSOB0'],
+      trackAllGames: true,
+    ).map((game) => game.gameId);
+
+    expect(tracked, ['20260612KTLG0', '20260612SSOB0']);
+  });
+}
+
+Game _game(
+  String gameId, {
+  required String awayTeamId,
+  required String homeTeamId,
+}) {
+  return Game(
+    gameId: gameId,
+    status: GameStatus.live,
+    inning: '1회초',
+    away: TeamScore(
+      teamId: awayTeamId,
+      teamName: awayTeamId,
+      shortName: awayTeamId,
+      score: 0,
+      innings: const [],
+    ),
+    home: TeamScore(
+      teamId: homeTeamId,
+      teamName: homeTeamId,
+      shortName: homeTeamId,
+      score: 0,
+      innings: const [],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
 }
