@@ -15,8 +15,8 @@
 - [x] 앱/백엔드/release API 검증.
 - [x] Git commit/push 완료: `1ce0c4e 0.1.17 상세 진입과 알림 안정화 릴리즈`, `origin/main`.
 - [x] tag/GitHub Release 생성: `https://github.com/godekd3133/kbo-fans/releases/tag/0.1.17`.
-- [ ] iOS IPA build / TestFlight upload / Apple processing 확인: archive/IPA export는 성공했으나 App Store Connect upload가 agreement 상태로 차단.
-- [ ] Internal / External Testers 최신 build 연결과 Beta App Review 상태 확인: upload 차단으로 미진행.
+- [x] iOS IPA build / TestFlight upload / Apple processing 확인.
+- [x] Internal / External Testers 최신 build 연결과 Beta App Review 상태 확인. 외부 설치 가능 상태는 Apple Beta Review 승인 후 재확인 필요.
 
 ### 검증
 - [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
@@ -28,7 +28,11 @@
 - [x] `git diff --check`
 - [x] iOS archive: release worktree `/tmp/kbo_fans_release_0_1_17`, tag `0.1.17`, Xcode `26.6`, Flutter `3.41.6`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`, archive metadata `0.1.17 (85)`, bundle `com.kbofans.kboFans`.
 - [x] iOS IPA export: `build/ios/upload/kbo_fans.ipa`, sha256 `0e775641096861b77e912392fbd09e7b41a1fe209d55fa2de8aaa33307208f20`, Runner/Widget `0.1.17/85`, Runner `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`.
-- [ ] TestFlight upload: `xcrun altool --upload-package ... --apple-id 6779130075`가 `FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`, `see=/business`로 실패. 60초 후 재시도도 같은 agreement 오류로 실패.
+- [x] TestFlight upload: App Store Connect Business DSA 항목에서 사장님 지정값인 `비거래자/유럽 연합 배포 계획 없음`을 선택한 뒤 upload 재시도 성공. Delivery UUID / build id `243efb10-70f5-4216-bc91-7e1bbb5e93ca`, transferred `34994096` bytes, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, uploaded `2026-07-08T02:22:37-07:00`, expiration `2026-10-06T02:22:37-07:00`.
+- [x] Internal TestFlight: internal group `Tester` (`7d25a800-edb3-4169-9356-4636f5a36255`) has `hasAccessToAllBuilds=true`, and group relationship includes build `85`.
+- [x] External TestFlight: `External Testers` group (`81506852-9006-4a43-b152-067ac78a1736`) relationship includes build `85`; approved/installable fallback builds `84`, `83`, `82`, `77` are left connected until build `85` is approved/installable.
+- [x] Beta App Review: build `85` submission created, `betaReviewState=WAITING_FOR_REVIEW`, submitted `2026-07-08T02:27:36-07:00`.
+- [ ] External installability: build `85` is connected and submitted, but external tester installability is pending Apple Beta Review approval.
 
 ---
 
