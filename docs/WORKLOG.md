@@ -15,8 +15,8 @@
 - [x] 앱/백엔드/release API 검증.
 - [x] Git commit/push 완료: `1ce0c4e 0.1.17 상세 진입과 알림 안정화 릴리즈`, `origin/main`.
 - [x] tag/GitHub Release 생성: `https://github.com/godekd3133/kbo-fans/releases/tag/0.1.17`.
-- [ ] iOS IPA build / TestFlight upload / Apple processing 확인: archive는 성공했으나 IPA export signing 단계에서 차단.
-- [ ] Internal / External Testers 최신 build 연결과 Beta App Review 상태 확인: IPA export/upload 차단으로 미진행.
+- [ ] iOS IPA build / TestFlight upload / Apple processing 확인: archive/IPA export는 성공했으나 App Store Connect upload가 agreement 상태로 차단.
+- [ ] Internal / External Testers 최신 build 연결과 Beta App Review 상태 확인: upload 차단으로 미진행.
 
 ### 검증
 - [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
@@ -27,7 +27,8 @@
 - [ ] `./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api`: 로컬 `PUSH_SYNC_SECRET` 부재로 미완료. GitHub secret `PUSH_SYNC_SECRET` 존재는 확인했지만 값은 로컬로 회수할 수 없다.
 - [x] `git diff --check`
 - [x] iOS archive: release worktree `/tmp/kbo_fans_release_0_1_17`, tag `0.1.17`, Xcode `26.6`, Flutter `3.41.6`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`, archive metadata `0.1.17 (85)`, bundle `com.kbofans.kboFans`.
-- [ ] iOS IPA export/TestFlight upload: `xcodebuild -exportArchive`가 `PLA Update available` 및 `No signing certificate "iOS Distribution" found`로 실패. 로컬 keychain에는 `Apple Development` identity만 있고, GitHub repo secrets에도 iOS distribution p12/profile secrets가 없다.
+- [x] iOS IPA export: `build/ios/upload/kbo_fans.ipa`, sha256 `0e775641096861b77e912392fbd09e7b41a1fe209d55fa2de8aaa33307208f20`, Runner/Widget `0.1.17/85`, Runner `aps-environment=production`, `beta-reports-active=true`, `get-task-allow=false`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`.
+- [ ] TestFlight upload: `xcrun altool --upload-package ... --apple-id 6779130075`가 `FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`, `see=/business`로 실패. 60초 후 재시도도 같은 agreement 오류로 실패.
 
 ---
 
