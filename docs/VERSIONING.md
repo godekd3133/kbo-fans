@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-07-02
+> Updated: 2026-07-08
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.16+84`
-- Current release tag: `0.1.16`
+- Flutter app version: `0.1.17+85`
+- Current release tag: `0.1.17`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -146,6 +146,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.14`: home records display fix release. Home my-team brief recent results can cross month boundaries, current team-player parsing accepts KBO register headers with total counts so team home-run/rising-player highlights recover, records leaderboard errors hide internal cache keys, and current app build `0.1.14+81`.
 - `0.1.15`: game detail prefetch reinforcement release. Home and schedule game-detail entry now waits for the refreshed game plus first tab data/player image warm-up, relay player image URLs use the gameId season, boxscore rows preserve player id/image URL across backend/app contracts, and current app build `0.1.15+83`. Build `83` also preserves the last approved external TestFlight build while the newest build waits for Beta Review.
 - `0.1.16`: Lightsail backend cutover release. TestFlight build uses the Lightsail HTTPS API base URL, backend logging supports `LOG_DIR` for systemd deployments, Lightsail native runbook/systemd/Caddy deployment files and AWS cost guard are documented, and current app build `0.1.16+84`.
+- `0.1.17`: detail entry and alert scope release. Home/schedule detail entry keeps only the latest game refresh blocking while first-tab/player-image warm-up runs in the background, KBO player images share a dedicated cache across home/detail/records surfaces, game moment push no longer uses league-wide moment topics, foreground remote pushes use an in-app popup with safer route fallback, 2026 standings snapshots are refreshed, and current app build `0.1.17+85`.
 
 ## GitHub Release Note Template
 

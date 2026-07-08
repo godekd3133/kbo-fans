@@ -2,6 +2,33 @@
 
 ---
 
+## 2026-07-08: 0.1.17 상세 진입/알림 안정화 릴리즈
+
+### 결정
+- 사장님 요청: 지금까지 작업한 변경분을 빌드하고 릴리즈한 뒤 TestFlight 내부/외부 테스터 모두에 올린다.
+- release target은 `0.1.17+85` / tag `0.1.17`로 결정.
+- 이유: `0.1.16` 이후 diff가 경기 상세 진입 체감 속도, 선수사진 캐시, foreground push 팝업, game moment topic 범위, 2026 순위 snapshot을 바꾸므로 tester-facing 새 numeric release가 필요하다.
+- release API는 Lightsail HTTPS endpoint `https://3-39-79-1.sslip.io/api`를 유지한다.
+
+### 진행
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`, `docs/WORKLOG.md`를 `0.1.17+85` 기준으로 갱신.
+- [x] 앱/백엔드/release API 검증.
+- [ ] Git commit/push 완료.
+- [ ] tag/GitHub Release 생성.
+- [ ] iOS IPA build / TestFlight upload / Apple processing 확인.
+- [ ] Internal / External Testers 최신 build 연결과 Beta App Review 상태 확인.
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-pub` (`No issues found`)
+- [x] `cd app && fvm flutter test --no-pub` (`309 passed`)
+- [x] `python3 -m compileall -q backend/src`
+- [x] `cd backend && ./.venv/bin/python -m pytest tests/test_push_service.py -q` (`95 passed`)
+- [x] `RELEASE_API_HEALTH_DATE=2026-07-08 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api` (`Release API health gate passed`)
+- [ ] `./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api`: 로컬 `PUSH_SYNC_SECRET` 부재로 미완료. GitHub secret `PUSH_SYNC_SECRET` 존재는 확인했지만 값은 로컬로 회수할 수 없다.
+- [x] `git diff --check`
+
+---
+
 ## 2026-07-08: 경기 상세 진입 gate 재단축
 
 ### 결정
