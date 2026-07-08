@@ -228,7 +228,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
       final tab = _defaultTabForGame(game, fallback: scheduleGame);
       if (game != null) {
-        await _warmGameDetailFirstTab(game, tab: tab);
+        unawaited(_warmGameDetailFirstTab(game, tab: tab));
       }
       if (!mounted) {
         return;

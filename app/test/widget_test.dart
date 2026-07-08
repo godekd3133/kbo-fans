@@ -11,8 +11,11 @@ import 'package:kbo_fans/main.dart';
 import 'package:kbo_fans/services/push_notification_service.dart';
 
 void main() {
-  testWidgets('앱 루트가 렌더링된다', (WidgetTester tester) async {
+  setUpAll(() {
     AppConfig.initialize();
+  });
+
+  testWidgets('앱 루트가 렌더링된다', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({'onboardingDone': false});
 
     await tester.pumpWidget(const ProviderScope(child: KboFansApp()));
@@ -22,7 +25,6 @@ void main() {
   });
 
   testWidgets('포그라운드 push는 인앱 팝업을 띄우고 안전한 route로 이동한다', (tester) async {
-    AppConfig.initialize();
     SharedPreferences.setMockInitialValues({
       'onboardingDone': true,
       'myTeam': 'LG',

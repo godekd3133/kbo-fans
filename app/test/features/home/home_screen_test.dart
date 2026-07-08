@@ -1622,7 +1622,7 @@ void main() {
     expect(uri.queryParameters['focus'], 'relay');
   });
 
-  testWidgets('홈 경기 상세 진입은 최신 상세 데이터 갱신 후 이동한다', (tester) async {
+  testWidgets('홈 경기 상세 진입은 최신 상세 데이터 갱신 후 첫 탭을 기다리지 않고 이동한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1729,19 +1729,15 @@ void main() {
 
     expect(
       find.byKey(const ValueKey('home-game-detail-loading')),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(find.text('game-detail-${liveGame.gameId}-tab-relay'), findsNothing);
-
-    relayCompleter.complete(
-      const RelayData(currentAtBat: null, relayItems: []),
-    );
-    await tester.pump();
-    await tester.pumpAndSettle();
-
     expect(
       find.text('game-detail-${liveGame.gameId}-tab-relay'),
       findsOneWidget,
+    );
+
+    relayCompleter.complete(
+      const RelayData(currentAtBat: null, relayItems: []),
     );
   });
 
@@ -1873,9 +1869,7 @@ void main() {
     );
   });
 
-  testWidgets('홈 경기 상세 진입은 첫 탭 지연을 image prefetch 단계에서 다시 기다리지 않는다', (
-    tester,
-  ) async {
+  testWidgets('홈 경기 상세 진입은 첫 탭 지연을 기다리지 않는다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1889,6 +1883,7 @@ void main() {
       awayTeamId: 'SS',
       homeTeamId: 'LG',
     );
+    final relayCompleter = Completer<RelayData>();
     var detailFetches = 0;
     var relayFetches = 0;
 
@@ -1904,7 +1899,7 @@ void main() {
             }),
             relayDataProvider.overrideWith((ref, gameId) async {
               relayFetches++;
-              return Completer<RelayData>().future;
+              return relayCompleter.future;
             }),
             gameLineupProvider.overrideWith(
               (ref, gameId) async => _emptyLineupForGame(liveGame),
@@ -1927,24 +1922,27 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(detailFetches, 1);
     expect(relayFetches, 1);
     expect(
       find.byKey(const ValueKey('home-game-detail-loading')),
-      findsOneWidget,
+      findsNothing,
     );
-
-    await tester.pump(const Duration(milliseconds: 4100));
-    await tester.pump();
-
     expect(
       find.text('game-detail-${liveGame.gameId}-tab-relay'),
       findsOneWidget,
     );
+
+    relayCompleter.complete(
+      const RelayData(currentAtBat: null, relayItems: []),
+    );
+    await tester.pump();
+    await tester.pumpAndSettle();
   });
 
-  testWidgets('홈 기본 상세 진입은 라인업 사진 source 준비 후 이동한다', (tester) async {
+  testWidgets('홈 기본 상세 진입은 라인업 사진 source를 기다리지 않고 이동한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -2021,15 +2019,14 @@ void main() {
 
     detailCompleter.complete(finalGame);
     await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(lineupFetches, 1);
     expect(
       find.byKey(const ValueKey('home-game-detail-loading')),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsNothing);
+    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsOneWidget);
     expect(lineupCompleter.isCompleted, isFalse);
 
     lineupCompleter.complete(
@@ -2041,8 +2038,6 @@ void main() {
     );
     await tester.pump();
     await tester.pumpAndSettle();
-
-    expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsOneWidget);
   });
 }
 

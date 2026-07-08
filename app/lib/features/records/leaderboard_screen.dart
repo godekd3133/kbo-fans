@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/api/api_client.dart';
@@ -314,10 +315,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             ClipOval(
               child: CachedNetworkImage(
                 imageUrl: imageUrl,
+                httpHeaders: kboPlayerImageHeaders,
+                cacheManager: kboPlayerImageCacheManager,
                 width: 40,
                 height: 40,
-                memCacheWidth: 120,
-                memCacheHeight: 120,
+                memCacheWidth: kboPlayerImageCacheSize(40),
+                memCacheHeight: kboPlayerImageCacheSize(40),
+                maxWidthDiskCache: kboPlayerImageCacheSize(40),
+                maxHeightDiskCache: kboPlayerImageCacheSize(40),
                 fit: BoxFit.cover,
                 errorWidget: (_, _, _) => Container(
                   width: 40,

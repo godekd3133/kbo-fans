@@ -71,7 +71,7 @@ kbo_fans/
 - User-visible release history: `CHANGELOG.md`
 - Versioning and release policy: `docs/VERSIONING.md`
 - Low-cost backend runbook: `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`
-- AWS cost guard runbook: `docs/AWS_COST_GUARD_RUNBOOK.md`
+- Legacy AWS cost guard runbook: `docs/AWS_COST_GUARD_RUNBOOK.md`
 
 문서 간 충돌 시 최신 결정은 `CLAUDE.md`, `docs/WORKLOG.md`, 실제 코드 기준으로 판단합니다.
 
@@ -136,7 +136,8 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 ./scripts/codex-run.sh aws-push-demo-deploy --dry-run
 ./scripts/codex-run.sh aws-push-tooling
 ./scripts/codex-run.sh aws-github-oidc-role --dry-run
-./scripts/codex-run.sh aws-cost-guard-deploy
+# Legacy only; recurring Cost Explorer checks can create AWS Cost Explorer charges.
+# ./scripts/codex-run.sh aws-cost-guard-deploy
 ./scripts/codex-run.sh push-demo-env-bootstrap --repo godekd3133/kbo-fans --force
 ./scripts/codex-run.sh push-demo-setup-status --env-file /tmp/kbo-fans-aws.env --repo godekd3133/kbo-fans
 ./scripts/codex-run.sh push-demo-audit --env-file /path/to/kbo-fans-aws.env
@@ -169,7 +170,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - AWS push stack output env 추출 액션: `./scripts/codex-run.sh aws-push-stack-outputs`
 - AWS push 통합 배포 dry-run/deploy 액션: `./scripts/codex-run.sh aws-push-demo-deploy --dry-run`
 - AWS/Docker 로컬 도구 점검 액션: `./scripts/codex-run.sh aws-push-tooling`
-- AWS 비용 guard dry-run/deploy 액션: `./scripts/codex-run.sh aws-cost-guard-deploy`
+- AWS 비용 guard dry-run/deploy 액션: legacy only. 반복 Cost Explorer 조회 비용을 승인한 경우에만 `./scripts/codex-run.sh aws-cost-guard-deploy`를 등록한다.
 - GitHub Actions push deploy secrets/variables 점검 또는 업로드 액션: `./scripts/codex-run.sh github-push-secrets --env-file /path/to/kbo-fans-aws.env`
 - GitHub Actions push deploy workflow 실행 액션: `./scripts/codex-run.sh github-push-demo-run --dry-run true`
 - GitHub Actions 원격 테스트 푸시 실행 액션: `./scripts/codex-run.sh github-push-test-notification-run --topic baseball_info_ALL --watch`

@@ -2,6 +2,47 @@
 
 ---
 
+## 2026-07-08: 경기 상세 진입 gate 재단축
+
+### 결정
+- 사장님 요청: 경기상세보기를 눌렀을 때 로딩 체감 속도를 더 빠르게 한다.
+- 원인: 홈/일정 상세 진입에서 `gameProvider(gameId)` 갱신 뒤에도 첫 진입 탭 provider와 선수사진 prefetch를 기다려 route push가 늦어질 수 있었다.
+- 운영 기준: 상세 단건 `gameProvider(gameId)` 갱신은 stale 진입을 줄이기 위해 유지하되, `relayDataProvider`/`gameBoxscoreProvider`/`gameLineupProvider`와 선수사진 cache warm-up은 background로 넘긴다.
+
+### 진행
+- [x] 홈 상세 진입 gate에서 첫 탭 provider `await`와 선수사진 prefetch `await`를 제거하고, background warm-up으로 전환.
+- [x] 일정 상세 진입도 같은 정책으로 맞춰 live relay/이미지 warm-up이 route push를 막지 않게 변경.
+- [x] `docs/APP_SPEC.md`, `CHANGELOG.md`에 상세 진입 gate 정책 반영.
+- [x] 날짜가 지나면 과거 경기로 필터링되어 깨지던 일정 매치업 테스트 fixture를 오늘 날짜 기준으로 보정.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart -r expanded` (`35 passed`)
+- [x] `cd app && fvm flutter test --no-pub test/features/schedule/schedule_screen_test.dart -r expanded` (`11 passed`)
+- [x] `cd app && fvm flutter analyze --no-pub lib/features/home/home_screen.dart lib/features/schedule/schedule_screen.dart test/features/home/home_screen_test.dart test/features/schedule/schedule_screen_test.dart` (`No issues found`)
+- [x] `git diff --check -- app/lib/features/home/home_screen.dart app/lib/features/schedule/schedule_screen.dart app/test/features/home/home_screen_test.dart app/test/features/schedule/schedule_screen_test.dart docs/APP_SPEC.md CHANGELOG.md`
+
+---
+
+## 2026-07-08: KBO 선수사진 전용 캐시와 이미지 로딩 경량화
+
+### 결정
+- 사장님 요청: 전반적으로 경기/선수 이미지 로딩 속도를 빠르게 만든다.
+- 원인: 홈/상세/기록 화면의 선수사진이 KBO 이미지 URL을 공유하지만 일부 표면은 공통 헤더/전용 cache manager를 쓰지 않았고, prefetch도 `downloadFile` 뒤 `precacheImage`를 다시 타는 구조라 불필요한 단계가 있었다.
+- 기준: 기능/화면 구조는 유지하고, 선수사진 cache manager, resized disk cache, memory cache 크기만 일관화한다.
+
+### 진행
+- [x] KBO 선수사진 전용 cache manager를 추가해 90일 stale / 900개 객체 기준으로 분리.
+- [x] 선수사진 prefetch를 `CachedNetworkImageProvider` 단일 경로로 정리해 같은 전용 캐시와 resize cache를 사용.
+- [x] 홈, 경기 상세 relay/boxscore/lineup, 기록/리더보드/선수 상세 표면의 선수사진에 공통 header, cache manager, disk/memory cache 크기 설정을 적용.
+
+### 검증
+- [x] `cd app && fvm dart format lib/core/utils/kbo_player_image_cache.dart lib/features/home/home_screen.dart lib/features/game_detail/tabs/boxscore_tab.dart lib/features/game_detail/tabs/relay_tab.dart lib/features/game_detail/tabs/lineup_tab.dart lib/features/records/records_screen.dart lib/features/records/player_detail_screen.dart lib/features/records/leaderboard_screen.dart`
+- [x] `cd app && fvm flutter analyze --no-pub`
+- [x] `cd app && fvm flutter test --no-pub test/features/home/home_screen_test.dart test/features/game_detail/boxscore_tab_test.dart test/features/game_detail/lineup_tab_test.dart test/features/game_detail/relay_tab_test.dart test/features/records/player_image_surfaces_test.dart -r expanded`
+- [ ] `cd app && fvm flutter test --no-pub` 미통과: 현재 dirty worktree의 `app/test/widget_test.dart` foreground push 테스트에서 `AppConfig.initialize` 중복 초기화 `LateInitializationError` 1건.
+
+---
+
 ## 2026-07-08: 경기 푸시 범위 축소와 foreground 인앱 팝업
 
 ### 결정
@@ -26,6 +67,33 @@
 - [x] `python3 -m compileall -q backend/src`
 - [x] `git diff --check`
 - [ ] 실기기 원격 수신, 운영 배포, Firebase topic registry 실환경 확인은 아직 미실행.
+
+---
+
+## 2026-07-08: AWS Cost Explorer 과금 루프 중단
+
+### 결정
+- 사장님 요청: 7월 AWS 비용 화면에서 `Cost Explorer`가 `US$9.78`로 가장 크게 잡혀, 비용을 만든 guard를 끈다.
+- 원인: `kbo-fans-cost-guard` stack의 EventBridge rule `kbo-fans-cost-kill-switch-scheduled-check`가 `rate(15 minutes)`로 Lambda를 실행했고, Lambda가 Cost Explorer actual/forecast API를 반복 호출했다.
+- 운영 기준: recurring Cost Explorer API guard는 기본 운영값에서 제외한다. 비용 확인은 리소스 목록 audit과 native AWS Budgets 알림을 우선하고, `aws-cost-guard-deploy`는 명시 승인된 비상용 도구로만 사용한다.
+
+### 진행
+- [x] AWS CLI 재인증: `aws login`.
+- [x] `kbo-fans-cost-kill-switch-scheduled-check` rule이 `ENABLED`, `rate(15 minutes)`임을 확인.
+- [x] `aws events disable-rule --region us-east-1 --name kbo-fans-cost-kill-switch-scheduled-check`로 주기 실행을 먼저 중단.
+- [x] `aws cloudformation delete-stack --region us-east-1 --stack-name kbo-fans-cost-guard` 후 삭제 완료 대기.
+- [x] AGENTS, CLAUDE, README, engineering notes, Lightsail runbook, cost guard runbook을 현재 운영 기준에 맞게 갱신.
+
+### 검증
+- [x] EventBridge `kbo-fans-cost*` rules -> `[]`.
+- [x] Lambda `kbo-fans-cost*` functions -> `[]`.
+- [x] CloudWatch Logs `/aws/lambda/kbo-fans-cost*` log groups -> `[]` after deleting stale `/aws/lambda/kbo-fans-cost-kill-switch-lambda`.
+- [x] CloudFormation `kbo-fans-cost-guard` -> stack not found.
+- [x] AWS Budgets `kbo-fans-cost*` budgets -> `[]`.
+- [x] `us-east-1` / `ap-northeast-2` ECS clusters -> `[]`.
+- [x] `us-east-1` / `ap-northeast-2` ELBv2 load balancers -> `[]`.
+- [x] `us-east-1` / `ap-northeast-2` Elastic IPs and NAT gateways -> `[]`.
+- [x] Lightsail `kbo-fans-api-lightsail` remains `running`, bundle `nano_3_0`, static IP `3.39.79.1` attached. 앱 API를 끄는 변경은 하지 않았다.
 
 ---
 

@@ -2051,16 +2051,19 @@ class _RelayPlayerAvatar extends StatelessWidget {
   }
 
   Widget _networkAvatar() {
-    final cacheSize = (size * 3).round();
+    final cacheSize = kboPlayerImageCacheSize(size);
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: CachedNetworkImage(
         imageUrl: _imageUrl!,
         httpHeaders: kboPlayerImageHeaders,
+        cacheManager: kboPlayerImageCacheManager,
         width: size,
         height: size,
         memCacheWidth: cacheSize,
         memCacheHeight: cacheSize,
+        maxWidthDiskCache: cacheSize,
+        maxHeightDiskCache: cacheSize,
         fit: BoxFit.cover,
         errorWidget: (_, _, _) => _fallback(),
         placeholder: (_, _) => _fallback(),

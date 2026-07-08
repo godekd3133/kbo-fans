@@ -1090,11 +1090,14 @@ class _StarterHeroCard extends StatelessWidget {
                         child: CachedNetworkImage(
                           imageUrl: data.imageUrl!,
                           httpHeaders: kboPlayerImageHeaders,
+                          cacheManager: kboPlayerImageCacheManager,
                           fit: BoxFit.contain,
                           width: double.infinity,
                           height: double.infinity,
                           memCacheWidth: 720,
                           memCacheHeight: 660,
+                          maxWidthDiskCache: 720,
+                          maxHeightDiskCache: 660,
                           alignment: Alignment.bottomCenter,
                           placeholder: (_, _) =>
                               _starterFallback(accent, data.name),
@@ -2014,6 +2017,7 @@ class _LineupAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl != null && imageUrl!.isNotEmpty) {
+      final cacheSize = kboPlayerImageCacheSize(42);
       return Stack(
         clipBehavior: Clip.none,
         children: [
@@ -2022,10 +2026,13 @@ class _LineupAvatar extends StatelessWidget {
             child: CachedNetworkImage(
               imageUrl: imageUrl!,
               httpHeaders: kboPlayerImageHeaders,
+              cacheManager: kboPlayerImageCacheManager,
               width: 42,
               height: 42,
-              memCacheWidth: 126,
-              memCacheHeight: 126,
+              memCacheWidth: cacheSize,
+              memCacheHeight: cacheSize,
+              maxWidthDiskCache: cacheSize,
+              maxHeightDiskCache: cacheSize,
               fit: BoxFit.cover,
               placeholder: (_, _) => _fallback(),
               errorWidget: (_, _, _) => _fallback(),

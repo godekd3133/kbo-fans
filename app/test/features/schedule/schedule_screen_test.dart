@@ -271,7 +271,7 @@ void main() {
     );
   });
 
-  testWidgets('일정 경기 상세 진입은 최신 상세와 첫 탭 데이터 준비 후 이동한다', (tester) async {
+  testWidgets('일정 경기 상세 진입은 최신 상세 후 첫 탭을 기다리지 않고 이동한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -332,6 +332,16 @@ void main() {
             relayFetches++;
             return relayCompleter.future;
           }),
+          gameLineupProvider.overrideWith(
+            (ref, requestedGameId) async => const GameLineupData(
+              gameId: gameId,
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            ),
+          ),
+          teamPlayersProvider.overrideWith(
+            (ref, key) async => const <PlayerProfile>[],
+          ),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
@@ -359,17 +369,13 @@ void main() {
     expect(relayFetches, 1);
     expect(
       find.byKey(const ValueKey('schedule-game-detail-loading')),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(find.text('schedule-detail-$gameId-relay'), findsNothing);
+    expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
 
     relayCompleter.complete(
       const RelayData(currentAtBat: null, relayItems: []),
     );
-    await tester.pump();
-    await tester.pumpAndSettle();
-
-    expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
   });
 
   testWidgets('일정 경기 상세 진입 refresh 실패 시 live 일정은 중계 탭으로 이동한다', (tester) async {
@@ -422,7 +428,7 @@ void main() {
     expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
   });
 
-  testWidgets('일정 live 상세 진입은 선수 이미지 source provider를 준비한 뒤 이동한다', (
+  testWidgets('일정 live 상세 진입은 선수 이미지 source provider를 기다리지 않고 이동한다', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -482,19 +488,23 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     expect(
       find.byKey(const ValueKey('schedule-game-detail-loading')),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
+    expect(lineupCompleter.isCompleted, isFalse);
+
     relayCompleter.complete(
       const RelayData(currentAtBat: null, relayItems: []),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('schedule-detail-$gameId-relay'), findsNothing);
     expect(teamPlayerFetches, greaterThanOrEqualTo(2));
+    expect(lineupCompleter.isCompleted, isFalse);
 
     lineupCompleter.complete(
       const GameLineupData(
@@ -505,8 +515,6 @@ void main() {
     );
     await tester.pump();
     await tester.pumpAndSettle();
-
-    expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
   });
 }
 
@@ -609,9 +617,10 @@ List<ScheduleDay> _matchupScheduleForMonth(
     return const [];
   }
 
+  final today = DateTime.now().day.toString().padLeft(2, '0');
   return [
     ScheduleDay(
-      date: '$requestedYearMonth-03',
+      date: '$requestedYearMonth-$today',
       games: const [
         ScheduleGame(
           gameId: 'lg-kt',
@@ -634,7 +643,7 @@ List<ScheduleDay> _matchupScheduleForMonth(
       ],
     ),
     ScheduleDay(
-      date: '$requestedYearMonth-17',
+      date: '$requestedYearMonth-$today',
       games: const [
         ScheduleGame(
           gameId: 'lg-sk',

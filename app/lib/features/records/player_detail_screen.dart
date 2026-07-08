@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../data/models/player.dart';
 import '../../data/providers.dart';
@@ -87,7 +88,13 @@ class PlayerDetailScreen extends ConsumerWidget {
                     child: photoUrl != null && photoUrl.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: photoUrl,
+                            httpHeaders: kboPlayerImageHeaders,
+                            cacheManager: kboPlayerImageCacheManager,
                             fit: BoxFit.cover,
+                            memCacheWidth: kboPlayerImageCacheSize(112),
+                            memCacheHeight: kboPlayerImageCacheSize(112),
+                            maxWidthDiskCache: kboPlayerImageCacheSize(112),
+                            maxHeightDiskCache: kboPlayerImageCacheSize(112),
                             errorWidget: (_, _, _) =>
                                 _photoFallback(player.number),
                           )

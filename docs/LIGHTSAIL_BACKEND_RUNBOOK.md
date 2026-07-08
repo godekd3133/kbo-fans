@@ -52,12 +52,11 @@ but it depends on the third-party `sslip.io` DNS service.
    - Temporary no-cost alternative: use `<static-ip-with-dashes>.sslip.io`.
 5. Keep the static IP attached. Unattached static IPs can incur hourly charges.
 
-Stopping a Lightsail instance does not stop its plan charges. If AWS actual or
-forecasted cost reaches the hard USD 10 guardrail and cost is more important
-than availability, use `docs/AWS_COST_GUARD_RUNBOOK.md` and destructive mode to
-delete matching Lightsail resources only after preserving anything that must
-survive. Lightsail deletion requires the separate `--delete-lightsail-instances`
-flag.
+Stopping a Lightsail instance does not stop its plan charges. If cost must go to
+zero, preserve anything that must survive, then delete the Lightsail instance and
+static IP intentionally. The previous automated USD 10 cost guard is not active
+by default because its scheduled Cost Explorer API checks created avoidable
+Cost Explorer charges.
 
 ## Local Secret Env
 

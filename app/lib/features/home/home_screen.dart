@@ -1209,50 +1209,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return boxscoreFuture!;
     }
 
-    Future<void> waitForFirstTab<T>(
-      Future<T?> future,
-      void Function(T?) assignValue,
-    ) async {
-      final value = await future.timeout(
-        _gameDetailOpenRefreshTimeout,
-        onTimeout: () => null,
-      );
-      assignValue(value);
-    }
-
-    final firstTabFutures = <Future<void>>[];
     switch (targetTab) {
       case 'relay':
         relayFuture = startRelayWarmup();
-        firstTabFutures.add(
-          waitForFirstTab<RelayData>(relayFuture!, (value) {
-            relayData = value;
-          }),
-        );
         break;
       case 'boxscore':
         boxscoreFuture = startBoxscoreWarmup();
-        firstTabFutures.add(
-          waitForFirstTab<GameBoxscoreData>(boxscoreFuture!, (value) {
-            boxscoreData = value;
-          }),
-        );
         break;
       case 'lineup':
         lineupFuture = startLineupWarmup();
-        firstTabFutures.add(
-          waitForFirstTab<GameLineupData>(lineupFuture!, (value) {
-            lineupData = value;
-          }),
-        );
         break;
       case null:
         lineupFuture = startLineupWarmup();
-        firstTabFutures.add(
-          waitForFirstTab<GameLineupData>(lineupFuture!, (value) {
-            lineupData = value;
-          }),
-        );
         break;
     }
 
@@ -1262,20 +1230,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (refreshedGame == null) {
       throw StateError('game detail missing: $gameId');
     }
-    _updateGameDetailOpenProgress(0.35);
-
-    await Future.wait(firstTabFutures);
-    _updateGameDetailOpenProgress(0.7);
-
-    await _precacheGameDetailPlayerImagesBeforeOpen(
-      refreshedGame,
-      targetTab: targetTab,
-      relayData: relayData,
-      lineupData: lineupData,
-      boxscoreData: boxscoreData,
-    ).timeout(_gameDetailPlayerImagePrefetchTimeout, onTimeout: () {});
     _updateGameDetailOpenProgress(1);
+
+    unawaited(() async {
+      try {
+        relayData = await _awaitGameDetailWarmup(relayFuture);
+        lineupData = await _awaitGameDetailWarmup(lineupFuture);
+        boxscoreData = await _awaitGameDetailWarmup(boxscoreFuture);
+        await _precacheGameDetailPlayerImagesBeforeOpen(
+          refreshedGame,
+          targetTab: targetTab,
+          relayData: relayData,
+          lineupData: lineupData,
+          boxscoreData: boxscoreData,
+        ).timeout(_gameDetailPlayerImagePrefetchTimeout, onTimeout: () {});
+      } catch (error) {
+        DevConsole.instance.warn(
+          'HOME game detail background warmup skipped: $gameId $error',
+        );
+      }
+    }());
     return refreshedGame;
+  }
+
+  Future<T?> _awaitGameDetailWarmup<T>(Future<T?>? future) {
+    if (future == null) {
+      return Future<T?>.value();
+    }
+    return future.timeout(_gameDetailOpenRefreshTimeout, onTimeout: () => null);
   }
 
   Future<void> _precacheGameDetailPlayerImagesBeforeOpen(
@@ -4748,14 +4730,19 @@ class _KboInsightItemVisual extends StatelessWidget {
     final imageUrl = item.imageUrl;
     final team = _kboBriefVisualTeam(item);
     if (imageUrl != null && imageUrl.isNotEmpty) {
+      final cacheSize = kboPlayerImageCacheSize(size);
       return ClipRRect(
         borderRadius: BorderRadius.circular(10),
         child: CachedNetworkImage(
           imageUrl: imageUrl,
+          httpHeaders: kboPlayerImageHeaders,
+          cacheManager: kboPlayerImageCacheManager,
           width: size,
           height: size,
-          memCacheWidth: (size * 3).round(),
-          memCacheHeight: (size * 3).round(),
+          memCacheWidth: cacheSize,
+          memCacheHeight: cacheSize,
+          maxWidthDiskCache: cacheSize,
+          maxHeightDiskCache: cacheSize,
           fit: BoxFit.cover,
           placeholder: (_, _) => _fallback(),
           errorWidget: (_, _, _) => _fallback(),
@@ -5478,14 +5465,19 @@ Widget _quickItemAvatar(
   final imageUrl = item.imageUrl;
 
   if (imageUrl != null && imageUrl.isNotEmpty) {
+    final cacheSize = kboPlayerImageCacheSize(52);
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: CachedNetworkImage(
         imageUrl: imageUrl,
+        httpHeaders: kboPlayerImageHeaders,
+        cacheManager: kboPlayerImageCacheManager,
         width: 52,
         height: 52,
-        memCacheWidth: 156,
-        memCacheHeight: 156,
+        memCacheWidth: cacheSize,
+        memCacheHeight: cacheSize,
+        maxWidthDiskCache: cacheSize,
+        maxHeightDiskCache: cacheSize,
         fit: BoxFit.cover,
         errorWidget: (_, _, _) =>
             _quickItemAvatarFallback(item, accent, team, colors),

@@ -2,13 +2,16 @@
 
 ## Goal
 
-Stop KBO Fans AWS runtime services when either month-to-date actual cost or
-forecasted monthly cost reaches USD 10.
+Legacy emergency tool for stopping KBO Fans AWS runtime services when either
+month-to-date actual cost or forecasted monthly cost reaches USD 10.
+
+Current status: the `kbo-fans-cost-guard` stack is deleted as of 2026-07-08.
+Do not redeploy it as a recurring guard unless the Director explicitly accepts
+the Cost Explorer API charge tradeoff.
 
 This is a cost guard, not a real-time hard billing cap. AWS Billing, Budgets,
-and Cost Explorer data can lag behind actual resource usage. The guard reacts as
-soon as AWS exposes the over-threshold actual or forecast value to Budget SNS or
-the scheduled Cost Explorer check.
+and Cost Explorer data can lag behind actual resource usage. The scheduled check
+uses Cost Explorer APIs and can itself create Cost Explorer charges.
 
 ## What It Deploys
 
@@ -19,6 +22,7 @@ the scheduled Cost Explorer check.
 - an SNS topic for those budget notifications
 - a Lambda cost guard
 - an EventBridge scheduled rule that re-checks Cost Explorer every 15 minutes
+  when enabled
 
 The Lambda stops supported runtime resources in the configured target regions:
 
@@ -34,6 +38,9 @@ Matching Lightsail instances are deleted only when `--delete-lightsail-instances
 is also set. Use these options for a hard cost emergency only.
 
 ## Important Limits
+
+- Cost Explorer API calls are billable. A 15-minute schedule that calls actual
+  and forecast APIs can create visible monthly Cost Explorer charges.
 
 - AWS has no universal "stop every service" API.
 - AWS Budget native actions are limited and do not cover the full KBO Fans
@@ -149,7 +156,7 @@ aws cloudformation wait stack-delete-complete \
 
 ## Disable
 
-Delete the guard stack only when the budget kill switch is no longer desired:
+Delete the guard stack when the budget kill switch is no longer desired:
 
 ```bash
 aws cloudformation delete-stack \

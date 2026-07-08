@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
@@ -989,14 +990,19 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _playerPhoto(PlayerProfile player, KboTeam? team) {
     final photoUrl = playerProfileImageUrl(player, season: _selectedSeason);
     if (photoUrl != null && photoUrl.isNotEmpty) {
+      final cacheSize = kboPlayerImageCacheSize(52);
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: CachedNetworkImage(
           imageUrl: photoUrl,
+          httpHeaders: kboPlayerImageHeaders,
+          cacheManager: kboPlayerImageCacheManager,
           width: 52,
           height: 52,
-          memCacheWidth: 156,
-          memCacheHeight: 156,
+          memCacheWidth: cacheSize,
+          memCacheHeight: cacheSize,
+          maxWidthDiskCache: cacheSize,
+          maxHeightDiskCache: cacheSize,
           fit: BoxFit.cover,
           placeholder: (_, _) => _playerPhotoFallback(player.number, team),
           errorWidget: (_, _, _) => _playerPhotoFallback(player.number, team),
@@ -1626,8 +1632,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       borderRadius: BorderRadius.circular(8),
       child: CachedNetworkImage(
         imageUrl: imageUrl,
+        httpHeaders: kboPlayerImageHeaders,
+        cacheManager: kboPlayerImageCacheManager,
         width: 38,
         height: 44,
+        memCacheWidth: kboPlayerImageCacheSize(44),
+        memCacheHeight: kboPlayerImageCacheSize(44),
+        maxWidthDiskCache: kboPlayerImageCacheSize(44),
+        maxHeightDiskCache: kboPlayerImageCacheSize(44),
         fit: BoxFit.cover,
         errorWidget: (_, _, _) => fallback(),
       ),
@@ -2472,6 +2484,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final accent = colors.readableAccent(
       team?.primaryColor ?? colors.textSecondary,
     );
+    final cacheSize = kboPlayerImageCacheSize(height);
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: CachedNetworkImage(
@@ -2479,10 +2492,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           season: _selectedSeason,
           playerId: leader.playerId,
         ),
+        httpHeaders: kboPlayerImageHeaders,
+        cacheManager: kboPlayerImageCacheManager,
         width: width,
         height: height,
-        memCacheWidth: (width * 3).round(),
-        memCacheHeight: (height * 3).round(),
+        memCacheWidth: cacheSize,
+        memCacheHeight: cacheSize,
+        maxWidthDiskCache: cacheSize,
+        maxHeightDiskCache: cacheSize,
         fit: BoxFit.cover,
         errorWidget: (_, _, _) => Container(
           width: width,

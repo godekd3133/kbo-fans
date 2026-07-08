@@ -10,11 +10,63 @@ const kboPlayerImageHeaders = {
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
 };
 
+const kboPlayerImageDefaultCacheSize = 192;
+
+class KboPlayerImageCacheManager extends CacheManager with ImageCacheManager {
+  static const key = 'kboPlayerImageCache';
+  static final KboPlayerImageCacheManager _instance =
+      KboPlayerImageCacheManager._();
+
+  factory KboPlayerImageCacheManager() => _instance;
+
+  KboPlayerImageCacheManager._()
+    : super(
+        Config(
+          key,
+          stalePeriod: const Duration(days: 90),
+          maxNrOfCacheObjects: 900,
+        ),
+      );
+}
+
+final BaseCacheManager kboPlayerImageCacheManager =
+    KboPlayerImageCacheManager();
+
+int kboPlayerImageCacheSize(
+  double logicalSize, {
+  double devicePixelRatio = 3,
+  int min = 96,
+  int max = 720,
+}) {
+  final cacheSize = (logicalSize * devicePixelRatio).round();
+  if (cacheSize < min) {
+    return min;
+  }
+  if (cacheSize > max) {
+    return max;
+  }
+  return cacheSize;
+}
+
+CachedNetworkImageProvider kboPlayerImageProvider(
+  String imageUrl, {
+  int? cacheSize,
+}) {
+  return CachedNetworkImageProvider(
+    imageUrl,
+    headers: kboPlayerImageHeaders,
+    cacheManager: kboPlayerImageCacheManager,
+    maxWidth: cacheSize ?? kboPlayerImageDefaultCacheSize,
+    maxHeight: cacheSize ?? kboPlayerImageDefaultCacheSize,
+  );
+}
+
 Future<void> precacheKboPlayerImageUrls(
   BuildContext context,
   Iterable<String?> imageUrls, {
   int? limit,
   int batchSize = 4,
+  int cacheSize = kboPlayerImageDefaultCacheSize,
 }) async {
   final urls = <String>[];
   final seen = <String>{};
@@ -33,7 +85,10 @@ Future<void> precacheKboPlayerImageUrls(
   for (var index = 0; index < urls.length; index += effectiveBatchSize) {
     final batch = urls.skip(index).take(effectiveBatchSize);
     await Future.wait(
-      batch.map((imageUrl) => _warmKboPlayerImageCache(context, imageUrl)),
+      batch.map(
+        (imageUrl) =>
+            _warmKboPlayerImageCache(context, imageUrl, cacheSize: cacheSize),
+      ),
     );
     if (!context.mounted) {
       return;
@@ -43,22 +98,15 @@ Future<void> precacheKboPlayerImageUrls(
 
 Future<void> _warmKboPlayerImageCache(
   BuildContext context,
-  String imageUrl,
-) async {
-  try {
-    await DefaultCacheManager().downloadFile(
-      imageUrl,
-      authHeaders: kboPlayerImageHeaders,
-    );
-  } catch (_) {
-    // Best-effort warm-up: rendering still gets its own CachedNetworkImage path.
-  }
+  String imageUrl, {
+  required int cacheSize,
+}) async {
   if (!context.mounted) {
     return;
   }
   try {
     await precacheImage(
-      CachedNetworkImageProvider(imageUrl, headers: kboPlayerImageHeaders),
+      kboPlayerImageProvider(imageUrl, cacheSize: cacheSize),
       context,
     );
   } catch (_) {
