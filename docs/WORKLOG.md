@@ -47,8 +47,13 @@
 - [x] `./scripts/release-api-health-check.sh` 기본값 실행: Lightsail DNS/TLS 및 health/home/scoreboard/schedule/standings/records overview 200, relay는 당일 경기 없음으로 skip.
 - [x] `TZ=UTC ./scripts/release-api-health-check.sh`: 출력 날짜 `2026-07-13`, 전체 release API gate 통과.
 - [x] 2026-07-13 운영 endpoint 재확인: `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings` 모두 HTTPS `200` 및 success envelope. 이 Mac에서는 `openssl s_client`가 인증서 검증 뒤 `poll error`를 반환하므로, 해당 스크립트 진단 경로는 별도 호환성 보완 대상으로 남김.
+- [x] Git commit/push: `17ead3c fix: KBO 기준 시간과 런타임 안정성 보강`을 `origin/main`에 반영. 기존 QA 산출물과 개인 파일은 제외.
+- [x] tag/GitHub Release: `0.1.18`, [0.1.18 경기 정보와 알림 안정성](https://github.com/godekd3133/kbo-fans/releases/tag/0.1.18) 공개.
+- [x] App Store IPA: `0.1.18 (86)`, `com.kbofans.kboFans`, Apple Distribution 서명, SHA-256 `be3e19c4335ef3ef8e43c32203f072a6aceb85fe7355fff629e75bb4180d6dd7` 확인.
+- [x] TestFlight upload: Apple build processing `VALID`, 내부 `Tester` 그룹에서 `IN_BETA_TESTING` 확인.
+- [x] 외부 `External Testers` 그룹에 build `86`을 추가하고 기존 build `85` 이하를 유지. Beta App Review 제출 상태는 `WAITING_FOR_REVIEW`.
 - [ ] 운영 backend는 배포 전 코드라 날짜 생략 `/scoreboard/home`과 `/home`이 KST 자정 뒤 전날을 반환하는 상태. 수정본 배포·재시작 후 재확인 필요.
-- [ ] signed IPA/TestFlight upload, Android 배포 signing, 실제 iPhone/Android push·Live Activity 수신, AWS deploy, relay 인증정보 회전은 외부 변경/자격증명/실기기 필요로 미실행.
+- [ ] 외부 TestFlight 설치 가능 상태는 Apple Beta App Review 승인 후 재확인 필요. Android 배포 signing, 실제 iPhone/Android push·Live Activity 수신, AWS deploy, relay 인증정보 회전은 외부 변경/자격증명/실기기 필요로 미실행.
 
 ---
 
