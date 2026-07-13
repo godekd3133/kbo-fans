@@ -22,6 +22,38 @@ import 'package:kbo_fans/services/live_activity_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('home requests the current KBO civil date', (tester) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({});
+    final requestedDates = <String>[];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier(null)),
+          scoreboardProvider.overrideWith((ref, date) async {
+            requestedDates.add(date);
+            return const <Game>[];
+          }),
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(requestedDates.first, _kboDateKeyForTest(DateTime.now()));
+  });
+
   test('경기 상세 진입 전 relay 선수 사진 prefetch 후보를 계산한다', () {
     const relayData = RelayData(
       currentAtBat: CurrentAtBat(
@@ -2071,13 +2103,26 @@ PlayerProfile _playerProfile({required String name, required String id}) {
 }
 
 String _todayKey() {
-  final now = DateTime.now();
-  return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  return _kboDateKeyForTest(DateTime.now());
+}
+
+String _kboDateKeyForTest(DateTime instant) {
+  final kbo = instant.toUtc().add(const Duration(hours: 9));
+  return '${kbo.year.toString().padLeft(4, '0')}-'
+      '${kbo.month.toString().padLeft(2, '0')}-'
+      '${kbo.day.toString().padLeft(2, '0')}';
 }
 
 String _yesterdayKey() {
-  final now = DateTime.now().subtract(const Duration(days: 1));
-  return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  final kbo = DateTime.now().toUtc().add(const Duration(hours: 9));
+  final yesterday = DateTime.utc(
+    kbo.year,
+    kbo.month,
+    kbo.day,
+  ).subtract(const Duration(days: 1));
+  return '${yesterday.year.toString().padLeft(4, '0')}-'
+      '${yesterday.month.toString().padLeft(2, '0')}-'
+      '${yesterday.day.toString().padLeft(2, '0')}';
 }
 
 var _appConfigInitialized = false;

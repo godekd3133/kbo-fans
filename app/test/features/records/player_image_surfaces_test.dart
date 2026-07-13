@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/player.dart';
@@ -22,7 +23,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final season = DateTime.now().year;
+    final season = kboCurrentSeason();
     final expectedImageUrl = kboPlayerImageUrl(
       season: season,
       playerId: '69102',

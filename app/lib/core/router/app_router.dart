@@ -19,6 +19,7 @@ import '../../features/settings/api_diagnostics_screen.dart';
 import '../../features/settings/patch_notes_screen.dart';
 import 'app_route_sanitizer.dart';
 import 'onboarding_state.dart';
+import '../utils/kbo_time.dart';
 import '../widgets/main_scaffold.dart';
 import '../widgets/boot_splash_screen.dart';
 
@@ -173,7 +174,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             playerId: state.pathParameters['playerId']!,
             season:
                 int.tryParse(state.uri.queryParameters['season'] ?? '') ??
-                DateTime.now().year,
+                kboCurrentSeason(),
           ),
         ),
       ),
@@ -190,7 +191,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 LeaderboardMetric.avg,
             season:
                 int.tryParse(state.uri.queryParameters['season'] ?? '') ??
-                DateTime.now().year,
+                kboCurrentSeason(),
           ),
         ),
       ),

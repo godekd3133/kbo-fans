@@ -100,6 +100,7 @@ kbo_fans/
 - GitHub Actions push deploy secrets/vars를 준비할 때는 `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` dry-run을 먼저 보고, 실제 업로드는 `--apply`를 붙인다. secret 값은 출력하지 않는다
 - workflow 파일을 커밋/푸시한 뒤 `./scripts/github-push-demo-run.sh --dry-run true --watch`로 dry-run을 실행하고, 통과 후 `--dry-run false --watch`로 실제 배포한다. 이 스크립트는 dispatch 전에 필수 GitHub secrets/variables를 확인하며, 별도 점검을 끝낸 경우에만 `--skip-config-check`로 우회한다
 - Live Activity scoreboard sync 기본 날짜는 KBO 경기일 기준인 `Asia/Seoul`로 계산한다. AWS UTC `date.today()` 기준으로 바꾸지 않는다
+- 앱/서버의 오늘 날짜, 현재 시즌, current/historical cache·snapshot 분류, 예매/경기 시각도 `Asia/Seoul` KBO civil time을 사용하고 저장 시각·TTL 경과시간은 UTC instant로 유지한다
 - 홈 첫 진입은 설정된 현재 scoreboard source를 우선하고, 이후 background refresh 방식으로 체감 속도를 확보한다
 - 지난 경기 결과, 과거 시즌 순위, 기록실 과거 시즌 데이터는 snapshot 우선 전략을 유지한다
 - 앱 번들 standings / records overview fallback 은 exact-season-only 로 제한한다. 현재 시즌은 `generatedAt` 기준 최신 snapshot 만 허용하고, 검증되지 않은 과거 시즌은 다른 시즌 데이터를 빌리지 않는다

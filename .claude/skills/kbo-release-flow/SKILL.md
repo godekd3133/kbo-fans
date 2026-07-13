@@ -18,6 +18,7 @@ description: Use when preparing commits, pushes, numeric release tags, release n
 - Every version/release change must also update `app/assets/bootstrap/patch_notes.md` for in-app patch notes.
 - Update `docs/APP_SPEC.md` when UX flow or API contract changes.
 - Release artifact creation must be separated from backend-backed behavior validation. A direct-data artifact can be built without release API health, but push / Live Activity token registration still needs a valid `API_BASE_URL`.
+- 현재 release fallback은 `https://3-39-79-1.sslip.io/api`다. `outputs/aws/cloudformation/stack.env`는 자동으로 읽지 않으며, ECS stack URL을 쓸 때만 명시적으로 source해 `RELEASE_API_BASE_URL`을 override한다.
 - For backend-backed screen data validation, pass `USE_BACKEND_API=true`, inject the target `API_BASE_URL`, and verify backend health/readiness explicitly.
 - Run `scripts/release-api-health-check.sh` when release API behavior is relevant.
 - For every tester-facing iOS TestFlight upload, immediately complete the external tester handoff after processing: confirm the build is `VALID`, attach the newest build to `External Testers`, submit Beta App Review if needed, and report installability separately from upload/processing. Do not remove the last approved/installable external build until the newest build is approved or otherwise confirmed installable for external testers.

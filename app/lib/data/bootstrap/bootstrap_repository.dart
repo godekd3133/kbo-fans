@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import '../../core/utils/kbo_time.dart';
+
 class BootstrapRepository {
   static const _standingsAsset = 'assets/bootstrap/standings.json';
   static const _recordsOverviewAsset = 'assets/bootstrap/records_overview.json';
@@ -76,11 +78,11 @@ class BootstrapRepository {
     if (generatedAt == null) {
       return false;
     }
-    return _now().toUtc().difference(generatedAt.toUtc()) <=
-        _currentSeasonSnapshotMaxAge;
+    final age = _now().toUtc().difference(generatedAt.toUtc());
+    return !age.isNegative && age <= _currentSeasonSnapshotMaxAge;
   }
 
-  bool _requiresFreshSnapshot(int season) => season >= _now().year;
+  bool _requiresFreshSnapshot(int season) => season >= kboCurrentSeason(_now());
 
   DateTime? _parseDate(Object? value) {
     if (value is! String || value.isEmpty) {

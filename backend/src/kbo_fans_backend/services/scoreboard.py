@@ -13,6 +13,7 @@ from kbo_fans_backend.crawlers.scoreboard import ScoreboardCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
@@ -853,7 +854,7 @@ class ScoreboardService:
     @staticmethod
     def _is_historical_date(date: str) -> bool:
         try:
-            return date_type.fromisoformat(date) < date_type.today()
+            return date_type.fromisoformat(date) < current_kbo_date()
         except ValueError:
             return False
 

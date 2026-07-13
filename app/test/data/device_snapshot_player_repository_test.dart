@@ -94,6 +94,32 @@ void main() {
     expect(stats.pitching, isEmpty);
   });
 
+  test('future-dated current season device snapshot is ignored', () async {
+    SharedPreferences.setMockInitialValues({
+      _snapshotKey('teamStats:KT:2026'): jsonEncode({
+        'savedAt': DateTime.utc(2026, 5, 20, 13).toIso8601String(),
+        'payload': {
+          'teamId': 'KT',
+          'season': 2026,
+          'hitting': {'AVG': '0.382'},
+          'pitching': {'ERA': '6.00'},
+        },
+      }),
+    });
+    final repository = DeviceSnapshotPlayerRepository(
+      primary: _ThrowingPlayerRepository(),
+      fallback: _FallbackPlayerRepository(
+        teamStats: _emptyStats(teamId: 'KT', season: 2026),
+      ),
+      now: () => DateTime.utc(2026, 5, 20, 12),
+    );
+
+    final stats = await repository.getTeamStats('KT', season: 2026);
+
+    expect(stats.hitting, isEmpty);
+    expect(stats.pitching, isEmpty);
+  });
+
   test('historical legacy device snapshot remains usable', () async {
     SharedPreferences.setMockInitialValues({
       _snapshotKey('teamStats:KT:2025'): jsonEncode({

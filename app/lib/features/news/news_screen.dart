@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/router/app_route_sanitizer.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -38,8 +38,8 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final displayDate = DateFormat('yyyy.MM.dd').format(DateTime.now());
+    final today = kboDateKey();
+    final displayDate = kboDisplayDateKey();
     final myTeamId = ref.watch(myTeamProvider);
     final aggregateKey = '$today|${myTeamId ?? ''}';
     final aggregateAsync = ref.watch(homeAggregateProvider(aggregateKey));

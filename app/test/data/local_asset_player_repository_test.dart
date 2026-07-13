@@ -62,6 +62,22 @@ void main() {
     expect(stats.pitching['ERA'], '4.50');
   });
 
+  test(
+    'future-dated current team records bundled snapshot is ignored',
+    () async {
+      final repository = LocalAssetPlayerRepository(
+        now: () => DateTime.utc(2026, 5, 20, 4),
+      );
+
+      final players = await repository.getTeamPlayers('KT', season: 2026);
+      final stats = await repository.getTeamStats('KT', season: 2026);
+
+      expect(players, isEmpty);
+      expect(stats.hitting, isEmpty);
+      expect(stats.pitching, isEmpty);
+    },
+  );
+
   test('historical team players load exact bundled season snapshots', () async {
     final repository = LocalAssetPlayerRepository();
 
@@ -106,7 +122,7 @@ void main() {
     'records overview uses verified exact current season snapshot',
     () async {
       final repository = LocalAssetPlayerRepository(
-        now: () => DateTime.utc(2026, 5, 20, 5),
+        now: () => DateTime.utc(2026, 6, 20, 3),
       );
 
       final overview = await repository.getRecordsOverview(season: 2026);

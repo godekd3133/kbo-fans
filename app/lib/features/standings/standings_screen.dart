@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/team_data.dart';
 import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
@@ -26,7 +27,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedSeason = DateTime.now().year;
+    _selectedSeason = kboCurrentSeason();
   }
 
   @override
@@ -476,7 +477,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
 
   Widget _seasonDropdown() {
     final seasons = [
-      for (int year = DateTime.now().year; year >= 2001; year--) year,
+      for (int year = kboCurrentSeason(); year >= 2001; year--) year,
     ];
     return Container(
       height: 36,

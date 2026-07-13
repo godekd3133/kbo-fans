@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timezone
 
 import pytest
 
@@ -9,6 +8,7 @@ from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.standings import StandingsService
 from kbo_fans_backend.services.team_stats import TeamStatsService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_year
 
 
 class _FailingScheduleCrawler:
@@ -102,7 +102,7 @@ def test_scoreboard_uses_historical_snapshot_before_crawling(tmp_path) -> None:
 
 def test_historical_standings_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year - 1
+    season = current_kbo_year() - 1
     expected = {
         "season": season,
         "standings": [{"rank": 1, "teamId": "LG", "teamName": "LG 트윈스"}],
@@ -120,7 +120,7 @@ def test_historical_standings_falls_back_to_snapshot(tmp_path) -> None:
 
 def test_historical_standings_uses_snapshot_before_crawling(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year - 1
+    season = current_kbo_year() - 1
     expected = {
         "season": season,
         "standings": [{"rank": 1, "teamId": "LG", "teamName": "LG 트윈스"}],
@@ -140,7 +140,7 @@ def test_historical_standings_uses_snapshot_before_crawling(tmp_path) -> None:
 
 def test_current_standings_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     expected = {
         "season": season,
         "standings": [{"rank": 1, "teamId": "LG", "teamName": "LG 트윈스"}],
@@ -159,7 +159,7 @@ def test_current_standings_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
 
 def test_current_standings_reject_old_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     _write_snapshot_record(
         tmp_path,
         "standings_latest",
@@ -181,7 +181,7 @@ def test_current_standings_reject_old_snapshot_on_failure(tmp_path) -> None:
 
 def test_historical_player_detail_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year - 1
+    season = current_kbo_year() - 1
     expected = {
         "id": "61102",
         "teamId": "LG",
@@ -201,7 +201,7 @@ def test_historical_player_detail_falls_back_to_snapshot(tmp_path) -> None:
 
 def test_current_player_detail_rejects_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     store.save(
         "player_detail",
         f"61102-{season}-auto",
@@ -225,7 +225,7 @@ def test_current_player_detail_rejects_snapshot_on_failure(tmp_path) -> None:
 
 def test_current_season_team_players_crawl_before_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     stale = {
         "teamId": "KT",
         "season": season,
@@ -244,7 +244,7 @@ def test_current_season_team_players_crawl_before_snapshot(tmp_path) -> None:
 
 def test_current_season_team_players_reject_old_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     _write_snapshot_record(
         tmp_path,
         "team_players",
@@ -271,7 +271,7 @@ def test_current_season_team_players_reject_old_snapshot_on_failure(tmp_path) ->
 
 def test_current_season_team_players_reject_fresh_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     store.save(
         "team_players",
         f"KT-{season}",
@@ -293,7 +293,7 @@ def test_current_season_team_players_reject_fresh_snapshot_on_failure(tmp_path) 
 
 def test_current_season_team_stats_crawl_before_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     stale = {
         "teamId": "KT",
         "season": season,
@@ -314,7 +314,7 @@ def test_current_season_team_stats_crawl_before_snapshot(tmp_path) -> None:
 
 def test_current_season_team_stats_reject_old_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     _write_snapshot_record(
         tmp_path,
         "team_stats",
@@ -342,7 +342,7 @@ def test_current_season_team_stats_reject_old_snapshot_on_failure(tmp_path) -> N
 
 def test_current_season_team_stats_reject_fresh_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     store.save(
         "team_stats",
         f"KT-{season}",
@@ -365,34 +365,42 @@ def test_current_season_team_stats_reject_fresh_snapshot_on_failure(tmp_path) ->
 
 def test_records_overview_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year - 1
-    expected = {
+    season = current_kbo_year() - 1
+    snapshot = {
         "season": season,
-            "leaders": {
-                "avg": [],
-                "hr": [],
-                "ops": [],
-                "era": [],
-                "opsPlus": [],
-                "wins": [],
-                "saves": [],
-                "strikeouts": [],
-            },
-        "featured": {
-            "todayHitter": {"label": "시즌 타율 리더"},
-            "todayPitcher": {"label": "시즌 ERA 리더"},
-            "monthHitter": {"label": "시즌 홈런왕"},
-                "monthPitcher": {"label": "시즌 ERA 리더"},
-            },
-        }
-    store.save("records_overview", str(season), expected)
+        "leaders": {
+            "avg": [
+                {
+                    "rank": 1,
+                    "playerId": "",
+                    "playerType": "hitter",
+                    "metricKey": "AVG",
+                    "name": "Snapshot Leader",
+                    "teamId": "LG",
+                    "value": ".345",
+                }
+            ],
+            "hr": [],
+            "ops": [],
+            "era": [],
+            "opsPlus": [],
+            "wins": [],
+            "saves": [],
+            "strikeouts": [],
+        },
+        "featured": {},
+    }
+    store.save("records_overview", str(season), snapshot)
 
     service = RecordsOverviewService(
         crawler=_FailingRecordsOverviewCrawler(),
         snapshot_store=store,
     )
 
-    assert service.get_overview(season) == expected
+    payload = service.get_overview(season)
+
+    assert payload["leaders"]["avg"][0]["name"] == "Snapshot Leader"
+    assert payload["featured"]["todayHitter"]["name"] == "Snapshot Leader"
 
 
 def _write_snapshot_record(tmp_path, namespace: str, key: str, payload: dict) -> None:

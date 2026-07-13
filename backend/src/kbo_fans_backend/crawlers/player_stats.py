@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import concurrent.futures
 import re
-from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
 from kbo_fans_backend.utils.html import strip_tags
+from kbo_fans_backend.utils.kbo_time import current_kbo_year
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
-
-_KBO_TIMEZONE = timezone(timedelta(hours=9))
 
 
 class PlayerStatsCrawler(BaseCrawler):
@@ -453,7 +451,7 @@ class PlayerStatsCrawler(BaseCrawler):
         return int(match.group(1)) if match else 0
 
     def _resolve_recent_games_season(self, html: str) -> int:
-        return self._extract_current_season(html) or datetime.now(_KBO_TIMEZONE).year
+        return self._extract_current_season(html) or current_kbo_year()
 
     def _parse_recent_games(
         self, html: str, include_recent: bool, player_type: str

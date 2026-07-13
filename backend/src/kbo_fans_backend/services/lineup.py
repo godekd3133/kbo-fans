@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import date as date_type
-from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
@@ -11,19 +10,12 @@ from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:  # pragma: no cover - Python 3.9+ expected
-    ZoneInfo = None
-
-_KST = timezone(timedelta(hours=9))
 
 
 def _current_kbo_date() -> date_type:
-    tz = ZoneInfo("Asia/Seoul") if ZoneInfo is not None else _KST
-    return datetime.now(tz).date()
+    return current_kbo_date()
 
 
 class LineupService:

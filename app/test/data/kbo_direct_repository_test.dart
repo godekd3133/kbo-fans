@@ -5,6 +5,18 @@ import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/repositories/kbo_direct_repository.dart';
 
 void main() {
+  test('direct relay rejects missing credentials before network access', () {
+    final repository = KboDirectRepository(
+      relayUserId: '',
+      relayPassword: '',
+    );
+
+    expect(
+      repository.validateRelayCredentialsForTesting,
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test(
     'direct relay summary fallback is suppressed before playable states',
     () {

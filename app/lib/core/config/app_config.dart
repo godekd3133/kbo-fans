@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'api_endpoints.dart';
 import 'local_api_base_url_io.dart'
     if (dart.library.js_interop) 'local_api_base_url_web.dart';
 
@@ -85,9 +86,9 @@ class AppConfig {
       case AppEnvironment.local:
         return defaultLocalApiBaseUrl();
       case AppEnvironment.dev:
-        return 'https://dev-api.kbofans.com/api';
+        return developmentApiBaseUrl;
       case AppEnvironment.release:
-        return 'https://api.kbofans.com/api';
+        return productionApiBaseUrl;
     }
   }
 

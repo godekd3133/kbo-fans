@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
+from kbo_fans_backend.utils.kbo_time import kbo_timezone
+
 
 class TicketingService:
     _VENDOR_BY_TEAM = {
@@ -92,12 +94,22 @@ class TicketingService:
         if len(time_parts) != 2:
             return None
 
-        year = int(game_id[:4])
-        month = int(game_id[4:6])
-        day = int(game_id[6:8])
-        hour = int(time_parts[0])
-        minute = int(time_parts[1])
+        try:
+            year = int(game_id[:4])
+            month = int(game_id[4:6])
+            day = int(game_id[6:8])
+            hour = int(time_parts[0])
+            minute = int(time_parts[1])
+            game_start = datetime(
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                tzinfo=kbo_timezone(),
+            )
+        except ValueError:
+            return None
 
-        game_start = datetime(year, month, day, hour, minute)
         open_at = game_start - timedelta(days=7)
         return open_at.replace(hour=11, minute=0, second=0, microsecond=0)

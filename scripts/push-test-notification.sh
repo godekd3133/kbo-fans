@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-BASE_URL="${PUSH_API_BASE_URL:-${API_BASE_URL:-${RELEASE_API_BASE_URL:-https://api.kbofans.com/api}}}"
+BASE_URL="${PUSH_API_BASE_URL:-${API_BASE_URL:-${RELEASE_API_BASE_URL:-https://3-39-79-1.sslip.io/api}}}"
 BASE_URL="${BASE_URL%/}"
 SYNC_SECRET="${PUSH_SYNC_SECRET:-}"
 TITLE="${PUSH_TEST_TITLE:-KBO Fans Test}"
@@ -22,7 +22,7 @@ Usage:
 
 Options:
   --base-url <url>   API base URL. Defaults to PUSH_API_BASE_URL, API_BASE_URL,
-                     RELEASE_API_BASE_URL, then https://api.kbofans.com/api.
+                     RELEASE_API_BASE_URL, then https://3-39-79-1.sslip.io/api.
   --topic <topic>    FCM topic target. Mutually exclusive with --token.
   --token <token>    FCM device token target. Mutually exclusive with --topic.
   --title <text>     Notification title. Defaults to "KBO Fans Test".

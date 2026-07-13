@@ -10,6 +10,7 @@ from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.standings import StandingsService
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
@@ -942,7 +943,7 @@ class HomeService:
             target = date_type.fromisoformat(value)
         except ValueError:
             return False
-        return target == date_type.today() - timedelta(days=1)
+        return target == current_kbo_date() - timedelta(days=1)
 
     @staticmethod
     def _team_ids_for_games(games: List[Dict[str, Any]]) -> List[str]:
@@ -1071,7 +1072,7 @@ class HomeService:
             target = date_type.fromisoformat(value)
         except ValueError:
             return False
-        return target < date_type.today()
+        return target < current_kbo_date()
 
     @staticmethod
     def _previous_year_month(value: str) -> Optional[str]:

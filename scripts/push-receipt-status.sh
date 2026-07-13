@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-BASE_URL="${PUSH_API_BASE_URL:-${API_BASE_URL:-${RELEASE_API_BASE_URL:-https://api.kbofans.com/api}}}"
+BASE_URL="${PUSH_API_BASE_URL:-${API_BASE_URL:-${RELEASE_API_BASE_URL:-https://3-39-79-1.sslip.io/api}}}"
 BASE_URL="${BASE_URL%/}"
 SYNC_SECRET="${PUSH_SYNC_SECRET:-}"
 TIMEOUT_SECONDS="${PUSH_RECEIPT_STATUS_TIMEOUT_SECONDS:-20}"
@@ -23,7 +23,7 @@ Usage:
 
 Options:
   --base-url <url>       API base URL. Defaults to PUSH_API_BASE_URL, API_BASE_URL,
-                         RELEASE_API_BASE_URL, then https://api.kbofans.com/api.
+                         RELEASE_API_BASE_URL, then https://3-39-79-1.sslip.io/api.
   --expect-receipt       Exit non-zero when no recent receipt matches filters.
   --game-id <gameId>     Match a specific receipt gameId.
   --type <type>          Match a specific receipt type, such as hit or scoring.

@@ -1,4 +1,5 @@
 import '../../data/models/ticketing.dart';
+import '../utils/kbo_time.dart';
 
 class TicketingPolicy {
   static const Map<String, Map<String, String>> _vendorByTeam = {
@@ -65,13 +66,21 @@ class TicketingPolicy {
     }
 
     final gameStart = _parseGameStart(gameId: gameId, startTime: startTime);
-    final openAt = gameStart == null
+    final gameCivil = gameStart == null ? null : kboCivilDateTime(gameStart);
+    final openDate = gameCivil == null
         ? null
-        : DateTime(
-            gameStart.year,
-            gameStart.month,
-            gameStart.day - 7,
-            11,
+        : DateTime.utc(
+            gameCivil.year,
+            gameCivil.month,
+            gameCivil.day,
+          ).subtract(const Duration(days: 7));
+    final openAt = openDate == null
+        ? null
+        : kboInstantFromCivil(
+            year: openDate.year,
+            month: openDate.month,
+            day: openDate.day,
+            hour: 11,
           );
 
     return TicketInfo(
@@ -107,6 +116,12 @@ class TicketingPolicy {
       return null;
     }
 
-    return DateTime(year!, month!, day!, hour!, minute!);
+    return kboInstantFromCivil(
+      year: year!,
+      month: month!,
+      day: day!,
+      hour: hour!,
+      minute: minute!,
+    );
   }
 }

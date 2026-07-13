@@ -106,10 +106,11 @@ flutter run -d android
 참고:
 
 - 현재 저장소에는 `ios/`와 `android/` 프로젝트가 모두 포함되어 있습니다.
-- `web/` 플랫폼은 추가되어 있으며 기본 웹 실행은 direct preview/data mode의 `./scripts/codex-run-web.sh` 로 실행합니다.
+- `web/` 플랫폼은 추가되어 있으며 기본 웹 실행도 backend API mode의 `./scripts/codex-run-web.sh` 로 실행합니다.
 - Chrome 디버그 세션이 필요하면 `./scripts/codex-run-web-dev.sh` 또는 `flutter run -d chrome` 을 사용합니다.
 - `macos/` 프로젝트는 아직 생성되지 않았습니다.
 - 데이터 정확성 검증은 기본적으로 FastAPI API/service/snapshot 경로에서 수행합니다. direct KBO mode는 `USE_BACKEND_API=false`를 명시한 parser/debug 세션에서만 사용합니다.
+- direct KBO 문자중계 debug에서만 필요한 `KBO_RELAY_USER_ID` / `KBO_RELAY_PASSWORD`는 무시된 로컬 환경에서 주입합니다. 코드·문서·공유 빌드에 값을 넣지 않으며, 누락 시 direct relay는 네트워크 호출 전에 중단됩니다.
 - 예매 오픈 알림은 앱 로컬 예약 알림으로 동작합니다. 현재 예매처/오픈 시간은 홈팀 기본 정책 기준 추정값입니다.
 - 위젯 갱신은 앱 foreground에서는 라이브 8초 / 예정 5분 기준으로 반영되며, 백그라운드 주기는 OS 정책에 따라 제한됩니다.
 - 앱이 꺼진 뒤에도 일반 푸시와 iOS Live Activity를 시작/갱신하려면 운영 백엔드가 KBO 상태를 polling하고 FCM/APNs로 발송해야 합니다. Firebase는 일반 푸시 전달 채널이고, Dynamic Island 시작/갱신은 ActivityKit 전용 APNs liveactivity push-to-start/update token을 사용합니다. 같은 scheduler가 경기 시작 10분 전 Live Activity start, 점수판 diff 기반 득점/역전/타석/종료와 relay diff 기반 안타/홈런 FCM topic push도 발행합니다.
@@ -202,7 +203,7 @@ Codex 앱에서 바로 실행할 수 있도록 공용 스크립트도 추가했�
 - `./scripts/codex-run-ios-debug.sh` 는 연결된 iPhone 실기기에서 `--debug` 로 실행합니다. 디버거 연결 상태에서 개발할 때만 쓰는 경로입니다.
 - `./scripts/codex-run-ios-profile.sh` 는 위 동작을 명시적으로 호출하는 iPhone local profile 테스트용 래퍼입니다.
 - `./scripts/codex-run-ios-local-release.sh` 는 연결된 iPhone 실기기에서 release mode로 local backend API를 사용합니다.
-- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 운영 backend API를 사용하고, `RELEASE_API_BASE_URL` 또는 기본 `https://api.kbofans.com/api`를 `API_BASE_URL`로 주입합니다.
+- `./scripts/codex-run-ios-release.sh` 는 연결된 iPhone 실기기에서 운영 backend API를 사용하고, `RELEASE_API_BASE_URL` 또는 현재 기본 `https://3-39-79-1.sslip.io/api`를 `API_BASE_URL`로 주입합니다.
 - `./scripts/codex-run-android-release.sh` 도 운영 backend API와 같은 `API_BASE_URL`을 사용합니다.
 - `./scripts/codex-run.sh android-release`, `./scripts/codex-run.sh web`, `./scripts/codex-run.sh web-release` 는 backend API 경로로 실행합니다.
 - 웹 `APP_ENV=local` / `APP_ENV=release` 빌드는 backend API를 기본값으로 사용합니다.
@@ -224,7 +225,7 @@ GitHub Actions 에서 앱 빌드본을 바로 뽑을 수 있도록 수동 실행
 Release artifact data modes:
 
 - Android / iOS / Web artifact는 backend API mode로 빌드합니다.
-- `APP_ENV=release` artifact는 화면 provider와 push / Live Activity token 등록 모두를 위해 `release_api_base_url` workflow input, `RELEASE_API_BASE_URL` variable/secret, 또는 기본 `https://api.kbofans.com/api`를 `API_BASE_URL`로 함께 주입합니다.
+- `APP_ENV=release` artifact는 화면 provider와 push / Live Activity token 등록 모두를 위해 `release_api_base_url` workflow input, `RELEASE_API_BASE_URL` variable/secret, 또는 현재 기본 `https://3-39-79-1.sslip.io/api`를 `API_BASE_URL`로 함께 주입합니다.
 - backend API 화면 데이터와 push / Live Activity 운영 검증은 backend health/readiness를 함께 확인합니다.
 
 생성 아티팩트:
@@ -285,7 +286,7 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 - `python -m kbo_fans_backend.scheduler.baseball_info --smart-daily --now-time 16:00 --dry-run`: 경기 시작 3시간 이내 팀은 `lineup_day`로 자동 전환해 라인업/예매/중계 진입을 유도
 - `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`: 배포 전 앱 Firebase 설정, iOS APNs/Live Activity capability, release `API_BASE_URL` token-registration handoff, backend secret env, AWS env 형태를 secret 값 노출 없이 점검. 필수 배포값이 obvious placeholder로 남아 있으면 실패합니다.
 - `GET /api/push/config-status`: Firebase/APNs/registry/scheduler 설정 누락을 secret 값 노출 없이 점검
-- `./scripts/push-readiness-check.sh https://api.kbofans.com/api`: 배포 후 `/health`, push config readiness, scheduler heartbeat 최신성을 한 번에 점검. 기본적으로 `scheduler.lastSyncAt`이 180초 이내여야 통과하며, 설정값만 확인할 때는 `PUSH_READINESS_REQUIRE_SCHEDULER=false`로 우회합니다. `PUSH_READINESS_RUN_SYNC=true`로 one-shot sync를 실행하면 sync 후 config-status를 다시 읽어 heartbeat를 확인합니다. 날짜를 생략하면 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용하고, 재현용 날짜가 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정합니다.
+- `./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api`: 배포 후 `/health`, push config readiness, scheduler heartbeat 최신성을 한 번에 점검. 기본적으로 `scheduler.lastSyncAt`이 180초 이내여야 통과하며, 설정값만 확인할 때는 `PUSH_READINESS_REQUIRE_SCHEDULER=false`로 우회합니다. `PUSH_READINESS_RUN_SYNC=true`로 one-shot sync를 실행하면 sync 후 config-status를 다시 읽어 heartbeat를 확인합니다. 날짜를 생략하면 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용하고, 재현용 날짜가 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정합니다.
 - `./scripts/lightsail-deploy.sh`: Lightsail 512MB/1GB 단일 서버에 backend runtime bundle을 SSH/SCP로 배포하고, API service와 sync worker를 systemd로 재시작합니다. Docker/ECR/ECS/ALB/EFS/Secrets Manager를 쓰지 않는 저비용 운영 경로입니다. 상세 절차는 `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`를 기준으로 합니다.
 - `./scripts/aws-push-secrets.sh`: Firebase Admin JSON / APNs `.p8` / sync secret / KBO relay credential을 AWS Secrets Manager에 생성 또는 갱신하고 `SECRET_ARN_*` export를 생성
 - `./scripts/aws-push-image.sh`: backend Docker image를 ECR에 build/tag/push하고 `CONTAINER_IMAGE_URI` export를 생성

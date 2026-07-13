@@ -159,7 +159,27 @@ def test_boxscore_crawler_parses_optional_hitter_and_pitcher_stats() -> None:
         {
             "arrHitter": [
                 _hitter_payload(
-                    [(["3", "지", "강백호"], ["5", "4", "2", "2", "1", "0", "1", "3", "0", "0", "1", "1", "1", "0"])],
+                    [
+                        (
+                            ["3", "지", "강백호"],
+                            [
+                                "5",
+                                "4",
+                                "2",
+                                "2",
+                                "1",
+                                "0",
+                                "1",
+                                "3",
+                                "0",
+                                "0",
+                                "1",
+                                "1",
+                                "1",
+                                "0",
+                            ],
+                        )
+                    ],
                     headers=[
                         "타석",
                         "타수",
@@ -225,6 +245,36 @@ def test_boxscore_crawler_parses_optional_hitter_and_pitcher_stats() -> None:
     assert pitcher["name"] == "김영현"
     assert pitcher["pitchCount"] == 34
     assert pitcher["runs"] == 1
+
+
+def test_boxscore_crawler_totals_innings_follow_reordered_header() -> None:
+    crawler = _PayloadBoxscoreCrawler(
+        {
+            "arrHitter": [_hitter_payload([]), _hitter_payload([])],
+            "arrPitcher": [
+                _pitcher_payload(
+                    [["김영현", "1.2", "2", "3", "1", "1", "-", "25", "1"]],
+                    headers=[
+                        "선수명",
+                        "이닝",
+                        "피안타",
+                        "삼진",
+                        "4사구",
+                        "자책",
+                        "결과",
+                        "투구수",
+                        "실점",
+                    ],
+                ),
+                _pitcher_payload([]),
+            ],
+        }
+    )
+
+    payload = crawler.get_boxscore("20260613KTLG0")
+
+    assert payload["away"]["pitchers"][0]["innings"] == "1.2"
+    assert payload["away"]["totals"]["pitching"]["innings"] == "1.2"
 
 
 def _hitter_payload(rows, headers=None):

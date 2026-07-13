@@ -1,1 +1,3 @@
-String defaultLocalApiBaseUrl() => 'https://api.kbofans.com/api';
+import 'api_endpoints.dart';
+
+String defaultLocalApiBaseUrl() => productionApiBaseUrl;

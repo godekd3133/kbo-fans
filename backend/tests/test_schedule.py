@@ -1,5 +1,4 @@
 import json
-from datetime import date as date_type
 
 import pytest
 
@@ -7,11 +6,12 @@ from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 
 
 class _StubScheduleCrawler:
     def get_month_schedule(self, month: str):
-        today = date_type.today().isoformat()
+        today = current_kbo_date().isoformat()
         return [
             {
                 "date": today,
@@ -137,8 +137,36 @@ def test_ticket_info_is_omitted_for_terminal_schedule_status() -> None:
     assert ticket_info is None
 
 
+def test_ticket_info_open_at_is_timezone_aware_kbo_time() -> None:
+    service = TicketingService()
+
+    ticket_info = service.build_ticket_info(
+        home_team_id="LG",
+        game_id="20260720KTLG0",
+        start_time="18:30",
+        status="SCHEDULED",
+    )
+
+    assert ticket_info is not None
+    assert ticket_info["openAt"] == "2026-07-13T11:00:00+09:00"
+
+
+def test_ticket_info_keeps_schedule_available_when_datetime_is_malformed() -> None:
+    service = TicketingService()
+
+    ticket_info = service.build_ticket_info(
+        home_team_id="LG",
+        game_id="invalid-date-LG",
+        start_time="18:30",
+        status="SCHEDULED",
+    )
+
+    assert ticket_info is not None
+    assert ticket_info["openAt"] is None
+
+
 def test_current_day_schedule_status_is_enriched_from_main_game(tmp_path) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     service = ScheduleService(
         schedule_crawler=_StubScheduleCrawler(),
         main_crawler=_StubMainCrawler(),
@@ -156,7 +184,7 @@ def test_current_day_schedule_status_is_enriched_from_main_game(tmp_path) -> Non
 def test_current_day_scheduled_game_keeps_scores_empty_even_when_main_has_zero(
     tmp_path,
 ) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     service = ScheduleService(
         schedule_crawler=_StubScheduleCrawler(),
         main_crawler=_ScheduledZeroMainCrawler(),
@@ -174,7 +202,7 @@ def test_current_day_scheduled_game_keeps_scores_empty_even_when_main_has_zero(
 def test_current_day_cancelled_game_uses_cancel_label_and_keeps_scores_empty(
     tmp_path,
 ) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     service = ScheduleService(
         schedule_crawler=_StubScheduleCrawler(),
         main_crawler=_CancelledMainCrawler(),
@@ -191,7 +219,7 @@ def test_current_day_cancelled_game_uses_cancel_label_and_keeps_scores_empty(
 
 
 def test_schedule_saves_non_terminal_month_snapshot(tmp_path) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     service = ScheduleService(
         schedule_crawler=_StubScheduleCrawler(),
@@ -205,7 +233,7 @@ def test_schedule_saves_non_terminal_month_snapshot(tmp_path) -> None:
 
 
 def test_current_month_schedule_rejects_old_snapshot_on_failure(tmp_path) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     month = today[:7]
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     _write_snapshot_record(
@@ -240,7 +268,7 @@ def test_current_month_schedule_rejects_old_snapshot_on_failure(tmp_path) -> Non
 
 
 def test_current_month_schedule_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     month = today[:7]
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     expected = {

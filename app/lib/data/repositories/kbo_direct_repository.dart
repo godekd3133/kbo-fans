@@ -8,6 +8,7 @@ import 'package:html/parser.dart' as html_parser;
 import 'dart:convert';
 
 import '../../core/constants/ticketing_policy.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/dev_console.dart';
 import '../models/game.dart';
 import '../models/highlight_info.dart';
@@ -28,8 +29,6 @@ class KboDirectRepository implements GameRepository {
   static const _youtubeBase = 'https://www.youtube.com';
   // 웹 CORS 우회용 프록시
   static const _corsProxy = 'https://corsproxy.io/?';
-  static const _relayUserId = 'godekd3133';
-  static const _relayPassword = 'alsrb2002!';
   static const _relayGameLookupTimeout = Duration(seconds: 3);
   static const _relayWarmupTimeout = Duration(seconds: 2);
   static const _relayFetchTimeout = Duration(seconds: 12);
@@ -45,8 +44,14 @@ class KboDirectRepository implements GameRepository {
   _mainGameMapRequests = {};
   final Map<String, Future<GameLineupData>> _lineupRequests = {};
   final Map<String, Future<RelayData>> _relayRequests = {};
+  final String _relayUserId;
+  final String _relayPassword;
 
-  KboDirectRepository() {
+  KboDirectRepository({String? relayUserId, String? relayPassword})
+    : _relayUserId = relayUserId ??
+          const String.fromEnvironment('KBO_RELAY_USER_ID'),
+      _relayPassword = relayPassword ??
+          const String.fromEnvironment('KBO_RELAY_PASSWORD') {
     _dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 15),
@@ -918,8 +923,7 @@ class KboDirectRepository implements GameRepository {
   }
 
   String _todayDateString() {
-    final now = DateTime.now();
-    return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return kboDateKey();
   }
 
   Map<String, dynamic>? _findMainGameForSchedule(
@@ -1485,7 +1489,7 @@ class KboDirectRepository implements GameRepository {
     final starterIds = _starterIdsFromMainGame(mainGame);
     final season =
         _gameDateFromId(gameId)?.substring(0, 4) ??
-        DateTime.now().year.toString();
+        kboCurrentSeason().toString();
     return GameLineupData(
       gameId: gameId,
       away: TeamLineupData(
@@ -1578,7 +1582,7 @@ class KboDirectRepository implements GameRepository {
       final starterIds = _starterIdsFromMainGame(mainGame);
       final season =
           _gameDateFromId(gameId)?.substring(0, 4) ??
-          DateTime.now().year.toString();
+          kboCurrentSeason().toString();
       return GameLineupData(
         gameId: gameId,
         away: TeamLineupData(
@@ -1611,7 +1615,7 @@ class KboDirectRepository implements GameRepository {
     final starterIds = _starterIdsFromMainGame(mainGame);
     final season =
         _gameDateFromId(gameId)?.substring(0, 4) ??
-        DateTime.now().year.toString();
+        kboCurrentSeason().toString();
     return GameLineupData(
       gameId: gameId,
       away: TeamLineupData(
@@ -2287,6 +2291,7 @@ class KboDirectRepository implements GameRepository {
     if (_relayLoggedIn) {
       return;
     }
+    _validateRelayCredentials();
     _sessionCookies.clear();
     final loginPage = await _getPlain('/Member/Login.aspx', queued: queued);
     final document = html_parser.parse(loginPage);
@@ -2337,6 +2342,19 @@ class KboDirectRepository implements GameRepository {
       throw StateError('KBO relay login failed');
     }
     _relayLoggedIn = true;
+  }
+
+  void _validateRelayCredentials() {
+    if (_relayUserId.trim().isEmpty || _relayPassword.isEmpty) {
+      throw StateError(
+        'KBO relay credentials are not configured for direct debug mode',
+      );
+    }
+  }
+
+  @visibleForTesting
+  void validateRelayCredentialsForTesting() {
+    _validateRelayCredentials();
   }
 
   void _resetRelaySession() {
@@ -3531,7 +3549,7 @@ class KboDirectRepository implements GameRepository {
     if (gameId.length >= 4) {
       return gameId.substring(0, 4);
     }
-    return DateTime.now().year.toString();
+    return kboCurrentSeason().toString();
   }
 
   bool _isTopInning(String inningText, Map<String, dynamic>? mainGame) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/features/settings/release_notes.dart';
 import 'package:kbo_fans/features/settings/release_notes_prompt.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,57 +12,77 @@ void main() {
     PackageInfo.setMockInitialValues(
       appName: 'KBO Fans',
       packageName: 'com.kbofans.app',
-      version: '0.1.8',
-      buildNumber: '75',
+      version: '0.1.18',
+      buildNumber: '86',
       buildSignature: '',
     );
   });
 
-  testWidgets('update prompt shows current release once and opens full notes', (
-    tester,
-  ) async {
-    late BuildContext hostContext;
-    final router = GoRouter(
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, _) {
-            hostContext = context;
+  test('current patch note is available for the installed version', () async {
+    final currentVersion = await loadCurrentAppVersion(fallbackVersion: '');
+    final data = await loadReleaseNotes();
+
+    expect(currentVersion, '0.1.18+86');
+    expect(data.releases.first.version, '0.1.18+86');
+    expect(findInstalledReleaseNote(data.releases, currentVersion), isNotNull);
+  });
+
+  testWidgets('update prompt shows the current release once', (tester) async {
+    late BuildContext promptContext;
+    const currentVersion = '0.1.18+86';
+    const release = ReleaseNote(
+      version: currentVersion,
+      subtitle: '경기 정보와 알림 안정성',
+      notes: ['고쳤어요: 해외에 있거나 자정 무렵에도 오늘 경기 정보를 안정적으로 보여줍니다.'],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Builder(
+          builder: (context) {
+            promptContext = context;
             return const Scaffold(body: SizedBox.shrink());
           },
         ),
-        GoRoute(
-          path: '/release-notes',
-          builder: (_, _) => const Scaffold(body: Text('전체 업데이트 소식 화면')),
-        ),
-      ],
-    );
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(
-      MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
     );
     await tester.pump();
+    expect(promptContext.mounted, isTrue);
 
-    final promptFuture = showReleaseNotesPromptIfNeeded(hostContext);
-    await tester.pumpAndSettle();
+    final promptFuture = showReleaseNotesPromptIfNeeded(
+      promptContext,
+      currentVersionLoader: () async => currentVersion,
+      releaseNotesLoader: () async => const ReleaseNotesData(
+        currentVersion: currentVersion,
+        releases: [release],
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('업데이트 소식'), findsOneWidget);
-    expect(find.text('버전 0.1.8+75'), findsOneWidget);
-    expect(find.textContaining('마이팀 경기 알림'), findsOneWidget);
+    expect(find.text('버전 $currentVersion'), findsOneWidget);
+    expect(find.textContaining('해외에 있거나 자정 무렵'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(ElevatedButton, '전체 보기'));
-    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(OutlinedButton, '닫기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await promptFuture;
-    await tester.pumpAndSettle();
-
-    expect(find.text('전체 업데이트 소식 화면'), findsOneWidget);
 
     final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString(releaseNotesSeenVersionPrefsKey), '0.1.8+75');
+    expect(prefs.getString(releaseNotesSeenVersionPrefsKey), currentVersion);
 
-    await showReleaseNotesPromptIfNeeded(hostContext);
-    await tester.pumpAndSettle();
-    expect(find.text('버전 0.1.8+75'), findsNothing);
+    await showReleaseNotesPromptIfNeeded(
+      promptContext,
+      currentVersionLoader: () async => currentVersion,
+      releaseNotesLoader: () async => const ReleaseNotesData(
+        currentVersion: currentVersion,
+        releases: [release],
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('버전 $currentVersion'), findsNothing);
   });
 }

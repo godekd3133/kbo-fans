@@ -95,7 +95,9 @@ has_ios_simulator() {
     return 1
   fi
 
-  xcrun simctl list devices available 2>/dev/null | grep -q "("
+  local devices
+  devices="$(xcrun simctl list devices available 2>/dev/null || true)"
+  [[ "$devices" == *"("* ]]
 }
 
 ios_destination_issue() {
@@ -597,6 +599,17 @@ local_backend_api_url_for_android_emulator() {
   return 1
 }
 
+local_backend_api_url_for_android_serial() {
+  local serial="$1"
+  local adb_bin="$2"
+
+  if android_serial_is_emulator "$serial" "$adb_bin"; then
+    local_backend_api_url_for_android_emulator
+  else
+    local_backend_api_url_for_lan
+  fi
+}
+
 run_flutter() {
   local flutter
   flutter="$(flutter_cmd)"
@@ -623,17 +636,7 @@ release_api_base_url() {
     return
   fi
 
-  local stack_env="$ROOT_DIR/outputs/aws/cloudformation/stack.env"
-  local line
-  if [[ -f "$stack_env" ]]; then
-    line="$(grep -E '^export RELEASE_API_BASE_URL=' "$stack_env" | tail -n 1 || true)"
-    if [[ -n "$line" ]]; then
-      echo "${line#export RELEASE_API_BASE_URL=}"
-      return
-    fi
-  fi
-
-  echo "https://api.kbofans.com/api"
+  echo "https://3-39-79-1.sslip.io/api"
 }
 
 run_release_api_health() {
@@ -883,7 +886,9 @@ EOF
       echo "Flutter or FVM is not installed or not on PATH." >&2
       exit 1
     fi
-    local_api_url="$(local_backend_api_url_for_android_emulator || true)"
+    local_api_url="$(
+      local_backend_api_url_for_android_serial "$serial" "$adb_bin" || true
+    )"
     if [[ -z "$local_api_url" ]]; then
       cat >&2 <<'EOF'
 No local backend was found for Android.
@@ -892,7 +897,8 @@ Start the backend first:
   ./scripts/codex-run.sh backend
 
 Or provide an explicit API URL:
-  API_BASE_URL=http://10.0.2.2:8000/api ./scripts/codex-run.sh android
+  Emulator: API_BASE_URL=http://10.0.2.2:8000/api ./scripts/codex-run.sh android
+  Device:   API_BASE_URL=http://<mac-lan-ip>:8000/api ./scripts/codex-run.sh android
 EOF
       exit 1
     fi
@@ -1064,6 +1070,9 @@ main() {
   local command="${1:-}"
 
   case "$command" in
+    help | -h | --help)
+      usage
+      ;;
     ios)
       run_ios profile
       ;;
@@ -1170,4 +1179,6 @@ main() {
   esac
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

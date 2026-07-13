@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Any, Optional
 
 from kbo_fans_backend.services.push import (
@@ -12,19 +12,13 @@ from kbo_fans_backend.services.push import (
     KBO_TEAM_SHORT_NAMES,
     PushService,
 )
+from kbo_fans_backend.utils.kbo_time import current_kbo_date_string
 
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:  # pragma: no cover - Python 3.9+ expected
-    ZoneInfo = None
-
-_KST = timezone(timedelta(hours=9))
 _LINEUP_WINDOW_MINUTES = 180
 
 
 def current_kbo_date() -> str:
-    tz = ZoneInfo("Asia/Seoul") if ZoneInfo is not None else _KST
-    return datetime.now(tz).date().isoformat()
+    return current_kbo_date_string()
 
 
 def send_once(
@@ -68,9 +62,9 @@ def send_smart_daily(
 ) -> dict:
     target_date = date or current_kbo_date()
     if scoreboard_service is None:
-        from kbo_fans_backend.services.scoreboard import ScoreboardService
+        from kbo_fans_backend.api.runtime_services import scoreboard_service as runtime_service
 
-        scoreboard = ScoreboardService()
+        scoreboard = runtime_service
     else:
         scoreboard = scoreboard_service
     payload = scoreboard.get_home_scoreboard(target_date)

@@ -21,11 +21,10 @@ description: KBO 공식 로그인 기반 문자중계 relay를 다룰 때 사용
 
 ## Required env
 
-- `backend/.env`
-- `KBO_RELAY_USER_ID`
-- `KBO_RELAY_PASSWORD`
+- Backend: ignored local `backend/.env`의 `KBO_RELAY_USER_ID`, `KBO_RELAY_PASSWORD`
+- App direct parser/debug: 같은 이름의 로컬 Dart define. 값이 없으면 로그인 네트워크 호출 전에 중단한다.
 
-자격증명은 코드나 저장소 문서에 하드코딩하지 않는다. 로컬 `.env` 또는 Keychain 같은 secure storage 에만 둔다.
+자격증명은 코드나 저장소 문서, 공유 앱 빌드에 하드코딩하지 않는다. 로컬 `.env` 또는 Keychain 같은 secure storage 에만 둔다.
 
 ## Parsing rules
 

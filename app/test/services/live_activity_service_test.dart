@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
@@ -12,6 +15,15 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  test('Live Activity updatedAt text uses KST', () {
+    expect(
+      liveActivityUpdatedAtTextForTesting(
+        DateTime.utc(2026, 7, 12, 19, 5, 6),
+      ),
+      '04:05:06',
+    );
   });
 
   test('Android notification stop action clears followed game', () async {
@@ -41,6 +53,33 @@ void main() {
       await LiveActivityService.instance.followedGameId(),
       '20260520LGKT0',
     );
+  });
+
+  test('iOS push-to-start sync hands the backend URL to native', () async {
+    AppConfig.initialize();
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() {
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    MethodCall? capturedCall;
+    const channel = MethodChannel('kbo_fans/live_activity');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          capturedCall = call;
+          return <String, dynamic>{'supported': true, 'pushToStartToken': ''};
+        });
+    addTearDown(() {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    });
+
+    await LiveActivityService.instance.syncPushToStartToken();
+
+    expect(capturedCall?.method, 'syncPushToStartToken');
+    expect(capturedCall?.arguments, <String, dynamic>{
+      'apiBaseUrl': AppConfig.instance.apiBaseUrl,
+    });
   });
 
   test('auto Live Activity target prefers a live my-team game', () {
@@ -129,7 +168,7 @@ void main() {
       final selected = selectAutoLiveActivityGame(
         games: games,
         myTeamId: 'LG',
-        now: DateTime(2026, 5, 20, 18, 20),
+        now: DateTime.utc(2026, 5, 20, 9, 20),
       );
 
       expect(selected?.gameId, '20260520LGKT0');
@@ -311,7 +350,7 @@ void main() {
             gb: '7.0',
           ),
         ],
-        now: DateTime(2026, 6, 20, 18, 20),
+        now: DateTime.utc(2026, 6, 20, 9, 20),
       );
 
       expect(payload['isPregame'], isTrue);

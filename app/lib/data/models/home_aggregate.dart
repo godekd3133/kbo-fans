@@ -1,3 +1,4 @@
+import '../../core/utils/kbo_time.dart';
 import 'game.dart';
 import 'records_overview.dart';
 import 'schedule.dart';
@@ -786,14 +787,7 @@ String _kboBriefSubtitle({
 }
 
 bool _isYesterday(String date) {
-  final parsed = DateTime.tryParse(date);
-  if (parsed == null) {
-    return false;
-  }
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final target = DateTime(parsed.year, parsed.month, parsed.day);
-  return target == today.subtract(const Duration(days: 1));
+  return isYesterdayKboDate(date);
 }
 
 String _monthDayLabel(String date) {

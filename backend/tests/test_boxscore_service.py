@@ -1,10 +1,10 @@
-from datetime import date as date_type
 from datetime import timedelta
 
 import pytest
 
 from kbo_fans_backend.services.boxscore import BoxscoreService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 
 
 class _StubBoxscoreCrawler:
@@ -74,6 +74,11 @@ class _StubPlayerStatsService:
         return {"players": players_by_team.get(team_id, [])}
 
 
+class _EmptyPlayerStatsService:
+    def get_team_players(self, team_id: str, season: int):
+        return {"teamId": team_id, "season": season, "players": []}
+
+
 def test_boxscore_service_enriches_player_ids_and_images(tmp_path) -> None:
     service = BoxscoreService(
         crawler=_StubBoxscoreCrawler(),
@@ -94,6 +99,7 @@ def test_boxscore_service_retries_with_adjacent_canonical_game_id(tmp_path) -> N
     service = BoxscoreService(
         crawler=crawler,
         schedule_service=_StubScheduleService(),
+        player_stats_service=_EmptyPlayerStatsService(),
         snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
     )
 
@@ -109,7 +115,7 @@ def test_boxscore_service_retries_with_adjacent_canonical_game_id(tmp_path) -> N
 def test_boxscore_service_does_not_retry_adjacent_game_for_current_game(
     tmp_path,
 ) -> None:
-    today = date_type.today()
+    today = current_kbo_date()
     today_game_id = f"{today:%Y%m%d}SKWO0"
     yesterday_game_id = f"{today - timedelta(days=1):%Y%m%d}SKWO0"
 
@@ -191,6 +197,7 @@ def test_boxscore_service_uses_snapshot_first_for_past_game(tmp_path) -> None:
     )
     service = BoxscoreService(
         crawler=FailingCrawler(),
+        player_stats_service=_EmptyPlayerStatsService(),
         snapshot_store=snapshot_store,
     )
 
@@ -285,6 +292,7 @@ def test_boxscore_service_does_not_snapshot_live_context_payload(tmp_path) -> No
     snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
     service = BoxscoreService(
         crawler=LiveContextCrawler(),
+        player_stats_service=_EmptyPlayerStatsService(),
         snapshot_store=snapshot_store,
     )
 

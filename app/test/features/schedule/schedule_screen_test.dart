@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
@@ -37,7 +38,7 @@ void main() {
   });
 
   testWidgets('월 데이터 실패 상태에서도 헤더 월 이동은 동작한다', (tester) async {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
     final nextMonth = DateTime(now.year, now.month + 1);
 
     await tester.pumpWidget(
@@ -62,7 +63,7 @@ void main() {
   });
 
   testWidgets('캘린더의 다음달 1일을 누르면 다음달로 이동한다', (tester) async {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
     final visibleMonth = _monthWithVisibleNextMonthDay(now);
     final nextMonth = DateTime(visibleMonth.year, visibleMonth.month + 1);
     final monthDelta =
@@ -95,7 +96,7 @@ void main() {
   });
 
   testWidgets('매치업 탭은 선택한 두 팀의 맞대결 일정만 보여준다', (tester) async {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
     final yearMonth = '${now.year}-${now.month.toString().padLeft(2, '0')}';
 
     await tester.pumpWidget(
@@ -130,7 +131,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final today = DateTime.now();
+    final today = kboCivilDateTime();
 
     await tester.pumpWidget(
       ProviderScope(
@@ -163,7 +164,7 @@ void main() {
   });
 
   testWidgets('캘린더 영역에서 위로 밀어도 선택일 경기 목록이 스크롤된다', (tester) async {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
 
     await tester.pumpWidget(
       ProviderScope(
@@ -188,7 +189,7 @@ void main() {
   });
 
   testWidgets('이미 선택된 일정 탭을 다시 눌러도 선택 월을 유지한다', (tester) async {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
     final nextMonth = DateTime(now.year, now.month + 1);
     final router = GoRouter(
       initialLocation: '/schedule',
@@ -246,7 +247,7 @@ void main() {
   });
 
   testWidgets('마이팀 경기는 일정 카드에서 강조된다', (tester) async {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
 
     await tester.pumpWidget(
       ProviderScope(
@@ -275,7 +276,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final today = DateTime.now();
+    final today = kboCivilDateTime();
     final yearMonth = '${today.year}-${today.month.toString().padLeft(2, '0')}';
     const gameId = '20260701SSLG0';
     final detailCompleter = Completer<Game?>();
@@ -382,7 +383,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final today = DateTime.now();
+    final today = kboCivilDateTime();
     final yearMonth = '${today.year}-${today.month.toString().padLeft(2, '0')}';
     const gameId = '20260701SSLG0';
     final router = _scheduleTestRouter();
@@ -434,7 +435,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final today = DateTime.now();
+    final today = kboCivilDateTime();
     final yearMonth = '${today.year}-${today.month.toString().padLeft(2, '0')}';
     const gameId = '20260701SSLG0';
     final relayCompleter = Completer<RelayData>();
@@ -617,7 +618,7 @@ List<ScheduleDay> _matchupScheduleForMonth(
     return const [];
   }
 
-  final today = DateTime.now().day.toString().padLeft(2, '0');
+  final today = kboCivilDateTime().day.toString().padLeft(2, '0');
   return [
     ScheduleDay(
       date: '$requestedYearMonth-$today',

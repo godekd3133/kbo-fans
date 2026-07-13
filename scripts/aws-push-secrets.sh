@@ -219,9 +219,9 @@ KBO_RELAY_PASSWORD_ARN="$(put_secret \
   "$KBO_RELAY_PASSWORD" \
   "KBO Fans relay crawler login password")"
 
-mkdir -p "$OUTPUT_DIR"
 ENV_FILE="$OUTPUT_DIR/secrets.env"
-if [[ "$WRITE_ENV_FILE" == "true" ]]; then
+if [[ "$DRY_RUN" != "true" && "$WRITE_ENV_FILE" == "true" ]]; then
+  mkdir -p "$OUTPUT_DIR"
   cat > "$ENV_FILE" <<EOF
 export SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON=$FIREBASE_ARN
 export SECRET_ARN_APNS_AUTH_KEY_P8=$APNS_ARN
@@ -237,6 +237,6 @@ echo "export SECRET_ARN_APNS_AUTH_KEY_P8=$APNS_ARN"
 echo "export SECRET_ARN_PUSH_SYNC_SECRET=$SYNC_ARN"
 echo "export SECRET_ARN_KBO_RELAY_USER_ID=$KBO_RELAY_USER_ARN"
 echo "export SECRET_ARN_KBO_RELAY_PASSWORD=$KBO_RELAY_PASSWORD_ARN"
-if [[ "$WRITE_ENV_FILE" == "true" ]]; then
+if [[ "$DRY_RUN" != "true" && "$WRITE_ENV_FILE" == "true" ]]; then
   echo "$ENV_FILE"
 fi

@@ -5,6 +5,13 @@ import 'package:kbo_fans/data/models/ticketing.dart';
 import 'package:kbo_fans/services/ticket_alert_service.dart';
 
 void main() {
+  test('예매 오픈 시각은 기기 시간대와 무관하게 KST로 표시한다', () {
+    expect(
+      formatTicketOpenAt(DateTime.utc(2026, 6, 17, 2)),
+      '06.17 11:00',
+    );
+  });
+
   test('예매 알림 제목은 KBO 팀 ID를 팬이 보는 짧은 팀명으로 바꾼다', () {
     final title = buildTicketAlertTitle(
       Game(

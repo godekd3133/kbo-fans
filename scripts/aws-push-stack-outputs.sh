@@ -124,9 +124,9 @@ for key, value in mapping.items():
 PY
 )"
 
-mkdir -p "$OUTPUT_DIR"
 env_file="$OUTPUT_DIR/stack.env"
 if [[ "$WRITE_ENV_FILE" == "true" ]]; then
+  mkdir -p "$OUTPUT_DIR"
   printf '%s\n' "$env_content" > "$env_file"
 fi
 

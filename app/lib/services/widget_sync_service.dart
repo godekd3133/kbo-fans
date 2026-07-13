@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
 import 'package:home_widget/home_widget.dart';
-import 'package:intl/intl.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../core/config/app_config.dart';
 import '../core/utils/game_status_label.dart';
+import '../core/utils/kbo_time.dart';
 import '../core/utils/team_display.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
@@ -33,7 +33,7 @@ void widgetCallbackDispatcher() {
     try {
       AppConfig.initialize();
       await WidgetSyncService.instance.initialize();
-      final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final date = kboDateKey();
       final myTeamId = decodeWidgetMyTeamIdFromStorage(
         await HomeWidget.getWidgetData<String>('widget_my_team'),
       );

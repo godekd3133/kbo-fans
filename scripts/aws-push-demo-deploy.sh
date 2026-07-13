@@ -183,21 +183,31 @@ ensure_push_sync_secret
 
 if [[ "$SKIP_SECRETS" != "true" ]]; then
   if [[ "$DRY_RUN" == "true" ]]; then
-    "$ROOT_DIR/scripts/aws-push-secrets.sh" --dry-run
+    "$ROOT_DIR/scripts/aws-push-secrets.sh" --dry-run --no-env-file
+    export SECRET_ARN_FIREBASE_SERVICE_ACCOUNT_JSON="arn:aws:secretsmanager:${AWS_REGION}:000000000000:secret:kbo-fans/firebase-service-account-json-dry-run"
+    export SECRET_ARN_APNS_AUTH_KEY_P8="arn:aws:secretsmanager:${AWS_REGION}:000000000000:secret:kbo-fans/apns-auth-key-p8-dry-run"
+    export SECRET_ARN_PUSH_SYNC_SECRET="arn:aws:secretsmanager:${AWS_REGION}:000000000000:secret:kbo-fans/push-sync-secret-dry-run"
+    export SECRET_ARN_KBO_RELAY_USER_ID="arn:aws:secretsmanager:${AWS_REGION}:000000000000:secret:kbo-fans/kbo-relay-user-id-dry-run"
+    export SECRET_ARN_KBO_RELAY_PASSWORD="arn:aws:secretsmanager:${AWS_REGION}:000000000000:secret:kbo-fans/kbo-relay-password-dry-run"
   else
     "$ROOT_DIR/scripts/aws-push-secrets.sh"
+    source_if_exists "$ROOT_DIR/outputs/aws/ecs-fargate/secrets.env"
   fi
+elif [[ "$DRY_RUN" != "true" ]]; then
+  source_if_exists "$ROOT_DIR/outputs/aws/ecs-fargate/secrets.env"
 fi
-source_if_exists "$ROOT_DIR/outputs/aws/ecs-fargate/secrets.env"
 
 if [[ "$SKIP_IMAGE" != "true" ]]; then
   if [[ "$DRY_RUN" == "true" ]]; then
     "$ROOT_DIR/scripts/aws-push-image.sh" --dry-run --tag "$IMAGE_TAG"
+    export CONTAINER_IMAGE_URI="$ECR_REPOSITORY_URI:$IMAGE_TAG"
   else
     "$ROOT_DIR/scripts/aws-push-image.sh" --tag "$IMAGE_TAG"
+    source_if_exists "$ROOT_DIR/outputs/aws/ecr/image.env"
   fi
+elif [[ "$DRY_RUN" != "true" ]]; then
+  source_if_exists "$ROOT_DIR/outputs/aws/ecr/image.env"
 fi
-source_if_exists "$ROOT_DIR/outputs/aws/ecr/image.env"
 
 require_env \
   VPC_ID \

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
+import 'package:kbo_fans/core/config/api_endpoints.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/data/repositories/api_game_repository.dart';
 import 'package:kbo_fans/data/repositories/api_player_repository.dart';
@@ -9,6 +10,10 @@ import 'package:kbo_fans/data/repositories/kbo_direct_repository.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('production API fallback uses the active Lightsail HTTPS endpoint', () {
+    expect(productionApiBaseUrl, 'https://3-39-79-1.sslip.io/api');
+  });
 
   test(
     'repository routing defaults to backend API data unless explicitly disabled',

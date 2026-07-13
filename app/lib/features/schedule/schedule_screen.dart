@@ -9,6 +9,7 @@ import '../../core/constants/team_data.dart';
 import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
@@ -41,7 +42,7 @@ int _seasonFromGameId(String gameId) {
       return parsed;
     }
   }
-  return DateTime.now().year;
+  return kboCurrentSeason();
 }
 
 String _normalizePlayerNameForImagePrefetch(String value) {
@@ -173,7 +174,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
     _currentMonth = DateTime(now.year, now.month);
     _calendarPageController = PageController(initialPage: _calendarInitialPage);
     _selectedDay = now.day;
@@ -495,7 +496,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   void _goToToday() {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
     _goToMonth(
       DateTime(now.year, now.month),
       selectedDay: now.day,
@@ -1338,7 +1339,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   bool _isPastScheduleDate(String date) {
-    final today = DateTime.now();
+    final today = kboCivilDateTime();
     final todayDate = DateTime(today.year, today.month, today.day);
     return _parseScheduleDate(date).isBefore(todayDate);
   }
@@ -1355,7 +1356,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final leadingDays = startWeekday - 1;
     final totalCells = ((leadingDays + lastDay.day + 6) ~/ 7) * 7;
     final firstVisibleDay = firstDay.subtract(Duration(days: leadingDays));
-    final today = DateTime.now();
+    final today = kboCivilDateTime();
     final isCompactViewport = MediaQuery.sizeOf(context).height < 700;
     final cellHeight = isCompactViewport ? 39.0 : 44.0;
     final dateBoxSize = isCompactViewport ? 30.0 : 34.0;
@@ -1505,12 +1506,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   int _monthDeltaFromToday(DateTime month) {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
     return (month.year - now.year) * 12 + (month.month - now.month);
   }
 
   DateTime _monthForPage(int page) {
-    final now = DateTime.now();
+    final now = kboCivilDateTime();
     final delta = page - _calendarInitialPage;
     return DateTime(now.year, now.month + delta);
   }

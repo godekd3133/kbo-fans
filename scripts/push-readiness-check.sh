@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-BASE_URL="${1:-${PUSH_API_BASE_URL:-${API_BASE_URL:-https://api.kbofans.com/api}}}"
+BASE_URL="${1:-${PUSH_API_BASE_URL:-${API_BASE_URL:-https://3-39-79-1.sslip.io/api}}}"
 BASE_URL="${BASE_URL%/}"
 SYNC_SECRET="${2:-${PUSH_SYNC_SECRET:-}}"
 TIMEOUT_SECONDS="${PUSH_READINESS_TIMEOUT_SECONDS:-20}"
@@ -43,7 +43,7 @@ if [[ -z "$SYNC_SECRET" ]]; then
 PUSH_SYNC_SECRET is required for push readiness checks.
 
 Usage:
-  PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api
+  PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api
 EOF
   exit 1
 fi

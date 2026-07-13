@@ -1,3 +1,4 @@
+import 'kbo_time.dart';
 import '../../data/models/game.dart';
 
 const ticketInfoGameDetailHideLeadTime = Duration(hours: 2);
@@ -63,15 +64,13 @@ DateTime? _gameStartDateTime(String gameId, String startTime) {
     return null;
   }
 
-  final parsed = DateTime(year, month, day, hour, minute);
-  if (parsed.year != year ||
-      parsed.month != month ||
-      parsed.day != day ||
-      parsed.hour != hour ||
-      parsed.minute != minute) {
-    return null;
-  }
-  return parsed;
+  return kboInstantFromCivil(
+    year: year,
+    month: month,
+    day: day,
+    hour: hour,
+    minute: minute,
+  );
 }
 
 bool shouldShowTicketInfoForScheduleStatus(String status) {

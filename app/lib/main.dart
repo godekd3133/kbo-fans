@@ -13,6 +13,7 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
 import 'core/router/app_router.dart';
 import 'core/router/app_route_sanitizer.dart';
+import 'core/utils/kbo_time.dart';
 import 'core/widgets/dev_console.dart';
 import 'data/providers.dart';
 import 'features/settings/release_notes_prompt.dart';
@@ -322,8 +323,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   }
 
   String _todayKey() {
-    final now = DateTime.now();
-    return '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return kboDateKey();
   }
 
   Future<void> _syncLiveSurfacesOnResume() async {

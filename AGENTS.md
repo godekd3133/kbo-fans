@@ -66,6 +66,7 @@
 - Use `./scripts/github-push-secrets.sh --env-file /path/to/kbo-fans-aws.env` before `--apply` when preparing GitHub Actions push deploy secrets; it must not print secret values.
 - Dispatch GitHub Actions push deploy with `./scripts/github-push-demo-run.sh --dry-run true --watch` after the workflow file is committed and pushed. The script checks required GitHub secrets/variables before dispatch; use `--skip-config-check` only after a separate config check.
 - Live Activity scoreboard sync dates must use KBO game day in `Asia/Seoul`, not the AWS host's UTC date.
+- App/server의 오늘 날짜, 현재 시즌, current/historical cache·snapshot 분류, 예매/경기 시각도 `Asia/Seoul` KBO civil time을 사용한다. 저장 시각과 TTL 경과시간은 UTC instant로 유지한다.
 - Home first paint should prefer the configured current scoreboard source and avoid rendering a separate current-day local cache before that source resolves.
 - Historical standings, records, and finished-game detail should prefer stored snapshots when available over re-crawling upstream pages.
 - Team records UX should enter through team selection first, then fetch team-specific records after selection.

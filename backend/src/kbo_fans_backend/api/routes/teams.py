@@ -4,13 +4,15 @@ import concurrent.futures
 
 from fastapi import APIRouter, Query
 
+from kbo_fans_backend.api.runtime_services import (
+    player_stats_service as service,
+)
+from kbo_fans_backend.api.runtime_services import (
+    team_stats_service,
+)
 from kbo_fans_backend.schemas.common import ApiEnvelope
-from kbo_fans_backend.services.player_stats import PlayerStatsService
-from kbo_fans_backend.services.team_stats import TeamStatsService
 
 router = APIRouter(prefix="/team")
-service = PlayerStatsService()
-team_stats_service = TeamStatsService()
 
 
 @router.get("/{team_id}/players", response_model=ApiEnvelope[dict])

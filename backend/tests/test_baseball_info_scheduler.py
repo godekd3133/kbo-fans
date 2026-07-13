@@ -1,4 +1,6 @@
+from kbo_fans_backend.api import runtime_services
 from kbo_fans_backend.scheduler import baseball_info
+from kbo_fans_backend.services import scoreboard as scoreboard_module
 
 
 def test_baseball_info_scheduler_sends_weekly_check_on_monday(monkeypatch) -> None:
@@ -192,3 +194,35 @@ def test_baseball_info_scheduler_smart_daily_sends_team_specific_plan() -> None:
             "dry_run": True,
         }
     ]
+
+
+def test_smart_daily_default_reuses_runtime_scoreboard_service(monkeypatch) -> None:
+    class RuntimeScoreboardService:
+        def __init__(self) -> None:
+            self.calls = []
+
+        def get_home_scoreboard(self, date: str):
+            self.calls.append(date)
+            return {"date": date, "games": []}
+
+    class UnexpectedScoreboardService:
+        def __init__(self) -> None:
+            raise AssertionError("scheduler should reuse the runtime scoreboard service")
+
+    class FakePushService:
+        def send_baseball_info(self, **kwargs):
+            return {"sent": False, "dryRun": kwargs["dry_run"], "messages": []}
+
+    runtime_scoreboard = RuntimeScoreboardService()
+    monkeypatch.setattr(runtime_services, "scoreboard_service", runtime_scoreboard)
+    monkeypatch.setattr(scoreboard_module, "ScoreboardService", UnexpectedScoreboardService)
+
+    result = baseball_info.send_smart_daily(
+        date="2026-06-22",
+        team_id="LG",
+        dry_run=True,
+        push_service=FakePushService(),
+    )
+
+    assert result["dryRun"] is True
+    assert runtime_scoreboard.calls == ["2026-06-22"]

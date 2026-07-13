@@ -10,6 +10,37 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/news/news_screen.dart';
 
 void main() {
+  testWidgets('news requests the current KBO civil date', (tester) async {
+    String? requestedKey;
+    final expectedDate = _kboDateKey(DateTime.now());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          homeAggregateProvider.overrideWith((ref, key) async {
+            requestedKey = key;
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(requestedKey?.split('|').first, expectedDate);
+    expect(
+      find.text('${expectedDate.replaceAll('-', '.')} 기준'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('news cards push shell screens with iOS swipe-back routes', (
     tester,
   ) async {
@@ -511,4 +542,11 @@ void main() {
     expect(find.text('오늘 보여줄 뉴스가 없습니다'), findsOneWidget);
     expect(find.text('일정 보기'), findsOneWidget);
   });
+}
+
+String _kboDateKey(DateTime instant) {
+  final kbo = instant.toUtc().add(const Duration(hours: 9));
+  return '${kbo.year.toString().padLeft(4, '0')}-'
+      '${kbo.month.toString().padLeft(2, '0')}-'
+      '${kbo.day.toString().padLeft(2, '0')}';
 }

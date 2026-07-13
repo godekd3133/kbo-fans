@@ -48,21 +48,21 @@ void main() {
       expect(
         shouldShowTicketInfoForGameDetail(
           game,
-          now: DateTime(2026, 5, 20, 16, 29),
+          now: DateTime.utc(2026, 5, 20, 7, 29),
         ),
         isTrue,
       );
       expect(
         shouldShowTicketInfoForGameDetail(
           game,
-          now: DateTime(2026, 5, 20, 16, 30),
+          now: DateTime.utc(2026, 5, 20, 7, 30),
         ),
         isFalse,
       );
       expect(
         shouldShowTicketInfoForGameDetail(
           game,
-          now: DateTime(2026, 5, 20, 18, 29),
+          now: DateTime.utc(2026, 5, 20, 9, 29),
         ),
         isFalse,
       );

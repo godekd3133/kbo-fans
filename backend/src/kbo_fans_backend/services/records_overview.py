@@ -1,16 +1,26 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from kbo_fans_backend.crawlers.records_overview import RecordsOverviewCrawler
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_year
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
 class RecordsOverviewService:
     _OVERVIEW_CACHE_TTL_SECONDS = 300
+    _RANKED_METRICS = (
+        "avg",
+        "hr",
+        "ops",
+        "opsPlus",
+        "era",
+        "wins",
+        "saves",
+        "strikeouts",
+    )
 
     def __init__(
         self,
@@ -32,7 +42,9 @@ class RecordsOverviewService:
 
         cached = self._overview_cache.get(season)
         if cached is not None:
-            return self._normalize_overview_payload(cached, season)
+            normalized_cached = self._normalize_overview_payload(cached, season)
+            if self._is_reusable_ranked_payload(normalized_cached):
+                return normalized_cached
 
         snapshot_record = self.snapshot_store.load("records_overview", str(season))
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
@@ -45,14 +57,17 @@ class RecordsOverviewService:
         except Exception:
             stale = self._overview_cache.get_stale(season)
             if self._is_historical_season(season) and stale is not None:
-                return self._normalize_overview_payload(stale, season)
+                normalized_stale = self._normalize_overview_payload(stale, season)
+                if self._is_reusable_ranked_payload(normalized_stale):
+                    return normalized_stale
             if self._can_use_snapshot_after_failure(season, snapshot):
                 return self._normalize_overview_payload(snapshot, season)
             raise
 
         payload = self._normalize_overview_payload(payload, season)
-        self._overview_cache.set(season, payload)
-        self.snapshot_store.save("records_overview", str(season), payload)
+        if self._is_reusable_ranked_payload(payload):
+            self._overview_cache.set(season, payload)
+            self.snapshot_store.save("records_overview", str(season), payload)
         return payload
 
     def get_leaderboard(self, season: int, metric: str) -> Dict[str, Any]:
@@ -62,7 +77,9 @@ class RecordsOverviewService:
         cache_key = f"{season}:{metric}"
         cached = self._leaderboard_cache.get(cache_key)
         if cached is not None:
-            return self._normalize_leaderboard_payload(cached, season, metric)
+            normalized_cached = self._normalize_leaderboard_payload(cached, season, metric)
+            if self._is_reusable_ranked_payload(normalized_cached):
+                return normalized_cached
 
         snapshot_record = self.snapshot_store.load("leaderboard", cache_key)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
@@ -75,7 +92,13 @@ class RecordsOverviewService:
         except Exception:
             stale = self._leaderboard_cache.get_stale(cache_key)
             if self._is_historical_season(season) and stale is not None:
-                return self._normalize_leaderboard_payload(stale, season, metric)
+                normalized_stale = self._normalize_leaderboard_payload(
+                    stale,
+                    season,
+                    metric,
+                )
+                if self._is_reusable_ranked_payload(normalized_stale):
+                    return normalized_stale
             if self._can_use_snapshot_after_failure(season, snapshot):
                 return self._normalize_leaderboard_payload(snapshot, season, metric)
             raise
@@ -85,8 +108,9 @@ class RecordsOverviewService:
             season,
             metric,
         )
-        self._leaderboard_cache.set(cache_key, payload)
-        self.snapshot_store.save("leaderboard", cache_key, payload)
+        if self._is_reusable_ranked_payload(payload):
+            self._leaderboard_cache.set(cache_key, payload)
+            self.snapshot_store.save("leaderboard", cache_key, payload)
         return payload
 
     def _normalize_overview_payload(self, payload: Dict[str, Any], season: int) -> Dict[str, Any]:
@@ -157,7 +181,7 @@ class RecordsOverviewService:
     ) -> bool:
         if snapshot is None:
             return False
-        return self._is_historical_season(season)
+        return self._is_historical_season(season) and self._is_reusable_ranked_payload(snapshot)
 
     def _can_use_snapshot_before_crawling(
         self,
@@ -166,11 +190,38 @@ class RecordsOverviewService:
     ) -> bool:
         if snapshot is None:
             return False
-        return self._is_historical_season(season)
+        return self._is_historical_season(season) and self._is_reusable_ranked_payload(snapshot)
+
+    @staticmethod
+    def _is_reusable_ranked_payload(payload: Dict[str, Any]) -> bool:
+        leaders = payload.get("leaders")
+        if isinstance(leaders, list):
+            return RecordsOverviewService._leaders_start_at_rank_one(leaders)
+        if not isinstance(leaders, dict):
+            return False
+
+        ranked_groups = [
+            leaders.get(metric)
+            for metric in RecordsOverviewService._RANKED_METRICS
+            if isinstance(leaders.get(metric), list) and leaders.get(metric)
+        ]
+        return bool(ranked_groups) and all(
+            RecordsOverviewService._leaders_start_at_rank_one(group)
+            for group in ranked_groups
+        )
+
+    @staticmethod
+    def _leaders_start_at_rank_one(leaders: List[Dict[str, Any]]) -> bool:
+        if not leaders or not isinstance(leaders[0], dict):
+            return False
+        try:
+            return int(leaders[0].get("rank")) == 1
+        except (TypeError, ValueError):
+            return False
 
     @staticmethod
     def _is_historical_season(season: int) -> bool:
-        return season < datetime.now(timezone.utc).year
+        return season < current_kbo_year()
 
     def _build_canonical_featured(
         self, leaders: Dict[str, Any], season: int

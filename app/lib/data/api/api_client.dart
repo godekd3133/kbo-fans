@@ -97,6 +97,9 @@ class ApiClient {
     if (cached != null && isValid != null && !isValid(cached.data)) {
       cached = null;
     }
+    if (cached != null && cached.cachedAt.isAfter(DateTime.now().toUtc())) {
+      cached = null;
+    }
     final isFresh = cached != null && _isCacheFresh(cached, maxAge);
 
     if (preferCache && cached != null && isFresh) {
@@ -245,7 +248,7 @@ class ApiClient {
     Map<String, dynamic> data,
   ) async {
     final encoded = jsonEncode({
-      'cachedAt': DateTime.now().toIso8601String(),
+      'cachedAt': DateTime.now().toUtc().toIso8601String(),
       'data': data,
     });
     await prefs.setString(storageKey, encoded);
@@ -273,7 +276,8 @@ class ApiClient {
     if (maxAge == null) {
       return false;
     }
-    return DateTime.now().toUtc().difference(cached.cachedAt) <= maxAge;
+    final age = DateTime.now().toUtc().difference(cached.cachedAt);
+    return !age.isNegative && age <= maxAge;
   }
 
   void _logRequestTiming(

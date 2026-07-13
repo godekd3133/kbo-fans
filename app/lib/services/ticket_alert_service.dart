@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../core/utils/kbo_time.dart';
 import '../core/utils/team_display.dart';
 import '../data/models/game.dart';
 
@@ -136,7 +137,7 @@ class TicketAlertService {
       await _plugin.zonedSchedule(
         _notificationId(game.gameId, index),
         buildTicketAlertTitle(game),
-        '${ticket.vendorName} 예매 ${_relativeLabel(offset)} 전입니다. 오픈 시각 ${_formatDateTime(ticket.openAt!)}',
+        '${ticket.vendorName} 예매 ${_relativeLabel(offset)} 전입니다. 오픈 시각 ${formatTicketOpenAt(ticket.openAt!)}',
         tz.TZDateTime.from(reminderTime, tz.local),
         NotificationDetails(
           android: const AndroidNotificationDetails(
@@ -193,14 +194,6 @@ class TicketAlertService {
     return hash;
   }
 
-  String _formatDateTime(DateTime value) {
-    final month = value.month.toString().padLeft(2, '0');
-    final day = value.day.toString().padLeft(2, '0');
-    final hour = value.hour.toString().padLeft(2, '0');
-    final minute = value.minute.toString().padLeft(2, '0');
-    return '$month.$day $hour:$minute';
-  }
-
   String _relativeLabel(Duration offset) {
     if (offset.inDays == 1) {
       return '하루 전';
@@ -213,6 +206,16 @@ class TicketAlertService {
     }
     return '${offset.inMinutes}분 전';
   }
+}
+
+@visibleForTesting
+String formatTicketOpenAt(DateTime value) {
+  final kbo = kboCivilDateTime(value);
+  final month = kbo.month.toString().padLeft(2, '0');
+  final day = kbo.day.toString().padLeft(2, '0');
+  final hour = kbo.hour.toString().padLeft(2, '0');
+  final minute = kbo.minute.toString().padLeft(2, '0');
+  return '$month.$day $hour:$minute';
 }
 
 @visibleForTesting

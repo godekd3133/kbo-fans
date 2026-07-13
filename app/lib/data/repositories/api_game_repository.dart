@@ -1,3 +1,4 @@
+import '../../core/utils/kbo_time.dart';
 import '../api/api_client.dart';
 import '../bootstrap/bootstrap_repository.dart';
 import '../models/game.dart';
@@ -232,7 +233,7 @@ class ApiGameRepository implements GameRepository {
 
   @override
   Future<List<TeamStanding>> getStandings(int season) async {
-    final isHistoricalSeason = season < DateTime.now().year;
+    final isHistoricalSeason = season < kboCurrentSeason();
     try {
       final data = await _client.getCached(
         '/standings',
@@ -462,7 +463,7 @@ class ApiGameRepository implements GameRepository {
       vendorKey: json['vendorKey'] as String? ?? '',
       vendorName: json['vendorName'] as String? ?? '',
       vendorUrl: json['vendorUrl'] as String?,
-      openAt: openAtRaw != null ? DateTime.tryParse(openAtRaw) : null,
+      openAt: parseKboDateTime(openAtRaw),
       source: (json['source'] as String? ?? '').toLowerCase() == 'official'
           ? TicketSource.official
           : TicketSource.inferred,
@@ -506,30 +507,11 @@ class ApiGameRepository implements GameRepository {
   }
 
   bool _isHistoricalDate(String date) {
-    try {
-      final target = DateTime.parse(date);
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      return target.isBefore(today);
-    } catch (_) {
-      return false;
-    }
+    return isHistoricalKboDate(date);
   }
 
   bool _isHistoricalMonth(String yearMonth) {
-    final parts = yearMonth.split('-');
-    if (parts.length != 2) {
-      return false;
-    }
-    final year = int.tryParse(parts[0]);
-    final month = int.tryParse(parts[1]);
-    if (year == null || month == null) {
-      return false;
-    }
-    final requested = DateTime(year, month);
-    final now = DateTime.now();
-    final current = DateTime(now.year, now.month);
-    return requested.isBefore(current);
+    return isHistoricalKboMonth(yearMonth);
   }
 
   bool _isHistoricalGameId(String gameId) {

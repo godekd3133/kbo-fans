@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from kbo_fans_backend.crawlers.team_stats import TeamStatsCrawler
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_year
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -68,4 +68,4 @@ class TeamStatsService:
 
     @staticmethod
     def _is_historical_season(season: int) -> bool:
-        return season < datetime.now(timezone.utc).year
+        return season < current_kbo_year()

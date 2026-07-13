@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/utils/kbo_time.dart';
 import '../models/player.dart';
 import '../models/records_overview.dart';
 import '../models/team_records_bundle.dart';
@@ -292,11 +293,11 @@ class DeviceSnapshotPlayerRepository implements PlayerRepository {
     if (savedAt == null) {
       return false;
     }
-    return _now().toUtc().difference(savedAt.toUtc()) <=
-        _currentSeasonSnapshotMaxAge;
+    final age = _now().toUtc().difference(savedAt.toUtc());
+    return !age.isNegative && age <= _currentSeasonSnapshotMaxAge;
   }
 
-  bool _requiresFreshSnapshot(int season) => season >= _now().year;
+  bool _requiresFreshSnapshot(int season) => season >= kboCurrentSeason(_now());
 
   DateTime? _parseSavedAt(Object? value) {
     if (value is! String || value.isEmpty) {

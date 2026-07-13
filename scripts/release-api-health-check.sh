@@ -2,29 +2,16 @@
 
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
 default_release_api_base_url() {
-  local stack_env="$ROOT_DIR/outputs/aws/cloudformation/stack.env"
-  local line
-
-  if [[ -f "$stack_env" ]]; then
-    line="$(grep -E '^export RELEASE_API_BASE_URL=' "$stack_env" | tail -n 1 || true)"
-    if [[ -n "$line" ]]; then
-      echo "${line#export RELEASE_API_BASE_URL=}"
-      return
-    fi
-  fi
-
-  echo "https://api.kbofans.com/api"
+  echo "https://3-39-79-1.sslip.io/api"
 }
 
 BASE_URL="${1:-${RELEASE_API_BASE_URL:-${API_BASE_URL:-$(default_release_api_base_url)}}}"
 BASE_URL="${BASE_URL%/}"
 TIMEOUT_SECONDS="${RELEASE_API_HEALTH_TIMEOUT_SECONDS:-20}"
-TODAY="${RELEASE_API_HEALTH_DATE:-$(date +%Y-%m-%d)}"
-MONTH="${RELEASE_API_HEALTH_MONTH:-$(date +%Y-%m)}"
-SEASON="${RELEASE_API_HEALTH_SEASON:-$(date +%Y)}"
+TODAY="${RELEASE_API_HEALTH_DATE:-$(TZ=Asia/Seoul date +%Y-%m-%d)}"
+MONTH="${RELEASE_API_HEALTH_MONTH:-$(TZ=Asia/Seoul date +%Y-%m)}"
+SEASON="${RELEASE_API_HEALTH_SEASON:-$(TZ=Asia/Seoul date +%Y)}"
 ALLOW_INSECURE="${ALLOW_INSECURE_RELEASE_API:-false}"
 
 if [[ -z "$BASE_URL" ]]; then

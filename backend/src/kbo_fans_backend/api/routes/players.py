@@ -4,11 +4,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 
+from kbo_fans_backend.api.runtime_services import player_stats_service as service
 from kbo_fans_backend.schemas.common import ApiEnvelope
-from kbo_fans_backend.services.player_stats import PlayerStatsService
 
 router = APIRouter(prefix="/player")
-service = PlayerStatsService()
 
 
 @router.get("/{player_id}", response_model=ApiEnvelope[dict])

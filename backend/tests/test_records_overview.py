@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -7,6 +6,7 @@ import pytest
 from kbo_fans_backend.crawlers.records_overview import RecordsOverviewCrawler
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_year
 
 
 class _FailingRecordsCrawler:
@@ -66,6 +66,18 @@ class _TrackingFreshRecordsCrawler(_FreshRecordsCrawler):
     def get_leaderboard(self, season: int, metric: str):
         self.leaderboard_calls += 1
         return super().get_leaderboard(season, metric)
+
+
+class _RecoveringLeaderboardCrawler(_FreshRecordsCrawler):
+    def __init__(self) -> None:
+        self.leaderboard_calls = 0
+
+    def get_leaderboard(self, season: int, metric: str):
+        self.leaderboard_calls += 1
+        leaders = super().get_leaderboard(season, metric)
+        if self.leaderboard_calls == 1:
+            return [{**leaders[0], "rank": 2, "name": "Missing First"}]
+        return leaders
 
 
 class _PitchingFeaturedRecordsCrawler:
@@ -341,7 +353,7 @@ def test_unsupported_2001_leaderboard_does_not_crawl() -> None:
 
 def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year - 1
+    season = current_kbo_year() - 1
     expected = {
         "season": season,
         "metric": "avg",
@@ -368,7 +380,7 @@ def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:
 
 def test_historical_overview_prefers_snapshot_before_crawler(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year - 1
+    season = current_kbo_year() - 1
     store.save(
         "records_overview",
         str(season),
@@ -404,7 +416,7 @@ def test_historical_overview_prefers_snapshot_before_crawler(tmp_path) -> None:
 
 def test_historical_leaderboard_prefers_snapshot_before_crawler(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year - 1
+    season = current_kbo_year() - 1
     store.save(
         "leaderboard",
         f"{season}:avg",
@@ -433,9 +445,56 @@ def test_historical_leaderboard_prefers_snapshot_before_crawler(tmp_path) -> Non
     assert crawler.leaderboard_calls == 0
 
 
+def test_historical_leaderboard_ignores_snapshot_missing_rank_one(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = current_kbo_year() - 1
+    store.save(
+        "leaderboard",
+        f"{season}:avg",
+        {
+            "season": season,
+            "metric": "avg",
+            "leaders": [
+                {
+                    "rank": 2,
+                    "playerId": "stale-second",
+                    "playerType": "hitter",
+                    "metricKey": "AVG",
+                    "name": "Stale Second",
+                    "teamId": "LT",
+                    "value": ".345",
+                }
+            ],
+        },
+    )
+    crawler = _TrackingFreshRecordsCrawler()
+    service = RecordsOverviewService(crawler=crawler, snapshot_store=store)
+
+    payload = service.get_leaderboard(season, "avg")
+
+    assert payload["leaders"][0]["name"] == "Fresh"
+    assert crawler.leaderboard_calls == 1
+
+
+def test_leaderboard_does_not_cache_fresh_payload_missing_rank_one(tmp_path) -> None:
+    crawler = _RecoveringLeaderboardCrawler()
+    service = RecordsOverviewService(
+        crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    first = service.get_leaderboard(2026, "avg")
+    second = service.get_leaderboard(2026, "avg")
+
+    assert first["leaders"][0]["rank"] == 2
+    assert second["leaders"][0]["rank"] == 1
+    assert crawler.leaderboard_calls == 2
+    assert service.snapshot_store.load_payload("leaderboard", "2026:avg") == second
+
+
 def test_current_leaderboard_rejects_old_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     _write_snapshot_record(
         tmp_path,
         "leaderboard",
@@ -457,7 +516,7 @@ def test_current_leaderboard_rejects_old_snapshot_on_failure(tmp_path) -> None:
 
 def test_current_leaderboard_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     store.save(
         "leaderboard",
         f"{season}:avg",
@@ -585,7 +644,7 @@ def test_leaderboard_normalizes_leader_order(tmp_path) -> None:
 
 def test_overview_snapshot_is_normalized_with_ops_plus(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year - 1
+    season = current_kbo_year() - 1
     store.save(
         "records_overview",
         str(season),
@@ -632,7 +691,7 @@ def test_overview_snapshot_is_normalized_with_ops_plus(tmp_path) -> None:
 
 def test_current_overview_rejects_old_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     _write_snapshot_record(
         tmp_path,
         "records_overview",
@@ -669,7 +728,7 @@ def test_current_overview_rejects_old_snapshot_on_failure(tmp_path) -> None:
 
 def test_current_overview_rejects_fresh_snapshot_on_failure(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
-    season = datetime.now(timezone.utc).year
+    season = current_kbo_year()
     store.save(
         "records_overview",
         str(season),

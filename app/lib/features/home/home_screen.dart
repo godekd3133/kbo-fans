@@ -12,6 +12,7 @@ import '../../core/constants/visual_assets.dart';
 import '../../core/router/app_route_sanitizer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_artwork_card.dart';
 import '../../core/utils/game_status_label.dart';
 import '../../core/widgets/app_motion.dart';
@@ -397,7 +398,7 @@ int _seasonFromGameId(String gameId) {
       return parsed;
     }
   }
-  return DateTime.now().year;
+  return kboCurrentSeason();
 }
 
 List<Game> _uniqueGamesById(List<Game> games) {
@@ -497,7 +498,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     AppColors.sync(AppTheme.colorsOf(context));
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final today = kboDateKey();
     final scoreboardAsync = ref.watch(scoreboardProvider(today));
     final myTeamId = ref.watch(myTeamProvider);
     _logHomeLoad(scoreboardAsync, today);
@@ -1621,7 +1622,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _invalidateTodayScoreboard() {
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final today = kboDateKey();
     final myTeamId = ref.read(myTeamProvider);
     ref.invalidate(scoreboardProvider(today));
     final lastGames = _lastScoreboardGamesFor(today) ?? const <Game>[];
@@ -5597,8 +5598,7 @@ class _PlayerQuickRoute {
     }
 
     final season =
-        int.tryParse(uri.queryParameters['season'] ?? '') ??
-        DateTime.now().year;
+        int.tryParse(uri.queryParameters['season'] ?? '') ?? kboCurrentSeason();
     return _PlayerQuickRoute(playerId: playerId, season: season);
   }
 }

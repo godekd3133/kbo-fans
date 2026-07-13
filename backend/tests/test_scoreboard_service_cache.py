@@ -1,7 +1,6 @@
 import json
 import threading
 import time
-from datetime import date as date_type
 from pathlib import Path
 
 import pytest
@@ -9,6 +8,7 @@ import pytest
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 
 
 class _StubScheduleCrawler:
@@ -451,7 +451,7 @@ def test_get_compact_scoreboard_uses_lightweight_selected_game(tmp_path: Path) -
 def test_current_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
     tmp_path: Path,
 ) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
     _write_snapshot_record(
         tmp_path / "snapshots",
@@ -483,7 +483,7 @@ def test_current_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
 def test_current_scoreboard_rejects_fresh_terminal_snapshot_on_failure(
     tmp_path: Path,
 ) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
     expected = {
         "date": today,
@@ -511,7 +511,7 @@ def test_current_scoreboard_rejects_fresh_terminal_snapshot_on_failure(
 def test_current_compact_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
     tmp_path: Path,
 ) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
     _write_snapshot_record(
         tmp_path / "snapshots",
@@ -545,7 +545,7 @@ def test_current_compact_scoreboard_rejects_old_nonterminal_snapshot_on_failure(
 def test_current_home_scoreboard_rejects_fresh_snapshot_on_failure(
     tmp_path: Path,
 ) -> None:
-    today = date_type.today().isoformat()
+    today = current_kbo_date().isoformat()
     snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
     snapshot_store.save(
         "scoreboard",

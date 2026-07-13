@@ -387,7 +387,7 @@ class LiveActivityScoreboardSyncService:
             strikes=_int_value(current.get("strikes")),
             outs=_int_value(current.get("outs")),
             stadium=str(game.get("stadium") or "KBO"),
-            updatedAt=now.astimezone().strftime("%H:%M:%S"),
+            updatedAt=now.astimezone(self._KST).strftime("%H:%M:%S"),
             situationText=str(current.get("situationText") or ""),
             playText="" if is_pregame else str(current.get("playText") or ""),
             isPregame=is_pregame,

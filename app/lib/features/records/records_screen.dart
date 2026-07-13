@@ -9,6 +9,7 @@ import '../../core/constants/team_data.dart';
 import '../../core/constants/visual_assets.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/dev_console.dart';
@@ -56,7 +57,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   @override
   void initState() {
     super.initState();
-    _selectedSeason = DateTime.now().year;
+    _selectedSeason = kboCurrentSeason();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
@@ -1218,7 +1219,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _seasonSelector() {
     final seasons = [
       for (
-        int year = DateTime.now().year;
+        int year = kboCurrentSeason();
         year >= firstSupportedRecordsSeason;
         year--
       )

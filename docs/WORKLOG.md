@@ -2,6 +2,56 @@
 
 ---
 
+## 2026-07-13: 앱·backend·플랫폼 전역 안정성 감사
+
+### 결정
+- 사장님 요청에 따라 전역 안정성 감사 변경분을 tester-facing release로 승격한다. target은 `0.1.18+86` / tag `0.1.18`이며, 앱·backend·운영 API·Live Activity 연결이 함께 바뀌었으므로 기존 `0.1.17` release note 보강만으로는 충분하지 않다.
+- KBO의 현재 날짜·월·시즌과 경기/예매 시각은 실행 host나 기기 시간대가 아니라 `Asia/Seoul`을 기준으로 계산한다. cache/snapshot의 저장·만료 시각은 UTC instant로 유지한다.
+- 현재 데이터는 API 실패를 cache/snapshot으로 숨기지 않고, 과거 데이터만 검증된 stale/snapshot 복구를 허용한다. 미래 저장 시각과 rank 1부터 시작하지 않는 기록실 데이터는 재사용하지 않는다.
+- 선수/팀/박스스코어/라인업과 scheduler는 같은 runtime service/cache를 재사용하고, 공용 TTL cache는 동시 요청과 최대 256개 용량 제한을 안전하게 처리한다.
+- release fallback은 DNS가 해석되지 않는 `api.kbofans.com` 대신 실제 `/api/health` 200을 반환하는 Lightsail HTTPS endpoint `https://3-39-79-1.sslip.io/api`로 통일한다. 향후 custom domain DNS가 연결되면 명시적 `RELEASE_API_BASE_URL`로 다시 전환한다.
+- AWS `--dry-run`은 외부 호출뿐 아니라 기존 `outputs/aws/**` 상태 파일도 수정하지 않아야 한다.
+- iOS simulator artifact는 Flutter가 지원하는 debug build mode를 쓰되, `APP_ENV`/backend API define은 선택한 환경값을 그대로 유지한다.
+
+### 진행
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.18+86` 기준으로 갱신.
+- [x] 앱과 backend의 날짜 생략 요청, historical 판정, 기본 시즌/월, 예매·경기·Live Activity 시각을 공용 KST helper로 통일.
+- [x] API/bootstrap/device/local snapshot이 미래 timestamp를 fresh로 오판하던 경로를 보정하고, API cache 저장 시각을 UTC `Z` 형식으로 고정. cached-first 경로도 미래 timestamp 후보를 거부하도록 수정.
+- [x] TTL cache가 만료 값을 stale 복구 전에 삭제하던 버그를 고치고, 최대 용량 및 동시 write 잠금을 추가.
+- [x] 기록실 overview/leaderboard를 rank 오름차순으로 정규화하고 rank 1부터 시작하는 응답만 cache/snapshot에 저장·재사용하도록 보강.
+- [x] player/team/boxscore/lineup과 smart-daily scheduler가 공용 runtime service/cache를 재사용하도록 변경. 테스트의 실제 KBO 호출·tracked snapshot 쓰기를 제거해 전체 backend suite를 75.04초에서 7초대로 단축.
+- [x] KBO 투수 표 열 순서 변경과 `1.2`/`1 2/3` 이닝 형식을 header 기준으로 파싱하도록 보정.
+- [x] 앱 direct relay의 하드코딩 인증정보를 제거하고, 로컬 debug 주입값이 없으면 네트워크 호출 전에 명시적으로 중단하도록 변경. 과거 Git 이력에 남은 인증정보는 별도 회전 필요.
+- [x] iOS push-to-start가 현재 `API_BASE_URL`을 native에 넘기고 UserDefaults에 보존하도록 보강. 기존 Live Activity token observer도 최초 empty context 대신 activity별 최신/저장 context를 사용하도록 수정.
+- [x] Android 로컬 실행이 emulator는 `10.0.2.2`, 물리 기기는 Mac LAN backend URL을 선택하도록 기존 기기 판별 함수를 실제 실행 경로에 연결.
+- [x] `pipefail`과 `grep -q` 조합 때문에 설치된 iOS simulator를 미설치로 오판하던 `codex-run doctor`/iOS fallback gate를 output capture 방식으로 수정.
+- [x] CI iOS simulator job의 지원되지 않는 `--simulator --release`를 `--simulator --debug`로 수정.
+- [x] AWS image/secret/stack output dry-run이 기존 output env 파일을 생성·덮어쓰지 않도록 수정하고 회귀 테스트 추가.
+- [x] CloudFormation sync worker에 `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES` parameter/env 전달을 추가해 수동 ECS template과 runtime env를 일치시킴.
+- [x] 앱, CI, release/push 스크립트의 기본 운영 API URL을 현재 Lightsail HTTPS endpoint로 통일하고 source parity 테스트 추가.
+- [x] release health 기본 날짜·월·시즌도 KST로 계산해 UTC CI runner가 전날을 검사하지 않도록 보정.
+
+### 검증
+- [x] `backend/.venv/bin/pytest -q` (`282 passed`), Ruff 및 Python 3.9 compile/AST 검사 통과. full suite 전후 tracked snapshot 변경 없음.
+- [x] `cd app && fvm flutter test --no-pub` (`332 passed`), `fvm flutter analyze --no-pub` (`No issues found`). 현재 설치 버전의 패치 노트 표시와 1회 노출도 별도 widget test로 검증.
+- [x] `TZ=UTC` local backend HTTP smoke: 날짜 생략 `/api/scoreboard/home`과 `/api/home`이 `2026-07-13` 반환, localhost CORS preflight 통과.
+- [x] 최근 종료 경기 `20260709NCHH0` 운영 read-only smoke: relay 521건, boxscore 타자 11/13명, lineup 9/9명. 로컬 수정본 cold boxscore 11.39초 후 공용 cache를 재사용한 lineup 0.28초.
+- [x] Playwright 390x844 Web smoke: 온보딩→홈→일정→기록→뉴스→설정과 종료 경기 상세의 스코어/문자중계/박스스코어/라인업 탭 순회, 브라우저 console error 0건.
+- [x] `backend/.venv/bin/pytest -q backend/tests/test_release_runtime_contract.py` (`13 passed`)
+- [x] `backend/.venv/bin/ruff check backend/tests/test_release_runtime_contract.py`
+- [x] `cd app && fvm flutter test --no-pub test/services/live_activity_service_test.dart --plain-name 'iOS push-to-start sync hands the backend URL to native'`
+- [x] `cd app && fvm flutter test --no-pub test/data/providers_routing_test.dart` (`2 passed`)
+- [x] `cd app && fvm flutter build ios --simulator --debug --no-codesign --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api` (`Runner.app` 생성)
+- [x] `cd app && fvm flutter build apk --debug --dart-define=APP_ENV=local --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=http://10.0.2.2:8000/api` (`app-debug.apk` 생성)
+- [x] `cd app && fvm flutter build web --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api`
+- [x] `./scripts/release-api-health-check.sh` 기본값 실행: Lightsail DNS/TLS 및 health/home/scoreboard/schedule/standings/records overview 200, relay는 당일 경기 없음으로 skip.
+- [x] `TZ=UTC ./scripts/release-api-health-check.sh`: 출력 날짜 `2026-07-13`, 전체 release API gate 통과.
+- [x] 2026-07-13 운영 endpoint 재확인: `/health`, `/scoreboard/home`, `/home`, `/schedule`, `/standings` 모두 HTTPS `200` 및 success envelope. 이 Mac에서는 `openssl s_client`가 인증서 검증 뒤 `poll error`를 반환하므로, 해당 스크립트 진단 경로는 별도 호환성 보완 대상으로 남김.
+- [ ] 운영 backend는 배포 전 코드라 날짜 생략 `/scoreboard/home`과 `/home`이 KST 자정 뒤 전날을 반환하는 상태. 수정본 배포·재시작 후 재확인 필요.
+- [ ] signed IPA/TestFlight upload, Android 배포 signing, 실제 iPhone/Android push·Live Activity 수신, AWS deploy, relay 인증정보 회전은 외부 변경/자격증명/실기기 필요로 미실행.
+
+---
+
 ## 2026-07-08: 0.1.17 상세 진입/알림 안정화 릴리즈
 
 ### 결정

@@ -8,7 +8,7 @@ void main() {
     'current standings bootstrap uses verified fresh exact snapshot',
     () async {
       final repository = BootstrapRepository(
-        now: () => DateTime.utc(2026, 5, 20, 5),
+        now: () => DateTime.utc(2026, 5, 20, 6),
       );
 
       final snapshot = await repository.loadStandings(2026);
@@ -25,6 +25,14 @@ void main() {
   test('stale current standings bootstrap is not exposed', () async {
     final repository = BootstrapRepository(
       now: () => DateTime.utc(2026, 5, 21, 5),
+    );
+
+    expect(await repository.loadStandings(2026), isNull);
+  });
+
+  test('future-dated current standings bootstrap is not exposed', () async {
+    final repository = BootstrapRepository(
+      now: () => DateTime.utc(2026, 5, 20, 4),
     );
 
     expect(await repository.loadStandings(2026), isNull);

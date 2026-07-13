@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from html import unescape
 from typing import Any, Optional, Union
 
@@ -465,8 +466,17 @@ class BoxscoreCrawler(BaseCrawler):
         for row in table["rows"]:
             cells = self._row_values(row)
 
-            def value(headers: tuple[str, ...], fallback_index: int) -> str:
-                return self._value_by_headers(cells, header_map, headers, fallback_index)
+            def value(
+                headers: tuple[str, ...],
+                fallback_index: int,
+                row_cells: list[str] = cells,
+            ) -> str:
+                return self._value_by_headers(
+                    row_cells,
+                    header_map,
+                    headers,
+                    fallback_index,
+                )
 
             pitcher = {
                 "name": value(("선수명", "선수"), 0),
@@ -496,7 +506,7 @@ class BoxscoreCrawler(BaseCrawler):
             totals["strikeouts"] += pitcher["strikeouts"] or 0
             totals["walks"] += pitcher["walks"] or 0
             totals["earnedRuns"] += pitcher["earnedRuns"] or 0
-            innings_outs += self._innings_to_outs(cells[6])
+            innings_outs += self._innings_to_outs(pitcher["innings"])
 
         totals["innings"] = self._outs_to_innings(innings_outs)
         return {"pitchers": pitchers, "totals": totals}
@@ -549,6 +559,9 @@ class BoxscoreCrawler(BaseCrawler):
         if " " in value:
             whole, frac = value.split(" ", 1)
             return int(whole) * 3 + (2 if "2/3" in frac else 1 if "1/3" in frac else 0)
+        if re.fullmatch(r"\d+\.[012]", value):
+            whole, remainder = value.split(".", 1)
+            return int(whole) * 3 + int(remainder)
         if value.isdigit():
             return int(value) * 3
         return 0

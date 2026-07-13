@@ -78,6 +78,13 @@ registry="${ECR_REPOSITORY_URI%%/*}"
 repository_name="${ECR_REPOSITORY_URI#*/}"
 container_image_uri="$ECR_REPOSITORY_URI:$IMAGE_TAG"
 
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo "aws_push_image=status=ok mode=dry-run"
+  echo "export ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI"
+  echo "export CONTAINER_IMAGE_URI=$container_image_uri"
+  exit 0
+fi
+
 mkdir -p "$OUTPUT_DIR"
 env_file="$OUTPUT_DIR/image.env"
 cat > "$env_file" <<EOF
@@ -85,14 +92,6 @@ export ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI
 export CONTAINER_IMAGE_URI=$container_image_uri
 export KBO_BACKEND_IMAGE_TAG=$IMAGE_TAG
 EOF
-
-if [[ "$DRY_RUN" == "true" ]]; then
-  echo "aws_push_image=status=ok mode=dry-run"
-  echo "export ECR_REPOSITORY_URI=$ECR_REPOSITORY_URI"
-  echo "export CONTAINER_IMAGE_URI=$container_image_uri"
-  echo "$env_file"
-  exit 0
-fi
 
 require_cmd aws
 require_cmd docker

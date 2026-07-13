@@ -8,7 +8,25 @@
 - 사용자에게 보이는 기능/구조 변화 위주 기록
 - 세부 작업 로그는 `docs/WORKLOG.md`에서 관리
 
-## [Unreleased]
+## [0.1.18] - 2026-07-13
+
+### Changed
+
+- 선수/팀 기록, 박스스코어, 라인업과 smart-daily 작업이 같은 backend runtime cache를 재사용하도록 해 중복 KBO 조회를 줄임
+- 만료 cache를 과거 데이터 장애 복구용으로 보존하되 최대 항목 수와 동시 write를 보호해 복구력·메모리·병렬 요청 안정성을 함께 보강
+
+### Fixed
+
+- 한국시간 자정 이후 앱과 backend가 전날을 오늘로 보거나 현재 데이터를 과거 snapshot/cache 대상으로 분류할 수 있던 문제를 보정
+- 예매 오픈 시각, 경기 시작 시각, Live Activity 갱신 시각을 KBO 기준 시각으로 해석해 기기·서버 시간대가 달라도 같은 순간을 가리키도록 보정
+- 기기 시계 변경으로 cache 저장 시각이 미래가 되거나 기록실 응답이 1위부터 시작하지 않을 때 잘못된 cache/snapshot을 재사용하던 문제를 보정
+- KBO 박스스코어 투수 표의 열 순서가 바뀌거나 `1.2` 형식의 이닝이 내려올 때 합계 이닝이 `0.0`으로 계산될 수 있던 문제를 보정
+- direct 문자중계 디버그용 인증정보를 앱 코드에서 제거하고, 로컬 주입값이 없으면 네트워크 호출 전에 명시적으로 중단하도록 보정
+- Android 로컬 실행이 실기기에서도 emulator 전용 `10.0.2.2`를 사용하던 문제를 고쳐, 실기기는 Mac의 LAN backend URL을 사용하도록 보정
+- iOS 앱 재시작 후 기존 Live Activity push token이 갱신될 때 native observer가 backend API URL을 잃어 등록을 건너뛸 수 있던 경로를 보정
+- AWS push 배포 dry-run이 기존 image/secret/stack output 상태 파일을 덮어쓰지 않도록 하고, CloudFormation worker에도 smart-daily 알림 시간 설정이 전달되도록 보정
+- release 기본 API가 DNS 미연결 custom domain이나 오래된 로컬 stack output을 암묵적으로 사용하지 않고, 현재 동작하는 Lightsail HTTPS backend를 사용하도록 보정
+- iOS simulator 빌드 workflow가 지원되지 않는 release mode를 사용하고, simulator 존재 확인이 pipefail 때문에 실패로 오판되던 문제를 보정
 
 ## [0.1.17] - 2026-07-08
 

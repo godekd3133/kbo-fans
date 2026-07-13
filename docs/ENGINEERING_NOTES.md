@@ -15,12 +15,14 @@
 - noisy fallback 로그가 과하면 `local` / 테스트 바인딩에서 prefetch, metric, push init을 완화하는 방향이 안전하다.
 - local, dev, release API base URL은 화면 provider와 push registration이 함께 쓰는 backend endpoint 설정값이다.
 - 웹 빌드도 `APP_ENV=local` / `APP_ENV=release`에서 backend API를 기본으로 사용한다.
+- KBO의 오늘 날짜/현재 시즌/예매·경기 시각은 앱 기기나 AWS host timezone이 아니라 `Asia/Seoul` civil time으로 계산한다. API cache의 `cachedAt`, snapshot `savedAt`, TTL 경과시간은 UTC instant로 저장·비교하고 미래 timestamp는 fresh로 인정하지 않는다.
 - iPhone local debug에서 `localhost` API는 실기기에서 직접 닿지 않는다.
   - Mac LAN IP를 `API_BASE_URL`로 주입하고 `USE_BACKEND_API=true` 를 함께 지정해야 한다.
 - direct KBO source는 backend parser parity/debug 확인 기준이다.
   - scoreboard live status는 `Main.asmx/GetKboGameList` 를 우선 참고한다.
   - 일정 파서는 `GetScheduleList`의 빈 action cell에서도 `gameId`를 날짜+팀 코드로 복원해야 한다.
   - relay는 `LiveTextView2.aspx` markup(`#numCont*`, `p.present`, `.playerBox`) 기준으로 파싱한다.
+  - direct relay 인증정보는 무시된 로컬 환경에서만 주입하고, 값이 없으면 로그인 요청 전에 명시적으로 실패한다. 코드·문서·공유 빌드에 평문 값을 넣지 않는다.
 - local/mobile 알림은 remote push가 아니라 앱 내부 비교 로직이다.
   - scoreboard diff: 경기 시작 / 득점 / 역전 / 종료
   - relay diff: 홈런 / 이닝 교대
@@ -62,6 +64,7 @@
   - `config-status.scheduler.lastSyncAt`은 sync worker가 실제로 registry에 heartbeat를 남겼는지 보는 운영 신호다. secret readiness와 worker activity를 구분해서 판단한다.
 - 홈 scoreboard 자동 refresh cadence는 live 8초, scheduled 5분, terminal 정지로 둔다.
 - 운영 sync worker는 push/Live Activity 등록이 없더라도 scoreboard warm-up을 수행하고, API service와 같은 runtime filesystem에 `live_scoreboard` state를 남긴다. API는 이 state가 8초 window 안에서 fresh일 때만 `/scoreboard/home` 응답으로 사용하고, stale state는 snapshot처럼 fallback하지 않는다.
+- backend `TtlCache`는 정상 조회에서 만료값을 반환하지 않되 historical 장애 fallback이 `get_stale()`로 읽을 수 있게 보존하고, 오래된 key가 무한히 쌓이지 않도록 항목 수를 제한한다. runtime singleton을 여러 요청이 공유하므로 cache store 조회·교체는 lock으로 보호하되, deepcopy는 lock 밖에서 수행한다. records overview/leaderboard cache와 snapshot은 핵심 리더 목록이 1위부터 시작할 때만 재사용한다.
 - 경기 상세는 live 기본 탭 8초, 문자중계 foreground 원천 갱신은 5초 cadence로 맞춘다. LIVE 경기에서 스코어/문자중계/박스스코어/라인업 탭을 전환하면 타이머 tick을 기다리지 않고 현재 보이는 탭 provider를 즉시 갱신한다.
 
 ## Backend Lint / Compatibility

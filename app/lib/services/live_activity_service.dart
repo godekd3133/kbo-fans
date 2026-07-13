@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/config/app_config.dart';
 import '../core/utils/game_status_label.dart';
+import '../core/utils/kbo_time.dart';
 import '../core/utils/team_display.dart';
 import '../core/widgets/dev_console.dart';
 import '../data/api/api_client.dart';
@@ -119,6 +120,7 @@ class LiveActivityService {
       _ensureChannelHandler();
       final response = await _channel.invokeMapMethod<String, dynamic>(
         'syncPushToStartToken',
+        <String, dynamic>{'apiBaseUrl': AppConfig.instance.apiBaseUrl},
       );
       await _registerPushToStartTokenFromNativeResponse(response);
     } on PlatformException {
@@ -564,11 +566,7 @@ class LiveActivityService {
   }
 
   String _updatedAtText() {
-    final now = DateTime.now();
-    final hour = now.hour.toString().padLeft(2, '0');
-    final minute = now.minute.toString().padLeft(2, '0');
-    final second = now.second.toString().padLeft(2, '0');
-    return '$hour:$minute:$second';
+    return liveActivityUpdatedAtTextForTesting(DateTime.now());
   }
 
   Future<_LiveActivityRankLabels> _fetchRankLabels(
@@ -578,7 +576,7 @@ class LiveActivityService {
     if (repository == null) {
       return const _LiveActivityRankLabels();
     }
-    final season = _seasonFromGameId(game.gameId) ?? DateTime.now().year;
+    final season = _seasonFromGameId(game.gameId) ?? kboCurrentSeason();
     try {
       final standings = await repository
           .getStandings(season)
@@ -742,6 +740,15 @@ class LiveActivityService {
   }
 }
 
+@visibleForTesting
+String liveActivityUpdatedAtTextForTesting(DateTime instant) {
+  final kbo = kboCivilDateTime(instant);
+  final hour = kbo.hour.toString().padLeft(2, '0');
+  final minute = kbo.minute.toString().padLeft(2, '0');
+  final second = kbo.second.toString().padLeft(2, '0');
+  return '$hour:$minute:$second';
+}
+
 class _LiveActivityRankLabels {
   final String away;
   final String home;
@@ -826,15 +833,13 @@ DateTime? _gameStartDateTimeForLiveActivity(Game game) {
   if (hour == null || minute == null || hour > 23 || minute > 59) {
     return null;
   }
-  final parsed = DateTime(year, month, day, hour, minute);
-  if (parsed.year != year ||
-      parsed.month != month ||
-      parsed.day != day ||
-      parsed.hour != hour ||
-      parsed.minute != minute) {
-    return null;
-  }
-  return parsed;
+  return kboInstantFromCivil(
+    year: year,
+    month: month,
+    day: day,
+    hour: hour,
+    minute: minute,
+  );
 }
 
 @visibleForTesting

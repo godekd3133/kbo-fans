@@ -1,3 +1,4 @@
+import '../../core/utils/kbo_time.dart';
 import '../api/api_client.dart';
 import '../bootstrap/bootstrap_repository.dart';
 import '../models/player.dart';
@@ -455,7 +456,7 @@ class ApiPlayerRepository implements PlayerRepository {
     );
   }
 
-  bool _isHistoricalSeason(int season) => season < DateTime.now().year;
+  bool _isHistoricalSeason(int season) => season < kboCurrentSeason();
 
   Duration _cacheAgeForSeason(int season) =>
       _isHistoricalSeason(season) ? _historicalSeasonCacheAge : _stableCacheAge;

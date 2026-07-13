@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/team_data.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/kbo_player_image_cache.dart';
+import '../../../core/utils/kbo_time.dart';
 import '../../../core/widgets/app_motion.dart';
 import '../../../core/widgets/kbo_team_logo_image.dart';
 import '../../../data/models/boxscore.dart';
@@ -804,7 +805,7 @@ int _seasonFromGameId(String gameId) {
       return parsed;
     }
   }
-  return DateTime.now().year;
+  return kboCurrentSeason();
 }
 
 class _SummaryMetric {

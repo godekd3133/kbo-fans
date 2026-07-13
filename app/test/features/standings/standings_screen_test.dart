@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
@@ -15,7 +16,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final currentSeason = DateTime.now().year;
+    final currentSeason = kboCurrentSeason();
     final previousSeason = currentSeason - 1;
     final requestedSeasons = <int>[];
 

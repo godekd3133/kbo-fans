@@ -6,19 +6,27 @@ import '../../core/theme/app_theme.dart';
 import 'release_notes.dart';
 
 const releaseNotesSeenVersionPrefsKey = 'release_notes.seen_version';
+typedef CurrentVersionLoader = Future<String> Function();
+typedef ReleaseNotesLoader = Future<ReleaseNotesData> Function();
 
 Future<void> showReleaseNotesPromptIfNeeded(
   BuildContext context, {
   GoRouter? router,
+  CurrentVersionLoader? currentVersionLoader,
+  ReleaseNotesLoader? releaseNotesLoader,
 }) async {
   final prefs = await SharedPreferences.getInstance();
-  final currentVersion = await loadCurrentAppVersion(fallbackVersion: '');
+  final currentVersion = currentVersionLoader != null
+      ? await currentVersionLoader()
+      : await loadCurrentAppVersion(fallbackVersion: '');
   if (currentVersion.isEmpty ||
       prefs.getString(releaseNotesSeenVersionPrefsKey) == currentVersion) {
     return;
   }
 
-  final data = await loadReleaseNotes();
+  final data = releaseNotesLoader != null
+      ? await releaseNotesLoader()
+      : await loadReleaseNotes();
   final release = findInstalledReleaseNote(data.releases, currentVersion);
   if (release == null || release.notes.isEmpty) {
     await prefs.setString(releaseNotesSeenVersionPrefsKey, currentVersion);
@@ -28,8 +36,6 @@ Future<void> showReleaseNotesPromptIfNeeded(
   if (!context.mounted) {
     return;
   }
-  final targetRouter = router ?? GoRouter.of(context);
-
   final action = await showDialog<_ReleaseNotesPromptAction>(
     context: context,
     barrierDismissible: true,
@@ -39,7 +45,10 @@ Future<void> showReleaseNotesPromptIfNeeded(
   await prefs.setString(releaseNotesSeenVersionPrefsKey, currentVersion);
 
   if (action == _ReleaseNotesPromptAction.openFullNotes) {
-    targetRouter.push('/release-notes');
+    if (!context.mounted) {
+      return;
+    }
+    (router ?? GoRouter.of(context)).push('/release-notes');
   }
 }
 

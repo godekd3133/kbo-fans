@@ -31,6 +31,7 @@ description: Use when changing KBO data-loading paths, backend-backed API usage,
 - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.
 - Backend `/scoreboard/home` and `/scoreboard/compact` should stay lightweight for first paint / widget surfaces. Do not call per-game scoreboard detail crawlers from those paths; reserve them for full scoreboard and game detail.
 - Backend current data routes should share the runtime service singletons from `api/runtime_services.py` so sibling endpoints reuse the same TTL caches.
+- App/server current date, current season, and current/historical classification must use `Asia/Seoul` KBO civil time. Keep persisted timestamps and TTL age calculations as UTC instants, and reject future-dated cache entries.
 - LIVE summary scoreboard paths should prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0.
 - Boxscore adjacent game-id fallback is historical-only. Current/live boxscore must not borrow a previous game's player rows; return the empty official-unavailable state instead.
 - Direct relay summary fallback must not synthesize inning skeletons for scheduled/cancelled/suspended games or games without any real line-score inning values. Return the empty relay state instead.

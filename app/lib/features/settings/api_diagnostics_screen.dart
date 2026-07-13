@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
@@ -35,8 +35,8 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
 
   Future<List<_DiagnosticResult>> _load() async {
     final client = ref.read(apiClientProvider);
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final yearMonth = DateFormat('yyyy-MM').format(DateTime.now());
+    final today = kboDateKey();
+    final yearMonth = kboYearMonthKey();
 
     return Future.wait([
       _measure('health', () async => client.get('/health')),

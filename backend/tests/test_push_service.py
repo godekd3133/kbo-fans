@@ -1,6 +1,7 @@
 import fcntl
 import json
 import os
+import time as time_module
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -1852,6 +1853,38 @@ def test_live_activity_scoreboard_sync_updates_registered_live_games(tmp_path) -
     assert registry.sync_heartbeat()["checkedGames"] == 1
 
 
+def test_live_activity_updated_at_uses_kbo_time_on_utc_host(tmp_path) -> None:
+    original_tz = os.environ.get("TZ")
+    os.environ["TZ"] = "UTC"
+    time_module.tzset()
+    try:
+        registry = PushRegistry(str(tmp_path / "push_registry.json"))
+        sender = FakeLiveActivitySender()
+        push_service = PushService(registry=registry, live_activity_sender=sender)
+        push_service.register_live_activity(
+            LiveActivityRegisterRequest(
+                gameId="20260604LGKT0",
+                activityId="activity-1",
+                activityPushToken="token",
+            )
+        )
+        sync_service = LiveActivityScoreboardSyncService(
+            scoreboard_service=FakeScoreboardService(),
+            push_service=push_service,
+            now_provider=lambda: datetime(2026, 6, 4, 9, 20, tzinfo=timezone.utc),
+        )
+
+        sync_service.sync_date("2026-06-04")
+
+        assert sender.calls[0]["state"].updatedAt == "18:20:00"
+    finally:
+        if original_tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = original_tz
+        time_module.tzset()
+
+
 def test_live_activity_scoreboard_sync_warms_scoreboard_without_registrations(
     tmp_path,
 ) -> None:
@@ -1987,6 +2020,7 @@ def test_live_activity_scoreboard_sync_starts_my_team_activity_ten_minutes_befor
             ]
         ),
         push_service=push_service,
+        standings_service=FakeStandingsService(),
         now_provider=lambda: now,
     )
 

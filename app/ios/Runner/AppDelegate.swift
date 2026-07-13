@@ -8,6 +8,7 @@ private struct LiveActivityBackendContext {
 }
 
 private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
+private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base_url"
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -82,7 +83,8 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
         switch call.method {
         case "syncPushToStartToken":
           NSLog("[KBOFansLiveActivity] syncPushToStartToken call received")
-          self.syncPushToStartToken(result: result)
+          let args = call.arguments as? [String: Any] ?? [:]
+          self.syncPushToStartToken(arguments: args, result: result)
         case "syncCurrentScore":
           NSLog("[KBOFansLiveActivity] syncCurrentScore call received")
           guard let args = call.arguments as? [String: Any] else {
@@ -106,7 +108,10 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
     }
   }
 
-  private func syncPushToStartToken(result: @escaping FlutterResult) {
+  private func syncPushToStartToken(
+    arguments: [String: Any],
+    result: @escaping FlutterResult
+  ) {
     guard #available(iOS 17.2, *) else {
       NSLog("[KBOFansLiveActivity] push-to-start unavailable on this iOS version")
       result(["supported": false, "pushToStartToken": ""])
@@ -119,7 +124,9 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
       return
     }
 
-    let backendContext = LiveActivityBackendContext(apiBaseUrl: "")
+    let backendContext = rememberLiveActivityBackendContext(
+      apiBaseUrl: arguments["apiBaseUrl"] as? String
+    )
     observeExistingLiveActivities(context: backendContext)
     observeLiveActivityUpdates(context: backendContext)
     observeLiveActivityPushToStartTokenUpdates()
@@ -240,8 +247,8 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
       )
       return
     }
-    let backendContext = LiveActivityBackendContext(
-      apiBaseUrl: arguments["apiBaseUrl"] as? String ?? ""
+    let backendContext = rememberLiveActivityBackendContext(
+      apiBaseUrl: arguments["apiBaseUrl"] as? String
     )
 
     let attributes = KboFansScoreAttributes(gameId: gameId)
@@ -355,7 +362,7 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
               tokenString,
               activityId: activity.id,
               gameId: gameId,
-              context: context
+              context: self.liveActivityBackendContext(for: activity.id)
             )
           }
         }
@@ -416,9 +423,7 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
     activity: Activity<KboFansScoreAttributes>,
     gameId: String
   ) {
-    guard let context = liveActivityBackendContexts[activity.id] else {
-      return
-    }
+    let context = liveActivityBackendContext(for: activity.id)
     sendLiveActivityUnregisterToBackend(
       gameId: gameId,
       activityId: activity.id,
@@ -497,6 +502,31 @@ private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
   private func apiURL(base: String, path: String) -> URL? {
     let trimmedBase = base.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     return URL(string: "\(trimmedBase)\(path)")
+  }
+
+  private func rememberLiveActivityBackendContext(
+    apiBaseUrl: String?
+  ) -> LiveActivityBackendContext {
+    let candidate = apiBaseUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if !candidate.isEmpty {
+      UserDefaults.standard.set(candidate, forKey: liveActivityApiBaseUrlDefaultsKey)
+      return LiveActivityBackendContext(apiBaseUrl: candidate)
+    }
+
+    let stored = UserDefaults.standard.string(
+      forKey: liveActivityApiBaseUrlDefaultsKey
+    ) ?? ""
+    return LiveActivityBackendContext(apiBaseUrl: stored)
+  }
+
+  private func liveActivityBackendContext(
+    for activityId: String
+  ) -> LiveActivityBackendContext {
+    if let current = liveActivityBackendContexts[activityId],
+       !current.apiBaseUrl.isEmpty {
+      return current
+    }
+    return rememberLiveActivityBackendContext(apiBaseUrl: nil)
   }
 
   @available(iOS 16.1, *)

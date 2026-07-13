@@ -7,6 +7,7 @@ from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
 from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 
 
 class BoxscoreService:
@@ -226,4 +227,4 @@ class BoxscoreService:
             )
         except ValueError:
             return False
-        return game_date < date_type.today()
+        return game_date < current_kbo_date()

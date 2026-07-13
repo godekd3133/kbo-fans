@@ -94,6 +94,11 @@
       "MinValue": 5,
       "Description": "Sync worker polling interval. Use 5 seconds for live sports demos."
     },
+    "PushBaseballInfoSmartDailyTimes": {
+      "Type": "String",
+      "Default": "09:30,16:00,22:30",
+      "Description": "Comma-separated Asia/Seoul smart daily notification slots, or off to disable them."
+    },
     "HealthCheckPath": {
       "Type": "String",
       "Default": "/api/health",
@@ -664,6 +669,12 @@
                 "Name": "PUSH_SYNC_INTERVAL_SECONDS",
                 "Value": {
                   "Fn::Sub": "${PushSyncIntervalSeconds}"
+                }
+              },
+              {
+                "Name": "PUSH_BASEBALL_INFO_SMART_DAILY_TIMES",
+                "Value": {
+                  "Ref": "PushBaseballInfoSmartDailyTimes"
                 }
               }
             ],

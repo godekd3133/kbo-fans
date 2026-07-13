@@ -35,6 +35,7 @@
   를 체크한다.
 - 앱 종료 후 Live Activity / Dynamic Island 갱신은 앱 direct data path가 아니라 backend scheduler/worker가 책임진다.
 - release no-backend direct build도 token registration을 위해 운영 `API_BASE_URL`을 주입해야 한다. `USE_BACKEND_API=true`가 없으면 provider routing은 direct data로 유지된다.
+- push-to-start 동기화는 Dart가 현재 `API_BASE_URL`을 native에 넘기고, native는 이를 저장해 기존 Activity token observer가 cold/background 상태에서도 최신 backend URL을 사용하게 한다. 최초 empty context를 observer task에 고정하지 않는다.
 - 저비용 tester 운영은 Lightsail native systemd 경로를 우선한다. `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`, `infra/aws/lightsail/`, `./scripts/lightsail-deploy.sh` 기준으로 API service와 sync worker를 한 인스턴스에서 실행하고, `FIREBASE_SERVICE_ACCOUNT_PATH`, `APNS_AUTH_KEY_PATH`, `/var/lib/kbo-fans/push_registry.json`을 사용한다.
 - AWS ECS/Fargate 운영에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET` secret env와 공유 `PUSH_REGISTRY_PATH`를 확인한다. JSON registry는 sibling lock file과 atomic replace를 쓰므로 API service와 sync worker가 같은 EFS/EBS 경로를 봐야 한다.
 - 시연 배포 전에는 `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`로 앱 Firebase 파일, APNs/Live Activity capability, release `API_BASE_URL` token-registration handoff, backend secret env, AWS env 형태를 secret 출력 없이 점검한다.

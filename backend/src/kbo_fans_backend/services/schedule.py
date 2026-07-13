@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import date as date_type
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -100,7 +100,7 @@ class ScheduleService:
 
     @staticmethod
     def _is_historical_month(month: str) -> bool:
-        today_month = date_type.today().replace(day=1).isoformat()[:7]
+        today_month = current_kbo_date().replace(day=1).isoformat()[:7]
         return month < today_month
 
     @staticmethod
@@ -118,7 +118,7 @@ class ScheduleService:
         return self._is_historical_month(month)
 
     def _enrich_current_day_with_main_games(self, payload: dict[str, Any]) -> dict[str, Any]:
-        today = date_type.today().isoformat()
+        today = current_kbo_date().isoformat()
         if not any(day.get("date") == today for day in payload.get("days", [])):
             return payload
 

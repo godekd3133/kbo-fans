@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart' show AssetManifest, rootBundle;
 
+import '../../core/utils/kbo_time.dart';
 import '../bootstrap/bootstrap_repository.dart';
 import '../models/player.dart';
 import '../models/records_overview.dart';
@@ -231,11 +232,11 @@ class LocalAssetPlayerRepository implements PlayerRepository {
     if (savedAt == null) {
       return false;
     }
-    return _now().toUtc().difference(savedAt.toUtc()) <=
-        _currentSeasonSnapshotMaxAge;
+    final age = _now().toUtc().difference(savedAt.toUtc());
+    return !age.isNegative && age <= _currentSeasonSnapshotMaxAge;
   }
 
-  bool _requiresFreshSnapshot(int season) => season >= _now().year;
+  bool _requiresFreshSnapshot(int season) => season >= kboCurrentSeason(_now());
 
   DateTime? _parseSavedAt(Object? value) {
     if (value is! String || value.isEmpty) {

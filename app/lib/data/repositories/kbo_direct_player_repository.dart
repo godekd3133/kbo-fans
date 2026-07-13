@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 
+import '../../core/utils/kbo_time.dart';
 import '../models/player.dart';
 import '../models/records_overview.dart';
 import '../models/team_records_bundle.dart';
@@ -119,7 +120,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
       return const <PlayerProfile>[];
     }
 
-    if (season < DateTime.now().year) {
+    if (season < kboCurrentSeason()) {
       return _fetchHistoricalTeamPlayers(teamId, season);
     }
 
@@ -901,8 +902,7 @@ class KboDirectPlayerRepository implements PlayerRepository {
     if (extracted > 0) {
       return extracted;
     }
-    final base = now ?? DateTime.now();
-    return base.toUtc().add(const Duration(hours: 9)).year;
+    return kboCurrentSeason(now);
   }
 
   List<PlayerRecentGame> _parseRecentGames(

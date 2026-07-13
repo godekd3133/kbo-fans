@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
@@ -822,7 +823,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     final expectedImageUrl = kboPlayerImageUrl(
-      season: DateTime.now().year,
+      season: kboCurrentSeason(),
       playerId: '56348',
     );
     expect(

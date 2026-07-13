@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:kbo_fans/data/api/api_client.dart';
 import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/repositories/api_game_repository.dart';
@@ -89,6 +90,48 @@ void main() {
     },
   );
 
+  test(
+    'fresh-first API cache rejects a future timestamp after request failure',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'api_cache:scoreboard_home:2026-05-20': _cachedApiPayload({
+          'source': 'future-cache',
+        }, age: const Duration(minutes: -10)),
+      });
+
+      final client = ApiClient(
+        dio: _dioWithAdapter(_FailingAdapter()),
+        enableRequestTiming: false,
+      );
+
+      expect(
+        () => client.getCached(
+          '/scoreboard/home',
+          cacheKey: 'scoreboard_home:2026-05-20',
+          maxAge: const Duration(minutes: 5),
+          allowCacheOnFailure: true,
+        ),
+        throwsA(isA<DioException>()),
+      );
+    },
+  );
+
+  test('API cache persists cachedAt as an unambiguous UTC instant', () async {
+    SharedPreferences.setMockInitialValues({});
+    final client = ApiClient(
+      dio: _dioWithAdapter(_SuccessAdapter({'source': 'fresh'})),
+      enableRequestTiming: false,
+    );
+
+    await client.getCached('/test', cacheKey: 'utc_timestamp');
+
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('api_cache:utc_timestamp');
+    final decoded = jsonDecode(raw!) as Map<String, dynamic>;
+    expect(decoded['cachedAt'], isA<String>());
+    expect((decoded['cachedAt'] as String).endsWith('Z'), isTrue);
+  });
+
   test('cached-first historical path may reuse stale cache', () async {
     SharedPreferences.setMockInitialValues({
       'api_cache:scoreboard_home:2026-05-01': _cachedApiPayload({
@@ -109,6 +152,29 @@ void main() {
     );
 
     expect(data['source'], 'historical-cache');
+  });
+
+  test('cached-first path rejects a future timestamp', () async {
+    SharedPreferences.setMockInitialValues({
+      'api_cache:scoreboard_home:2026-05-01': _cachedApiPayload({
+        'source': 'future-cache',
+      }, age: const Duration(minutes: -10)),
+    });
+    final adapter = _CountingSuccessAdapter({'source': 'fresh'});
+    final client = ApiClient(
+      dio: _dioWithAdapter(adapter),
+      enableRequestTiming: false,
+    );
+
+    final data = await client.getCached(
+      '/scoreboard/home',
+      cacheKey: 'scoreboard_home:2026-05-01',
+      preferCache: true,
+      maxAge: const Duration(minutes: 5),
+    );
+
+    expect(data['source'], 'fresh');
+    expect(adapter.calls, 1);
   });
 
   test(
@@ -256,7 +322,7 @@ void main() {
   test(
     'current scoreboard API failure is not masked by fresh API cache',
     () async {
-      final today = _yyyyMmDd(DateTime.now());
+      final today = kboDateKey();
       SharedPreferences.setMockInitialValues({
         'api_cache:scoreboard_home:$today': _cachedApiPayload({
           'games': const [],
@@ -569,7 +635,7 @@ void main() {
   test(
     'current standings API failure is not masked by fresh API cache or app bootstrap',
     () async {
-      final season = DateTime.now().year;
+      final season = kboCurrentSeason();
       SharedPreferences.setMockInitialValues({
         'api_cache:standings:$season': _cachedApiPayload({
           'standings': [
@@ -603,7 +669,7 @@ void main() {
   test(
     'current records overview API failure is not masked by fresh API cache or app bootstrap',
     () {
-      final season = DateTime.now().year;
+      final season = kboCurrentSeason();
       SharedPreferences.setMockInitialValues({
         'api_cache:recordsOverview:v5:$season': _cachedApiPayload(
           _recordsOverviewPayload(
@@ -631,7 +697,7 @@ void main() {
   test(
     'current leaderboard API failure is not masked by fresh API cache or app bootstrap',
     () {
-      final season = DateTime.now().year;
+      final season = kboCurrentSeason();
       SharedPreferences.setMockInitialValues({
         'api_cache:leaderboard:v3:avg:$season': _cachedApiPayload({
           'season': season,
@@ -662,13 +728,6 @@ String _cachedApiPayload(Map<String, dynamic> data, {required Duration age}) =>
       'cachedAt': DateTime.now().toUtc().subtract(age).toIso8601String(),
       'data': data,
     });
-
-String _yyyyMmDd(DateTime value) {
-  final year = value.year.toString().padLeft(4, '0');
-  final month = value.month.toString().padLeft(2, '0');
-  final day = value.day.toString().padLeft(2, '0');
-  return '$year-$month-$day';
-}
 
 Dio _dioWithAdapter(HttpClientAdapter adapter) {
   final dio = Dio(BaseOptions(baseUrl: 'https://example.test/api'));

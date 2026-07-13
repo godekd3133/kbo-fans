@@ -1,3 +1,4 @@
+import '../../core/utils/kbo_time.dart';
 import '../api/api_client.dart';
 import '../models/home_aggregate.dart';
 import '../models/schedule.dart';
@@ -159,9 +160,7 @@ class ApiHomeRepository {
       vendorKey: json['vendorKey'] as String? ?? '',
       vendorName: json['vendorName'] as String? ?? '',
       vendorUrl: json['vendorUrl'] as String?,
-      openAt: json['openAt'] == null
-          ? null
-          : DateTime.tryParse(json['openAt'] as String),
+      openAt: parseKboDateTime(json['openAt'] as String?),
       source: (json['source'] as String? ?? '').toLowerCase() == 'official'
           ? TicketSource.official
           : TicketSource.inferred,
@@ -170,13 +169,6 @@ class ApiHomeRepository {
   }
 
   bool _isHistoricalDate(String date) {
-    try {
-      final target = DateTime.parse(date);
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      return target.isBefore(today);
-    } catch (_) {
-      return false;
-    }
+    return isHistoricalKboDate(date);
   }
 }

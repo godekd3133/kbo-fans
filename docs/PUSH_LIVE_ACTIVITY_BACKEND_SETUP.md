@@ -58,6 +58,7 @@ APNS_USE_SANDBOX=false
 PUSH_REGISTRY_PATH=/var/lib/kbo-fans/push_registry.json
 PUSH_SYNC_SECRET=<long-random-secret>
 PUSH_SYNC_INTERVAL_SECONDS=5
+PUSH_BASEBALL_INFO_SMART_DAILY_TIMES=09:30,16:00,22:30
 ```
 
 Lightsail/EC2 file secret 배포에서는 `FIREBASE_SERVICE_ACCOUNT_PATH`, `APNS_AUTH_KEY_PATH`를 사용한다. 현재 저비용 tester 운영 목표는 Lightsail 512MB native systemd 경로이며, secret 파일은 `/etc/kbo-fans/`, registry는 `/var/lib/kbo-fans/`에 둔다. AWS ECS/Fargate에서는 `FIREBASE_SERVICE_ACCOUNT_JSON`과 `APNS_AUTH_KEY_P8`을 AWS Secrets Manager에서 환경변수로 주입하는 방식을 권장한다.

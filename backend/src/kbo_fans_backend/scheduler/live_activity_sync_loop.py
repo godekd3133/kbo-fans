@@ -5,25 +5,20 @@ import json
 import os
 import signal
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Optional
 
 from kbo_fans_backend.scheduler import baseball_info
 from kbo_fans_backend.scheduler.live_activity_sync import current_kbo_date, sync_once
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.services.push_registry import PushRegistry
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:  # pragma: no cover - Python 3.9+ expected
-    ZoneInfo = None
+from kbo_fans_backend.utils.kbo_time import current_kbo_datetime
 
 _SHOULD_STOP = False
 _MIN_INTERVAL_SECONDS = 5
 _DEFAULT_INTERVAL_SECONDS = 5
 _DEFAULT_BASEBALL_INFO_SMART_DAILY_TIMES = ("09:30", "16:00", "22:30")
 _BASEBALL_INFO_WINDOW_MINUTES = 10
-_KST = timezone(timedelta(hours=9))
 
 
 def _handle_stop(signum, frame) -> None:
@@ -39,8 +34,7 @@ def _sleep_until_next_run(interval_seconds: int) -> None:
 
 
 def _now_kst() -> datetime:
-    tz = ZoneInfo("Asia/Seoul") if ZoneInfo is not None else _KST
-    return datetime.now(tz)
+    return current_kbo_datetime()
 
 
 def maybe_send_smart_daily_baseball_info(

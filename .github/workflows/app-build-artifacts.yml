@@ -31,13 +31,13 @@ on:
       release_api_base_url:
         description: Production API base URL used for release push/Live Activity registration
         required: false
-        default: https://api.kbofans.com/api
+        default: https://3-39-79-1.sslip.io/api
         type: string
 permissions:
   contents: read
 
 env:
-  RELEASE_API_BASE_URL: ${{ inputs.release_api_base_url || vars.RELEASE_API_BASE_URL || secrets.RELEASE_API_BASE_URL || 'https://api.kbofans.com/api' }}
+  RELEASE_API_BASE_URL: ${{ inputs.release_api_base_url || vars.RELEASE_API_BASE_URL || secrets.RELEASE_API_BASE_URL || 'https://3-39-79-1.sslip.io/api' }}
 
 concurrency:
   group: app-build-artifacts-${{ github.ref }}-${{ github.event.inputs.platform || 'all' }}-${{ github.event.inputs.app_environment || 'all' }}
@@ -327,7 +327,7 @@ jobs:
           echo "PUSH_API_BASE_URL=${push_api_base_url}" >> "$GITHUB_ENV"
 
       - name: Build iOS simulator app
-        run: flutter build ios --simulator --release --no-codesign --dart-define=APP_ENV=${{ matrix.app_environment }} $API_DART_DEFINE
+        run: flutter build ios --simulator --debug --no-codesign --dart-define=APP_ENV=${{ matrix.app_environment }} $API_DART_DEFINE
 
       - name: Package iOS simulator app
         run: |
