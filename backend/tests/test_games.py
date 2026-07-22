@@ -32,7 +32,11 @@ def test_get_game_returns_game_payload(monkeypatch) -> None:
             "balls": 2,
         },
     }
-    monkeypatch.setattr(games.scoreboard_service, "get_game", lambda game_id: expected_game)
+    monkeypatch.setattr(
+        games.scoreboard_service,
+        "get_game",
+        lambda game_id, force_refresh=False: expected_game,
+    )
     monkeypatch.setattr(
         games.schedule_service,
         "get_schedule_game",
@@ -48,8 +52,39 @@ def test_get_game_returns_game_payload(monkeypatch) -> None:
     assert body["data"]["game"] == expected_game
 
 
+def test_get_game_forwards_force_refresh(monkeypatch) -> None:
+    captured = {}
+    expected_game = {
+        "gameId": "20260330KTLG0",
+        "status": "LIVE",
+        "away": {"teamId": "KT", "score": 1},
+        "home": {"teamId": "LG", "score": 2},
+    }
+    monkeypatch.setattr(
+        games.scoreboard_service,
+        "get_game",
+        lambda game_id, force_refresh=False: captured.update(
+            {"gameId": game_id, "forceRefresh": force_refresh}
+        )
+        or expected_game,
+    )
+    client = TestClient(app)
+
+    response = client.get("/api/game/20260330KTLG0?forceRefresh=true")
+
+    assert response.status_code == 200
+    assert captured == {
+        "gameId": "20260330KTLG0",
+        "forceRefresh": True,
+    }
+
+
 def test_get_game_returns_404_when_missing(monkeypatch) -> None:
-    monkeypatch.setattr(games.scoreboard_service, "get_game", lambda game_id: None)
+    monkeypatch.setattr(
+        games.scoreboard_service,
+        "get_game",
+        lambda game_id, force_refresh=False: None,
+    )
     client = TestClient(app)
 
     response = client.get("/api/game/20260330KTLG0")
@@ -89,7 +124,17 @@ def test_get_highlights_returns_youtube_search_fallback_when_video_search_is_emp
     assert "youtube.com/results" in videos[0]["videoUrl"]
 
 
-def test_get_relay_returns_empty_payload() -> None:
+def test_get_relay_returns_empty_payload(monkeypatch) -> None:
+    expected = {
+        "gameId": "20260330KTLG0",
+        "currentAtBat": None,
+        "relayItems": [],
+    }
+    monkeypatch.setattr(
+        games.relay_service,
+        "get_relay",
+        lambda game_id, after=None, force_refresh=False: expected,
+    )
     client = TestClient(app)
 
     response = client.get("/api/game/20260330KTLG0/relay")
@@ -97,9 +142,39 @@ def test_get_relay_returns_empty_payload() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
-    assert body["data"]["gameId"] == "20260330KTLG0"
-    assert "currentAtBat" in body["data"]
-    assert "relayItems" in body["data"]
+    assert body["data"] == expected
+
+
+def test_get_relay_forwards_force_refresh(monkeypatch) -> None:
+    captured = {}
+    monkeypatch.setattr(
+        games.relay_service,
+        "get_relay",
+        lambda game_id, after=None, force_refresh=False: captured.update(
+            {
+                "gameId": game_id,
+                "after": after,
+                "forceRefresh": force_refresh,
+            }
+        )
+        or {
+            "gameId": game_id,
+            "currentAtBat": None,
+            "relayItems": [],
+        },
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/game/20260330KTLG0/relay?after=10&forceRefresh=true"
+    )
+
+    assert response.status_code == 200
+    assert captured == {
+        "gameId": "20260330KTLG0",
+        "after": 10,
+        "forceRefresh": True,
+    }
 
 
 def test_get_boxscore_returns_empty_payload_when_crawler_has_no_data(monkeypatch) -> None:

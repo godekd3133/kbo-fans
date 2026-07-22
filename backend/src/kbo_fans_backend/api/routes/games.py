@@ -19,8 +19,11 @@ youtube_highlight_service = YoutubeHighlightService()
 
 
 @router.get("", response_model=ApiEnvelope[dict])
-def get_game(game_id: str) -> ApiEnvelope[dict]:
-    game = scoreboard_service.get_game(game_id)
+def get_game(
+    game_id: str,
+    forceRefresh: bool = Query(default=False),
+) -> ApiEnvelope[dict]:
+    game = scoreboard_service.get_game(game_id, force_refresh=forceRefresh)
     scheduled_game = None
     if game is None:
         scheduled_game = schedule_service.get_schedule_game(game_id)
@@ -112,8 +115,18 @@ def get_highlights(game_id: str) -> ApiEnvelope[dict]:
 
 
 @router.get("/relay", response_model=ApiEnvelope[dict])
-def get_relay(game_id: str, after: Optional[int] = Query(default=None)) -> ApiEnvelope[dict]:
-    return ApiEnvelope.success_response(relay_service.get_relay(game_id, after=after))
+def get_relay(
+    game_id: str,
+    after: Optional[int] = Query(default=None),
+    forceRefresh: bool = Query(default=False),
+) -> ApiEnvelope[dict]:
+    return ApiEnvelope.success_response(
+        relay_service.get_relay(
+            game_id,
+            after=after,
+            force_refresh=forceRefresh,
+        )
+    )
 
 
 @router.get("/boxscore", response_model=ApiEnvelope[dict])

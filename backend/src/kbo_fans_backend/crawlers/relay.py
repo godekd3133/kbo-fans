@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 from typing import Any, Optional
 
 from bs4 import BeautifulSoup
@@ -24,8 +25,13 @@ class RelayCrawler(BaseCrawler):
         self.password = settings.kbo_relay_password
         self._logged_in = False
         self._login_attempts = 0
+        self._session_lock = threading.Lock()
 
     def get_relay(self, game_id: str) -> dict[str, Any]:
+        with self._session_lock:
+            return self._get_relay_with_session(game_id)
+
+    def _get_relay_with_session(self, game_id: str) -> dict[str, Any]:
         last_error: Optional[Exception] = None
         for attempt in range(2):
             try:
@@ -33,11 +39,15 @@ class RelayCrawler(BaseCrawler):
                 self._fetch_live_text_page(game_id)
                 view2_html = self._post_live_text_view("LiveTextView2.aspx", game_id)
                 self._assert_valid_relay_response(view2_html, "LiveTextView2")
+                current_at_bat = self._parse_current_at_bat(view2_html)
+                relay_items = self._parse_relay_items(view2_html)
+                if current_at_bat is None and not relay_items:
+                    raise RuntimeError("LiveTextView2 did not contain relay content.")
 
                 return {
                     "gameId": game_id,
-                    "currentAtBat": self._parse_current_at_bat(view2_html),
-                    "relayItems": self._parse_relay_items(view2_html),
+                    "currentAtBat": current_at_bat,
+                    "relayItems": relay_items,
                 }
             except Exception as exc:
                 last_error = exc

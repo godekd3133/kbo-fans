@@ -1,3 +1,9 @@
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+import pytest
+
 from kbo_fans_backend.crawlers.relay import RelayCrawler
 
 
@@ -198,3 +204,86 @@ def test_assert_valid_relay_response_rejects_unexpected_markup() -> None:
         assert str(exc) == "LiveTextView2 did not contain expected relay markup."
     else:
         raise AssertionError("RuntimeError was not raised")
+
+
+def test_concurrent_relay_fetches_do_not_share_session_operations() -> None:
+    crawler = RelayCrawler()
+    start_barrier = threading.Barrier(3)
+    active_session_operations = 0
+    max_active_session_operations = 0
+    active_guard = threading.Lock()
+
+    crawler._ensure_logged_in = lambda force=False: None
+
+    def fake_fetch_live_text_page(game_id: str) -> None:
+        nonlocal active_session_operations, max_active_session_operations
+        with active_guard:
+            active_session_operations += 1
+            max_active_session_operations = max(
+                max_active_session_operations,
+                active_session_operations,
+            )
+        time.sleep(0.05)
+
+    def fake_post_live_text_view(view_name: str, game_id: str) -> str:
+        nonlocal active_session_operations
+        with active_guard:
+            active_session_operations -= 1
+        return '<div id="numCont1"><span>1회초 원정팀 공격</span></div>'
+
+    crawler._fetch_live_text_page = fake_fetch_live_text_page
+    crawler._post_live_text_view = fake_post_live_text_view
+
+    def fetch(game_id: str) -> dict:
+        start_barrier.wait(timeout=1)
+        return crawler.get_relay(game_id)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(fetch, "20260719KTLG0")
+        second = executor.submit(fetch, "20260719SSHH0")
+        start_barrier.wait(timeout=1)
+        first.result(timeout=2)
+        second.result(timeout=2)
+
+    assert max_active_session_operations == 1
+
+
+def test_relay_fetch_retries_then_rejects_empty_relay_shell() -> None:
+    class _Response:
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+        def raise_for_status(self) -> None:
+            return None
+
+    class _Cookies:
+        def clear(self) -> None:
+            return None
+
+    class _EmptyRelaySession:
+        def __init__(self) -> None:
+            self.cookies = _Cookies()
+            self.view_calls = 0
+
+        def get(self, url: str, **kwargs):
+            if url.endswith("/Member/Login.aspx"):
+                return _Response("<html></html>")
+            return _Response("<html></html>")
+
+        def post(self, url: str, **kwargs):
+            if url.endswith("/Member/Login.aspx"):
+                return _Response("로그아웃")
+            self.view_calls += 1
+            return _Response('<div class="playerBox awayBox"></div>')
+
+    crawler = RelayCrawler()
+    session = _EmptyRelaySession()
+    crawler.session = session
+    crawler.user_id = "relay-user"
+    crawler.password = "relay-password"
+    crawler._logged_in = True
+
+    with pytest.raises(RuntimeError, match="did not contain relay content"):
+        crawler.get_relay("20260719KTLG0")
+
+    assert session.view_calls == 2

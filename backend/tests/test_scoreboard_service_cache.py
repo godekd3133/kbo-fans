@@ -150,6 +150,107 @@ class _FailingScheduleCrawler:
         raise RuntimeError("schedule unavailable")
 
 
+class _MutableScheduleCrawler:
+    def __init__(self, game_id: str):
+        self.game_id = game_id
+        self.calls = 0
+
+    def get_games_by_date(self, date: str):
+        self.calls += 1
+        return [
+            {
+                "date": date,
+                "time": "18:30",
+                "gameId": self.game_id,
+                "awayId": "HT",
+                "awayName": "KIA",
+                "homeId": "LG",
+                "homeName": "LG",
+                "stadium": "잠실",
+                "status": "SCHEDULED",
+            }
+        ]
+
+
+class _MutableMainCrawler:
+    def __init__(self, game_id: str):
+        self.game_id = game_id
+        self.calls = 0
+        self.status = "1"
+
+    def get_kbo_game_list(self, date: str):
+        self.calls += 1
+        return [
+            {
+                "G_ID": self.game_id,
+                "G_TM": "18:30",
+                "GAME_STATE_SC": self.status,
+                "GAME_INN_NO": "1",
+                "GAME_TB_SC_NM": "말",
+                "T_SCORE_CN": "1",
+                "B_SCORE_CN": "2",
+            }
+        ]
+
+
+class _RacingMainCrawler(_MutableMainCrawler):
+    def __init__(self, game_id: str):
+        super().__init__(game_id)
+        self._lock = threading.Lock()
+        self.first_started = threading.Event()
+        self.second_started = threading.Event()
+        self.release_first = threading.Event()
+
+    def get_kbo_game_list(self, date: str):
+        with self._lock:
+            self.calls += 1
+            call_number = self.calls
+
+        if call_number == 1:
+            self.first_started.set()
+            if not self.release_first.wait(timeout=2):
+                raise TimeoutError("normal scoreboard request was not released")
+            status = "1"
+        else:
+            self.second_started.set()
+            status = "2"
+
+        return [
+            {
+                "G_ID": self.game_id,
+                "G_TM": "18:30",
+                "GAME_STATE_SC": status,
+                "GAME_INN_NO": "1",
+                "GAME_TB_SC_NM": "말",
+                "T_SCORE_CN": "1",
+                "B_SCORE_CN": "2",
+            }
+        ]
+
+
+def _get_scoreboard_surface(
+    service: ScoreboardService,
+    surface: str,
+    *,
+    date: str,
+    game_id: str,
+    force_refresh: bool,
+):
+    if surface == "full":
+        return service.get_scoreboard(date, force_refresh=force_refresh)
+    if surface == "home":
+        return service.get_home_scoreboard(date, force_refresh=force_refresh)
+    if surface == "game":
+        return service.get_game(game_id, force_refresh=force_refresh)
+    raise AssertionError(f"unsupported scoreboard surface: {surface}")
+
+
+def _scoreboard_surface_status(payload: dict, surface: str) -> str:
+    if surface == "game":
+        return payload["status"]
+    return payload["games"][0]["status"]
+
+
 def test_get_scoreboard_uses_ttl_cache_for_same_date(tmp_path: Path) -> None:
     schedule = _StubScheduleCrawler()
     main = _StubMainCrawler()
@@ -170,6 +271,111 @@ def test_get_scoreboard_uses_ttl_cache_for_same_date(tmp_path: Path) -> None:
     assert scoreboard.calls == 0
 
 
+@pytest.mark.parametrize("surface", ["full", "home", "game"])
+def test_force_refresh_wins_same_date_cache_race(
+    tmp_path: Path,
+    surface: str,
+) -> None:
+    target_date = "2999-03-31"
+    game_id = "29990331HTLG0"
+    schedule = _MutableScheduleCrawler(game_id)
+    main = _RacingMainCrawler(game_id)
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+    results = {}
+    errors = []
+
+    def request(key: str, force_refresh: bool) -> None:
+        try:
+            results[key] = _get_scoreboard_surface(
+                service,
+                surface,
+                date=target_date,
+                game_id=game_id,
+                force_refresh=force_refresh,
+            )
+        except BaseException as error:
+            errors.append(error)
+
+    normal_thread = threading.Thread(target=request, args=("normal", False))
+    normal_thread.start()
+    assert main.first_started.wait(timeout=1)
+
+    force_thread = threading.Thread(target=request, args=("force", True))
+    force_thread.start()
+    main.second_started.wait(timeout=0.25)
+    main.release_first.set()
+
+    normal_thread.join(timeout=2)
+    force_thread.join(timeout=2)
+    assert not normal_thread.is_alive()
+    assert not force_thread.is_alive()
+    assert errors == []
+
+    final_payload = _get_scoreboard_surface(
+        service,
+        surface,
+        date=target_date,
+        game_id=game_id,
+        force_refresh=False,
+    )
+    assert _scoreboard_surface_status(results["normal"], surface) == "SCHEDULED"
+    assert _scoreboard_surface_status(results["force"], surface) == "LIVE"
+    assert _scoreboard_surface_status(final_payload, surface) == "LIVE"
+
+
+def test_force_refresh_home_scoreboard_bypasses_current_caches(
+    tmp_path: Path,
+) -> None:
+    target_date = "2999-03-31"
+    game_id = "29990331HTLG0"
+    schedule = _MutableScheduleCrawler(game_id)
+    main = _MutableMainCrawler(game_id)
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    cached = service.get_home_scoreboard(target_date)
+    main.status = "2"
+    refreshed = service.get_home_scoreboard(target_date, force_refresh=True)
+
+    assert cached["games"][0]["status"] == "SCHEDULED"
+    assert refreshed["games"][0]["status"] == "LIVE"
+    assert schedule.calls == 2
+    assert main.calls == 2
+
+
+def test_force_refresh_full_scoreboard_bypasses_current_caches(
+    tmp_path: Path,
+) -> None:
+    target_date = "2999-03-31"
+    game_id = "29990331HTLG0"
+    schedule = _MutableScheduleCrawler(game_id)
+    main = _MutableMainCrawler(game_id)
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    cached = service.get_scoreboard(target_date)
+    main.status = "2"
+    refreshed = service.get_scoreboard(target_date, force_refresh=True)
+
+    assert cached["games"][0]["status"] == "SCHEDULED"
+    assert refreshed["games"][0]["status"] == "LIVE"
+    assert schedule.calls == 2
+    assert main.calls == 2
+
+
 def test_get_game_enriches_only_requested_game(tmp_path: Path) -> None:
     schedule = _MultiGameScheduleCrawler()
     main = _MultiGameMainCrawler()
@@ -188,6 +394,29 @@ def test_get_game_enriches_only_requested_game(tmp_path: Path) -> None:
     assert schedule.calls == 1
     assert main.calls == 1
     assert scoreboard.game_ids == ["20260331OBSS0"]
+
+
+def test_force_refresh_game_bypasses_current_caches(tmp_path: Path) -> None:
+    game_id = "29990331HTLG0"
+    schedule = _MutableScheduleCrawler(game_id)
+    main = _MutableMainCrawler(game_id)
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    cached = service.get_game(game_id)
+    main.status = "2"
+    refreshed = service.get_game(game_id, force_refresh=True)
+
+    assert cached is not None
+    assert refreshed is not None
+    assert cached["status"] == "SCHEDULED"
+    assert refreshed["status"] == "LIVE"
+    assert schedule.calls == 2
+    assert main.calls == 2
 
 
 def test_get_home_scoreboard_does_not_fetch_per_game_detail(tmp_path: Path) -> None:
@@ -246,6 +475,42 @@ def test_get_home_scoreboard_uses_fresh_live_state_without_crawling(
     payload = service.get_home_scoreboard("2999-03-31")
 
     assert payload == expected
+
+
+def test_force_refresh_home_scoreboard_bypasses_live_state(
+    tmp_path: Path,
+) -> None:
+    target_date = "2999-03-31"
+    game_id = "29990331HTLG0"
+    live_store = LiveScoreboardStore(
+        path=str(tmp_path / "runtime" / "live_scoreboard.json"),
+        max_age_seconds=8,
+    )
+    live_store.save(
+        target_date,
+        {
+            "date": target_date,
+            "games": [{"gameId": game_id, "status": "SCHEDULED"}],
+        },
+    )
+    schedule = _MutableScheduleCrawler(game_id)
+    main = _MutableMainCrawler(game_id)
+    main.status = "2"
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+        live_scoreboard_store=live_store,
+    )
+
+    cached = service.get_home_scoreboard(target_date)
+    refreshed = service.get_home_scoreboard(target_date, force_refresh=True)
+
+    assert cached["games"][0]["status"] == "SCHEDULED"
+    assert refreshed["games"][0]["status"] == "LIVE"
+    assert schedule.calls == 1
+    assert main.calls == 1
 
 
 def test_get_home_scoreboard_ignores_stale_live_state_on_failure(
@@ -398,7 +663,7 @@ def test_get_game_ignores_snapshot_for_non_historical_game(tmp_path: Path) -> No
     assert game["home"]["score"] == 10
 
 
-def test_get_game_uses_snapshot_for_historical_game(tmp_path: Path) -> None:
+def test_force_refresh_game_uses_snapshot_for_historical_game(tmp_path: Path) -> None:
     game_id = "20200101OBSS0"
     snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
     snapshot_store.save(
@@ -419,7 +684,7 @@ def test_get_game_uses_snapshot_for_historical_game(tmp_path: Path) -> None:
         snapshot_store=snapshot_store,
     )
 
-    game = service.get_game(game_id)
+    game = service.get_game(game_id, force_refresh=True)
 
     assert game is not None
     assert schedule.calls == 0

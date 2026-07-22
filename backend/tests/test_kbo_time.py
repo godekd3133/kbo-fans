@@ -48,12 +48,14 @@ def test_scoreboard_routes_default_to_current_kbo_date(monkeypatch) -> None:
     monkeypatch.setattr(
         scoreboard.service,
         "get_scoreboard",
-        lambda target_date: captured.append(target_date) or {"date": target_date},
+        lambda target_date, force_refresh=False: captured.append(target_date)
+        or {"date": target_date},
     )
     monkeypatch.setattr(
         scoreboard.service,
         "get_home_scoreboard",
-        lambda target_date: captured.append(target_date) or {"date": target_date},
+        lambda target_date, force_refresh=False: captured.append(target_date)
+        or {"date": target_date},
     )
     monkeypatch.setattr(
         scoreboard.service,
@@ -71,6 +73,38 @@ def test_scoreboard_routes_default_to_current_kbo_date(monkeypatch) -> None:
 
     assert all(response.status_code == 200 for response in responses)
     assert captured == ["2026-07-13", "2026-07-13", "2026-07-13"]
+
+
+def test_scoreboard_routes_forward_force_refresh(monkeypatch) -> None:
+    captured = []
+    monkeypatch.setattr(
+        scoreboard.service,
+        "get_scoreboard",
+        lambda target_date, force_refresh=False: captured.append(
+            ("scoreboard", target_date, force_refresh)
+        )
+        or {"date": target_date},
+    )
+    monkeypatch.setattr(
+        scoreboard.service,
+        "get_home_scoreboard",
+        lambda target_date, force_refresh=False: captured.append(
+            ("home", target_date, force_refresh)
+        )
+        or {"date": target_date},
+    )
+    client = TestClient(app)
+
+    responses = [
+        client.get("/api/scoreboard?date=2026-07-13&forceRefresh=true"),
+        client.get("/api/scoreboard/home?date=2026-07-13&forceRefresh=true"),
+    ]
+
+    assert all(response.status_code == 200 for response in responses)
+    assert captured == [
+        ("scoreboard", "2026-07-13", True),
+        ("home", "2026-07-13", True),
+    ]
 
 
 def test_standings_treats_previous_utc_year_as_historical_after_kbo_new_year(

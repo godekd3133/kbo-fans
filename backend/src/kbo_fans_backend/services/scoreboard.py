@@ -3,6 +3,7 @@ from __future__ import annotations
 import concurrent.futures
 import logging
 import re
+import threading
 import time
 from datetime import date as date_type
 from typing import Any, Optional
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class ScoreboardService:
     _SCOREBOARD_CACHE_TTL_SECONDS = 8
+    _DATE_REFRESH_LOCK_STRIPES = 32
 
     def __init__(
         self,
@@ -62,26 +64,49 @@ class ScoreboardService:
             self._SCOREBOARD_CACHE_TTL_SECONDS
         )
         self._singleflight: SingleFlight[str] = SingleFlight()
+        self._date_refresh_locks = tuple(
+            threading.Lock() for _ in range(self._DATE_REFRESH_LOCK_STRIPES)
+        )
 
-    def get_scoreboard(self, date: str) -> dict[str, Any]:
+    def get_scoreboard(
+        self,
+        date: str,
+        force_refresh: bool = False,
+    ) -> dict[str, Any]:
         started_at = time.perf_counter()
         date = self._normalize_date(date)
+        with self._date_refresh_lock(date):
+            return self._get_scoreboard_serialized(
+                date,
+                force_refresh=force_refresh,
+                started_at=started_at,
+            )
+
+    def _get_scoreboard_serialized(
+        self,
+        date: str,
+        force_refresh: bool,
+        started_at: float,
+    ) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("scoreboard", date)
         if self._is_historical_date(date) and snapshot is not None:
             logger.info("scoreboard snapshot hit %s", date)
             return snapshot
+        force_refresh = force_refresh and not self._is_historical_date(date)
 
-        cached = self._scoreboard_cache.get(date)
-        if cached is not None:
-            logger.info("scoreboard cache hit %s", date)
-            return cached
+        if not force_refresh:
+            cached = self._scoreboard_cache.get(date)
+            if cached is not None:
+                logger.info("scoreboard cache hit %s", date)
+                return cached
 
         return self._singleflight.call(
-            f"scoreboard:{date}",
+            f"scoreboard:{date}:{'force' if force_refresh else 'cached'}",
             lambda: self._get_scoreboard_uncached(
                 date,
                 snapshot,
                 started_at,
+                force_refresh=force_refresh,
             ),
         )
 
@@ -90,15 +115,20 @@ class ScoreboardService:
         date: str,
         snapshot: Optional[dict[str, Any]],
         started_at: float,
+        force_refresh: bool = False,
     ) -> dict[str, Any]:
-        cached = self._scoreboard_cache.get(date)
-        if cached is not None:
-            logger.info("scoreboard cache hit after wait %s", date)
-            return cached
+        if not force_refresh:
+            cached = self._scoreboard_cache.get(date)
+            if cached is not None:
+                logger.info("scoreboard cache hit after wait %s", date)
+                return cached
 
         try:
             schedule_started_at = time.perf_counter()
-            games = self._get_schedule_games_by_date(date)
+            games = self._get_schedule_games_by_date(
+                date,
+                force_refresh=force_refresh,
+            )
             logger.info(
                 "scoreboard schedule %s %.0fms (%s games)",
                 date,
@@ -117,7 +147,10 @@ class ScoreboardService:
 
         try:
             main_started_at = time.perf_counter()
-            game_list = self._get_main_game_map(date)
+            game_list = self._get_main_game_map(
+                date,
+                force_refresh=force_refresh,
+            )
             logger.info(
                 "scoreboard main list %s %.0fms",
                 date,
@@ -160,33 +193,58 @@ class ScoreboardService:
         )
         return payload
 
-    def get_home_scoreboard(self, date: str) -> dict[str, Any]:
+    def get_home_scoreboard(
+        self,
+        date: str,
+        force_refresh: bool = False,
+    ) -> dict[str, Any]:
         date = self._normalize_date(date)
+        with self._date_refresh_lock(date):
+            return self._get_home_scoreboard_serialized(
+                date,
+                force_refresh=force_refresh,
+            )
+
+    def _get_home_scoreboard_serialized(
+        self,
+        date: str,
+        force_refresh: bool,
+    ) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("scoreboard", date)
         if self._is_historical_date(date) and snapshot is not None:
             return {
                 "date": snapshot["date"],
                 "games": [self._strip_home_payload(game) for game in snapshot["games"]],
             }
+        force_refresh = force_refresh and not self._is_historical_date(date)
 
-        cached = self._home_scoreboard_cache.get(date)
-        if cached is not None:
-            logger.info("home scoreboard cache hit %s", date)
-            return cached
+        if not force_refresh:
+            cached = self._home_scoreboard_cache.get(date)
+            if cached is not None:
+                logger.info("home scoreboard cache hit %s", date)
+                return cached
 
-        live_state = self._load_live_home_scoreboard(date)
-        if live_state is not None:
-            logger.info("home scoreboard live state hit %s", date)
-            self._home_scoreboard_cache.set(date, live_state)
-            return live_state
+            live_state = self._load_live_home_scoreboard(date)
+            if live_state is not None:
+                logger.info("home scoreboard live state hit %s", date)
+                self._home_scoreboard_cache.set(date, live_state)
+                return live_state
 
         return self._singleflight.call(
-            f"home_scoreboard:{date}",
-            lambda: self._get_home_scoreboard_uncached(date, snapshot),
+            f"home_scoreboard:{date}:{'force' if force_refresh else 'cached'}",
+            lambda: self._get_home_scoreboard_uncached(
+                date,
+                snapshot,
+                force_refresh=force_refresh,
+            ),
         )
 
     def prime_home_scoreboard(self, date: str) -> dict[str, Any]:
         date = self._normalize_date(date)
+        with self._date_refresh_lock(date):
+            return self._prime_home_scoreboard_serialized(date)
+
+    def _prime_home_scoreboard_serialized(self, date: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("scoreboard", date)
         if self._is_historical_date(date) and snapshot is not None:
             return {
@@ -208,14 +266,19 @@ class ScoreboardService:
         self,
         date: str,
         snapshot: Optional[dict[str, Any]],
+        force_refresh: bool = False,
     ) -> dict[str, Any]:
-        cached = self._home_scoreboard_cache.get(date)
-        if cached is not None:
-            logger.info("home scoreboard cache hit after wait %s", date)
-            return cached
+        if not force_refresh:
+            cached = self._home_scoreboard_cache.get(date)
+            if cached is not None:
+                logger.info("home scoreboard cache hit after wait %s", date)
+                return cached
 
         try:
-            games = self._get_schedule_games_by_date(date)
+            games = self._get_schedule_games_by_date(
+                date,
+                force_refresh=force_refresh,
+            )
         except Exception:
             stale = self._home_scoreboard_cache.get_stale(date)
             if self._is_historical_date(date) and stale is not None:
@@ -229,7 +292,10 @@ class ScoreboardService:
             raise
 
         try:
-            game_list = self._get_main_game_map(date)
+            game_list = self._get_main_game_map(
+                date,
+                force_refresh=force_refresh,
+            )
         except Exception:
             game_list = {}
             logger.warning("home scoreboard main list failed %s", date)
@@ -257,6 +323,14 @@ class ScoreboardService:
     ) -> dict[str, Any]:
         date = self._normalize_date(date)
         my_team = (my_team or "").strip() or None
+        with self._date_refresh_lock(date):
+            return self._get_compact_scoreboard_serialized(date, my_team)
+
+    def _get_compact_scoreboard_serialized(
+        self,
+        date: str,
+        my_team: Optional[str],
+    ) -> dict[str, Any]:
         cache_key = f"{date}:{my_team or '-'}"
 
         cached = self._compact_scoreboard_cache.get(cache_key)
@@ -340,31 +414,59 @@ class ScoreboardService:
             return f"{value[:4]}-{value[4:6]}-{value[6:8]}"
         return value
 
-    def get_game(self, game_id: str) -> Optional[dict[str, Any]]:
+    def get_game(
+        self,
+        game_id: str,
+        force_refresh: bool = False,
+    ) -> Optional[dict[str, Any]]:
         if len(game_id) < 8:
             return None
+        date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+        with self._date_refresh_lock(date):
+            return self._get_game_serialized(
+                game_id,
+                force_refresh=force_refresh,
+            )
 
+    def _get_game_serialized(
+        self,
+        game_id: str,
+        force_refresh: bool,
+    ) -> Optional[dict[str, Any]]:
         snapshot = self.snapshot_store.load_payload("games", game_id)
         if snapshot is not None and self._should_use_game_snapshot(game_id):
             return snapshot
+        force_refresh = force_refresh and not self._should_use_game_snapshot(game_id)
 
-        cached = self._game_cache.get(game_id)
-        if cached is not None:
-            return cached
+        if not force_refresh:
+            cached = self._game_cache.get(game_id)
+            if cached is not None:
+                return cached
 
         return self._singleflight.call(
-            f"game:{game_id}",
-            lambda: self._get_game_uncached(game_id),
+            f"game:{game_id}:{'force' if force_refresh else 'cached'}",
+            lambda: self._get_game_uncached(
+                game_id,
+                force_refresh=force_refresh,
+            ),
         )
 
-    def _get_game_uncached(self, game_id: str) -> Optional[dict[str, Any]]:
-        cached = self._game_cache.get(game_id)
-        if cached is not None:
-            return cached
+    def _get_game_uncached(
+        self,
+        game_id: str,
+        force_refresh: bool = False,
+    ) -> Optional[dict[str, Any]]:
+        if not force_refresh:
+            cached = self._game_cache.get(game_id)
+            if cached is not None:
+                return cached
 
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
         try:
-            games = self._get_schedule_games_by_date(date)
+            games = self._get_schedule_games_by_date(
+                date,
+                force_refresh=force_refresh,
+            )
         except Exception:
             return None
 
@@ -376,7 +478,10 @@ class ScoreboardService:
             return None
 
         try:
-            game_list = self._get_main_game_map(date)
+            game_list = self._get_main_game_map(
+                date,
+                force_refresh=force_refresh,
+            )
         except Exception:
             game_list = {}
             logger.warning("game summary main list failed %s %s", date, game_id)
@@ -387,25 +492,38 @@ class ScoreboardService:
             self.snapshot_store.save("games", game_id, game)
         return game
 
-    def _get_schedule_games_by_date(self, date: str) -> list[dict[str, Any]]:
-        cached = self._schedule_games_cache.get(date)
-        if cached is not None:
-            logger.info("scoreboard schedule cache hit %s", date)
-            return cached
+    def _get_schedule_games_by_date(
+        self,
+        date: str,
+        force_refresh: bool = False,
+    ) -> list[dict[str, Any]]:
+        if not force_refresh:
+            cached = self._schedule_games_cache.get(date)
+            if cached is not None:
+                logger.info("scoreboard schedule cache hit %s", date)
+                return cached
         games = self.schedule_crawler.get_games_by_date(date)
         self._schedule_games_cache.set(date, games)
         return games
 
-    def _get_main_game_map(self, date: str) -> dict[str, dict[str, Any]]:
-        cached = self._main_game_map_cache.get(date)
-        if cached is not None:
-            logger.info("scoreboard main list cache hit %s", date)
-            return cached
+    def _get_main_game_map(
+        self,
+        date: str,
+        force_refresh: bool = False,
+    ) -> dict[str, dict[str, Any]]:
+        if not force_refresh:
+            cached = self._main_game_map_cache.get(date)
+            if cached is not None:
+                logger.info("scoreboard main list cache hit %s", date)
+                return cached
         game_map = {
             game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
         }
         self._main_game_map_cache.set(date, game_map)
         return game_map
+
+    def _date_refresh_lock(self, date: str) -> threading.Lock:
+        return self._date_refresh_locks[hash(date) % len(self._date_refresh_locks)]
 
     def _load_live_home_scoreboard(self, date: str) -> Optional[dict[str, Any]]:
         if self.live_scoreboard_store is None or self._is_historical_date(date):

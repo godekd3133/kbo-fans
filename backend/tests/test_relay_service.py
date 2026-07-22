@@ -9,8 +9,10 @@ from kbo_fans_backend.storage import JsonSnapshotStore
 class _StubScoreboardService:
     def __init__(self, game):
         self._game = game
+        self.force_refresh = False
 
-    def get_game(self, game_id: str):
+    def get_game(self, game_id: str, force_refresh: bool = False):
+        self.force_refresh = force_refresh
         return self._game
 
 
@@ -112,6 +114,54 @@ def test_relay_service_does_not_summary_fallback_for_live_game() -> None:
 
     with pytest.raises(RuntimeError, match="relay unavailable"):
         service.get_relay("20260330KTLG0")
+
+
+def test_relay_service_does_not_hide_crawler_failure_when_game_is_unknown(
+    tmp_path: Path,
+) -> None:
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(None),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    with pytest.raises(RuntimeError, match="relay unavailable"):
+        service.get_relay("20260719KTLG0")
+
+
+def test_relay_service_forwards_force_refresh_to_game_lookup() -> None:
+    scoreboard = _StubScoreboardService(
+        {
+            "gameId": "20260719KTLG0",
+            "status": "LIVE",
+            "away": {"shortName": "KT", "score": 1, "scores": [1]},
+            "home": {"shortName": "LG", "score": 0, "scores": [0]},
+        }
+    )
+    service = RelayService(
+        relay_crawler=_StubRelayCrawler(
+            {
+                "gameId": "20260719KTLG0",
+                "currentAtBat": None,
+                "relayItems": [
+                    {
+                        "seqNo": 1,
+                        "inning": 1,
+                        "half": "top",
+                        "event": "HIT",
+                        "isScoring": False,
+                        "text": "강백호: 중전 안타",
+                        "pitchSequence": None,
+                    }
+                ],
+            }
+        ),
+        scoreboard_service=scoreboard,
+    )
+
+    service.get_relay("20260719KTLG0", force_refresh=True)
+
+    assert scoreboard.force_refresh is True
 
 
 def test_relay_service_uses_full_relay_for_final_game_when_available() -> None:

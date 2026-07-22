@@ -19,8 +19,16 @@ class RelayService:
         self.scoreboard_service = scoreboard_service or ScoreboardService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
 
-    def get_relay(self, game_id: str, after: Optional[int] = None) -> dict[str, Any]:
-        game = self.scoreboard_service.get_game(game_id)
+    def get_relay(
+        self,
+        game_id: str,
+        after: Optional[int] = None,
+        force_refresh: bool = False,
+    ) -> dict[str, Any]:
+        game = self.scoreboard_service.get_game(
+            game_id,
+            force_refresh=force_refresh,
+        )
         snapshot = self.snapshot_store.load_payload("relay", game_id)
         game_status = game.get("status") if game is not None else None
 
@@ -86,15 +94,8 @@ class RelayService:
                         ],
                     }
                 return snapshot
-            if game_status == "LIVE":
+            if game_status == "LIVE" or game is None:
                 raise
-
-        if game is None:
-            return {
-                "gameId": game_id,
-                "currentAtBat": None,
-                "relayItems": [],
-            }
 
         relay_items = self._build_summary_items(game)
         if after is not None:
