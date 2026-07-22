@@ -1232,6 +1232,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 홈에서 경기 상세 진입 전 `gameProvider(gameId)` 갱신이 실패하거나 4초 안에 끝나지 않아도, 홈에 이미 표시된 `Game`이 있으면 그 정보를 `extra`로 넘겨 상세를 열고 상세 화면의 자체 refresh가 이후 최신화를 담당한다. 첫 진입 탭 provider는 병렬 warm-up으로 시작하지만 navigation gate에는 포함하지 않는다. 첫 화면부터 경기정보가 전혀 없는 cold 실패만 사용자 오류 상태로 둔다.
 - 홈 secondary `/home` aggregate provider 는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전 부가 API fan-out 을 만들지 않는다.
 - 홈 자동 refresh timer 는 refresh interval 과 scoreboard signature 가 바뀔 때만 재스케줄해 unrelated rebuild 로 live polling 이 지연되지 않게 한다.
+- 홈 pull-to-refresh는 새 `scoreboardProvider` 응답이 끝날 때까지 indicator Future를 유지하고 API-backed 경로에서는 one-shot `forceRefresh=true`를 전달한다. refresh 중 이전 data를 표시하더라도 이를 fresh 완료로 간주해 다음 timer를 예약하지 않는다. 자동 갱신이 일시 실패하면 마지막 visible scoreboard를 유지한 채 다음 cadence에 다시 시도하고, 수동 요청과 겹친 자동 요청은 직렬 queue로 합친다. 앱 resume sync도 current scoreboard가 이미 loading이면 invalidate하지 않고 같은 Future를 기다린다.
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
 - backend current data routes 는 공용 runtime service singleton 을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache 를 재사용한다. scoreboard service 내부에서도 같은 날짜의 schedule/main list 원천 결과를 짧은 TTL로 공유해 home/compact/game detail 진입이 같은 KBO 원천 호출을 반복하지 않게 한다.
 - LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다.
@@ -1246,6 +1247,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다. 박스스코어의 adjacent game id fallback 은 과거 경기 canonical id 보정에만 허용하고, current/live 경기는 비어 있으면 `officialAvailable=false` 상태를 노출한다.
 - live 경기의 공식 박스스코어 rows가 비어 있어도 KBO main list가 현재 타자/투수 context를 제공하면 `/game/{gameId}/boxscore`는 `officialAvailable=false`, `liveContextAvailable=true`, `source=live_context`를 반환할 수 있다. 이 payload는 snapshot으로 저장하지 않고 앱에서는 `실시간 기록 추적` 상태로 렌더링한다.
 - LIVE 경기 상세는 탭 전환 시 현재 보이는 탭의 최신 데이터를 즉시 갱신한다. 스코어 탭은 경기 상세, 문자중계 탭은 relay, 박스스코어 탭은 boxscore, 라인업 탭은 lineup provider를 타이머 tick 전에도 refresh한다.
+- 경기 상세 자동 갱신은 완료 시점 기준 one-shot timer로 재예약한다. 이미 loading/refreshing인 visible provider를 timer가 다시 invalidate하지 않으며, 자동 갱신 중 사용자가 pull-to-refresh를 요청하면 현재 요청 완료 뒤 force refresh를 정확히 한 번 더 실행한다. 일시적 relay refresh 실패에는 마지막 정상 문자중계를 유지한다.
 - 라인업 탭의 일시적인 timeout/connection 실패는 저장 snapshot으로 정상처럼 대체하지 않고, `라인업을 다시 불러오고 있습니다` 상태와 자동 갱신 안내를 보여준다. 개발용 `DioException` 전문은 사용자 화면에 노출하지 않는다.
 - 경기 상세 image prefetch는 fade-in/placeholder 연출로 문제를 숨기지 않고, 박스스코어 row, 라인업 starter/row, relay current-at-bat/최근 item에 필요한 선수 이미지 URL을 dedupe한 뒤 KBO 선수사진 전용 cache manager와 `precacheImage` 경로까지 태운다. 홈/일정에서 상세로 이동할 때는 `gameProvider(gameId)`만 navigation gate에 포함하고, 첫 진입 탭 provider와 선수 이미지 cache warm-up은 background로 이어간다. 박스스코어 row는 backend/app 계약상 `playerId`/`imageUrl`을 보존하고, row-native 값이 없을 때만 팀 선수 목록 이름 매칭으로 보강한다.
 
@@ -1260,10 +1262,12 @@ GET /api/scoreboard?date={YYYY-MM-DD}
 | 파라미터 | 타입 | 필수 | 설명 |
 |----------|------|------|------|
 | date | string | N | 조회 날짜 (기본: 오늘) |
+| forceRefresh | bool | N | 수동 새로고침. current/non-historical cache와 shared live-state를 우회 (기본: false) |
 
 **응답 정책**:
 - 오늘/진행 중 경기는 live cache 를 사용한다.
 - 지난 날짜는 저장된 경기 결과 snapshot 을 우선 사용하고, 필요 시에만 서버 내부 재검증 작업을 별도로 수행한다.
+- `/api/scoreboard/home`과 `/api/game/{gameId}`도 같은 `forceRefresh` query를 지원한다. historical snapshot-first 정책은 force 요청에도 유지한다. 같은 KBO 날짜의 normal/force scoreboard 계열 작업은 서버에서 직렬화해 먼저 시작한 구 응답이 force 결과 cache를 나중에 덮지 않게 한다.
 
 **응답**:
 ```json
@@ -1312,13 +1316,14 @@ GET /api/scoreboard?date={YYYY-MM-DD}
 ### 5.2 경기 상세 — 문자중계
 
 ```
-GET /api/game/{gameId}/relay?after={seqNo}
+GET /api/game/{gameId}/relay?after={seqNo}&forceRefresh={bool}
 ```
 
 | 파라미터 | 타입 | 필수 | 설명 |
 |----------|------|------|------|
 | gameId | string | Y | 경기 ID (예: 20260328KTLG0) |
 | after | int | N | 이 시퀀스 이후의 중계만 반환 (폴링 최적화) |
+| forceRefresh | bool | N | 수동 새로고침 시 경기 상태 cache를 우회해 LIVE 전환을 재확인 (기본: false) |
 
 **응답**:
 ```json

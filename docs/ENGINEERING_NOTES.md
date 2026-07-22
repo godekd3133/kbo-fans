@@ -63,9 +63,15 @@
   - 5초 시연에는 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` long-running worker가 EventBridge 1분 one-shot보다 예측 가능하다.
   - `config-status.scheduler.lastSyncAt`은 sync worker가 실제로 registry에 heartbeat를 남겼는지 보는 운영 신호다. secret readiness와 worker activity를 구분해서 판단한다.
 - 홈 scoreboard 자동 refresh cadence는 live 8초, scheduled 5분, terminal 정지로 둔다.
+- 홈 수동 refresh는 provider invalidate 시점이 아니라 새 scoreboard Future 완료 시점까지 기다린다. API-backed 수동 refresh는 `forceRefresh=true`를 한 번 소비해 current backend cache/live-state를 우회하고, historical 앱 cache도 명시적으로 bypass한다.
+- 홈/상세 timer는 이전 data가 보인다는 이유만으로 refresh 완료로 판단하지 않는다. 진행 중 provider를 다시 invalidate하지 않고 요청 완료 뒤 one-shot timer를 재예약한다. 홈은 transient failure 뒤에도 visible data의 상태 cadence로 polling을 계속하고, 수동 refresh가 겹치면 force 의도를 보존한 직렬 queue로 합친다.
+- app root lifecycle resume sync는 홈 coordinator와 같은 `scoreboardProvider(today)`가 loading 중이면 직접 invalidate하지 않고 active Future를 기다린 뒤 widget sync만 수행한다.
 - 운영 sync worker는 push/Live Activity 등록이 없더라도 scoreboard warm-up을 수행하고, API service와 같은 runtime filesystem에 `live_scoreboard` state를 남긴다. API는 이 state가 8초 window 안에서 fresh일 때만 `/scoreboard/home` 응답으로 사용하고, stale state는 snapshot처럼 fallback하지 않는다.
 - backend `TtlCache`는 정상 조회에서 만료값을 반환하지 않되 historical 장애 fallback이 `get_stale()`로 읽을 수 있게 보존하고, 오래된 key가 무한히 쌓이지 않도록 항목 수를 제한한다. runtime singleton을 여러 요청이 공유하므로 cache store 조회·교체는 lock으로 보호하되, deepcopy는 lock 밖에서 수행한다. records overview/leaderboard cache와 snapshot은 핵심 리더 목록이 1위부터 시작할 때만 재사용한다.
 - 경기 상세는 live 기본 탭 8초, 문자중계 foreground 원천 갱신은 5초 cadence로 맞춘다. LIVE 경기에서 스코어/문자중계/박스스코어/라인업 탭을 전환하면 타이머 tick을 기다리지 않고 현재 보이는 탭 provider를 즉시 갱신한다.
+- 자동 상세 갱신과 수동 pull이 겹치면 자동 요청은 합치되 수동 요청은 버리지 않는다. 현재 Future가 끝난 뒤 한 번의 force refresh를 queue하고, relay transient error에는 previous data를 유지한다.
+- backend `RelayCrawler`는 singleton `requests.Session`과 로그인 cookie를 공유하므로 login/fetch/validate/reset 전체 세션 경계를 직렬화한다. relay HTML shell이 파싱 후 `currentAtBat=None`, `relayItems=[]`이면 성공으로 cache하지 않고 재로그인 후 실패를 노출한다.
+- backend scoreboard normal/force 요청은 full/home/prime/compact/game이 공유하는 KBO date 단위 직렬화 경계를 사용한다. force와 기존 normal을 서로 다른 SingleFlight key로만 분리하면 normal의 늦은 완료가 최신 cache를 되돌릴 수 있으므로, 같은 날짜는 반드시 같은 직렬화 경계를 통과한다.
 
 ## Backend Lint / Compatibility
 

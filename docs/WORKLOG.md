@@ -2,6 +2,67 @@
 
 ---
 
+## 2026-07-22: 0.1.19 TestFlight 릴리즈 준비
+
+### 결정
+- 현재 `main`의 스코어보드·문자중계 새로고침 복구력 변경은 앱/백엔드 동작과 사용자용 업데이트 소식을 함께 바꾸므로, `0.1.18` 재업로드가 아니라 `0.1.19+87` / tag `0.1.19` 새 tester-facing release로 올린다.
+- release IPA는 backend API mode와 Lightsail HTTPS endpoint `https://3-39-79-1.sslip.io/api`를 사용한다. 앱과 함께 바뀐 force refresh·서버 동시 요청 직렬화가 실제 TestFlight 동작에 필요하므로, 이번 closeout에서 Lightsail 운영 backend도 함께 배포한다.
+
+### 진행
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.19+87` 기준으로 갱신.
+- [ ] Git commit/tag/GitHub Release, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+
+### 검증
+- [x] `cd app && fvm flutter analyze --no-pub` 통과.
+- [x] `cd app && fvm flutter test --no-pub` (`342 passed`) 통과.
+- [x] `cd backend && python3 -m compileall -q src`, `.venv/bin/python -m pytest -q` (`296 passed`), `ruff check src tests` 통과.
+- [x] `RELEASE_API_HEALTH_DATE=2026-07-22 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api` 통과.
+- [ ] 실제 iPhone에서 새 build의 pull-to-refresh/문자중계 동작은 미확인.
+
+---
+
+## 2026-07-19: 스코어보드·문자중계 새로고침 복구력 보강
+
+### 결정
+- 사용자가 당긴 새로고침은 provider invalidate만 하고 즉시 끝내지 않는다. 실제 scoreboard/relay 응답이 끝날 때까지 같은 Future를 기다리고, API-backed 경로는 `forceRefresh=true`를 한 번 전달해 앱의 historical cache와 backend의 current 8초 cache/live-state를 우회한다.
+- 자동 갱신은 진행 중 요청을 다시 invalidate하지 않는다. 홈은 refresh 중 이전 데이터를 fresh 완료로 오판해 다음 timer를 예약하지 않고, 경기 상세는 완료 시점 기준 one-shot timer와 queued refresh로 중복 요청을 합친다.
+- 홈 refresh는 성공·일시 실패 모두 visible scoreboard 상태에 맞춰 다음 cadence를 재예약하고, 자동·수동 요청이 겹치면 수동 force 의도를 보존한 단일 queue로 직렬화한다.
+- app root resume sync는 scoreboard provider가 이미 loading이면 직접 invalidate하지 않고 같은 Future를 기다려 홈 coordinator를 우회하지 않는다.
+- backend relay 로그인 세션은 프로세스 singleton이므로 `login → LiveText → LiveTextView2 → 검증/재로그인` 전체를 직렬화한다. 빈 relay shell과 상태 조회 실패를 빈 성공 응답으로 숨기지 않는다.
+- backend scoreboard 계열은 같은 KBO date의 full/home/prime/compact/game normal·force 작업을 함께 직렬화해, 먼저 시작한 구 응답이 나중에 force 결과 cache를 덮지 않게 한다.
+- 과거 경기의 backend snapshot-first 정책은 유지한다. `forceRefresh`는 current/non-historical scoreboard source cache를 우회하되 검증된 historical snapshot을 무시하지 않는다.
+
+### 진행
+- [x] 홈 pull-to-refresh가 새 scoreboard 응답 완료까지 기다리도록 변경하고, loading refresh 중 이전 data branch가 live timer를 다시 예약하지 않도록 보정.
+- [x] 홈 자동 갱신 실패 후에도 다음 interval에 재시도하고, pull refresh 중 기존 timer가 요청을 겹치지 않도록 단일 coordinator 추가.
+- [x] app lifecycle resume sync가 loading 중인 scoreboard를 다시 invalidate하지 않도록 loading-aware await 경계 추가.
+- [x] 경기 상세 live timer를 periodic invalidate에서 완료 후 재예약하는 one-shot 흐름으로 바꾸고, 초기 relay가 loading이면 재시작하지 않도록 보정.
+- [x] 자동 갱신 중 들어온 수동 refresh를 버리지 않고 현재 요청 완료 뒤 정확히 한 번 더 실행하는 queue 추가.
+- [x] relay refresh 실패 시 이전 정상 문자중계가 있으면 그대로 유지하도록 Riverpod previous-data 경계 보강.
+- [x] 앱 `ApiGameRepository`에 scoreboard/game/relay one-shot force refresh capability를 추가하고 수동 홈·문자중계 refresh에서 사용.
+- [x] backend `/scoreboard`, `/scoreboard/home`, `/game/{gameId}`, `/game/{gameId}/relay`에 하위 호환 `forceRefresh=false` query 추가. current force 요청은 top-level cache, shared live-state, schedule/main source cache를 우회하고 별도 SingleFlight key로 병합.
+- [x] full/home/prime/compact/game 요청에 shared date lock을 적용하고, full/home/game 각각 normal 지연 완료가 force LIVE cache를 덮지 않는 병렬 회귀 테스트 추가.
+- [x] `RelayCrawler` shared session 동시 접근을 직렬화하고, `currentAtBat`과 `relayItems`가 모두 빈 KBO shell은 재로그인 대상 오류로 처리.
+- [x] game 상태 조회 실패와 relay crawler 실패가 겹칠 때 `200 + relayItems=[]`로 숨기던 경로를 명시적 실패로 변경.
+- [x] `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `CHANGELOG.md`, `.claude/skills/kbo-runtime-data/SKILL.md`에 새 refresh 계약 반영.
+
+### 검증
+- [x] RED → GREEN: 홈 pull refresh Future 조기 완료 `actual true` → 응답 완료까지 pending 유지.
+- [x] RED → GREEN: 느린 홈 scoreboard 요청을 다음 8초 timer가 재시작해 호출 수 `expected 2 / actual 3` → 완료 전 2회 유지.
+- [x] RED → GREEN: 홈 자동 갱신 일시 실패 후 호출 수 `expected 3 / actual 2` → 다음 8초 interval에 3회.
+- [x] resume sync helper가 loading scoreboard를 0회 invalidate하고 active Future 결과를 기다리며, 완료 상태만 1회 invalidate하는 회귀 테스트 추가.
+- [x] RED → GREEN: 자동 상세 갱신 중 수동 relay refresh가 버려져 호출 수 `expected 3 / actual 2` → 완료 뒤 3회.
+- [x] RED → GREEN: 동시 relay session operation `expected 1 / actual 2` → 최대 1개로 직렬화.
+- [x] RED → GREEN: force `LIVE` 완료 뒤 기존 normal `SCHEDULED`가 cache를 되돌리던 full/home/game 경쟁 → 최종 cached status `LIVE`.
+- [x] `cd app && fvm flutter analyze ...` targeted 8개 파일 `No issues found`.
+- [x] `cd app && fvm flutter test --no-pub` (`342 passed`).
+- [x] `backend/.venv/bin/pytest -q` (`296 passed`).
+- [x] `backend/.venv/bin/ruff check backend/src backend/tests`, Python compileall 통과.
+- [x] 임시 snapshot 경로의 실제 KBO 원천 smoke: `2026-07-19` 홈 5경기 `SCHEDULED`, `20260718KTLG0` 문자중계 594 items 파싱.
+- [ ] 실제 LIVE 경기 실기기 pull-to-refresh와 운영 동시 요청 trace는 미실행.
+
+---
+
 ## 2026-07-13: 앱·backend·플랫폼 전역 안정성 감사
 
 ### 결정

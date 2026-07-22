@@ -29,12 +29,17 @@ description: Use when changing KBO data-loading paths, backend-backed API usage,
 - Home first paint must not render a separate today-scoreboard local cache while current scoreboard source is loading. Keep current data paths latest-source-or-visible-error.
 - Home secondary aggregate providers should not be watched until after the first scoreboard data frame.
 - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.
+- Manual home/detail refresh must await the new provider Future. API-backed manual refresh should consume a one-shot `forceRefresh=true`; automatic timers must not force-refresh or invalidate a provider that is already loading. Re-arm home polling after both success and transient failure while visible data remains.
+- App-level resume sync must await an already-loading current scoreboard provider instead of invalidating around the home refresh coordinator.
+- Detail refresh timers should be completion-based one-shots. If a manual relay refresh arrives during an automatic refresh, queue exactly one force refresh after the active request instead of dropping it.
 - Backend `/scoreboard/home` and `/scoreboard/compact` should stay lightweight for first paint / widget surfaces. Do not call per-game scoreboard detail crawlers from those paths; reserve them for full scoreboard and game detail.
 - Backend current data routes should share the runtime service singletons from `api/runtime_services.py` so sibling endpoints reuse the same TTL caches.
 - App/server current date, current season, and current/historical classification must use `Asia/Seoul` KBO civil time. Keep persisted timestamps and TTL age calculations as UTC instants, and reject future-dated cache entries.
 - LIVE summary scoreboard paths should prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0.
 - Boxscore adjacent game-id fallback is historical-only. Current/live boxscore must not borrow a previous game's player rows; return the empty official-unavailable state instead.
 - Direct relay summary fallback must not synthesize inning skeletons for scheduled/cancelled/suspended games or games without any real line-score inning values. Return the empty relay state instead.
+- Backend relay crawling shares one authenticated `requests.Session`; serialize the full login/fetch/validate/reset boundary, and treat parsed empty relay shells as failures rather than successful empty payloads.
+- Serialize normal and forced scoreboard work for the same KBO date across home/full/compact/game surfaces so an older normal response cannot overwrite a newer forced cache result.
 - App UI must treat null H/E/B team totals as unavailable, not as 0 records.
 - App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.
