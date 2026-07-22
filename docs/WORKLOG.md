@@ -10,13 +10,19 @@
 
 ### 진행
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.19+87` 기준으로 갱신.
-- [ ] Git commit/tag/GitHub Release, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+- [x] backend/app/release 문서를 세 커밋으로 나눠 `main`에 push하고 tag/GitHub Release `0.1.19` 게시.
+- [x] release IPA archive/export 및 App Store Connect upload. Delivery UUID `b631ed14-e499-4892-8f13-a5ee41d44c3a`, build `87`은 `VALID`, `APP_STORE_ELIGIBLE`, 암호화 문서 추가 제출 불필요 상태.
+- [x] 내부 `Tester`와 외부 `External Testers` 그룹에 build `87` 연결. Beta App Review는 `WAITING_FOR_REVIEW`.
+- [x] 새 build 승인 전 설치 가능한 fallback을 보존하기 위해 외부 그룹의 기존 build `86`, `85`, `84`, `83`, `82`, `77` 관계는 유지.
+- [ ] Lightsail backend 배포는 로컬 AWS session 만료(`aws login` 필요)와 SSH public key 인증 실패로 미실행.
 
 ### 검증
 - [x] `cd app && fvm flutter analyze --no-pub` 통과.
 - [x] `cd app && fvm flutter test --no-pub` (`342 passed`) 통과.
 - [x] `cd backend && python3 -m compileall -q src`, `.venv/bin/python -m pytest -q` (`296 passed`), `ruff check src tests` 통과.
 - [x] `RELEASE_API_HEALTH_DATE=2026-07-22 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api` 통과.
+- [x] `fvm flutter build ipa --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api` (`0.1.19+87`, IPA `36.4MB`).
+- [x] App Store Connect API 재조회: internal/external build `87` `VALID`, Beta Review `WAITING_FOR_REVIEW`, 외부 tester 1명 `INSTALLED` 상태.
 - [ ] 실제 iPhone에서 새 build의 pull-to-refresh/문자중계 동작은 미확인.
 
 ---
