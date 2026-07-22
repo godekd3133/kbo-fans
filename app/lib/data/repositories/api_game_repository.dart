@@ -11,24 +11,44 @@ import '../models/ticketing.dart';
 import 'game_repository.dart';
 
 /// DEV / RELEASE 환경에서 실제 백엔드 API를 호출하는 구현체
-class ApiGameRepository implements GameRepository {
+class ApiGameRepository
+    implements GameRepository, GameRepositoryRefreshControl {
   final ApiClient _client;
   final BootstrapRepository _bootstrapRepository = BootstrapRepository();
+  final Set<String> _forcedScoreboardRefreshes = <String>{};
+  final Set<String> _forcedGameRefreshes = <String>{};
+  final Set<String> _forcedRelayRefreshes = <String>{};
   static const _liveishCacheAge = Duration(seconds: 8);
   static const _historicalCacheAge = Duration(days: 30);
 
   ApiGameRepository(this._client);
 
   @override
+  void requestScoreboardRefresh(String date) {
+    _forcedScoreboardRefreshes.add(date);
+  }
+
+  @override
+  void requestGameRefresh(String gameId) {
+    _forcedGameRefreshes.add(gameId);
+  }
+
+  @override
+  void requestRelayRefresh(String gameId) {
+    _forcedRelayRefreshes.add(gameId);
+  }
+
+  @override
   Future<List<Game>> getScoreboard(String date) async {
     final isHistoricalDate = _isHistoricalDate(date);
+    final forceRefresh = _forcedScoreboardRefreshes.remove(date);
     final data = await _client.getCached(
       '/scoreboard/home',
-      queryParameters: {'date': date},
+      queryParameters: {'date': date, if (forceRefresh) 'forceRefresh': true},
       cacheKey: 'scoreboard_home:$date',
-      preferCache: isHistoricalDate,
+      preferCache: isHistoricalDate && !forceRefresh,
       maxAge: isHistoricalDate ? _historicalCacheAge : _liveishCacheAge,
-      allowCacheOnFailure: isHistoricalDate,
+      allowCacheOnFailure: isHistoricalDate && !forceRefresh,
     );
     final games = data['games'] as List<dynamic>? ?? [];
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
@@ -58,12 +78,14 @@ class ApiGameRepository implements GameRepository {
   @override
   Future<Game?> getGame(String gameId) async {
     final isHistoricalGame = _isHistoricalGameId(gameId);
+    final forceRefresh = _forcedGameRefreshes.remove(gameId);
     final data = await _client.getCached(
       '/game/$gameId',
+      queryParameters: {if (forceRefresh) 'forceRefresh': true},
       cacheKey: 'game_detail_v2:$gameId',
-      preferCache: isHistoricalGame,
+      preferCache: isHistoricalGame && !forceRefresh,
       maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
-      allowCacheOnFailure: isHistoricalGame,
+      allowCacheOnFailure: isHistoricalGame && !forceRefresh,
     );
     final game = data['game'] as Map<String, dynamic>?;
     if (game == null) {
@@ -90,15 +112,17 @@ class ApiGameRepository implements GameRepository {
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {
     final params = <String, dynamic>{};
     if (afterSeqNo != null) params['after'] = afterSeqNo;
+    final forceRefresh = _forcedRelayRefreshes.remove(gameId);
+    if (forceRefresh) params['forceRefresh'] = true;
     final isHistoricalGame = _isHistoricalGameId(gameId);
 
     final data = await _client.getCached(
       '/game/$gameId/relay',
       queryParameters: params,
       cacheKey: 'relay:$gameId:${afterSeqNo ?? ''}',
-      preferCache: isHistoricalGame,
+      preferCache: isHistoricalGame && !forceRefresh,
       maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
-      allowCacheOnFailure: isHistoricalGame,
+      allowCacheOnFailure: isHistoricalGame && !forceRefresh,
     );
     final items = data['relayItems'] as List<dynamic>? ?? [];
     final atBat = data['currentAtBat'] as Map<String, dynamic>?;

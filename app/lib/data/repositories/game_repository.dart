@@ -23,3 +23,12 @@ abstract class GameRepository {
   Future<List<ScheduleDay>> getSchedule(String yearMonth);
   Future<List<TeamStanding>> getStandings(int season);
 }
+
+/// API-backed repositories can consume a one-shot force-refresh request on the
+/// next provider load. Direct KBO repositories already perform a network read,
+/// so they do not need to implement this capability.
+abstract class GameRepositoryRefreshControl {
+  void requestScoreboardRefresh(String date);
+  void requestGameRefresh(String gameId);
+  void requestRelayRefresh(String gameId);
+}

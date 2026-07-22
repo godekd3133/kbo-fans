@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +14,7 @@ import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/data/repositories/game_repository.dart';
 import 'package:kbo_fans/features/game_detail/game_detail_screen.dart';
+import 'package:kbo_fans/features/game_detail/tabs/relay_tab.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -224,6 +227,125 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(repository.boxscoreCallCount, greaterThan(firstBoxscoreCallCount));
+  });
+
+  testWidgets('자동 갱신 중 pull refresh 요청은 끝난 뒤 한 번 더 실행한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final pendingRelayRefresh = Completer<RelayData>();
+    final repository = _FakeGameRepository(
+      game,
+      pendingRelayRefresh: pendingRelayRefresh,
+    );
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=relay',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(repository.relayCallCount, 1);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    expect(repository.relayCallCount, 2);
+
+    final refreshIndicator = tester.widget<RefreshIndicator>(
+      find.descendant(
+        of: find.byType(RelayTab),
+        matching: find.byType(RefreshIndicator),
+      ),
+    );
+    final manualRefresh = refreshIndicator.onRefresh();
+    await tester.pump();
+
+    pendingRelayRefresh.complete(
+      const RelayData(currentAtBat: null, relayItems: []),
+    );
+    await tester.pump();
+    await tester.pump();
+    await manualRefresh;
+
+    expect(repository.relayCallCount, 3);
+    expect(repository.gameRefreshRequestCount, 1);
+    expect(repository.relayRefreshRequestCount, 1);
+  });
+
+  testWidgets('문자중계 첫 로딩이 느려도 5초 timer가 요청을 재시작하지 않는다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final initialRelay = Completer<RelayData>();
+    final repository = _FakeGameRepository(
+      game,
+      pendingInitialRelay: initialRelay,
+    );
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=relay',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    expect(repository.relayCallCount, 1);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+
+    expect(repository.relayCallCount, 1);
+
+    initialRelay.complete(const RelayData(currentAtBat: null, relayItems: []));
+    await tester.pump();
   });
 
   testWidgets('종료 경기 스코어탭은 하이라이트를 자동 로드하고 앱 안 재생 버튼을 노출한다', (tester) async {
@@ -512,19 +634,40 @@ Game _lopsidedFinalGame() {
   );
 }
 
-class _FakeGameRepository implements GameRepository {
+class _FakeGameRepository
+    implements GameRepository, GameRepositoryRefreshControl {
   _FakeGameRepository(
     this.game, {
     this.failGameRefreshAfterFirstLoad = false,
     this.highlightInfo,
+    this.pendingRelayRefresh,
+    this.pendingInitialRelay,
   });
 
   final Game game;
   final bool failGameRefreshAfterFirstLoad;
   final HighlightInfo? highlightInfo;
+  final Completer<RelayData>? pendingRelayRefresh;
+  final Completer<RelayData>? pendingInitialRelay;
   int _getGameCallCount = 0;
   int boxscoreCallCount = 0;
   int highlightCallCount = 0;
+  int relayCallCount = 0;
+  int gameRefreshRequestCount = 0;
+  int relayRefreshRequestCount = 0;
+
+  @override
+  void requestScoreboardRefresh(String date) {}
+
+  @override
+  void requestGameRefresh(String gameId) {
+    gameRefreshRequestCount += 1;
+  }
+
+  @override
+  void requestRelayRefresh(String gameId) {
+    relayRefreshRequestCount += 1;
+  }
 
   @override
   Future<List<Game>> getScoreboard(String date) async => [game];
@@ -546,6 +689,13 @@ class _FakeGameRepository implements GameRepository {
 
   @override
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {
+    relayCallCount += 1;
+    if (relayCallCount == 1 && pendingInitialRelay != null) {
+      return pendingInitialRelay!.future;
+    }
+    if (relayCallCount == 2 && pendingRelayRefresh != null) {
+      return pendingRelayRefresh!.future;
+    }
     return const RelayData(currentAtBat: null, relayItems: []);
   }
 

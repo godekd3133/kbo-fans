@@ -79,6 +79,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
       onRefresh: widget.onRefresh ?? () async {},
       color: AppColors.live,
       child: relayDataAsync.when(
+        skipError: true,
         loading: () => _buildRefreshPlaceholder(
           CircularProgressIndicator(color: AppColors.live),
         ),

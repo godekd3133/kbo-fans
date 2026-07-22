@@ -22,6 +22,7 @@ import '../../data/models/game.dart';
 import '../../data/models/highlight_info.dart';
 import '../../data/models/highlight_video.dart';
 import '../../data/providers.dart';
+import '../../data/repositories/game_repository.dart';
 import '../../services/game_event_alert_service.dart';
 import '../../services/live_activity_service.dart';
 import '../../services/push_notification_service.dart';
@@ -205,6 +206,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   Timer? _refreshTimer;
   Duration? _refreshTimerInterval;
   bool _refreshInFlight = false;
+  bool _refreshPending = false;
+  bool _refreshPendingForceNetwork = false;
+  Completer<void>? _refreshCompleter;
   bool _followStateLoaded = false;
   bool _isFollowingGame = false;
   String? _highlightWarmupGameId;
@@ -250,7 +254,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _startRefreshTimer();
-      unawaited(_refreshGameDetail());
+      unawaited(_refreshGameDetail(queueIfBusy: true));
       return;
     }
 
@@ -277,12 +281,23 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     if (interval == null) {
       return;
     }
-    _refreshTimer = Timer.periodic(interval, (_) {
-      if (!mounted || ModalRoute.of(context)?.isCurrent != true) {
-        return;
-      }
-      unawaited(_refreshGameDetail());
+    _refreshTimer = Timer(interval, () {
+      unawaited(_runScheduledRefresh());
     });
+  }
+
+  Future<void> _runScheduledRefresh() async {
+    if (!mounted) {
+      return;
+    }
+    if (ModalRoute.of(context)?.isCurrent == true) {
+      await _refreshGameDetail(queueIfBusy: false);
+    }
+    if (!mounted) {
+      return;
+    }
+    _refreshTimer = null;
+    _startRefreshTimer();
   }
 
   void _handleTabChanged() {
@@ -291,12 +306,19 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     }
     _startRefreshTimer();
     if (widget.game.status == GameStatus.live) {
-      unawaited(_refreshGameDetail());
+      unawaited(_refreshGameDetail(queueIfBusy: true));
     }
   }
 
-  Future<void> _refreshGameDetail() async {
-    return _refreshGameDetailProviders(refreshVisibleTab: true);
+  Future<void> _refreshGameDetail({
+    bool userInitiated = false,
+    bool queueIfBusy = true,
+  }) async {
+    return _refreshGameDetailProviders(
+      refreshVisibleTab: true,
+      userInitiated: userInitiated,
+      queueIfBusy: queueIfBusy,
+    );
   }
 
   void _warmHighlightInfoForFinalGame() {
@@ -334,14 +356,95 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
 
   Future<void> _refreshGameDetailProviders({
     required bool refreshVisibleTab,
-  }) async {
+    required bool userInitiated,
+    required bool queueIfBusy,
+  }) {
     if (_refreshInFlight) {
-      return;
+      if (queueIfBusy) {
+        _refreshPending = true;
+        _refreshPendingForceNetwork =
+            _refreshPendingForceNetwork || userInitiated;
+      }
+      return _refreshCompleter?.future ?? Future<void>.value();
     }
+
+    if (!userInitiated &&
+        _hasActiveRefreshProvider(
+          widget.gameId,
+          refreshVisibleTab: refreshVisibleTab,
+        )) {
+      return _awaitActiveRefreshProviders(
+        widget.gameId,
+        refreshVisibleTab: refreshVisibleTab,
+      );
+    }
+
     _refreshInFlight = true;
+    final completer = Completer<void>();
+    _refreshCompleter = completer;
+    unawaited(
+      _drainGameDetailRefreshes(
+        refreshVisibleTab: refreshVisibleTab,
+        waitForActiveProviders: userInitiated,
+        forceNetwork: userInitiated,
+        completer: completer,
+      ),
+    );
+    return completer.future;
+  }
+
+  Future<void> _drainGameDetailRefreshes({
+    required bool refreshVisibleTab,
+    required bool waitForActiveProviders,
+    required bool forceNetwork,
+    required Completer<void> completer,
+  }) async {
+    try {
+      if (waitForActiveProviders) {
+        await _awaitActiveRefreshProviders(
+          widget.gameId,
+          refreshVisibleTab: refreshVisibleTab,
+        );
+      }
+
+      var forceNextRefresh = forceNetwork;
+      do {
+        _refreshPending = false;
+        await _performGameDetailRefresh(
+          refreshVisibleTab: refreshVisibleTab,
+          forceNetwork: forceNextRefresh,
+        );
+        forceNextRefresh = _refreshPendingForceNetwork;
+        _refreshPendingForceNetwork = false;
+      } while (_refreshPending && mounted);
+    } finally {
+      _refreshInFlight = false;
+      _refreshPending = false;
+      _refreshPendingForceNetwork = false;
+      if (identical(_refreshCompleter, completer)) {
+        _refreshCompleter = null;
+      }
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    }
+  }
+
+  Future<void> _performGameDetailRefresh({
+    required bool refreshVisibleTab,
+    required bool forceNetwork,
+  }) async {
     final gameId = widget.gameId;
 
     try {
+      final repository = ref.read(gameRepositoryProvider);
+      if (forceNetwork && repository is GameRepositoryRefreshControl) {
+        final refreshControl = repository as GameRepositoryRefreshControl;
+        refreshControl.requestGameRefresh(gameId);
+        if (refreshVisibleTab && _tabController.index == _relayTabIndex) {
+          refreshControl.requestRelayRefresh(gameId);
+        }
+      }
       ref.invalidate(gameProvider(gameId));
       final futures = <Future<Object?>>[ref.read(gameProvider(gameId).future)];
 
@@ -371,8 +474,63 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       await Future.wait(futures).timeout(const Duration(seconds: 25));
     } catch (error) {
       DevConsole.instance.warn('GAME DETAIL refresh skipped: $error');
-    } finally {
-      _refreshInFlight = false;
+    }
+  }
+
+  bool _hasActiveRefreshProvider(
+    String gameId, {
+    required bool refreshVisibleTab,
+  }) {
+    if (ref.read(gameProvider(gameId)).isLoading) {
+      return true;
+    }
+    if (!refreshVisibleTab) {
+      return false;
+    }
+    return switch (_tabController.index) {
+      1 => ref.read(relayDataProvider(gameId)).isLoading,
+      2 => ref.read(gameBoxscoreProvider(gameId)).isLoading,
+      3 => ref.read(gameLineupProvider(gameId)).isLoading,
+      _ => false,
+    };
+  }
+
+  Future<void> _awaitActiveRefreshProviders(
+    String gameId, {
+    required bool refreshVisibleTab,
+  }) async {
+    final futures = <Future<Object?>>[];
+    if (ref.read(gameProvider(gameId)).isLoading) {
+      futures.add(ref.read(gameProvider(gameId).future));
+    }
+    if (refreshVisibleTab) {
+      switch (_tabController.index) {
+        case 1:
+          if (ref.read(relayDataProvider(gameId)).isLoading) {
+            futures.add(ref.read(relayDataProvider(gameId).future));
+          }
+          break;
+        case 2:
+          if (ref.read(gameBoxscoreProvider(gameId)).isLoading) {
+            futures.add(ref.read(gameBoxscoreProvider(gameId).future));
+          }
+          break;
+        case 3:
+          if (ref.read(gameLineupProvider(gameId)).isLoading) {
+            futures.add(ref.read(gameLineupProvider(gameId).future));
+          }
+          break;
+      }
+    }
+    if (futures.isEmpty) {
+      return;
+    }
+    try {
+      await Future.wait(futures).timeout(const Duration(seconds: 25));
+    } catch (error) {
+      DevConsole.instance.warn(
+        'GAME DETAIL active refresh wait skipped: $error',
+      );
     }
   }
 
@@ -553,7 +711,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                   ScoreTab(
                     gameId: gameId,
                     game: game,
-                    onRefresh: _refreshGameDetail,
+                    onRefresh: () => _refreshGameDetail(userInitiated: true),
                     footer: game.status == GameStatus.final_
                         ? _HighlightSection(game: game, gameId: gameId)
                         : null,
@@ -562,7 +720,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     gameId: gameId,
                     gameStatus: game.status,
                     game: game,
-                    onRefresh: _refreshGameDetail,
+                    onRefresh: () => _refreshGameDetail(userInitiated: true),
                   ),
                   BoxscoreTab(
                     gameId: gameId,
@@ -572,7 +730,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     homeName: game.home.shortName,
                     awayTeamId: game.away.teamId,
                     homeTeamId: game.home.teamId,
-                    onRefresh: _refreshGameDetail,
+                    onRefresh: () => _refreshGameDetail(userInitiated: true),
                   ),
                   LineupTab(
                     gameId: gameId,
@@ -581,7 +739,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     homeName: game.home.shortName,
                     awayTeamId: game.away.teamId,
                     homeTeamId: game.home.teamId,
-                    onRefresh: _refreshGameDetail,
+                    onRefresh: () => _refreshGameDetail(userInitiated: true),
                   ),
                 ],
               ),

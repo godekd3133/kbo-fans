@@ -54,6 +54,224 @@ void main() {
     expect(requestedDates.first, _kboDateKeyForTest(DateTime.now()));
   });
 
+  testWidgets('홈 pull refresh는 새 scoreboard 응답이 끝날 때까지 기다린다', (tester) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({});
+    final game = _liveGame(
+      gameId: '${_todayKey().replaceAll('-', '')}KTLG0',
+      awayTeamId: 'KT',
+      homeTeamId: 'LG',
+    );
+    final refreshCompleter = Completer<List<Game>>();
+    var scoreboardCalls = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier(null)),
+          scoreboardProvider.overrideWith((ref, date) {
+            scoreboardCalls += 1;
+            if (scoreboardCalls == 1) {
+              return Future.value([game]);
+            }
+            return refreshCompleter.future;
+          }),
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    var refreshCompleted = false;
+    final refreshFuture = tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator).first)
+        .onRefresh()
+        .whenComplete(() => refreshCompleted = true);
+    await tester.pump();
+
+    expect(scoreboardCalls, 2);
+    expect(refreshCompleted, isFalse);
+
+    refreshCompleter.complete([game]);
+    await refreshFuture;
+    await tester.pump();
+
+    expect(refreshCompleted, isTrue);
+  });
+
+  testWidgets('홈 자동 갱신은 느린 scoreboard 요청을 다음 timer로 폐기하지 않는다', (tester) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({});
+    final game = _liveGame(
+      gameId: '${_todayKey().replaceAll('-', '')}KTLG0',
+      awayTeamId: 'KT',
+      homeTeamId: 'LG',
+    );
+    final slowRefresh = Completer<List<Game>>();
+    var scoreboardCalls = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier(null)),
+          scoreboardProvider.overrideWith((ref, date) {
+            scoreboardCalls += 1;
+            if (scoreboardCalls == 1) {
+              return Future.value([game]);
+            }
+            return slowRefresh.future;
+          }),
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump();
+    expect(scoreboardCalls, 2);
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump();
+
+    expect(scoreboardCalls, 2);
+
+    slowRefresh.complete([game]);
+    await tester.pump();
+  });
+
+  testWidgets('홈 자동 갱신 실패 후 다음 interval에 scoreboard를 다시 요청한다', (tester) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({});
+    final game = _liveGame(
+      gameId: '${_todayKey().replaceAll('-', '')}KTLG0',
+      awayTeamId: 'KT',
+      homeTeamId: 'LG',
+    );
+    var scoreboardCalls = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier(null)),
+          scoreboardProvider.overrideWith((ref, date) async {
+            scoreboardCalls += 1;
+            if (scoreboardCalls == 2) {
+              throw StateError('temporary scoreboard failure');
+            }
+            return [game];
+          }),
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump();
+    expect(scoreboardCalls, 2);
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump();
+
+    expect(scoreboardCalls, 3);
+  });
+
+  testWidgets('홈 pull refresh 중 기존 자동 timer가 scoreboard 요청을 겹치지 않는다', (
+    tester,
+  ) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({});
+    final game = _liveGame(
+      gameId: '${_todayKey().replaceAll('-', '')}KTLG0',
+      awayTeamId: 'KT',
+      homeTeamId: 'LG',
+    );
+    final manualRefresh = Completer<List<Game>>();
+    var scoreboardCalls = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier(null)),
+          scoreboardProvider.overrideWith((ref, date) {
+            scoreboardCalls += 1;
+            if (scoreboardCalls == 1 || scoreboardCalls >= 3) {
+              return Future.value([game]);
+            }
+            return manualRefresh.future;
+          }),
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    final refreshFuture = tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator).first)
+        .onRefresh();
+    await tester.pump();
+    expect(scoreboardCalls, 2);
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump();
+
+    expect(scoreboardCalls, 2);
+
+    manualRefresh.complete([game]);
+    await refreshFuture;
+    await tester.pump();
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump();
+
+    expect(scoreboardCalls, 3);
+  });
+
   test('경기 상세 진입 전 relay 선수 사진 prefetch 후보를 계산한다', () {
     const relayData = RelayData(
       currentAtBat: CurrentAtBat(

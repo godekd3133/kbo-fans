@@ -30,6 +30,7 @@ import '../../data/models/schedule.dart';
 import '../../data/models/team_stats.dart';
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
+import '../../data/repositories/game_repository.dart';
 import '../../services/game_event_alert_service.dart';
 import '../../services/live_activity_service.dart';
 import '../../services/widget_sync_service.dart';
@@ -463,6 +464,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   Timer? _refreshTimer;
   String? _refreshTimerKey;
+  bool _scoreboardRefreshInFlight = false;
+  bool _scoreboardRefreshPending = false;
+  bool _scoreboardRefreshPendingForceNetwork = false;
+  Completer<void>? _scoreboardRefreshCompleter;
   final ScrollController _scrollController = ScrollController();
   String? _lastSyncSignature;
   String? _lastEventAlertSignature;
@@ -511,6 +516,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Positioned.fill(
               child: AppMotionSwitcher(
                 child: scoreboardAsync.when(
+                  skipLoadingOnRefresh: false,
                   loading: () {
                     if (fallbackGames != null) {
                       return KeyedSubtree(
@@ -920,7 +926,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     final liveMyTeamGame = _liveMyTeamGameFor(games, myTeamId);
     return RefreshIndicator(
-      onRefresh: () async => _invalidateTodayScoreboard(),
+      onRefresh: () => _invalidateTodayScoreboard(forceNetwork: true),
       color: AppColors.live,
       child: AppPageFrame(
         child: CustomScrollView(
@@ -1590,6 +1596,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _scheduleRefresh(List<Game> games, String? myTeamId) {
+    if (_scoreboardRefreshInFlight) {
+      return;
+    }
+
     final interval = _resolveRefreshInterval(games);
     if (interval == null) {
       _refreshTimer?.cancel();
@@ -1607,7 +1617,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _refreshTimerKey = key;
     _refreshTimer = Timer(interval, () {
       _refreshTimerKey = null;
-      _invalidateTodayScoreboard();
+      unawaited(_invalidateTodayScoreboard());
     });
   }
 
@@ -1621,15 +1631,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return null;
   }
 
-  void _invalidateTodayScoreboard() {
+  Future<void> _invalidateTodayScoreboard({bool forceNetwork = false}) async {
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
+    _refreshTimerKey = null;
+    _scoreboardRefreshPending = true;
+    _scoreboardRefreshPendingForceNetwork |= forceNetwork;
+
+    final activeCompleter = _scoreboardRefreshCompleter;
+    if (_scoreboardRefreshInFlight && activeCompleter != null) {
+      return activeCompleter.future;
+    }
+
+    _scoreboardRefreshInFlight = true;
+    final completer = Completer<void>();
+    _scoreboardRefreshCompleter = completer;
+    unawaited(_drainScoreboardRefreshes(completer));
+    return completer.future;
+  }
+
+  Future<void> _drainScoreboardRefreshes(Completer<void> completer) async {
+    List<Game>? latestGames;
+    try {
+      while (mounted && _scoreboardRefreshPending) {
+        final forceNetwork = _scoreboardRefreshPendingForceNetwork;
+        _scoreboardRefreshPending = false;
+        _scoreboardRefreshPendingForceNetwork = false;
+        final refreshedGames = await _performTodayScoreboardRefresh(
+          forceNetwork: forceNetwork,
+        );
+        if (refreshedGames != null) {
+          latestGames = _uniqueGamesById(refreshedGames);
+        }
+      }
+    } finally {
+      _scoreboardRefreshInFlight = false;
+      _scoreboardRefreshCompleter = null;
+      if (mounted) {
+        final today = kboDateKey();
+        final visibleGames = latestGames ?? _lastScoreboardGamesFor(today);
+        if (visibleGames != null) {
+          _scheduleRefresh(visibleGames, ref.read(myTeamProvider));
+        }
+      }
+      if (!completer.isCompleted) {
+        completer.complete();
+      }
+    }
+  }
+
+  Future<List<Game>?> _performTodayScoreboardRefresh({
+    required bool forceNetwork,
+  }) async {
     final today = kboDateKey();
     final myTeamId = ref.read(myTeamProvider);
+    final repository = ref.read(gameRepositoryProvider);
+    if (forceNetwork && repository is GameRepositoryRefreshControl) {
+      (repository as GameRepositoryRefreshControl).requestScoreboardRefresh(
+        today,
+      );
+    }
     ref.invalidate(scoreboardProvider(today));
     final lastGames = _lastScoreboardGamesFor(today) ?? const <Game>[];
     if (_shouldLoadPreviousScoreboard(lastGames)) {
       ref.invalidate(scoreboardProvider(_previousScoreboardDate(today)));
     }
     ref.invalidate(homeAggregateProvider('$today|${myTeamId ?? ''}'));
+    try {
+      return await ref.read(scoreboardProvider(today).future);
+    } catch (_) {
+      // The provider keeps the error state while the home screen preserves the
+      // last visible scoreboard and reports the failure through Dev Console.
+      return null;
+    }
   }
 
   void _syncWidget(List<Game> games, String? myTeamId) {

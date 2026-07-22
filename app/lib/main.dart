@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -64,6 +64,18 @@ void main() async {
 }
 
 Duration? _disableProviderRetry(int retryCount, Object error) => null;
+
+@visibleForTesting
+Future<T> refreshOnResumeUnlessLoading<T>({
+  required AsyncValue<T> current,
+  required VoidCallback invalidate,
+  required Future<T> Function() readFuture,
+}) {
+  if (!current.isLoading) {
+    invalidate();
+  }
+  return readFuture();
+}
 
 Future<void> _initializePlatformServicesDeferred() async {
   await Future<void>.delayed(const Duration(milliseconds: 1500));
@@ -338,8 +350,12 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
 
     try {
       final today = _todayKey();
-      ref.invalidate(scoreboardProvider(today));
-      final games = await ref.read(scoreboardProvider(today).future);
+      final provider = scoreboardProvider(today);
+      final games = await refreshOnResumeUnlessLoading(
+        current: ref.read(provider),
+        invalidate: () => ref.invalidate(provider),
+        readFuture: () => ref.read(provider.future),
+      );
       final myTeamId = ref.read(myTeamProvider);
       await WidgetSyncService.instance.syncScoreboard(
         games: games,

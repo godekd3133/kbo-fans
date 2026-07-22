@@ -12,8 +12,8 @@ void main() {
     PackageInfo.setMockInitialValues(
       appName: 'KBO Fans',
       packageName: 'com.kbofans.app',
-      version: '0.1.18',
-      buildNumber: '86',
+      version: '0.1.19',
+      buildNumber: '87',
       buildSignature: '',
     );
   });
@@ -22,17 +22,17 @@ void main() {
     final currentVersion = await loadCurrentAppVersion(fallbackVersion: '');
     final data = await loadReleaseNotes();
 
-    expect(currentVersion, '0.1.18+86');
-    expect(data.releases.first.version, '0.1.18+86');
+    expect(currentVersion, '0.1.19+87');
+    expect(data.releases.first.version, '0.1.19+87');
     expect(findInstalledReleaseNote(data.releases, currentVersion), isNotNull);
   });
 
   testWidgets('update prompt shows the current release once', (tester) async {
     late BuildContext promptContext;
-    const currentVersion = '0.1.18+86';
+    const currentVersion = '0.1.19+87';
     const release = ReleaseNote(
       version: currentVersion,
-      subtitle: '경기 정보와 알림 안정성',
+      subtitle: '새로고침 안정성',
       notes: ['고쳤어요: 해외에 있거나 자정 무렵에도 오늘 경기 정보를 안정적으로 보여줍니다.'],
     );
 

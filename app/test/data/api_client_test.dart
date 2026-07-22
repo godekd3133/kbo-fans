@@ -199,6 +199,61 @@ void main() {
   );
 
   test(
+    'manual scoreboard refresh bypasses historical cache and sends force once',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'api_cache:scoreboard_home:2013-05-01': _cachedApiPayload({
+          'games': const [],
+        }, age: const Duration(days: 1)),
+      });
+      final adapter = _CountingSuccessAdapter({'games': const []});
+      final repository = ApiGameRepository(
+        ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+      );
+
+      repository.requestScoreboardRefresh('2013-05-01');
+      await repository.getScoreboard('2013-05-01');
+
+      expect(adapter.calls, 1);
+      expect(adapter.requests.single.queryParameters['forceRefresh'], true);
+
+      await repository.getScoreboard('2013-05-01');
+
+      expect(adapter.calls, 1);
+    },
+  );
+
+  test(
+    'manual relay refresh bypasses historical cache and sends force once',
+    () async {
+      const gameId = '20130501KTLG0';
+      SharedPreferences.setMockInitialValues({
+        'api_cache:relay:$gameId:': _cachedApiPayload({
+          'currentAtBat': null,
+          'relayItems': const [],
+        }, age: const Duration(days: 1)),
+      });
+      final adapter = _CountingSuccessAdapter({
+        'currentAtBat': null,
+        'relayItems': const [],
+      });
+      final repository = ApiGameRepository(
+        ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+      );
+
+      repository.requestRelayRefresh(gameId);
+      await repository.getRelayData(gameId);
+
+      expect(adapter.calls, 1);
+      expect(adapter.requests.single.queryParameters['forceRefresh'], true);
+
+      await repository.getRelayData(gameId);
+
+      expect(adapter.calls, 1);
+    },
+  );
+
+  test(
     'historical records overview cache avoids background refresh inside long TTL',
     () async {
       SharedPreferences.setMockInitialValues({
@@ -786,6 +841,7 @@ class _CountingSuccessAdapter extends _SuccessAdapter {
   _CountingSuccessAdapter(super.data);
 
   int calls = 0;
+  final List<RequestOptions> requests = <RequestOptions>[];
 
   @override
   Future<ResponseBody> fetch(
@@ -794,6 +850,7 @@ class _CountingSuccessAdapter extends _SuccessAdapter {
     Future<void>? cancelFuture,
   ) {
     calls += 1;
+    requests.add(options);
     return super.fetch(options, requestStream, cancelFuture);
   }
 }
