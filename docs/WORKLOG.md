@@ -2,6 +2,39 @@
 
 ---
 
+## 2026-07-23: 세 페르소나 UX/UI 감사와 핵심 여정 보강
+
+### 결정
+- 앱 동작·화면·접근성·업데이트 소식이 함께 바뀌므로 `0.1.19` 재업로드가 아니라 `0.1.20+88` / tag `0.1.20` 새 tester-facing release로 올린다.
+- 처음 쓰는 라이트 팬, 실시간 코어 팬, 작은 화면·보조기술 사용자를 독립 페르소나로 두고 온보딩 → 홈 → 경기 상세 네 탭 → 일정 → 기록 → 뉴스 → 설정을 실제 backend API web release build에서 점검한다.
+- 테스트 통과만으로 화면을 정상 판정하지 않는다. 390×844, 320×568, dark/light 화면과 상태 전환을 캡처하고, 실제 LIVE/실기기 보조기술처럼 재현하지 못한 범위는 `확인 불가`로 남긴다.
+- 신규 설치와 업데이트 설치를 `seen_version` 부재만으로 구분하지 않는다. 최초 온보딩이 만든 pending marker가 있을 때만 현재 버전을 기준선으로 삼고, 기존 설치에 marker가 없으면 업데이트 소식을 표시한다.
+
+### 진행
+- [x] 320px 또는 150% 이상 글자 크기에서 온보딩 팀 카드를 1열로 전환하고 선택 semantics, 44px `나중에 선택`, 읽을 수 있는 텍스트 대비를 적용.
+- [x] 홈에서 시작한 edit 온보딩은 홈, 설정에서 시작한 edit 온보딩은 설정으로 완료/취소 후 복귀하도록 redirect 계약을 연결.
+- [x] 신규 설치 첫 홈의 업데이트 팝업을 제거하고, 기존 설치의 legacy seen-version 부재는 업데이트로 처리.
+- [x] 경기 상세 첫/후속 갱신 실패에서 기존 점수를 유지하면서 `갱신 지연`과 재시도를 표시하고 허위 `방금 업데이트` 문구 제거.
+- [x] `focus=relay` 자동 스크롤이 sticky 탭 48px을 남기도록 조정.
+- [x] 일정 월 버튼을 44px로 확대하고, 마이팀 필터 뒤 구장별 전환 시 월 헤더가 위로 밀리지 않도록 포커스 정리. 구장별 API 오류와 빈 일정을 분리.
+- [x] 공통 pressable에 button/enabled/selected semantics, Enter/Space, keyboard focus outline을 추가하고 하단 탭 비선택 대비·48px 타깃을 보강.
+- [x] 매치업 중복 팀을 포인터와 키보드 모두 비활성화하고 일정 선택 컨트롤의 selected semantics를 연결.
+- [x] 무팀 푸시 설정을 `마이팀 미선택`으로 표시하고 직접 팔로우 경기 알림은 별도 동작함을 안내.
+- [x] `docs/UX_PERSONA_AUDIT_2026-07-23.md`에 여정별 상태, 전후 캡처, 검증 경계와 남은 위험을 기록.
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.20+88` 기준으로 갱신.
+- [ ] Git commit/tag/GitHub Release, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+
+### 검증
+- [x] `cd app && fvm flutter test --no-pub` (`359 passed`) 통과.
+- [x] `cd app && fvm flutter analyze --no-pub` 통과.
+- [x] `./scripts/codex-run-web.sh` release web build 성공. 기존 wasm dry-run interop 경고와 CupertinoIcons font 경고는 남아 있으나 JavaScript web build/serve는 성공.
+- [x] 실제 웹 390×844: 신규 설치 온보딩 완료 후 업데이트 팝업 없이 홈 진입, 마이팀 필터 → 구장별 전환 후 월 헤더/이동 버튼 유지.
+- [x] 실제 웹 320×568: edit 온보딩 1열 레이아웃과 팀명 보존 확인.
+- [ ] 실제 iOS VoiceOver, Android TalkBack 읽기 순서와 실기기 keyboard focus outline은 미확인.
+- [ ] 실제 LIVE 경기에서 네트워크 단절·복구와 새 relay 이벤트 도착은 현재 진행 경기가 없어 미확인.
+
+---
+
 ## 2026-07-22: 0.1.19 TestFlight 릴리즈 준비
 
 ### 결정
