@@ -12,7 +12,7 @@ class MainScaffold extends StatelessWidget {
     (icon: Icons.home_rounded, label: '홈', path: '/home'),
     (icon: Icons.sports_baseball_rounded, label: '일정', path: '/schedule'),
     (icon: Icons.bar_chart_rounded, label: '기록', path: '/records'),
-    (icon: Icons.article_outlined, label: '뉴스', path: '/news'),
+    (icon: Icons.article_outlined, label: '브리핑', path: '/news'),
     (icon: Icons.settings_rounded, label: '설정', path: '/settings'),
   ];
 

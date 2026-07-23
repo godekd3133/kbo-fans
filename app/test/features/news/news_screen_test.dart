@@ -26,6 +26,10 @@ void main() {
               myTeamBrief: null,
               kboBrief: null,
               quickItems: const [],
+              generatedAt: DateTime.fromMillisecondsSinceEpoch(
+                1700000000000,
+                isUtc: true,
+              ),
             );
           }),
         ],
@@ -39,6 +43,7 @@ void main() {
       find.text('${expectedDate.replaceAll('-', '.')} 기준'),
       findsOneWidget,
     );
+    expect(find.textContaining('07:13 생성'), findsOneWidget);
   });
 
   testWidgets('news cards push shell screens with iOS swipe-back routes', (
@@ -113,7 +118,7 @@ void main() {
                   HomeKboBriefItem(
                     type: 'standings',
                     eyebrow: '선두권',
-                    title: 'LG 트윈스 1위 유지',
+                    title: '선두가 위태로운 LG 트윈스',
                     subtitle: '2위와 1.5G차',
                     route: '/standings',
                   ),
@@ -137,13 +142,15 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('뉴스'), findsOneWidget);
-    expect(find.text('주요 소식'), findsOneWidget);
+    expect(find.text('데이터 브리핑'), findsOneWidget);
+    expect(find.text('먼저 볼 흐름'), findsOneWidget);
+    expect(find.textContaining('실제 뉴스 기사 아님'), findsOneWidget);
     expect(find.text('지금 KBO'), findsNothing);
     expect(find.text('2경기 진행 중'), findsNothing);
     expect(find.text('오늘의 3분 브리핑'), findsNothing);
-    expect(find.text('최신 뉴스'), findsOneWidget);
+    expect(find.text('전체 데이터 흐름'), findsOneWidget);
     expect(find.text('선두가 위태로운 LG 트윈스'), findsWidgets);
+    expect(find.text('선두가 위태로운 선두가 위태로운 LG 트윈스'), findsNothing);
     expect(find.text('김도영 13개'), findsWidgets);
     expect(find.text('순위 보기'), findsWidgets);
     expect(find.text('기록 보기'), findsWidgets);
@@ -498,7 +505,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('김도영, 지금 페이스면 51홈런'), findsOneWidget);
-    expect(find.text('KIA 타이거즈 56경기 기준 · 현재 20홈런'), findsOneWidget);
+    expect(find.text('앱 계산 · KIA 타이거즈 56경기 기준 · 현재 20홈런'), findsOneWidget);
     expect(find.text('KIA 타이거즈, 지금 페이스면 90승'), findsWidgets);
     await tester.scrollUntilVisible(
       find.textContaining('3연패').first,
@@ -539,7 +546,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('오늘 보여줄 뉴스가 없습니다'), findsOneWidget);
+    expect(find.text('오늘 정리할 데이터 흐름이 없습니다'), findsOneWidget);
     expect(find.text('일정 보기'), findsOneWidget);
   });
 }

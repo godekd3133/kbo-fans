@@ -106,6 +106,7 @@ class HomeAggregate {
   final HomeKboBrief? kboBrief;
   final List<HomeQuickItem> quickItems;
   final List<TeamStanding> standingsPreview;
+  final DateTime? generatedAt;
 
   const HomeAggregate({
     required this.date,
@@ -114,6 +115,7 @@ class HomeAggregate {
     required this.kboBrief,
     required this.quickItems,
     this.standingsPreview = const [],
+    this.generatedAt,
   });
 }
 
@@ -155,6 +157,7 @@ HomeAggregate buildLocalHomeAggregate({
     kboBrief: kboBrief,
     quickItems: quickItems,
     standingsPreview: _buildLocalStandingsPreview(standings, myTeam),
+    generatedAt: DateTime.now().toUtc(),
   );
 }
 

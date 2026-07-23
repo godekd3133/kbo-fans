@@ -1110,6 +1110,128 @@ void main() {
     expect(find.text('팀 ERA'), findsOneWidget);
     expect(find.text('4.73'), findsOneWidget);
     expect(find.text('9위'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('my-team-brief-wide-metrics')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('my-team-brief-narrow-metrics')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('320px 마이팀 브리프는 최근 경기와 두 지표를 세로·2열로 분리한다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        standingsPreview: [
+          _standing(
+            rank: 1,
+            teamId: 'LG',
+            teamName: 'LG 트윈스',
+            wins: 51,
+            losses: 34,
+            draws: 2,
+            pct: '.600',
+            gb: '0.0',
+            streak: 'W3',
+          ),
+        ],
+        teamRecordsBundle: TeamRecordsBundle(
+          players: const [],
+          teamStats: _teamStatsForKey(
+            'LG|2026',
+            avg: '.281',
+            avgRank: '8',
+            era: '4.73',
+            eraRank: '9',
+          ),
+        ),
+        recentSummaries: const [
+          HomeRecentGameSummary(
+            gameId: 'recent-1',
+            result: '승',
+            opponentName: 'NC',
+            score: '4:3',
+          ),
+          HomeRecentGameSummary(
+            gameId: 'recent-2',
+            result: '승',
+            opponentName: 'KT',
+            score: '7:1',
+          ),
+          HomeRecentGameSummary(
+            gameId: 'recent-3',
+            result: '패',
+            opponentName: 'KIA',
+            score: '2:5',
+          ),
+          HomeRecentGameSummary(
+            gameId: 'recent-4',
+            result: '무',
+            opponentName: '두산',
+            score: '3:3',
+          ),
+          HomeRecentGameSummary(
+            gameId: 'recent-5',
+            result: '승',
+            opponentName: '삼성',
+            score: '6:2',
+          ),
+        ],
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final narrowMetrics = find.byKey(
+      const ValueKey('my-team-brief-narrow-metrics'),
+    );
+    final recent = find.byKey(const ValueKey('my-team-brief-narrow-recent'));
+    final avg = find.byKey(const ValueKey('my-team-brief-narrow-avg'));
+    final era = find.byKey(const ValueKey('my-team-brief-narrow-era'));
+    final teamSummary = find.byKey(
+      const ValueKey('my-team-brief-team-summary'),
+    );
+
+    expect(narrowMetrics, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('my-team-brief-wide-metrics')),
+      findsNothing,
+    );
+    expect(find.text('최근 5경기'), findsWidgets);
+    expect(find.text('타율'), findsOneWidget);
+    expect(find.text('ERA'), findsOneWidget);
+    expect(find.text('팀 타율'), findsNothing);
+    expect(find.text('팀 ERA'), findsNothing);
+    expect(find.text('0.281'), findsOneWidget);
+    expect(find.text('4.73'), findsOneWidget);
+
+    final recentRect = tester.getRect(recent);
+    final avgRect = tester.getRect(avg);
+    final eraRect = tester.getRect(era);
+    expect(recentRect.bottom, lessThanOrEqualTo(avgRect.top));
+    expect((avgRect.top - eraRect.top).abs(), lessThan(1));
+    expect(avgRect.width, greaterThanOrEqualTo(60));
+    expect(eraRect.width, greaterThanOrEqualTo(60));
+    expect(avgRect.right, lessThanOrEqualTo(eraRect.left));
+    expect(
+      tester.getSize(narrowMetrics).height,
+      lessThanOrEqualTo(tester.getSize(teamSummary).height),
+    );
+    expect(find.byKey(const ValueKey('home-standings-row-LG')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -1777,6 +1899,51 @@ void main() {
     expect(find.text('롯데 vs 두산'), findsAtLeastNWidgets(1));
     expect(find.text('예정'), findsAtLeastNWidgets(1));
     expect(find.text('LIVE'), findsNothing);
+    expect(find.text('B'), findsNothing);
+    expect(find.text('S'), findsNothing);
+    expect(find.text('O'), findsNothing);
+  });
+
+  testWidgets('KBO brief LIVE는 실제 필드가 없는 카운트와 루상을 만들지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final router = _homeInteractionRouter();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: router),
+        kboBrief: const HomeKboBrief(
+          title: '오늘의 KBO 소식',
+          subtitle: '지금 볼 장면 1개',
+          items: [
+            HomeKboBriefItem(
+              type: 'league_now',
+              eyebrow: 'LIVE',
+              title: 'NC 0 : 0 LG',
+              subtitle: '1회말 · 잠실',
+              route: '/game/20260619NCLG0',
+              gameId: '20260619NCLG0',
+              teamIds: ['NC', 'LG'],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('kbo-brief-live-situation-unavailable')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('볼카운트·주자 상황 정보 미제공'), findsOneWidget);
     expect(find.text('B'), findsNothing);
     expect(find.text('S'), findsNothing);
     expect(find.text('O'), findsNothing);
@@ -2453,6 +2620,7 @@ Widget _homeInteractionScope({
   TeamRecordsBundle teamRecordsBundle = _defaultTeamRecordsBundle,
   Future<TeamRecordsBundle> Function(String key)? teamRecordsForKey,
   Future<List<PlayerProfile>> Function(String key)? teamPlayersForKey,
+  List<HomeRecentGameSummary>? recentSummaries,
 }) {
   final standings = standingsPreview ?? _defaultHomeStandings();
   return ProviderScope(
@@ -2485,21 +2653,23 @@ Widget _homeInteractionScope({
             recentWins: 4,
             recentLosses: 1,
             recentDraws: 0,
-            recentGamesCount: 5,
-            recentSummaries: const [
-              HomeRecentGameSummary(
-                gameId: 'recent-1',
-                result: '승',
-                opponentName: 'NC',
-                score: '4:3',
-              ),
-              HomeRecentGameSummary(
-                gameId: 'recent-2',
-                result: '승',
-                opponentName: 'NC',
-                score: '7:1',
-              ),
-            ],
+            recentGamesCount: recentSummaries?.length ?? 5,
+            recentSummaries:
+                recentSummaries ??
+                const [
+                  HomeRecentGameSummary(
+                    gameId: 'recent-1',
+                    result: '승',
+                    opponentName: 'NC',
+                    score: '4:3',
+                  ),
+                  HomeRecentGameSummary(
+                    gameId: 'recent-2',
+                    result: '승',
+                    opponentName: 'NC',
+                    score: '7:1',
+                  ),
+                ],
           ),
           kboBrief: kboBrief,
           quickItems: quickItems,

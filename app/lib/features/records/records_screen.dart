@@ -1350,8 +1350,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final isLight = Theme.of(context).brightness == Brightness.light;
     final headline = _headlineLeader(overview);
     final todayFeatured = _todayFeaturedCards(overview);
-    final briefStats = _briefStats(overview);
-    final briefLines = _recordBriefLines(overview);
 
     return Container(
       key: const ValueKey('records-briefing-panel'),
@@ -1397,7 +1395,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '오늘 읽을 기록',
+                      '시즌 리더 요약',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
@@ -1405,7 +1403,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     ),
                     SizedBox(height: 1),
                     Text(
-                      '리그 주요 지표 리더를 먼저 확인하세요.',
+                      '타자와 투수 대표를 먼저 보고 지표별 순위로 이어가세요.',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textSecondary,
@@ -1430,58 +1428,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               '현재 표시할 기록 리더가 없습니다.',
               style: TextStyle(fontSize: 13, color: AppColors.textDisabled),
             )
-          else ...[
-            if (headline != null) _headlineLeaderBlock(overview, headline),
-            if (todayFeatured.isNotEmpty) ...[
-              if (headline != null) const SizedBox(height: 10),
-              _todayFeaturedPlayerStrip(todayFeatured),
-            ],
-          ],
-          if (briefStats.isNotEmpty) ...[
-            const SizedBox(height: 7),
-            Row(
-              children: [
-                for (var index = 0; index < briefStats.length; index++) ...[
-                  if (index > 0) const SizedBox(width: 8),
-                  Expanded(
-                    child: _briefStat(
-                      briefStats[index].label,
-                      briefStats[index].value,
-                      detail: briefStats[index].detail,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ],
-          if (briefLines.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            for (final line in briefLines)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      Icons.arrow_right_rounded,
-                      size: 15,
-                      color: AppColors.accent,
-                    ),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: Text(
-                        line,
-                        style: TextStyle(
-                          fontSize: 10,
-                          height: 1.15,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
+          else if (todayFeatured.isNotEmpty)
+            _todayFeaturedPlayerStrip(todayFeatured)
+          else if (headline != null)
+            _headlineLeaderBlock(overview, headline),
         ],
       ),
     );
@@ -1716,63 +1666,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           ),
         ),
       ],
-    );
-  }
-
-  Widget _briefStat(String label, String value, {String? detail}) {
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    return Container(
-      constraints: const BoxConstraints(minHeight: 58),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: isLight
-            ? AppColors.cardSub.withValues(alpha: 0.7)
-            : AppColors.background.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppColors.textSecondary.withValues(alpha: 0.2),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textDisabled,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 3),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
-            ),
-          ),
-          if (detail != null && detail.trim().isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              detail.trim(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 10,
-                height: 1.1,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -2608,82 +2501,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return ordered.first;
   }
 
-  List<String> _leaderMetricLabels(
-    RecordsOverview overview,
-    RecordLeader leader,
-  ) {
-    return _metricSnapshots(overview)
-        .where((snapshot) => snapshot.topLeader?.playerId == leader.playerId)
-        .map((snapshot) => snapshot.metric.shortLabel)
-        .toList();
-  }
-
-  List<String> _recordBriefLines(RecordsOverview overview) {
-    final lines = <String>[];
-    final snapshots = _metricSnapshots(overview);
-    final headline = _headlineLeader(overview);
-    if (headline != null) {
-      final labels = _leaderMetricLabels(overview, headline).join('/');
-      lines.add('${headline.name}이 $labels 선두입니다.');
-    }
-
-    final hr = snapshots
-        .where((snapshot) => snapshot.metric == LeaderboardMetric.hr)
-        .first
-        .topLeader;
-    if (hr != null) {
-      lines.add(
-        '홈런 ${hr.name} ${hr.value}개, ${_leaderGapText(LeaderboardMetric.hr, overview.hrLeaders)}',
-      );
-    }
-
-    final era = snapshots
-        .where((snapshot) => snapshot.metric == LeaderboardMetric.era)
-        .first
-        .topLeader;
-    if (era != null) {
-      lines.add(
-        'ERA ${era.name} ${era.value}, ${_leaderGapText(LeaderboardMetric.era, overview.eraLeaders)}',
-      );
-    }
-
-    return lines.take(3).toList();
-  }
-
-  List<_BriefStatData> _briefStats(RecordsOverview overview) {
-    final snapshots = _metricSnapshots(overview);
-    final byMetric = {
-      for (final snapshot in snapshots) snapshot.metric: snapshot,
-    };
-    const preferredMetrics = [
-      LeaderboardMetric.avg,
-      LeaderboardMetric.hr,
-      LeaderboardMetric.era,
-      LeaderboardMetric.ops,
-      LeaderboardMetric.opsPlus,
-    ];
-
-    final stats = <_BriefStatData>[];
-    for (final metric in preferredMetrics) {
-      final snapshot = byMetric[metric];
-      final leader = snapshot?.topLeader;
-      if (snapshot == null || leader == null) {
-        continue;
-      }
-      stats.add(
-        _BriefStatData(
-          label: _briefMetricLabel(metric),
-          value: _briefMetricValue(metric, leader),
-          detail: _leaderGapText(metric, snapshot.leaders),
-        ),
-      );
-      if (stats.length == 3) {
-        break;
-      }
-    }
-    return stats;
-  }
-
   String _briefMetricLabel(LeaderboardMetric metric) {
     return switch (metric) {
       LeaderboardMetric.avg => '타율 1위',
@@ -2696,22 +2513,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       LeaderboardMetric.opsPlus => 'wRC+ 1위',
       LeaderboardMetric.war => 'WAR 1위',
     };
-  }
-
-  String _briefMetricValue(LeaderboardMetric metric, RecordLeader leader) {
-    if (metric == LeaderboardMetric.hr) {
-      return '${leader.name} ${leader.value}개';
-    }
-    if (metric == LeaderboardMetric.wins) {
-      return '${leader.name} ${leader.value}승';
-    }
-    if (metric == LeaderboardMetric.saves) {
-      return '${leader.name} ${leader.value}SV';
-    }
-    if (metric == LeaderboardMetric.strikeouts) {
-      return '${leader.name} ${leader.value}K';
-    }
-    return '${leader.name} ${leader.value}';
   }
 
   String _pitchingLeaderSummary(LeaderboardMetric metric, RecordLeader leader) {
@@ -2937,16 +2738,4 @@ class _MetricSnapshot {
   });
 
   RecordLeader? get topLeader => leaders.isEmpty ? null : leaders.first;
-}
-
-class _BriefStatData {
-  final String label;
-  final String value;
-  final String detail;
-
-  const _BriefStatData({
-    required this.label,
-    required this.value,
-    required this.detail,
-  });
 }

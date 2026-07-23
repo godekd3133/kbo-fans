@@ -60,7 +60,7 @@ void main() {
     );
     expect(scheduleTextStyle.style.color, AppTheme.darkColors.textSecondary);
 
-    for (final label in ['홈', '일정', '기록', '뉴스', '설정']) {
+    for (final label in ['홈', '일정', '기록', '브리핑', '설정']) {
       final pressable = find.ancestor(
         of: find.text(label),
         matching: find.byType(AppPressable),

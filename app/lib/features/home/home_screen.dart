@@ -2014,6 +2014,10 @@ class _MyTeamBriefCard extends StatelessWidget {
       teamPlayersAsync: teamPlayersAsync,
     );
     final metrics = recordBrief.metrics;
+    final useNarrowMetricsLayout = MediaQuery.sizeOf(context).width <= 340;
+    final recentGamesLabel = brief == null || brief!.recentGamesCount == 0
+        ? '최근 경기'
+        : '최근 ${brief!.recentGamesCount}경기';
     final view = _MyTeamBriefViewModel.resolve(
       myTeamId: myTeamId!,
       teamName: team?.name ?? myTeamId!,
@@ -2064,6 +2068,7 @@ class _MyTeamBriefCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
+                  key: const ValueKey('my-team-brief-team-summary'),
                   width: 100,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2103,55 +2108,17 @@ class _MyTeamBriefCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              brief == null || brief!.recentGamesCount == 0
-                                  ? '최근 경기'
-                                  : '최근 ${brief!.recentGamesCount}경기',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _resultBubbleRow(
-                              brief?.recentSummaries ?? const [],
-                              size: 20,
-                              centered: true,
-                            ),
-                          ],
+                  child: useNarrowMetricsLayout
+                      ? _narrowBriefMetrics(
+                          recentGamesLabel: recentGamesLabel,
+                          summaries: brief?.recentSummaries ?? const [],
+                          metrics: metrics,
+                        )
+                      : _wideBriefMetrics(
+                          recentGamesLabel: recentGamesLabel,
+                          summaries: brief?.recentSummaries ?? const [],
+                          metrics: metrics,
                         ),
-                      ),
-                      const _BriefMetricDivider(),
-                      Expanded(
-                        flex: 2,
-                        child: _compactStat(
-                          '팀 타율',
-                          metrics.avg,
-                          metrics.avgRank,
-                          centered: true,
-                        ),
-                      ),
-                      const _BriefMetricDivider(),
-                      Expanded(
-                        flex: 2,
-                        child: _compactStat(
-                          '팀 ERA',
-                          metrics.era,
-                          metrics.eraRank,
-                          centered: true,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -2182,6 +2149,114 @@ class _MyTeamBriefCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _wideBriefMetrics({
+    required String recentGamesLabel,
+    required List<_RecentGameSummaryData> summaries,
+    required _BriefMetricSnapshot metrics,
+  }) {
+    return Row(
+      key: const ValueKey('my-team-brief-wide-metrics'),
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          flex: 6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                recentGamesLabel,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _resultBubbleRow(summaries, size: 20, centered: true),
+            ],
+          ),
+        ),
+        const _BriefMetricDivider(),
+        Expanded(
+          flex: 2,
+          child: _compactStat(
+            '팀 타율',
+            metrics.avg,
+            metrics.avgRank,
+            centered: true,
+          ),
+        ),
+        const _BriefMetricDivider(),
+        Expanded(
+          flex: 2,
+          child: _compactStat(
+            '팀 ERA',
+            metrics.era,
+            metrics.eraRank,
+            centered: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _narrowBriefMetrics({
+    required String recentGamesLabel,
+    required List<_RecentGameSummaryData> summaries,
+    required _BriefMetricSnapshot metrics,
+  }) {
+    return Column(
+      key: const ValueKey('my-team-brief-narrow-metrics'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Column(
+          key: const ValueKey('my-team-brief-narrow-recent'),
+          children: [
+            Text(
+              recentGamesLabel,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 6),
+            _resultBubbleRow(summaries, size: 20, centered: true),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: KeyedSubtree(
+                key: const ValueKey('my-team-brief-narrow-avg'),
+                child: _compactStat(
+                  '타율',
+                  metrics.avg,
+                  metrics.avgRank,
+                  centered: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: KeyedSubtree(
+                key: const ValueKey('my-team-brief-narrow-era'),
+                child: _compactStat(
+                  'ERA',
+                  metrics.era,
+                  metrics.eraRank,
+                  centered: true,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -3944,8 +4019,10 @@ class _StandingsHeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width <= 340;
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 5, 14, 5),
+      padding: EdgeInsets.fromLTRB(compact ? 10 : 14, 5, compact ? 10 : 14, 5),
       decoration: BoxDecoration(
         color: AppColors.cardSub.withValues(alpha: 0.72),
         border: Border(
@@ -3953,16 +4030,18 @@ class _StandingsHeaderRow extends StatelessWidget {
           bottom: BorderSide(color: AppColors.divider.withValues(alpha: 0.55)),
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
-          _StandingCell('순위', width: 34, muted: true),
-          Expanded(child: _StandingCell('팀', muted: true, alignStart: true)),
-          _StandingCell('경기', width: 34, muted: true),
-          _StandingCell('승', width: 30, muted: true),
-          _StandingCell('패', width: 30, muted: true),
-          _StandingCell('무', width: 30, muted: true),
-          _StandingCell('승률', width: 48, muted: true),
-          _StandingCell('게임차', width: 44, muted: true),
+          _StandingCell('순위', width: compact ? 30 : 34, muted: true),
+          const Expanded(
+            child: _StandingCell('팀', muted: true, alignStart: true),
+          ),
+          _StandingCell('경기', width: compact ? 30 : 34, muted: true),
+          _StandingCell('승', width: compact ? 26 : 30, muted: true),
+          _StandingCell('패', width: compact ? 26 : 30, muted: true),
+          _StandingCell('무', width: compact ? 26 : 30, muted: true),
+          _StandingCell('승률', width: compact ? 42 : 48, muted: true),
+          _StandingCell('차', width: compact ? 38 : 44, muted: true),
         ],
       ),
     );
@@ -3985,6 +4064,7 @@ class _StandingSnapshotRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final team = KboTeams.byId(standing.teamId);
     final games = standing.wins + standing.losses + standing.draws;
+    final compact = MediaQuery.sizeOf(context).width <= 340;
 
     return Semantics(
       button: true,
@@ -3994,7 +4074,12 @@ class _StandingSnapshotRow extends StatelessWidget {
         pressedScale: 0.99,
         pressedOpacity: 0.84,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 3, 14, 3),
+          padding: EdgeInsets.fromLTRB(
+            compact ? 10 : 14,
+            3,
+            compact ? 10 : 14,
+            3,
+          ),
           decoration: BoxDecoration(
             color: highlighted ? AppColors.live.withValues(alpha: 0.22) : null,
             border: Border(
@@ -4005,17 +4090,17 @@ class _StandingSnapshotRow extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _StandingCell('${standing.rank}', width: 34),
+              _StandingCell('${standing.rank}', width: compact ? 30 : 34),
               Expanded(
                 child: Row(
                   children: [
                     _TeamLogo(
                       team: team,
                       fallbackLabel: standing.teamName,
-                      size: 18,
+                      size: compact ? 16 : 18,
                       visualScale: 1.25,
                     ),
-                    const SizedBox(width: 7),
+                    SizedBox(width: compact ? 4 : 7),
                     Expanded(
                       child: Text(
                         team?.shortName ?? standing.teamName,
@@ -4030,12 +4115,12 @@ class _StandingSnapshotRow extends StatelessWidget {
                   ],
                 ),
               ),
-              _StandingCell('$games', width: 34),
-              _StandingCell('${standing.wins}', width: 30),
-              _StandingCell('${standing.losses}', width: 30),
-              _StandingCell('${standing.draws}', width: 30),
-              _StandingCell(standing.pct, width: 48),
-              _StandingCell(_gbLabel(standing.gb), width: 44),
+              _StandingCell('$games', width: compact ? 30 : 34),
+              _StandingCell('${standing.wins}', width: compact ? 26 : 30),
+              _StandingCell('${standing.losses}', width: compact ? 26 : 30),
+              _StandingCell('${standing.draws}', width: compact ? 26 : 30),
+              _StandingCell(standing.pct, width: compact ? 42 : 48),
+              _StandingCell(_gbLabel(standing.gb), width: compact ? 38 : 44),
             ],
           ),
         ),
@@ -4600,23 +4685,36 @@ class _KboInsightScoreStrip extends StatelessWidget {
             ),
             if (isLive) ...[
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        _ScoreDotGroup(label: 'B', active: 3, total: 3),
-                        SizedBox(width: 14),
-                        _ScoreDotGroup(label: 'S', active: 2, total: 2),
-                        SizedBox(width: 14),
-                        _ScoreDotGroup(label: 'O', active: 2, total: 2),
-                      ],
+              Container(
+                key: const ValueKey('kbo-brief-live-situation-unavailable'),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.background.withValues(alpha: 0.38),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 15,
+                      color: AppColors.textSecondary,
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  const _BaseDiamond(),
-                ],
+                    const SizedBox(width: 6),
+                    Text(
+                      '볼카운트·주자 상황 정보 미제공',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ],
@@ -4630,78 +4728,6 @@ bool _kboBriefScoreStripIsLive(HomeKboBriefItem item) {
   return item.type == 'league_now' ||
       item.eyebrow.contains('LIVE') ||
       item.eyebrow.contains('진행 중');
-}
-
-class _ScoreDotGroup extends StatelessWidget {
-  final String label;
-  final int active;
-  final int total;
-
-  const _ScoreDotGroup({
-    required this.label,
-    required this.active,
-    required this.total,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final dotColor = label == 'S' ? AppColors.ballYellow : AppColors.positive;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(width: 4),
-        for (var index = 0; index < total; index++) ...[
-          Icon(
-            Icons.circle,
-            size: 7,
-            color: index < active
-                ? dotColor
-                : AppColors.textDisabled.withValues(alpha: 0.35),
-          ),
-          if (index < total - 1) const SizedBox(width: 3),
-        ],
-      ],
-    );
-  }
-}
-
-class _BaseDiamond extends StatelessWidget {
-  const _BaseDiamond();
-
-  @override
-  Widget build(BuildContext context) {
-    Widget base(Color color) {
-      return Transform.rotate(
-        angle: 0.785398,
-        child: Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: 28,
-      height: 24,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned(top: 1, child: base(AppColors.ballYellow)),
-          Positioned(left: 3, bottom: 3, child: base(AppColors.textPrimary)),
-          Positioned(right: 3, bottom: 3, child: base(AppColors.textPrimary)),
-        ],
-      ),
-    );
-  }
 }
 
 class _KboInsightMiniGrid extends StatelessWidget {

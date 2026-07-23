@@ -98,6 +98,162 @@ void main() {
     );
   });
 
+  testWidgets('선수 상세 주요 기록은 지표명을 분리하고 빈 값을 숨긴다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            playerDetailProvider.overrideWith((ref, key) async {
+              return _moonBatterWithMetrics;
+            }),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const PlayerDetailScreen(playerId: '69102', season: 2026),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.scrollUntilVisible(
+        find.text('시즌 기록'),
+        160,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('player-detail-data-69102')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('주요 기록'), findsOneWidget);
+      expect(find.text('헤드라인'), findsNothing);
+      expect(find.text('현재 상태'), findsNothing);
+      expect(find.text('시즌'), findsNothing);
+      expect(find.text('타율'), findsOneWidget);
+      expect(find.text('0.321'), findsOneWidget);
+      expect(find.text('보조 지표'), findsOneWidget);
+      expect(find.text('최근 10경기 상승세'), findsOneWidget);
+      expect(find.text('시즌 기록'), findsOneWidget);
+      expect(find.text('경기'), findsOneWidget);
+      expect(find.text('120'), findsOneWidget);
+      expect(find.text('홈런'), findsOneWidget);
+      expect(find.text('25'), findsOneWidget);
+      expect(find.text('타점'), findsOneWidget);
+      expect(find.text('88'), findsOneWidget);
+      expect(find.text('ERA -'), findsNothing);
+
+      final primaryMetric = find.byKey(
+        const ValueKey('player-primary-metric-0'),
+      );
+      expect(
+        tester.getSemantics(primaryMetric).getSemanticsData().label,
+        '타율, 0.321',
+      );
+      expect(
+        find.bySemanticsLabel('타율, 0.321'),
+        findsOneWidget,
+        reason: '주요 기록과 시즌 기록의 같은 지표·값을 반복하지 않아야 한다.',
+      );
+      expect(
+        find.bySemanticsLabel('홈런, 25'),
+        findsOneWidget,
+        reason: '보조 주요 기록과 시즌 기록의 같은 지표·값을 반복하지 않아야 한다.',
+      );
+
+      final firstSeasonMetric = find.byKey(
+        const ValueKey('player-season-metric-0'),
+      );
+      final secondSeasonMetric = find.byKey(
+        const ValueKey('player-season-metric-1'),
+      );
+      expect(
+        tester.getTopLeft(firstSeasonMetric).dy,
+        closeTo(tester.getTopLeft(secondSeasonMetric).dy, 0.1),
+      );
+      expect(
+        tester.getTopLeft(secondSeasonMetric).dx,
+        greaterThan(tester.getTopLeft(firstSeasonMetric).dx),
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('노트'),
+        160,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('player-detail-data-69102')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('최근 5경기'), findsOneWidget);
+      expect(find.text('06.28'), findsOneWidget);
+      expect(find.text('노트'), findsOneWidget);
+      expect(find.text('최근 타격감이 좋습니다'), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('선수 상세 주요 기록은 320px 큰 글자에서 한 열로 흐른다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          playerDetailProvider.overrideWith((ref, key) async {
+            return _moonBatterWithMetrics;
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const PlayerDetailScreen(playerId: '69102', season: 2026),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('player-season-metric-1')),
+      180,
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('player-detail-data-69102')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final firstSeasonMetric = find.byKey(
+      const ValueKey('player-season-metric-0'),
+    );
+    final secondSeasonMetric = find.byKey(
+      const ValueKey('player-season-metric-1'),
+    );
+    expect(
+      tester.getTopLeft(secondSeasonMetric).dx,
+      closeTo(tester.getTopLeft(firstSeasonMetric).dx, 0.1),
+    );
+    expect(
+      tester.getTopLeft(secondSeasonMetric).dy,
+      greaterThan(tester.getTopLeft(firstSeasonMetric).dy),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('선수 상세는 최근 5경기 기록을 최신순으로 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -139,7 +295,7 @@ void main() {
     expect(find.text('06.23'), findsNothing);
   });
 
-  testWidgets('오늘 읽을 기록은 타자와 투수 대표를 함께 보여준다', (tester) async {
+  testWidgets('시즌 리더 요약은 타자와 투수 대표를 함께 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -160,7 +316,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('오늘 읽을 기록'), findsOneWidget);
+    expect(find.text('시즌 리더 요약'), findsOneWidget);
     expect(find.text('오늘의 타자'), findsOneWidget);
     expect(find.text('김도영'), findsOneWidget);
     expect(find.text('오늘의 투수'), findsOneWidget);
@@ -213,7 +369,7 @@ void main() {
     expect(find.text('폰세'), findsWidgets);
   });
 
-  testWidgets('오늘 읽을 기록은 내부 메타 대신 실제 리더 요약을 보여준다', (tester) async {
+  testWidgets('시즌 리더 요약은 중복 수치 상자 없이 타자와 투수를 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -238,12 +394,31 @@ void main() {
     expect(find.text('TOP5 선수'), findsNothing);
     expect(find.text('소스'), findsNothing);
     expect(find.text('공식+계산'), findsNothing);
-    expect(find.text('타율 1위'), findsOneWidget);
-    expect(find.text('최원준 0.365'), findsOneWidget);
-    expect(find.text('홈런 1위'), findsOneWidget);
-    expect(find.text('오스틴 24개'), findsOneWidget);
-    expect(find.text('ERA 1위'), findsAtLeastNWidgets(1));
-    expect(find.text('폰세 2.51'), findsOneWidget);
+    final summary = find.byKey(const ValueKey('records-briefing-panel'));
+    expect(
+      find.descendant(of: summary, matching: find.text('오늘의 타자')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('오스틴')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('오늘의 투수')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('폰세')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('타율 1위')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: summary, matching: find.text('홈런 1위')),
+      findsNothing,
+    );
   });
 
   testWidgets('라이트 모드 기록실은 밝은 카드 표면과 읽히는 텍스트를 유지한다', (tester) async {
@@ -281,7 +456,7 @@ void main() {
     final briefingGradient = briefingDecoration.gradient as LinearGradient;
     expect(briefingGradient.colors.first, AppTheme.lightColors.card);
 
-    final titleContext = tester.element(find.text('오늘 읽을 기록'));
+    final titleContext = tester.element(find.text('시즌 리더 요약'));
     expect(
       DefaultTextStyle.of(titleContext).style.color,
       AppTheme.lightColors.textPrimary,
@@ -372,6 +547,32 @@ const _moonBatterWithRecentGames = PlayerProfile(
       date: '06.23',
       opponent: 'NC',
       summary: 'AVG 0.200 · H 1 · HR 0 · RBI 0',
+    ),
+  ],
+);
+
+const _moonBatterWithMetrics = PlayerProfile(
+  id: '69102',
+  teamId: 'LG',
+  playerType: PlayerType.hitter,
+  name: '문보경',
+  number: 2,
+  position: '3B',
+  roleLabel: '내야수',
+  handedness: '우투좌타',
+  heightWeight: '',
+  birthDate: '',
+  status: PlayerAvailabilityStatus.available,
+  rosterGroup: PlayerRosterGroup.entry,
+  headlineStat: 'AVG 0.321',
+  secondaryStat: '최근 10경기 상승세',
+  seasonStats: ['AVG 0.321', 'G 120', 'HR 25', 'RBI 88', '', 'ERA -'],
+  highlights: ['최근 타격감이 좋습니다'],
+  recentGames: [
+    PlayerRecentGame(
+      date: '06.28',
+      opponent: '두산',
+      summary: 'AVG 0.500 · H 2 · HR 1 · RBI 1',
     ),
   ],
 );

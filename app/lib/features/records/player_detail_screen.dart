@@ -58,6 +58,22 @@ class PlayerDetailScreen extends ConsumerWidget {
     final team = KboTeams.byId(player.teamId);
     final photoUrl = playerProfileImageUrl(player, season: season);
     final recentGames = player.recentGames.take(5).toList();
+    final headlineMetric = _metricFromStat(
+      player.headlineStat,
+      fallbackLabel: '대표 기록',
+    );
+    final secondaryMetric = _metricFromStat(
+      player.secondaryStat,
+      fallbackLabel: '보조 지표',
+    );
+    final primaryMetrics = <_PlayerMetric>[?headlineMetric, ?secondaryMetric];
+    final primaryMetricKeys = primaryMetrics.map(_metricIdentity).toSet();
+    final seasonMetrics = player.seasonStats
+        .map((stat) => _metricFromStat(stat, fallbackLabel: '기록'))
+        .whereType<_PlayerMetric>()
+        .where((metric) => !primaryMetricKeys.contains(_metricIdentity(metric)))
+        .toList();
+    final hasKeyStats = primaryMetrics.isNotEmpty || seasonMetrics.isNotEmpty;
 
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -152,18 +168,17 @@ class PlayerDetailScreen extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        _section(
-          title: '주요 기록',
-          child: Column(
-            children: [
-              _statRow('헤드라인', player.headlineStat),
-              _statRow('현재 상태', player.secondaryStat),
-              for (final stat in player.seasonStats) _statRow('시즌', stat),
-            ],
+        if (hasKeyStats) ...[
+          const SizedBox(height: 18),
+          _section(
+            title: '주요 기록',
+            child: _PlayerKeyStats(
+              primaryMetrics: primaryMetrics,
+              seasonMetrics: seasonMetrics,
+            ),
           ),
-        ),
-        SizedBox(height: 18),
+        ],
+        const SizedBox(height: 18),
         _section(
           title: '최근 5경기',
           child: recentGames.isEmpty
@@ -177,7 +192,7 @@ class PlayerDetailScreen extends ConsumerWidget {
                   ],
                 ),
         ),
-        SizedBox(height: 18),
+        const SizedBox(height: 18),
         _section(
           title: '노트',
           child: player.highlights.isEmpty
@@ -193,6 +208,85 @@ class PlayerDetailScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  _PlayerMetric? _metricFromStat(
+    String rawValue, {
+    required String fallbackLabel,
+  }) {
+    final normalized = rawValue.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (_isMissingMetricValue(normalized)) {
+      return null;
+    }
+
+    final winLoss = RegExp(r'^(.+?)승\s+(.+?)패$').firstMatch(normalized);
+    if (winLoss != null) {
+      final wins = winLoss.group(1)?.trim() ?? '';
+      final losses = winLoss.group(2)?.trim() ?? '';
+      if (!_isMissingMetricValue(wins) && !_isMissingMetricValue(losses)) {
+        return _PlayerMetric(label: '승-패', value: '$wins승 $losses패');
+      }
+    }
+
+    final homeRuns = RegExp(r'^(.+?)홈런$').firstMatch(normalized);
+    if (homeRuns != null) {
+      final value = homeRuns.group(1)?.trim() ?? '';
+      if (!_isMissingMetricValue(value)) {
+        return _PlayerMetric(label: '홈런', value: value);
+      }
+    }
+
+    final labeledMetric = RegExp(
+      r'^([A-Za-z][A-Za-z0-9]*|타율|출루율|장타율|평균자책점)\s+(.+)$',
+    ).firstMatch(normalized);
+    if (labeledMetric != null) {
+      final rawLabel = labeledMetric.group(1)?.trim() ?? '';
+      final value = labeledMetric.group(2)?.trim() ?? '';
+      if (!_isMissingMetricValue(value)) {
+        return _PlayerMetric(
+          label: _displayMetricLabel(rawLabel),
+          value: value,
+        );
+      }
+      return null;
+    }
+
+    return _PlayerMetric(label: fallbackLabel, value: normalized);
+  }
+
+  String _displayMetricLabel(String rawLabel) {
+    return switch (rawLabel.toUpperCase()) {
+      'AVG' => '타율',
+      'G' => '경기',
+      'H' => '안타',
+      'HR' => '홈런',
+      'RBI' => '타점',
+      'SB' => '도루',
+      'OBP' => '출루율',
+      'SLG' => '장타율',
+      'W' => '승',
+      'L' => '패',
+      'SV' => '세이브',
+      'HLD' => '홀드',
+      'IP' => '이닝',
+      'SO' => '탈삼진',
+      _ => rawLabel,
+    };
+  }
+
+  bool _isMissingMetricValue(String value) {
+    final normalized = value.trim().toUpperCase();
+    return normalized.isEmpty ||
+        normalized == '-' ||
+        normalized == '--' ||
+        normalized == 'N/A' ||
+        normalized == 'NULL' ||
+        normalized == '기록 없음' ||
+        normalized == '정보 없음';
+  }
+
+  String _metricIdentity(_PlayerMetric metric) {
+    return '${metric.label}\u0000${metric.value}';
   }
 
   Widget _section({required String title, required Widget child}) {
@@ -319,6 +413,154 @@ class PlayerDetailScreen extends ConsumerWidget {
           fontSize: 28,
           fontWeight: FontWeight.w700,
           color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
+class _PlayerMetric {
+  final String label;
+  final String value;
+
+  const _PlayerMetric({required this.label, required this.value});
+}
+
+class _PlayerKeyStats extends StatelessWidget {
+  final List<_PlayerMetric> primaryMetrics;
+  final List<_PlayerMetric> seasonMetrics;
+
+  const _PlayerKeyStats({
+    required this.primaryMetrics,
+    required this.seasonMetrics,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (primaryMetrics.isNotEmpty)
+          _ResponsiveMetricGrid(
+            metrics: primaryMetrics,
+            keyPrefix: 'player-primary-metric',
+            emphasized: true,
+          ),
+        if (primaryMetrics.isNotEmpty && seasonMetrics.isNotEmpty)
+          const SizedBox(height: 16),
+        if (seasonMetrics.isNotEmpty) ...[
+          Text(
+            '시즌 기록',
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _ResponsiveMetricGrid(
+            metrics: seasonMetrics,
+            keyPrefix: 'player-season-metric',
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ResponsiveMetricGrid extends StatelessWidget {
+  final List<_PlayerMetric> metrics;
+  final String keyPrefix;
+  final bool emphasized;
+
+  const _ResponsiveMetricGrid({
+    required this.metrics,
+    required this.keyPrefix,
+    this.emphasized = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final usesSingleColumn = constraints.maxWidth < 300 || textScale >= 1.4;
+        final cardWidth = usesSingleColumn
+            ? constraints.maxWidth
+            : (constraints.maxWidth - 8) / 2;
+
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var index = 0; index < metrics.length; index++)
+              SizedBox(
+                width: cardWidth,
+                child: _PlayerMetricCard(
+                  key: ValueKey('$keyPrefix-$index'),
+                  metric: metrics[index],
+                  emphasized: emphasized,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PlayerMetricCard extends StatelessWidget {
+  final _PlayerMetric metric;
+  final bool emphasized;
+
+  const _PlayerMetricCard({
+    super.key,
+    required this.metric,
+    required this.emphasized,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: '${metric.label}, ${metric.value}',
+      excludeSemantics: true,
+      child: Container(
+        constraints: BoxConstraints(minHeight: emphasized ? 82 : 68),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          color: AppColors.cardSub,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: emphasized
+                ? AppColors.accent.withValues(alpha: 0.38)
+                : AppColors.divider,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              metric.label,
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.25,
+                color: emphasized ? AppColors.accent : AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              metric.value,
+              softWrap: true,
+              style: TextStyle(
+                fontSize: emphasized ? 17 : 15,
+                height: 1.25,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
         ),
       ),
     );

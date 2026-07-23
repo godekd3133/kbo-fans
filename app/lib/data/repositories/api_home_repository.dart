@@ -44,7 +44,25 @@ class ApiHomeRepository {
       kboBrief: kboBriefMap == null ? null : _parseKboBrief(kboBriefMap),
       quickItems: quickItems,
       standingsPreview: standingsPreview,
+      generatedAt: _parseGeneratedAt(data['meta']),
     );
+  }
+
+  DateTime? _parseGeneratedAt(Object? rawMeta) {
+    if (rawMeta is! Map) {
+      return null;
+    }
+    final raw = rawMeta['generatedAt'];
+    if (raw is String) {
+      return DateTime.tryParse(raw)?.toUtc();
+    }
+    if (raw is! num || !raw.isFinite) {
+      return null;
+    }
+    final milliseconds = raw.abs() >= 100000000000
+        ? raw.round()
+        : (raw * 1000).round();
+    return DateTime.fromMillisecondsSinceEpoch(milliseconds, isUtc: true);
   }
 
   HomeQuickItem _parseQuickItem(Map<String, dynamic> json) {

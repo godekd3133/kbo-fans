@@ -126,7 +126,7 @@ class _NewsHeader extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               const Text(
-                '뉴스',
+                '데이터 브리핑',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
@@ -135,7 +135,7 @@ class _NewsHeader extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                '경기 · 순위 · 기록 · 마이팀',
+                '경기 · 순위 · 기록 · 마이팀 흐름을 한눈에',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -146,7 +146,7 @@ class _NewsHeader extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: '뉴스 새로고침',
+          tooltip: '데이터 브리핑 새로고침',
           onPressed: onRefresh,
           icon: const Icon(Icons.refresh_rounded),
         ),
@@ -176,7 +176,8 @@ class _FilterBar extends StatelessWidget {
             for (final filter in _NewsFilter.values)
               Expanded(
                 child: AppPressable(
-                  onTap: filter == selected ? null : () => onChanged(filter),
+                  semanticSelected: filter == selected,
+                  onTap: () => onChanged(filter),
                   pressedScale: 0.98,
                   child: _FilterTab(
                     filter: filter,
@@ -222,7 +223,7 @@ class _FilterTab extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w900,
-          color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+          color: selected ? AppColors.textPrimary : AppColors.textSecondary,
         ),
       ),
     );
@@ -243,7 +244,7 @@ class _NewsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final allItems = _newsItems(aggregate);
-    final leadItems = _editorialLeadItems(allItems);
+    final leadItems = _editorialLeadItems(allItems, myTeamId: aggregate.myTeam);
     final visibleItems = filter == _NewsFilter.all
         ? allItems.length > leadItems.length
               ? allItems.where((item) => !leadItems.contains(item)).toList()
@@ -253,12 +254,16 @@ class _NewsContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _BriefingDisclosure(generatedAt: aggregate.generatedAt),
+        const SizedBox(height: 12),
         _EditorialLead(items: leadItems),
         const SizedBox(height: 12),
         _FilterBar(selected: filter, onChanged: onFilterChanged),
         const SizedBox(height: 14),
         _NewsSectionHeader(
-          title: filter == _NewsFilter.all ? '최신 뉴스' : '${filter.label} 뉴스',
+          title: filter == _NewsFilter.all
+              ? '전체 데이터 흐름'
+              : '${filter.label} 데이터 흐름',
           count: visibleItems.length,
         ),
         const SizedBox(height: 10),
@@ -277,6 +282,54 @@ class _NewsContent extends StatelessWidget {
             if (index != visibleItems.length - 1) const SizedBox(height: 10),
           ],
       ],
+    );
+  }
+}
+
+class _BriefingDisclosure extends StatelessWidget {
+  final DateTime? generatedAt;
+
+  const _BriefingDisclosure({required this.generatedAt});
+
+  @override
+  Widget build(BuildContext context) {
+    final generatedLabel = generatedAt == null
+        ? '생성 시각 미제공'
+        : '${_twoDigits(kboCivilDateTime(generatedAt).hour)}:${_twoDigits(kboCivilDateTime(generatedAt).minute)} 생성';
+
+    return Semantics(
+      label: 'KBO 경기, 순위, 기록 데이터를 앱이 자동 정리한 브리핑. 실제 뉴스 기사가 아님. $generatedLabel',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.cardSub.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.info_outline_rounded,
+              size: 17,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'KBO 데이터로 앱이 자동 정리한 브리핑입니다. 실제 뉴스 기사 아님 · $generatedLabel',
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.35,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -310,7 +363,7 @@ class _EditorialLead extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '주요 소식',
+                      '먼저 볼 흐름',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -657,7 +710,7 @@ class _NewsErrorState extends StatelessWidget {
   Widget build(BuildContext context) {
     return _StateCard(
       icon: Icons.wifi_off_rounded,
-      title: '뉴스를 불러올 수 없습니다',
+      title: '데이터 브리핑을 불러올 수 없습니다',
       body: '오늘 경기와 기록 흐름을 다시 확인해 주세요.',
       actionLabel: '다시 확인',
       onAction: onRetry,
@@ -678,7 +731,9 @@ class _NewsEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = hasAnyNews ? '$filterLabel 뉴스가 없습니다' : '오늘 보여줄 뉴스가 없습니다';
+    final title = hasAnyNews
+        ? '$filterLabel 데이터 흐름이 없습니다'
+        : '오늘 정리할 데이터 흐름이 없습니다';
     final body = hasAnyNews
         ? '다른 필터를 선택하거나 새로고침해 최신 흐름을 확인하세요.'
         : '경기, 순위, 기록 데이터가 들어오면 이 탭에 짧은 카드로 정리됩니다.';
@@ -890,7 +945,7 @@ _NewsCardData? _homeRunPaceItem(
       filter: _NewsFilter.records,
       label: '홈런 페이스',
       title: '$playerName, 지금 페이스면 $projectedHomeRunsText',
-      subtitle: '$teamName $gamesPlayed경기 기준 · 현재 $homeRuns홈런',
+      subtitle: '앱 계산 · $teamName $gamesPlayed경기 기준 · 현재 $homeRuns홈런',
       sourceLabel: '기록실',
       actionLabel: _actionLabelForRoute(item.route),
       route: item.route,
@@ -952,7 +1007,7 @@ _NewsCardData? _winPaceItem(TeamStanding standing) {
     filter: _NewsFilter.standings,
     label: '승수 페이스',
     title: '$teamName, 지금 페이스면 $projectedWins승',
-    subtitle: '현재 $recordText · 144경기 환산',
+    subtitle: '앱 계산 · 현재 $recordText · 144경기 환산',
     sourceLabel: '순위표',
     actionLabel: '순위 보기',
     route: '/standings',
@@ -988,9 +1043,12 @@ _NewsCardData _standingsRaceItem({
   final lowerGap = lower.gb.isEmpty || lower.gb == '-'
       ? '선두권'
       : '선두와 ${lower.gb}G차';
-  final title = upper.rank == 1
+  final parsedGap = _parseGamesBehind(lower.gb);
+  final title = upper.rank != 1
+      ? '${upper.teamName}-${lower.teamName}, 인접 순위 흐름'
+      : parsedGap != null && parsedGap <= 2
       ? '${upper.teamName} 턱밑까지 쫓는 ${lower.teamName}'
-      : '${upper.teamName}-${lower.teamName}, 순위권 압박 계속';
+      : '${upper.teamName} 선두, ${lower.teamName} ${lower.gb}G차 추격';
   return _NewsCardData(
     filter: _NewsFilter.standings,
     label: '순위권 구도',
@@ -1126,6 +1184,10 @@ String _briefNewsTitle(HomeKboBriefItem item) {
   if (item.type != 'standings') {
     return item.title;
   }
+  final originalTitle = item.title.trim();
+  if (_hasEditorialStandingPrefix(originalTitle)) {
+    return originalTitle;
+  }
   final teamName = _teamNameFromStandingBriefTitle(item.title);
   if (teamName == null) {
     return item.title;
@@ -1137,6 +1199,18 @@ String _briefNewsTitle(HomeKboBriefItem item) {
   return '선두 지키는 $teamName';
 }
 
+bool _hasEditorialStandingPrefix(String title) {
+  return const [
+    '선두가 위태로운 ',
+    '선두 지키는 ',
+    '선두 굳히는 ',
+    '선두 추격하는 ',
+    '상위권 버티는 ',
+    '중위권 반등 노리는 ',
+    '하위권 탈출 급한 ',
+  ].any(title.startsWith);
+}
+
 String? _teamNameFromStandingBriefTitle(String title) {
   var normalized = title.trim();
   normalized = normalized.replaceFirst(RegExp(r'^[0-9]+위\s*'), '');
@@ -1144,6 +1218,8 @@ String? _teamNameFromStandingBriefTitle(String title) {
   normalized = normalized.replaceAll('선두권 체크', '').replaceAll('유지', '').trim();
   return normalized.isEmpty ? null : normalized;
 }
+
+String _twoDigits(int value) => value.toString().padLeft(2, '0');
 
 double? _gapFromText(String text) {
   final match = RegExp(r'([0-9]+(?:\.[0-9]+)?)G차').firstMatch(text);
@@ -1153,10 +1229,16 @@ double? _gapFromText(String text) {
   return double.tryParse(match.group(1)!);
 }
 
-List<_NewsCardData> _editorialLeadItems(List<_NewsCardData> items) {
+List<_NewsCardData> _editorialLeadItems(
+  List<_NewsCardData> items, {
+  String? myTeamId,
+}) {
   final ordered = [...items]
     ..sort((a, b) {
-      final priority = _leadPriority(a).compareTo(_leadPriority(b));
+      final priority = _leadPriority(
+        a,
+        myTeamId: myTeamId,
+      ).compareTo(_leadPriority(b, myTeamId: myTeamId));
       if (priority != 0) {
         return priority;
       }
@@ -1165,12 +1247,16 @@ List<_NewsCardData> _editorialLeadItems(List<_NewsCardData> items) {
   return ordered.take(_editorialLeadCount).toList();
 }
 
-int _leadPriority(_NewsCardData item) {
+int _leadPriority(_NewsCardData item, {String? myTeamId}) {
+  if (item.filter == _NewsFilter.myTeam ||
+      (myTeamId != null && item.teamId == myTeamId)) {
+    return 0;
+  }
   return switch (item.filter) {
-    _NewsFilter.game => 0,
-    _NewsFilter.standings => 1,
-    _NewsFilter.records => 2,
-    _NewsFilter.myTeam => 3,
+    _NewsFilter.game => 1,
+    _NewsFilter.standings => 2,
+    _NewsFilter.records => 3,
+    _NewsFilter.myTeam => 0,
     _NewsFilter.all => 4,
   };
 }

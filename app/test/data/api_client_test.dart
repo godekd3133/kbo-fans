@@ -649,6 +649,7 @@ void main() {
         dio: _dioWithAdapter(
           _SuccessAdapter({
             'date': '2026-06-19',
+            'meta': {'generatedAt': 1700000000},
             'myTeam': 'LG',
             'myTeamBrief': null,
             'kboBrief': {
@@ -685,6 +686,10 @@ void main() {
     );
 
     expect(aggregate.kboBrief!.items.map((item) => item.type), ['big_match']);
+    expect(
+      aggregate.generatedAt,
+      DateTime.fromMillisecondsSinceEpoch(1700000000000, isUtc: true),
+    );
   });
 
   test(
