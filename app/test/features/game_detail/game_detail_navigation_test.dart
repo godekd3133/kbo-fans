@@ -29,6 +29,11 @@ void main() {
     );
   });
 
+  test('relay focus 스크롤은 고정 탭 높이만큼 상단 여백을 남긴다', () {
+    expect(gameDetailRelayFocusScrollTarget(400), 400 - kTextTabBarHeight);
+    expect(gameDetailRelayFocusScrollTarget(24), 0);
+  });
+
   testWidgets('상세가 첫 route일 때 뒤로가기는 빈 화면 대신 홈으로 이동한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -85,6 +90,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final game = _liveGame();
+    final repository = _FakeGameRepository(
+      game,
+      failGameRefreshAfterFirstLoad: true,
+    );
     final router = GoRouter(
       initialLocation: '/game/${game.gameId}',
       routes: [
@@ -106,11 +115,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         retry: (_, _) => null,
-        overrides: [
-          gameRepositoryProvider.overrideWithValue(
-            _FakeGameRepository(game, failGameRefreshAfterFirstLoad: true),
-          ),
-        ],
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
         child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
       ),
     );
@@ -119,6 +124,7 @@ void main() {
 
     expect(find.text('KT'), findsWidgets);
     expect(find.text('최신 경기 정보를 불러올 수 없습니다'), findsNothing);
+    expect(find.textContaining('방금 업데이트'), findsNothing);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await tester.pump();
@@ -126,6 +132,123 @@ void main() {
 
     expect(find.text('KT'), findsWidgets);
     expect(find.text('최신 경기 정보를 불러올 수 없습니다'), findsNothing);
+    expect(find.text('갱신 지연'), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+
+    final gameCallCountBeforeRetry = repository.gameCallCount;
+    repository.failGameRefreshAfterFirstLoad = false;
+    await tester.tap(find.text('다시 시도'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(repository.gameCallCount, greaterThan(gameCallCountBeforeRetry));
+    expect(find.text('KT'), findsWidgets);
+    expect(find.text('갱신 지연'), findsNothing);
+    expect(find.text('다시 시도'), findsNothing);
+    expect(find.textContaining('방금 업데이트'), findsNothing);
+  });
+
+  testWidgets('focus=relay 진입 시 문자중계 첫 요약이 고정 탭 아래에 가려지지 않는다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=relay&focus=relay',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+            focusRelay: state.uri.queryParameters['focus'] == 'relay',
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    final nestedScrollState = tester.state<NestedScrollViewState>(
+      find.byType(NestedScrollView),
+    );
+    final remainingHeaderExtent =
+        nestedScrollState.outerController.position.maxScrollExtent -
+        nestedScrollState.outerController.offset;
+    final tabBarBottom = tester.getBottomLeft(find.byType(TabBar)).dy;
+    final relaySummaryTop = tester.getTopLeft(find.text('KT 2 : 1 LG')).dy;
+
+    expect(remainingHeaderExtent, greaterThanOrEqualTo(kTextTabBarHeight));
+    expect(relaySummaryTop, greaterThanOrEqualTo(tabBarBottom));
+  });
+
+  testWidgets('기존 경기로 진입한 첫 상세 조회 실패도 즉시 갱신 지연과 재시도를 보여준다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final repository = _FakeGameRepository(game, failAllGameLoads: true);
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('KT'), findsWidgets);
+    expect(find.text('갱신 지연'), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+
+    repository.failAllGameLoads = false;
+    await tester.tap(find.text('다시 시도'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('갱신 지연'), findsNothing);
+    expect(find.text('다시 시도'), findsNothing);
   });
 
   testWidgets('라이브 경기 상세 follow CTA는 푸쉬 중계 버튼만 노출한다', (tester) async {
@@ -639,13 +762,15 @@ class _FakeGameRepository
   _FakeGameRepository(
     this.game, {
     this.failGameRefreshAfterFirstLoad = false,
+    this.failAllGameLoads = false,
     this.highlightInfo,
     this.pendingRelayRefresh,
     this.pendingInitialRelay,
   });
 
   final Game game;
-  final bool failGameRefreshAfterFirstLoad;
+  bool failGameRefreshAfterFirstLoad;
+  bool failAllGameLoads;
   final HighlightInfo? highlightInfo;
   final Completer<RelayData>? pendingRelayRefresh;
   final Completer<RelayData>? pendingInitialRelay;
@@ -655,6 +780,8 @@ class _FakeGameRepository
   int relayCallCount = 0;
   int gameRefreshRequestCount = 0;
   int relayRefreshRequestCount = 0;
+
+  int get gameCallCount => _getGameCallCount;
 
   @override
   void requestScoreboardRefresh(String date) {}
@@ -675,6 +802,9 @@ class _FakeGameRepository
   @override
   Future<Game?> getGame(String gameId) async {
     _getGameCallCount += 1;
+    if (failAllGameLoads) {
+      throw Exception('network unavailable');
+    }
     if (failGameRefreshAfterFirstLoad && _getGameCallCount > 1) {
       throw Exception('network unavailable after resume');
     }

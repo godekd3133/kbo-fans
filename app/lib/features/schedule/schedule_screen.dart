@@ -577,6 +577,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           children: [
             AppPageFrame(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildMonthHeader(),
                   Expanded(child: _buildBody(scheduleAsync)),
@@ -631,50 +632,60 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   Widget _buildMonthHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 34),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  DateFormat(
-                    'MMM yyyy',
-                    'en_US',
-                  ).format(_currentMonth).toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textDisabled,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
+    return SizedBox(
+      key: const ValueKey('schedule-month-header'),
+      width: double.infinity,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 34),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DateFormat(
+                      'MMM yyyy',
+                      'en_US',
+                    ).format(_currentMonth).toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textDisabled,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  '일정',
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w900,
-                    height: 1.05,
+                  const SizedBox(height: 4),
+                  const Text(
+                    '일정',
+                    style: TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w900,
+                      height: 1.05,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          _HeaderIconButton(
-            icon: Icons.chevron_left_rounded,
-            onTap: () => _changeMonth(-1),
-          ),
-          const SizedBox(width: 8),
-          _HeaderIconButton(
-            icon: Icons.chevron_right_rounded,
-            onTap: () => _changeMonth(1),
-          ),
-          const SizedBox(width: 8),
-          _HeaderIconButton(icon: Icons.today_rounded, onTap: _goToToday),
-        ],
+            _HeaderIconButton(
+              icon: Icons.chevron_left_rounded,
+              semanticLabel: '이전 달',
+              onTap: () => _changeMonth(-1),
+            ),
+            const SizedBox(width: 8),
+            _HeaderIconButton(
+              icon: Icons.chevron_right_rounded,
+              semanticLabel: '다음 달',
+              onTap: () => _changeMonth(1),
+            ),
+            const SizedBox(width: 8),
+            _HeaderIconButton(
+              icon: Icons.today_rounded,
+              semanticLabel: '오늘로 이동',
+              onTap: _goToToday,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -831,7 +842,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               children: [
                 Expanded(
                   child: _segmentedButton(
-                    label: '내 팀 먼저 보기',
+                    label: hasMyTeam ? '내 팀 먼저 보기' : '달력 보기',
                     selected: _viewMode == ScheduleViewMode.calendar,
                     onTap: () =>
                         setState(() => _viewMode = ScheduleViewMode.calendar),
@@ -967,8 +978,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required VoidCallback onTap,
   }) {
     return AppPressable(
-      onTap: onTap,
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
+        onTap();
+      },
       pressedScale: 0.97,
+      semanticSelected: selected,
       child: Container(
         height: 42,
         alignment: Alignment.center,
@@ -994,8 +1009,12 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required VoidCallback onTap,
   }) {
     return AppPressable(
-      onTap: onTap,
+      onTap: () {
+        FocusManager.instance.primaryFocus?.unfocus();
+        onTap();
+      },
       pressedScale: 0.96,
+      semanticSelected: selected,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
@@ -1011,7 +1030,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
           ),
         ),
@@ -1102,8 +1121,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       child: Opacity(
         opacity: disabled ? 0.38 : 1,
         child: AppPressable(
-          onTap: onTap,
+          onTap: disabled ? null : onTap,
           pressedScale: 0.96,
+          semanticSelected: selected,
           child: Container(
             constraints: const BoxConstraints(minWidth: 46),
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
@@ -1255,8 +1275,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         final scheduleAsync = ref.watch(scheduleProvider(yearMonth));
 
         return scheduleAsync.when(
-          loading: () => _buildStadiumList(yearMonth, const <ScheduleDay>[]),
-          error: (_, _) => _buildStadiumList(yearMonth, const <ScheduleDay>[]),
+          loading: _buildGameListLoading,
+          error: (error, _) => RefreshIndicator(
+            onRefresh: _refreshSchedule,
+            color: AppColors.live,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [_buildScheduleErrorContent(error)],
+            ),
+          ),
           data: (days) {
             final filteredDays = _filterDays(days, myTeamId);
             final stadiumFilteredDays = _filterDaysBySelectedTeam(
@@ -1966,24 +1993,36 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
 class _HeaderIconButton extends StatelessWidget {
   final IconData icon;
+  final String semanticLabel;
   final VoidCallback onTap;
 
-  const _HeaderIconButton({required this.icon, required this.onTap});
+  const _HeaderIconButton({
+    required this.icon,
+    required this.semanticLabel,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return AppPressable(
-      onTap: onTap,
-      pressedScale: 0.94,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.divider),
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      child: Tooltip(
+        message: semanticLabel,
+        child: AppPressable(
+          onTap: onTap,
+          pressedScale: 0.94,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Icon(icon, color: AppColors.textPrimary, size: 20),
+          ),
         ),
-        child: Icon(icon, color: AppColors.textPrimary, size: 18),
       ),
     );
   }

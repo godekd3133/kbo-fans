@@ -38,6 +38,14 @@ const gameDetailScheduledRefreshInterval = Duration(minutes: 5);
 const _relayTabIndex = 1;
 
 @visibleForTesting
+double gameDetailRelayFocusScrollTarget(double maxScrollExtent) {
+  if (maxScrollExtent <= kTextTabBarHeight) {
+    return 0;
+  }
+  return maxScrollExtent - kTextTabBarHeight;
+}
+
+@visibleForTesting
 Duration? gameDetailRefreshIntervalFor(
   GameStatus status, {
   required int selectedTabIndex,
@@ -90,6 +98,7 @@ class GameDetailScreen extends ConsumerStatefulWidget {
 
 class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
   Game? _lastResolvedGame;
+  bool _refreshDelayed = false;
 
   @override
   void initState() {
@@ -102,9 +111,28 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.gameId != widget.gameId) {
       _lastResolvedGame = widget.game;
+      _refreshDelayed = false;
       return;
     }
     _lastResolvedGame ??= widget.game;
+  }
+
+  void _handleRefreshSucceeded() {
+    if (!mounted || !_refreshDelayed) {
+      return;
+    }
+    setState(() {
+      _refreshDelayed = false;
+    });
+  }
+
+  void _handleRefreshFailed() {
+    if (!mounted || _refreshDelayed) {
+      return;
+    }
+    setState(() {
+      _refreshDelayed = true;
+    });
   }
 
   @override
@@ -124,6 +152,9 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
                 gameId: widget.gameId,
                 initialTabIndex: _tabIndexFromName(widget.initialTab),
                 focusInitialRelay: widget.focusRelay,
+                refreshDelayed: _refreshDelayed,
+                onRefreshSucceeded: _handleRefreshSucceeded,
+                onRefreshFailed: _handleRefreshFailed,
               ),
             );
           }
@@ -146,6 +177,9 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
                   gameId: widget.gameId,
                   initialTabIndex: _tabIndexFromName(widget.initialTab),
                   focusInitialRelay: widget.focusRelay,
+                  refreshDelayed: true,
+                  onRefreshSucceeded: _handleRefreshSucceeded,
+                  onRefreshFailed: _handleRefreshFailed,
                 )
               : Scaffold(
                   appBar: AppBar(title: const Text('경기 상세')),
@@ -176,6 +210,9 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
               gameId: widget.gameId,
               initialTabIndex: _tabIndexFromName(widget.initialTab),
               focusInitialRelay: widget.focusRelay,
+              refreshDelayed: _refreshDelayed,
+              onRefreshSucceeded: _handleRefreshSucceeded,
+              onRefreshFailed: _handleRefreshFailed,
             ),
           );
         },
@@ -189,12 +226,18 @@ class _GameDetailBody extends ConsumerStatefulWidget {
   final Game game;
   final int initialTabIndex;
   final bool focusInitialRelay;
+  final bool refreshDelayed;
+  final VoidCallback onRefreshSucceeded;
+  final VoidCallback onRefreshFailed;
 
   const _GameDetailBody({
     required this.gameId,
     required this.game,
     this.initialTabIndex = 0,
     this.focusInitialRelay = false,
+    required this.refreshDelayed,
+    required this.onRefreshSucceeded,
+    required this.onRefreshFailed,
   });
 
   @override
@@ -472,7 +515,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       }
 
       await Future.wait(futures).timeout(const Duration(seconds: 25));
+      widget.onRefreshSucceeded();
     } catch (error) {
+      widget.onRefreshFailed();
       DevConsole.instance.warn('GAME DETAIL refresh skipped: $error');
     }
   }
@@ -680,8 +725,22 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                   ),
                 ),
                 SliverToBoxAdapter(
-                  child: _GameScorebug(game: game, isLive: isLive),
+                  child: _GameScorebug(
+                    game: game,
+                    isLive: isLive,
+                    refreshDelayed: widget.refreshDelayed,
+                  ),
                 ),
+                if (widget.refreshDelayed)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+                      child: _RefreshDelayCard(
+                        onRetry: () =>
+                            unawaited(_refreshGameDetail(userInitiated: true)),
+                      ),
+                    ),
+                  ),
                 if (isLive)
                   SliverToBoxAdapter(
                     child: Padding(
@@ -764,7 +823,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       if (!mounted || !_outerScrollController.hasClients) {
         return;
       }
-      final target = _outerScrollController.position.maxScrollExtent;
+      final target = gameDetailRelayFocusScrollTarget(
+        _outerScrollController.position.maxScrollExtent,
+      );
       if (target <= 0) {
         return;
       }
@@ -782,8 +843,13 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
 class _GameScorebug extends StatelessWidget {
   final Game game;
   final bool isLive;
+  final bool refreshDelayed;
 
-  const _GameScorebug({required this.game, required this.isLive});
+  const _GameScorebug({
+    required this.game,
+    required this.isLive,
+    required this.refreshDelayed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -832,7 +898,7 @@ class _GameScorebug extends StatelessWidget {
                     ],
                     Expanded(
                       child: Text(
-                        isLive ? 'KBO 리그 | 방금 업데이트' : 'KBO 리그',
+                        refreshDelayed ? 'KBO 리그 | 갱신 지연' : 'KBO 리그',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -911,6 +977,67 @@ class _GameScorebug extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RefreshDelayCard extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _RefreshDelayCard({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      label: '경기 정보 갱신 지연',
+      child: Container(
+        key: const ValueKey('game-detail-refresh-delay'),
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.ballYellow.withValues(alpha: 0.45),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.sync_problem_outlined,
+              size: 20,
+              color: AppColors.ballYellow,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '갱신 지연',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '기존 경기 정보를 유지하고 있습니다',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton(onPressed: onRetry, child: const Text('다시 시도')),
+          ],
+        ),
       ),
     );
   }

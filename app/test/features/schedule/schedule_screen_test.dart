@@ -7,6 +7,7 @@ import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
+import 'package:kbo_fans/core/widgets/app_motion.dart';
 import 'package:kbo_fans/core/widgets/main_scaffold.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
@@ -60,6 +61,23 @@ void main() {
 
     expect(find.text(_monthLabel(nextMonth)), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('마이팀이 없으면 일정 기본 보기를 개인화된 것처럼 부르지 않는다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          scheduleProvider.overrideWith(
+            (_, yearMonth) async => _scheduleForMonth(yearMonth),
+          ),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('달력 보기'), findsOneWidget);
+    expect(find.text('내 팀 먼저 보기'), findsNothing);
   });
 
   testWidgets('캘린더의 다음달 1일을 누르면 다음달로 이동한다', (tester) async {
@@ -270,6 +288,115 @@ void main() {
       find.byKey(const ValueKey('schedule-my-team-badge-today-nc-ob')),
       findsNothing,
     );
+  });
+
+  testWidgets('마이팀 필터에서 구장별 보기로 전환해도 월 헤더가 화면 안에 남는다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final now = kboCivilDateTime();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith(
+            (_, yearMonth) async => _myTeamScheduleForToday(now, yearMonth),
+          ),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('마이팀만'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('구장별'));
+    await tester.pumpAndSettle();
+
+    final monthRect = tester.getRect(find.text(_monthLabel(now)));
+    final titleRect = tester.getRect(find.text('일정'));
+    final controlsRect = tester.getRect(find.text('내 팀 먼저 보기'));
+
+    expect(monthRect.left, greaterThanOrEqualTo(0));
+    expect(monthRect.right, lessThanOrEqualTo(390));
+    expect(titleRect.left, greaterThanOrEqualTo(0));
+    expect(titleRect.right, lessThanOrEqualTo(390));
+    expect(titleRect.bottom, lessThan(controlsRect.top));
+    expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.today_rounded), findsOneWidget);
+    expect(tester.getSize(find.byTooltip('이전 달')), const Size(44, 44));
+    expect(tester.getSize(find.byTooltip('다음 달')), const Size(44, 44));
+    expect(tester.getSize(find.byTooltip('오늘로 이동')), const Size(44, 44));
+  });
+
+  testWidgets('구장별 일정 API 실패는 빈 일정이 아니라 재시도 오류로 구분한다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          scheduleProvider.overrideWith(
+            (_, _) => Future.error('schedule unavailable'),
+          ),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('구장별'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('일정을 불러올 수 없습니다'), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+    expect(find.text('구장별 일정 없음'), findsNothing);
+  });
+
+  testWidgets('일정 선택 컨트롤은 선택 상태와 비활성 팀을 semantics로 구분한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+            scheduleProvider.overrideWith(
+              (_, yearMonth) async => _scheduleForMonth(yearMonth),
+            ),
+            seasonScheduleProvider.overrideWith((_, _) async => const []),
+          ],
+          child: const MaterialApp(home: ScheduleScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('매치업'));
+      await tester.pumpAndSettle();
+
+      final matchupPressable = find.ancestor(
+        of: find.text('매치업'),
+        matching: find.byType(AppPressable),
+      );
+      final matchupSemantics = tester
+          .getSemantics(matchupPressable)
+          .getSemanticsData();
+      expect(
+        matchupSemantics.flagsCollection.isSelected.toBoolOrNull(),
+        isTrue,
+      );
+
+      final disabledKtPressable = find.ancestor(
+        of: find.text('KT').first,
+        matching: find.byType(AppPressable),
+      );
+      final disabledKtSemantics = tester
+          .getSemantics(disabledKtPressable)
+          .getSemanticsData();
+      expect(
+        disabledKtSemantics.flagsCollection.isEnabled.toBoolOrNull(),
+        isFalse,
+      );
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('일정 경기 상세 진입은 최신 상세 후 첫 탭을 기다리지 않고 이동한다', (tester) async {
