@@ -30,13 +30,21 @@
 - [x] 푸시 설정 로드 실패를 무한 loading과 분리하고, `N개 선택됨`과 실제 수신의 권한·기기 등록·서버 상태 경계를 안내.
 - [x] `docs/UX_PERSONA_AUDIT_EXPANDED_2026-07-23.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 감사 근거와 새 표시 계약 동기화.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.21+89` 기준으로 갱신.
-- [ ] Git commit/tag/GitHub Release, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+- [x] 변경을 의미 단위 4개 커밋으로 나누고 `main`과 numeric tag `0.1.21`을 원격에 push. GitHub Release `0.1.21 데이터 표현과 작은 화면 정리`를 공개.
+- [x] release API health gate 통과 후 `API_BASE_URL=https://3-39-79-1.sslip.io/api`, `USE_BACKEND_API=true`로 iOS IPA `0.1.21+89` archive/export.
+- [x] TestFlight upload 성공: delivery/build id `f98f63a3-c55b-4a72-b404-fff14e7be7d7`, transferred `35022222` bytes, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-10-21T03:38:41-07:00`.
+- [x] Internal TestFlight: internal group `Tester`에 build `89` 연결 확인.
+- [x] External TestFlight: `External Testers`에 build `89` 연결하고 Beta App Review 제출. 최종 조회 상태 `WAITING_FOR_REVIEW`; 외부 테스터 `na***@naver.com`은 `INSTALLED`. 새 빌드 승인 전까지 기존 승인·설치 가능 빌드는 제거하지 않음.
 
 ### 검증
 - [x] 핵심 정보 구조 대상 Flutter test 68개 통과: main scaffold, API home meta, 브리핑, 온보딩, 기록·선수, 일정, 순위.
 - [x] 경기 상세 집중 회귀: 스코어 1개, 박스스코어 8개, 라인업 7개, 상세 내비게이션 14개, 홈 LIVE/예정 인사이트 2개 통과.
 - [x] 알림함 집중 테스트 7개 및 저장 서비스·공용 키보드 묶음 12개 통과.
-- [x] 전체 Flutter test suite 373개 및 analyzer 최종 재실행.
+- [x] `fvm flutter analyze --no-pub`: no issues.
+- [x] `fvm flutter test --no-pub`: 373개 전체 통과.
+- [x] `./scripts/release-api-health-check.sh --base-url https://3-39-79-1.sslip.io/api --date 2026-07-23`: scoreboard·home·schedule·standings·records·relay gate 통과.
+- [x] `fvm flutter build ipa --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api`: archive/export 성공, bundle `com.kbofans.kboFans`, version `0.1.21`, build `89`.
+- [x] App Store Connect API 재조회: build `89` `VALID`, internal/external group 연결, Beta App Review `WAITING_FOR_REVIEW`.
 - [x] `0.1.20+88` release web build와 390×844 전 중요 여정, 320×844 핵심 좁은 화면 여정을 재캡처. 개선 후 캡처를 감사 artifact에 보존했고 브라우저 warning/error가 없음을 확인.
 - [ ] 실제 iOS VoiceOver, Android TalkBack, 알림 권한 거부·FCM/APNs 수신, 장시간 background 복귀는 미확인.
 
