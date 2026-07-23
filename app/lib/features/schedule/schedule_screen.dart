@@ -28,6 +28,8 @@ import 'widgets/schedule_game_card.dart';
 
 enum ScheduleViewMode { calendar, stadium, matchup }
 
+enum _CalendarLegendStyle { dot, outline, filled }
+
 enum ScheduleTeamFilter { all, myTeamOnly, otherTeamsOnly }
 
 const _scheduleGameDetailOpenTimeout = Duration(seconds: 4);
@@ -946,22 +948,50 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         spacing: 12,
         runSpacing: 8,
         children: [
-          _legendItem(AppColors.accent, '마이팀 경기일'),
-          _legendItem(AppColors.textDisabled, '일반 경기일'),
-          _legendItem(AppColors.textPrimary, '선택한 날짜'),
+          _legendItem(
+            AppColors.live,
+            '경기 있는 날짜',
+            style: _CalendarLegendStyle.outline,
+          ),
+          _legendItem(AppColors.accent, '마이팀 경기'),
+          _legendItem(AppColors.textDisabled, '일반 경기'),
+          _legendItem(
+            AppColors.live,
+            '선택한 날짜',
+            style: _CalendarLegendStyle.filled,
+          ),
         ],
       ),
     );
   }
 
-  Widget _legendItem(Color color, String label) {
+  Widget _legendItem(
+    Color color,
+    String label, {
+    _CalendarLegendStyle style = _CalendarLegendStyle.dot,
+  }) {
+    final marker = switch (style) {
+      _CalendarLegendStyle.dot => BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+      _CalendarLegendStyle.outline => BoxDecoration(
+        border: Border.all(color: color),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      _CalendarLegendStyle.filled => BoxDecoration(
+        color: color.withValues(alpha: 0.62),
+        border: Border.all(color: color.withValues(alpha: 0.82)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+    };
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          width: style == _CalendarLegendStyle.dot ? 8 : 11,
+          height: style == _CalendarLegendStyle.dot ? 8 : 11,
+          decoration: marker,
         ),
         const SizedBox(width: 6),
         Text(

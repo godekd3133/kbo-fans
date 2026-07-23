@@ -261,51 +261,52 @@ class _SelectedTeamPreview extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w900,
-                        height: 1.08,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Row(
-                      children: const [
-                        Expanded(
-                          child: _PreviewBenefit(
-                            icon: Icons.emoji_events_outlined,
-                            title: '경기 우선',
-                            subtitle: '홈에서 먼저 보기',
-                          ),
-                        ),
-                        _PreviewDivider(),
-                        Expanded(
-                          child: _PreviewBenefit(
-                            icon: Icons.notifications_none_rounded,
-                            title: '득점 알림',
-                            subtitle: '실시간 알림 받기',
-                          ),
-                        ),
-                        _PreviewDivider(),
-                        Expanded(
-                          child: _PreviewBenefit(
-                            icon: Icons.bar_chart_rounded,
-                            title: '순위 추적',
-                            subtitle: '팀 순위 확인',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                    height: 1.08,
+                  ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = 8.0;
+              final columns = constraints.maxWidth >= 350 ? 3 : 2;
+              final width =
+                  (constraints.maxWidth - (gap * (columns - 1))) / columns;
+              const benefits = [
+                _PreviewBenefit(
+                  icon: Icons.emoji_events_outlined,
+                  title: '경기 우선',
+                  subtitle: '홈에서 먼저 보기',
+                ),
+                _PreviewBenefit(
+                  icon: Icons.notifications_none_rounded,
+                  title: '득점 알림',
+                  subtitle: '실시간 알림 받기',
+                ),
+                _PreviewBenefit(
+                  icon: Icons.bar_chart_rounded,
+                  title: '순위 추적',
+                  subtitle: '팀 순위 확인',
+                ),
+              ];
+              return Wrap(
+                spacing: gap,
+                runSpacing: 7,
+                children: [
+                  for (final benefit in benefits)
+                    SizedBox(width: width, child: benefit),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -326,67 +327,49 @@ class _PreviewBenefit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: AppColors.cardSub,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, size: 15, color: AppColors.textPrimary),
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FittedBox(
-                alignment: Alignment.centerLeft,
-                fit: BoxFit.scaleDown,
-                child: Text(
+    return Container(
+      constraints: const BoxConstraints(minHeight: 42),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: AppColors.textPrimary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   title,
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11,
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              FittedBox(
-                alignment: Alignment.centerLeft,
-                fit: BoxFit.scaleDown,
-                child: Text(
+                const SizedBox(height: 2),
+                Text(
                   subtitle,
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 8,
-                    color: AppColors.textDisabled,
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PreviewDivider extends StatelessWidget {
-  const _PreviewDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 1,
-      height: 26,
-      margin: const EdgeInsets.symmetric(horizontal: 5),
-      color: AppColors.divider,
+        ],
+      ),
     );
   }
 }

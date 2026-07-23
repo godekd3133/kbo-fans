@@ -167,9 +167,9 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 padding: const EdgeInsets.all(14),
                 child: Center(
                   child: Text(
-                    '마지막 업데이트: ${DateFormat('yyyy.MM.dd HH:mm').format(DateTime.now())}',
+                    'KBO 순위 데이터 · 화면 확인 ${DateFormat('yyyy.MM.dd HH:mm').format(kboCivilDateTime())}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: AppColors.textDisabled,
                     ),
                   ),
@@ -202,6 +202,12 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
           final teamColor = colors.readableAccent(
             team?.primaryColor ?? colors.live,
           );
+          final screenWidth = MediaQuery.sizeOf(context).width;
+          final useCompactTeamName = screenWidth <= 430;
+          final useNarrowColumns = screenWidth <= 340;
+          final displayTeamName = useCompactTeamName
+              ? team?.shortName ?? s.teamName
+              : s.teamName;
           final rowTint = Color.alphaBlend(
             teamColor.withValues(alpha: 0.2),
             AppColors.card,
@@ -244,7 +250,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                   Row(
                     children: [
                       SizedBox(
-                        width: 32,
+                        width: useNarrowColumns ? 28 : 32,
                         child: Center(
                           child: Text(
                             '${s.rank}',
@@ -258,7 +264,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                           ),
                         ),
                       ),
-                      if (isMyTeam)
+                      if (isMyTeam && !useNarrowColumns)
                         Container(
                           margin: const EdgeInsets.only(right: 4),
                           width: 6,
@@ -271,26 +277,31 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                       KboTeamLogoImage(
                         teamId: team?.id,
                         fallback: team?.shortName ?? s.teamName,
-                        size: 24,
+                        size: useNarrowColumns ? 20 : 24,
                         padding: 0,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: useNarrowColumns ? 4 : 8),
                       Expanded(
                         child: Row(
                           children: [
                             Flexible(
-                              child: Text(
-                                s.teamName,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: isMyTeam
-                                      ? FontWeight.w800
-                                      : FontWeight.w600,
+                              child: Semantics(
+                                label: s.teamName,
+                                child: ExcludeSemantics(
+                                  child: Text(
+                                    displayTeamName,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: isMyTeam
+                                          ? FontWeight.w800
+                                          : FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                            if (isMyTeam) ...[
+                            if (isMyTeam && !useNarrowColumns) ...[
                               const SizedBox(width: 6),
                               Container(
                                 key: ValueKey(
@@ -321,7 +332,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                         ),
                       ),
                       SizedBox(
-                        width: 32,
+                        width: useNarrowColumns ? 26 : 32,
                         child: Center(
                           child: Text(
                             '${s.wins}',
@@ -333,7 +344,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                         ),
                       ),
                       SizedBox(
-                        width: 32,
+                        width: useNarrowColumns ? 26 : 32,
                         child: Center(
                           child: Text(
                             '${s.losses}',
@@ -345,7 +356,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                         ),
                       ),
                       SizedBox(
-                        width: 28,
+                        width: useNarrowColumns ? 22 : 28,
                         child: Center(
                           child: Text(
                             '${s.draws}',
@@ -357,7 +368,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                         ),
                       ),
                       SizedBox(
-                        width: 48,
+                        width: useNarrowColumns ? 42 : 48,
                         child: Center(
                           child: Text(
                             s.pct,
@@ -369,7 +380,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                         ),
                       ),
                       SizedBox(
-                        width: 42,
+                        width: useNarrowColumns ? 34 : 42,
                         child: Center(
                           child: Text(
                             _gbText(s.gb),
@@ -386,7 +397,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                         ),
                       ),
                       SizedBox(
-                        width: 50,
+                        width: useNarrowColumns ? 42 : 50,
                         child: Center(
                           child: Text(
                             s.streakLabel,
@@ -413,43 +424,44 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   }
 
   Widget _buildHeaderRow() {
+    final useNarrowColumns = MediaQuery.sizeOf(context).width <= 340;
     final style = TextStyle(fontSize: 12, color: AppColors.textDisabled);
     return SizedBox(
       height: 34,
       child: Row(
         children: [
           SizedBox(
-            width: 32,
+            width: useNarrowColumns ? 28 : 32,
             child: Center(child: Text('순위', style: style)),
           ),
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(left: 36),
+              padding: EdgeInsets.only(left: useNarrowColumns ? 24 : 36),
               child: Text('팀', style: style),
             ),
           ),
           SizedBox(
-            width: 32,
+            width: useNarrowColumns ? 26 : 32,
             child: Center(child: Text('승', style: style)),
           ),
           SizedBox(
-            width: 32,
+            width: useNarrowColumns ? 26 : 32,
             child: Center(child: Text('패', style: style)),
           ),
           SizedBox(
-            width: 28,
+            width: useNarrowColumns ? 22 : 28,
             child: Center(child: Text('무', style: style)),
           ),
           SizedBox(
-            width: 48,
+            width: useNarrowColumns ? 42 : 48,
             child: Center(child: Text('승률', style: style)),
           ),
           SizedBox(
-            width: 42,
+            width: useNarrowColumns ? 34 : 42,
             child: Center(child: Text('차', style: style)),
           ),
           SizedBox(
-            width: 50,
+            width: useNarrowColumns ? 42 : 50,
             child: Center(child: Text('연속', style: style)),
           ),
         ],
@@ -564,6 +576,8 @@ class _StandingsPulseRail extends StatelessWidget {
         ? null
         : standings.where((item) => item.teamId == myTeamId).firstOrNull;
     final streakLeader = _streakLeader(standings);
+    final streakLabel = streakLeader?.streakLabel ?? '-';
+    final isLosingStreak = streakLabel.contains('연패');
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -613,13 +627,13 @@ class _StandingsPulseRail extends StatelessWidget {
                 const _PulseDivider(),
                 Expanded(
                   child: _StandingsPulseItem(
-                    title: '연승',
-                    value: streakLeader == null
-                        ? '-'
-                        : streakLeader.streakLabel,
+                    title: '연속 흐름',
+                    value: streakLabel,
                     detail: streakLeader?.teamName,
-                    icon: Icons.trending_up_rounded,
-                    color: AppColors.positive,
+                    icon: isLosingStreak
+                        ? Icons.trending_down_rounded
+                        : Icons.trending_up_rounded,
+                    color: isLosingStreak ? AppColors.live : AppColors.positive,
                   ),
                 ),
               ],
@@ -643,12 +657,12 @@ class _StandingsPulseRail extends StatelessWidget {
 
   TeamStanding? _streakLeader(List<TeamStanding> standings) {
     TeamStanding? leader;
-    var leaderWins = 0;
+    var longestStreak = 0;
     for (final standing in standings) {
-      final match = RegExp(r'^(\d+)승$').firstMatch(standing.streakLabel);
-      final wins = match == null ? 0 : int.tryParse(match.group(1)!) ?? 0;
-      if (wins > leaderWins) {
-        leaderWins = wins;
+      final match = RegExp(r'^(\d+)(연승|연패)$').firstMatch(standing.streakLabel);
+      final streak = match == null ? 0 : int.tryParse(match.group(1)!) ?? 0;
+      if (streak > longestStreak) {
+        longestStreak = streak;
         leader = standing;
       }
     }

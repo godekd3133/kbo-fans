@@ -21,6 +21,21 @@ void main() {
     );
 
     expect(tester.takeException(), isNull);
+    for (final label in [
+      '경기 우선',
+      '홈에서 먼저 보기',
+      '득점 알림',
+      '실시간 알림 받기',
+      '순위 추적',
+      '팀 순위 확인',
+    ]) {
+      final text = tester.widget<Text>(find.text(label));
+      expect(text.style?.fontSize, greaterThanOrEqualTo(10));
+      expect(
+        find.ancestor(of: find.text(label), matching: find.byType(FittedBox)),
+        findsNothing,
+      );
+    }
   });
 
   testWidgets('200% 글자 크기 온보딩은 레이아웃 overflow 없이 표시된다', (tester) async {

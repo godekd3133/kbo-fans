@@ -200,7 +200,7 @@ void main() {
     expect(firstGame, findsOneWidget);
     final initialTop = tester.getTopLeft(firstGame).dy;
 
-    await tester.drag(find.text('일반 경기일'), const Offset(0, -180));
+    await tester.drag(find.text('일반 경기'), const Offset(0, -180));
     await tester.pumpAndSettle();
 
     expect(tester.getTopLeft(firstGame).dy, lessThan(initialTop));
