@@ -17,8 +17,13 @@ import '../../data/providers.dart';
 import '../../services/notification_inbox_service.dart';
 import '../../services/push_notification_service.dart';
 
+typedef PushNotificationSettingsLoader =
+    Future<PushNotificationSettings> Function();
+
 class SettingsScreen extends ConsumerStatefulWidget {
-  const SettingsScreen({super.key});
+  final PushNotificationSettingsLoader? pushSettingsLoader;
+
+  const SettingsScreen({super.key, this.pushSettingsLoader});
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -89,7 +94,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _AppearanceSettingsCard(),
               const SizedBox(height: 16),
 
-              _PushNotificationSettingsCard(team: team),
+              _PushNotificationSettingsCard(
+                team: team,
+                loadSettings: widget.pushSettingsLoader,
+              ),
               const SizedBox(height: 16),
 
               const _NotificationInboxPreviewCard(),
@@ -516,8 +524,12 @@ class _MoreHeroCard extends StatelessWidget {
 
 class _PushNotificationSettingsCard extends ConsumerStatefulWidget {
   final KboTeam? team;
+  final PushNotificationSettingsLoader? loadSettings;
 
-  const _PushNotificationSettingsCard({required this.team});
+  const _PushNotificationSettingsCard({
+    required this.team,
+    required this.loadSettings,
+  });
 
   @override
   ConsumerState<_PushNotificationSettingsCard> createState() =>
@@ -538,9 +550,19 @@ class _PushNotificationSettingsCardState
   }
 
   Future<PushNotificationSettings> _loadSettings() async {
-    final settings = await PushNotificationService.instance.loadSettings();
+    final settings =
+        await (widget.loadSettings?.call() ??
+            PushNotificationService.instance.loadSettings());
     _settings = settings;
     return settings;
+  }
+
+  void _retryLoadSettings() {
+    setState(() {
+      _settings = null;
+      _error = null;
+      _settingsFuture = _loadSettings();
+    });
   }
 
   Future<void> _save(PushNotificationSettings settings) async {
@@ -586,6 +608,12 @@ class _PushNotificationSettingsCardState
         final colors = AppTheme.colorsOf(context);
         final settings = _settings ?? snapshot.data;
         if (settings == null) {
+          if (snapshot.hasError) {
+            return _NotificationSettingsShell(
+              status: '불러오기 실패',
+              child: _NotificationLoadError(onRetry: _retryLoadSettings),
+            );
+          }
           return _NotificationSettingsShell(
             status: '불러오는 중',
             child: const SizedBox(
@@ -608,8 +636,6 @@ class _PushNotificationSettingsCardState
         return _NotificationSettingsShell(
           status: _saving
               ? '저장 중'
-              : widget.team == null
-              ? '마이팀 미선택'
               : _notificationStatusLabel(enabledMomentCount),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,6 +654,17 @@ class _PushNotificationSettingsCardState
                   ),
                 ),
               ],
+              const SizedBox(height: 10),
+              Text(
+                '여기서는 받을 알림을 선택합니다. 실제 수신은 알림 권한, 기기 등록, 서버 상태에 따라 달라질 수 있습니다.',
+                key: const ValueKey('push_notification_delivery_notice'),
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.45,
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 12),
               _NotificationToggleGroup(
                 title: '경기 전후',
@@ -715,6 +752,47 @@ class _PushNotificationSettingsCardState
           ),
         );
       },
+    );
+  }
+}
+
+class _NotificationLoadError extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _NotificationLoadError({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '알림 설정을 불러오지 못했습니다',
+          style: TextStyle(
+            fontSize: 14,
+            color: colors.textPrimary,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '연결을 확인한 뒤 다시 시도해 주세요.',
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.45,
+            color: colors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          key: const ValueKey('push_notification_load_retry'),
+          onPressed: onRetry,
+          icon: const Icon(Icons.refresh_rounded, size: 18),
+          label: const Text('다시 시도'),
+        ),
+      ],
     );
   }
 }
@@ -942,7 +1020,7 @@ class _NotificationOffState extends StatelessWidget {
         border: Border.all(color: colors.divider),
       ),
       child: Text(
-        '푸시 알림이 꺼져 있습니다',
+        '받을 알림을 선택하지 않았습니다',
         style: TextStyle(
           fontSize: 13,
           color: colors.textSecondary,
@@ -971,9 +1049,9 @@ int _enabledMomentCount(PushNotificationSettings settings) {
 
 String _notificationStatusLabel(int enabledMomentCount) {
   if (enabledMomentCount == 0) {
-    return '모두 꺼짐';
+    return '선택 없음';
   }
-  return '$enabledMomentCount개 켜짐';
+  return '$enabledMomentCount개 선택됨';
 }
 
 class _NotificationInboxPreviewCard extends StatelessWidget {

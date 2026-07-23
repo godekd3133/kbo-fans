@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/core/theme/theme_mode_controller.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/settings/settings_screen.dart';
+import 'package:kbo_fans/services/push_notification_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -129,9 +131,15 @@ void main() {
     expect(find.text('푸시 알림'), findsOneWidget);
     expect(find.text('기본 대상'), findsOneWidget);
     expect(find.text('마이팀 선택 전'), findsOneWidget);
-    expect(find.text('마이팀 미선택'), findsOneWidget);
+    expect(find.text('10개 선택됨'), findsOneWidget);
     expect(
       find.text('마이팀 알림은 팀을 선택해야 시작됩니다. 직접 팔로우한 경기 알림은 별도로 동작합니다.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        '여기서는 받을 알림을 선택합니다. 실제 수신은 알림 권한, 기기 등록, 서버 상태에 따라 달라질 수 있습니다.',
+      ),
       findsOneWidget,
     );
     expect(find.text('10개 켜짐'), findsNothing);
@@ -154,6 +162,80 @@ void main() {
     expect(find.text('역전'), findsOneWidget);
     expect(find.text('이닝 전환'), findsOneWidget);
     expect(find.text('타석 변화'), findsOneWidget);
+  });
+
+  testWidgets('푸시 설정 로드 실패는 오류와 다시 시도를 보여주고 복구한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var loadAttempts = 0;
+
+    Future<PushNotificationSettings> loadSettings() async {
+      loadAttempts += 1;
+      if (loadAttempts == 1) {
+        throw StateError('settings unavailable');
+      }
+      return const PushNotificationSettings.defaults();
+    }
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(pushSettingsLoader: loadSettings),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('알림 설정을 불러오지 못했습니다'), findsOneWidget);
+    expect(find.text('연결을 확인한 뒤 다시 시도해 주세요.'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('push_notification_load_retry')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(loadAttempts, 2);
+    expect(find.text('알림 설정을 불러오지 못했습니다'), findsNothing);
+    expect(find.text('선발 라인업 공개'), findsOneWidget);
+  });
+
+  testWidgets('푸시 설정 다시 시도는 44px 터치 높이와 버튼 의미를 제공한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.binding.setSurfaceSize(const Size(390, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: SettingsScreen(
+              pushSettingsLoader: () async =>
+                  throw StateError('settings unavailable'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final retryFinder = find.byKey(
+        const ValueKey('push_notification_load_retry'),
+      );
+      final semanticsData = tester.getSemantics(retryFinder).getSemanticsData();
+
+      expect(tester.getSize(retryFinder).height, greaterThanOrEqualTo(44));
+      expect(semanticsData.flagsCollection.isButton, isTrue);
+      expect(semanticsData.flagsCollection.isEnabled.toBoolOrNull(), isTrue);
+      expect(semanticsData.hasAction(SemanticsAction.tap), isTrue);
+      expect(semanticsData.label, contains('다시 시도'));
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('푸시 알림은 항목별 토글 변경을 저장한다', (tester) async {
@@ -212,8 +294,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('모두 꺼짐'), findsOneWidget);
-    expect(find.text('푸시 알림이 꺼져 있습니다'), findsOneWidget);
+    expect(find.text('선택 없음'), findsOneWidget);
+    expect(find.text('받을 알림을 선택하지 않았습니다'), findsOneWidget);
     expect(find.text('득점'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('push_toggle_scoring')));
@@ -222,7 +304,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getBool('push_notifications.scoring'), isTrue);
     expect(prefs.getString('push_notifications.scoring.delivery'), 'immediate');
-    expect(find.text('1개 켜짐'), findsOneWidget);
+    expect(find.text('1개 선택됨'), findsOneWidget);
   });
 
   testWidgets('설정 알림함 카드로 알림함에 진입한다', (tester) async {

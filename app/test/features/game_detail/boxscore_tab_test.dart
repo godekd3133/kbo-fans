@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -128,7 +129,112 @@ void main() {
     expect(find.text('SLG 1.500'), findsOneWidget);
     expect(find.text('투구 61'), findsOneWidget);
     expect(find.text('WHIP 1.20'), findsOneWidget);
+    expect(find.text('오늘의 활약 타자'), findsOneWidget);
+    expect(find.textContaining('앱 기준 활약 지수'), findsOneWidget);
+    expect(find.textContaining('앱 기준 투구 효율'), findsOneWidget);
+    expect(find.text('결승타'), findsNothing);
+    expect(find.textContaining('생산 +'), findsNothing);
+    expect(find.textContaining('효율 +'), findsOneWidget);
     expect(find.byType(CachedNetworkImage), findsWidgets);
+  });
+
+  testWidgets('320px 박스스코어 활약 행은 선수명과 앱 계산 지표를 세로로 보존한다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpBoxscoreTab(
+      tester,
+      boxscore: _officialBoxscore,
+      players: const [_matchedBatter],
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final batterName = find.byKey(const ValueKey('record-highlight-name-노시환'));
+    final batterMetric = find.byKey(
+      const ValueKey('record-highlight-metric-노시환'),
+    );
+    final pitcherName = find.byKey(const ValueKey('record-highlight-name-엄상백'));
+    final pitcherMetric = find.byKey(
+      const ValueKey('record-highlight-metric-엄상백'),
+    );
+
+    expect(batterName, findsOneWidget);
+    expect(batterMetric, findsOneWidget);
+    expect(pitcherName, findsOneWidget);
+    expect(pitcherMetric, findsOneWidget);
+    expect(tester.getSize(batterName).width, greaterThanOrEqualTo(100));
+    expect(
+      tester.getTopLeft(batterMetric).dy,
+      greaterThan(tester.getTopLeft(batterName).dy),
+    );
+    expect(
+      tester.getTopLeft(pitcherMetric).dy,
+      greaterThan(tester.getTopLeft(pitcherName).dy),
+    );
+    expect(find.textContaining('앱 기준 투구 효율'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('박스스코어 오류는 안전한 문구와 재시도만 노출한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var retryCalls = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameBoxscoreProvider.overrideWith((ref, gameId) async {
+            throw DioException(
+              requestOptions: RequestOptions(
+                path: '/internal/game/$gameId/boxscore',
+              ),
+              type: DioExceptionType.receiveTimeout,
+              message: 'private backend detail',
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: Scaffold(
+            body: BoxscoreTab(
+              gameId: '20260613KTLG0',
+              game: _liveGame,
+              gameStatus: GameStatus.live,
+              awayName: 'KT',
+              homeName: 'LG',
+              awayTeamId: 'KT',
+              homeTeamId: 'LG',
+              onRefresh: () async {
+                retryCalls += 1;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('박스스코어를 불러올 수 없습니다'), findsOneWidget);
+    expect(find.text('네트워크 상태를 확인하고 다시 시도해 주세요'), findsOneWidget);
+    expect(find.textContaining('DioException'), findsNothing);
+    expect(find.textContaining('/internal/'), findsNothing);
+    expect(find.textContaining('private backend detail'), findsNothing);
+
+    await tester.tap(find.widgetWithText(TextButton, '다시 시도'));
+    await tester.pump();
+    expect(retryCalls, 1);
   });
 
   testWidgets('박스스코어는 프로필 id 기반 선수 사진도 렌더한다', (tester) async {

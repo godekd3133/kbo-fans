@@ -182,6 +182,9 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                         awayStarterImageUrl: awayStarterImageUrl,
                         homeStarterImageUrl: homeStarterImageUrl,
                       );
+                      final hasComparisonData = _hasMatchupComparisonData(
+                        compareData,
+                      );
                       _prefetchLineupPlayerImages([
                         awayStarterImageUrl,
                         homeStarterImageUrl,
@@ -207,23 +210,25 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                         ),
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          AppMotionListItem(
-                            index: 0,
-                            child: _MatchupCompareSection(
-                              data: compareData,
-                              awayAccent: colors.readableAccent(
-                                KboTeams.byId(awayTeamId)?.primaryColor ??
-                                    colors.live,
-                              ),
-                              homeAccent: colors.readableAccent(
-                                KboTeams.byId(homeTeamId)?.primaryColor ??
-                                    colors.accent,
+                          if (hasComparisonData) ...[
+                            AppMotionListItem(
+                              index: 0,
+                              child: _MatchupCompareSection(
+                                data: compareData,
+                                awayAccent: colors.readableAccent(
+                                  KboTeams.byId(awayTeamId)?.primaryColor ??
+                                      colors.live,
+                                ),
+                                homeAccent: colors.readableAccent(
+                                  KboTeams.byId(homeTeamId)?.primaryColor ??
+                                      colors.accent,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
+                            const SizedBox(height: 16),
+                          ],
                           AppMotionListItem(
-                            index: 1,
+                            index: hasComparisonData ? 1 : 0,
                             child: _CompareSection(
                               title: '선발 라인업',
                               left: _LineupColumn(
@@ -1194,6 +1199,21 @@ bool _hasTrendData(_TeamCompareData away, _TeamCompareData home) {
   final hasHeadToHead =
       away.headToHead.isNotEmpty || home.headToHead.isNotEmpty;
   return hasRecent || hasMetrics || hasHeadToHead;
+}
+
+bool _hasMatchupComparisonData(_MatchupCompareData data) {
+  if (_hasTrendData(data.away, data.home)) {
+    return true;
+  }
+  return _hasStarterComparisonStats(data.away.starter) ||
+      _hasStarterComparisonStats(data.home.starter);
+}
+
+bool _hasStarterComparisonStats(_StarterCompareData starter) {
+  return starter.winsLosses != '-' ||
+      starter.innings != '-' ||
+      starter.era != '-' ||
+      starter.whip != '-';
 }
 
 class _MatchupCompareData {

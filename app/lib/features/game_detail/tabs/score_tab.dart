@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/visual_assets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/app_artwork_card.dart';
-import '../../../core/widgets/app_motion.dart';
 import '../../../data/models/game.dart';
-import '../../../data/models/relay.dart';
 
 class ScoreTab extends StatelessWidget {
+  static const _teamColumnWidth = 64.0;
+  static const _scoreColumnWidth = 44.0;
+  static const _headerRowHeight = 40.0;
+  static const _scoreRowHeight = 44.0;
+
   final String gameId;
   final Game game;
   final Future<void> Function()? onRefresh;
@@ -32,7 +35,7 @@ class ScoreTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInningTable(context, const <RelayItem>[]),
+            _buildInningTable(),
             if (footer != null) ...[const SizedBox(height: 12), footer!],
           ],
         ),
@@ -40,18 +43,16 @@ class ScoreTab extends StatelessWidget {
     );
   }
 
-  Widget _buildInningTable(BuildContext context, List<RelayItem> relayItems) {
+  Widget _buildInningTable() {
+    final currentInning = _currentInning();
+    final inningCount = [
+      9,
+      game.away.innings.length,
+      game.home.innings.length,
+      currentInning,
+    ].reduce((value, element) => value > element ? value : element);
     final headers = [
-      'TEAM',
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
+      for (var inning = 1; inning <= inningCount; inning++) '$inning',
       'R',
       'H',
       'E',
@@ -68,93 +69,151 @@ class ScoreTab extends StatelessWidget {
       color: AppColors.textPrimary,
       fontWeight: FontWeight.w700,
     );
-    final currentInning =
-        int.tryParse(game.inning.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (relayItems.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Text(
-              '이닝을 누르면 해당 회차 주요 장면을 볼 수 있습니다.',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-            ),
+        Text(
+          'R 득점 · H 안타 · E 실책 · B 사사구',
+          key: const ValueKey('score-stat-legend'),
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
           ),
-        Container(
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Stack(
-            children: [
-              const Positioned.fill(
-                child: AppArtworkLayer(
-                  assetName: VisualAssets.scoreLinescore,
-                  alignment: Alignment.centerRight,
-                  opacity: 0.18,
-                ),
+        ),
+        const SizedBox(height: 8),
+        Semantics(
+          key: const ValueKey('score-table-semantics'),
+          container: true,
+          label: _scoreAccessibilitySummary(inningCount),
+          child: ExcludeSemantics(
+            child: Container(
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.divider),
               ),
-              Table(
-                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                columnWidths: const {0: FixedColumnWidth(48)},
+              child: Stack(
                 children: [
-                  TableRow(
-                    children: headers.asMap().entries.map((entry) {
-                      final idx = entry.key;
-                      final text = entry.value;
-                      final inningNo = idx >= 1 && idx <= 9 ? idx : null;
-                      final isCurrentInning =
-                          inningNo != null && inningNo == currentInning;
-                      return _tableCell(
-                        context,
-                        text,
-                        headerStyle,
-                        isHighlight: isCurrentInning,
-                        onTap: inningNo == null || relayItems.isEmpty
-                            ? null
-                            : () => _openInningSheet(
-                                context,
-                                inningNo,
-                                relayItems,
+                  const Positioned.fill(
+                    child: AppArtworkLayer(
+                      assetName: VisualAssets.scoreLinescore,
+                      alignment: Alignment.centerRight,
+                      opacity: 0.18,
+                    ),
+                  ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        key: const ValueKey('score-fixed-team-column'),
+                        width: _teamColumnWidth,
+                        child: Table(
+                          defaultVerticalAlignment:
+                              TableCellVerticalAlignment.middle,
+                          children: [
+                            TableRow(
+                              children: [
+                                _tableCell(
+                                  '팀',
+                                  headerStyle,
+                                  height: _headerRowHeight,
+                                ),
+                              ],
+                            ),
+                            _dividerRow(1),
+                            TableRow(
+                              children: [
+                                _tableCell(
+                                  game.away.shortName,
+                                  boldStyle,
+                                  height: _scoreRowHeight,
+                                ),
+                              ],
+                            ),
+                            _dividerRow(1),
+                            TableRow(
+                              children: [
+                                _tableCell(
+                                  game.home.shortName,
+                                  boldStyle,
+                                  height: _scoreRowHeight,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: _headerRowHeight + (_scoreRowHeight * 2) + 2,
+                        color: AppColors.divider,
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          key: const ValueKey('score-scrollable-columns'),
+                          scrollDirection: Axis.horizontal,
+                          child: SizedBox(
+                            width: headers.length * _scoreColumnWidth,
+                            child: Table(
+                              defaultVerticalAlignment:
+                                  TableCellVerticalAlignment.middle,
+                              defaultColumnWidth: const FixedColumnWidth(
+                                _scoreColumnWidth,
                               ),
-                      );
-                    }).toList(),
-                  ),
-                  TableRow(
-                    children: List.generate(
-                      14,
-                      (_) => Divider(height: 1, color: AppColors.divider),
-                    ),
-                  ),
-                  _scoreRow(
-                    context,
-                    game.away,
-                    currentInning,
-                    dataStyle,
-                    boldStyle,
-                    relayItems,
-                  ),
-                  TableRow(
-                    children: List.generate(
-                      14,
-                      (_) => Divider(height: 1, color: AppColors.divider),
-                    ),
-                  ),
-                  _scoreRow(
-                    context,
-                    game.home,
-                    currentInning,
-                    dataStyle,
-                    boldStyle,
-                    relayItems,
+                              children: [
+                                TableRow(
+                                  children: headers.asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    final inningNo = entry.key < inningCount
+                                        ? entry.key + 1
+                                        : null;
+                                    return _tableCell(
+                                      entry.value,
+                                      headerStyle,
+                                      key: inningNo == null
+                                          ? ValueKey(
+                                              'score-stat-header-${entry.value}',
+                                            )
+                                          : ValueKey(
+                                              'score-inning-header-$inningNo',
+                                            ),
+                                      height: _headerRowHeight,
+                                      isHighlight:
+                                          inningNo != null &&
+                                          inningNo == currentInning,
+                                    );
+                                  }).toList(),
+                                ),
+                                _dividerRow(headers.length),
+                                _scoreRow(
+                                  game.away,
+                                  inningCount,
+                                  currentInning,
+                                  dataStyle,
+                                  boldStyle,
+                                ),
+                                _dividerRow(headers.length),
+                                _scoreRow(
+                                  game.home,
+                                  inningCount,
+                                  currentInning,
+                                  dataStyle,
+                                  boldStyle,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ],
@@ -162,33 +221,58 @@ class ScoreTab extends StatelessWidget {
   }
 
   TableRow _scoreRow(
-    BuildContext context,
     TeamScore team,
+    int inningCount,
     int currentInning,
     TextStyle dataStyle,
     TextStyle boldStyle,
-    List<RelayItem> relayItems,
   ) {
     return TableRow(
       children: [
-        _tableCell(context, team.shortName, dataStyle),
-        for (int i = 0; i < 9; i++)
+        for (int i = 0; i < inningCount; i++)
           _tableCell(
-            context,
             i < team.innings.length && team.innings[i] != null
                 ? '${team.innings[i]}'
                 : '-',
             dataStyle,
+            key: ValueKey('score-${team.teamId}-inning-${i + 1}'),
+            height: _scoreRowHeight,
             isHighlight: (i + 1) == currentInning,
-            onTap: relayItems.isEmpty
-                ? null
-                : () => _openInningSheet(context, i + 1, relayItems),
           ),
-        _tableCell(context, '${team.score}', boldStyle),
-        _tableCell(context, _teamStatText(team, team.hits), boldStyle),
-        _tableCell(context, _teamStatText(team, team.errors), boldStyle),
-        _tableCell(context, _teamStatText(team, team.walks), boldStyle),
+        _tableCell(
+          '${team.score}',
+          boldStyle,
+          key: ValueKey('score-${team.teamId}-total-runs'),
+          height: _scoreRowHeight,
+        ),
+        _tableCell(
+          _teamStatText(team, team.hits),
+          boldStyle,
+          key: ValueKey('score-${team.teamId}-total-hits'),
+          height: _scoreRowHeight,
+        ),
+        _tableCell(
+          _teamStatText(team, team.errors),
+          boldStyle,
+          key: ValueKey('score-${team.teamId}-total-errors'),
+          height: _scoreRowHeight,
+        ),
+        _tableCell(
+          _teamStatText(team, team.walks),
+          boldStyle,
+          key: ValueKey('score-${team.teamId}-total-walks'),
+          height: _scoreRowHeight,
+        ),
       ],
+    );
+  }
+
+  TableRow _dividerRow(int cellCount) {
+    return TableRow(
+      children: List.generate(
+        cellCount,
+        (_) => SizedBox(height: 1, child: ColoredBox(color: AppColors.divider)),
+      ),
     );
   }
 
@@ -197,122 +281,52 @@ class ScoreTab extends StatelessWidget {
   }
 
   Widget _tableCell(
-    BuildContext context,
     String text,
     TextStyle style, {
+    Key? key,
+    required double height,
     bool isHighlight = false,
-    VoidCallback? onTap,
   }) {
-    final child = Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+    return Container(
+      key: key,
+      height: height,
+      alignment: Alignment.center,
       color: isHighlight ? AppColors.cardSub : null,
       child: Text(text, textAlign: TextAlign.center, style: style),
     );
-
-    if (onTap == null) {
-      return child;
-    }
-
-    return AppPressable(
-      onTap: onTap,
-      pressedScale: 0.97,
-      pressedOpacity: 0.92,
-      child: child,
-    );
   }
 
-  void _openInningSheet(
-    BuildContext context,
-    int inning,
-    List<RelayItem> relayItems,
-  ) {
-    final items = relayItems
-        .where((item) => item.inning == inning && item.event != 'INNING_CHANGE')
-        .toList();
+  int _currentInning() {
+    return int.tryParse(game.inning.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  }
 
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppColors.card,
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$inning회 주요 장면',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (items.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Text(
-                      '이 회차에 기록된 이벤트가 없습니다.',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  )
-                else
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: items.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: item.isScoring
-                                ? const Color(0xFF1C1111)
-                                : AppColors.cardSub,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: item.isScoring
-                                  ? AppColors.live
-                                  : AppColors.divider,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${item.half == 'top' ? '초' : '말'} · ${item.text}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: item.isScoring
-                                      ? FontWeight.w700
-                                      : FontWeight.w600,
-                                ),
-                              ),
-                              if (item.pitchSequence != null &&
-                                  item.pitchSequence!.isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Text(
-                                  item.pitchSequence!,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  String _scoreAccessibilitySummary(int inningCount) {
+    final current = _currentInning();
+    final currentLabel = current > 0 ? '현재 ${game.inning}. ' : '';
+    return '이닝별 점수표. $currentLabel'
+        '${_teamAccessibilitySummary(game.away, inningCount)} '
+        '${_teamAccessibilitySummary(game.home, inningCount)} '
+        'R은 득점, H는 안타, E는 실책, B는 사사구입니다.';
+  }
+
+  String _teamAccessibilitySummary(TeamScore team, int inningCount) {
+    final inningScores = <String>[];
+    for (
+      var index = 0;
+      index < team.innings.length && index < inningCount;
+      index++
+    ) {
+      final score = team.innings[index];
+      if (score != null) {
+        inningScores.add('${index + 1}회 $score점');
+      }
+    }
+    final inningText = inningScores.isEmpty
+        ? '진행된 이닝 점수 없음'
+        : inningScores.join(', ');
+    final statsText = team.hasStats
+        ? '안타 ${team.hits}, 실책 ${team.errors}, 사사구 ${team.walks}'
+        : '안타, 실책, 사사구 정보 미제공';
+    return '${team.shortName} $inningText, 합계 ${team.score}점, $statsText.';
   }
 }

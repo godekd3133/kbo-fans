@@ -69,7 +69,11 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           child: CircularProgressIndicator(color: AppColors.live),
         ),
       ),
-      error: (error, _) => _buildUnavailableState('박스스코어 로딩 실패: $error'),
+      error: (_, _) => _buildUnavailableState(
+        '박스스코어를 불러올 수 없습니다',
+        detail: '네트워크 상태를 확인하고 다시 시도해 주세요',
+        onRetry: () => unawaited(_retryBoxscore()),
+      ),
       data: (boxscore) {
         final selected = _showAway ? boxscore.away : boxscore.home;
         final opponent = _showAway ? boxscore.home : boxscore.away;
@@ -162,7 +166,25 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     );
   }
 
-  Widget _buildUnavailableState(String message) {
+  Future<void> _retryBoxscore() async {
+    try {
+      final refresh = widget.onRefresh;
+      if (refresh != null) {
+        await refresh();
+        return;
+      }
+      ref.invalidate(gameBoxscoreProvider(widget.gameId));
+      await ref.read(gameBoxscoreProvider(widget.gameId).future);
+    } catch (_) {
+      // Provider state renders the safe error copy; technical details stay out of UI.
+    }
+  }
+
+  Widget _buildUnavailableState(
+    String message, {
+    String? detail,
+    VoidCallback? onRetry,
+  }) {
     return Align(
       alignment: Alignment.topCenter,
       child: Padding(
@@ -189,6 +211,17 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                 message,
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
+              if (detail != null) ...[
+                const SizedBox(height: 6),
+                Text(
+                  detail,
+                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                ),
+              ],
+              if (onRetry != null) ...[
+                const Spacer(),
+                TextButton(onPressed: onRetry, child: const Text('다시 시도')),
+              ],
             ],
           ),
         ),
@@ -363,7 +396,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
               children: [
                 if (keyBatter != null)
                   _RecordHighlightRow(
-                    tag: keyBatter.liveContext ? '현재 타자' : '결승타',
+                    tag: keyBatter.liveContext ? '현재 타자' : '오늘의 활약 타자',
                     name: keyBatter.name,
                     role: keyBatter.liveContext
                         ? keyBatter.contextLabel ?? '현재 타자'
@@ -375,7 +408,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         : '${keyBatter.atBats}타수 ${keyBatter.hits}안타  ${keyBatter.rbi}타점  ${keyBatter.runs}득점',
                     metricLabel: keyBatter.liveContext
                         ? _liveBatterMetricLabel(keyBatter)
-                        : '생산 +$productionScore',
+                        : '앱 기준 활약 지수 $productionScore',
                     accent: accent,
                     badgeLabel: (keyBatterPlayer?.number ?? 0) > 0
                         ? '${keyBatterPlayer!.number}'
@@ -402,7 +435,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                         : '${keyPitcher.innings}이닝  ${keyPitcher.hits}피안타  ${keyPitcher.earnedRuns}자책  ${keyPitcher.strikeouts}탈삼진',
                     metricLabel: keyPitcher.liveContext
                         ? (keyPitcher.decision ?? 'LIVE')
-                        : '효율 +$efficiencyScore',
+                        : '앱 기준 투구 효율 +$efficiencyScore',
                     accent: AppColors.live,
                     badgeLabel: (keyPitcherPlayer?.number ?? 0) > 0
                         ? '${keyPitcherPlayer!.number}'
@@ -1151,6 +1184,8 @@ class _RecordHighlightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useNarrowLayout = MediaQuery.sizeOf(context).width <= 340;
+
     return AppPressable(
       pressedScale: onTap == null ? 1 : 0.985,
       onTap: onTap,
@@ -1161,80 +1196,118 @@ class _RecordHighlightRow extends StatelessWidget {
           border: Border(bottom: BorderSide(color: AppColors.divider)),
         ),
         child: Row(
+          crossAxisAlignment: useNarrowLayout
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
           children: [
             _PlayerAvatar(
               accent: accent,
               badgeLabel: badgeLabel,
               imageUrl: imageUrl,
+              size: useNarrowLayout ? 48 : 52,
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _RecordTag(label: tag, accent: accent),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '$name  $role',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                    ],
+            SizedBox(width: useNarrowLayout ? 8 : 12),
+            Expanded(child: _buildDetails(useNarrowLayout: useNarrowLayout)),
+            if (!useNarrowLayout) ...[
+              const SizedBox(width: 10),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 104),
+                child: Text(
+                  key: ValueKey('record-highlight-metric-$name'),
+                  metricLabel,
+                  maxLines: 2,
+                  textAlign: TextAlign.right,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: metricLabel.length > 10 ? 12 : 15,
+                    height: 1.15,
+                    color: accent,
+                    fontWeight: FontWeight.w900,
                   ),
-                  const SizedBox(height: 7),
-                  Text(
-                    summary,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (actionLabel != null) ...[
-                    const SizedBox(height: 5),
-                    Text(
-                      actionLabel!,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: accent,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              metricLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 15,
-                color: accent,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+            ],
             const SizedBox(width: 4),
-            Icon(
-              Icons.chevron_right_rounded,
-              size: 22,
-              color: onTap == null ? AppColors.textDisabled : accent,
+            Padding(
+              padding: EdgeInsets.only(top: useNarrowLayout ? 4 : 0),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                size: 22,
+                color: onTap == null ? AppColors.textDisabled : accent,
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDetails({required bool useNarrowLayout}) {
+    final nameAndRole = Text(
+      key: ValueKey('record-highlight-name-$name'),
+      '$name  $role',
+      maxLines: useNarrowLayout ? 2 : 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(
+        fontSize: 15,
+        fontWeight: FontWeight.w900,
+        height: 1.2,
+      ),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (useNarrowLayout) ...[
+          _RecordTag(label: tag, accent: accent),
+          const SizedBox(height: 5),
+          nameAndRole,
+        ] else
+          Row(
+            children: [
+              _RecordTag(label: tag, accent: accent),
+              const SizedBox(width: 8),
+              Expanded(child: nameAndRole),
+            ],
+          ),
+        const SizedBox(height: 7),
+        Text(
+          summary,
+          maxLines: useNarrowLayout ? 2 : 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: 13,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        if (actionLabel != null) ...[
+          const SizedBox(height: 5),
+          Text(
+            actionLabel!,
+            style: TextStyle(
+              fontSize: 11,
+              color: accent,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+        if (useNarrowLayout) ...[
+          const SizedBox(height: 6),
+          Text(
+            key: ValueKey('record-highlight-metric-$name'),
+            metricLabel,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: metricLabel.length > 10 ? 12 : 15,
+              height: 1.15,
+              color: accent,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

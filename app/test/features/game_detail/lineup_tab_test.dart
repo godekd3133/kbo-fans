@@ -141,6 +141,16 @@ void main() {
     expect(find.text('박성한'), findsOneWidget);
     expect(find.text('홍창기'), findsOneWidget);
     expect(find.textContaining('지표 3.62'), findsOneWidget);
+    expect(find.text('VS'), findsNothing);
+    expect(find.text('승패'), findsNothing);
+    expect(find.text('평균자책'), findsNothing);
+    expect(find.text('WHIP'), findsNothing);
+    expect(find.text('김건우'), findsOneWidget);
+    expect(find.text('김윤식'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('선발 라인업')).dy,
+      lessThan(tester.getTopLeft(find.text('박성한')).dy),
+    );
   });
 
   testWidgets('경기 전 라인업이 아직 비어 있으면 공개 전 상태를 보여준다', (tester) async {

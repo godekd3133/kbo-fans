@@ -10,6 +10,11 @@ import '../../core/widgets/app_page_frame.dart';
 import '../../services/notification_inbox_service.dart';
 import '../../services/push_notification_service.dart';
 
+typedef NotificationInboxEntriesLoader =
+    Future<List<NotificationInboxEntry>> Function();
+typedef NotificationInboxSettingsLoader =
+    Future<PushNotificationSettings> Function();
+
 enum _InboxFilter {
   all(label: '전체'),
   unread(label: '안 읽음'),
@@ -21,7 +26,14 @@ enum _InboxFilter {
 }
 
 class NotificationInboxScreen extends StatefulWidget {
-  const NotificationInboxScreen({super.key});
+  final NotificationInboxEntriesLoader? entriesLoader;
+  final NotificationInboxSettingsLoader? settingsLoader;
+
+  const NotificationInboxScreen({
+    super.key,
+    this.entriesLoader,
+    this.settingsLoader,
+  });
 
   @override
   State<NotificationInboxScreen> createState() =>
@@ -30,9 +42,12 @@ class NotificationInboxScreen extends StatefulWidget {
 
 class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
   _InboxFilter _filter = _InboxFilter.all;
-  List<NotificationInboxEntry> _entries = const <NotificationInboxEntry>[];
+  List<NotificationInboxEntry>? _entries;
   PushNotificationSettings? _settings;
-  bool _loading = true;
+  Object? _entriesError;
+  Object? _settingsError;
+  bool _entriesLoading = true;
+  bool _settingsLoading = true;
 
   @override
   void initState() {
@@ -41,27 +56,63 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
   }
 
   Future<void> _load() async {
-    try {
-      final results = await Future.wait<Object>([
-        NotificationInboxService.instance.loadEntries(),
-        PushNotificationService.instance.loadSettings(),
-      ]);
-      if (!mounted) {
-        return;
-      }
+    await Future.wait<void>([_loadEntries(), _loadSettings()]);
+  }
+
+  Future<void> _loadEntries() async {
+    if (mounted) {
       setState(() {
-        _entries = results[0] as List<NotificationInboxEntry>;
-        _settings = results[1] as PushNotificationSettings;
-        _loading = false;
+        _entriesLoading = true;
+        _entriesError = null;
       });
-    } catch (_) {
+    }
+    try {
+      final entries =
+          await (widget.entriesLoader?.call() ??
+              NotificationInboxService.instance.loadEntries());
       if (!mounted) {
         return;
       }
       setState(() {
-        _entries = const <NotificationInboxEntry>[];
-        _settings = const PushNotificationSettings.defaults();
-        _loading = false;
+        _entries = entries;
+        _entriesLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _entriesError = error;
+        _entriesLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    if (mounted) {
+      setState(() {
+        _settingsLoading = true;
+        _settingsError = null;
+      });
+    }
+    try {
+      final settings =
+          await (widget.settingsLoader?.call() ??
+              PushNotificationService.instance.loadSettings());
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _settings = settings;
+        _settingsLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _settingsError = error;
+        _settingsLoading = false;
       });
     }
   }
@@ -76,9 +127,13 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
     if (!mounted) {
       return;
     }
+    final entries = _entries;
+    if (entries == null) {
+      return;
+    }
     setState(() {
       _entries = [
-        for (final item in _entries)
+        for (final item in entries)
           item.id == entry.id ? item.copyWith(read: true) : item,
       ];
     });
@@ -93,8 +148,11 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final visibleEntries = _filteredEntries(_entries, _filter);
-    final unreadCount = _entries.where((entry) => !entry.read).length;
+    final entries = _entries;
+    final visibleEntries = entries == null
+        ? const <NotificationInboxEntry>[]
+        : _filteredEntries(entries, _filter);
+    final unreadCount = entries?.where((entry) => !entry.read).length;
     final settings = _settings;
 
     return Scaffold(
@@ -116,13 +174,17 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                     }
                     context.go('/home');
                   },
-                  onMarkAllRead: unreadCount == 0 ? null : _markAllRead,
+                  onMarkAllRead: unreadCount == null || unreadCount == 0
+                      ? null
+                      : _markAllRead,
                 ),
                 const SizedBox(height: 14),
                 _InboxSummaryCard(
-                  totalCount: _entries.length,
+                  totalCount: entries?.length,
+                  visibleCount: entries == null ? null : visibleEntries.length,
                   unreadCount: unreadCount,
-                  settings: settings,
+                  isLoading: _entriesLoading,
+                  hasError: _entriesError != null,
                 ),
                 const SizedBox(height: 14),
                 _InboxFilterBar(
@@ -130,30 +192,65 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
                   onChanged: (filter) => setState(() => _filter = filter),
                 ),
                 const SizedBox(height: 14),
-                AppMotionSwitcher(
-                  child: _loading
-                      ? const KeyedSubtree(
-                          key: ValueKey('notification-inbox-loading'),
-                          child: _InboxLoadingList(),
-                        )
-                      : KeyedSubtree(
-                          key: ValueKey(
-                            'notification-inbox-${_filter.name}-${visibleEntries.length}',
-                          ),
-                          child: visibleEntries.isEmpty
-                              ? _InboxEmptyState(filter: _filter)
-                              : _InboxTimeline(
-                                  entries: visibleEntries,
-                                  onOpenEntry: _openEntry,
-                                ),
-                        ),
-                ),
+                AppMotionSwitcher(child: _buildEntriesContent(visibleEntries)),
                 const SizedBox(height: 18),
-                _InboxPlaybookSection(settings: settings),
+                _InboxPlaybookSection(
+                  settings: settings,
+                  isLoading: _settingsLoading,
+                  hasError: _settingsError != null,
+                  onRetry: () => unawaited(_loadSettings()),
+                ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEntriesContent(List<NotificationInboxEntry> visibleEntries) {
+    if (_entries == null) {
+      if (_entriesLoading) {
+        return const KeyedSubtree(
+          key: ValueKey('notification-inbox-loading'),
+          child: _InboxLoadingList(),
+        );
+      }
+      return KeyedSubtree(
+        key: const ValueKey('notification-inbox-entries-error'),
+        child: _InboxLoadErrorState(
+          title: '최근 알림을 불러오지 못했습니다',
+          body: '보관된 알림 목록만 확인할 수 없습니다. 알림 설정은 별도로 계속 불러옵니다.',
+          actionLabel: '알림 목록 다시 시도',
+          onRetry: () => unawaited(_loadEntries()),
+        ),
+      );
+    }
+
+    return KeyedSubtree(
+      key: ValueKey(
+        'notification-inbox-${_filter.name}-${visibleEntries.length}'
+        '-error-${_entriesError != null}-loading-$_entriesLoading',
+      ),
+      child: Column(
+        children: [
+          if (_entriesError != null) ...[
+            _InboxLoadNotice(
+              message: '최근 알림 갱신에 실패해 이전 목록을 표시합니다.',
+              actionLabel: '다시 시도',
+              onRetry: () => unawaited(_loadEntries()),
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (_entriesLoading) ...[
+            const LinearProgressIndicator(minHeight: 2),
+            const SizedBox(height: 10),
+          ],
+          if (visibleEntries.isEmpty)
+            _InboxEmptyState(filter: _filter)
+          else
+            _InboxTimeline(entries: visibleEntries, onOpenEntry: _openEntry),
+        ],
       ),
     );
   }
@@ -174,7 +271,7 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
 }
 
 class _InboxHeader extends StatelessWidget {
-  final int unreadCount;
+  final int? unreadCount;
   final VoidCallback onBack;
   final VoidCallback? onMarkAllRead;
 
@@ -220,7 +317,13 @@ class _InboxHeader extends StatelessWidget {
         ),
         TextButton(
           onPressed: onMarkAllRead,
-          child: Text(unreadCount == 0 ? '정리됨' : '모두 읽음'),
+          child: Text(
+            unreadCount == null
+                ? '확인 불가'
+                : unreadCount == 0
+                ? '정리됨'
+                : '모두 읽음',
+          ),
         ),
       ],
     );
@@ -228,25 +331,31 @@ class _InboxHeader extends StatelessWidget {
 }
 
 class _InboxSummaryCard extends StatelessWidget {
-  final int totalCount;
-  final int unreadCount;
-  final PushNotificationSettings? settings;
+  final int? totalCount;
+  final int? visibleCount;
+  final int? unreadCount;
+  final bool isLoading;
+  final bool hasError;
 
   const _InboxSummaryCard({
     required this.totalCount,
+    required this.visibleCount,
     required this.unreadCount,
-    required this.settings,
+    required this.isLoading,
+    required this.hasError,
   });
 
   @override
   Widget build(BuildContext context) {
-    final immediateCount = settings == null
-        ? 0
-        : _momentItems(settings!)
-              .where(
-                (item) => item.delivery == PushNotificationDelivery.immediate,
-              )
-              .length;
+    final hasCounts =
+        totalCount != null && visibleCount != null && unreadCount != null;
+    final summary = hasCounts
+        ? '최근 최대 50개 보관 · $totalCount개 중 $visibleCount개 표시'
+        : isLoading
+        ? '최근 알림을 최대 50개까지 불러오는 중입니다'
+        : hasError
+        ? '최근 최대 50개 보관 · 현재 표시 수 확인 불가'
+        : '최근 알림을 최대 50개까지 보관합니다';
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -288,7 +397,7 @@ class _InboxSummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      '오늘 놓치지 않은 신호',
+                      '최근 알림 보관함',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w900,
@@ -296,10 +405,8 @@ class _InboxSummaryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      totalCount == 0
-                          ? '수신된 푸시가 이곳에 쌓입니다'
-                          : '$totalCount개 수신 · $unreadCount개 안 읽음',
-                      maxLines: 1,
+                      summary,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
@@ -316,24 +423,24 @@ class _InboxSummaryCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _SummaryMetric(
-                  label: '최근',
-                  value: '$totalCount',
+                  label: '보관',
+                  value: totalCount?.toString() ?? '—',
                   color: AppColors.live,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _SummaryMetric(
-                  label: '안 읽음',
-                  value: '$unreadCount',
+                  label: '현재 표시',
+                  value: visibleCount?.toString() ?? '—',
                   color: AppColors.accent,
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: _SummaryMetric(
-                  label: '바로',
-                  value: '$immediateCount',
+                  label: '안 읽음',
+                  value: unreadCount?.toString() ?? '—',
                   color: AppColors.positive,
                 ),
               ),
@@ -402,7 +509,7 @@ class _InboxFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 36,
+      height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _InboxFilter.values.length,
@@ -413,6 +520,7 @@ class _InboxFilterBar extends StatelessWidget {
           return AppPressable(
             onTap: isSelected ? null : () => onChanged(filter),
             pressedScale: 0.96,
+            semanticSelected: isSelected,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
@@ -649,10 +757,114 @@ class _InboxLoadingList extends StatelessWidget {
   }
 }
 
+class _InboxLoadErrorState extends StatelessWidget {
+  final String title;
+  final String body;
+  final String actionLabel;
+  final VoidCallback onRetry;
+
+  const _InboxLoadErrorState({
+    required this.title,
+    required this.body,
+    required this.actionLabel,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.sync_problem_rounded, color: AppColors.ballYellow),
+          const SizedBox(height: 10),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            body,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.4,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(onPressed: onRetry, child: Text(actionLabel)),
+        ],
+      ),
+    );
+  }
+}
+
+class _InboxLoadNotice extends StatelessWidget {
+  final String message;
+  final String actionLabel;
+  final VoidCallback onRetry;
+
+  const _InboxLoadNotice({
+    required this.message,
+    required this.actionLabel,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: AppColors.ballYellow.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.ballYellow.withValues(alpha: 0.32)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            size: 18,
+            color: AppColors.ballYellow,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 11,
+                height: 1.35,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: Text(actionLabel)),
+        ],
+      ),
+    );
+  }
+}
+
 class _InboxPlaybookSection extends StatelessWidget {
   final PushNotificationSettings? settings;
+  final bool isLoading;
+  final bool hasError;
+  final VoidCallback onRetry;
 
-  const _InboxPlaybookSection({required this.settings});
+  const _InboxPlaybookSection({
+    required this.settings,
+    required this.isLoading,
+    required this.hasError,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -699,16 +911,29 @@ class _InboxPlaybookSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
+        if (hasError && loadedSettings != null) ...[
+          _InboxLoadNotice(
+            message: '알림 설정 갱신에 실패해 이전 설정을 표시합니다.',
+            actionLabel: '설정 다시 시도',
+            onRetry: onRetry,
+          ),
+          const SizedBox(height: 8),
+        ],
         Container(
           decoration: BoxDecoration(
             color: AppColors.card,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.divider),
           ),
-          child: items.isEmpty
-              ? const _PlaybookLoadingRow()
+          child: loadedSettings == null
+              ? _PlaybookLoadingRow(
+                  isLoading: isLoading,
+                  hasError: hasError,
+                  onRetry: onRetry,
+                )
               : Column(
                   children: [
+                    if (isLoading) const LinearProgressIndicator(minHeight: 2),
                     for (int index = 0; index < items.length; index++) ...[
                       _PlaybookMomentRow(item: items[index]),
                       if (index != items.length - 1)
@@ -728,15 +953,35 @@ class _InboxPlaybookSection extends StatelessWidget {
 }
 
 class _PlaybookLoadingRow extends StatelessWidget {
-  const _PlaybookLoadingRow();
+  final bool isLoading;
+  final bool hasError;
+  final VoidCallback onRetry;
+
+  const _PlaybookLoadingRow({
+    required this.isLoading,
+    required this.hasError,
+    required this.onRetry,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.all(16),
-      child: Text(
-        '알림 설정을 불러오는 중입니다',
-        style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              isLoading
+                  ? '알림 설정을 불러오는 중입니다'
+                  : hasError
+                  ? '알림 설정을 확인할 수 없습니다. 알림 목록은 그대로 유지됩니다.'
+                  : '저장된 알림 설정이 없습니다',
+              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+            ),
+          ),
+          if (hasError)
+            TextButton(onPressed: onRetry, child: const Text('알림 설정 다시 시도')),
+        ],
       ),
     );
   }
