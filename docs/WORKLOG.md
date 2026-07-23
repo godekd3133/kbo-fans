@@ -2,6 +2,42 @@
 
 ---
 
+## 2026-07-23: 40개 다양성 페르소나 재감사와 극단 상태 보강
+
+### 결정
+- 기존 20개 맥락을 정보 신뢰 12개, 상태·복구 14개, 극단 화면·접근성 14개로 다시 분리해 총 40개 페르소나로 교차 감사한다.
+- 앱 동작·백엔드 기록 문구·업데이트 소식이 바뀌었으므로 사장님의 반복 배포 요청에 따라 `0.1.22+90` / tag `0.1.22` 새 tester-facing release로 발행한다.
+- source/static test, release web build, 운영 API 응답, 실기기 보조기술, APNs/FCM 전달은 서로 다른 증거로 보고 완료 상태를 섞지 않는다.
+
+### 진행
+- [x] 공식 `wRC+`로 오인될 수 있던 OPS 기반 앱 계산값을 `OPS 상대지수`로 바꾸고 계산 모집단·`앱 계산`·공식 지표 아님을 고지.
+- [x] 기록실 첫 지표 카드에 `타율 AVG`, `홈런 HR`, `출루·장타 OPS`, `평균자책 ERA`, `다승 W`, `세이브 SV`, `탈삼진 SO`처럼 한글 의미와 약어를 함께 표시.
+- [x] 예매 시각을 KST로 변환하고 공식·예상 오픈을 구분하며, 맞대결 `남은 경기`는 LIVE·종료·취소·서스펜디드를 제외한 예정 상태만 집계.
+- [x] 홈 stale scoreboard에 업데이트 지연, 마지막 KST 갱신 시각, 재시도를 표시.
+- [x] 경기 팔로우 저장과 실제 알림 권한·지원 환경을 분리하고, 경기·선수 cold 딥링크 오류에 명시적 재시도와 안전한 루트 복귀를 추가.
+- [x] 취소·경기 전 점수를 중립 표기로 바꾸고, 이닝 기록 전체 미제공 시 대시 표 대신 상태별 설명을 표시.
+- [x] 280px·240% 온보딩을 한 열 혜택·유동 팀 카드로 보정하고 하단 탭·팀 카드의 동작 줄이기 설정을 반영.
+- [x] 280/320px·240% 박스스코어 선수 행을 선수 정체성과 지표의 두 단 구조로 바꾸고 팀 선택·요약 지표·통합 semantics를 보강.
+- [x] 캘린더 날짜를 44px로 유지하고 전체 날짜·요일·오늘·선택·마이팀 경기 여부를 낭독하며, 마이팀 경기를 색 외 별 형태로 구분.
+- [x] 280px 일정 보기 전환의 `내 팀 먼저 보기`를 `내 팀 우선`으로 줄여 버튼 문구의 강제 줄바꿈을 제거.
+- [x] 300px 이하 순위 헤더와 경기 차·연속 도움말을 보강.
+- [x] `docs/UX_PERSONA_AUDIT_DIVERSE_2026-07-23.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 새 표시·반응형·복구 계약 동기화.
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.22+90` 기준으로 갱신.
+- [ ] Git commit/tag/GitHub Release, 운영 backend 배포, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+
+### 검증
+- [x] 기록 신뢰 Flutter 집중 테스트 15개, backend 기록 overview 테스트 21개 통과.
+- [x] 박스스코어 직접 테스트 11개와 경기 상세 기존 묶음 52개 통과.
+- [x] 온보딩·하단 탭 10개, 일정·순위 집중 테스트 22개, 홈 stale 직접 회귀 테스트 통과.
+- [x] `cd app && flutter analyze --no-pub`: `No issues found`.
+- [x] `cd app && flutter test --no-pub`: 전체 393개 통과.
+- [x] `cd backend && python -m compileall -q src`, `ruff check src tests`, 변경 파일 format 검사, `pytest -q`: 전체 296개 통과.
+- [x] production API define(`USE_BACKEND_API=true`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`)을 사용한 Flutter web release build 성공. 기존 wasm dry-run interop 및 CupertinoIcons font 경고는 남지만 JavaScript build는 성공.
+- [x] 개선 후 280×844·390×844 웹 화면을 같은 감사 artifact에 재캡처하고, 브라우저 warning/error 0건 확인.
+- [ ] 실제 iOS VoiceOver, Android TalkBack, Switch Control, 알림 권한 거부, APNs/FCM 수신은 미확인.
+
+---
+
 ## 2026-07-23: 20개 페르소나 전면 재감사와 정보 신뢰·형태 개선
 
 ### 결정
