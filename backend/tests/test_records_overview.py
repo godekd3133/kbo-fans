@@ -251,7 +251,7 @@ class _UnsortedRecordsCrawler:
         ]
 
 
-def test_build_ops_plus_leaders_from_ops_values() -> None:
+def test_build_ops_relative_leaders_from_ops_values_with_compatibility_key() -> None:
     leaders = [
         {
             "rank": 1,
@@ -273,20 +273,21 @@ def test_build_ops_plus_leaders_from_ops_values() -> None:
         },
     ]
 
-    ops_plus_leaders = RecordsOverviewCrawler._build_ops_plus_leaders(leaders)
+    ops_relative_leaders = RecordsOverviewCrawler._build_ops_plus_leaders(leaders)
 
-    assert len(ops_plus_leaders) == 2
-    assert ops_plus_leaders[0]["name"] == "A"
-    assert ops_plus_leaders[0]["value"] == "111"
-    assert ops_plus_leaders[1]["name"] == "B"
-    assert ops_plus_leaders[1]["value"] == "89"
+    assert len(ops_relative_leaders) == 2
+    assert ops_relative_leaders[0]["name"] == "A"
+    assert ops_relative_leaders[0]["value"] == "111"
+    assert ops_relative_leaders[0]["metricKey"] == "OPSPLUS"
+    assert ops_relative_leaders[1]["name"] == "B"
+    assert ops_relative_leaders[1]["value"] == "89"
+    assert (
+        RecordsOverviewCrawler._headline_for_leader(ops_relative_leaders[0]) == "OPS 상대지수 111"
+    )
 
 
 def test_extract_player_link_accepts_active_and_retired_records() -> None:
-    active = (
-        '<a href="/Record/Player/HitterDetail/Basic.aspx?playerId=77532">'
-        "손아섭</a>"
-    )
+    active = '<a href="/Record/Player/HitterDetail/Basic.aspx?playerId=77532">손아섭</a>'
     retired = '<a href="/Record/Retire/Pitcher.aspx?playerId=75620">윤석민</a>'
 
     assert RecordsOverviewCrawler._extract_player_link(active) == ("77532", False)

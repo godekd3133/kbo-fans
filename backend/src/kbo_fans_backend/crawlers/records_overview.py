@@ -71,7 +71,7 @@ class RecordsOverviewCrawler(BaseCrawler):
             avg_leaders = avg_future.result()
             hr_leaders = hr_future.result()
             ops_leaders = ops_future.result()
-            ops_plus_leaders = self._build_ops_plus_leaders(ops_plus_future.result())[:5]
+            ops_relative_leaders = self._build_ops_plus_leaders(ops_plus_future.result())[:5]
             era_leaders = era_future.result()
             win_leaders = wins_future.result()
             save_leaders = saves_future.result()
@@ -81,7 +81,9 @@ class RecordsOverviewCrawler(BaseCrawler):
             "avg": avg_leaders,
             "hr": hr_leaders,
             "ops": ops_leaders,
-            "opsPlus": ops_plus_leaders,
+            # `opsPlus` is retained as the compatibility wire key. The value is
+            # an OPS relative index, not an official OPS+ or wRC+ metric.
+            "opsPlus": ops_relative_leaders,
             "era": era_leaders,
             "wins": win_leaders,
             "saves": save_leaders,
@@ -273,8 +275,7 @@ class RecordsOverviewCrawler(BaseCrawler):
                     else "시즌 ERA 리더"
                 ),
                 leader=(
-                    self._first_leader(leaders, "strikeouts")
-                    or self._first_leader(leaders, "era")
+                    self._first_leader(leaders, "strikeouts") or self._first_leader(leaders, "era")
                 ),
                 season=season,
             ),
@@ -355,7 +356,7 @@ class RecordsOverviewCrawler(BaseCrawler):
         if metric == "OPS":
             return f"OPS {value}"
         if metric == "OPSPLUS":
-            return f"OPS+ {value}"
+            return f"OPS 상대지수 {value}"
         if metric == "ERA":
             return f"ERA {value}"
         if metric == "W":
@@ -370,6 +371,7 @@ class RecordsOverviewCrawler(BaseCrawler):
 
     @staticmethod
     def _build_ops_plus_leaders(leaders: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Build an OPS-relative index while retaining the legacy wire key."""
         parsed = []
         for leader in leaders:
             try:

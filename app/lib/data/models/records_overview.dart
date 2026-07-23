@@ -10,6 +10,9 @@ enum LeaderboardMetric {
   opsPlus,
 }
 
+const opsRelativeIndexDisclosure =
+    '이 화면에 포함된 OPS 선수 평균=100인 참고값이며 wRC+·공식 OPS+와 다릅니다.';
+
 enum LeaderboardPlayerGroup { hitter, pitcher }
 
 extension LeaderboardPlayerGroupX on LeaderboardPlayerGroup {
@@ -19,8 +22,8 @@ extension LeaderboardPlayerGroupX on LeaderboardPlayerGroup {
   };
 
   String get description => switch (this) {
-    LeaderboardPlayerGroup.hitter => '타율, 홈런, OPS, wRC+',
-    LeaderboardPlayerGroup.pitcher => 'ERA, 다승, 세이브, 탈삼진',
+    LeaderboardPlayerGroup.hitter => '타율(AVG), 홈런(HR), 출루·장타(OPS), OPS 상대지수',
+    LeaderboardPlayerGroup.pitcher => '평균자책(ERA), 다승(W), 세이브(SV), 탈삼진(SO)',
   };
 
   LeaderboardMetric get defaultMetric => switch (this) {
@@ -76,7 +79,7 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.saves => '리그 세이브 리더보드',
     LeaderboardMetric.strikeouts => '리그 탈삼진 리더보드',
     LeaderboardMetric.war => '리그 WAR 리더보드',
-    LeaderboardMetric.opsPlus => '리그 wRC+ 리더보드',
+    LeaderboardMetric.opsPlus => '리그 OPS 상대지수 리더보드',
   };
 
   String get shortLabel => switch (this) {
@@ -88,9 +91,33 @@ extension LeaderboardMetricX on LeaderboardMetric {
     LeaderboardMetric.saves => 'SV',
     LeaderboardMetric.strikeouts => 'SO',
     LeaderboardMetric.war => 'WAR',
-    LeaderboardMetric.opsPlus => 'wRC+',
+    LeaderboardMetric.opsPlus => 'OPS 상대지수',
   };
 
+  String get explainedLabel => switch (this) {
+    LeaderboardMetric.avg => '타율 AVG',
+    LeaderboardMetric.hr => '홈런 HR',
+    LeaderboardMetric.ops => '출루·장타 OPS',
+    LeaderboardMetric.era => '평균자책 ERA',
+    LeaderboardMetric.wins => '다승 W',
+    LeaderboardMetric.saves => '세이브 SV',
+    LeaderboardMetric.strikeouts => '탈삼진 SO',
+    LeaderboardMetric.war => 'WAR',
+    LeaderboardMetric.opsPlus => 'OPS 상대지수',
+  };
+
+  bool get isAppCalculated => this == LeaderboardMetric.opsPlus;
+
+  String get sourceBadgeLabel => isAppCalculated
+      ? '앱 계산'
+      : supportedByOfficialSource
+      ? '공식'
+      : '미지원';
+
+  String? get disclosure => isAppCalculated ? opsRelativeIndexDisclosure : null;
+
+  // opsPlus는 호환 wire key로 유지한다. 이 값은 데이터를 계속 로드할 수
+  // 있는지를 판단하는 기존 availability gate이므로 앱 계산 지표도 true다.
   bool get supportedByOfficialSource => switch (this) {
     LeaderboardMetric.avg => true,
     LeaderboardMetric.hr => true,
@@ -223,7 +250,7 @@ List<RecordLeader> computeOpsPlusLeaders(List<RecordLeader> opsLeaders) {
   }
 
   final calculated = parsed.map((entry) {
-    final opsPlus = ((entry.ops! / leagueAverageOps) * 100).round();
+    final relativeOpsIndex = ((entry.ops! / leagueAverageOps) * 100).round();
     return RecordLeader(
       rank: 0,
       playerId: entry.leader.playerId,
@@ -231,7 +258,7 @@ List<RecordLeader> computeOpsPlusLeaders(List<RecordLeader> opsLeaders) {
       metricKey: 'OPSPLUS',
       name: entry.leader.name,
       teamId: entry.leader.teamId,
-      value: '$opsPlus',
+      value: '$relativeOpsIndex',
       milestoneLabel: entry.leader.milestoneLabel,
       allTimeRank: entry.leader.allTimeRank,
       isRetired: entry.leader.isRetired,
