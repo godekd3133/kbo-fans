@@ -22,12 +22,18 @@
 - [x] 무팀 푸시 설정을 `마이팀 미선택`으로 표시하고 직접 팔로우 경기 알림은 별도 동작함을 안내.
 - [x] `docs/UX_PERSONA_AUDIT_2026-07-23.md`에 여정별 상태, 전후 캡처, 검증 경계와 남은 위험을 기록.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.20+88` 기준으로 갱신.
-- [ ] Git commit/tag/GitHub Release, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+- [x] 접근성·첫 사용자 흐름, 경기 상세·일정, 릴리즈 문서를 세 커밋으로 나눠 `main`에 push하고 tag/GitHub Release `0.1.20` 게시.
+- [x] release IPA archive/export 및 App Store Connect upload. Delivery UUID `163fc871-8ea2-4e71-b107-3430274f4488`, build `88`은 `VALID`, `APP_STORE_ELIGIBLE`, 암호화 문서 추가 제출 불필요 상태.
+- [x] 내부 `Tester`와 외부 `External Testers` 그룹에 build `88` 연결. Beta App Review는 `WAITING_FOR_REVIEW`.
+- [x] 새 build 승인 전 설치 가능한 fallback을 보존하기 위해 외부 그룹의 기존 build `87`, `86`, `85`, `84`, `83`, `82`, `77` 관계는 유지.
 
 ### 검증
 - [x] `cd app && fvm flutter test --no-pub` (`359 passed`) 통과.
 - [x] `cd app && fvm flutter analyze --no-pub` 통과.
 - [x] `./scripts/codex-run-web.sh` release web build 성공. 기존 wasm dry-run interop 경고와 CupertinoIcons font 경고는 남아 있으나 JavaScript web build/serve는 성공.
+- [x] `RELEASE_API_HEALTH_DATE=2026-07-23 RELEASE_API_HEALTH_MONTH=2026-07 RELEASE_API_HEALTH_SEASON=2026 ./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api` 통과.
+- [x] `fvm flutter build ipa --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api` (`0.1.20+88`, IPA `36.4MB`).
+- [x] App Store Connect API 재조회: internal/external build `88` `VALID`, Beta Review `WAITING_FOR_REVIEW`, 외부 tester 1명 `INSTALLED` 상태.
 - [x] 실제 웹 390×844: 신규 설치 온보딩 완료 후 업데이트 팝업 없이 홈 진입, 마이팀 필터 → 구장별 전환 후 월 헤더/이동 버튼 유지.
 - [x] 실제 웹 320×568: edit 온보딩 1열 레이아웃과 팀명 보존 확인.
 - [ ] 실제 iOS VoiceOver, Android TalkBack 읽기 순서와 실기기 keyboard focus outline은 미확인.
