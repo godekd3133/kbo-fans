@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.20+88`
-- Current release tag: `0.1.20`
+- Flutter app version: `0.1.21+89`
+- Current release tag: `0.1.21`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -150,6 +150,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.18`: KBO date/time and runtime stability release. App/backend/release gates use KST game dates, future or malformed cache data is rejected, records/boxscore parsing and shared runtime caching are reinforced, and Live Activity/release API wiring is stabilized with current app build `0.1.18+86`.
 - `0.1.19`: scoreboard and relay refresh reliability release. Home/detail refreshes serialize automatic and manual requests, manual refresh can request fresh current data, relay session access is guarded, and current app build is `0.1.19+87`.
 - `0.1.20`: core journey accessibility and stability release. Small-screen and large-text onboarding, keyboard/screen-reader interaction, first-home update-note baseline, home team-selection return routing, delayed game-detail refresh state, relay focus spacing, and schedule error/header behavior are reinforced with current app build `0.1.20+88`.
+- `0.1.21`: data-trust and responsive information release. Dynamic extra-inning score tables, explicit app-derived boxscore metrics, source-labeled data briefing, independent notification failure states, reduced records repetition, and 320px onboarding/home/standings/player-detail layouts ship with current app build `0.1.21+89`.
 
 ## GitHub Release Note Template
 
