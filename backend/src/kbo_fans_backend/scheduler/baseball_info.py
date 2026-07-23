@@ -59,6 +59,8 @@ def send_smart_daily(
     dry_run: bool = False,
     scoreboard_service: Optional[Any] = None,
     push_service: Optional[Any] = None,
+    delivery_registry: Optional[Any] = None,
+    delivery_alert_key: Optional[str] = None,
 ) -> dict:
     target_date = date or current_kbo_date()
     if scoreboard_service is None:
@@ -74,18 +76,73 @@ def send_smart_daily(
     deliveries = []
 
     for item in plan:
-        response = push.send_baseball_info(
-            kind=item["kind"],
-            date=target_date,
-            topic=item.get("topic"),
-            team_id=item.get("teamId"),
-            game_id=item.get("gameId"),
-            matchup=item.get("matchup"),
-            start_time=item.get("startTime"),
-            stadium=item.get("stadium"),
-            dry_run=dry_run,
+        delivery_id = _smart_daily_delivery_id(item)
+        claim_id = None
+        if delivery_registry is not None and delivery_alert_key:
+            claim_id = delivery_registry.claim_scheduled_delivery(
+                delivery_alert_key,
+                delivery_id,
+            )
+            if claim_id is None:
+                already_sent = delivery_id in delivery_registry.scheduled_delivery_ids(
+                    delivery_alert_key
+                ) or delivery_registry.scheduled_alert_sent(delivery_alert_key)
+                deliveries.append(
+                    {
+                        **item,
+                        "deliveryId": delivery_id,
+                        "response": {
+                            "sent": already_sent,
+                            "skipped": True,
+                            "reason": ("already_sent" if already_sent else "delivery_in_progress"),
+                        },
+                    }
+                )
+                continue
+
+        try:
+            response = push.send_baseball_info(
+                kind=item["kind"],
+                date=target_date,
+                topic=item.get("topic"),
+                team_id=item.get("teamId"),
+                game_id=item.get("gameId"),
+                matchup=item.get("matchup"),
+                start_time=item.get("startTime"),
+                stadium=item.get("stadium"),
+                dry_run=dry_run,
+            )
+        except Exception as error:
+            if delivery_registry is not None and delivery_alert_key and claim_id is not None:
+                delivery_registry.mark_scheduled_delivery_failed(
+                    delivery_alert_key,
+                    delivery_id,
+                    str(error),
+                    claim_id=claim_id,
+                )
+            raise
+
+        if delivery_registry is not None and delivery_alert_key and claim_id is not None:
+            if response.get("sent"):
+                delivery_registry.mark_scheduled_delivery_sent(
+                    delivery_alert_key,
+                    delivery_id,
+                    claim_id=claim_id,
+                )
+            else:
+                delivery_registry.mark_scheduled_delivery_failed(
+                    delivery_alert_key,
+                    delivery_id,
+                    str(response.get("reason") or "delivery returned sent=false"),
+                    claim_id=claim_id,
+                )
+        deliveries.append(
+            {
+                **item,
+                "deliveryId": delivery_id,
+                "response": response,
+            }
         )
-        deliveries.append({**item, "response": response})
 
     return {
         "sent": any(delivery["response"].get("sent") for delivery in deliveries),
@@ -95,6 +152,17 @@ def send_smart_daily(
         "scoreboardGameCount": len(games) if isinstance(games, list) else 0,
         "planned": deliveries,
     }
+
+
+def _smart_daily_delivery_id(item: dict[str, str]) -> str:
+    topic = str(item.get("topic") or "").strip()
+    if topic:
+        return f"topic:{topic}"
+    team_id = str(item.get("teamId") or "").strip()
+    if team_id:
+        return f"team:{team_id}"
+    target = json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return f"plan:{target}"
 
 
 def build_smart_daily_plan(
@@ -279,9 +347,7 @@ def _league_kind(plan: list[dict[str, str]]) -> str:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Send scheduled KBO baseball info push prompts."
-    )
+    parser = argparse.ArgumentParser(description="Send scheduled KBO baseball info push prompts.")
     parser.add_argument("--date", default=None)
     parser.add_argument(
         "--kind",

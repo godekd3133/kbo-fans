@@ -1,11 +1,13 @@
 import fcntl
 import json
 import os
+import threading
 import time as time_module
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from kbo_fans_backend.api.routes import push as push_routes
@@ -24,6 +26,7 @@ from kbo_fans_backend.schemas.push import (
     PushRegisterRequest,
     PushTestRequest,
 )
+from kbo_fans_backend.services import push_registry as push_registry_module
 from kbo_fans_backend.services.apns_live_activity import ApnsLiveActivitySender
 from kbo_fans_backend.services.live_activity_scoreboard import LiveActivityScoreboardSyncService
 from kbo_fans_backend.services.push import PushService
@@ -689,6 +692,156 @@ def test_send_game_moment_includes_followed_game_topic(tmp_path) -> None:
         "scoring_KT",
         "scoring_GAME_20260604LGKT0",
     ]
+
+
+def test_send_game_moment_outbox_retries_only_failed_target_after_restart(
+    tmp_path,
+) -> None:
+    class PartiallyFailingMessaging:
+        Notification = FakeFcmNotification
+        Message = FakeFcmMessage
+        ApsAlert = FakeFcmApsAlert
+        Aps = FakeFcmAps
+        APNSPayload = FakeFcmApnsPayload
+        APNSConfig = FakeFcmApnsConfig
+        AndroidNotification = FakeFcmAndroidNotification
+        AndroidConfig = FakeFcmAndroidConfig
+
+        def __init__(self, fail_topic=None) -> None:
+            self.fail_topic = fail_topic
+            self.attempted_topics = []
+            self.sent_messages = []
+
+        def send(self, message) -> str:
+            self.attempted_topics.append(message.topic)
+            if message.topic == self.fail_topic:
+                self.fail_topic = None
+                raise RuntimeError("temporary FCM failure")
+            self.sent_messages.append(message)
+            return f"message-{len(self.sent_messages)}"
+
+    registry_path = tmp_path / "push_registry.json"
+    registry = PushRegistry(str(registry_path))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    event_id = "game-moment:20260604LGKT0:scoring:stable-test"
+    targets = service.game_moment_targets(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        home_team_id="KT",
+    )
+    registry.enqueue_push_outbox_events(
+        [
+            {
+                "eventId": event_id,
+                "kind": "game_moment",
+                "payload": {
+                    "moment": "scoring",
+                    "game_id": "20260604LGKT0",
+                },
+                "targets": targets,
+            }
+        ]
+    )
+    first_messaging = PartiallyFailingMessaging(fail_topic="scoring_KT")
+    service._get_messaging = lambda: first_messaging
+
+    first = service.send_game_moment(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=2,
+        home_score=3,
+        inning="7회말",
+        event_id=event_id,
+    )
+
+    assert first["sent"] is False
+    assert first["pendingTargets"] == ["scoring_KT"]
+    assert set(first_messaging.attempted_topics) == set(targets)
+    assert all(message.data["eventId"] == event_id for message in first_messaging.sent_messages)
+
+    restarted_registry = PushRegistry(str(registry_path))
+    restarted_service = PushService(
+        registry=restarted_registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    retry_messaging = PartiallyFailingMessaging()
+    restarted_service._get_messaging = lambda: retry_messaging
+
+    second = restarted_service.send_game_moment(
+        moment="scoring",
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG",
+        home_team_id="KT",
+        home_team_name="KT",
+        away_score=2,
+        home_score=3,
+        inning="7회말",
+        event_id=event_id,
+    )
+
+    assert second["sent"] is True
+    assert retry_messaging.attempted_topics == ["scoring_KT"]
+    persisted = restarted_registry.push_outbox_event(event_id)
+    assert persisted is not None
+    assert persisted["completedAt"]
+    assert persisted["targets"]["scoring_LG"]["attempts"] == 1
+    assert persisted["targets"]["scoring_KT"]["attempts"] == 2
+    assert persisted["targets"]["scoring_GAME_20260604LGKT0"]["attempts"] == 1
+
+
+def test_push_outbox_fencing_rejects_stale_worker_completion(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    monkeypatch.setattr(push_registry_module, "_PUSH_OUTBOX_TARGET_LEASE_SECONDS", 0)
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    event_id = "game-moment:20260604LGKT0:scoring:fencing-test"
+    target = "scoring_LG"
+    registry.enqueue_push_outbox_events(
+        [
+            {
+                "eventId": event_id,
+                "kind": "game_moment",
+                "payload": {"moment": "scoring", "game_id": "20260604LGKT0"},
+                "targets": [target],
+            }
+        ]
+    )
+
+    stale_claim = registry.claim_push_outbox_target(event_id, target)
+    current_claim = registry.claim_push_outbox_target(event_id, target)
+
+    assert stale_claim
+    assert current_claim
+    assert current_claim != stale_claim
+    assert (
+        registry.mark_push_outbox_target_failed(
+            event_id,
+            target,
+            "stale worker failed",
+            claim_id=stale_claim,
+        )
+        is False
+    )
+    pending = registry.push_outbox_event(event_id)
+    assert pending is not None
+    assert pending["targets"][target]["status"] == "sending"
+    assert pending["targets"][target]["claimId"] == current_claim
+    assert (
+        registry.mark_push_outbox_target_sent(
+            event_id,
+            target,
+            "message-1",
+            claim_id=current_claim,
+        )
+        is True
+    )
 
 
 def test_send_game_moment_matchup_copy_normalizes_team_ids(tmp_path) -> None:
@@ -1686,6 +1839,81 @@ def test_push_registry_serializes_writes_across_instances_in_process(tmp_path) -
     assert len(registry_data["devices"]) == total_registrations
 
 
+def test_push_registry_compare_and_replace_prevents_scoreboard_baseline_regression(
+    tmp_path,
+) -> None:
+    registry_path = tmp_path / "push_registry.json"
+    first = PushRegistry(str(registry_path))
+    second = PushRegistry(str(registry_path))
+    first.replace_scoreboard_state(
+        "20260604LGKT0",
+        {"status": "LIVE", "awayScore": 0, "homeScore": 0},
+    )
+    baseline = first.scoreboard_state("20260604LGKT0")
+    assert baseline is not None
+    expected_updated_at = baseline["updatedAt"]
+
+    newer_applied = first.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {"status": "LIVE", "awayScore": 2, "homeScore": 0},
+        events=[],
+        expected_updated_at=expected_updated_at,
+    )
+    stale_applied = second.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {"status": "LIVE", "awayScore": 1, "homeScore": 0},
+        events=[],
+        expected_updated_at=expected_updated_at,
+    )
+    current_after_newer = first.scoreboard_state("20260604LGKT0")
+    assert current_after_newer is not None
+    delayed_snapshot_applied = second.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {"status": "LIVE", "awayScore": 1, "homeScore": 0},
+        events=[],
+        expected_updated_at=current_after_newer["updatedAt"],
+    )
+
+    assert newer_applied is True
+    assert stale_applied is False
+    assert delayed_snapshot_applied is False
+    current = first.scoreboard_state("20260604LGKT0")
+    assert current is not None
+    assert current["awayScore"] == 2
+
+
+def test_push_registry_rejects_terminal_scoreboard_status_regression(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    registry.replace_scoreboard_state(
+        "20260604LGKT0",
+        {
+            "status": "FINAL",
+            "awayScore": 2,
+            "homeScore": 1,
+            "inning": "경기종료",
+        },
+    )
+    baseline = registry.scoreboard_state("20260604LGKT0")
+    assert baseline is not None
+
+    applied = registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": "LIVE",
+            "awayScore": 2,
+            "homeScore": 1,
+            "inning": "9회말",
+        },
+        events=[],
+        expected_updated_at=baseline["updatedAt"],
+    )
+
+    assert applied is False
+    current = registry.scoreboard_state("20260604LGKT0")
+    assert current is not None
+    assert current["status"] == "FINAL"
+
+
 def test_push_registry_shared_lock_uses_readable_lock_fd(monkeypatch, tmp_path) -> None:
     original_flock = fcntl.flock
 
@@ -1828,6 +2056,84 @@ def test_send_live_activity_update_uses_registered_tokens(tmp_path) -> None:
     assert sender.calls[0]["state"].homeScore == 3
 
 
+def test_successful_live_activity_end_removes_registered_token(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    service = PushService(registry=registry, live_activity_sender=sender)
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+
+    response = service.send_live_activity_update(
+        LiveActivityUpdateRequest(
+            gameId="20260604LGKT0",
+            state=_live_activity_state(),
+            event="end",
+        )
+    )
+
+    assert response["sent"] is True
+    assert sender.calls[0]["event"] == "end"
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == []
+
+
+def test_concurrent_live_activity_end_claims_registered_token_once(tmp_path) -> None:
+    class _BlockingLiveActivitySender(FakeLiveActivitySender):
+        def __init__(self) -> None:
+            super().__init__()
+            self.call_started = threading.Event()
+            self.release_call = threading.Event()
+
+        def send(self, **kwargs):
+            self.calls.append(kwargs)
+            self.call_started.set()
+            assert self.release_call.wait(timeout=5)
+            return {"sent": True, "apnsId": "apns-id", "statusCode": 200}
+
+    registry_path = str(tmp_path / "push_registry.json")
+    first_registry = PushRegistry(registry_path)
+    second_registry = PushRegistry(registry_path)
+    sender = _BlockingLiveActivitySender()
+    first_service = PushService(
+        registry=first_registry,
+        live_activity_sender=sender,
+    )
+    second_service = PushService(
+        registry=second_registry,
+        live_activity_sender=sender,
+    )
+    first_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    payload = LiveActivityUpdateRequest(
+        gameId="20260604LGKT0",
+        state=_live_activity_state(),
+        event="end",
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first_future = executor.submit(first_service.send_live_activity_update, payload)
+        assert sender.call_started.wait(timeout=5)
+        second_future = executor.submit(second_service.send_live_activity_update, payload)
+        second_response = second_future.result(timeout=5)
+        sender.release_call.set()
+        first_response = first_future.result(timeout=5)
+
+    assert first_response["sent"] is True
+    assert second_response["sent"] is False
+    assert second_response["messages"][0]["reason"] == "delivery_in_progress"
+    assert len(sender.calls) == 1
+    assert first_registry.live_activity_tokens_for_game("20260604LGKT0") == []
+
+
 def test_live_activity_scoreboard_sync_updates_registered_live_games(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     sender = FakeLiveActivitySender()
@@ -1851,6 +2157,269 @@ def test_live_activity_scoreboard_sync_updates_registered_live_games(tmp_path) -
     assert sender.calls[0]["event"] == "update"
     assert sender.calls[0]["state"].inning == "7회말"
     assert registry.sync_heartbeat()["checkedGames"] == 1
+
+
+def test_live_activity_scoreboard_sync_holds_live_update_when_score_is_unavailable(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+                _scoreboard_game(away_score=None, home_score=4, inning="7회말"),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    first = sync_service.sync_date("2026-06-04")
+    second = sync_service.sync_date("2026-06-04")
+
+    assert len(first["updatedGames"]) == 1
+    assert second["updatedGames"] == []
+    assert len(sender.calls) == 1
+    assert sender.calls[0]["state"].awayScore == 2
+    assert sender.calls[0]["state"].homeScore == 3
+    assert sender.calls[0]["state"].scoreAvailable is True
+
+
+def test_live_activity_scoreboard_sync_keeps_suspended_activity_with_dash_contract(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    away_score=2,
+                    home_score=3,
+                    inning="5회말",
+                    status="LIVE",
+                ),
+                _scoreboard_game(
+                    away_score=None,
+                    home_score=None,
+                    inning="5회말 경기 중단",
+                    status="SUSPENDED",
+                ),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    sync_service.sync_date("2026-06-04")
+    response = sync_service.sync_date("2026-06-04")
+
+    assert len(response["updatedGames"]) == 1
+    assert sender.calls[1]["event"] == "update"
+    assert sender.calls[1]["state"].awayScore == 2
+    assert sender.calls[1]["state"].homeScore == 3
+    assert sender.calls[1]["state"].scoreAvailable is False
+    assert sender.calls[1]["state"].inning == "5회말 경기 중단"
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["token"]
+
+
+def test_suspended_activity_without_verified_score_holds_existing_surface(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    away_score=None,
+                    home_score=None,
+                    inning="경기 중단",
+                    status="SUSPENDED",
+                )
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    response = sync_service.sync_date("2026-06-04")
+
+    assert response["updatedGames"] == []
+    assert sender.calls == []
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["token"]
+
+
+def test_suspended_game_resumes_with_same_at_bat_without_false_notification(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=sender,
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    games = [
+        _scoreboard_game(
+            away_score=1,
+            home_score=0,
+            inning="7회말",
+            status=status,
+            batter_name="문상철",
+            pitcher_name="김진성",
+        )
+        for status in ("LIVE", "SUSPENDED", "LIVE")
+    ]
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(games),
+        push_service=push_service,
+    )
+
+    responses = [sync_service.sync_date("2026-06-04") for _ in games]
+
+    assert [call["moment"] for call in push_service.moment_calls] == ["game_end"]
+    assert responses[2]["pushedMoments"] == []
+    assert len(sender.calls) == 3
+    assert sender.calls[-1]["event"] == "update"
+    state = registry.scoreboard_state("20260604LGKT0")
+    assert state is not None
+    assert state["status"] == "LIVE"
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["token"]
+
+
+def test_stale_scheduled_snapshot_cannot_send_push_or_live_activity_side_effects(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=sender,
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            installationId="install-start",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+            notificationsAllowed=True,
+        )
+    )
+    push_service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token",
+            installationId="install-start",
+        )
+    )
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-existing",
+            activityPushToken="activity-token",
+            installationId="install-existing",
+        )
+    )
+    registry.replace_scoreboard_state(
+        "20260604LGKT0",
+        {
+            "status": "FINAL",
+            "awayScore": 2,
+            "homeScore": 1,
+            "scoreAvailable": True,
+            "inning": "경기종료",
+        },
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    away_score=0,
+                    home_score=0,
+                    inning="18:30 예정",
+                    status="SCHEDULED",
+                    start_time="18:30",
+                )
+            ]
+        ),
+        push_service=push_service,
+        now_provider=lambda: datetime(
+            2026,
+            6,
+            4,
+            18,
+            20,
+            tzinfo=timezone(timedelta(hours=9)),
+        ),
+    )
+
+    response = sync_service.sync_date("2026-06-04")
+
+    assert response["startedGames"] == []
+    assert response["updatedGames"] == []
+    assert response["pushedMoments"] == []
+    assert push_service.moment_calls == []
+    assert sender.start_calls == []
+    assert sender.calls == []
+    assert registry.pending_push_outbox_events(kind="game_moment") == []
+    state = registry.scoreboard_state("20260604LGKT0")
+    assert state is not None
+    assert state["status"] == "FINAL"
 
 
 def test_live_activity_updated_at_uses_kbo_time_on_utc_host(tmp_path) -> None:
@@ -1964,6 +2533,93 @@ def test_live_activity_scoreboard_sync_starts_my_team_live_activity_from_start_t
     assert sender.start_calls[0]["alert_title"] == "경기 시작"
     assert second_response["startedGames"] == []
     assert len(sender.start_calls) == 1
+
+
+def test_concurrent_live_activity_start_claims_token_once(tmp_path) -> None:
+    class _BlockingStartSender(FakeLiveActivitySender):
+        def __init__(self) -> None:
+            super().__init__()
+            self.call_started = threading.Event()
+            self.release_call = threading.Event()
+
+        def send_start(self, **kwargs):
+            self.start_calls.append(kwargs)
+            self.call_started.set()
+            assert self.release_call.wait(timeout=5)
+            return {"sent": True, "apnsId": "apns-start-id", "statusCode": 200}
+
+    registry_path = str(tmp_path / "push_registry.json")
+    first_registry = PushRegistry(registry_path)
+    second_registry = PushRegistry(registry_path)
+    sender = _BlockingStartSender()
+    first_service = PushService(
+        registry=first_registry,
+        live_activity_sender=sender,
+    )
+    second_service = PushService(
+        registry=second_registry,
+        live_activity_sender=sender,
+    )
+    first_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            installationId="install-1",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+            notificationsAllowed=True,
+        )
+    )
+    first_service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token",
+            installationId="install-1",
+        )
+    )
+    send_arguments = {
+        "game_id": "20260604LGKT0",
+        "away_team_id": "LG",
+        "away_team_name": "LG 트윈스",
+        "home_team_id": "KT",
+        "home_team_name": "KT 위즈",
+        "state": _live_activity_state(),
+    }
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first_future = executor.submit(
+            first_service.send_live_activity_start,
+            **send_arguments,
+        )
+        assert sender.call_started.wait(timeout=5)
+        second_future = executor.submit(
+            second_service.send_live_activity_start,
+            **send_arguments,
+        )
+        second_response = second_future.result(timeout=5)
+        sender.release_call.set()
+        first_response = first_future.result(timeout=5)
+
+    assert first_response["sent"] is True
+    assert second_response["sent"] is False
+    assert second_response["messages"][0]["reason"] == "delivery_in_progress_or_complete"
+    assert len(sender.start_calls) == 1
+    assert (
+        first_registry.live_activity_start_registrations_for_game(
+            game_id="20260604LGKT0",
+            away_team_id="LG",
+            home_team_id="KT",
+        )
+        == []
+    )
 
 
 def test_live_activity_scoreboard_sync_starts_my_team_activity_ten_minutes_before_first_pitch(
@@ -2258,6 +2914,57 @@ def test_scoreboard_sync_pushes_score_moments_after_baseline(tmp_path) -> None:
     assert push_service.moment_calls[0]["home_score"] == 3
 
 
+def test_scoreboard_sync_retries_failed_moment_from_durable_outbox(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FailOnceFakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=0, home_score=0, inning="1회초"),
+                _scoreboard_game(away_score=1, home_score=0, inning="1회초"),
+                _scoreboard_game(away_score=1, home_score=0, inning="1회초"),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    sync_service.sync_date("2026-06-04")
+    failed = sync_service.sync_date("2026-06-04")
+    retried = sync_service.sync_date("2026-06-04")
+
+    assert failed["pushedMoments"][0]["sent"] is False
+    assert retried["pushedMoments"][0]["sent"] is True
+    assert [call["moment"] for call in push_service.moment_calls] == [
+        "scoring",
+        "scoring",
+    ]
+    event_ids = [call["event_id"] for call in push_service.moment_calls]
+    assert event_ids[0] == event_ids[1]
+    persisted = registry.push_outbox_event(event_ids[0])
+    assert persisted is not None
+    assert persisted["completedAt"]
+
+
 def test_scoreboard_sync_does_not_push_reversal_for_first_score(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     sender = FakeLiveActivitySender()
@@ -2295,6 +3002,229 @@ def test_scoreboard_sync_does_not_push_reversal_for_first_score(tmp_path) -> Non
     assert first_response["pushedMoments"] == []
     assert [call["moment"] for call in push_service.moment_calls] == ["scoring"]
     assert [moment["moment"] for moment in second_response["pushedMoments"]] == ["scoring"]
+
+
+def test_scoreboard_sync_preserves_unavailable_score_without_score_moment(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+                _scoreboard_game(away_score=None, home_score=4, inning="7회말"),
+                _scoreboard_game(away_score=2, home_score=4, inning="7회말"),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    sync_service.sync_date("2026-06-04")
+    response = sync_service.sync_date("2026-06-04")
+
+    assert response["pushedMoments"] == []
+    assert push_service.moment_calls == []
+    state = registry.scoreboard_state("20260604LGKT0")
+    assert state is not None
+    assert state["awayScore"] is None
+    assert state["homeScore"] == 4
+    assert state["scoreAvailable"] is False
+
+    recovered = sync_service.sync_date("2026-06-04")
+
+    assert [moment["moment"] for moment in recovered["pushedMoments"]] == ["scoring"]
+    assert [call["moment"] for call in push_service.moment_calls] == ["scoring"]
+
+
+def test_scoreboard_sync_rejects_delayed_lower_score_without_duplicate_scoring(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=0, home_score=0, inning="1회말"),
+                _scoreboard_game(away_score=2, home_score=0, inning="1회말"),
+                _scoreboard_game(away_score=1, home_score=0, inning="1회말"),
+                _scoreboard_game(away_score=2, home_score=0, inning="1회말"),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    responses = [sync_service.sync_date("2026-06-04") for _ in range(4)]
+
+    assert [call["moment"] for call in push_service.moment_calls] == ["scoring"]
+    assert len({call["event_id"] for call in push_service.moment_calls}) == 1
+    assert responses[2]["pushedMoments"] == []
+    assert responses[3]["pushedMoments"] == []
+    state = registry.scoreboard_state("20260604LGKT0")
+    assert state is not None
+    assert state["awayScore"] == 2
+    assert state["homeScore"] == 0
+
+
+def test_scoreboard_sync_rejects_terminal_to_live_regression_without_duplicate_end(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=2, home_score=1, inning="9회말"),
+                _scoreboard_game(
+                    away_score=2,
+                    home_score=1,
+                    inning="경기종료",
+                    status="FINAL",
+                ),
+                _scoreboard_game(away_score=2, home_score=1, inning="9회말"),
+                _scoreboard_game(
+                    away_score=2,
+                    home_score=1,
+                    inning="경기종료",
+                    status="FINAL",
+                ),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    responses = [sync_service.sync_date("2026-06-04") for _ in range(4)]
+
+    assert [call["moment"] for call in push_service.moment_calls] == ["game_end"]
+    assert responses[2]["pushedMoments"] == []
+    assert responses[3]["pushedMoments"] == []
+    state = registry.scoreboard_state("20260604LGKT0")
+    assert state is not None
+    assert state["status"] == "FINAL"
+
+
+def test_scoreboard_sync_accepts_official_score_correction_on_terminal_transition(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = FakeLiveActivitySender()
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=sender,
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=5, home_score=3, inning="9회말"),
+                _scoreboard_game(
+                    away_score=4,
+                    home_score=3,
+                    inning="경기종료",
+                    status="FINAL",
+                ),
+            ]
+        ),
+        push_service=push_service,
+    )
+
+    sync_service.sync_date("2026-06-04")
+    response = sync_service.sync_date("2026-06-04")
+
+    assert [call["moment"] for call in push_service.moment_calls] == ["game_end"]
+    assert response["pushedMoments"][0]["moment"] == "game_end"
+    assert sender.calls[-1]["event"] == "end"
+    assert sender.calls[-1]["state"].awayScore == 4
+    assert sender.calls[-1]["state"].homeScore == 3
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == []
+    state = registry.scoreboard_state("20260604LGKT0")
+    assert state is not None
+    assert state["status"] == "FINAL"
+    assert state["awayScore"] == 4
+    assert state["homeScore"] == 3
 
 
 def test_scoreboard_sync_passes_cancelled_status_to_game_end_push(tmp_path) -> None:
@@ -2438,6 +3368,57 @@ def test_scoreboard_sync_pushes_at_bat_when_current_batter_changes(tmp_path) -> 
     assert push_service.moment_calls[0]["batter_name"] == "장성우"
     assert push_service.moment_calls[0]["pitcher_name"] == "김진성"
     assert response["pushedMoments"][0]["moment"] == "at_bat"
+
+
+def test_scoreboard_sync_rejects_seen_at_bat_oscillation_without_duplicate_push(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    states = [
+        _scoreboard_game(
+            away_score=2,
+            home_score=3,
+            inning="7회말",
+            batter_name=batter,
+            pitcher_name="김진성",
+        )
+        for batter in ("문상철", "장성우", "문상철", "장성우")
+    ]
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(states),
+        push_service=push_service,
+    )
+
+    responses = [sync_service.sync_date("2026-06-04") for _ in states]
+
+    assert [call["moment"] for call in push_service.moment_calls] == ["at_bat"]
+    assert responses[2]["pushedMoments"] == []
+    assert responses[3]["pushedMoments"] == []
+    current = registry.scoreboard_state("20260604LGKT0")
+    assert current is not None
+    assert current["batterName"] == "장성우"
+    assert len(current["seenAtBatMilestones"]) == 2
 
 
 def test_scoreboard_sync_pushes_homerun_from_new_relay_items(tmp_path) -> None:
@@ -2589,6 +3570,94 @@ def test_scoreboard_sync_pushes_hit_with_base_out_situation_from_relay(tmp_path)
     assert push_service.moment_calls[0]["batter_name"] == "장성우"
     assert push_service.moment_calls[0]["situation_text"] == "1사 1,2루"
     assert second_response["pushedMoments"][0]["moment"] == "hit"
+
+
+def test_scoreboard_sync_retries_failed_relay_moment_after_last_seq_advances(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    push_service = FailOnceFakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                hit=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    relay_service = FakeRelaySequenceService(
+        [
+            [
+                {
+                    "seqNo": 10,
+                    "inning": 7,
+                    "half": "bottom",
+                    "event": "WALK",
+                    "text": "문상철 : 볼넷",
+                }
+            ],
+            [
+                {
+                    "seqNo": 11,
+                    "inning": 7,
+                    "half": "bottom",
+                    "event": "HIT",
+                    "text": "장성우 : 좌전 안타",
+                }
+            ],
+            [
+                {
+                    "seqNo": 11,
+                    "inning": 7,
+                    "half": "bottom",
+                    "event": "HIT",
+                    "text": "장성우 : 좌전 안타",
+                }
+            ],
+        ],
+        current_at_bat_by_call=[
+            _current_at_bat(outs=1, base_state="주자1루"),
+            _current_at_bat(outs=1, base_state="주자1,2루"),
+            _current_at_bat(outs=1, base_state="주자1,2루"),
+        ],
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+                _scoreboard_game(away_score=2, home_score=3, inning="7회말"),
+            ]
+        ),
+        push_service=push_service,
+        relay_service=relay_service,
+    )
+
+    sync_service.sync_date("2026-06-04")
+    failed = sync_service.sync_date("2026-06-04")
+    relay_after_failure = registry.relay_state("20260604LGKT0")
+    retried = sync_service.sync_date("2026-06-04")
+
+    assert failed["pushedMoments"][0]["sent"] is False
+    assert relay_after_failure is not None
+    assert relay_after_failure["lastSeq"] == 11
+    assert retried["pushedMoments"][0]["sent"] is True
+    assert len(push_service.moment_calls) == 2
+    assert push_service.moment_calls[0]["event_id"] == push_service.moment_calls[1]["event_id"]
+    assert relay_service.calls[2]["after"] == 11
 
 
 def test_scoreboard_sync_rebaselines_stale_relay_state_without_backfill(
@@ -2893,6 +3962,90 @@ def test_scoreboard_sync_rebaselines_stale_scoreboard_state_without_backfill(
     assert first_response["pushedMoments"] == []
     assert [call["moment"] for call in push_service.moment_calls] == ["game_start"]
     assert second_response["pushedMoments"][0]["moment"] == "game_start"
+
+
+@pytest.mark.parametrize(
+    ("terminal_status", "terminal_inning"),
+    [
+        ("FINAL", "경기종료"),
+        ("CANCELLED", "경기취소"),
+    ],
+)
+def test_scoreboard_sync_delivers_terminal_moment_from_stale_baseline(
+    tmp_path,
+    terminal_status,
+    terminal_inning,
+) -> None:
+    registry_path = tmp_path / "push_registry.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "devices": {
+                    "fcm-token": {
+                        "deviceToken": "fcm-token",
+                        "platform": "ios",
+                        "myTeam": "LG",
+                        "notifications": {
+                            "gameStart": True,
+                            "scoring": True,
+                            "homerun": True,
+                            "reversal": True,
+                            "gameEnd": True,
+                            "lineupOpened": True,
+                            "inningChange": True,
+                            "allGames": False,
+                        },
+                        "topics": ["game_end_LG"],
+                    }
+                },
+                "scoreboardStates": {
+                    "20260604LGKT0": {
+                        "status": "LIVE",
+                        "awayTeamId": "LG",
+                        "awayTeam": "LG",
+                        "homeTeamId": "KT",
+                        "homeTeam": "KT",
+                        "awayScore": 2,
+                        "homeScore": 3,
+                        "inning": "7회말",
+                        "batterName": "장성우",
+                        "pitcherName": "김진성",
+                        "updatedAt": "2026-06-04T08:30:00+00:00",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    registry = PushRegistry(str(registry_path))
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(
+                    away_score=2,
+                    home_score=3,
+                    inning=terminal_inning,
+                    status=terminal_status,
+                )
+            ]
+        ),
+        push_service=push_service,
+        now_provider=lambda: datetime(2026, 6, 4, 9, 0, tzinfo=timezone.utc),
+    )
+
+    response = sync_service.sync_date("2026-06-04")
+
+    assert [call["moment"] for call in push_service.moment_calls] == ["game_end"]
+    assert push_service.moment_calls[0]["game_status"] == terminal_status
+    assert response["pushedMoments"][0]["sent"] is True
+    event_id = response["pushedMoments"][0]["eventId"]
+    persisted = registry.push_outbox_event(event_id)
+    assert persisted is not None
+    assert persisted["completedAt"]
 
 
 def test_push_registry_tracks_multiple_pregame_alert_keys(tmp_path) -> None:
@@ -3407,6 +4560,7 @@ def test_apns_live_activity_payload_matches_ios_content_state_contract(tmp_path)
         "homeTeam",
         "awayScore",
         "homeScore",
+        "scoreAvailable",
         "inning",
         "batter",
         "batterAverage",
@@ -3426,6 +4580,7 @@ def test_apns_live_activity_payload_matches_ios_content_state_contract(tmp_path)
     }
     assert content_state["awayScore"] == 4
     assert content_state["homeScore"] == 3
+    assert content_state["scoreAvailable"] is True
     assert content_state["batterAverage"] == "0.312"
     assert content_state["pitcherEra"] == "3.21"
     assert content_state["pitchCount"] == 84
@@ -3601,6 +4756,30 @@ class FakePushService(PushService):
                 {"topic": f"{kwargs['moment']}_{kwargs['home_team_id']}", "messageId": "home"},
                 {"topic": f"{kwargs['moment']}_ALL", "messageId": "all"},
             ],
+        }
+
+
+class FailOnceFakePushService(FakePushService):
+    def __init__(self, *, registry, live_activity_sender) -> None:
+        super().__init__(registry=registry, live_activity_sender=live_activity_sender)
+        self.failed = False
+
+    def send_game_moment(self, **kwargs):
+        self.moment_calls.append(kwargs)
+        if not self.failed:
+            self.failed = True
+            return {
+                "sent": False,
+                "moment": kwargs["moment"],
+                "eventId": kwargs.get("event_id", ""),
+                "messages": [],
+                "error": "temporary push failure",
+            }
+        return {
+            "sent": True,
+            "moment": kwargs["moment"],
+            "eventId": kwargs.get("event_id", ""),
+            "messages": [],
         }
 
 
@@ -3802,8 +4981,6 @@ def _settings(
         apns_auth_key_p8=apns_auth_key_p8,
         apns_use_sandbox=apns_use_sandbox,
         snapshot_dir="",
-        live_scoreboard_state_path=str(
-            Path(push_registry_path).with_name("live_scoreboard.json")
-        ),
+        live_scoreboard_state_path=str(Path(push_registry_path).with_name("live_scoreboard.json")),
         live_scoreboard_max_age_seconds=8,
     )

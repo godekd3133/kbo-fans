@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import re
 from datetime import datetime, timedelta, timezone
@@ -37,6 +39,7 @@ class LiveActivityScoreboardSyncService:
         registered_game_ids = set(self.push_service.registry.live_activity_game_ids())
         has_push_registrations = self.push_service.registry.has_device_registrations()
         has_start_tokens = self.push_service.registry.has_live_activity_start_tokens()
+        retried_moments = self._retry_pending_game_moments()
         scoreboard = self._warm_scoreboard(date)
         if not registered_game_ids and not has_push_registrations and not has_start_tokens:
             return self._record_heartbeat(
@@ -45,19 +48,24 @@ class LiveActivityScoreboardSyncService:
                     "checkedGames": len(scoreboard.get("games", [])),
                     "startedGames": [],
                     "updatedGames": [],
-                    "pushedMoments": [],
+                    "pushedMoments": retried_moments,
                     "warmed": True,
                 }
             )
 
         started_games = []
         updated_games = []
-        pushed_moments = []
+        pushed_moments = list(retried_moments)
         for game in scoreboard.get("games", []):
             game_id = str(game.get("gameId") or "")
             status = _status_value(game)
-            if has_push_registrations:
-                pushed_moments.extend(self._push_moments_for_game(game))
+            accepted, game_moments = self._push_moments_for_game(
+                game,
+                deliver_moments=has_push_registrations,
+            )
+            pushed_moments.extend(game_moments)
+            if not accepted:
+                continue
 
             if has_start_tokens:
                 start_response = self._start_live_activity_for_game(game, status)
@@ -174,9 +182,7 @@ class LiveActivityScoreboardSyncService:
         away: dict[str, Any],
         home: dict[str, Any],
     ) -> str:
-        matchup = (
-            f"{_team_short_display_name(away)} vs {_team_short_display_name(home)}"
-        )
+        matchup = f"{_team_short_display_name(away)} vs {_team_short_display_name(home)}"
         start_at = self._scheduled_activity_start_at(game)
         start_time = start_at.strftime("%H:%M") if start_at is not None else ""
         stadium = str(game.get("stadium") or "").strip()
@@ -185,34 +191,99 @@ class LiveActivityScoreboardSyncService:
             return f"{matchup} 경기가 곧 시작됩니다. {suffix}"
         return f"{matchup} 경기가 곧 시작됩니다."
 
-    def _push_moments_for_game(self, game: dict[str, Any]) -> list[dict[str, Any]]:
+    def _push_moments_for_game(
+        self,
+        game: dict[str, Any],
+        *,
+        deliver_moments: bool,
+    ) -> tuple[bool, list[dict[str, Any]]]:
         game_id = str(game.get("gameId") or "")
         if not game_id:
-            return []
+            return False, []
 
         current_state = _scoreboard_state(game)
-        previous_state = self.push_service.registry.replace_scoreboard_state(game_id, current_state)
+        previous_state = self.push_service.registry.scoreboard_state(game_id)
+        _apply_at_bat_history(current_state, previous_state)
         previous_state_fresh = _is_fresh_baseline(
             previous_state,
             now=self.now_provider(),
             max_age=self._STALE_BASELINE_WINDOW,
         )
+        previous_score_state = _last_verified_score_state(previous_state)
+        previous_score_state_fresh = _is_fresh_baseline(
+            previous_score_state,
+            now=self.now_provider(),
+            max_age=self._STALE_BASELINE_WINDOW,
+        )
         pushed = []
-
-        pushed.extend(self._push_pregame_moments_for_game(game, current_state))
-
-        if previous_state_fresh:
-            for moment in _moments_from_state(previous_state, current_state):
-                response = self._send_game_moment(moment, game_id, current_state)
-                if moment == "lineup_opened" and response.get("sent"):
-                    self.push_service.registry.mark_pregame_alert_sent(
+        pregame_events = (
+            self._pregame_moment_events_for_game(game, current_state) if deliver_moments else []
+        )
+        event_specs = [event for event, _ in pregame_events]
+        pregame_alert_keys = {event["eventId"]: alert_key for event, alert_key in pregame_events}
+        should_compare = previous_state_fresh or _is_terminal_transition(
+            previous_state,
+            current_state,
+        )
+        if deliver_moments and should_compare and previous_state is not None:
+            for moment in _moments_from_state(
+                previous_state,
+                current_state,
+                previous_score_state=(previous_score_state if previous_score_state_fresh else None),
+            ):
+                event_specs.append(
+                    self._game_moment_outbox_event(
+                        moment,
                         game_id,
-                        "lineup_opened",
+                        current_state,
+                        source=_scoreboard_moment_source(
+                            moment,
+                            previous_state,
+                            current_state,
+                        ),
                     )
-                pushed.append(response)
+                )
 
-        pushed.extend(self._push_relay_moments_for_game(game_id, current_state))
-        return pushed
+        if _scores_available(current_state):
+            current_state["lastVerifiedScoreState"] = {
+                **_event_state(current_state),
+                "updatedAt": self.now_provider().astimezone(timezone.utc).isoformat(),
+            }
+        elif previous_score_state is not None:
+            current_state["lastVerifiedScoreState"] = {
+                **_event_state(previous_score_state),
+                "updatedAt": previous_score_state.get("updatedAt"),
+            }
+
+        applied = self.push_service.registry.replace_scoreboard_state_and_enqueue_if_current(
+            game_id,
+            current_state,
+            events=event_specs,
+            expected_updated_at=(
+                str(previous_state.get("updatedAt") or "") if previous_state is not None else None
+            ),
+        )
+        if not applied:
+            return False, pushed
+
+        for event in event_specs:
+            response = self._deliver_game_moment_event(event)
+            if event["payload"]["moment"] == "lineup_opened" and response.get("sent"):
+                self.push_service.registry.mark_pregame_alert_sent(
+                    game_id,
+                    "lineup_opened",
+                )
+            alert_key = pregame_alert_keys.get(event["eventId"])
+            if alert_key and response.get("sent"):
+                self.push_service.registry.mark_pregame_alert_sent(
+                    game_id,
+                    alert_key,
+                )
+            pushed.append(response)
+
+        if deliver_moments:
+            pushed.extend(self._push_relay_moments_for_game(game_id, current_state))
+        return True, pushed
 
     def _push_relay_moments_for_game(
         self,
@@ -249,7 +320,7 @@ class LiveActivityScoreboardSyncService:
         )
         relay_current_state = _relay_current_state(relay.get("currentAtBat"), current_state)
         max_seq = last_seq
-        pushed = []
+        event_specs = []
         for item in relay_items:
             item_seq = _int_value(item.get("seqNo"))
             if item_seq > max_seq:
@@ -268,7 +339,17 @@ class LiveActivityScoreboardSyncService:
                     ),
                     "playText": str(item.get("text") or "").strip(),
                 }
-                pushed.append(self._send_game_moment("homerun", game_id, homerun_state))
+                event_specs.append(
+                    self._game_moment_outbox_event(
+                        "homerun",
+                        game_id,
+                        homerun_state,
+                        source={
+                            "kind": "relay",
+                            "seqNo": item_seq,
+                        },
+                    )
+                )
                 continue
             if _is_hit_relay_item(item):
                 hit_state = {
@@ -282,16 +363,37 @@ class LiveActivityScoreboardSyncService:
                     ),
                     "playText": str(item.get("text") or "").strip(),
                 }
-                pushed.append(self._send_game_moment("hit", game_id, hit_state))
+                event_specs.append(
+                    self._game_moment_outbox_event(
+                        "hit",
+                        game_id,
+                        hit_state,
+                        source={
+                            "kind": "relay",
+                            "seqNo": item_seq,
+                        },
+                    )
+                )
 
-        self.push_service.registry.replace_relay_state(game_id, {"lastSeq": max_seq})
-        return pushed
+        applied = self.push_service.registry.replace_relay_state_and_enqueue_if_current(
+            game_id,
+            {"lastSeq": max_seq},
+            events=event_specs,
+            expected_updated_at=(
+                str(previous_relay_state.get("updatedAt") or "")
+                if previous_relay_state is not None
+                else None
+            ),
+        )
+        if not applied:
+            return []
+        return [self._deliver_game_moment_event(event) for event in event_specs]
 
-    def _push_pregame_moments_for_game(
+    def _pregame_moment_events_for_game(
         self,
         game: dict[str, Any],
         current_state: dict[str, Any],
-    ) -> list[dict[str, Any]]:
+    ) -> list[tuple[dict[str, Any], str]]:
         if current_state["status"] != "SCHEDULED":
             return []
 
@@ -314,43 +416,100 @@ class LiveActivityScoreboardSyncService:
             "startTime": start_at.strftime("%H:%M"),
             "stadium": str(game.get("stadium") or current_state.get("stadium") or ""),
         }
-        response = self._send_game_moment("game_start_soon", game_id, state)
-        if response.get("sent"):
-            self.push_service.registry.mark_pregame_alert_sent(game_id, alert_key)
-        return [response]
+        event = self._game_moment_outbox_event(
+            "game_start_soon",
+            game_id,
+            state,
+            source={
+                "kind": "pregame",
+                "alertKey": alert_key,
+            },
+        )
+        return [(event, alert_key)]
 
-    def _send_game_moment(
+    def _game_moment_outbox_event(
         self,
         moment: str,
         game_id: str,
         current_state: dict[str, Any],
+        *,
+        source: dict[str, Any],
     ) -> dict[str, Any]:
-        try:
-            return self.push_service.send_game_moment(
+        payload = {
+            "moment": moment,
+            "game_id": game_id,
+            "away_team_id": current_state["awayTeamId"],
+            "away_team_name": current_state["awayTeam"],
+            "home_team_id": current_state["homeTeamId"],
+            "home_team_name": current_state["homeTeam"],
+            "away_score": current_state["awayScore"],
+            "home_score": current_state["homeScore"],
+            "inning": current_state["inning"],
+            "batter_name": current_state["batterName"],
+            "pitcher_name": current_state["pitcherName"],
+            "situation_text": current_state.get("situationText", ""),
+            "play_text": current_state.get("playText", ""),
+            "start_time": current_state.get("startTime", ""),
+            "stadium": current_state.get("stadium", ""),
+            "game_status": current_state.get("status", ""),
+        }
+        event_id = _game_moment_event_id(
+            game_id=game_id,
+            moment=moment,
+            source=source,
+        )
+        return {
+            "eventId": event_id,
+            "kind": "game_moment",
+            "payload": payload,
+            "targets": self.push_service.game_moment_targets(
                 moment=moment,
                 game_id=game_id,
                 away_team_id=current_state["awayTeamId"],
-                away_team_name=current_state["awayTeam"],
                 home_team_id=current_state["homeTeamId"],
-                home_team_name=current_state["homeTeam"],
-                away_score=current_state["awayScore"],
-                home_score=current_state["homeScore"],
-                inning=current_state["inning"],
-                batter_name=current_state["batterName"],
-                pitcher_name=current_state["pitcherName"],
-                situation_text=current_state.get("situationText", ""),
-                play_text=current_state.get("playText", ""),
-                start_time=current_state.get("startTime", ""),
-                stadium=current_state.get("stadium", ""),
-                game_status=current_state.get("status", ""),
+            ),
+        }
+
+    def _retry_pending_game_moments(self) -> list[dict[str, Any]]:
+        return [
+            self._deliver_game_moment_event(event)
+            for event in self.push_service.registry.pending_push_outbox_events(
+                kind="game_moment",
+            )
+        ]
+
+    def _deliver_game_moment_event(
+        self,
+        event: dict[str, Any],
+    ) -> dict[str, Any]:
+        event_id = str(event.get("eventId") or "")
+        persisted = self.push_service.registry.push_outbox_event(event_id) or event
+        payload = persisted.get("payload")
+        if not isinstance(payload, dict):
+            return {
+                "sent": False,
+                "eventId": event_id,
+                "error": "push outbox payload is missing",
+            }
+        try:
+            response = self.push_service.send_game_moment(
+                **payload,
+                event_id=event_id,
             )
         except Exception as error:
             return {
                 "sent": False,
-                "moment": moment,
-                "gameId": game_id,
+                "moment": payload.get("moment"),
+                "gameId": payload.get("game_id"),
+                "eventId": event_id,
                 "error": str(error),
             }
+        if response.get("sent"):
+            self.push_service.registry.mark_push_outbox_event_delivered(event_id)
+        return {
+            **response,
+            "eventId": event_id,
+        }
 
     def _update_request_for_game(
         self,
@@ -364,7 +523,28 @@ class LiveActivityScoreboardSyncService:
             return None
 
         now = self.now_provider().astimezone(timezone.utc)
-        event = "end" if status in {"FINAL", "CANCELLED", "SUSPENDED"} else "update"
+        source_away_score = _optional_int_value(away.get("score"))
+        source_home_score = _optional_int_value(home.get("score"))
+        score_available = source_away_score is not None and source_home_score is not None
+        if status == "LIVE" and not score_available:
+            return None
+        verified_state = _last_verified_score_state(
+            self.push_service.registry.scoreboard_state(game_id)
+        )
+        if status == "SUSPENDED" and not score_available and verified_state is None:
+            return None
+        away_score = (
+            source_away_score
+            if source_away_score is not None
+            else (_int_value(verified_state.get("awayScore")) if verified_state is not None else 0)
+        )
+        home_score = (
+            source_home_score
+            if source_home_score is not None
+            else (_int_value(verified_state.get("homeScore")) if verified_state is not None else 0)
+        )
+
+        event = "end" if status in {"FINAL", "CANCELLED"} else "update"
         current = self._live_activity_current_payload(game, status)
         is_pregame = status == "SCHEDULED" and self._should_sync_scheduled_activity(game)
         ranks = self._rank_labels_for_game(game) if is_pregame else {}
@@ -373,8 +553,9 @@ class LiveActivityScoreboardSyncService:
             awayTeam=_team_short_display_name(away),
             homeTeamId=str(home.get("teamId") or ""),
             homeTeam=_team_short_display_name(home),
-            awayScore=_int_value(away.get("score")),
-            homeScore=_int_value(home.get("score")),
+            awayScore=away_score,
+            homeScore=home_score,
+            scoreAvailable=score_available,
             inning=(
                 "경기전" if is_pregame else str(current.get("inning") or _inning_text(game, status))
             ),
@@ -607,6 +788,15 @@ def _int_value(value: Any) -> int:
         return 0
 
 
+def _optional_int_value(value: Any) -> Optional[int]:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _status_value(game: dict[str, Any]) -> str:
     return str(game.get("status") or "").upper()
 
@@ -702,6 +892,8 @@ def _scoreboard_state(game: dict[str, Any]) -> dict[str, Any]:
     home = game.get("home") or {}
     status = _status_value(game)
     current = _current_payload(game)
+    away_score = _optional_int_value(away.get("score"))
+    home_score = _optional_int_value(home.get("score"))
     return {
         "status": status,
         "lineupOpened": _lineup_opened(game),
@@ -709,8 +901,9 @@ def _scoreboard_state(game: dict[str, Any]) -> dict[str, Any]:
         "awayTeam": _team_short_display_name(away),
         "homeTeamId": str(home.get("teamId") or ""),
         "homeTeam": _team_short_display_name(home),
-        "awayScore": _int_value(away.get("score")),
-        "homeScore": _int_value(home.get("score")),
+        "awayScore": away_score,
+        "homeScore": home_score,
+        "scoreAvailable": away_score is not None and home_score is not None,
         "inning": _inning_text(game, status),
         "batterName": current["batterName"],
         "pitcherName": current["pitcherName"],
@@ -724,13 +917,27 @@ def _scoreboard_state(game: dict[str, Any]) -> dict[str, Any]:
 def _moments_from_state(
     previous: dict[str, Any],
     current: dict[str, Any],
+    *,
+    previous_score_state: Optional[dict[str, Any]] = None,
 ) -> list[str]:
     previous_status = str(previous.get("status") or "").upper()
     current_status = str(current.get("status") or "").upper()
-    previous_total = _int_value(previous.get("awayScore")) + _int_value(previous.get("homeScore"))
-    current_total = _int_value(current.get("awayScore")) + _int_value(current.get("homeScore"))
-    previous_leader = _leader(previous)
-    current_leader = _leader(current)
+    if previous_status == "SUSPENDED" and current_status == "LIVE":
+        return []
+    score_baseline = previous_score_state or previous
+    scores_comparable = _scores_available(score_baseline) and _scores_available(current)
+    previous_total = (
+        _int_value(score_baseline.get("awayScore")) + _int_value(score_baseline.get("homeScore"))
+        if scores_comparable
+        else 0
+    )
+    current_total = (
+        _int_value(current.get("awayScore")) + _int_value(current.get("homeScore"))
+        if scores_comparable
+        else 0
+    )
+    previous_leader = _leader(score_baseline) if scores_comparable else ""
+    current_leader = _leader(current) if scores_comparable else ""
     moments = []
 
     if (
@@ -741,7 +948,7 @@ def _moments_from_state(
         moments.append("lineup_opened")
     if previous_status == "SCHEDULED" and current_status == "LIVE":
         moments.append("game_start")
-    if current_status == "LIVE" and current_total > previous_total:
+    if scores_comparable and current_status == "LIVE" and current_total > previous_total:
         moments.append("scoring")
     if (
         current_status == "LIVE"
@@ -771,6 +978,153 @@ def _moments_from_state(
         moments.append("inning_change")
 
     return moments
+
+
+def _scores_available(state: dict[str, Any]) -> bool:
+    return (
+        _optional_int_value(state.get("awayScore")) is not None
+        and _optional_int_value(state.get("homeScore")) is not None
+    )
+
+
+def _last_verified_score_state(
+    state: Optional[dict[str, Any]],
+) -> Optional[dict[str, Any]]:
+    if not isinstance(state, dict):
+        return None
+    if _scores_available(state):
+        return state
+    nested = state.get("lastVerifiedScoreState")
+    if isinstance(nested, dict) and _scores_available(nested):
+        return nested
+    return None
+
+
+def _is_terminal_transition(
+    previous: Optional[dict[str, Any]],
+    current: dict[str, Any],
+) -> bool:
+    if not isinstance(previous, dict):
+        return False
+    previous_status = str(previous.get("status") or "").upper()
+    current_status = str(current.get("status") or "").upper()
+    return previous_status not in {"FINAL", "CANCELLED", "SUSPENDED"} and current_status in {
+        "FINAL",
+        "CANCELLED",
+        "SUSPENDED",
+    }
+
+
+def _apply_at_bat_history(
+    current: dict[str, Any],
+    previous: Optional[dict[str, Any]],
+) -> None:
+    seen = []
+    if isinstance(previous, dict):
+        previous_seen = previous.get("seenAtBatMilestones")
+        if isinstance(previous_seen, list):
+            seen.extend(str(item) for item in previous_seen if str(item).strip())
+        previous_milestone = _at_bat_milestone(previous)
+        if previous_milestone:
+            seen.append(previous_milestone)
+
+    current_milestone = _at_bat_milestone(current)
+    if current_milestone:
+        seen.append(current_milestone)
+        current["atBatMilestone"] = current_milestone
+    current["seenAtBatMilestones"] = list(dict.fromkeys(seen))[-64:]
+
+
+def _at_bat_milestone(state: dict[str, Any]) -> str:
+    if str(state.get("status") or "").upper() != "LIVE":
+        return ""
+    batter = _current_batter(state)
+    if not batter:
+        return ""
+    return "|".join(
+        (
+            str(state.get("inning") or "").strip(),
+            str(state.get("awayScore") if state.get("awayScore") is not None else "–"),
+            str(state.get("homeScore") if state.get("homeScore") is not None else "–"),
+            batter,
+            str(state.get("pitcherName") or "").strip(),
+        )
+    )
+
+
+def _event_state(state: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: state.get(key)
+        for key in (
+            "status",
+            "lineupOpened",
+            "awayTeamId",
+            "homeTeamId",
+            "awayScore",
+            "homeScore",
+            "scoreAvailable",
+            "inning",
+            "batterName",
+            "pitcherName",
+            "situationText",
+            "playText",
+            "startTime",
+            "stadium",
+            "updatedAt",
+        )
+    }
+
+
+def _scoreboard_moment_source(
+    moment: str,
+    previous: dict[str, Any],
+    current: dict[str, Any],
+) -> dict[str, Any]:
+    source: dict[str, Any] = {
+        "kind": "scoreboard",
+        "status": str(current.get("status") or "").upper(),
+    }
+    if moment in {"scoring", "reversal", "game_end"}:
+        source.update(
+            {
+                "awayScore": current.get("awayScore"),
+                "homeScore": current.get("homeScore"),
+                "scoreAvailable": bool(current.get("scoreAvailable")),
+            }
+        )
+    if moment in {"inning_change", "at_bat"}:
+        source["inning"] = str(current.get("inning") or "")
+    if moment == "at_bat":
+        source.update(
+            {
+                "milestone": (
+                    str(current.get("atBatMilestone") or "") or _at_bat_milestone(current)
+                ),
+            }
+        )
+    if moment == "lineup_opened":
+        source["lineupOpened"] = True
+    return source
+
+
+def _game_moment_event_id(
+    *,
+    game_id: str,
+    moment: str,
+    source: dict[str, Any],
+) -> str:
+    canonical = json.dumps(
+        {
+            "gameId": game_id,
+            "moment": moment,
+            "source": source,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
+    return f"game-moment:{game_id}:{moment}:{digest}"
 
 
 def _current_payload(game: dict[str, Any]) -> dict[str, Any]:

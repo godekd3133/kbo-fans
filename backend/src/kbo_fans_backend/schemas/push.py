@@ -100,6 +100,7 @@ class LiveActivityContentState(BaseModel):
     homeTeam: str
     awayScore: int
     homeScore: int
+    scoreAvailable: bool = True
     inning: str
     batter: str = ""
     batterAverage: str = ""

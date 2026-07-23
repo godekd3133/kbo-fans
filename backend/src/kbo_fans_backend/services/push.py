@@ -358,16 +358,31 @@ class PushService:
         }
 
     def send_live_activity_update(self, payload: LiveActivityUpdateRequest) -> dict[str, Any]:
+        registered_tokens = set(self.registry.live_activity_tokens_for_game(payload.gameId))
         tokens = (
-            [payload.activityPushToken]
-            if payload.activityPushToken
-            else self.registry.live_activity_tokens_for_game(payload.gameId)
+            [payload.activityPushToken] if payload.activityPushToken else sorted(registered_tokens)
         )
         if not tokens:
             return {"sent": False, "gameId": payload.gameId, "messages": []}
 
         messages = []
         for token in tokens:
+            end_claim_id = None
+            if payload.event == "end" and token in registered_tokens:
+                end_claim_id = self.registry.claim_live_activity_end(
+                    game_id=payload.gameId,
+                    activity_push_token=token,
+                )
+                if end_claim_id is None:
+                    messages.append(
+                        {
+                            "activityPushToken": token,
+                            "sent": False,
+                            "skipped": True,
+                            "reason": "delivery_in_progress",
+                        }
+                    )
+                    continue
             try:
                 response = self.live_activity_sender.send(
                     activity_push_token=token,
@@ -379,7 +394,26 @@ class PushService:
                     relevance_score=payload.relevanceScore,
                 )
                 messages.append({"activityPushToken": token, **response})
+                if payload.event == "end" and end_claim_id is not None:
+                    if response.get("sent"):
+                        self.registry.complete_live_activity_end(
+                            game_id=payload.gameId,
+                            activity_push_token=token,
+                            claim_id=end_claim_id,
+                        )
+                    else:
+                        self.registry.release_live_activity_end(
+                            game_id=payload.gameId,
+                            activity_push_token=token,
+                            claim_id=end_claim_id,
+                        )
             except Exception as error:
+                if end_claim_id is not None:
+                    self.registry.release_live_activity_end(
+                        game_id=payload.gameId,
+                        activity_push_token=token,
+                        claim_id=end_claim_id,
+                    )
                 messages.append(
                     {
                         "activityPushToken": token,
@@ -427,6 +461,20 @@ class PushService:
         messages = []
         for registration in registrations:
             token = str(registration.get("pushToStartToken") or "")
+            claim_id = self.registry.claim_live_activity_start(
+                game_id=game_id,
+                push_to_start_token=token,
+            )
+            if claim_id is None:
+                messages.append(
+                    {
+                        "pushToStartToken": token,
+                        "sent": False,
+                        "skipped": True,
+                        "reason": "delivery_in_progress_or_complete",
+                    }
+                )
+                continue
             try:
                 response = self.live_activity_sender.send_start(
                     push_to_start_token=token,
@@ -437,12 +485,27 @@ class PushService:
                     stale_date=stale_date,
                     relevance_score=relevance_score,
                 )
-                self.registry.mark_live_activity_start_sent(
+                messages.append({"pushToStartToken": token, **response})
+                if response.get("sent"):
+                    self.registry.complete_live_activity_start(
+                        game_id=game_id,
+                        push_to_start_token=token,
+                        claim_id=claim_id,
+                    )
+                else:
+                    self.registry.release_live_activity_start(
+                        game_id=game_id,
+                        push_to_start_token=token,
+                        claim_id=claim_id,
+                        error=str(response.get("reason") or "delivery returned sent=false"),
+                    )
+            except Exception as error:
+                self.registry.release_live_activity_start(
                     game_id=game_id,
                     push_to_start_token=token,
+                    claim_id=claim_id,
+                    error=str(error),
                 )
-                messages.append({"pushToStartToken": token, **response})
-            except Exception as error:
                 messages.append(
                     {
                         "pushToStartToken": token,
@@ -509,8 +572,8 @@ class PushService:
         away_team_name: str,
         home_team_id: str,
         home_team_name: str,
-        away_score: int,
-        home_score: int,
+        away_score: Optional[int],
+        home_score: Optional[int],
         inning: str,
         batter_name: str = "",
         pitcher_name: str = "",
@@ -519,8 +582,8 @@ class PushService:
         start_time: str = "",
         stadium: str = "",
         game_status: str = "",
+        event_id: str = "",
     ) -> dict[str, Any]:
-        messaging = self._get_messaging()
         title, body = _game_moment_copy(
             moment=moment,
             away_team_id=away_team_id,
@@ -538,39 +601,158 @@ class PushService:
             stadium=stadium,
             game_status=game_status,
         )
+        targets = self.game_moment_targets(
+            moment=moment,
+            game_id=game_id,
+            away_team_id=away_team_id,
+            home_team_id=home_team_id,
+        )
+        if event_id and self.registry.push_outbox_event(event_id) is None:
+            self.registry.enqueue_push_outbox_events(
+                [
+                    {
+                        "eventId": event_id,
+                        "kind": "game_moment",
+                        "payload": {
+                            "moment": moment,
+                            "game_id": game_id,
+                            "away_team_id": away_team_id,
+                            "away_team_name": away_team_name,
+                            "home_team_id": home_team_id,
+                            "home_team_name": home_team_name,
+                            "away_score": away_score,
+                            "home_score": home_score,
+                            "inning": inning,
+                            "batter_name": batter_name,
+                            "pitcher_name": pitcher_name,
+                            "situation_text": situation_text,
+                            "play_text": play_text,
+                            "start_time": start_time,
+                            "stadium": stadium,
+                            "game_status": game_status,
+                        },
+                        "targets": targets,
+                    }
+                ]
+            )
+
+        outbox_event = self.registry.push_outbox_event(event_id) if event_id else None
+        if outbox_event is not None and isinstance(outbox_event.get("targets"), dict):
+            targets = list(outbox_event["targets"])
+            if all(
+                isinstance(target_state, dict) and target_state.get("status") == "sent"
+                for target_state in outbox_event["targets"].values()
+            ):
+                return {
+                    "sent": True,
+                    "moment": moment,
+                    "eventId": event_id,
+                    "messages": [],
+                    "errors": [],
+                    "pendingTargets": [],
+                }
+
+        messaging = self._get_messaging()
+        visible_options = _visible_push_options(messaging, title=title, body=body)
+        sent = []
+        errors = []
+        for topic in targets:
+            claim_id = None
+            if event_id:
+                claim_id = self.registry.claim_push_outbox_target(event_id, topic)
+                if claim_id is None:
+                    continue
+            data = {
+                "type": moment,
+                "gameId": game_id,
+                "awayTeamId": away_team_id,
+                "homeTeamId": home_team_id,
+                "awayScore": _optional_score_data_value(away_score),
+                "homeScore": _optional_score_data_value(home_score),
+                "inning": inning,
+                "batterName": batter_name,
+                "pitcherName": pitcher_name,
+                "situationText": situation_text,
+                "playText": play_text,
+                "startTime": start_time,
+                "stadium": stadium,
+                "gameStatus": game_status,
+            }
+            if event_id:
+                data["eventId"] = event_id
+            message = messaging.Message(
+                notification=messaging.Notification(title=title, body=body),
+                data=data,
+                topic=topic,
+                **visible_options,
+            )
+            try:
+                message_id = messaging.send(message)
+            except Exception as error:
+                if not event_id:
+                    raise
+                self.registry.mark_push_outbox_target_failed(
+                    event_id,
+                    topic,
+                    str(error),
+                    claim_id=claim_id,
+                )
+                errors.append({"topic": topic, "error": str(error)})
+                continue
+
+            if event_id:
+                self.registry.mark_push_outbox_target_sent(
+                    event_id,
+                    topic,
+                    message_id,
+                    claim_id=claim_id,
+                )
+            sent.append({"topic": topic, "messageId": message_id})
+
+        if not event_id:
+            return {"sent": True, "moment": moment, "messages": sent}
+
+        persisted_event = self.registry.push_outbox_event(event_id) or {}
+        persisted_targets = persisted_event.get("targets")
+        complete = (
+            isinstance(persisted_targets, dict)
+            and bool(persisted_targets)
+            and all(
+                isinstance(target_state, dict) and target_state.get("status") == "sent"
+                for target_state in persisted_targets.values()
+            )
+        )
+        pending_targets = [
+            target
+            for target, target_state in (
+                persisted_targets.items() if isinstance(persisted_targets, dict) else []
+            )
+            if not isinstance(target_state, dict) or target_state.get("status") != "sent"
+        ]
+        return {
+            "sent": complete,
+            "moment": moment,
+            "eventId": event_id,
+            "messages": sent,
+            "errors": errors,
+            "pendingTargets": pending_targets,
+        }
+
+    def game_moment_targets(
+        self,
+        *,
+        moment: str,
+        game_id: str,
+        away_team_id: str,
+        home_team_id: str,
+    ) -> list[str]:
         targets = [
             f"{moment}_{away_team_id}",
             f"{moment}_{home_team_id}",
         ]
         if game_id:
             targets.append(_game_topic(moment, game_id))
-        visible_options = _visible_push_options(messaging, title=title, body=body)
-        sent = []
-        for topic in targets:
-            message = messaging.Message(
-                notification=messaging.Notification(title=title, body=body),
-                data={
-                    "type": moment,
-                    "gameId": game_id,
-                    "awayTeamId": away_team_id,
-                    "homeTeamId": home_team_id,
-                    "awayScore": str(away_score),
-                    "homeScore": str(home_score),
-                    "inning": inning,
-                    "batterName": batter_name,
-                    "pitcherName": pitcher_name,
-                    "situationText": situation_text,
-                    "playText": play_text,
-                    "startTime": start_time,
-                    "stadium": stadium,
-                    "gameStatus": game_status,
-                },
-                topic=topic,
-                **visible_options,
-            )
-            message_id = messaging.send(message)
-            sent.append({"topic": topic, "messageId": message_id})
-        return {"sent": True, "moment": moment, "messages": sent}
+        return list(dict.fromkeys(targets))
 
     def _build_topics(self, payload: PushRegisterRequest) -> list[str]:
         my_team = str(payload.myTeam or "").strip()
@@ -686,8 +868,8 @@ def _game_moment_copy(
     away_team_name: str,
     home_team_id: str,
     home_team_name: str,
-    away_score: int,
-    home_score: int,
+    away_score: Optional[int],
+    home_score: Optional[int],
     inning: str,
     batter_name: str = "",
     pitcher_name: str = "",
@@ -697,7 +879,8 @@ def _game_moment_copy(
     stadium: str = "",
     game_status: str = "",
 ) -> tuple[str, str]:
-    score = f"{away_score}:{home_score}"
+    score_available = away_score is not None and home_score is not None
+    score = f"{away_score}:{home_score}" if score_available else "확인 중"
     status = game_status.strip().upper()
     matchup = _game_matchup_display(
         away_team_id=away_team_id,
@@ -737,6 +920,8 @@ def _game_moment_copy(
             return "경기 취소", f"{matchup} 경기가 취소됐습니다."
         if status == "SUSPENDED":
             return "서스펜디드", f"{matchup} 경기가 서스펜디드 처리됐습니다."
+        if not score_available:
+            return "경기 종료", f"{matchup} 경기가 종료됐습니다. 최종 스코어 확인 중"
         return "경기 종료", f"{matchup} 최종 스코어 {score}"
     if moment == "lineup_opened":
         return "선발 라인업 공개", f"{matchup} 라인업이 공개됐습니다."
@@ -749,6 +934,10 @@ def _game_moment_copy(
             return "타석", f"{inning} {batter_name} 타석"
         return "타석", f"{matchup} {inning} · 스코어 {score}"
     return "경기 알림", f"{matchup} {inning} · 스코어 {score}"
+
+
+def _optional_score_data_value(value: Optional[int]) -> str:
+    return "" if value is None else str(value)
 
 
 def _current_situation_suffix(situation_text: str) -> str:

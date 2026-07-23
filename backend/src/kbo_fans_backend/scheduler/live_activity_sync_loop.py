@@ -45,9 +45,7 @@ def maybe_send_smart_daily_baseball_info(
     scoreboard_service=None,
     slots: Optional[list[str]] = None,
 ) -> dict:
-    effective_slots = (
-        slots if slots is not None else _configured_baseball_info_slots()
-    )
+    effective_slots = slots if slots is not None else _configured_baseball_info_slots()
     slot = _due_baseball_info_slot(now, effective_slots)
     if slot is None:
         return {
@@ -69,12 +67,27 @@ def maybe_send_smart_daily_baseball_info(
             "reason": "already_sent",
         }
 
-    alert_registry.mark_scheduled_alert_sent(alert_key)
     response = baseball_info.send_smart_daily(
         date=target_date,
         now_time=now.strftime("%H:%M"),
         push_service=push,
         scoreboard_service=scoreboard_service,
+        delivery_registry=alert_registry,
+        delivery_alert_key=alert_key,
+    )
+    planned = response.get("planned")
+    delivery_ids = (
+        [
+            str(delivery.get("deliveryId") or "")
+            for delivery in planned
+            if isinstance(delivery, dict) and delivery.get("deliveryId")
+        ]
+        if isinstance(planned, list)
+        else []
+    )
+    alert_registry.mark_scheduled_alert_sent_if_deliveries_complete(
+        alert_key,
+        delivery_ids,
     )
     return {**response, "slot": slot}
 
@@ -88,10 +101,7 @@ def _configured_baseball_info_slots() -> list[str]:
         return []
     return [
         slot
-        for slot in (
-            _normalize_time_slot(value)
-            for value in raw_value.split(",")
-        )
+        for slot in (_normalize_time_slot(value) for value in raw_value.split(","))
         if slot is not None
     ]
 
@@ -138,16 +148,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--interval-seconds",
         type=int,
-        default=int(
-            os.getenv("PUSH_SYNC_INTERVAL_SECONDS", str(_DEFAULT_INTERVAL_SECONDS))
-        ),
+        default=int(os.getenv("PUSH_SYNC_INTERVAL_SECONDS", str(_DEFAULT_INTERVAL_SECONDS))),
     )
     args = parser.parse_args(argv)
 
     if args.interval_seconds < _MIN_INTERVAL_SECONDS:
-        raise SystemExit(
-            f"interval-seconds must be at least {_MIN_INTERVAL_SECONDS}"
-        )
+        raise SystemExit(f"interval-seconds must be at least {_MIN_INTERVAL_SECONDS}")
 
     signal.signal(signal.SIGTERM, _handle_stop)
     signal.signal(signal.SIGINT, _handle_stop)
