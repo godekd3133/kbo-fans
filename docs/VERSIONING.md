@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-07-23
+> Updated: 2026-07-24
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.22+90`
-- Current release tag: `0.1.22`
+- Flutter app version: `0.1.23+91`
+- Current release tag: `0.1.23`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -152,6 +152,7 @@ Every version or release change must update these surfaces in the same work unit
 - `0.1.20`: core journey accessibility and stability release. Small-screen and large-text onboarding, keyboard/screen-reader interaction, first-home update-note baseline, home team-selection return routing, delayed game-detail refresh state, relay focus spacing, and schedule error/header behavior are reinforced with current app build `0.1.20+88`.
 - `0.1.21`: data-trust and responsive information release. Dynamic extra-inning score tables, explicit app-derived boxscore metrics, source-labeled data briefing, independent notification failure states, reduced records repetition, and 320px onboarding/home/standings/player-detail layouts ship with current app build `0.1.21+89`.
 - `0.1.22`: extreme-layout and recovery release. Stale-scoreboard timestamps and retry, safe cold-deep-link recovery, cancelled and unavailable score states, explicit Korean record labels and app-derived index disclosure, KST ticket timing, and 280px/large-text onboarding, boxscore, schedule, and standings layouts ship with current app build `0.1.22+90`.
+- `0.1.23`: score-truth, notification reliability, and adaptive-navigation release. Unknown scores remain unavailable across app/widget/Live Activity, suspended games preserve follow sessions, notification storage and backend delivery use per-message/per-target durable state, delayed snapshots are monotonic-gated, explicit permission timing and high-contrast/extreme-layout navigation ship with current app build `0.1.23+91`.
 
 ## GitHub Release Note Template
 

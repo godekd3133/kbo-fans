@@ -12,8 +12,8 @@ void main() {
     PackageInfo.setMockInitialValues(
       appName: 'KBO Fans',
       packageName: 'com.kbofans.app',
-      version: '0.1.22',
-      buildNumber: '90',
+      version: '0.1.23',
+      buildNumber: '91',
       buildSignature: '',
     );
   });
@@ -22,8 +22,8 @@ void main() {
     final currentVersion = await loadCurrentAppVersion(fallbackVersion: '');
     final data = await loadReleaseNotes();
 
-    expect(currentVersion, '0.1.22+90');
-    expect(data.releases.first.version, '0.1.22+90');
+    expect(currentVersion, '0.1.23+91');
+    expect(data.releases.first.version, '0.1.23+91');
     expect(findInstalledReleaseNote(data.releases, currentVersion), isNotNull);
   });
 

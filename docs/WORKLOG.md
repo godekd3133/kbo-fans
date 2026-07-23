@@ -2,6 +2,48 @@
 
 ---
 
+## 2026-07-23: 추가 113개 페르소나 기반 시스템 전면 개선
+
+### 결정
+- 기존 40개 감사를 반복하지 않고 제품·정보구조 36개, 실시간·데이터·푸시 44개, 접근성·기기·플랫폼 33개 등 113개 페르소나를 추가해 누적 153개 맥락으로 교차 감사한다.
+- 반복된 P0를 화면 취향이 아니라 제품 계약 문제로 분류한다. 핵심 원인은 모바일 순위의 소속 부재, LIVE null 점수의 가짜 0:0 변환, push baseline/relay seq의 전송 전 전진, 알림함 단일 JSON 경쟁, 실제 고대비 부재, 44px 미만 조작, 280/320px·240% 경기 상세 고정 레이아웃이다.
+- source/static test, full suite, release web build, 브라우저 viewport 캡처, 실기기 보조기술, APNs/FCM 전달은 별도 증거다. 이번 항목은 로컬 구현·통합 검증까지 완료하되 배포·실기기 전달을 완료로 간주하지 않는다.
+- 앱·위젯·Live Activity·알림 저장과 backend push/outbox 계약이 함께 바뀌었으므로 사장님의 반복 배포 요청에 따라 `0.1.23+91` / tag `0.1.23` 새 tester-facing release로 발행한다.
+
+### 진행
+- [x] 모바일 `/standings`를 `기록` 탭 소속으로 통일하고, 700px 이상 6개 `NavigationRail`, 1000px 이상 extended rail, 넓은 화면 최대 720px 콘텐츠 폭을 적용.
+- [x] 하단 탭 전환을 240/200ms, root push를 420ms로 단축하고 Reduce Motion의 즉시 전환 계약은 유지.
+- [x] 일반 테마와 분리된 high-contrast light/dark 팔레트를 추가하고, 공통 `AppPressable`에 44×44px hit target과 label/hint/enabled/selected semantics를 연결.
+- [x] `MyTeamGameCard`의 경기 요약 pressable과 `중계 보기`/`알림 받기` action row를 형제 영역으로 분리해 중첩 interactive control을 제거.
+- [x] 온보딩 팀 선택은 SharedPreferences·Riverpod 로컬 저장 완료 후 즉시 진입하고, push registration은 background convergence로 분리. startup/team 변경은 sync-only이며 OS permission은 명시 CTA에서만 요청.
+- [x] `TeamScore.scoreAvailable`을 numeric score와 분리하고, 앱·위젯·Live Activity/Dynamic Island에서 미확인 점수를 `–`로 표시. 이전·현재 점수가 모두 확인될 때만 득점/역전을 비교하고 LIVE null update는 기존 verified Live Activity 점수를 덮지 않음.
+- [x] `SUSPENDED`를 종료가 아닌 중단 상태 update로 처리해 follow, Activity token, Live surface session을 유지하고 재개를 기다리도록 변경.
+- [x] 알림함을 message별 `SharedPreferencesAsync` key와 별도 단조 read receipt로 전환하고, legacy v1 배열 migration·최대 50개 prune·backend stable `eventId` 우선 dedupe를 적용.
+- [x] backend registry에 stable event/per-target 영속 outbox를 추가. scoreboard baseline/relay seq와 event enqueue를 같은 atomic mutation에 저장하고, target별 pending/sending/sent·lease·attempt를 기준으로 부분 실패 target만 재시도.
+- [x] outbox, smart-daily, Live Activity start/end target에 claim id fencing을 적용해 lease 만료 뒤 이전 worker의 늦은 응답과 동시 worker의 중복 발송을 차단. smart-daily는 11개 delivery별 진행 상태를 저장하고 실패 target만 재시도.
+- [x] 지연된 scoreboard가 최신 점수·이닝·종료·타석을 되돌리지 않도록 state+outbox CAS에 monotonic gate와 stable milestone id를 적용하고, 거절된 snapshot은 pregame FCM·push-to-start·Activity update에도 사용하지 않음. 공식 FINAL/CANCELLED 전이·동일 terminal 정정과 `SUSPENDED → LIVE` 재개는 별도 허용.
+- [x] 미확인 SUSPENDED APNs payload는 verified baseline이 있으면 숫자 필드에 마지막 확정 점수를 보존하고 `scoreAvailable=false`로 보내며, baseline이 없으면 update를 보류. Lock Screen과 Dynamic Island 전 표면에 `점수 확인 중` VoiceOver label을 추가.
+- [x] 경기 상세 상단 hero·scrollable tab·문자중계 scorebug를 280/320px·240%에서 세로 재배치하고, 전체 팀명·점수 확인 상태·이닝·타자/투수·B/S/O의 합성 semantics를 보강.
+- [x] `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 적응형 탐색, 명시 권한, 점수 진실성, 알림 저장/outbox, 고대비·극단 화면 계약을 동기화.
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.23+91` 기준으로 갱신.
+- [ ] Git commit/tag/GitHub Release, 운영 backend 배포, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+
+### 원인과 검증 상태
+- 원천 score를 `int` 기본값으로 즉시 바꾸면 실제 0과 미수집을 복구할 수 없고, 같은 값이 UI·위젯·알림 비교·Live Activity까지 전파되는 것이 가짜 0:0과 득점/역전 오탐의 공통 원인이었다.
+- scoreboard/relay state를 전송 전에 먼저 저장하는 구조에서는 세 topic 중 하나만 실패해도 다음 tick이 event를 다시 만들지 못했다. state와 outbox를 함께 저장하고 delivery state를 target 단위로 분리해 재시도 가능성을 보존한다.
+- timestamp CAS만으로는 더 오래된 snapshot이 더 늦게 도착하는 순서를 구분하지 못했다. LIVE score/inning과 이미 본 타석은 단조 milestone으로 보호하되, 최종 원천인 FINAL/CANCELLED 정정은 점수 감소가 있어도 수용한다.
+- 알림함 하나의 JSON 배열을 foreground/background가 각각 read-modify-write하면 마지막 write가 다른 메시지나 read=true를 덮을 수 있었다. message별 key와 별도 read receipt로 write 충돌 경계를 줄였다.
+- [x] 구현 전 280×844, 390×844, 1024×768의 홈·일정·순위·기록·브리핑·설정·알림함·온보딩·경기 상세 네 탭 기준 캡처를 `artifacts/ux-persona-audit-systemic-2026-07-23/`에 보존.
+- [x] 변경 Dart 35개 format check `0 changed`, `flutter analyze --no-pub` `No issues found`, 전체 Flutter test `424 passed`.
+- [x] backend Python 3.9 compileall, Ruff py39 전체 check, 변경 8파일 format check, 전체 pytest `321 passed`. push/outbox/smart-daily 집중 `133 passed`, 네 동시성 경합을 20회씩 총 80회 반복 통과.
+- [x] 운영 API define을 주입한 Flutter web release build 성공. 현재 의존성의 Wasm dry-run·Cupertino font notice는 남지만 JS web 산출물은 정상 생성.
+- [x] codesign 없는 generic iOS Simulator Runner build 성공. `Runner.app`에 `KboFansWidget.appex`와 Live Activity capability를 포함하고 새 `scoreAvailable`·VoiceOver label까지 컴파일.
+- [x] 개선 후 같은 상태를 390×844 홈·순위·경기 상세, 280×844 경기 상세, 1024×768 홈에서 다시 캡처하고 전후 병합본 `20`~`24`를 보존. in-app Browser runtime log는 warning/error `0`.
+- [ ] 실제 iOS VoiceOver, Android TalkBack, Switch Control, 홈 위젯/Dynamic Island, SUSPENDED→LIVE 운영 전이, APNs/FCM 부분 실패·재시도와 실기기 수신은 별도 확인 필요.
+- 남은 P2: 같은 점수에서 실제 두 번째 SUSPENDED가 발생하면 stable event id가 중단 알림을 합칠 수 있고, 비종료 Activity update는 다중 worker에서 멱등 APNs update가 중복될 수 있다. 외부 전송 성공 직후 registry 기록 전 crash에는 일반적인 at-least-once window가 남는다.
+
+---
+
 ## 2026-07-23: 40개 다양성 페르소나 재감사와 극단 상태 보강
 
 ### 결정
