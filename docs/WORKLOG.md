@@ -26,7 +26,12 @@
 - [x] 경기 상세 상단 hero·scrollable tab·문자중계 scorebug를 280/320px·240%에서 세로 재배치하고, 전체 팀명·점수 확인 상태·이닝·타자/투수·B/S/O의 합성 semantics를 보강.
 - [x] `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 적응형 탐색, 명시 권한, 점수 진실성, 알림 저장/outbox, 고대비·극단 화면 계약을 동기화.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.23+91` 기준으로 갱신.
-- [ ] Git commit/tag/GitHub Release, 운영 backend 배포, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+- [x] 변경을 의미 단위 3개 커밋으로 나누고 `main`과 numeric tag `0.1.23`을 원격에 push. GitHub Release `0.1.23 점수와 알림 신뢰성 보강`을 공개.
+- [x] Lightsail 운영 backend release `20260723160414` 배포. `kbo-fans-api`와 `kbo-fans-sync-worker`가 모두 `active (running)`이고 로컬 health 200 및 배포 후 외부 release API gate 통과.
+- [x] `API_BASE_URL=https://3-39-79-1.sslip.io/api`, `USE_BACKEND_API=true`로 iOS IPA `0.1.23+91` archive/export.
+- [x] TestFlight upload 성공: delivery/build id `869f6de9-acb3-4867-983e-e31695757d6f`, transferred `35099023` bytes, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-10-21T09:11:08-07:00`.
+- [x] Internal TestFlight: internal group `Tester`에 build `91` 연결 확인.
+- [x] External TestFlight: `External Testers`에 build `91` 연결하고 Beta App Review 제출. 최종 조회 상태 `WAITING_FOR_REVIEW`; 외부 테스터 `na***@naver.com`은 `INSTALLED`. 새 빌드 승인 전까지 기존 승인·설치 가능 빌드는 제거하지 않음.
 
 ### 원인과 검증 상태
 - 원천 score를 `int` 기본값으로 즉시 바꾸면 실제 0과 미수집을 복구할 수 없고, 같은 값이 UI·위젯·알림 비교·Live Activity까지 전파되는 것이 가짜 0:0과 득점/역전 오탐의 공통 원인이었다.
@@ -36,6 +41,9 @@
 - [x] 구현 전 280×844, 390×844, 1024×768의 홈·일정·순위·기록·브리핑·설정·알림함·온보딩·경기 상세 네 탭 기준 캡처를 `artifacts/ux-persona-audit-systemic-2026-07-23/`에 보존.
 - [x] 변경 Dart 35개 format check `0 changed`, `flutter analyze --no-pub` `No issues found`, 전체 Flutter test `424 passed`.
 - [x] backend Python 3.9 compileall, Ruff py39 전체 check, 변경 8파일 format check, 전체 pytest `321 passed`. push/outbox/smart-daily 집중 `133 passed`, 네 동시성 경합을 20회씩 총 80회 반복 통과.
+- [x] `./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api`: 배포 전·후 scoreboard·home·schedule·standings·records·relay gate 통과.
+- [x] `fvm flutter build ipa --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api`: archive/export 성공, bundle `com.kbofans.kboFans`, version `0.1.23`, build `91`.
+- [x] App Store Connect API 재조회: build `91` `VALID`, internal/external group 연결, Beta App Review `WAITING_FOR_REVIEW`.
 - [x] 운영 API define을 주입한 Flutter web release build 성공. 현재 의존성의 Wasm dry-run·Cupertino font notice는 남지만 JS web 산출물은 정상 생성.
 - [x] codesign 없는 generic iOS Simulator Runner build 성공. `Runner.app`에 `KboFansWidget.appex`와 Live Activity capability를 포함하고 새 `scoreAvailable`·VoiceOver label까지 컴파일.
 - [x] 개선 후 같은 상태를 390×844 홈·순위·경기 상세, 280×844 경기 상세, 1024×768 홈에서 다시 캡처하고 전후 병합본 `20`~`24`를 보존. in-app Browser runtime log는 warning/error `0`.
