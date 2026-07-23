@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/core/theme/theme_mode_controller.dart';
+import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/settings/settings_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -128,6 +129,12 @@ void main() {
     expect(find.text('푸시 알림'), findsOneWidget);
     expect(find.text('기본 대상'), findsOneWidget);
     expect(find.text('마이팀 선택 전'), findsOneWidget);
+    expect(find.text('마이팀 미선택'), findsOneWidget);
+    expect(
+      find.text('마이팀 알림은 팀을 선택해야 시작됩니다. 직접 팔로우한 경기 알림은 별도로 동작합니다.'),
+      findsOneWidget,
+    );
+    expect(find.text('10개 켜짐'), findsNothing);
     expect(find.text('경기 전후 요약만 받기'), findsNothing);
     expect(find.text('경기 중 실시간 알림받기'), findsNothing);
     expect(find.text('안받기'), findsNothing);
@@ -197,6 +204,9 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+        ],
         child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
       ),
     );
@@ -330,4 +340,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LicensePage), findsOneWidget);
   });
+}
+
+class _FixedMyTeamNotifier extends MyTeamNotifier {
+  final String? value;
+
+  _FixedMyTeamNotifier(this.value);
+
+  @override
+  String? build() => value;
 }

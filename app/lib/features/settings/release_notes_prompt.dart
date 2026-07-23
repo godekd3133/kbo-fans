@@ -6,6 +6,8 @@ import '../../core/theme/app_theme.dart';
 import 'release_notes.dart';
 
 const releaseNotesSeenVersionPrefsKey = 'release_notes.seen_version';
+const releaseNotesFreshInstallPendingPrefsKey =
+    'release_notes.fresh_install_pending';
 typedef CurrentVersionLoader = Future<String> Function();
 typedef ReleaseNotesLoader = Future<ReleaseNotesData> Function();
 
@@ -19,9 +21,25 @@ Future<void> showReleaseNotesPromptIfNeeded(
   final currentVersion = currentVersionLoader != null
       ? await currentVersionLoader()
       : await loadCurrentAppVersion(fallbackVersion: '');
-  if (currentVersion.isEmpty ||
-      prefs.getString(releaseNotesSeenVersionPrefsKey) == currentVersion) {
+  final seenVersion = prefs.getString(releaseNotesSeenVersionPrefsKey);
+  final freshInstallPending =
+      prefs.getBool(releaseNotesFreshInstallPendingPrefsKey) ?? false;
+  if (currentVersion.isEmpty) {
     return;
+  }
+  if (seenVersion == currentVersion) {
+    if (freshInstallPending) {
+      await prefs.remove(releaseNotesFreshInstallPendingPrefsKey);
+    }
+    return;
+  }
+  if (seenVersion == null && freshInstallPending) {
+    await prefs.setString(releaseNotesSeenVersionPrefsKey, currentVersion);
+    await prefs.remove(releaseNotesFreshInstallPendingPrefsKey);
+    return;
+  }
+  if (freshInstallPending) {
+    await prefs.remove(releaseNotesFreshInstallPendingPrefsKey);
   }
 
   final data = releaseNotesLoader != null

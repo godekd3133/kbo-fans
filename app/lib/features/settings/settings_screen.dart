@@ -81,7 +81,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _MoreHeroCard(
                 team: team,
                 teamColor: teamColor,
-                onEditTeam: () => context.go('/onboarding?mode=edit'),
+                onEditTeam: () =>
+                    context.go('/onboarding?mode=edit&redirect=/settings'),
               ),
               const SizedBox(height: 16),
 
@@ -607,11 +608,26 @@ class _PushNotificationSettingsCardState
         return _NotificationSettingsShell(
           status: _saving
               ? '저장 중'
+              : widget.team == null
+              ? '마이팀 미선택'
               : _notificationStatusLabel(enabledMomentCount),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _NotificationTargetStrip(team: widget.team, accent: accent),
+              if (widget.team == null) ...[
+                const SizedBox(height: 10),
+                Text(
+                  '마이팀 알림은 팀을 선택해야 시작됩니다. 직접 팔로우한 경기 알림은 별도로 동작합니다.',
+                  key: const ValueKey('push_notification_team_required'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.45,
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               _NotificationToggleGroup(
                 title: '경기 전후',

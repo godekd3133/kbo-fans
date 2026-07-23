@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AppMotionSwitcher extends StatelessWidget {
   final Widget child;
@@ -112,6 +113,7 @@ class AppPressable extends StatefulWidget {
   final double pressedScale;
   final double pressedOpacity;
   final Duration duration;
+  final bool? semanticSelected;
 
   const AppPressable({
     super.key,
@@ -121,6 +123,7 @@ class AppPressable extends StatefulWidget {
     this.pressedScale = 0.972,
     this.pressedOpacity = 0.92,
     this.duration = const Duration(milliseconds: 190),
+    this.semanticSelected,
   });
 
   @override
@@ -129,6 +132,7 @@ class AppPressable extends StatefulWidget {
 
 class _AppPressableState extends State<AppPressable> {
   bool _pressed = false;
+  bool _showFocusHighlight = false;
 
   void _setPressed(bool value) {
     if (_pressed == value) {
@@ -137,31 +141,72 @@ class _AppPressableState extends State<AppPressable> {
     setState(() => _pressed = value);
   }
 
+  void _setFocusHighlight(bool value) {
+    if (_showFocusHighlight == value) {
+      return;
+    }
+    setState(() => _showFocusHighlight = value);
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (MediaQuery.of(context).disableAnimations || widget.onTap == null) {
-      return GestureDetector(
-        behavior: widget.behavior,
-        onTap: widget.onTap,
-        child: widget.child,
-      );
-    }
-
-    return GestureDetector(
+    final isEnabled = widget.onTap != null;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final pressableChild = GestureDetector(
       behavior: widget.behavior,
-      onTapDown: (_) => _setPressed(true),
-      onTapUp: (_) => _setPressed(false),
-      onTapCancel: () => _setPressed(false),
+      onTapDown: !isEnabled || reduceMotion ? null : (_) => _setPressed(true),
+      onTapUp: !isEnabled || reduceMotion ? null : (_) => _setPressed(false),
+      onTapCancel: !isEnabled || reduceMotion ? null : () => _setPressed(false),
       onTap: widget.onTap,
-      child: AnimatedScale(
-        duration: widget.duration,
-        curve: Curves.easeOutQuart,
-        scale: _pressed ? widget.pressedScale : 1,
-        child: AnimatedOpacity(
-          duration: widget.duration,
-          curve: Curves.easeOutQuart,
-          opacity: _pressed ? widget.pressedOpacity : 1,
-          child: widget.child,
+      child: reduceMotion || !isEnabled
+          ? widget.child
+          : AnimatedScale(
+              duration: widget.duration,
+              curve: Curves.easeOutQuart,
+              scale: _pressed ? widget.pressedScale : 1,
+              child: AnimatedOpacity(
+                duration: widget.duration,
+                curve: Curves.easeOutQuart,
+                opacity: _pressed ? widget.pressedOpacity : 1,
+                child: widget.child,
+              ),
+            ),
+    );
+
+    return Semantics(
+      button: true,
+      enabled: isEnabled,
+      selected: widget.semanticSelected,
+      child: FocusableActionDetector(
+        enabled: isEnabled,
+        onShowFocusHighlight: _setFocusHighlight,
+        mouseCursor: isEnabled ? SystemMouseCursors.click : MouseCursor.defer,
+        shortcuts: const <ShortcutActivator, Intent>{
+          SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+          SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+        },
+        actions: <Type, Action<Intent>>{
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              widget.onTap?.call();
+              return null;
+            },
+          ),
+        },
+        child: AnimatedContainer(
+          key: const ValueKey('app-pressable-focus-outline'),
+          duration: reduceMotion ? Duration.zero : widget.duration,
+          curve: Curves.easeOutCubic,
+          decoration: _showFocusHighlight
+              ? BoxDecoration(
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(7),
+                )
+              : null,
+          child: pressableChild,
         ),
       ),
     );

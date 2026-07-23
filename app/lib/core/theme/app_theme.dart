@@ -268,7 +268,7 @@ class AppTheme {
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: colors.background,
         selectedItemColor: colors.live,
-        unselectedItemColor: colors.textDisabled,
+        unselectedItemColor: colors.textSecondary,
         type: BottomNavigationBarType.fixed,
         selectedLabelStyle: const TextStyle(
           fontFamily: AppTypography.primaryFontFamily,

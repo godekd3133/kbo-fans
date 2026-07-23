@@ -54,6 +54,52 @@ void main() {
     expect(requestedDates.first, _kboDateKeyForTest(DateTime.now()));
   });
 
+  testWidgets('팀을 건너뛴 사용자는 홈 CTA에서 edit 온보딩으로 진입한다', (tester) async {
+    _ensureAppConfigInitialized();
+    SharedPreferences.setMockInitialValues({});
+    final router = GoRouter(
+      initialLocation: '/home',
+      routes: [
+        GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+        GoRoute(
+          path: '/onboarding',
+          builder: (_, state) => Text(
+            'onboarding-${state.uri.queryParameters['mode']}-'
+            '${state.uri.queryParameters['redirect']}',
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier(null)),
+          scoreboardProvider.overrideWith((ref, date) async => const <Game>[]),
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    await tester.tap(find.text('마이팀 선택하기'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('onboarding-edit-/home'), findsOneWidget);
+  });
+
   testWidgets('홈 pull refresh는 새 scoreboard 응답이 끝날 때까지 기다린다', (tester) async {
     _ensureAppConfigInitialized();
     SharedPreferences.setMockInitialValues({});

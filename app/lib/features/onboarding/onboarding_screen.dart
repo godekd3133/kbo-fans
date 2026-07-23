@@ -11,6 +11,7 @@ import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/providers.dart';
+import '../settings/release_notes_prompt.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   final bool isEditMode;
@@ -30,6 +31,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   String? _selectedTeamId;
   bool _isSubmitting = false;
 
+  String get _returnRoute =>
+      sanitizeAppRoute(widget.redirectTo, fallback: '/home') ?? '/home';
+
   Future<void> _saveAndProceed() async {
     if (_isSubmitting) {
       return;
@@ -41,6 +45,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       await ref.read(myTeamProvider.notifier).setTeam(resolvedTeamId);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('onboardingDone', true);
+      if (!widget.isEditMode &&
+          prefs.getString(releaseNotesSeenVersionPrefsKey) == null) {
+        await prefs.setBool(releaseNotesFreshInstallPendingPrefsKey, true);
+      }
       ref.read(onboardingDoneProvider.notifier).setValue(true);
     } catch (error) {
       if (!mounted) {
@@ -55,13 +63,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (!mounted) {
       return;
     }
-    if (widget.isEditMode) {
-      context.go('/settings');
-    } else {
-      context.go(
-        sanitizeAppRoute(widget.redirectTo, fallback: '/home') ?? '/home',
-      );
-    }
+    context.go(_returnRoute);
   }
 
   @override
@@ -73,9 +75,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         : null;
     final mediaQuery = MediaQuery.of(context);
     final viewportWidth = mediaQuery.size.width;
+    final textScaleFactor = mediaQuery.textScaler.scale(1);
+    final usesLargeText = textScaleFactor >= 1.5;
+    final usesCompactLayout = viewportWidth < 360 || usesLargeText;
     final contentMaxWidth = viewportWidth >= 900 ? 560.0 : 430.0;
-    final crossAxisCount = viewportWidth >= 900 ? 3 : 2;
-    final teamCardAspectRatio = viewportWidth >= 900 ? 2.05 : 2.35;
+    final crossAxisCount = viewportWidth >= 900
+        ? (usesLargeText ? 2 : 3)
+        : (usesCompactLayout ? 1 : 2);
+    final teamCardHeight = usesLargeText
+        ? 104.0
+        : (viewportWidth >= 900 ? 88.0 : 74.0);
     final topSpacer = widget.isEditMode
         ? 10.0
         : (mediaQuery.padding.top > 0 ? 8.0 : 30.0);
@@ -95,7 +104,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: IconButton(
-                          onPressed: () => context.go('/settings'),
+                          onPressed: () => context.go(_returnRoute),
                           icon: const Icon(Icons.arrow_back_rounded),
                         ),
                       ),
@@ -129,7 +138,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 8,
                         mainAxisSpacing: 8,
-                        childAspectRatio: teamCardAspectRatio,
+                        mainAxisExtent: teamCardHeight,
                       ),
                       itemCount: KboTeams.teams.length,
                       itemBuilder: (context, index) {
@@ -165,14 +174,26 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       onTap: _isSubmitting
                           ? null
                           : widget.isEditMode
-                          ? () => context.go('/settings')
+                          ? () => context.go(_returnRoute)
                           : _saveAndProceed,
                       pressedScale: 0.97,
-                      child: Text(
-                        widget.isEditMode ? '취소' : '나중에 선택',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textDisabled,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 44,
+                          minHeight: 44,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Center(
+                            child: Text(
+                              widget.isEditMode ? '취소' : '나중에 선택',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -467,93 +488,96 @@ class _OnboardingTeamCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
     final accent = colors.readableAccent(team.primaryColor);
-    return AppPressable(
-      onTap: onTap,
-      pressedScale: 0.976,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? AppColors.live : AppColors.divider,
-            width: isSelected ? 1.5 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: AppColors.live.withValues(alpha: 0.16),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
-              : null,
-        ),
-        child: Stack(
-          children: [
-            Row(
-              children: [
-                _TeamLogoCircle(
-                  teamId: team.id,
-                  fallback: team.shortName,
-                  accent: accent,
-                  size: 50,
-                  logoSize: 39,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        team.shortName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 17,
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w900,
-                          height: 1.08,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        team.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    return Semantics(
+      selected: isSelected,
+      child: AppPressable(
+        onTap: onTap,
+        pressedScale: 0.976,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isSelected ? AppColors.live : AppColors.divider,
+              width: isSelected ? 1.5 : 1,
             ),
-            if (isSelected)
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  width: 30,
-                  height: 30,
-                  decoration: BoxDecoration(
-                    color: AppColors.live,
-                    shape: BoxShape.circle,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppColors.live.withValues(alpha: 0.16),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Stack(
+            children: [
+              Row(
+                children: [
+                  _TeamLogoCircle(
+                    teamId: team.id,
+                    fallback: team.shortName,
+                    accent: accent,
+                    size: 50,
+                    logoSize: 39,
                   ),
-                  child: Icon(
-                    Icons.check_rounded,
-                    size: 20,
-                    color: AppColors.textPrimary,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          team.shortName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w900,
+                            height: 1.08,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          team.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (isSelected)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: AppColors.live,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_rounded,
+                      size: 20,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

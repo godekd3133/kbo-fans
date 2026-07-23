@@ -1980,7 +1980,8 @@ class _MyTeamBriefCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => context.go('/onboarding'),
+                onPressed: () =>
+                    context.go('/onboarding?mode=edit&redirect=/home'),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(

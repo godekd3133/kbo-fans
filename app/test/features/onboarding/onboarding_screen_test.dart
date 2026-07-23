@@ -6,11 +6,74 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/core/widgets/app_artwork_card.dart';
+import 'package:kbo_fans/core/widgets/app_motion.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/onboarding/onboarding_screen.dart';
+import 'package:kbo_fans/features/settings/release_notes_prompt.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  testWidgets('320x568 온보딩은 레이아웃 overflow 없이 표시된다', (tester) async {
+    await _pumpOnboarding(
+      tester,
+      physicalSize: const Size(320, 568),
+      textScaleFactor: 1,
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('200% 글자 크기 온보딩은 레이아웃 overflow 없이 표시된다', (tester) async {
+    await _pumpOnboarding(
+      tester,
+      physicalSize: const Size(390, 844),
+      textScaleFactor: 2,
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('선택한 응원 팀은 스크린리더에 선택 상태를 노출한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await _pumpOnboarding(
+        tester,
+        physicalSize: const Size(390, 844),
+        textScaleFactor: 1,
+      );
+
+      await tester.tap(find.text('LG'));
+      await tester.pumpAndSettle();
+
+      final semanticsData = tester
+          .getSemantics(find.text('LG'))
+          .getSemanticsData();
+      expect(semanticsData.flagsCollection.isSelected.toBoolOrNull(), isTrue);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('나중에 선택은 44px 터치 높이와 활성 텍스트 색을 사용한다', (tester) async {
+    await _pumpOnboarding(
+      tester,
+      physicalSize: const Size(390, 844),
+      textScaleFactor: 1,
+    );
+    final labelFinder = find.text('나중에 선택');
+    await tester.ensureVisible(labelFinder);
+    await tester.pumpAndSettle();
+
+    final pressableFinder = find.ancestor(
+      of: labelFinder,
+      matching: find.byType(AppPressable),
+    );
+    final label = tester.widget<Text>(labelFinder);
+
+    expect(tester.getSize(pressableFinder).height, greaterThanOrEqualTo(44));
+    expect(label.style?.color, AppColors.textSecondary);
+  });
+
   testWidgets('온보딩은 독립 장식 이미지를 노출하지 않는다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -81,7 +144,71 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('home'), findsOneWidget);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getBool(releaseNotesFreshInstallPendingPrefsKey), isTrue);
   });
+
+  testWidgets('홈에서 연 edit 온보딩은 선택 완료 후 홈으로 돌아간다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({'onboardingDone': true});
+
+    final router = GoRouter(
+      initialLocation: '/onboarding?mode=edit&redirect=/home',
+      routes: [
+        GoRoute(
+          path: '/onboarding',
+          builder: (_, state) => OnboardingScreen(
+            isEditMode: state.uri.queryParameters['mode'] == 'edit',
+            redirectTo: state.uri.queryParameters['redirect'] ?? '/home',
+          ),
+        ),
+        GoRoute(path: '/home', builder: (_, _) => const Text('home')),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(
+            () => _ImmediateMyTeamNotifier(initialTeamId: 'LG'),
+          ),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('선택 완료'));
+    await tester.tap(find.text('선택 완료'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('home'), findsOneWidget);
+  });
+}
+
+Future<void> _pumpOnboarding(
+  WidgetTester tester, {
+  required Size physicalSize,
+  required double textScaleFactor,
+}) async {
+  tester.view.physicalSize = physicalSize;
+  tester.view.devicePixelRatio = 1;
+  tester.platformDispatcher.textScaleFactorTestValue = textScaleFactor;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  SharedPreferences.setMockInitialValues({});
+
+  await tester.pumpWidget(
+    ProviderScope(
+      child: MaterialApp(theme: AppTheme.dark, home: const OnboardingScreen()),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 class _BlockingMyTeamNotifier extends MyTeamNotifier {
@@ -99,5 +226,19 @@ class _BlockingMyTeamNotifier extends MyTeamNotifier {
       saveStarted.complete();
     }
     await allowSave.future;
+  }
+}
+
+class _ImmediateMyTeamNotifier extends MyTeamNotifier {
+  final String? initialTeamId;
+
+  _ImmediateMyTeamNotifier({required this.initialTeamId});
+
+  @override
+  String? build() => initialTeamId;
+
+  @override
+  Future<void> setTeam(String? teamId) async {
+    state = teamId;
   }
 }

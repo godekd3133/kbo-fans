@@ -54,9 +54,7 @@ class MainScaffold extends StatelessWidget {
                         icon: _tabs[i].icon,
                         label: _tabs[i].label,
                         selected: current == i,
-                        onTap: current == i
-                            ? null
-                            : () => context.go(_tabs[i].path),
+                        onTap: () => context.go(_tabs[i].path),
                       ),
                     ),
                 ],
@@ -94,42 +92,47 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
-    final iconColor = selected ? colors.live : colors.textDisabled;
-    final labelColor = selected ? colors.live : colors.textDisabled;
+    final iconColor = selected ? colors.live : colors.textSecondary;
+    final labelColor = selected ? colors.live : colors.textSecondary;
     const animationDuration = Duration(milliseconds: 180);
     const animationCurve = Curves.easeOutCubic;
 
-    return AppPressable(
-      behavior: HitTestBehavior.opaque,
-      pressedScale: 0.94,
-      pressedOpacity: 0.9,
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: 28,
-            child: Center(
-              child: AnimatedScale(
-                duration: animationDuration,
-                curve: animationCurve,
-                scale: selected ? 1.04 : 1,
-                child: Icon(icon, size: 23, color: iconColor),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
+      child: AppPressable(
+        behavior: HitTestBehavior.opaque,
+        pressedScale: 0.94,
+        pressedOpacity: 0.9,
+        semanticSelected: selected,
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 28,
+              child: Center(
+                child: AnimatedScale(
+                  duration: animationDuration,
+                  curve: animationCurve,
+                  scale: selected ? 1.04 : 1,
+                  child: Icon(icon, size: 23, color: iconColor),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 1),
-          AnimatedDefaultTextStyle(
-            duration: animationDuration,
-            curve: animationCurve,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
-              color: labelColor,
+            const SizedBox(height: 1),
+            AnimatedDefaultTextStyle(
+              duration: animationDuration,
+              curve: animationCurve,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color: labelColor,
+              ),
+              child: Text(label),
             ),
-            child: Text(label),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
