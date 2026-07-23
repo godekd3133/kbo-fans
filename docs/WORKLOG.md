@@ -23,7 +23,12 @@
 - [x] 300px 이하 순위 헤더와 경기 차·연속 도움말을 보강.
 - [x] `docs/UX_PERSONA_AUDIT_DIVERSE_2026-07-23.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `CHANGELOG.md`에 새 표시·반응형·복구 계약 동기화.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.22+90` 기준으로 갱신.
-- [ ] Git commit/tag/GitHub Release, 운영 backend 배포, IPA archive/export, TestFlight internal/external handoff와 Beta App Review는 이 릴리즈 closeout에서 진행.
+- [x] 변경을 의미 단위 3개 커밋으로 나누고 `main`과 numeric tag `0.1.22`를 원격에 push. GitHub Release `0.1.22 극단 화면과 복구 흐름 보강`을 공개.
+- [x] Lightsail 운영 backend release `20260723132737` 배포. `kbo-fans-api`와 `kbo-fans-sync-worker`가 모두 `active (running)`이고 로컬 health 200 및 배포 후 외부 release API gate 통과.
+- [x] `API_BASE_URL=https://3-39-79-1.sslip.io/api`, `USE_BACKEND_API=true`로 iOS IPA `0.1.22+90` archive/export.
+- [x] TestFlight upload 성공: delivery/build id `5cbe39ec-a7ba-49c5-9f55-4389ac0cc7d0`, transferred `35040415` bytes, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `usesNonExemptEncryption=false`, expiration `2026-10-21T06:24:06-07:00`.
+- [x] Internal TestFlight: internal group `Tester`에 build `90` 연결 확인.
+- [x] External TestFlight: `External Testers`에 build `90` 연결하고 Beta App Review 제출. 최종 조회 상태 `WAITING_FOR_REVIEW`; 외부 테스터 `na***@naver.com`은 `INSTALLED`. 새 빌드 승인 전까지 기존 승인·설치 가능 빌드는 제거하지 않음.
 
 ### 검증
 - [x] 기록 신뢰 Flutter 집중 테스트 15개, backend 기록 overview 테스트 21개 통과.
@@ -32,6 +37,9 @@
 - [x] `cd app && flutter analyze --no-pub`: `No issues found`.
 - [x] `cd app && flutter test --no-pub`: 전체 393개 통과.
 - [x] `cd backend && python -m compileall -q src`, `ruff check src tests`, 변경 파일 format 검사, `pytest -q`: 전체 296개 통과.
+- [x] `./scripts/release-api-health-check.sh https://3-39-79-1.sslip.io/api`: 배포 전·후 scoreboard·home·schedule·standings·records·relay gate 통과.
+- [x] `fvm flutter build ipa --release --dart-define=APP_ENV=release --dart-define=USE_BACKEND_API=true --dart-define=API_BASE_URL=https://3-39-79-1.sslip.io/api`: archive/export 성공, bundle `com.kbofans.kboFans`, version `0.1.22`, build `90`.
+- [x] App Store Connect API 재조회: build `90` `VALID`, internal/external group 연결, Beta App Review `WAITING_FOR_REVIEW`.
 - [x] production API define(`USE_BACKEND_API=true`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`)을 사용한 Flutter web release build 성공. 기존 wasm dry-run interop 및 CupertinoIcons font 경고는 남지만 JavaScript build는 성공.
 - [x] 개선 후 280×844·390×844 웹 화면을 같은 감사 artifact에 재캡처하고, 브라우저 warning/error 0건 확인.
 - [ ] 실제 iOS VoiceOver, Android TalkBack, Switch Control, 알림 권한 거부, APNs/FCM 수신은 미확인.
