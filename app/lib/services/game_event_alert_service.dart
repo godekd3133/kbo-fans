@@ -436,9 +436,16 @@ class GameEventAlertService {
       );
     }
 
-    final awayDelta = current.awayScore - previous.awayScore;
-    final homeDelta = current.homeScore - previous.homeScore;
-    if (settings.sendsImmediately(PushNotificationMoment.scoring) &&
+    final hasComparableScore =
+        previous.scoreAvailable && current.scoreAvailable;
+    final awayDelta = hasComparableScore
+        ? current.awayScore - previous.awayScore
+        : 0;
+    final homeDelta = hasComparableScore
+        ? current.homeScore - previous.homeScore
+        : 0;
+    if (hasComparableScore &&
+        settings.sendsImmediately(PushNotificationMoment.scoring) &&
         (awayDelta > 0 || homeDelta > 0)) {
       if (isMyTeamGame && myTeam != null && opponent != null) {
         final myScoreDelta =
@@ -464,7 +471,8 @@ class GameEventAlertService {
       }
     }
 
-    if (settings.sendsImmediately(PushNotificationMoment.reversal)) {
+    if (hasComparableScore &&
+        settings.sendsImmediately(PushNotificationMoment.reversal)) {
       final previousLeader = previous.leadingTeamId;
       final currentLeader = current.leadingTeamId;
       if (shouldSendGameEventReversal(
@@ -494,7 +502,8 @@ class GameEventAlertService {
       }
     }
 
-    if (settings.sendsImmediately(PushNotificationMoment.gameEnd) &&
+    if (current.scoreAvailable &&
+        settings.sendsImmediately(PushNotificationMoment.gameEnd) &&
         previous.status != GameStatus.final_ &&
         current.status == GameStatus.final_) {
       if (isMyTeamGame && myTeam != null && opponent != null) {
@@ -705,6 +714,7 @@ class _GameAlertSnapshot {
   final String homeTeamId;
   final int awayScore;
   final int homeScore;
+  final bool scoreAvailable;
   final int lastRelaySeq;
   final String lineupSignature;
   final int lastLineupCheckedAtMs;
@@ -718,6 +728,7 @@ class _GameAlertSnapshot {
     required this.homeTeamId,
     required this.awayScore,
     required this.homeScore,
+    required this.scoreAvailable,
     required this.lastRelaySeq,
     required this.lineupSignature,
     required this.lastLineupCheckedAtMs,
@@ -740,6 +751,7 @@ class _GameAlertSnapshot {
       homeTeamId: game.home.teamId,
       awayScore: game.away.score,
       homeScore: game.home.score,
+      scoreAvailable: game.hasVerifiedScore,
       lastRelaySeq: lastRelaySeq,
       lineupSignature: lineupSignature,
       lastLineupCheckedAtMs: lastLineupCheckedAtMs,
@@ -759,6 +771,7 @@ class _GameAlertSnapshot {
       homeTeamId: json['homeTeamId'] as String? ?? '',
       awayScore: json['awayScore'] as int? ?? 0,
       homeScore: json['homeScore'] as int? ?? 0,
+      scoreAvailable: json['scoreAvailable'] as bool? ?? true,
       lastRelaySeq: json['lastRelaySeq'] as int? ?? 0,
       lineupSignature: json['lineupSignature'] as String? ?? '',
       lastLineupCheckedAtMs: json['lastLineupCheckedAtMs'] as int? ?? 0,
@@ -792,6 +805,7 @@ class _GameAlertSnapshot {
       'homeTeamId': homeTeamId,
       'awayScore': awayScore,
       'homeScore': homeScore,
+      'scoreAvailable': scoreAvailable,
       'lastRelaySeq': lastRelaySeq,
       'lineupSignature': lineupSignature,
       'lastLineupCheckedAtMs': lastLineupCheckedAtMs,

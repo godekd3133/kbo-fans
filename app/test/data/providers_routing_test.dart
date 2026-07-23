@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
@@ -7,6 +9,7 @@ import 'package:kbo_fans/data/repositories/api_game_repository.dart';
 import 'package:kbo_fans/data/repositories/api_player_repository.dart';
 import 'package:kbo_fans/data/repositories/device_snapshot_player_repository.dart';
 import 'package:kbo_fans/data/repositories/kbo_direct_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -55,4 +58,59 @@ void main() {
       );
     },
   );
+
+  test('마이팀 저장은 느린 push registration convergence를 기다리지 않는다', () async {
+    SharedPreferences.setMockInitialValues({});
+    final convergenceStarted = Completer<void>();
+    final allowConvergence = Completer<void>();
+    final container = ProviderContainer(
+      overrides: [
+        myTeamRegistrationConvergenceProvider.overrideWithValue((
+          myTeamId,
+        ) async {
+          expect(myTeamId, 'LG');
+          convergenceStarted.complete();
+          await allowConvergence.future;
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await container.read(myTeamProvider.notifier).setTeam('LG');
+    await convergenceStarted.future;
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(container.read(myTeamProvider), 'LG');
+    expect(prefs.getString('myTeam'), 'LG');
+    expect(allowConvergence.isCompleted, isFalse);
+
+    allowConvergence.complete();
+  });
+
+  test('background push registration 오류는 마이팀 저장에 전파되지 않는다', () async {
+    SharedPreferences.setMockInitialValues({});
+    final convergenceAttempted = Completer<void>();
+    final container = ProviderContainer(
+      overrides: [
+        myTeamRegistrationConvergenceProvider.overrideWithValue((
+          myTeamId,
+        ) async {
+          convergenceAttempted.complete();
+          throw StateError('offline');
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(myTeamProvider.notifier).setTeam('KT'),
+      completes,
+    );
+    await convergenceAttempted.future;
+    await Future<void>.delayed(Duration.zero);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(container.read(myTeamProvider), 'KT');
+    expect(prefs.getString('myTeam'), 'KT');
+  });
 }

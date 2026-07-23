@@ -273,7 +273,8 @@ List<HomeQuickItem> _buildLocalQuickItems({
       HomeQuickItem(
         eyebrow: '마이팀 경기',
         title: showScore
-            ? '${todayGame.away.shortName} ${todayGame.away.score} : ${todayGame.home.score} ${todayGame.home.shortName}'
+            ? '${todayGame.away.shortName} ${todayGame.away.displayScore} : '
+                  '${todayGame.home.displayScore} ${todayGame.home.shortName}'
             : '${todayGame.away.shortName} vs ${todayGame.home.shortName}',
         subtitle:
             '${todayGame.inning.isEmpty ? todayGame.startTime : todayGame.inning} · ${todayGame.stadium}',
@@ -375,7 +376,7 @@ HomeKboBrief _buildLocalKboBrief({
   final activeGames = [
     ...liveGames,
     ...finalGames,
-  ].where((game) => game.away.score + game.home.score > 0).toList();
+  ].where((game) => game.hasVerifiedScore && _totalScore(game) > 0).toList();
 
   final title = _kboBriefTitle(
     date: date,
@@ -818,7 +819,8 @@ int _totalHits(Game game) => game.away.hits + game.home.hits;
 int _totalErrors(Game game) => game.away.errors + game.home.errors;
 
 String _scoreLine(Game game) {
-  return '${game.away.shortName} ${game.away.score} : ${game.home.score} ${game.home.shortName}';
+  return '${game.away.shortName} ${game.away.displayScore} : '
+      '${game.home.displayScore} ${game.home.shortName}';
 }
 
 String _gameTimeLabel(Game game) {

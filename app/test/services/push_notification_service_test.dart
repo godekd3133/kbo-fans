@@ -208,7 +208,7 @@ void main() {
     expect(topics, contains('game_end_GAME_20260612KTOB0'));
   });
 
-  test('release 앱에서 마이팀이 있으면 자동 푸시 권한 요청 대상이다', () {
+  test('release 앱에서 마이팀을 선택해도 OS 푸시 권한을 자동 요청하지 않는다', () {
     expect(
       shouldAutoRequestPushPermission(
         isWeb: false,
@@ -216,11 +216,11 @@ void main() {
         alreadyRequested: false,
         myTeam: 'LG',
       ),
-      isTrue,
+      isFalse,
     );
   });
 
-  test('API mode이면 local 빌드도 remote push 등록 대상이다', () {
+  test('API mode의 remote 등록 가능 여부와 OS 권한 자동 요청 정책은 분리된다', () {
     expect(
       shouldUseRemotePushServices(isWeb: false, useBackendApi: true),
       isTrue,
@@ -232,7 +232,7 @@ void main() {
         alreadyRequested: false,
         myTeam: 'LG',
       ),
-      isTrue,
+      isFalse,
     );
   });
 

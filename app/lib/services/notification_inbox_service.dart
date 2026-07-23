@@ -101,33 +101,42 @@ class NotificationInboxService {
   @visibleForTesting
   static const storageKey = 'push_notifications.inbox_entries_v1';
 
+  static const _entryKeyPrefix = 'push_notifications.inbox_entry_v2.';
+  static const _readKeyPrefix = 'push_notifications.inbox_read_v2.';
   static const _maxEntries = 50;
 
   Future<List<NotificationInboxEntry>> loadEntries() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(storageKey);
-    if (raw == null || raw.isEmpty) {
-      return const <NotificationInboxEntry>[];
-    }
-    final Object? decoded;
-    try {
-      decoded = jsonDecode(raw);
-    } catch (_) {
-      return const <NotificationInboxEntry>[];
-    }
-    if (decoded is! List) {
-      return const <NotificationInboxEntry>[];
-    }
+    final prefs = SharedPreferencesAsync();
+    await _migrateLegacyEntries(prefs);
+    return _loadEntries(prefs);
+  }
+
+  Future<List<NotificationInboxEntry>> _loadEntries(
+    SharedPreferencesAsync prefs,
+  ) async {
+    final stored = await prefs.getAll();
     final entries = <NotificationInboxEntry>[];
-    for (final item in decoded) {
-      if (item is! Map) {
+    for (final storedEntry in stored.entries) {
+      if (!storedEntry.key.startsWith(_entryKeyPrefix) ||
+          storedEntry.value is! String) {
+        continue;
+      }
+      final Object? decoded;
+      try {
+        decoded = jsonDecode(storedEntry.value! as String);
+      } catch (_) {
+        continue;
+      }
+      if (decoded is! Map) {
         continue;
       }
       final entry = NotificationInboxEntry.fromJson(
-        item.cast<String, dynamic>(),
+        decoded.cast<String, dynamic>(),
       );
       if (entry != null) {
-        entries.add(entry);
+        final keySuffix = storedEntry.key.substring(_entryKeyPrefix.length);
+        final read = entry.read || stored['$_readKeyPrefix$keySuffix'] == true;
+        entries.add(read == entry.read ? entry : entry.copyWith(read: read));
       }
     }
     entries.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
@@ -165,58 +174,141 @@ class NotificationInboxService {
   }
 
   Future<void> upsertEntry(NotificationInboxEntry entry) async {
-    final entries = await loadEntries();
-    final merged = <NotificationInboxEntry>[];
-    var didReplace = false;
-    for (final existing in entries) {
-      if (existing.id == entry.id) {
-        didReplace = true;
-        merged.add(
-          entry.copyWith(
+    final prefs = SharedPreferencesAsync();
+    await _migrateLegacyEntries(prefs);
+    final keySuffix = _keySuffix(entry.id);
+    final entryKey = '$_entryKeyPrefix$keySuffix';
+    final existing = await _entryForKey(prefs, entryKey);
+    final merged = existing == null
+        ? entry
+        : entry.copyWith(
             receivedAt: existing.receivedAt.isAfter(entry.receivedAt)
                 ? existing.receivedAt
                 : entry.receivedAt,
             read: existing.read || entry.read,
-          ),
-        );
-      } else {
-        merged.add(existing);
-      }
+          );
+    if (merged.read) {
+      await prefs.setBool('$_readKeyPrefix$keySuffix', true);
     }
-    if (!didReplace) {
-      merged.add(entry);
-    }
-    await _save(merged);
+    await prefs.setString(entryKey, jsonEncode(merged.toJson()));
+    await _pruneToLimit(prefs);
   }
 
   Future<void> markRead(String id) async {
-    final entries = await loadEntries();
-    await _save([
-      for (final entry in entries)
-        entry.id == id ? entry.copyWith(read: true) : entry,
-    ]);
+    final prefs = SharedPreferencesAsync();
+    await _migrateLegacyEntries(prefs);
+    await prefs.setBool('$_readKeyPrefix${_keySuffix(id)}', true);
   }
 
   Future<void> markAllRead() async {
-    final entries = await loadEntries();
-    await _save([for (final entry in entries) entry.copyWith(read: true)]);
+    final prefs = SharedPreferencesAsync();
+    await _migrateLegacyEntries(prefs);
+    final entryKeys = (await prefs.getKeys()).where(
+      (key) => key.startsWith(_entryKeyPrefix),
+    );
+    await Future.wait([
+      for (final key in entryKeys)
+        prefs.setBool(
+          '$_readKeyPrefix${key.substring(_entryKeyPrefix.length)}',
+          true,
+        ),
+    ]);
   }
 
   Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(storageKey);
+    final prefs = SharedPreferencesAsync();
+    final keys = await prefs.getKeys();
+    await prefs.clear(
+      allowList: {
+        storageKey,
+        ...keys.where(
+          (key) =>
+              key.startsWith(_entryKeyPrefix) || key.startsWith(_readKeyPrefix),
+        ),
+      },
+    );
+    final legacyPrefs = await SharedPreferences.getInstance();
+    await legacyPrefs.remove(storageKey);
   }
 
-  Future<void> _save(List<NotificationInboxEntry> entries) async {
-    final normalized = entries.toList()
-      ..sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
-    final capped = normalized.take(_maxEntries).toList(growable: false);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      storageKey,
-      jsonEncode([for (final entry in capped) entry.toJson()]),
-    );
+  Future<NotificationInboxEntry?> _entryForKey(
+    SharedPreferencesAsync prefs,
+    String key,
+  ) async {
+    final raw = await prefs.getString(key);
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } catch (_) {
+      return null;
+    }
+    if (decoded is! Map) {
+      return null;
+    }
+    return NotificationInboxEntry.fromJson(decoded.cast<String, dynamic>());
   }
+
+  Future<void> _pruneToLimit(SharedPreferencesAsync prefs) async {
+    final entries = await _loadEntries(prefs);
+    if (entries.length <= _maxEntries) {
+      return;
+    }
+    final staleEntries = entries.skip(_maxEntries);
+    await Future.wait([
+      for (final entry in staleEntries) ...[
+        prefs.remove('$_entryKeyPrefix${_keySuffix(entry.id)}'),
+        prefs.remove('$_readKeyPrefix${_keySuffix(entry.id)}'),
+      ],
+    ]);
+  }
+
+  Future<void> _migrateLegacyEntries(SharedPreferencesAsync prefs) async {
+    final legacyPrefs = await SharedPreferences.getInstance();
+    await legacyPrefs.reload();
+    final raw =
+        await prefs.getString(storageKey) ?? legacyPrefs.getString(storageKey);
+    if (raw == null) {
+      return;
+    }
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } catch (_) {
+      await prefs.remove(storageKey);
+      await legacyPrefs.remove(storageKey);
+      return;
+    }
+    if (decoded is List) {
+      for (final item in decoded) {
+        if (item is! Map) {
+          continue;
+        }
+        final entry = NotificationInboxEntry.fromJson(
+          item.cast<String, dynamic>(),
+        );
+        if (entry == null) {
+          continue;
+        }
+        final suffix = _keySuffix(entry.id);
+        final entryKey = '$_entryKeyPrefix$suffix';
+        if (!await prefs.containsKey(entryKey)) {
+          await prefs.setString(entryKey, jsonEncode(entry.toJson()));
+        }
+        if (entry.read) {
+          await prefs.setBool('$_readKeyPrefix$suffix', true);
+        }
+      }
+    }
+    await prefs.remove(storageKey);
+    await legacyPrefs.remove(storageKey);
+  }
+}
+
+String _keySuffix(String id) {
+  return base64Url.encode(utf8.encode(id)).replaceAll('=', '');
 }
 
 String _entryId(
@@ -226,6 +318,12 @@ String _entryId(
   Map<String, dynamic> data,
   DateTime receivedAt,
 ) {
+  final eventId = _stringValue(data['eventId']).isNotEmpty
+      ? _stringValue(data['eventId'])
+      : _stringValue(data['event_id']);
+  if (eventId.isNotEmpty) {
+    return eventId;
+  }
   final trimmedMessageId = messageId?.trim();
   if (trimmedMessageId != null && trimmedMessageId.isNotEmpty) {
     return trimmedMessageId;

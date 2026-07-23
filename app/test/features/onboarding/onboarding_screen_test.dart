@@ -191,6 +191,60 @@ void main() {
     expect(prefs.getBool(releaseNotesFreshInstallPendingPrefsKey), isTrue);
   });
 
+  testWidgets('느린 push sync는 팀 저장과 온보딩 완료·홈 진입을 막지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+    final convergenceStarted = Completer<void>();
+    final allowConvergence = Completer<void>();
+
+    final router = GoRouter(
+      initialLocation: '/onboarding',
+      routes: [
+        GoRoute(
+          path: '/onboarding',
+          builder: (_, _) => const OnboardingScreen(),
+        ),
+        GoRoute(path: '/home', builder: (_, _) => const Text('home')),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamRegistrationConvergenceProvider.overrideWithValue((
+            myTeamId,
+          ) async {
+            expect(myTeamId, 'LG');
+            convergenceStarted.complete();
+            await allowConvergence.future;
+          }),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('LG').first);
+    await tester.pump();
+    await tester.ensureVisible(find.text('시작하기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('시작하기'));
+    await tester.pumpAndSettle();
+    await convergenceStarted.future;
+
+    expect(find.text('home'), findsOneWidget);
+    expect(allowConvergence.isCompleted, isFalse);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('myTeam'), 'LG');
+    expect(prefs.getBool('onboardingDone'), isTrue);
+
+    allowConvergence.complete();
+  });
+
   testWidgets('홈에서 연 edit 온보딩은 선택 완료 후 홈으로 돌아간다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

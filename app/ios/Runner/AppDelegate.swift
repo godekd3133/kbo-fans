@@ -259,6 +259,7 @@ private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base
       homeTeam: homeTeam,
       awayScore: awayScore,
       homeScore: homeScore,
+      scoreAvailable: arguments["scoreAvailable"] as? Bool ?? true,
       inning: inning,
       batter: arguments["batter"] as? String ?? "",
       batterAverage: arguments["batterAverage"] as? String,

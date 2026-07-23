@@ -42,169 +42,211 @@ class MyTeamGameCard extends StatelessWidget {
     final scoreText = _scoreboardText();
     final cardTap = isLive ? onOpenRelay ?? onOpenDetail : onOpenDetail;
 
-    return AppPressable(
-      onTap: cardTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: accent.withValues(alpha: 0.26)),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              accent.withValues(alpha: 0.14),
-              AppColors.card,
-              AppColors.surface,
-            ],
-            stops: const [0, 0.38, 1],
-          ),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: accent.withValues(alpha: 0.26)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.14),
+            AppColors.card,
+            AppColors.surface,
+          ],
+          stops: const [0, 0.38, 1],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppPressable(
+            key: const ValueKey('my-team-game-summary'),
+            onTap: cardTap,
+            semanticLabel:
+                '${game.away.shortName} ${game.home.shortName} 경기, '
+                '$scoreText, ${secondary ?? labelForGameStatus(game.status, statusLabel: game.statusLabel)}',
+            semanticHint: isLive ? '실시간 중계 열기' : '경기 상세 열기',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.live.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: AppColors.live.withValues(alpha: 0.45),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: AppColors.live,
-                          shape: BoxShape.circle,
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.live.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: AppColors.live.withValues(alpha: 0.45),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isLive
-                            ? 'LIVE'
-                            : labelForGameStatus(
-                                game.status,
-                                statusLabel: game.statusLabel,
-                              ),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  _stateMetaText(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _teamBlock(
-                    game.away.teamId,
-                    game.away.shortName,
-                    '원정',
-                  ),
-                ),
-                SizedBox(
-                  width: 124,
-                  child: Column(
-                    children: [
-                      AppMotionValue(
-                        value: '${game.away.score}:${game.home.score}',
-                        child: Text(
-                          scoreText,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 42,
-                            height: 1,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        secondary ??
-                            labelForGameStatus(
-                              game.status,
-                              statusLabel: game.statusLabel,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: AppColors.live,
+                              shape: BoxShape.circle,
                             ),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isLive
-                              ? AppColors.textPrimary
-                              : AppColors.textSecondary,
-                          fontWeight: FontWeight.w700,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isLive
+                                ? 'LIVE'
+                                : labelForGameStatus(
+                                    game.status,
+                                    statusLabel: game.statusLabel,
+                                  ),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _stateMetaText(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _teamBlock(
+                        game.away.teamId,
+                        game.away.shortName,
+                        '원정',
+                      ),
+                    ),
+                    SizedBox(
+                      width: 124,
+                      child: Column(
+                        children: [
+                          AppMotionValue(
+                            value:
+                                '${game.away.displayScore}:${game.home.displayScore}',
+                            child: Text(
+                              scoreText,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 42,
+                                height: 1,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            secondary ??
+                                labelForGameStatus(
+                                  game.status,
+                                  statusLabel: game.statusLabel,
+                                ),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isLive
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: _teamBlock(
+                        game.home.teamId,
+                        game.home.shortName,
+                        '홈',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (game.hasTeamStats) ...[
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _statusTile(
+                          '안타',
+                          '${game.away.hits}-${game.home.hits}',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _statusTile(
+                          '실책',
+                          '${game.away.errors}-${game.home.errors}',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _statusTile(
+                          '볼넷',
+                          '${game.away.walks}-${game.home.walks}',
                         ),
                       ),
                     ],
                   ),
-                ),
-                Expanded(
-                  child: _teamBlock(game.home.teamId, game.home.shortName, '홈'),
-                ),
+                  const SizedBox(height: 12),
+                ],
               ],
             ),
-            const SizedBox(height: 16),
-            if (game.hasTeamStats) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: _statusTile(
-                      '안타',
-                      '${game.away.hits}-${game.home.hits}',
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: primaryAction.onPressed,
+                  icon: Icon(primaryAction.icon, size: 18),
+                  label: Text(primaryAction.label),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: AppColors.textPrimary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _statusTile(
-                      '실책',
-                      '${game.away.errors}-${game.home.errors}',
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _statusTile(
-                      '볼넷',
-                      '${game.away.walks}-${game.home.walks}',
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(height: 12),
-            ],
-            Row(
-              children: [
+              if (secondaryAction != null) ...[
+                const SizedBox(width: 8),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: primaryAction.onPressed,
-                    icon: Icon(primaryAction.icon, size: 18),
-                    label: Text(primaryAction.label),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: AppColors.textPrimary,
+                  child: OutlinedButton.icon(
+                    onPressed: secondaryAction.onPressed,
+                    icon: Icon(secondaryAction.icon, size: 17),
+                    label: Text(secondaryAction.label),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: secondaryAction.isActive
+                          ? AppColors.positive
+                          : AppColors.textPrimary,
+                      side: BorderSide(
+                        color: secondaryAction.isActive
+                            ? AppColors.positive
+                            : AppColors.divider,
+                      ),
+                      backgroundColor: secondaryAction.isActive
+                          ? AppColors.positive.withValues(alpha: 0.12)
+                          : null,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -212,49 +254,20 @@ class MyTeamGameCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (secondaryAction != null) ...[
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: secondaryAction.onPressed,
-                      icon: Icon(secondaryAction.icon, size: 17),
-                      label: Text(secondaryAction.label),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: secondaryAction.isActive
-                            ? AppColors.positive
-                            : AppColors.textPrimary,
-                        side: BorderSide(
-                          color: secondaryAction.isActive
-                              ? AppColors.positive
-                              : AppColors.divider,
-                        ),
-                        backgroundColor: secondaryAction.isActive
-                            ? AppColors.positive.withValues(alpha: 0.12)
-                            : null,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
-
-  String _scoreText(int? score) => score == null ? '-' : '$score';
 
   String _scoreboardText() {
     if (game.status == GameStatus.scheduled ||
         game.status == GameStatus.cancelled) {
       return 'vs';
     }
-    return '${_scoreText(game.away.score)}:${_scoreText(game.home.score)}';
+    return '${game.away.displayScore}:${game.home.displayScore}';
   }
 
   _CardAction _primaryAction() {

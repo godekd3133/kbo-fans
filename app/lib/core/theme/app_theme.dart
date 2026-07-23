@@ -212,6 +212,38 @@ class AppTheme {
     navShadow: Color(0x240F172A),
   );
 
+  static const highContrastDarkColors = AppThemeColors(
+    background: Color(0xFF000000),
+    surface: Color(0xFF080808),
+    card: Color(0xFF101010),
+    cardSub: Color(0xFF1A1A1A),
+    divider: Color(0xFF8A8A8A),
+    textPrimary: Color(0xFFFFFFFF),
+    textSecondary: Color(0xFFE6E6E6),
+    textDisabled: Color(0xFFB8B8B8),
+    live: Color(0xFFFF6B6B),
+    positive: Color(0xFF4ADE80),
+    accent: Color(0xFF0066CC),
+    ballYellow: Color(0xFFFFE45E),
+    navShadow: Color(0xCC000000),
+  );
+
+  static const highContrastLightColors = AppThemeColors(
+    background: Color(0xFFFFFFFF),
+    surface: Color(0xFFFFFFFF),
+    card: Color(0xFFF7F7F7),
+    cardSub: Color(0xFFE8E8E8),
+    divider: Color(0xFF5A5A5A),
+    textPrimary: Color(0xFF000000),
+    textSecondary: Color(0xFF303030),
+    textDisabled: Color(0xFF555555),
+    live: Color(0xFF9F1D17),
+    positive: Color(0xFF005B35),
+    accent: Color(0xFF003D80),
+    ballYellow: Color(0xFF6B4B00),
+    navShadow: Color(0x66000000),
+  );
+
   static AppThemeColors colorsOf(BuildContext context) {
     final theme = Theme.of(context);
     return theme.extension<AppThemeColors>() ??
@@ -223,6 +255,14 @@ class AppTheme {
 
   static ThemeData get light =>
       _buildTheme(brightness: Brightness.light, colors: lightColors);
+
+  static ThemeData get highContrastDark =>
+      _buildTheme(brightness: Brightness.dark, colors: highContrastDarkColors);
+
+  static ThemeData get highContrastLight => _buildTheme(
+    brightness: Brightness.light,
+    colors: highContrastLightColors,
+  );
 
   static ThemeData _buildTheme({
     required Brightness brightness,

@@ -107,6 +107,8 @@ class AppMotionListItem extends StatelessWidget {
 }
 
 class AppPressable extends StatefulWidget {
+  static const double minimumHitTargetSize = 44;
+
   final Widget child;
   final VoidCallback? onTap;
   final HitTestBehavior behavior;
@@ -114,6 +116,9 @@ class AppPressable extends StatefulWidget {
   final double pressedOpacity;
   final Duration duration;
   final bool? semanticSelected;
+  final bool? semanticEnabled;
+  final String? semanticLabel;
+  final String? semanticHint;
 
   const AppPressable({
     super.key,
@@ -124,6 +129,9 @@ class AppPressable extends StatefulWidget {
     this.pressedOpacity = 0.92,
     this.duration = const Duration(milliseconds: 190),
     this.semanticSelected,
+    this.semanticEnabled,
+    this.semanticLabel,
+    this.semanticHint,
   });
 
   @override
@@ -151,62 +159,76 @@ class _AppPressableState extends State<AppPressable> {
   @override
   Widget build(BuildContext context) {
     final isEnabled = widget.onTap != null;
+    final semanticEnabled =
+        widget.semanticEnabled ??
+        (isEnabled || widget.semanticSelected == true);
     final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final animatedChild = reduceMotion || !isEnabled
+        ? widget.child
+        : AnimatedScale(
+            duration: widget.duration,
+            curve: Curves.easeOutQuart,
+            scale: _pressed ? widget.pressedScale : 1,
+            child: AnimatedOpacity(
+              duration: widget.duration,
+              curve: Curves.easeOutQuart,
+              opacity: _pressed ? widget.pressedOpacity : 1,
+              child: widget.child,
+            ),
+          );
     final pressableChild = GestureDetector(
       behavior: widget.behavior,
       onTapDown: !isEnabled || reduceMotion ? null : (_) => _setPressed(true),
       onTapUp: !isEnabled || reduceMotion ? null : (_) => _setPressed(false),
       onTapCancel: !isEnabled || reduceMotion ? null : () => _setPressed(false),
       onTap: widget.onTap,
-      child: reduceMotion || !isEnabled
-          ? widget.child
-          : AnimatedScale(
-              duration: widget.duration,
-              curve: Curves.easeOutQuart,
-              scale: _pressed ? widget.pressedScale : 1,
-              child: AnimatedOpacity(
-                duration: widget.duration,
-                curve: Curves.easeOutQuart,
-                opacity: _pressed ? widget.pressedOpacity : 1,
-                child: widget.child,
-              ),
-            ),
+      child: Center(widthFactor: 1, heightFactor: 1, child: animatedChild),
     );
 
     return Semantics(
       button: true,
-      enabled: isEnabled,
+      enabled: semanticEnabled,
       selected: widget.semanticSelected,
-      child: FocusableActionDetector(
-        enabled: isEnabled,
-        onShowFocusHighlight: _setFocusHighlight,
-        mouseCursor: isEnabled ? SystemMouseCursors.click : MouseCursor.defer,
-        shortcuts: const <ShortcutActivator, Intent>{
-          SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-          SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
-        },
-        actions: <Type, Action<Intent>>{
-          ActivateIntent: CallbackAction<ActivateIntent>(
-            onInvoke: (_) {
-              widget.onTap?.call();
-              return null;
-            },
+      label: widget.semanticLabel,
+      hint: widget.semanticHint,
+      excludeSemantics: widget.semanticLabel != null,
+      onTap: widget.semanticLabel != null && isEnabled ? widget.onTap : null,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: AppPressable.minimumHitTargetSize,
+          minHeight: AppPressable.minimumHitTargetSize,
+        ),
+        child: FocusableActionDetector(
+          enabled: isEnabled,
+          onShowFocusHighlight: _setFocusHighlight,
+          mouseCursor: isEnabled ? SystemMouseCursors.click : MouseCursor.defer,
+          shortcuts: const <ShortcutActivator, Intent>{
+            SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+            SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+          },
+          actions: <Type, Action<Intent>>{
+            ActivateIntent: CallbackAction<ActivateIntent>(
+              onInvoke: (_) {
+                widget.onTap?.call();
+                return null;
+              },
+            ),
+          },
+          child: AnimatedContainer(
+            key: const ValueKey('app-pressable-focus-outline'),
+            duration: reduceMotion ? Duration.zero : widget.duration,
+            curve: Curves.easeOutCubic,
+            decoration: _showFocusHighlight
+                ? BoxDecoration(
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(7),
+                  )
+                : null,
+            child: pressableChild,
           ),
-        },
-        child: AnimatedContainer(
-          key: const ValueKey('app-pressable-focus-outline'),
-          duration: reduceMotion ? Duration.zero : widget.duration,
-          curve: Curves.easeOutCubic,
-          decoration: _showFocusHighlight
-              ? BoxDecoration(
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
-                  ),
-                  borderRadius: BorderRadius.circular(7),
-                )
-              : null,
-          child: pressableChild,
         ),
       ),
     );

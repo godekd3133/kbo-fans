@@ -180,7 +180,8 @@ class WidgetSyncService {
         selected.status == GameStatus.scheduled ||
                 selected.status == GameStatus.cancelled
             ? 'vs'
-            : '${selected.away.score} : ${selected.home.score}',
+            : '${selected.away.displayScore} : '
+                  '${selected.home.displayScore}',
       ),
       HomeWidget.saveWidgetData<String>(
         'widget_away_team_id',
@@ -359,7 +360,9 @@ class WidgetSyncService {
             game.statusLabel ?? '',
             game.inning,
             game.away.score,
+            game.away.scoreAvailable,
             game.home.score,
+            game.home.scoreAvailable,
             game.lineupOpened,
           ].join(':'),
         )
@@ -507,7 +510,7 @@ String _widgetGameScoreText(Game game) {
       game.status == GameStatus.cancelled) {
     return 'vs';
   }
-  return '${game.away.score}:${game.home.score}';
+  return '${game.away.displayScore}:${game.home.displayScore}';
 }
 
 String _widgetGameStatusText(Game game) {

@@ -50,9 +50,9 @@ class GameCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   AppMotionValue(
-                    value: 'away-${game.away.score}',
+                    value: 'away-${game.away.displayScore}',
                     child: Text(
-                      showScore ? '${game.away.score}' : '-',
+                      showScore ? game.away.displayScore : '–',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -100,9 +100,9 @@ class GameCard extends StatelessWidget {
               child: Row(
                 children: [
                   AppMotionValue(
-                    value: 'home-${game.home.score}',
+                    value: 'home-${game.home.displayScore}',
                     child: Text(
-                      showScore ? '${game.home.score}' : '-',
+                      showScore ? game.home.displayScore : '–',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,

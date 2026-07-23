@@ -794,8 +794,6 @@ class PushNotificationService {
       '${_prefsPrefix}debug_last_init_status';
   static const _debugLastInitReasonKey =
       '${_prefsPrefix}debug_last_init_reason';
-  static const _autoPermissionRequestedKey =
-      '${_prefsPrefix}auto_permission_requested';
   static const _installationIdKey = '${_prefsPrefix}installation_id';
   static const _followedGameIdKey = 'live_activity.followed_game_id';
   static const _channelId = 'remote_push_foreground';
@@ -922,34 +920,20 @@ class PushNotificationService {
     }
   }
 
+  /// Legacy startup entrypoint. Permission prompts are user-initiated only;
+  /// startup and team changes just converge the existing registration state.
   Future<void> ensureAutoPermissionAndSync({String? myTeam}) async {
-    if (kIsWeb) {
-      return;
-    }
-    final remotePushAvailable = _shouldUseRemotePushServices();
-    if (!remotePushAvailable) {
-      return;
-    }
-    final prefs = await SharedPreferences.getInstance();
-    final alreadyRequested =
-        prefs.getBool(_autoPermissionRequestedKey) ?? false;
-    if (!shouldAutoRequestPushPermission(
-      isWeb: kIsWeb,
-      remotePushAvailable: remotePushAvailable,
-      alreadyRequested: alreadyRequested,
-      myTeam: myTeam,
-    )) {
-      await syncRegistration(myTeam: myTeam);
-      return;
-    }
+    await convergeRegistration(myTeam: myTeam);
+  }
 
-    await prefs.setBool(_autoPermissionRequestedKey, true);
-    final allowed = await requestPermissionAndSync(myTeam: myTeam);
-    DevConsole.instance.info(
-      allowed
-          ? 'Push auto permission synced'
-          : 'Push auto permission not granted',
-    );
+  Future<void> convergeRegistration({String? myTeam}) async {
+    try {
+      await syncRegistration(myTeam: myTeam);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'Push registration convergence deferred: $error',
+      );
+    }
   }
 
   Future<PushNotificationSettings> loadSettings() async {
@@ -1602,11 +1586,8 @@ bool shouldAutoRequestPushPermission({
   required bool alreadyRequested,
   required String? myTeam,
 }) {
-  return !isWeb &&
-      remotePushAvailable &&
-      !alreadyRequested &&
-      myTeam != null &&
-      myTeam.trim().isNotEmpty;
+  // OS permission prompts are reserved for explicit user actions.
+  return false;
 }
 
 @visibleForTesting

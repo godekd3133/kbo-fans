@@ -29,9 +29,9 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 const _fadeTransitionDuration = Duration(milliseconds: 360);
 const _fadeReverseTransitionDuration = Duration(milliseconds: 280);
-const _tabTransitionDuration = Duration(milliseconds: 760);
-const _tabReverseTransitionDuration = Duration(milliseconds: 560);
-const _swipeBackTransitionDuration = Duration(milliseconds: 1000);
+const _tabTransitionDuration = Duration(milliseconds: 240);
+const _tabReverseTransitionDuration = Duration(milliseconds: 200);
+const _swipeBackTransitionDuration = Duration(milliseconds: 420);
 int? _lastTabIndex;
 
 BuildContext? get appRootNavigatorContext => _rootNavigatorKey.currentContext;
@@ -111,7 +111,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/home',
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
-              tabIndex: 0,
+              tabIndex: mainNavigationIndexForLocation(state.uri.path),
               child: const HomeScreen(),
             ),
           ),
@@ -119,7 +119,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/schedule',
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
-              tabIndex: 1,
+              tabIndex: mainNavigationIndexForLocation(state.uri.path),
               child: const ScheduleScreen(),
             ),
           ),
@@ -127,7 +127,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/news',
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
-              tabIndex: 3,
+              tabIndex: mainNavigationIndexForLocation(state.uri.path),
               child: const NewsScreen(),
             ),
           ),
@@ -135,7 +135,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/standings',
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
-              tabIndex: 3,
+              tabIndex: mainNavigationIndexForLocation(state.uri.path),
               child: const StandingsScreen(),
             ),
           ),
@@ -143,7 +143,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/records',
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
-              tabIndex: 2,
+              tabIndex: mainNavigationIndexForLocation(state.uri.path),
               child: const RecordsScreen(),
             ),
           ),
@@ -151,7 +151,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/records/team/:teamId',
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
-              tabIndex: 2,
+              tabIndex: mainNavigationIndexForLocation(state.uri.path),
               child: RecordsScreen(teamId: state.pathParameters['teamId']!),
             ),
           ),
@@ -159,7 +159,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             pageBuilder: (context, state) => _shellTransitionPage(
               state,
-              tabIndex: 4,
+              tabIndex: mainNavigationIndexForLocation(state.uri.path),
               child: const SettingsScreen(),
             ),
           ),

@@ -779,8 +779,13 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     final gameId = widget.gameId;
     final isLive = game.status == GameStatus.live;
     final showTicketInfo = shouldShowTicketInfoForGameDetail(game);
+    final useAdaptiveLayout =
+        MediaQuery.sizeOf(context).width <= 320 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     final tabBar = TabBar(
       controller: _tabController,
+      isScrollable: useAdaptiveLayout,
+      tabAlignment: useAdaptiveLayout ? TabAlignment.start : TabAlignment.fill,
       indicatorSize: TabBarIndicatorSize.tab,
       indicator: UnderlineTabIndicator(
         borderSide: BorderSide(color: AppColors.accent, width: 3),
@@ -793,16 +798,18 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         fontSize: 14,
         fontWeight: FontWeight.w800,
       ),
-      labelPadding: EdgeInsets.zero,
+      labelPadding: useAdaptiveLayout
+          ? const EdgeInsets.symmetric(horizontal: 18)
+          : EdgeInsets.zero,
       dividerColor: AppColors.divider,
       overlayColor: WidgetStateProperty.all(
         AppColors.accent.withValues(alpha: 0.08),
       ),
       tabs: const [
-        Tab(text: '스코어'),
-        Tab(text: '문자중계'),
-        Tab(text: '박스스코어'),
-        Tab(text: '라인업'),
+        Tab(key: ValueKey('game-detail-tab-score'), text: '스코어'),
+        Tab(key: ValueKey('game-detail-tab-relay'), text: '문자중계'),
+        Tab(key: ValueKey('game-detail-tab-boxscore'), text: '박스스코어'),
+        Tab(key: ValueKey('game-detail-tab-lineup'), text: '라인업'),
       ],
     );
 
@@ -975,129 +982,318 @@ class _GameScorebug extends StatelessWidget {
   Widget build(BuildContext context) {
     final inningLabel = _scorebugInningLabel(game);
     final stadium = _displayStadiumName(game.stadium);
+    final useAdaptiveLayout =
+        MediaQuery.sizeOf(context).width <= 320 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.6;
+    final semanticLabel = [
+      '${game.away.teamName} ${_scorebugScoreText(game, game.away)}',
+      '${game.home.teamName} ${_scorebugScoreText(game, game.home)}',
+      inningLabel,
+      if (stadium.isNotEmpty) stadium,
+      if (refreshDelayed) '갱신 지연',
+    ].join(', ');
 
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(bottom: BorderSide(color: AppColors.divider)),
-      ),
-      child: Stack(
-        children: [
-          const Positioned.fill(
-            child: AppArtworkLayer(
-              assetName: VisualAssets.gameDetailScoreboard,
-              alignment: Alignment.center,
-              opacity: 0.22,
-            ),
+    return Semantics(
+      key: const ValueKey('game-detail-scorebug-semantics'),
+      container: true,
+      label: semanticLabel,
+      child: ExcludeSemantics(
+        child: Container(
+          key: const ValueKey('game-detail-scorebug'),
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            border: Border(bottom: BorderSide(color: AppColors.divider)),
           ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.background.withValues(alpha: 0.18),
-                    AppColors.background.withValues(alpha: 0.92),
-                  ],
+          child: Stack(
+            children: [
+              const Positioned.fill(
+                child: AppArtworkLayer(
+                  assetName: VisualAssets.gameDetailScoreboard,
+                  alignment: Alignment.center,
+                  opacity: 0.22,
                 ),
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    if (isLive) ...[
-                      const _LiveBadge(label: 'LIVE', active: true),
-                      const SizedBox(width: 10),
-                    ],
-                    Expanded(
-                      child: Text(
-                        refreshDelayed ? 'KBO 리그 | 갱신 지연' : 'KBO 리그',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w800,
-                          height: 1.2,
-                        ),
-                      ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.background.withValues(alpha: 0.18),
+                        AppColors.background.withValues(alpha: 0.92),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _ScorebugTeam(
-                        teamId: game.away.teamId,
-                        shortName: game.away.shortName,
-                        alignEnd: false,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    _ScorebugScore(
-                      scoreText: _scorebugScoreText(game, game.away),
-                      scoreKey: const ValueKey(
-                        'game-detail-scorebug-away-score',
-                      ),
-                    ),
-                    SizedBox(
-                      width: 76,
-                      child: Column(
-                        children: [
-                          Text(
-                            inningLabel,
+                    Row(
+                      children: [
+                        if (isLive) ...[
+                          const _LiveBadge(label: 'LIVE', active: true),
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          child: Text(
+                            refreshDelayed ? 'KBO 리그 | 갱신 지연' : 'KBO 리그',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 13,
-                              color: isLive
-                                  ? AppColors.live
-                                  : AppColors.textSecondary,
-                              fontWeight: FontWeight.w900,
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w800,
                               height: 1.2,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          const _BaseDiamondMini(),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    _ScorebugScore(
-                      scoreText: _scorebugScoreText(game, game.home),
-                      scoreKey: const ValueKey(
-                        'game-detail-scorebug-home-score',
+                    const SizedBox(height: 16),
+                    if (useAdaptiveLayout)
+                      _CompactGameScorebugLayout(
+                        game: game,
+                        inningLabel: inningLabel,
+                        isLive: isLive,
+                      )
+                    else
+                      _WideGameScorebugLayout(
+                        game: game,
+                        inningLabel: inningLabel,
+                        isLive: isLive,
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: _ScorebugTeam(
-                        teamId: game.home.teamId,
-                        shortName: game.home.shortName,
-                        alignEnd: true,
+                    const SizedBox(height: 16),
+                    if (stadium.isNotEmpty)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [_ScorebugInfoPill(label: stadium)],
                       ),
-                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                if (stadium.isNotEmpty)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [_ScorebugInfoPill(label: stadium)],
-                  ),
-              ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WideGameScorebugLayout extends StatelessWidget {
+  final Game game;
+  final String inningLabel;
+  final bool isLive;
+
+  const _WideGameScorebugLayout({
+    required this.game,
+    required this.inningLabel,
+    required this.isLive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      key: const ValueKey('game-detail-scorebug-wide-layout'),
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: _ScorebugTeam(
+            teamId: game.away.teamId,
+            shortName: game.away.shortName,
+            alignEnd: false,
+          ),
+        ),
+        const SizedBox(width: 6),
+        _ScorebugScore(
+          scoreText: _scorebugScoreText(game, game.away),
+          scoreKey: const ValueKey('game-detail-scorebug-away-score'),
+        ),
+        SizedBox(
+          width: 76,
+          child: Column(
+            children: [
+              Text(
+                inningLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isLive ? AppColors.live : AppColors.textSecondary,
+                  fontWeight: FontWeight.w900,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const _BaseDiamondMini(),
+            ],
+          ),
+        ),
+        _ScorebugScore(
+          scoreText: _scorebugScoreText(game, game.home),
+          scoreKey: const ValueKey('game-detail-scorebug-home-score'),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: _ScorebugTeam(
+            teamId: game.home.teamId,
+            shortName: game.home.shortName,
+            alignEnd: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactGameScorebugLayout extends StatelessWidget {
+  final Game game;
+  final String inningLabel;
+  final bool isLive;
+
+  const _CompactGameScorebugLayout({
+    required this.game,
+    required this.inningLabel,
+    required this.isLive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      key: const ValueKey('game-detail-scorebug-adaptive-layout'),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _CompactScorebugTeam(
+                team: game.away,
+                scoreText: _scorebugScoreText(game, game.away),
+                scoreKey: const ValueKey('game-detail-scorebug-away-score'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _CompactScorebugTeam(
+                team: game.home,
+                scoreText: _scorebugScoreText(game, game.home),
+                scoreKey: const ValueKey('game-detail-scorebug-home-score'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 14,
+          runSpacing: 10,
+          children: [
+            Container(
+              constraints: const BoxConstraints(minHeight: 28),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: (isLive ? AppColors.live : AppColors.textSecondary)
+                    .withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: isLive ? AppColors.live : AppColors.textSecondary,
+                ),
+              ),
+              child: Text(
+                inningLabel,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isLive ? AppColors.live : AppColors.textSecondary,
+                  fontWeight: FontWeight.w900,
+                  height: 1.2,
+                ),
+              ),
+            ),
+            const _BaseDiamondMini(),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactScorebugTeam extends StatelessWidget {
+  final TeamScore team;
+  final String scoreText;
+  final Key scoreKey;
+
+  const _CompactScorebugTeam({
+    required this.team,
+    required this.scoreText,
+    required this.scoreKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final kboTeam = KboTeams.byId(team.teamId);
+    final colors = AppTheme.colorsOf(context);
+    final accent = colors.readableAccent(
+      kboTeam?.primaryColor ?? colors.textSecondary,
+    );
+    final teamName = team.teamName.trim().isEmpty
+        ? team.shortName
+        : team.teamName;
+
+    return Column(
+      children: [
+        KboTeamLogoImage(
+          teamId: kboTeam?.id,
+          fallback: team.shortName,
+          size: 44,
+          padding: 3,
+        ),
+        const SizedBox(height: 7),
+        Container(
+          width: 34,
+          height: 3,
+          decoration: BoxDecoration(
+            color: accent,
+            borderRadius: BorderRadius.circular(999),
+          ),
+        ),
+        const SizedBox(height: 7),
+        Text(
+          teamName,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 6),
+        AppMotionValue(
+          value: scoreText,
+          child: Text(
+            scoreText,
+            key: scoreKey,
+            maxLines: 1,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 32,
+              height: 1,
+              fontWeight: FontWeight.w900,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -1205,7 +1401,7 @@ String _scorebugScoreText(Game game, TeamScore team) {
       game.status == GameStatus.cancelled) {
     return '–';
   }
-  return '${team.score}';
+  return team.displayScore;
 }
 
 String? _normalizedInningLabel(String raw) {
@@ -1233,7 +1429,7 @@ class _LiveBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = active ? AppColors.live : AppColors.textSecondary;
     return Container(
-      height: 28,
+      constraints: const BoxConstraints(minHeight: 28),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -1415,8 +1611,8 @@ class _ScorebugInfoPill extends StatelessWidget {
     }
     return Flexible(
       child: Container(
-        height: 24,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
+        constraints: const BoxConstraints(minHeight: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppColors.surface.withValues(alpha: 0.72),
@@ -1425,8 +1621,9 @@ class _ScorebugInfoPill extends StatelessWidget {
         ),
         child: Text(
           label,
-          maxLines: 1,
+          maxLines: 2,
           overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 11,
             color: AppColors.textSecondary,

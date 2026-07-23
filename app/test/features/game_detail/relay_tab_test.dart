@@ -342,6 +342,88 @@ void main() {
     expect(_filledLargeRelayBaseCount(tester), 2);
   });
 
+  testWidgets('relay scorebug는 280·320px 240%에서 세로 재배치하고 점수 미확인을 보존한다', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    try {
+      for (final width in const [280.0, 320.0]) {
+        tester.view.physicalSize = Size(width, 844);
+        await _pumpAdaptiveRelayScorebug(
+          tester,
+          textScaler: const TextScaler.linear(2.4),
+        );
+
+        expect(
+          find.byKey(const ValueKey('relay-scorebug-adaptive-layout')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('relay-scorebug-wide-layout')),
+          findsNothing,
+        );
+        expect(find.text('서울 장거리 원정 히어로즈'), findsWidgets);
+        expect(find.text('부산 장거리 홈 자이언츠'), findsWidgets);
+        expect(find.text('김테스트매우긴타자이름'), findsWidgets);
+        expect(find.text('박테스트매우긴투수이름'), findsWidgets);
+        expect(
+          tester
+              .widget<Text>(
+                find.byKey(const ValueKey('relay-scorebug-away-score')),
+              )
+              .data,
+          '–',
+        );
+        expect(
+          tester
+              .widget<Text>(
+                find.byKey(const ValueKey('relay-scorebug-home-score')),
+              )
+              .data,
+          '–',
+        );
+
+        final scorebugSemantics = tester
+            .getSemantics(
+              find.byKey(const ValueKey('relay-broadcast-scorebug-semantics')),
+            )
+            .getSemanticsData();
+        expect(scorebugSemantics.label, contains('서울 장거리 원정 히어로즈 –'));
+        expect(scorebugSemantics.label, contains('부산 장거리 홈 자이언츠 –'));
+        expect(scorebugSemantics.label, contains('김테스트매우긴타자이름'));
+        expect(scorebugSemantics.label, contains('박테스트매우긴투수이름'));
+        expect(scorebugSemantics.label, contains('볼 3, 스트라이크 2, 아웃 1'));
+        expect(tester.takeException(), isNull);
+      }
+
+      tester.view.physicalSize = const Size(390, 844);
+      await _pumpAdaptiveRelayScorebug(tester);
+      expect(
+        find.byKey(const ValueKey('relay-scorebug-wide-layout')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('relay-scorebug-adaptive-layout')),
+        findsNothing,
+      );
+      expect(
+        tester
+            .widget<Text>(
+              find.byKey(const ValueKey('relay-scorebug-away-score')),
+            )
+            .data,
+        '–',
+      );
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('중계 주요 장면 필터는 선택한 이벤트 카드만 남긴다', (tester) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
@@ -956,6 +1038,92 @@ void main() {
       findsAtLeastNWidgets(1),
     );
   });
+}
+
+Future<void> _pumpAdaptiveRelayScorebug(
+  WidgetTester tester, {
+  TextScaler? textScaler,
+}) async {
+  const game = Game(
+    gameId: '20260611SSLG9',
+    status: GameStatus.live,
+    inning: '연장 12회초',
+    away: TeamScore(
+      teamId: 'SS',
+      teamName: '서울 장거리 원정 히어로즈',
+      shortName: '삼성',
+      score: 0,
+      scoreAvailable: false,
+      innings: [],
+    ),
+    home: TeamScore(
+      teamId: 'LG',
+      teamName: '부산 장거리 홈 자이언츠',
+      shortName: 'LG',
+      score: 0,
+      scoreAvailable: false,
+      innings: [],
+    ),
+    stadium: '서울종합운동장 야구장',
+    startTime: '18:30',
+  );
+
+  await tester.pumpWidget(
+    ProviderScope(
+      retry: (_, _) => null,
+      overrides: [
+        gameProvider.overrideWith((ref, gameId) async => game),
+        relayDataProvider.overrideWith((ref, gameId) async {
+          return const RelayData(
+            currentAtBat: CurrentAtBat(
+              batterName: '김테스트매우긴타자이름',
+              batterNumber: 99,
+              batterHand: '좌타',
+              batterRecent: '볼넷 2루타 중전안타 우익수플라이',
+              pitcherName: '박테스트매우긴투수이름',
+              pitcherNumber: 98,
+              pitcherHand: '우투',
+              pitchCount: 123,
+              inningText: '연장 12회초',
+              baseState: '주자1,2루',
+              balls: 3,
+              strikes: 2,
+              outs: 1,
+            ),
+            relayItems: [],
+          );
+        }),
+        gameLineupProvider.overrideWith((ref, gameId) async {
+          return const GameLineupData(
+            gameId: '20260611SSLG9',
+            away: TeamLineupData(teamId: 'SS', lineup: []),
+            home: TeamLineupData(teamId: 'LG', lineup: []),
+          );
+        }),
+        teamPlayersProvider.overrideWith((ref, key) async {
+          return const <PlayerProfile>[];
+        }),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.dark,
+        builder: textScaler == null
+            ? null
+            : (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                child: child ?? const SizedBox.shrink(),
+              ),
+        home: const Scaffold(
+          body: RelayTab(
+            gameId: '20260611SSLG9',
+            gameStatus: GameStatus.live,
+            game: game,
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 100));
 }
 
 int _filledLargeRelayBaseCount(WidgetTester tester) {

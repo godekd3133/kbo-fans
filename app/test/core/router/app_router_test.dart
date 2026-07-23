@@ -6,11 +6,18 @@ import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/router/app_router.dart';
 import 'package:kbo_fans/core/router/app_route_sanitizer.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/core/widgets/main_scaffold.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
 
 void main() {
+  test('standings와 기록 하위 경로는 app router 전환에서 기록 탭 index를 공유한다', () {
+    expect(mainNavigationIndexForLocation('/standings'), 2);
+    expect(mainNavigationIndexForLocation('/records'), 2);
+    expect(mainNavigationIndexForLocation('/records/team/LG'), 2);
+  });
+
   test('onboarding 상태 변경은 GoRouter 인스턴스를 재생성하지 않는다', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
@@ -51,7 +58,7 @@ void main() {
     expect(route, isA<PageRoute<void>>());
     expect(
       (route as PageRoute<void>).transitionDuration,
-      const Duration(seconds: 1),
+      const Duration(milliseconds: 420),
     );
   });
 
@@ -78,7 +85,7 @@ void main() {
     expect(page.reverseTransitionDuration, const Duration(milliseconds: 280));
   });
 
-  testWidgets('하단 탭 전환은 기존 속도의 두 배 duration을 사용한다', (tester) async {
+  testWidgets('하단 탭 전환은 빠른 스포츠 탐색 duration을 사용한다', (tester) async {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -98,8 +105,8 @@ void main() {
         .widgetList<Navigator>(find.byType(Navigator))
         .toList();
     final page = navigators.last.pages.last as CustomTransitionPage<void>;
-    expect(page.transitionDuration, const Duration(milliseconds: 760));
-    expect(page.reverseTransitionDuration, const Duration(milliseconds: 560));
+    expect(page.transitionDuration, const Duration(milliseconds: 240));
+    expect(page.reverseTransitionDuration, const Duration(milliseconds: 200));
   });
 
   testWidgets('뉴스에서 push한 shell 화면은 iOS 스와이프 백 가능한 Cupertino route를 사용한다', (

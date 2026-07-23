@@ -8,7 +8,7 @@ class MainScaffold extends StatelessWidget {
   final Widget child;
   const MainScaffold({super.key, required this.child});
 
-  static const _tabs = [
+  static const _mobileDestinations = [
     (icon: Icons.home_rounded, label: '홈', path: '/home'),
     (icon: Icons.sports_baseball_rounded, label: '일정', path: '/schedule'),
     (icon: Icons.bar_chart_rounded, label: '기록', path: '/records'),
@@ -16,16 +16,77 @@ class MainScaffold extends StatelessWidget {
     (icon: Icons.settings_rounded, label: '설정', path: '/settings'),
   ];
 
-  int _currentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
-    final idx = _tabs.indexWhere((t) => location.startsWith(t.path));
-    return idx;
-  }
+  static const _wideDestinations = [
+    (icon: Icons.home_rounded, label: '홈', path: '/home'),
+    (icon: Icons.sports_baseball_rounded, label: '일정', path: '/schedule'),
+    (icon: Icons.leaderboard_rounded, label: '순위', path: '/standings'),
+    (icon: Icons.bar_chart_rounded, label: '기록', path: '/records'),
+    (icon: Icons.article_outlined, label: '브리핑', path: '/news'),
+    (icon: Icons.settings_rounded, label: '설정', path: '/settings'),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final current = _currentIndex(context);
+    final location = GoRouterState.of(context).uri.path;
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final useNavigationRail = viewportWidth >= 700;
+    final useExtendedRail = viewportWidth >= 1000;
     final colors = AppTheme.colorsOf(context);
+
+    if (useNavigationRail) {
+      final current = _wideNavigationIndex(location);
+      return Scaffold(
+        body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SafeArea(
+              right: false,
+              child: NavigationRail(
+                extended: useExtendedRail,
+                scrollable: true,
+                minExtendedWidth: 200,
+                labelType: useExtendedRail
+                    ? NavigationRailLabelType.none
+                    : NavigationRailLabelType.all,
+                groupAlignment: -1,
+                backgroundColor: colors.background.withValues(alpha: 0.98),
+                indicatorColor: colors.live.withValues(alpha: 0.18),
+                selectedIconTheme: IconThemeData(color: colors.live, size: 24),
+                unselectedIconTheme: IconThemeData(
+                  color: colors.textSecondary,
+                  size: 23,
+                ),
+                selectedLabelTextStyle: TextStyle(
+                  color: colors.live,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+                unselectedLabelTextStyle: TextStyle(
+                  color: colors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                selectedIndex: current < 0 ? null : current,
+                onDestinationSelected: (index) =>
+                    context.go(_wideDestinations[index].path),
+                destinations: [
+                  for (final destination in _wideDestinations)
+                    NavigationRailDestination(
+                      icon: Icon(destination.icon),
+                      selectedIcon: Icon(destination.icon),
+                      label: Text(destination.label),
+                    ),
+                ],
+              ),
+            ),
+            VerticalDivider(width: 1, thickness: 1, color: colors.divider),
+            Expanded(child: child),
+          ],
+        ),
+      );
+    }
+
+    final current = mainNavigationIndexForLocation(location);
     return Scaffold(
       body: child,
       bottomNavigationBar: SafeArea(
@@ -48,13 +109,13 @@ class MainScaffold extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  for (int i = 0; i < _tabs.length; i++)
+                  for (int i = 0; i < _mobileDestinations.length; i++)
                     Expanded(
                       child: _NavItem(
-                        icon: _tabs[i].icon,
-                        label: _tabs[i].label,
+                        icon: _mobileDestinations[i].icon,
+                        label: _mobileDestinations[i].label,
                         selected: current == i,
-                        onTap: () => context.go(_tabs[i].path),
+                        onTap: () => context.go(_mobileDestinations[i].path),
                       ),
                     ),
                 ],
@@ -74,6 +135,47 @@ class MainScaffold extends StatelessWidget {
       ),
     );
   }
+}
+
+int mainNavigationIndexForLocation(String location) {
+  if (location.startsWith('/home')) {
+    return 0;
+  }
+  if (location.startsWith('/schedule')) {
+    return 1;
+  }
+  if (location == '/standings' || location.startsWith('/records')) {
+    return 2;
+  }
+  if (location.startsWith('/news')) {
+    return 3;
+  }
+  if (location.startsWith('/settings')) {
+    return 4;
+  }
+  return -1;
+}
+
+int _wideNavigationIndex(String location) {
+  if (location.startsWith('/home')) {
+    return 0;
+  }
+  if (location.startsWith('/schedule')) {
+    return 1;
+  }
+  if (location == '/standings') {
+    return 2;
+  }
+  if (location.startsWith('/records')) {
+    return 3;
+  }
+  if (location.startsWith('/news')) {
+    return 4;
+  }
+  if (location.startsWith('/settings')) {
+    return 5;
+  }
+  return -1;
 }
 
 class _NavItem extends StatelessWidget {

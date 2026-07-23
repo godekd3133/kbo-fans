@@ -8,6 +8,7 @@ class TeamScore {
   final String teamName;
   final String shortName;
   final int score;
+  final bool scoreAvailable;
   final List<int?> innings; // null = 미진행
   final int hits;
   final int errors;
@@ -19,12 +20,15 @@ class TeamScore {
     required this.teamName,
     required this.shortName,
     required this.score,
+    this.scoreAvailable = true,
     required this.innings,
     this.hits = 0,
     this.errors = 0,
     this.walks = 0,
     this.hasStats = true,
   });
+
+  String get displayScore => scoreAvailable ? '$score' : '–';
 }
 
 class Game {
@@ -57,6 +61,8 @@ class Game {
   });
 
   bool get hasTeamStats => away.hasStats && home.hasStats;
+
+  bool get hasVerifiedScore => away.scoreAvailable && home.scoreAvailable;
 
   bool get isPregameLineupOpen {
     if (status != GameStatus.scheduled) {

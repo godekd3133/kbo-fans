@@ -200,9 +200,13 @@ class LiveActivityService {
     }
 
     if (game.status == GameStatus.final_ ||
-        game.status == GameStatus.cancelled ||
-        game.status == GameStatus.suspended) {
+        game.status == GameStatus.cancelled) {
       await stopFollowing();
+      return;
+    }
+
+    if (game.status == GameStatus.suspended) {
+      await _syncGame(game);
       return;
     }
 
@@ -246,6 +250,14 @@ class LiveActivityService {
     CurrentAtBat? currentAtBat,
     _LiveActivityRankLabels rankLabels = const _LiveActivityRankLabels(),
   }) async {
+    if (targetGame.status == GameStatus.live && !targetGame.hasVerifiedScore) {
+      DevConsole.instance.warn(
+        'Live Activity score update held: '
+        '${targetGame.gameId} score unavailable',
+      );
+      return;
+    }
+
     if (defaultTargetPlatform == TargetPlatform.android) {
       await _showAndroidOngoingScore(targetGame, rankLabels: rankLabels);
       return;
@@ -296,6 +308,7 @@ class LiveActivityService {
       'homeTeam': _liveActivityTeamLabel(targetGame.home),
       'awayScore': targetGame.away.score,
       'homeScore': targetGame.home.score,
+      'scoreAvailable': targetGame.hasVerifiedScore,
       'inning': _inningTextForLiveActivity(
         targetGame,
         effectiveAtBat,
@@ -776,7 +789,7 @@ String _androidFollowNotificationTitle(
   if (_isLiveActivityPregame(game)) {
     return '$away ${rankLabels.awayOrDash} · ${rankLabels.homeOrDash} $home';
   }
-  return '$away ${game.away.score}:${game.home.score} $home';
+  return '$away ${game.away.displayScore}:${game.home.displayScore} $home';
 }
 
 _LiveActivityRankLabels _rankLabelsForGame(

@@ -344,6 +344,7 @@ class ApiGameRepository
       teamName: json['teamName'] as String? ?? '',
       shortName: json['shortName'] as String? ?? '',
       score: json['score'] as int? ?? 0,
+      scoreAvailable: json['score'] is int,
       innings: scores,
       hits: json['hits'] as int? ?? 0,
       errors: json['errors'] as int? ?? 0,

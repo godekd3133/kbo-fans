@@ -829,6 +829,32 @@ void main() {
     }
   });
 
+  testWidgets('LIVE 원천 점수가 누락되면 실제 0대0이 아닌 미확인으로 표시한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final router = await _pumpGameDetail(tester, _liveGameWithMissingScore());
+    addTearDown(router.dispose);
+
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('game-detail-scorebug-away-score')),
+          )
+          .data,
+      '–',
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('game-detail-scorebug-home-score')),
+          )
+          .data,
+      '–',
+    );
+  });
+
   testWidgets('서스펜디드 경기 상세 상단은 진행 회차 대신 경기 중단을 명시한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -897,9 +923,125 @@ void main() {
     expect(scoreText.softWrap, isFalse);
     expect(tester.getSize(scoreFinder).height, lessThan(60));
   });
+
+  testWidgets('280·320px와 240% 글자에서 상단 hero와 탭이 재배치된다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final routers = <GoRouter>[];
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    try {
+      for (final width in const [280.0, 320.0]) {
+        tester.view.physicalSize = Size(width, 844);
+        final router = await _pumpGameDetail(
+          tester,
+          _liveGame(),
+          textScaler: const TextScaler.linear(2.4),
+        );
+        routers.add(router);
+
+        expect(
+          find.byKey(const ValueKey('game-detail-scorebug-adaptive-layout')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('game-detail-scorebug-wide-layout')),
+          findsNothing,
+        );
+        expect(
+          find.ancestor(
+            of: find.byKey(const ValueKey('game-detail-scorebug-away-score')),
+            matching: find.byType(FittedBox),
+          ),
+          findsNothing,
+        );
+        expect(find.text('KT 위즈'), findsWidgets);
+        expect(find.text('LG 트윈스'), findsWidgets);
+
+        final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+        expect(tabBar.isScrollable, isTrue);
+        for (final key in const [
+          'game-detail-tab-score',
+          'game-detail-tab-relay',
+          'game-detail-tab-boxscore',
+          'game-detail-tab-lineup',
+        ]) {
+          expect(
+            tester.getSize(find.byKey(ValueKey(key))).height,
+            greaterThanOrEqualTo(44),
+          );
+        }
+
+        final scoreTabSemantics = tester
+            .getSemantics(find.byKey(const ValueKey('game-detail-tab-score')))
+            .getSemanticsData();
+        expect(
+          scoreTabSemantics.flagsCollection.isSelected.toBoolOrNull(),
+          isTrue,
+        );
+        tabBar.controller!.animateTo(1);
+        await tester.pumpAndSettle();
+        final relayTabSemantics = tester
+            .getSemantics(find.byKey(const ValueKey('game-detail-tab-relay')))
+            .getSemanticsData();
+        expect(
+          relayTabSemantics.flagsCollection.isSelected.toBoolOrNull(),
+          isTrue,
+        );
+
+        final scorebugSemantics = tester
+            .getSemantics(
+              find.byKey(const ValueKey('game-detail-scorebug-semantics')),
+            )
+            .getSemanticsData();
+        expect(scorebugSemantics.label, contains('KT 위즈 2'));
+        expect(scorebugSemantics.label, contains('LG 트윈스 1'));
+        expect(scorebugSemantics.label, contains('8회초'));
+        expect(tester.takeException(), isNull);
+      }
+    } finally {
+      for (final router in routers) {
+        router.dispose();
+      }
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('390px 기본 경기 상세는 기존 score hero와 균등 탭을 유지한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final router = await _pumpGameDetail(tester, _liveGame());
+    addTearDown(router.dispose);
+
+    expect(
+      find.byKey(const ValueKey('game-detail-scorebug-wide-layout')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('game-detail-scorebug-adaptive-layout')),
+      findsNothing,
+    );
+    expect(tester.widget<TabBar>(find.byType(TabBar)).isScrollable, isFalse);
+    expect(
+      find.ancestor(
+        of: find.byKey(const ValueKey('game-detail-scorebug-away-score')),
+        matching: find.byType(FittedBox),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
-Future<GoRouter> _pumpGameDetail(WidgetTester tester, Game game) async {
+Future<GoRouter> _pumpGameDetail(
+  WidgetTester tester,
+  Game game, {
+  TextScaler? textScaler,
+}) async {
   SharedPreferences.setMockInitialValues({});
   final router = GoRouter(
     initialLocation: '/game/${game.gameId}',
@@ -924,7 +1066,16 @@ Future<GoRouter> _pumpGameDetail(WidgetTester tester, Game game) async {
       overrides: [
         gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
       ],
-      child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      child: MaterialApp.router(
+        theme: AppTheme.dark,
+        routerConfig: router,
+        builder: textScaler == null
+            ? null
+            : (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+                child: child ?? const SizedBox.shrink(),
+              ),
+      ),
     ),
   );
   await tester.pumpAndSettle();
@@ -948,6 +1099,32 @@ Game _liveGame() {
       teamName: 'LG 트윈스',
       shortName: 'LG',
       score: 1,
+      innings: [],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
+}
+
+Game _liveGameWithMissingScore() {
+  return const Game(
+    gameId: '20260520KTLG1',
+    status: GameStatus.live,
+    inning: '1회초',
+    away: TeamScore(
+      teamId: 'KT',
+      teamName: 'KT 위즈',
+      shortName: 'KT',
+      score: 0,
+      scoreAvailable: false,
+      innings: [],
+    ),
+    home: TeamScore(
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      shortName: 'LG',
+      score: 0,
+      scoreAvailable: false,
       innings: [],
     ),
     stadium: '잠실',

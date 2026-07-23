@@ -33,6 +33,69 @@ void main() {
     expect(AppTheme.dark.brightness, Brightness.dark);
   });
 
+  test('high contrast themes expose their own distinct color palettes', () {
+    final lightColors = AppTheme.light.extension<AppThemeColors>();
+    final darkColors = AppTheme.dark.extension<AppThemeColors>();
+    final highContrastLightColors = AppTheme.highContrastLight
+        .extension<AppThemeColors>();
+    final highContrastDarkColors = AppTheme.highContrastDark
+        .extension<AppThemeColors>();
+
+    expect(highContrastLightColors, same(AppTheme.highContrastLightColors));
+    expect(highContrastDarkColors, same(AppTheme.highContrastDarkColors));
+    expect(highContrastLightColors, isNot(same(lightColors)));
+    expect(highContrastDarkColors, isNot(same(darkColors)));
+    expect(highContrastLightColors!.background, isNot(lightColors!.background));
+    expect(
+      highContrastLightColors.textSecondary,
+      isNot(lightColors.textSecondary),
+    );
+    expect(highContrastDarkColors!.background, isNot(darkColors!.background));
+    expect(
+      highContrastDarkColors.textSecondary,
+      isNot(darkColors.textSecondary),
+    );
+    expect(AppTheme.highContrastLight.brightness, Brightness.light);
+    expect(AppTheme.highContrastDark.brightness, Brightness.dark);
+  });
+
+  test(
+    'high contrast readable text roles meet WCAG AA on every app surface',
+    () {
+      final palettes = <String, AppThemeColors>{
+        'high contrast light': AppTheme.highContrastLightColors,
+        'high contrast dark': AppTheme.highContrastDarkColors,
+      };
+
+      for (final paletteEntry in palettes.entries) {
+        final colors = paletteEntry.value;
+        final textRoles = <String, Color>{
+          'primary': colors.textPrimary,
+          'secondary': colors.textSecondary,
+          'small supporting label': colors.textDisabled,
+        };
+        final surfaces = <String, Color>{
+          'background': colors.background,
+          'surface': colors.surface,
+          'card': colors.card,
+          'cardSub': colors.cardSub,
+        };
+
+        for (final textEntry in textRoles.entries) {
+          for (final surfaceEntry in surfaces.entries) {
+            expect(
+              _contrastRatio(textEntry.value, surfaceEntry.value),
+              greaterThanOrEqualTo(4.5),
+              reason:
+                  '${paletteEntry.key} ${textEntry.key} text must remain '
+                  'readable on ${surfaceEntry.key}',
+            );
+          }
+        }
+      }
+    },
+  );
+
   test('legacy app colors can be synced to the active theme palette', () {
     AppColors.sync(AppTheme.lightColors);
     expect(AppColors.background, AppTheme.lightColors.background);

@@ -16,7 +16,7 @@
 
 ## 1. 앱 네비게이션 구조
 
-### Bottom Tab Navigation (5탭)
+### 적응형 Main Navigation
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -28,11 +28,16 @@
 └─────────┴─────────┴─────────┴─────────┴────────────┘
 ```
 
+- 700px 미만 모바일은 `홈 / 일정 / 기록 / 브리핑 / 설정` 5탭을 사용한다. `/standings`와 `/records` 하위 route는 모두 모바일 `기록` 목적지 소속이며, 순위 화면에서도 `기록` 탭을 선택 상태로 유지한다.
+- 700px 이상은 하단 탭 대신 `홈 / 일정 / 순위 / 기록 / 브리핑 / 설정` 6개 목적지의 `NavigationRail`을 사용한다. 순위와 기록을 직접 분리해 넓은 화면의 탐색 단계를 줄인다.
+- 1000px 이상에서는 같은 rail을 label이 항상 보이는 extended 형태로 전환한다.
+- 일반 페이지 콘텐츠 폭은 모바일에서 최대 430px, 700px 이상에서 최대 720px로 확장하고 화면 중앙에 정렬한다. rail을 제외한 나머지 폭을 무조건 한 열로 늘리지 않는다.
+
 ### 화면 전환 모션
 
-- 하단 5탭 이동은 즉시 컷 전환하지 않고, 760ms 안팎의 fade + 부드러운 horizontal slide + 얕은 scale 전환을 사용한다.
-- 하단 탭 전환은 탭 순서를 기준으로 좌우 방향을 맞추고, 기존 화면도 아주 약한 parallax/fade로 함께 빠져나가 새 화면이 튀어나오는 느낌을 줄인다. 기본 진입 760ms, 복귀 560ms를 사용한다.
-- 경기 상세, 선수 상세, 리더보드, 진단, 업데이트 소식처럼 현재 화면 위로 진입하는 root push 화면은 1000ms iOS식 slide/parallax 전환을 사용한다.
+- 하단 5탭 이동은 즉시 컷 전환하지 않고, 짧은 fade + horizontal slide + 얕은 scale 전환을 사용한다.
+- 하단 탭 전환은 탭 순서를 기준으로 좌우 방향을 맞추되 정보 확인을 지연하지 않도록 기본 진입 240ms, 복귀 200ms를 사용한다.
+- 경기 상세, 선수 상세, 리더보드, 진단, 업데이트 소식처럼 현재 화면 위로 진입하는 root push 화면은 420ms iOS식 slide/parallax 전환을 사용한다.
 - root push 화면은 이전 화면이 route stack에 있을 때 좌측 edge-swipe로 뒤로갈 수 있어야 한다. 앱 실행 deep link처럼 첫 route로 열린 경우에는 화면의 뒤로가기 버튼이 `/home` 복귀를 담당한다.
 - 브리핑 카드/CTA가 `/standings`, `/records`, `/schedule`처럼 shell 탭 화면을 현재 브리핑 화면 위로 `push`하는 경우에도 이전 브리핑 화면으로 좌측 edge-swipe 복귀가 가능해야 한다. 하단 탭을 직접 누르는 `go` 이동은 기존 5탭 전환 모션을 유지한다.
 - 부트/온보딩 전환은 콘텐츠 움직임을 최소화한 360ms fade 중심으로 처리한다.
@@ -45,12 +50,14 @@
 - OS 접근성 설정에서 애니메이션 줄이기가 켜진 경우에는 앱 custom 라우팅/상태/터치 피드백 모션을 생략하거나 즉시 전환한다.
 - 모션은 야구 정보 스캔을 방해하지 않는 보조 피드백이어야 하며, 카드 크기나 하단 탭 높이를 흔들지 않는다.
 - 공통 pressable은 스크린리더에 button/enabled/selected 상태를 전달하고, 웹·키보드 환경에서 Enter/Space 활성화와 눈에 보이는 focus outline을 제공한다. 비활성 컨트롤은 포인터와 키보드 모두 실행되지 않아야 한다.
-- 주요 아이콘/텍스트 액션의 최소 터치 높이는 44px, 하단 탭은 48px로 유지한다. 비선택 하단 탭과 필터 라벨은 disabled 색이 아니라 읽을 수 있는 secondary 색을 사용한다.
+- 공통 pressable과 주요 아이콘/텍스트 액션은 최소 44×44px, 하단 탭은 최소 48px 높이를 유지한다. 비선택 하단 탭과 필터 라벨은 disabled 색이 아니라 읽을 수 있는 secondary 색을 사용한다.
+- 한 카드 안에 독립 CTA 버튼이 있으면 카드 전체 tap과 버튼을 중첩하지 않는다. 요약 영역만 하나의 pressable로 만들고 action row는 형제 영역으로 분리해 스크린리더·키보드·포인터의 활성화 대상이 겹치지 않게 한다.
 
 ### 시각 / 카피 톤
 
 - 앱 UI 라벨에는 이모지 텍스트를 쓰지 않는다. 필요한 의미 표시는 Material/SF Symbol 같은 벡터 아이콘, 작은 상태 점, 배지, 팀 컬러로 처리한다.
 - 기본 화면 팔레트는 중립 차콜 계열(`#0F0F0F`, `#171717`, `#1D1D1D`, `#292929`, `#373737`)을 사용하고, 팀 컬러와 라이브 레드는 상태를 설명할 때만 제한적으로 쓴다.
+- OS 고대비 설정에서는 일반 테마를 그대로 재사용하지 않고 light/dark별 독립 고대비 팔레트를 적용한다. 배경·surface·card·sub-card에서 primary/secondary/disabled 읽기 역할이 모두 최소 4.5:1을 유지해야 한다.
 - 영어 eyebrow는 데이터/스포츠 관용상 필요한 `LIVE` 정도로 제한하고, `MY TEAM`, `SETTINGS` 같은 장식형 라벨은 한국어 화면 문맥으로 표현한다.
 - 과한 그라디언트와 큰 둥근 장식보다 8px 카드, 명확한 정보 계층, 실제 경기 맥락을 우선한다.
 - 생성 비주얼은 독립 배너나 삽입 이미지 카드처럼 보이게 두지 않는다. 정상 데이터 화면에서는 필요한 경우 카드/표/헤더의 낮은 opacity background layer로만 통합하고, 독립 `AppArtworkCard`는 empty, retry처럼 화면 상태 자체를 설명하는 경우에만 사용한다.
@@ -74,7 +81,7 @@
         │
 [데이터 브리핑] ──tap 카드──▶ [경기 상세 / 순위 / 기록실]
         │
-[순위] (홈/브리핑 카드에서 진입하는 단일 화면)
+[순위] (모바일 `기록` 소속, 홈/브리핑 카드에서 진입 / 넓은 화면 rail 직접 진입)
         │
 [기록실] ──tap 선수 카드──▶ [선수 상세]
         │
@@ -157,15 +164,17 @@
 |------|------|
 | 팀 로고 그리드 | 10개 팀. 모바일 390px 기준 2열, 360px 미만 또는 150% 이상 글자 크기에서는 1열로 전환하고 카드 높이를 글자 크기에 맞춘다. 넓은 화면에서는 3열까지 확장한다. KBO CDN `emblem/regular/fixed/emblem_{TEAM}_L.png` 이미지 사용 |
 | 선택 상태 | 선택 시 팀 컬러 border + 체크 아이콘. 1팀만 선택 가능하며 스크린리더에도 selected 상태를 전달 |
-| 시작하기 버튼 | 팀 선택 시 활성화 (팀 컬러로 변경). 저장/초기 진입 준비 중에는 `시작 중입니다`와 spinner를 표시하고 중복 탭을 막는다 |
+| 시작하기 버튼 | 팀 선택 시 활성화 (팀 컬러로 변경). 로컬 팀 저장 중에는 `시작 중입니다`와 spinner를 표시하고 중복 탭을 막는다. 원격 push 등록은 이 진행 상태를 붙잡지 않는다 |
 | 건너뛰기 | 팀 미선택으로 진행. 설정에서 나중에 선택 가능. 최소 44px 터치 높이와 활성 텍스트 대비를 유지하고 저장 중에는 중복 입력을 막는다 |
 | 선택 효과 설명 | 팀 선택 시 홈 브리프, 알림, 일정 필터가 개인화된다는 점을 2~3줄로 짧게 설명 |
 | 장식 이미지 | 온보딩 상단에 독립 배너/경기장 이미지 카드를 두지 않는다 |
 
 **인터랙션**:
 - 팀 탭 → 선택 토글 (이전 선택 해제)
-- 시작하기 → 진행 상태 표시 → SharedPreferences에 `myTeam` 저장 → 홈 화면 이동
+- 시작하기 → 진행 상태 표시 → SharedPreferences와 Riverpod에 `myTeam` 저장 → 저장이 끝나면 즉시 홈 화면 이동
 - 건너뛰기 → 진행 상태 표시 → `myTeam = null` → 홈 화면 이동
+- 팀 저장 뒤 FCM token/topic registration convergence는 background에서 시도한다. 네트워크·Firebase·backend 실패는 개인화 완료나 첫 홈 진입을 되돌리지 않는다.
+- 온보딩과 앱 startup은 OS 알림 권한 sheet를 자동으로 열지 않는다. 권한 요청은 설정의 알림 CTA나 경기 상세의 `경기 팔로우하기`처럼 사용자가 알림 의도를 명시한 동작에서만 시작한다.
 - 2회차 이후 앱 실행 → 온보딩 스킵, 바로 홈
 - 건너뛰기 사용자는 홈 상단과 설정에서 마이팀 선택 CTA를 다시 노출
 - 홈의 마이팀 선택 CTA로 edit 온보딩에 들어오면 선택 완료/취소 모두 홈으로 돌아간다. 설정에서 들어오면 설정으로 돌아간다.
@@ -227,7 +236,7 @@
 |------|------|
 | 헤더 | `KBO` 브랜드 + 중앙 `홈` + 알림/검색 아이콘. 경기 중이면 중앙 title 옆에 작은 live dot 표시 |
 | 마이팀 브리프 | 마이팀 미선택 시 팀 선택 유도, 선택 시 오늘 경기/다음 경기/최근 5경기/순위/팀 기록 하이라이트 노출. 독립 이미지 strip 없이 카드 background layer와 팀 로고를 사용 |
-| 진행 중인 내 경기 | live 마이팀 경기가 있을 때만 `내 경기 진행 중`/`문자중계 보기` CTA를 표시하고, scheduled/final/cancelled 경기는 이 독립 카드를 만들지 않는다 |
+| 진행 중인 내 경기 | live 마이팀 경기가 있을 때만 `내 경기 진행 중`/`문자중계 보기` CTA를 표시하고, scheduled/final/cancelled 경기는 이 독립 카드를 만들지 않는다. 경기 요약 tap과 `중계 보기`/`알림 받기` action row를 분리해 버튼을 전체 카드 tap 안에 중첩하지 않는다 |
 | KBO 브리프 | `KBO 소식`, `지금 KBO`, `오늘의 KBO 요약`처럼 날짜/경기 상태별 리그 전체 핵심 이슈 3~5개 노출. 홈에서는 전체 폭 row 카드로 배치해 긴 팀명/전적 문구를 말줄임으로 숨기지 않고, 팀 기반 순위/흐름 항목은 reference team logo를 우선 사용 |
 | 오늘 경기 | 구장/시간, 원정팀 로고/명, 중앙 스코어 또는 `- : -`, 상태 badge, 홈팀 로고/명을 한 행에 표시하고 오늘 편성된 모든 경기 row를 보여준다. 자정 이후 오늘 경기가 모두 시작 전이면 오늘 스코어보드 첫 렌더 후 전날 스코어보드를 보조 조회해 종료 경기만 `어제 결과` 그룹으로 함께 보여준다. 오늘 live/final 경기가 하나라도 있으면 어제 결과를 추가 조회하거나 섞지 않는다 |
 | 순위 snapshot | 현재 시즌 전체 팀 순위를 compact table로 표시하고 마이팀 행은 팀 컬러 배경으로 강조. 팀 행 탭은 전체 순위 화면으로 이동 |
@@ -245,6 +254,7 @@
 | 경기 종료 | 최종 스코어, 승패 요약, 핵심 선수 1~2명 | `경기 기록`, `하이라이트` |
 | 취소/지연 | 취소/지연 사유, 다음 일정 | `일정 보기` |
 
+- 원천 score가 `null`이면 정수 기본값 `0`으로 바꾸지 않고 `–`로 표시한다. 실제 0점과 미확인 점수는 모델·semantics·위젯/Live Activity payload까지 분리한다.
 - 마이팀 브리프는 단순 지표 나열보다 `지금 내 팀 상황`을 먼저 판단하게 한다. 선택된 팀이 있으면 카드 title, 팀 로고, 최근 최대 5경기 결과 버블, 순위/팀 타율/팀 ERA, 팀 홈런 1위, OPS/AVG/ERA 기준 눈에 띄는 선수, `경기 일정`/`팀 기록` CTA 순서로 구성한다.
 - 마이팀 미선택 상태의 `마이팀 선택` CTA는 `/onboarding?mode=edit&redirect=/home`으로 이동하고, 선택 완료 뒤 홈으로 복귀한다.
 - 340px 이하에서는 마이팀 브리프의 최근 5경기를 위 행, 타율·ERA를 아래 2열에 배치한다. 홈 순위 표도 안쪽 여백과 수치 열 폭을 함께 줄여 팀명·전적을 축소 글자나 가로 넘침 없이 유지한다.
@@ -432,6 +442,12 @@ GET /api/player/{playerId}?season=2026
 - 하이라이트 카드: 유튜브 썸네일 / 영상 제목 / `KBO 하이라이트` / `바로 재생` / `공식 영상` 버튼
 - 진행/종료/취소/서스펜디드 경기에서는 예매 정보 대신 현재 경기 상태, 최종 결과, 승패 요약, 핵심 선수, 주요 이벤트 요약을 우선 노출
 
+**초소형 화면·큰 글자 variant**:
+- 320px 이하 또는 글자 배율 160% 이상에서는 상단 score hero의 고정 가로 3분할을 사용하지 않는다. 원정/홈 팀을 각각 로고·전체 팀명·점수가 한 행인 세로 구조로 재배치하고 상태를 독립 행으로 둔다.
+- 280px·320px와 240% 글자 크기를 필수 회귀 조합으로 사용한다. 팀명과 점수를 말줄임·축소 글자로 숨기지 않고 hero 높이가 콘텐츠에 맞춰 늘어나야 한다.
+- 네 개 상세 탭은 좁은 화면에서 같은 폭으로 압축하지 않고 가로 스크롤형으로 전환한다. 각 탭은 최소 44px 높이, 전체 라벨, 현재 `selected` semantics를 유지한다.
+- 문자중계 방송형 scorebug도 같은 조건에서 팀/점수, 이닝·루상, 타자·투수·B/S/O를 세로로 재배치한다. 시각 요소를 개별 낭독하지 않고 양 팀 점수 확인 상태·이닝·매치업·카운트를 합친 하나의 semantics 문장으로 제공한다.
+
 **탭 간 맥락 연결 원칙**:
 - 상단 경기 상태는 모든 탭에서 sticky 유지한다.
 - 문자중계의 주요 이벤트는 스코어 탭 요약과 박스스코어 핵심 카드에 연결된다.
@@ -443,7 +459,7 @@ GET /api/player/{playerId}?season=2026
 - 홈/일정에서 전달받은 기존 경기정보가 있으면 첫 단건 조회 또는 이후 앱 복귀/주기 refresh가 실패해도 전체 화면 오류로 전환하지 않고 마지막 경기 상세를 유지한다. 이때 `갱신 지연`, `기존 경기 정보를 유지하고 있습니다`, `다시 시도`를 표시하고 성공하면 자동으로 해제한다. 처음부터 경기정보가 전혀 없는 cold 실패만 오류/미존재 상태를 표시한다.
 - 경기정보가 전혀 없는 cold 딥링크 오류·미존재 상태도 막다른 텍스트 화면으로 두지 않는다. `다시 시도`와 `홈으로`를 함께 제공하고, 선수 상세 cold 오류는 `다시 시도`와 `기록실로`를 제공한다.
 - 경기 팔로우는 로컬 팔로우 저장과 실제 알림 전달을 분리한다. 버튼은 `경기 팔로우하기/해제`로 표시하며, 권한·지원 환경을 확인하지 못한 상태에서 `푸시 중계 시작`을 확정하지 않는다.
-- 취소·서스펜디드·경기 전 상태의 미확정 점수는 `0 : 0`이 아니라 `–`로 표시하고 상태 배지를 함께 노출한다.
+- 취소·서스펜디드·경기 전뿐 아니라 LIVE/종료에서도 원천 점수가 미확정이면 `0 : 0`이 아니라 `–`로 표시하고 상태 배지를 함께 노출한다.
 - `/game/{gameId}?tab=relay&focus=relay` 진입은 sticky 탭 높이 48px를 남겨 문자중계 첫 요약이 탭 아래에 가려지지 않게 한다.
 - 후보 기능: 경기/마이팀 선수 기록 인사이트는 `docs/PLAYER_RECORD_INSIGHTS_PLAN_2026-05-20.md`의 검증/구현 기준으로 별도 승인 후 확정한다. 현재 앱/API 계약에는 포함하지 않는다.
 
@@ -863,7 +879,7 @@ GET /api/standings?season=2026
 **운영 메모**:
 - 순위는 latest 응답만 짧게 캐시하는 것을 넘어서, 시즌 중 하루 여러 번 standings snapshot 을 저장해 과거 날짜 기준 순위 회고가 가능하도록 설계한다.
 - 앱 기본 화면은 최신 snapshot 을 즉시 보여주고, 당일 경기 진행 중에만 주기적 재계산 또는 원천 재수집을 허용한다.
-- 순위탭의 과거 시즌 선택은 historical standings 경로로 처리하며, API-backed 모드는 cached-first / snapshot fallback 을 사용하고 direct 모드는 KBO `seasonId` 요청을 사용한다.
+- 순위 화면의 과거 시즌 선택은 historical standings 경로로 처리하며, API-backed 모드는 cached-first / snapshot fallback 을 사용하고 direct 모드는 KBO `seasonId` 요청을 사용한다.
 
 ---
 
@@ -918,7 +934,7 @@ GET /api/standings?season=2026
 | 요소 | 설명 |
 |------|------|
 | 마이팀 | 현재 선택 팀과 `마이팀 선택/변경` 버튼만 표시. 순위, 최근 5경기, 오늘 경기 여부는 홈/일정/순위 탭에서만 다룬다 |
-| 화면 모드 | 설정 첫 화면에서 `시스템`, `라이트`, `다크`를 고른다. `시스템`은 OS 밝기 설정을 따르고, `라이트`/`다크`는 앱 화면을 직접 고정한다 |
+| 화면 모드 | 설정 첫 화면에서 `시스템`, `라이트`, `다크`를 고른다. `시스템`은 OS 밝기 설정을 따르고, `라이트`/`다크`는 앱 화면을 직접 고정한다. OS 고대비가 켜지면 선택 밝기에 맞는 독립 highContrast light/dark 팔레트를 사용한다 |
 | 푸시 알림 | 설정 첫 화면에서 프리셋을 먼저 고르지 않고, `경기 전후`와 `경기 중` 항목별 토글을 바로 켜고 끈다. 선택 상태는 마이팀 여부와 섞지 않고 `N개 선택됨` 또는 `선택 없음`으로 표시한다. 무팀 상태는 대상 strip의 `마이팀 선택 전`으로 따로 알리고, 실제 수신은 OS 권한·기기 등록·서버 상태에 따라 달라질 수 있음을 항상 안내한다. 설정 로드 실패는 무한 loading 대신 오류 설명과 재시도를 제공한다 |
 | 알림함 | 최근 최대 50개 수신 push 목록으로 진입하는 버튼. 현재 표시 수를 밝히고 목록과 설정 로드 실패를 독립 처리하며 각각 재시도한다. 설정에서는 최신 알림 본문을 미리 펼치지 않고 unread count만 보조 상태로 둔다 |
 | 경기별 알림 범위 | 기본 대상은 마이팀 경기다. 마이팀 경기 topic과 마이팀 외 선택 경기 `*_GAME_{gameId}` topic 모두 현재 켜진 moment만 구독한다 |
@@ -926,15 +942,22 @@ GET /api/standings?season=2026
 | 세부 설정 및 지원 | API 진단, 플랫폼 앱 메타데이터의 실제 버전, 최근 업데이트 소식, 앱 내 법적 문서, 오픈소스 라이선스 페이지, 지원 메일 연결 |
 
 **권한 / 등록 규칙**:
-- 앱은 마이팀이 선택된 non-local 환경에서 최초 1회 OS 알림 권한을 요청하고 FCM token/topic registration을 `/push/register`로 동기화한다.
-- 기존 사용자가 이미 마이팀을 선택한 상태로 앱을 열면 부트스트랩 이후 같은 자동 동기화를 시도한다. 신규 사용자는 마이팀 선택 직후 같은 경로를 탄다.
+- 앱 startup과 마이팀 선택/변경은 현재 OS authorization 상태와 이미 발급된 token을 기준으로 FCM topic registration을 `/push/register`에 sync-only로 수렴시킨다. 이 경로는 OS 권한 sheet를 열지 않는다.
+- 신규 사용자는 로컬 마이팀 저장이 완료되는 즉시 홈에 진입하고 registration convergence는 background에서 이어간다. 기존 사용자 startup도 같은 sync-only 경로를 사용하며 실패해도 앱 진입을 막지 않는다.
+- OS 권한 요청은 설정의 알림 허용 CTA, 경기 상세의 `경기 팔로우하기`처럼 사용자가 알림 의도를 명시한 action에서 permission preview를 확인한 뒤에만 실행한다.
 - 마이팀이 선택된 사용자의 기본 구독 범위는 마이팀 경기지만, 저장된 delivery/off와 세부 토글을 존중한다. 꺼진 moment는 마이팀 team topic에도 포함하지 않는다.
 - `followedGameIds`가 있으면 마이팀 외 경기만 켜진 game moment에 대해 `*_GAME_{gameId}` topic으로 추가한다. 선택한 경기가 마이팀 경기이면 같은 moment의 GAME topic을 만들지 않고 team topic만 유지해 중복 수신을 피한다.
 - `allGames=true` 같은 legacy 값이 남아 있어도 game moment는 `*_ALL` topic을 만들지 않는다. 경기 시작/득점/라인업/이닝/타석 등 경기 알림은 마이팀 team topic 또는 사용자가 직접 `푸쉬 중계 받기`를 누른 selected-game `*_GAME_{gameId}` topic만 사용한다.
 - 앱 registration의 `baseball_info`도 마이팀 topic을 기본으로 하며, 경기 단건 알림처럼 `followedGameIds`로 GAME topic을 만들지 않는다.
 - `inning_change`도 켜져 있으면 마이팀 경기와 마이팀 외 선택 경기 topic에 포함한다.
-- local/web 환경은 자동 권한 요청을 하지 않고, 경기 상세의 `푸쉬 중계 받기` 같은 명시적 동작은 계속 수동 sync 진입점으로 유지한다.
+- local/web 환경에서도 자동 권한 요청은 하지 않는다. 지원 플랫폼의 명시적 CTA만 permission 요청 진입점이며, 미지원 환경은 팔로우 저장과 실제 전달 가능 상태를 분리해 안내한다.
 - 화면 모드 선택은 `SharedPreferences`의 `appearance.theme_mode`에 `system` / `light` / `dark` 값으로 저장한다. 저장값이 없는 기존 설치는 현재 앱 경험을 보존하기 위해 `dark`를 기본값으로 사용한다.
+
+**알림함 저장 / 중복 제거 규칙**:
+- 최근 최대 50개 알림은 하나의 JSON 배열을 read-modify-write하지 않고 `SharedPreferencesAsync`의 message별 key로 저장한다. foreground/background 동시 수신이 서로 다른 메시지를 덮지 않아야 한다.
+- 읽음 상태는 message payload와 분리된 단조 read receipt key로 저장한다. 한 번 `read=true`가 된 알림은 같은 이벤트 재수신이나 동시 upsert로 `false`로 되돌아가지 않는다.
+- 기존 `push_notifications.inbox_entries_v1` 배열은 첫 접근 때 message별 v2 key와 read receipt로 migration한 뒤 legacy key를 제거한다.
+- backend가 전달한 stable `eventId`를 첫 dedupe key로 사용하고, 없을 때만 FCM `messageId`, 마지막으로 제한된 내용 조합을 fallback으로 사용한다. 같은 outbox event의 target 재시도는 알림함에 중복 행을 만들지 않는다.
 
 **카피 원칙**:
 - 설정 화면은 설명형 정보 카드보다 실제 이동/설정 버튼을 우선한다. 홈/일정/순위/기록/브리핑 탭에서 이미 노출되는 경기 요약, 순위, 최근 5경기, 기록/데이터 브리프는 설정에서 반복하지 않는다.
@@ -993,8 +1016,8 @@ GET /api/standings?season=2026
 **인터랙션**:
 - 마이팀 탭 → 온보딩과 동일한 팀 선택 화면 (모달)
 - 마이팀이 선택되지 않은 첫 실행에서는 OS push permission 을 요청하지 않는다
-- 마이팀이 선택된 non-local 앱은 최초 1회 OS push permission 과 FCM registration sync를 자동 시도한다
-- 사용자가 "푸쉬 중계 받기"처럼 명시적 action 을 선택했을 때도 OS permission / registration sync를 재시도할 수 있다
+- 마이팀 선택과 startup은 기존 권한·token 상태의 FCM registration sync만 background로 시도하고 OS permission sheet를 자동으로 열지 않는다
+- 사용자가 설정의 알림 허용이나 "경기 팔로우하기"처럼 명시적 action을 선택했을 때만 OS permission을 요청하고 registration sync를 다시 시도할 수 있다
 - 사용자가 푸시 알림 토글을 바꾸면 SharedPreferences의 boolean/delivery 값을 저장하고, 내부 호환용 `summary_detail_level`/`live_detail_level` 값을 현재 토글 조합에서 다시 계산한 뒤 `/push/register` 재동기화를 시도한다.
 - `야구 브리프`가 바로 알림이면 앱은 `baseball_info_<팀>` topic을 구독한다. push data가 `type=baseball_info`이면 `route` 필드가 없어도 홈으로 진입한다.
 - `followedGameIds`가 있으면 마이팀 외 일반 경기 event moment는 해당 moment가 켜져 있을 때만 `scoring_GAME_{gameId}`, `hit_GAME_{gameId}`, `game_start_soon_GAME_{gameId}`처럼 selected-game topic으로 추가한다. 선택한 경기가 마이팀 경기이면 같은 moment의 GAME topic을 만들지 않고 마이팀 team topic만 유지한다. `baseball_info`는 경기 event가 아니므로 GAME topic을 만들지 않는다.
@@ -1051,21 +1074,21 @@ GET /api/standings?season=2026
 - iOS 17.2+에서는 앱 시작 시 `ActivityKit` push-to-start token도 `/api/push/live-activity/start-token/register`로 등록한다. backend scheduler는 마이팀 또는 사용자가 선택한 경기가 KST `startTime` 기준 10분 전 window에 들어오거나 `LIVE`가 되면 APNs `liveactivity` `event=start` payload로 앱을 열지 않아도 Live Activity / Dynamic Island를 시작한다. start token만 있고 같은 `installationId`의 FCM registration이 없거나, 알림 권한이 꺼져 있거나, 경기 시작 알림이 off이면 자동 시작하지 않는다.
 - 라인업이 공개됐거나 시작 10분 전 window에 들어온 예정 경기는 Live Activity를 시작/유지할 수 있다. 이 상태에서는 content-state의 `isPregame=true`, `inning=경기전`, `awayRankText`/`homeRankText`를 사용하며 스코어 자리에는 점수 대신 각 팀 순위를 표시한다. 라인업 미공개 예정 경기는 시작 10분 전까지 Activity를 시작하지 않는다.
 - 백엔드는 live 경기 중 5초 간격으로 scoreboard/relay sync를 실행하고, 등록된 ActivityKit token에 APNs `liveactivity` update payload를 보낸다.
-- 같은 scheduler는 예정 경기의 KST `startTime` 기준 10분 전 window에서 `game_start_soon`을 한 번 발행하고, 대상 단말의 push-to-start token이 있으면 같은 window에서 Live Activity도 시작한다. 첫 관측은 baseline 저장만 하고, 예정 경기의 `lineupOpened`가 false에서 true로 바뀌면 `lineup_opened`, live 전환 이후 scoreboard diff로 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat`을 감지한다. 저장된 scoreboard baseline이 오래되었거나 해석 불가하면 missed moment를 보내지 않고 현재 state로만 재기준화한다. `reversal`은 이전 리더와 현재 리더가 모두 있고 리더가 바뀐 경우에만 발행하며, 0:0 같은 동점에서 첫 리더가 생긴 선취점은 `scoring`만 발행한다.
+- 같은 scheduler는 예정 경기의 KST `startTime` 기준 10분 전 window에서 `game_start_soon`을 한 번 계획하고, 대상 단말의 push-to-start token이 있으면 같은 window에서 Live Activity도 시작한다. 첫 관측은 baseline 저장만 하고, 예정 경기의 `lineupOpened`가 false에서 true로 바뀌면 `lineup_opened`, live 전환 이후 scoreboard diff로 `game_start`, `scoring`, `reversal`, `game_end`, `inning_change`, `at_bat`을 감지한다. 생성된 event와 새 scoreboard baseline은 한 registry mutation에서 영속화하고, 실제 target 전달은 outbox에서 수행해 baseline이 먼저 전진하더라도 실패 이벤트를 잃지 않는다. 저장된 scoreboard baseline이 오래되었거나 해석 불가하면 missed moment를 보내지 않고 현재 state로만 재기준화한다. `scoring`과 `reversal`은 이전·현재 양 팀 점수가 모두 확인 가능할 때만 비교한다. `reversal`은 이전 리더와 현재 리더가 모두 있고 리더가 바뀐 경우에만 발행하며, 0:0 같은 동점에서 첫 리더가 생긴 선취점은 `scoring`만 발행한다.
 - scoreboard diff만으로 알 수 없는 `hit` / `homerun`은 같은 scheduler가 relay seq baseline을 따로 저장한 뒤 새 relay item의 `HIT` / `HOMERUN` event 또는 `안타` / `홈런` 텍스트를 감지해 FCM topic push로 발행한다. 저장된 relay baseline이 오래되었거나 해석 불가하면 현재 last seq로만 재기준화하고 밀린 `hit` / `homerun`은 보내지 않는다. relay의 `currentAtBat`에서 outs/baseState를 읽어 `현재 1사 1,2루` 같은 상황 텍스트를 함께 보내며, 경기 moment push copy는 `득점`, `안타`, `홈런`, `역전`, `이닝 교대`, `타석`처럼 짧은 사건명을 제목으로 쓰고 점수는 `스코어 4:3` 형식으로 분리한다. `홈런 발생`, `득점 발생`, `역전 상황입니다`처럼 설명식 표현은 쓰지 않는다.
-- 경기 종료/취소/서스펜디드 상태에서는 APNs `end` event와 final content state를 보내고 token registry에서 세션을 제거한다. final content state는 `inning`에 최종 상태를 유지하되 batter/pitcher/pitchCount/B/S/O/situationText를 비워 마지막 타석을 현재 진행 중인 타석처럼 보이지 않게 한다. 일반 FCM push copy는 상태별로 분리해 `FINAL`만 `경기 종료` / `최종 스코어`를 쓰고, `CANCELLED`는 `경기 취소`, `SUSPENDED`는 `서스펜디드` 문구를 사용한다.
+- 경기 종료/취소 상태에서는 APNs `end` event와 final content state를 보내고 token registry에서 세션을 제거한다. final content state는 `inning`에 최종 상태를 유지하되 batter/pitcher/pitchCount/B/S/O/situationText를 비워 마지막 타석을 현재 진행 중인 타석처럼 보이지 않게 한다. `SUSPENDED`는 종료로 간주하지 않고 중단 상태 update를 보내며 follow/token session을 보존해 재개 시 같은 경기를 계속 갱신한다. 일반 FCM push copy는 상태별로 분리해 `FINAL`만 `경기 종료` / `최종 스코어`를 쓰고, `CANCELLED`는 `경기 취소`, `SUSPENDED`는 `서스펜디드` 문구를 사용한다.
 - FCM은 일반 push notification과 topic subscription에 사용한다. Backend가 보내는 일반 FCM message는 iOS APNs `apns-push-type=alert`, app bundle `apns-topic`, `aps.alert`, `aps.content-available=1`, `apns-priority=10`, default sound와 Android high priority / default sound를 함께 지정해 background/locked 상태에서 알림으로 즉시 노출되도록 한다. Dynamic Island content-state 갱신은 APNs ActivityKit 경로를 사용한다. 단말 receipt는 iOS delivery 상태에 따라 background handler, foreground handler, opened handler 중 하나가 `/api/push/receipt`를 호출해야 확인된다. 앱 foreground 상태에서는 Firebase foreground presentation alert를 끄고 앱 내부 팝업으로 보여준다.
 - 홈 화면의 앱 내부 경기 이벤트 로컬 알림은 local 개발 모드에서만 처리한다. release/dev/TestFlight에서는 앱을 열거나 포커스했을 때 과거 scoreboard/relay diff를 로컬 알림으로 backfill하지 않고, 앱 밖 알림은 backend FCM/APNs 경로가 단독 책임진다. 로컬/회귀 확인 경로에서도 권한 off 동안 baseline은 계속 갱신하고, snapshot이 오래됐거나 알림 설정 signature가 바뀐 첫 tick은 알림 발행 없이 현재 상태만 저장한다. 회귀 확인용 빌드에서만 `ENABLE_LOCAL_GAME_EVENT_ALERTS=true` dart define으로 이 보조 로컬 알림 경로를 명시적으로 켤 수 있으며, relay 안타/홈런 본문은 backend와 같은 `현재 1사 1,2루` 상황 형식을 사용한다. 로컬 역전 알림도 이전 리더와 현재 리더가 모두 있고 리더가 바뀐 경우에만 발송한다.
-- Live Activity content-state는 `batterAverage`, `pitcherEra`, `situationText`, `playText`, `isPregame`, `awayRankText`, `homeRankText`를 optional로 받을 수 있다. live 상태에서 `playText`가 있으면 하단 pill에 우선 표시하고, 없으면 `situationText`, 구장명 순서로 fallback한다. 타자/투수는 좌우 팀 패널에 직접 섞지 않고 중앙 matchup 라인에 모아 초/말 공격·수비 방향과 일치하게 표시한다. `batterAverage`는 relay currentAtBat의 시즌 타수/안타와 오늘 경기 완료 타석을 합산한 실시간 AVG를 우선 사용하고, 계산에 필요한 타수/안타가 없을 때만 KBO 표의 시즌 타율을 그대로 사용한다.
-- 앱 foreground/resume/widget sync가 Live Activity를 직접 시작하거나 갱신하는 경로도 repository currentAtBat을 짧은 timeout으로 보강해 backend scheduler와 같은 타율/ERA/B-S-O 계약을 유지한다. 조회 실패 시에는 스코어/이닝만 갱신하고 빈 지표를 실제 0값처럼 표시하지 않는다.
+- Live Activity content-state는 기본 양 팀 점수와 별도로 `scoreAvailable`을 전달하고, `batterAverage`, `pitcherEra`, `situationText`, `playText`, `isPregame`, `awayRankText`, `homeRankText`를 optional로 받을 수 있다. `scoreAvailable=false`이면 iOS Lock Screen/Dynamic Island와 Android live surface가 숫자 `0` 대신 `–`를 렌더한다. live 상태에서 `playText`가 있으면 하단 pill에 우선 표시하고, 없으면 `situationText`, 구장명 순서로 fallback한다. 타자/투수는 좌우 팀 패널에 직접 섞지 않고 중앙 matchup 라인에 모아 초/말 공격·수비 방향과 일치하게 표시한다. `batterAverage`는 relay currentAtBat의 시즌 타수/안타와 오늘 경기 완료 타석을 합산한 실시간 AVG를 우선 사용하고, 계산에 필요한 타수/안타가 없을 때만 KBO 표의 시즌 타율을 그대로 사용한다.
+- 앱 foreground/resume/widget sync가 Live Activity를 직접 시작하거나 갱신하는 경로도 repository currentAtBat을 짧은 timeout으로 보강해 backend scheduler와 같은 타율/ERA/B-S-O 계약을 유지한다. 조회 실패 시에는 스코어/이닝만 갱신하고 빈 지표를 실제 0값처럼 표시하지 않는다. 양 팀 verified score 중 하나라도 없으면 새 0점으로 덮지 않고 해당 score update를 보류해 마지막 검증 점수를 보존한다.
 
 **라이브 경기 알림 원칙**:
 - 마이팀 live 경기와 마이팀 라인업 공개/시작 10분 전 예정 경기는 홈/위젯/재동기화 경로에서 기본 Live Activity target 으로 자동 선택한다. 이미 마이팀 외 경기를 선택한 상태여도 마이팀 후보가 있으면 마이팀 경기로 전환한다.
 - 마이팀 외 경기는 사용자가 직접 "푸쉬 중계 받기"를 누른 경우에만 시작한다.
-- 자동 선택은 follow session 저장, 가능한 live surface 동기화, backend push registration의 `followedGameIds` 갱신까지 수행한다. OS permission / push sync 는 마이팀 자동 등록 경로에서 최초 1회 시도하고, 홈/상세의 명시적 `푸쉬 중계 받기` action 에서도 재시도할 수 있다.
+- 자동 선택은 follow session 저장, 가능한 live surface 동기화, 현재 권한 상태를 사용하는 backend push registration의 `followedGameIds` sync까지 수행한다. 이 경로는 OS permission을 요청하지 않으며, 권한 요청은 홈/상세의 명시적 `경기 팔로우하기` 또는 설정 알림 CTA에서만 시도할 수 있다.
 - 표시 데이터는 스코어, 이닝, 공격/수비, 주자, B/S/O, 마지막 변화, 마지막 갱신 시각, "그만 보기" action 까지로 제한한다.
 - 현재 타석/투구 데이터가 없는 경우 B/S/O를 `0`으로 대체 표시하지 않고 숨긴다. 모르는 값과 실제 0카운트를 구분해야 한다.
-- 경기 종료 후 최종 결과를 짧게 보여주고 종료한다.
+- 경기 종료/취소 후 최종 상태를 짧게 보여주고 종료한다. 서스펜디드는 follow를 유지하며 재개를 기다린다.
 - 시작 10분 전 window에 들어오지 않은 라인업 미공개 예정 경기, 뉴스, 광고, 일반 알림은 Live Activity / Android 라이브 경기 알림 표면에 넣지 않는다.
 - Android는 `라이브 경기 알림` 진행형 ongoing notification을 표시하고, 같은 Live surface session의 스코어/이닝/갱신 시각을 업데이트한다.
 
@@ -1123,6 +1146,7 @@ LG 2:1 KT · 7회말
 
 **위젯 표시 데이터**:
 - 마이팀 경기: 양팀명, 스코어, 현재 이닝, 경기 상태, 마지막 업데이트 시각
+- 양 팀 중 하나라도 `scoreAvailable=false`이면 iOS/Android widget 공유 payload와 native renderer가 해당 점수를 `–`로 표시한다. 미확인 값을 0점으로 저장하거나 합성하지 않는다.
 - 경기 전: "14:00 예정" + 선발 투수
 - 경기 중: 스코어 + 이닝 + 최근 업데이트. 투구별/타석별 변화는 앱 상세 또는 라이브 경기 알림 표면으로 연결
 - 경기 종료: "경기종료" + 최종 스코어
@@ -1253,6 +1277,8 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
 - backend current data routes 는 공용 runtime service singleton 을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache 를 재사용한다. scoreboard service 내부에서도 같은 날짜의 schedule/main list 원천 결과를 짧은 TTL로 공유해 home/compact/game detail 진입이 같은 KBO 원천 호출을 반복하지 않게 한다.
 - LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다.
+- scoreboard/game wire payload의 `score=null` 또는 score 필드 누락은 실제 `0`과 다른 미확인 상태다. 앱 `TeamScore`는 numeric fallback과 별도로 `scoreAvailable`을 보존하며 홈·상세·문자중계·위젯에서는 `displayScore=–`를 사용한다.
+- 로컬 알림과 backend moment의 `scoring`/`reversal` 비교는 이전·현재 양 팀 점수가 모두 확인 가능할 때만 수행한다. 확인 불가 상태가 0점으로 변환되어 가짜 득점·역전을 만들면 안 된다.
 - 앱은 scoreboard payload의 팀 합계 H/E/B가 `null`이면 미수집 값으로 처리하고, 이를 `0` 기록처럼 렌더링하지 않는다.
 - direct KBO mode 앱 라인업은 박스스코어 파생보다 KBO `GetLineUpAnalysis`를 우선 사용해 경기 전/진행 중 공개 라인업과 원천 제공 지표를 표시한다. `LINEUP_CK=false`이거나 응답이 비어 있으면 라인업 미공개 상태로 둔다.
 - backend API와 direct KBO mode 박스스코어는 공식 타자/투수 rows가 없을 때 선발/현재 투수 이름만 합성해 0값 기록 카드로 표시하지 않고, 업데이트 전 상태를 유지한다.
@@ -1720,11 +1746,21 @@ POST /api/push/resubscribe-topics
 GET /api/push/config-status
 ```
 
+**Push outbox 전달 계약**:
+- scoreboard/relay 변화에서 만들어진 각 game moment는 재현 가능한 stable `eventId`, payload, 원정팀·홈팀·경기 topic별 target 상태를 registry의 영속 `pushOutbox`에 저장한다.
+- 새 scoreboard baseline 또는 relay `lastSeq`와 그 변화에서 파생된 outbox event는 같은 atomic registry mutation으로 기록한다. 프로세스가 상태 저장 뒤 중단되어도 다음 sync가 pending event를 다시 전달할 수 있어야 한다.
+- target 상태는 event 전체 boolean이 아니라 target별 `pending / sending / sent`, attempts, error, message id로 관리한다. 부분 성공 뒤 재시도는 이미 `sent`인 target을 건너뛰고 실패·lease 만료 target만 다시 claim한다. 각 claim은 고유 fencing id를 가지며, lease가 만료된 뒤 새 worker가 claim한 target을 이전 worker의 늦은 성공·실패 응답이 되돌릴 수 없다.
+- 같은 `eventId`는 중복 enqueue하지 않고 FCM data에도 포함한다. 모든 target이 `sent`가 된 뒤에만 event를 완료로 보고, 앱 알림함은 이 id로 target 재시도·중복 delivery를 한 행으로 합친다.
+- scoreboard 변화 event id는 registry write timestamp가 아니라 점수, status, inning, 타자 milestone처럼 같은 경기 사실에서 재현 가능한 source로 만든다. 같은 점수·종료·타석 사실이 재수신돼도 새 event로 보지 않는다.
+- scoreboard CAS는 timestamp 충돌뿐 아니라 명백한 상태 회귀도 막는다. 진행 중 양 팀 점수 감소, 이닝 감소, 종료/취소 뒤 non-terminal 복귀, 같은 LIVE 구간에서 이미 본 타석으로의 역행은 state·outbox와 Live Activity side effect를 모두 거절한다. 단, 공식 종료/취소 전이와 같은 terminal status의 정정은 최종 원천을 우선해 점수 감소가 있어도 수용한다. `SUSPENDED → LIVE` 재개도 허용하되 재개 자체를 새 타석 알림으로 만들지 않는다.
+- smart-daily 슬롯은 10개 팀과 전체 리그 target마다 stable delivery id, lease, fencing claim, 부분 성공 상태를 저장한다. 재시도는 실패한 delivery만 발송하고, 실제 planned delivery가 모두 `sent`일 때만 해당 KST 날짜/slot을 완료로 기록한다. 완료 슬롯은 같은 lock 안에서 새 claim을 거절해 여러 worker가 동시에 실행돼도 다시 발송하지 않는다.
+
 **Live Activity 운영 계약**:
 - `register`: 앱/iOS native가 `gameId`, `activityId`, `activityPushToken`을 등록한다.
-- `start-token/register`: iOS 17.2+ 앱이 push-to-start token과 stable `installationId`를 등록한다. scheduler는 이 token을 같은 설치 id의 push registration과 매칭해 마이팀/선택 경기가 KST `startTime` 10분 전 window에 들어오거나 LIVE로 전환될 때 APNs `event=start`를 보낸다. 같은 game/token 조합은 한 번만 발송하고, active Live Activity가 이미 같은 설치 id에 등록돼 있으면 다시 시작하지 않는다.
+- `start-token/register`: iOS 17.2+ 앱이 push-to-start token과 stable `installationId`를 등록한다. scheduler는 이 token을 같은 설치 id의 push registration과 매칭해 마이팀/선택 경기가 KST `startTime` 10분 전 window에 들어오거나 LIVE로 전환될 때 APNs `event=start`를 보낸다. 같은 game/token 조합은 lease·fencing claim으로 한 worker만 발송하고, 완료 조합 또는 active Live Activity가 이미 같은 설치 id에 등록돼 있으면 다시 시작하지 않는다.
 - `update`: 내부 운영 도구나 worker가 특정 `gameId`의 `content-state`를 APNs로 발송한다.
-- `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon` / `lineup_opened`, 10분 전 push-to-start Live Activity start, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. 단, 저장된 scoreboard/relay baseline이 오래되었거나 해석 불가하면 밀린 moment를 보내지 않고 현재 state/last seq로만 재기준화한다. long-running sync worker는 KST `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES` 슬롯마다 `baseball_info` smart daily 브리프도 하루 한 번씩 계획한다. `/home`, `/scoreboard*`, `sync-scoreboard`에서 `date`를 생략하면 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- `sync-scoreboard`: backend scheduler가 scoreboard와 live relay를 읽고 등록된 Live Activity 세션에 update/end를 발송한다. 일반 푸시 등록 기기가 있으면 예정 경기 `game_start_soon` / `lineup_opened`, 10분 전 push-to-start Live Activity start, scoreboard diff 기반 FCM moment push, relay diff 기반 `hit` / `homerun` push도 발행한다. game state가 monotonic gate에서 거절되면 같은 raw snapshot의 pregame FCM, push-to-start, registered Activity update도 모두 건너뛴다. 저장된 scoreboard/relay baseline이 오래되었거나 해석 불가하면 밀린 moment를 보내지 않고 현재 state/last seq로만 재기준화한다. long-running sync worker는 KST `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES` 슬롯마다 `baseball_info` smart daily 브리프도 하루 한 번씩 계획한다. `/home`, `/scoreboard*`, `sync-scoreboard`에서 `date`를 생략하면 서버 로컬/UTC 날짜가 아니라 `Asia/Seoul` KBO 경기일을 기본값으로 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
+- 등록된 Activity에 `event=end`를 보낼 때도 game/token별 lease·fencing claim을 사용하고, 성공한 token은 registry에서 제거한다. 여러 worker의 동시 종료 발송과 다음 poll의 반복 종료를 막는다.
 - 일반 경기 event push는 backend가 매 moment마다 원정팀 topic, 홈팀 topic, 경기별 topic(`{moment}_GAME_{gameId}`)으로만 발송한다. 앱은 `myTeam`, `followedGameIds`, `notifications.deliveryModes`, `notifications.summaryDetailLevel`, `notifications.liveDetailLevel`을 기준으로 필요한 topic을 구독한다. 마이팀 team topic과 selected-game GAME topic은 모두 enabled이고 delivery가 `off`가 아닌 game moment만 포함한다. 선택 경기가 마이팀 경기이면 같은 moment의 GAME topic을 만들지 않고 team topic만 유지해 중복 수신을 피한다. legacy `allGames=true`가 남아 있어도 경기 moment `*_ALL` topic은 구독하거나 발송하지 않는다.
 - `test`: 운영자가 특정 FCM token 또는 topic으로 테스트 알림을 발송한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다. `hit_GAME_20260620HTKT0`처럼 GAME topic으로 발송하면 receipt 확인을 위해 `type`, `gameId`, `topic`, 상세 `route` data를 함께 싣는다. 반복 push 발송 확인은 `PUSH_SYNC_SECRET=<...> ./scripts/push-test-notification.sh --topic <topic>` 또는 `--token <fcm-token>`으로 수행한다. 로컬에 secret을 두지 않는 경우 `Push Test Notification` GitHub Actions workflow 또는 `./scripts/github-push-test-notification-run.sh --topic <topic> --watch`로 GitHub secret 컨텍스트에서 실행한다.
 - `test-device`: 앱 API 진단 화면에서 자기 기기에 원격 테스트 push를 요청하는 self-test endpoint다. 앱은 먼저 FCM token을 `/push/register`로 등록한 뒤 `deviceToken`만 보낸다. backend는 registry에 이미 저장된 token에만 고정 문구와 `/diagnostics` route를 담아 발송하며, 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않는다.
@@ -1733,7 +1769,7 @@ GET /api/push/config-status
 - `python -m kbo_fans_backend.scheduler.baseball_info`: 수동 운영/cron용 CLI다. `--date`만 주면 KBO 경기일 기준 월요일에는 `weekly_check`를 발송하고, 다른 요일에는 자동 발송하지 않는다. `--kind records_check`처럼 명시하면 요일과 무관하게 해당 야구 브리프를 보낸다. 운영 전에는 `--dry-run`으로 topic과 copy를 확인한다. `--smart-daily`를 쓰면 해당 날짜 scoreboard를 읽어 팀별로 오늘 경기가 있으면 `game_day`, `--now-time HH:MM` 기준 경기 시작 3시간 이내이면 `lineup_day`, 이미 종료된 경기만 있으면 `records_check`, 마이팀 경기는 없지만 리그 경기가 있으면 `rival_watch`, 전체 리그가 쉬면 `off_day`를 자동 선택하고, 리그 전체 구독자용 `baseball_info_ALL`도 함께 계획한다. 팀별 경기 전/경기일 plan은 `gameId`, `matchup`, `startTime`, `stadium`을 push service에 전달해 상대팀이 빠진 팀명-only 알림을 피한다. ECS sync worker 기본 슬롯은 `09:30,16:00,22:30` KST이며 `PUSH_BASEBALL_INFO_SMART_DAILY_TIMES=off`로 끌 수 있다.
 - `resubscribe-topics`: registry에 저장된 FCM device registration을 현재 push schema로 다시 해석해 Firebase topic을 재구독한다. `at_bat`, `game_start_soon`, `hit`, `*_GAME_{gameId}`처럼 새 moment topic을 추가한 뒤 기존 TestFlight 설치자의 topic membership을 보정할 때 사용한다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다.
 - `config-status`: Firebase Admin, APNs Auth Key, registry path, scheduler secret 설정 상태를 secret 원문 없이 반환한다. `FIREBASE_SERVICE_ACCOUNT_JSON`/`APNS_AUTH_KEY_P8` env secret 방식과 `*_PATH` 파일 방식을 모두 진단하며, scheduler heartbeat는 `scheduler.lastSyncAt` / `scheduler.lastSyncDate`로 노출한다. registry 진단에는 device token 원문 없이 `registeredDeviceCount`, `followedGameCount`, `activeLiveActivityGameCount`, `topicCounts`, `myTeamCounts`, `deviceSummaries`, `pushReceiptCount`, `recentPushReceipts`를 포함한다. `deviceSummaries`는 token suffix, installation id suffix, platform, myTeam, followedGameIds, topicCount, updatedAt, topicsUpdatedAt, notificationsAllowed, authorizationStatus, apnsTokenReady만 노출해 앱 설치 최신성, 서버 topic 재동기화, 실제 알림 권한/APNs 준비 상태를 분리해서 본다. 운영에서는 `PUSH_SYNC_SECRET`으로 보호한다. 실제 단말 receipt 확인은 `PUSH_SYNC_SECRET=<...> ./scripts/push-receipt-status.sh --expect-receipt --game-id <gameId> --type <type>`로 조회하고, 로컬에 secret이 없으면 `Push Receipt Status` GitHub Actions workflow 또는 `./scripts/github-push-receipt-status-run.sh --expect-receipt --game-id <gameId> --type <type> --watch`를 사용한다.
-- `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다. 기본 스코어/이닝/선수/카운트 필드 외에 하단 상황 표시용 `situationText`, `playText`를 optional로 보낼 수 있다.
+- `content-state` 필드명은 Swift `KboFansScoreAttributes.ContentState`와 동일한 camelCase를 유지한다. 기본 스코어/이닝/선수/카운트 필드와 점수 확인 여부 `scoreAvailable`을 포함하고, 하단 상황 표시용 `situationText`, `playText`를 optional로 보낼 수 있다. iOS native와 Android/widget payload는 `scoreAvailable=false`를 `–`로 렌더한다. 미확인 SUSPENDED 점수는 verified baseline이 있으면 숫자 필드에는 마지막 확정 값을 유지해 구버전 표면의 가짜 0:0도 피하고, baseline이 전혀 없으면 update를 보류한다. Lock Screen과 Dynamic Island expanded/compact/minimal은 `–`를 VoiceOver에서 `점수 확인 중`으로 읽는다.
 
 **응답**:
 ```json
@@ -1850,4 +1886,4 @@ GET /api/game/{gameId}
 - 상세 화면 스코어버그 중앙 보조 문구는 루상 다이아몬드 위에 이닝(`4회초`, `연장 10회말`, 종료 경기의 `9회` 등)을 우선 노출한다. 종료 경기 상단에서는 `경기 종료`, 시작 시각, `최종 기록`을 반복 표시하지 않는다.
 - `CANCELLED`는 `statusLabel` 또는 KBO `CANCEL_SC_NM`에 `우천취소` 같은 취소 사유가 있으면 해당 문구를 우선 표시하고, 사유가 없으면 `경기 취소`를 기본 문구로 사용한다.
 - 연장전은 별도 상태 코드가 아니라 이닝 문자열(`연장 10회초`, `10회말`)로 표현한다.
-- `SUSPENDED`는 서스펜디드 경기로 표기하고, 문자중계/상세는 재개 전 기준 안내 문구를 우선 노출한다.
+- `SUSPENDED`는 서스펜디드 경기로 표기하고, 문자중계/상세는 재개 전 기준 안내 문구를 우선 노출한다. 종료/취소와 달리 follow·Live surface session을 해제하지 않고 `SUSPENDED → LIVE` 재개를 기다린다.

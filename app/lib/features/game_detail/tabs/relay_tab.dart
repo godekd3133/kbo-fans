@@ -821,6 +821,13 @@ class _RelayGameSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useAdaptiveLayout =
+        MediaQuery.sizeOf(context).width <= 320 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.6;
+    final scoreLabel =
+        '${game.away.shortName} ${game.away.displayScore} : '
+        '${game.home.displayScore} ${game.home.shortName}';
+
     return Container(
       width: double.infinity,
       padding: EdgeInsets.all(16),
@@ -832,24 +839,44 @@ class _RelayGameSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${game.away.shortName} ${game.away.score} : ${game.home.score} ${game.home.shortName}',
+          if (useAdaptiveLayout)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  scoreLabel,
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
-              ),
-              Text(
-                game.inning,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.live,
+                SizedBox(height: 6),
+                Text(
+                  game.inning,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.live,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    scoreLabel,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Text(
+                  game.inning,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.live,
+                  ),
+                ),
+              ],
+            ),
           SizedBox(height: 12),
           _RelayStatRow(
             leftLabel: game.away.shortName,
@@ -1217,123 +1244,264 @@ class _RelayBroadcastScorebug extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
+    final useAdaptiveLayout =
+        MediaQuery.sizeOf(context).width <= 320 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     final awayColor = colors.readableAccent(
       KboTeams.byId(game.away.teamId)?.primaryColor ?? colors.accent,
     );
     final homeColor = colors.readableAccent(
       KboTeams.byId(game.home.teamId)?.primaryColor ?? colors.live,
     );
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider.withValues(alpha: 0.6)),
-        gradient: LinearGradient(
-          colors: [
-            awayColor.withValues(alpha: 0.58),
-            AppColors.cardSub,
-            homeColor.withValues(alpha: 0.58),
-          ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(14, 14, 14, 12),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final inningLabel = atBat.inningText.isEmpty
+        ? _safeDetail(game.inning, '경기 중')
+        : atBat.inningText;
+    final batterName = atBat.batterName.isEmpty ? '타자' : atBat.batterName;
+    final pitcherName = atBat.pitcherName.isEmpty ? '투수' : atBat.pitcherName;
+    final semanticLabel = [
+      '${game.away.teamName} ${game.away.displayScore}',
+      '${game.home.teamName} ${game.home.displayScore}',
+      inningLabel,
+      baseState.isEmpty ? '주자 없음' : baseState,
+      '볼 ${atBat.balls}, 스트라이크 ${atBat.strikes}, 아웃 ${atBat.outs}',
+      '타자 $batterName',
+      '투수 $pitcherName',
+      _scorebugBottomText,
+    ].join(', ');
+
+    return Semantics(
+      key: const ValueKey('relay-broadcast-scorebug-semantics'),
+      container: true,
+      label: semanticLabel,
+      child: ExcludeSemantics(
+        child: Container(
+          key: const ValueKey('relay-broadcast-scorebug'),
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider.withValues(alpha: 0.6)),
+            gradient: LinearGradient(
+              colors: [
+                awayColor.withValues(alpha: 0.58),
+                AppColors.cardSub,
+                homeColor.withValues(alpha: 0.58),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+            child: Column(
               children: [
-                _ScorebugSide(
-                  team: game.away.shortName,
-                  primary: atBat.batterName.isEmpty ? '타자' : atBat.batterName,
-                  secondary: atBat.batterRecent.isEmpty
-                      ? _safeDetail(baseState, '타석')
-                      : atBat.batterRecent,
-                  alignEnd: false,
-                ),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _ScorebugScore(score: game.away.score),
-                          SizedBox(width: 8),
-                          _RelayBaseDiamond(
-                            occupiedBases: _occupiedBasesForBaseState(
-                              baseState,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          _ScorebugScore(score: game.home.score),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.textPrimary.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          atBat.inningText.isEmpty
-                              ? _safeDetail(game.inning, '경기 중')
-                              : atBat.inningText,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 9),
-                      _RelayCountDotsRow(
-                        balls: atBat.balls,
-                        strikes: atBat.strikes,
-                        outs: atBat.outs,
-                      ),
-                    ],
+                if (useAdaptiveLayout)
+                  _buildAdaptiveScorebug(
+                    inningLabel: inningLabel,
+                    batterName: batterName,
+                    pitcherName: pitcherName,
+                  )
+                else
+                  _buildWideScorebug(
+                    inningLabel: inningLabel,
+                    batterName: batterName,
+                    pitcherName: pitcherName,
                   ),
-                ),
-                _ScorebugSide(
-                  team: game.home.shortName,
-                  primary: atBat.pitcherName.isEmpty ? '투수' : atBat.pitcherName,
-                  secondary: atBat.pitchCount > 0
-                      ? '${atBat.pitchCount}구'
-                      : _safeDetail(game.stadium, 'KBO'),
-                  alignEnd: true,
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.textPrimary.withValues(alpha: 0.13),
+                    borderRadius: BorderRadius.circular(
+                      useAdaptiveLayout ? 8 : 999,
+                    ),
+                  ),
+                  child: Text(
+                    _scorebugBottomText,
+                    textAlign: TextAlign.center,
+                    maxLines: useAdaptiveLayout ? 3 : 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
-            SizedBox(height: 12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWideScorebug({
+    required String inningLabel,
+    required String batterName,
+    required String pitcherName,
+  }) {
+    return Row(
+      key: const ValueKey('relay-scorebug-wide-layout'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _ScorebugSide(
+          team: game.away.shortName,
+          primary: batterName,
+          secondary: atBat.batterRecent.isEmpty
+              ? _safeDetail(baseState, '타석')
+              : atBat.batterRecent,
+          alignEnd: false,
+        ),
+        Expanded(
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _ScorebugScore(
+                    scoreText: game.away.displayScore,
+                    scoreKey: const ValueKey('relay-scorebug-away-score'),
+                  ),
+                  const SizedBox(width: 8),
+                  _RelayBaseDiamond(
+                    occupiedBases: _occupiedBasesForBaseState(baseState),
+                  ),
+                  const SizedBox(width: 8),
+                  _ScorebugScore(
+                    scoreText: game.home.displayScore,
+                    scoreKey: const ValueKey('relay-scorebug-home-score'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.textPrimary.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  inningLabel,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 9),
+              _RelayCountDotsRow(
+                balls: atBat.balls,
+                strikes: atBat.strikes,
+                outs: atBat.outs,
+              ),
+            ],
+          ),
+        ),
+        _ScorebugSide(
+          team: game.home.shortName,
+          primary: pitcherName,
+          secondary: atBat.pitchCount > 0
+              ? '${atBat.pitchCount}구'
+              : _safeDetail(game.stadium, 'KBO'),
+          alignEnd: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdaptiveScorebug({
+    required String inningLabel,
+    required String batterName,
+    required String pitcherName,
+  }) {
+    return Column(
+      key: const ValueKey('relay-scorebug-adaptive-layout'),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _AdaptiveRelayTeamScore(
+                teamName: game.away.teamName,
+                scoreText: game.away.displayScore,
+                scoreKey: const ValueKey('relay-scorebug-away-score'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _AdaptiveRelayTeamScore(
+                teamName: game.home.teamName,
+                scoreText: game.home.displayScore,
+                scoreKey: const ValueKey('relay-scorebug-home-score'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 10,
+          children: [
+            _RelayBaseDiamond(
+              occupiedBases: _occupiedBasesForBaseState(baseState),
+            ),
             Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              constraints: const BoxConstraints(minHeight: 30),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppColors.textPrimary.withValues(alpha: 0.13),
+                color: AppColors.textPrimary.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                _scorebugBottomText,
+                inningLabel,
+                maxLines: 2,
                 textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 14,
                   color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 10),
+        _RelayCountDotsRow(
+          balls: atBat.balls,
+          strikes: atBat.strikes,
+          outs: atBat.outs,
+        ),
+        const SizedBox(height: 12),
+        _AdaptiveScorebugParticipant(
+          role: '타자',
+          team: game.away.teamName,
+          primary: batterName,
+          secondary: atBat.batterRecent.isEmpty
+              ? _safeDetail(baseState, '타석')
+              : atBat.batterRecent,
+        ),
+        const SizedBox(height: 8),
+        _AdaptiveScorebugParticipant(
+          role: '투수',
+          team: game.home.teamName,
+          primary: pitcherName,
+          secondary: atBat.pitchCount > 0
+              ? '${atBat.pitchCount}구'
+              : _safeDetail(game.stadium, 'KBO'),
+        ),
+      ],
     );
   }
 
@@ -1351,6 +1519,115 @@ class _RelayBroadcastScorebug extends StatelessWidget {
       return '${atBat.batterName} 타석';
     }
     return game.stadium.isEmpty ? 'KBO 경기' : game.stadium;
+  }
+}
+
+class _AdaptiveRelayTeamScore extends StatelessWidget {
+  final String teamName;
+  final String scoreText;
+  final Key scoreKey;
+
+  const _AdaptiveRelayTeamScore({
+    required this.teamName,
+    required this.scoreText,
+    required this.scoreKey,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          teamName,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 15,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          scoreText,
+          key: scoreKey,
+          maxLines: 1,
+          softWrap: false,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 30,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w900,
+            height: 1,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdaptiveScorebugParticipant extends StatelessWidget {
+  final String role;
+  final String team;
+  final String primary;
+  final String secondary;
+
+  const _AdaptiveScorebugParticipant({
+    required this.role,
+    required this.team,
+    required this.primary,
+    required this.secondary,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.textPrimary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$role · $team',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            primary,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 16,
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            secondary,
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1418,16 +1695,20 @@ class _ScorebugSide extends StatelessWidget {
 }
 
 class _ScorebugScore extends StatelessWidget {
-  final int? score;
+  final String scoreText;
+  final Key scoreKey;
 
-  const _ScorebugScore({required this.score});
+  const _ScorebugScore({required this.scoreText, required this.scoreKey});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 28,
       child: Text(
-        score?.toString() ?? '-',
+        scoreText,
+        key: scoreKey,
+        maxLines: 1,
+        softWrap: false,
         textAlign: TextAlign.center,
         style: TextStyle(
           fontSize: 34,
@@ -1609,6 +1890,9 @@ class _CurrentAtBatHero extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 380;
+        final useAdaptiveLayout =
+            MediaQuery.sizeOf(context).width <= 320 ||
+            MediaQuery.textScalerOf(context).scale(1) >= 1.6;
 
         return Container(
           width: double.infinity,
@@ -1726,39 +2010,68 @@ class _CurrentAtBatHero extends StatelessWidget {
                 ),
               ],
               SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: _CountSummaryCard(
+              if (useAdaptiveLayout)
+                Column(
+                  children: [
+                    _CountSummaryCard(
                       label: '볼',
                       shortLabel: 'B',
                       filled: atBat.balls,
                       total: 4,
                       activeColor: AppColors.positive,
                     ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: _CountSummaryCard(
+                    SizedBox(height: 8),
+                    _CountSummaryCard(
                       label: '스트라이크',
                       shortLabel: 'S',
                       filled: atBat.strikes,
                       total: 3,
                       activeColor: AppColors.ballYellow,
                     ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: _CountSummaryCard(
+                    SizedBox(height: 8),
+                    _CountSummaryCard(
                       label: '아웃',
                       shortLabel: 'O',
                       filled: atBat.outs,
                       total: 3,
                       activeColor: AppColors.live,
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _CountSummaryCard(
+                        label: '볼',
+                        shortLabel: 'B',
+                        filled: atBat.balls,
+                        total: 4,
+                        activeColor: AppColors.positive,
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: _CountSummaryCard(
+                        label: '스트라이크',
+                        shortLabel: 'S',
+                        filled: atBat.strikes,
+                        total: 3,
+                        activeColor: AppColors.ballYellow,
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: _CountSummaryCard(
+                        label: '아웃',
+                        shortLabel: 'O',
+                        filled: atBat.outs,
+                        total: 3,
+                        activeColor: AppColors.live,
+                      ),
+                    ),
+                  ],
+                ),
               SizedBox(height: 10),
               Wrap(
                 spacing: 16,
@@ -2336,6 +2649,38 @@ class _CountSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useAdaptiveLayout =
+        MediaQuery.sizeOf(context).width <= 320 ||
+        MediaQuery.textScalerOf(context).scale(1) >= 1.6;
+    final headingChildren = [
+      Text(
+        label,
+        maxLines: useAdaptiveLayout ? 2 : 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 11,
+          color: activeColor,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      Text(
+        '$filled',
+        style: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textPrimary,
+        ),
+      ),
+      Text(
+        shortLabel,
+        style: TextStyle(
+          fontSize: 11,
+          color: activeColor,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    ];
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -2346,39 +2691,22 @@ class _CountSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: activeColor,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              SizedBox(width: 4),
-              Text(
-                '$filled',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                shortLabel,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: activeColor,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
+          if (useAdaptiveLayout)
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: headingChildren,
+            )
+          else
+            Row(
+              children: [
+                Flexible(child: headingChildren[0]),
+                SizedBox(width: 4),
+                headingChildren[1],
+                headingChildren[2],
+              ],
+            ),
           SizedBox(height: 8),
           Row(
             children: [

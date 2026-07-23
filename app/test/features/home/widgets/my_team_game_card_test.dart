@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/core/widgets/app_motion.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/features/home/widgets/my_team_game_card.dart';
 
@@ -117,11 +118,58 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byType(MyTeamGameCard));
+    await tester.tap(find.byKey(const ValueKey('my-team-game-summary')));
     await tester.pump();
 
     expect(relayTaps, 1);
     expect(detailTaps, 0);
+  });
+
+  testWidgets('keeps action buttons outside the tappable game summary', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: Scaffold(
+          body: MyTeamGameCard(
+            game: _game(
+              away: const TeamScore(
+                teamId: 'XX',
+                teamName: '원정',
+                shortName: '원정',
+                score: 2,
+                innings: [],
+              ),
+              home: const TeamScore(
+                teamId: 'YY',
+                teamName: '홈',
+                shortName: '홈',
+                score: 1,
+                innings: [],
+              ),
+            ),
+            onOpenDetail: () {},
+            onOpenRelay: () {},
+            onFollowGame: () {},
+          ),
+        ),
+      ),
+    );
+
+    final relayButton = find.widgetWithText(ElevatedButton, '중계 보기');
+    final alertButton = find.widgetWithText(OutlinedButton, '알림 받기');
+
+    expect(relayButton, findsOneWidget);
+    expect(alertButton, findsOneWidget);
+    expect(
+      find.ancestor(of: relayButton, matching: find.byType(AppPressable)),
+      findsNothing,
+    );
+    expect(
+      find.ancestor(of: alertButton, matching: find.byType(AppPressable)),
+      findsNothing,
+    );
   });
 
   testWidgets('marks live follow action when the game is already followed', (

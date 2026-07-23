@@ -13,15 +13,15 @@ import 'package:kbo_fans/services/live_activity_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  setUpAll(AppConfig.initialize);
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
   test('Live Activity updatedAt text uses KST', () {
     expect(
-      liveActivityUpdatedAtTextForTesting(
-        DateTime.utc(2026, 7, 12, 19, 5, 6),
-      ),
+      liveActivityUpdatedAtTextForTesting(DateTime.utc(2026, 7, 12, 19, 5, 6)),
       '04:05:06',
     );
   });
@@ -56,7 +56,6 @@ void main() {
   });
 
   test('iOS push-to-start sync hands the backend URL to native', () async {
-    AppConfig.initialize();
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     addTearDown(() {
       debugDefaultTargetPlatformOverride = null;
@@ -81,6 +80,130 @@ void main() {
       'apiBaseUrl': AppConfig.instance.apiBaseUrl,
     });
   });
+
+  test(
+    'suspended game keeps follow state and updates its current surface',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+      });
+      const gameId = '20260520LGKT0';
+      await LiveActivityService.instance.followGame(gameId);
+
+      MethodCall? capturedCall;
+      const channel = MethodChannel('kbo_fans/live_activity');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            capturedCall = call;
+            return <String, dynamic>{'supported': true};
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      await LiveActivityService.instance.syncFollowedGame(
+        _game(
+          gameId: gameId,
+          awayTeamId: 'LG',
+          homeTeamId: 'KT',
+          status: GameStatus.suspended,
+          inning: '5회말 경기 중단',
+        ),
+      );
+
+      expect(await LiveActivityService.instance.followedGameId(), gameId);
+      expect(capturedCall?.method, 'syncCurrentScore');
+      expect(
+        Map<String, dynamic>.from(
+          capturedCall?.arguments as Map,
+        )['scoreAvailable'],
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'suspended game with unavailable score keeps follow and sends dash contract',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+      });
+      const gameId = '20260520LGKT2';
+      await LiveActivityService.instance.followGame(gameId);
+
+      MethodCall? capturedCall;
+      const channel = MethodChannel('kbo_fans/live_activity');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            capturedCall = call;
+            return <String, dynamic>{'supported': true};
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      await LiveActivityService.instance.syncFollowedGame(
+        _game(
+          gameId: gameId,
+          awayTeamId: 'LG',
+          homeTeamId: 'KT',
+          status: GameStatus.suspended,
+          inning: '5회말 경기 중단',
+          scoreAvailable: false,
+        ),
+      );
+
+      expect(await LiveActivityService.instance.followedGameId(), gameId);
+      expect(capturedCall?.method, 'syncCurrentScore');
+      expect(
+        Map<String, dynamic>.from(
+          capturedCall?.arguments as Map,
+        )['scoreAvailable'],
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'unverified live score does not overwrite the last Live Activity score',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+      });
+      const gameId = '20260520LGKT1';
+      await LiveActivityService.instance.followGame(gameId);
+
+      MethodCall? capturedCall;
+      const channel = MethodChannel('kbo_fans/live_activity');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            capturedCall = call;
+            return <String, dynamic>{'supported': true};
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      await LiveActivityService.instance.syncFollowedGame(
+        _game(
+          gameId: gameId,
+          awayTeamId: 'LG',
+          homeTeamId: 'KT',
+          status: GameStatus.live,
+          scoreAvailable: false,
+        ),
+      );
+
+      expect(capturedCall, isNull);
+      expect(await LiveActivityService.instance.followedGameId(), gameId);
+    },
+  );
 
   test('auto Live Activity target prefers a live my-team game', () {
     final games = [
@@ -374,6 +497,22 @@ void main() {
     expect(payload['homeTeam'], 'SSG');
   });
 
+  test('Live Activity payload keeps score availability separate from zero', () {
+    final payload = buildLiveActivityScorePayloadForTesting(
+      game: _game(
+        gameId: '20260624LGKT1',
+        awayTeamId: 'LG',
+        homeTeamId: 'KT',
+        status: GameStatus.suspended,
+        scoreAvailable: false,
+      ),
+    );
+
+    expect(payload['awayScore'], 0);
+    expect(payload['homeScore'], 0);
+    expect(payload['scoreAvailable'], isFalse);
+  });
+
   test('Android follow notification title normalizes team IDs', () {
     final title = buildAndroidFollowNotificationTitleForTesting(
       game: _game(
@@ -395,6 +534,7 @@ Game _game({
   required GameStatus status,
   String? inning,
   bool lineupOpened = false,
+  bool scoreAvailable = true,
 }) {
   return Game(
     gameId: gameId,
@@ -405,6 +545,7 @@ Game _game({
       teamName: awayTeamId,
       shortName: awayTeamId,
       score: 0,
+      scoreAvailable: scoreAvailable,
       innings: const [],
     ),
     home: TeamScore(
@@ -412,6 +553,7 @@ Game _game({
       teamName: homeTeamId,
       shortName: homeTeamId,
       score: 0,
+      scoreAvailable: scoreAvailable,
       innings: const [],
     ),
     stadium: '잠실',

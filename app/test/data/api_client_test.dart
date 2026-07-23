@@ -413,7 +413,7 @@ void main() {
                   'teamId': 'XX',
                   'teamName': '원정',
                   'shortName': '원정',
-                  'score': 2,
+                  'score': null,
                   'scores': [
                     null,
                     null,
@@ -462,6 +462,11 @@ void main() {
     final games = await repository.getScoreboard('2026-05-20');
 
     expect(games.single.hasTeamStats, isFalse);
+    expect(games.single.hasVerifiedScore, isFalse);
+    expect(games.single.away.scoreAvailable, isFalse);
+    expect(games.single.away.displayScore, '–');
+    expect(games.single.home.scoreAvailable, isTrue);
+    expect(games.single.home.displayScore, '1');
     expect(games.single.away.hits, 0);
     expect(games.single.home.walks, 0);
   });

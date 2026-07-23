@@ -288,8 +288,8 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode.themeMode,
-      highContrastTheme: AppTheme.light,
-      highContrastDarkTheme: AppTheme.dark,
+      highContrastTheme: AppTheme.highContrastLight,
+      highContrastDarkTheme: AppTheme.highContrastDark,
       routerConfig: router,
       debugShowCheckedModeBanner: !AppConfig.instance.isRelease,
       builder: (context, child) {

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/app_config.dart';
+import '../core/widgets/dev_console.dart';
 
 import 'api/api_client.dart';
 import 'repositories/game_repository.dart';
@@ -39,6 +42,14 @@ final gameRepositoryProvider = Provider<GameRepository>((ref) {
 
 // ── 마이팀 전역 상태 ──
 
+typedef MyTeamRegistrationConvergence = Future<void> Function(String? myTeamId);
+
+final myTeamRegistrationConvergenceProvider =
+    Provider<MyTeamRegistrationConvergence>((ref) {
+      return (myTeamId) => PushNotificationService.instance
+          .convergeRegistration(myTeam: myTeamId);
+    });
+
 class MyTeamNotifier extends Notifier<String?> {
   @override
   String? build() => null;
@@ -56,13 +67,17 @@ class MyTeamNotifier extends Notifier<String?> {
       await prefs.remove('myTeam');
     }
     state = teamId;
-    if (teamId != null && teamId.isNotEmpty) {
-      await PushNotificationService.instance.ensureAutoPermissionAndSync(
-        myTeam: teamId,
+    unawaited(_convergeRegistration(teamId));
+  }
+
+  Future<void> _convergeRegistration(String? teamId) async {
+    try {
+      await ref.read(myTeamRegistrationConvergenceProvider)(teamId);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'My team push registration convergence deferred: $error',
       );
-      return;
     }
-    await PushNotificationService.instance.syncRegistration(myTeam: teamId);
   }
 }
 

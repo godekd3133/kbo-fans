@@ -1850,7 +1850,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             game.status.name,
             game.inning,
             game.away.score,
+            game.away.scoreAvailable,
             game.home.score,
+            game.home.scoreAvailable,
           ].join(':'),
         )
         .join(',');
@@ -2912,14 +2914,36 @@ class _MyTeamBriefViewModel {
 
     if (todayGame != null) {
       final isAway = todayGame.away.teamId == myTeamId;
+      final timeText = todayGame.inning.isNotEmpty
+          ? todayGame.inning
+          : todayGame.startTime;
+      if ((todayGame.status == GameStatus.live ||
+              todayGame.status == GameStatus.final_) &&
+          !todayGame.hasVerifiedScore) {
+        return _MyTeamBriefViewModel(
+          statusLabel: todayGame.status == GameStatus.live
+              ? 'LIVE · 점수 확인 중'
+              : '경기 종료 · 점수 확인 중',
+          statusColor: AppColors.ballYellow,
+          icon: Icons.sync_problem_outlined,
+          headline:
+              '${todayGame.away.shortName} – : – '
+              '${todayGame.home.shortName}',
+          subline: '${todayGame.stadium} · vs $opponentName',
+          situation:
+              '원천 점수가 아직 확인되지 않아 0대0으로 추정하지 않습니다. '
+              '잠시 뒤 다시 확인해 주세요.',
+          metricLabel: '경기 상태',
+          metricValue: timeText.isEmpty ? '확인 중' : timeText,
+          primaryIcon: Icons.refresh_rounded,
+          secondaryIcon: Icons.leaderboard_rounded,
+        );
+      }
       final myScore = isAway ? todayGame.away.score : todayGame.home.score;
       final opponentScore = isAway
           ? todayGame.home.score
           : todayGame.away.score;
       final scoreText = '$myScore:$opponentScore';
-      final timeText = todayGame.inning.isNotEmpty
-          ? todayGame.inning
-          : todayGame.startTime;
       final liveState = myScore > opponentScore
           ? '리드'
           : myScore < opponentScore
@@ -3625,9 +3649,9 @@ class _TodayGameReferenceRow extends StatelessWidget {
     if (game.status == GameStatus.scheduled ||
         game.status == GameStatus.cancelled ||
         game.status == GameStatus.suspended) {
-      return '- : -';
+      return '– : –';
     }
-    return '${game.away.score} : ${game.home.score}';
+    return '${game.away.displayScore} : ${game.home.displayScore}';
   }
 }
 

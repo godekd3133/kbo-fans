@@ -48,10 +48,10 @@ class KboDirectRepository implements GameRepository {
   final String _relayPassword;
 
   KboDirectRepository({String? relayUserId, String? relayPassword})
-    : _relayUserId = relayUserId ??
-          const String.fromEnvironment('KBO_RELAY_USER_ID'),
-      _relayPassword = relayPassword ??
-          const String.fromEnvironment('KBO_RELAY_PASSWORD') {
+    : _relayUserId =
+          relayUserId ?? const String.fromEnvironment('KBO_RELAY_USER_ID'),
+      _relayPassword =
+          relayPassword ?? const String.fromEnvironment('KBO_RELAY_PASSWORD') {
     _dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 15),
@@ -527,16 +527,18 @@ class KboDirectRepository implements GameRepository {
         ? [...view1Scores]
         : innings;
 
+    final score =
+        _parseInt(data[rKey]) ??
+        _parseInt(
+          isAway ? (mainGame?['T_SCORE_CN']) : (mainGame?['B_SCORE_CN']),
+        ) ??
+        (isAway ? scheduleGame.awayScore : scheduleGame.homeScore);
+
     return TeamScore(
       teamId: teamId,
       teamName: teamName,
-      score:
-          _parseInt(data[rKey]) ??
-          _parseInt(
-            isAway ? (mainGame?['T_SCORE_CN']) : (mainGame?['B_SCORE_CN']),
-          ) ??
-          (isAway ? scheduleGame.awayScore : scheduleGame.homeScore) ??
-          0,
+      score: score ?? 0,
+      scoreAvailable: score != null,
       innings: resolvedInnings,
       shortName: _firstNonEmptyString([
         data['${prefix}_NM'] as String?,
@@ -3357,7 +3359,8 @@ class KboDirectRepository implements GameRepository {
           half: 'bottom',
           event: 'GAME_END',
           text:
-              '경기종료 ${game.away.shortName} ${game.away.score} : ${game.home.score} ${game.home.shortName}',
+              '경기종료 ${game.away.shortName} ${game.away.displayScore} : '
+              '${game.home.displayScore} ${game.home.shortName}',
         ),
       );
     }

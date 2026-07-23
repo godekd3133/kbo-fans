@@ -469,10 +469,24 @@ struct KboFansLiveActivityView: View {
                   .frame(width: 68, height: 46)
                 rankView(rankText(context.state.homeRankText))
               } else {
-                scoreView(context.state.awayScore)
+                scoreView(
+                  context.state.awayScore,
+                  available: scoreAvailable,
+                  team: displayTeamName(
+                    teamId: context.state.awayTeamId,
+                    team: context.state.awayTeam
+                  )
+                )
                 BaseballDiamondView(occupiedBases: occupiedBases)
                   .frame(width: 68, height: 46)
-                scoreView(context.state.homeScore)
+                scoreView(
+                  context.state.homeScore,
+                  available: scoreAvailable,
+                  team: displayTeamName(
+                    teamId: context.state.homeTeamId,
+                    team: context.state.homeTeam
+                  )
+                )
               }
             }
 
@@ -565,6 +579,10 @@ struct KboFansLiveActivityView: View {
     return text.isEmpty ? "경기 중" : text
   }
 
+  private var scoreAvailable: Bool {
+    context.state.scoreAvailable != false
+  }
+
   private var cardGradient: LinearGradient {
     LinearGradient(
       colors: [
@@ -577,8 +595,8 @@ struct KboFansLiveActivityView: View {
     )
   }
 
-  private func scoreView(_ score: Int) -> some View {
-    let scoreText = "\(score)"
+  private func scoreView(_ score: Int, available: Bool, team: String) -> some View {
+    let scoreText = available ? "\(score)" : "–"
     let fontSize: CGFloat = scoreText.count > 1 ? 34 : 38
     return Text(scoreText)
       .font(.system(size: fontSize, weight: .black, design: .rounded))
@@ -589,6 +607,7 @@ struct KboFansLiveActivityView: View {
       .allowsTightening(true)
       .frame(width: 46, alignment: .center)
       .layoutPriority(2)
+      .accessibilityLabel(available ? "\(team) \(score)점" : "\(team) 점수 확인 중")
   }
 
   private func rankView(_ text: String) -> some View {
@@ -862,6 +881,7 @@ private struct DynamicIslandTeamScore: View {
   let teamId: String
   let team: String
   let metric: String
+  let metricAccessibilityLabel: String
   let alignEnd: Bool
 
   var body: some View {
@@ -884,6 +904,8 @@ private struct DynamicIslandTeamScore: View {
         .layoutPriority(2)
     }
     .padding(.horizontal, 2)
+    .accessibilityElement(children: .ignore)
+    .accessibilityLabel(metricAccessibilityLabel)
   }
 
   private var teamName: some View {
@@ -1072,8 +1094,46 @@ private func rankText(_ text: String?) -> String {
   return value.isEmpty ? "-" : value
 }
 
-private func teamMetricText(score: Int, rankText text: String?, isPregame: Bool) -> String {
-  return isPregame ? rankText(text) : "\(score)"
+private func teamMetricText(
+  score: Int,
+  rankText text: String?,
+  isPregame: Bool,
+  scoreAvailable: Bool
+) -> String {
+  if isPregame {
+    return rankText(text)
+  }
+  return scoreAvailable ? "\(score)" : "–"
+}
+
+private func teamMetricAccessibilityLabel(
+  teamId: String,
+  team: String,
+  score: Int,
+  rankText text: String?,
+  isPregame: Bool,
+  scoreAvailable: Bool
+) -> String {
+  let teamName = displayTeamName(teamId: teamId, team: team)
+  if isPregame {
+    return "\(teamName) \(rankText(text))"
+  }
+  return scoreAvailable ? "\(teamName) \(score)점" : "\(teamName) 점수 확인 중"
+}
+
+@available(iOS 16.1, *)
+private func dynamicIslandSummaryAccessibilityLabel(
+  _ state: KboFansScoreAttributes.ContentState
+) -> String {
+  let awayTeam = displayTeamName(teamId: state.awayTeamId, team: state.awayTeam)
+  let homeTeam = displayTeamName(teamId: state.homeTeamId, team: state.homeTeam)
+  if state.isPregame == true {
+    return "경기전, \(awayTeam) 대 \(homeTeam)"
+  }
+  if state.scoreAvailable == false {
+    return "\(awayTeam) 대 \(homeTeam), 점수 확인 중"
+  }
+  return "\(awayTeam) \(state.awayScore)점, \(homeTeam) \(state.homeScore)점"
 }
 
 @available(iOS 16.1, *)
@@ -1090,7 +1150,16 @@ struct KboFansLiveActivityWidget: Widget {
             metric: teamMetricText(
               score: context.state.awayScore,
               rankText: context.state.awayRankText,
-              isPregame: context.state.isPregame == true
+              isPregame: context.state.isPregame == true,
+              scoreAvailable: context.state.scoreAvailable != false
+            ),
+            metricAccessibilityLabel: teamMetricAccessibilityLabel(
+              teamId: context.state.awayTeamId,
+              team: context.state.awayTeam,
+              score: context.state.awayScore,
+              rankText: context.state.awayRankText,
+              isPregame: context.state.isPregame == true,
+              scoreAvailable: context.state.scoreAvailable != false
             ),
             alignEnd: false
           )
@@ -1124,7 +1193,16 @@ struct KboFansLiveActivityWidget: Widget {
             metric: teamMetricText(
               score: context.state.homeScore,
               rankText: context.state.homeRankText,
-              isPregame: context.state.isPregame == true
+              isPregame: context.state.isPregame == true,
+              scoreAvailable: context.state.scoreAvailable != false
+            ),
+            metricAccessibilityLabel: teamMetricAccessibilityLabel(
+              teamId: context.state.homeTeamId,
+              team: context.state.homeTeam,
+              score: context.state.homeScore,
+              rankText: context.state.homeRankText,
+              isPregame: context.state.isPregame == true,
+              scoreAvailable: context.state.scoreAvailable != false
             ),
             alignEnd: true
           )
@@ -1171,24 +1249,44 @@ struct KboFansLiveActivityWidget: Widget {
           teamMetricText(
             score: context.state.awayScore,
             rankText: context.state.awayRankText,
-            isPregame: context.state.isPregame == true
+            isPregame: context.state.isPregame == true,
+            scoreAvailable: context.state.scoreAvailable != false
           ),
-          alignment: .leading
+          alignment: .leading,
+          accessibilityLabel: teamMetricAccessibilityLabel(
+            teamId: context.state.awayTeamId,
+            team: context.state.awayTeam,
+            score: context.state.awayScore,
+            rankText: context.state.awayRankText,
+            isPregame: context.state.isPregame == true,
+            scoreAvailable: context.state.scoreAvailable != false
+          )
         )
       } compactTrailing: {
         compactMetricView(
           teamMetricText(
             score: context.state.homeScore,
             rankText: context.state.homeRankText,
-            isPregame: context.state.isPregame == true
+            isPregame: context.state.isPregame == true,
+            scoreAvailable: context.state.scoreAvailable != false
           ),
-          alignment: .trailing
+          alignment: .trailing,
+          accessibilityLabel: teamMetricAccessibilityLabel(
+            teamId: context.state.homeTeamId,
+            team: context.state.homeTeam,
+            score: context.state.homeScore,
+            rankText: context.state.homeRankText,
+            isPregame: context.state.isPregame == true,
+            scoreAvailable: context.state.scoreAvailable != false
+          )
         )
       } minimal: {
         Text(
           context.state.isPregame == true
             ? "경기전"
-            : "\(context.state.awayScore):\(context.state.homeScore)"
+            : context.state.scoreAvailable == false
+              ? "–:–"
+              : "\(context.state.awayScore):\(context.state.homeScore)"
         )
           .font(.system(size: 11, weight: .bold, design: .rounded))
           .foregroundStyle(.white)
@@ -1196,6 +1294,7 @@ struct KboFansLiveActivityWidget: Widget {
           .lineLimit(1)
           .minimumScaleFactor(0.55)
           .allowsTightening(true)
+          .accessibilityLabel(dynamicIslandSummaryAccessibilityLabel(context.state))
       }
       .keylineTint(teamAccentColor(teamId: context.state.homeTeamId))
       .widgetURL(
@@ -1218,7 +1317,11 @@ struct KboFansLiveActivityWidget: Widget {
       state.outs > 0
   }
 
-  private func compactMetricView(_ text: String, alignment: Alignment) -> some View {
+  private func compactMetricView(
+    _ text: String,
+    alignment: Alignment,
+    accessibilityLabel: String
+  ) -> some View {
     Text(text)
       .font(
         .system(
@@ -1233,6 +1336,7 @@ struct KboFansLiveActivityWidget: Widget {
       .minimumScaleFactor(0.58)
       .allowsTightening(true)
       .frame(minWidth: 22, maxWidth: 34, alignment: alignment)
+      .accessibilityLabel(accessibilityLabel)
   }
 }
 
