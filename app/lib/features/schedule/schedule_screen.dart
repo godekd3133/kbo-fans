@@ -37,6 +37,19 @@ const _scheduleGameDetailPlayerImagePrefetchTimeout = Duration(seconds: 8);
 const _scheduleTeamPlayerImagePrefetchTimeout = Duration(seconds: 3);
 const _scheduleGameDetailPlayerImagePrefetchLimit = 80;
 
+@visibleForTesting
+String formatScheduleTicketSummary(TicketInfo ticketInfo) {
+  final openAt = ticketInfo.openAt;
+  if (openAt == null) {
+    return '${ticketInfo.vendorName} · 예매 시간 미정';
+  }
+
+  final kboOpenAt = kboCivilDateTime(openAt);
+  final formatted = DateFormat('MM.dd HH:mm').format(kboOpenAt);
+  final sourceLabel = ticketInfo.isInferred ? '예상 오픈' : '공식 오픈';
+  return '${ticketInfo.vendorName} · $formatted KST $sourceLabel';
+}
+
 int _seasonFromGameId(String gameId) {
   if (gameId.length >= 4) {
     final parsed = int.tryParse(gameId.substring(0, 4));
@@ -833,43 +846,55 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.card,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.divider),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _segmentedButton(
-                    label: hasMyTeam ? '내 팀 먼저 보기' : '달력 보기',
-                    selected: _viewMode == ScheduleViewMode.calendar,
-                    onTap: () =>
-                        setState(() => _viewMode = ScheduleViewMode.calendar),
-                  ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final useCompactLabels = constraints.maxWidth <= 320;
+              return Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.divider),
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: _segmentedButton(
-                    label: '구장별',
-                    selected: _viewMode == ScheduleViewMode.stadium,
-                    onTap: () =>
-                        setState(() => _viewMode = ScheduleViewMode.stadium),
-                  ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _segmentedButton(
+                        label: hasMyTeam
+                            ? useCompactLabels
+                                  ? '내 팀 우선'
+                                  : '내 팀 먼저 보기'
+                            : '달력 보기',
+                        selected: _viewMode == ScheduleViewMode.calendar,
+                        onTap: () => setState(
+                          () => _viewMode = ScheduleViewMode.calendar,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: _segmentedButton(
+                        label: '구장별',
+                        selected: _viewMode == ScheduleViewMode.stadium,
+                        onTap: () => setState(
+                          () => _viewMode = ScheduleViewMode.stadium,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: _segmentedButton(
+                        label: '매치업',
+                        selected: _viewMode == ScheduleViewMode.matchup,
+                        onTap: () => setState(
+                          () => _viewMode = ScheduleViewMode.matchup,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: _segmentedButton(
-                    label: '매치업',
-                    selected: _viewMode == ScheduleViewMode.matchup,
-                    onTap: () =>
-                        setState(() => _viewMode = ScheduleViewMode.matchup),
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           ),
           const SizedBox(height: 8),
           if (_viewMode == ScheduleViewMode.matchup)
@@ -1364,7 +1389,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         final gameTeamIds = {game.awayId, game.homeId};
         if (gameTeamIds.contains(firstTeamId) &&
             gameTeamIds.contains(secondTeamId)) {
-          if (!_isPastScheduleDate(day.date)) {
+          if (!_isPastScheduleDate(day.date) &&
+              _isUpcomingMatchupStatus(game.status)) {
             items.add(_MatchupScheduleItem(date: day.date, game: game));
           }
         }
@@ -1401,6 +1427,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return _parseScheduleDate(date).isBefore(todayDate);
   }
 
+  bool _isUpcomingMatchupStatus(String status) {
+    final normalized = status.trim().toUpperCase();
+    return normalized != 'LIVE' && !isTerminalScheduleStatus(normalized);
+  }
+
   Widget _buildCalendar(
     DateTime month,
     Set<int> gameDays,
@@ -1414,151 +1445,214 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final totalCells = ((leadingDays + lastDay.day + 6) ~/ 7) * 7;
     final firstVisibleDay = firstDay.subtract(Duration(days: leadingDays));
     final today = kboCivilDateTime();
-    final isCompactViewport = MediaQuery.sizeOf(context).height < 700;
-    final cellHeight = isCompactViewport ? 39.0 : 44.0;
+    final viewportHeight = MediaQuery.sizeOf(context).height;
+    final isCompactViewport = viewportHeight < 700;
+    final usesDenseCalendarSpacing = viewportHeight < 780;
+    const cellHeight = 44.0;
     final dateBoxSize = isCompactViewport ? 30.0 : 34.0;
+    const weekdayNames = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: EdgeInsets.fromLTRB(
-          10,
-          isCompactViewport ? 12 : 14,
-          10,
-          isCompactViewport ? 6 : 8,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.card.withValues(alpha: 0.88),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider.withValues(alpha: 0.88)),
-        ),
-        child: Column(
-          children: [
-            Row(
-              children: weekdays.map((d) {
-                final color = d == '토'
-                    ? AppColors.accent
-                    : d == '일'
-                    ? AppColors.live
-                    : AppColors.textDisabled;
-                return Expanded(
-                  child: Center(
-                    child: Text(
-                      d,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: color,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportWidth = constraints.maxWidth;
+        final calendarWidth = viewportWidth < 360 ? 330.0 : viewportWidth - 32;
+        final calendar = SizedBox(
+          key: const ValueKey('schedule-calendar-card'),
+          width: calendarWidth,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+              10,
+              usesDenseCalendarSpacing ? 4 : 14,
+              10,
+              usesDenseCalendarSpacing ? 4 : 8,
             ),
-            SizedBox(height: isCompactViewport ? 6 : 8),
-            ...List.generate(totalCells ~/ 7, (week) {
-              return Row(
-                children: List.generate(7, (weekday) {
-                  final cellIndex = week * 7 + weekday;
-                  final date = firstVisibleDay.add(Duration(days: cellIndex));
-                  final isInCurrentMonth =
-                      date.year == month.year && date.month == month.month;
-                  final day = date.day;
-                  final isSelected =
-                      isInCurrentMonth &&
-                      month.year == _currentMonth.year &&
-                      month.month == _currentMonth.month &&
-                      day == _selectedDay;
-                  final isToday =
-                      date.year == today.year &&
-                      date.month == today.month &&
-                      date.day == today.day;
-                  final hasGame = isInCurrentMonth && gameDays.contains(day);
-                  final isMyTeam = isInCurrentMonth && myTeamDays.contains(day);
-                  final isPast = date.isBefore(
-                    DateTime(today.year, today.month, today.day),
-                  );
-                  final isSaturday = date.weekday == DateTime.saturday;
-                  final isSunday = date.weekday == DateTime.sunday;
+            decoration: BoxDecoration(
+              color: AppColors.card.withValues(alpha: 0.88),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: AppColors.divider.withValues(alpha: 0.88),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: weekdays.map((d) {
+                    final color = d == '토'
+                        ? AppColors.accent
+                        : d == '일'
+                        ? AppColors.live
+                        : AppColors.textDisabled;
+                    return Expanded(
+                      child: Center(
+                        child: Text(
+                          d,
+                          style: TextStyle(
+                            fontSize: 12,
+                            height: usesDenseCalendarSpacing ? 1 : null,
+                            color: color,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                if (!usesDenseCalendarSpacing) const SizedBox(height: 8),
+                ...List.generate(totalCells ~/ 7, (week) {
+                  return Row(
+                    children: List.generate(7, (weekday) {
+                      final cellIndex = week * 7 + weekday;
+                      final date = firstVisibleDay.add(
+                        Duration(days: cellIndex),
+                      );
+                      final isInCurrentMonth =
+                          date.year == month.year && date.month == month.month;
+                      final day = date.day;
+                      final isSelected =
+                          isInCurrentMonth &&
+                          month.year == _currentMonth.year &&
+                          month.month == _currentMonth.month &&
+                          day == _selectedDay;
+                      final isToday =
+                          date.year == today.year &&
+                          date.month == today.month &&
+                          date.day == today.day;
+                      final hasGame =
+                          isInCurrentMonth && gameDays.contains(day);
+                      final isMyTeam =
+                          isInCurrentMonth && myTeamDays.contains(day);
+                      final isPast = date.isBefore(
+                        DateTime(today.year, today.month, today.day),
+                      );
+                      final isSaturday = date.weekday == DateTime.saturday;
+                      final isSunday = date.weekday == DateTime.sunday;
+                      final semanticParts = <String>[
+                        '${date.month}월 ${date.day}일 ${weekdayNames[date.weekday - 1]}',
+                        if (!isInCurrentMonth) '다른 달',
+                        if (isToday) '오늘',
+                        if (isMyTeam) '마이팀 경기 있음' else if (hasGame) '경기 있음',
+                        if (isSelected) '선택됨',
+                      ];
 
-                  return Expanded(
-                    child: AppPressable(
-                      onTap: () => _selectDate(date),
-                      pressedScale: 0.92,
-                      child: SizedBox(
-                        height: cellHeight,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              width: dateBoxSize,
-                              height: dateBoxSize,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(7),
-                                color: isSelected
-                                    ? AppColors.live.withValues(alpha: 0.62)
-                                    : isToday
-                                    ? AppColors.cardSub
-                                    : null,
-                                border: hasGame || isToday
-                                    ? Border.all(
-                                        color: hasGame
+                      return Expanded(
+                        child: Semantics(
+                          key: ValueKey(
+                            'schedule-date-${date.year}-${date.month}-${date.day}',
+                          ),
+                          button: true,
+                          selected: isSelected,
+                          label: semanticParts.join(', '),
+                          onTap: () => _selectDate(date),
+                          child: ExcludeSemantics(
+                            child: AppPressable(
+                              onTap: () => _selectDate(date),
+                              pressedScale: 0.92,
+                              child: SizedBox(
+                                height: cellHeight,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    AnimatedContainer(
+                                      duration:
+                                          MediaQuery.of(
+                                            context,
+                                          ).disableAnimations
+                                          ? Duration.zero
+                                          : const Duration(milliseconds: 180),
+                                      width: dateBoxSize,
+                                      height: dateBoxSize,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(7),
+                                        color: isSelected
                                             ? AppColors.live.withValues(
-                                                alpha: isSelected ? 0.82 : 0.62,
+                                                alpha: 0.62,
                                               )
-                                            : AppColors.divider,
-                                      )
-                                    : null,
-                              ),
-                              child: Text(
-                                '$day',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isSelected
-                                      ? AppColors.textPrimary
-                                      : !isInCurrentMonth
-                                      ? AppColors.textDisabled.withValues(
-                                          alpha: 0.55,
-                                        )
-                                      : isPast
-                                      ? AppColors.textDisabled
-                                      : isSaturday
-                                      ? AppColors.accent
-                                      : isSunday
-                                      ? AppColors.live
-                                      : AppColors.textPrimary,
-                                  fontWeight: isSelected || isToday
-                                      ? FontWeight.w900
-                                      : FontWeight.w800,
+                                            : isToday
+                                            ? AppColors.cardSub
+                                            : null,
+                                        border: hasGame || isToday
+                                            ? Border.all(
+                                                color: hasGame
+                                                    ? AppColors.live.withValues(
+                                                        alpha: isSelected
+                                                            ? 0.82
+                                                            : 0.62,
+                                                      )
+                                                    : AppColors.divider,
+                                              )
+                                            : null,
+                                      ),
+                                      child: Text(
+                                        '$day',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isSelected
+                                              ? AppColors.textPrimary
+                                              : !isInCurrentMonth
+                                              ? AppColors.textDisabled
+                                                    .withValues(alpha: 0.55)
+                                              : isPast
+                                              ? AppColors.textDisabled
+                                              : isSaturday
+                                              ? AppColors.accent
+                                              : isSunday
+                                              ? AppColors.live
+                                              : AppColors.textPrimary,
+                                          fontWeight: isSelected || isToday
+                                              ? FontWeight.w900
+                                              : FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    if (hasGame)
+                                      SizedBox(
+                                        height: 7,
+                                        child: isMyTeam
+                                            ? Icon(
+                                                Icons.star_rounded,
+                                                size: 8,
+                                                color: AppColors.accent,
+                                              )
+                                            : Container(
+                                                width: 4,
+                                                height: 4,
+                                                margin: const EdgeInsets.only(
+                                                  top: 3,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: AppColors.textDisabled,
+                                                ),
+                                              ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),
-                            if (hasGame)
-                              Container(
-                                width: 4,
-                                height: 4,
-                                margin: const EdgeInsets.only(top: 3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isMyTeam
-                                      ? AppColors.accent
-                                      : AppColors.textDisabled,
-                                ),
-                              ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   );
                 }),
-              );
-            }),
-            SizedBox(height: isCompactViewport ? 6 : 8),
-          ],
-        ),
-      ),
+                if (!usesDenseCalendarSpacing) const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+        if (viewportWidth < 360) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [calendar]),
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: calendar,
+        );
+      },
     );
   }
 
@@ -1976,13 +2070,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   }
 
   String _ticketSummary(TicketInfo ticketInfo) {
-    final openAt = ticketInfo.openAt;
-    if (openAt == null) {
-      return '${ticketInfo.vendorName} · 예매 시간 미정';
-    }
-
-    final formatted = DateFormat('MM.dd HH:mm').format(openAt);
-    return '${ticketInfo.vendorName} · $formatted 오픈';
+    return formatScheduleTicketSummary(ticketInfo);
   }
 
   void _logScheduleLoad(AsyncValue<List<ScheduleDay>> scheduleAsync) {

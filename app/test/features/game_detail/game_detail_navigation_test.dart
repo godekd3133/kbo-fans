@@ -201,6 +201,57 @@ void main() {
     expect(relaySummaryTop, greaterThanOrEqualTo(tabBarBottom));
   });
 
+  testWidgets('같은 경기에서 initialTab이 바뀌면 해당 탭으로 전환한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _finalGame();
+    final initialTab = ValueNotifier<String?>('score');
+    addTearDown(initialTab.dispose);
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => ValueListenableBuilder<String?>(
+            valueListenable: initialTab,
+            builder: (_, tab, _) => GameDetailScreen(
+              gameId: state.pathParameters['gameId']!,
+              game: game,
+              initialTab: tab,
+            ),
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller?.index, 0);
+
+    initialTab.value = 'boxscore';
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller?.index, 2);
+  });
+
   testWidgets('기존 경기로 진입한 첫 상세 조회 실패도 즉시 갱신 지연과 재시도를 보여준다', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(390, 844);
@@ -251,7 +302,126 @@ void main() {
     expect(find.text('다시 시도'), findsNothing);
   });
 
-  testWidgets('라이브 경기 상세 follow CTA는 푸쉬 중계 버튼만 노출한다', (tester) async {
+  testWidgets('콜드 딥링크 경기 조회 실패는 다시 시도해 상세를 복구한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final repository = _FakeGameRepository(game, failAllGameLoads: true);
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) =>
+              GameDetailScreen(gameId: state.pathParameters['gameId']!),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('경기를 불러올 수 없습니다'), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+    expect(find.text('홈으로'), findsOneWidget);
+
+    repository.failAllGameLoads = false;
+    await tester.tap(find.text('다시 시도'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('KT'), findsWidgets);
+    expect(find.text('경기를 불러올 수 없습니다'), findsNothing);
+  });
+
+  testWidgets('존재하지 않는 경기 콜드 딥링크는 홈으로 복구한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    const missingGameId = 'missing-game';
+    final game = _liveGame();
+    final router = GoRouter(
+      initialLocation: '/game/$missingGameId',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) =>
+              GameDetailScreen(gameId: state.pathParameters['gameId']!),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('경기를 찾을 수 없습니다'), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+    expect(find.text('홈으로'), findsOneWidget);
+
+    await tester.tap(find.text('홈으로'));
+    await tester.pumpAndSettle();
+
+    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
+  });
+
+  test('경기 팔로우 저장 안내는 푸시 성공을 확정하지 않는다', () {
+    expect(
+      followGameSavedMessage(
+        isWeb: false,
+        liveActivityAllowed: true,
+        eventAlertsAllowed: true,
+        pushAllowed: true,
+      ),
+      '경기 팔로우를 저장했습니다. 알림은 기기와 서버 상태에 따라 전달됩니다.',
+    );
+    expect(
+      followGameSavedMessage(
+        isWeb: false,
+        liveActivityAllowed: true,
+        eventAlertsAllowed: false,
+        pushAllowed: false,
+      ),
+      '경기 팔로우를 저장했습니다. 알림 권한 또는 지원 환경을 확인해 주세요.',
+    );
+    expect(
+      followGameSavedMessage(
+        isWeb: true,
+        liveActivityAllowed: false,
+        eventAlertsAllowed: false,
+        pushAllowed: false,
+      ),
+      '경기 팔로우를 저장했습니다. 이 환경에서는 푸시 알림을 지원하지 않습니다.',
+    );
+  });
+
+  testWidgets('라이브 경기 상세는 경기 팔로우 CTA를 노출한다', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -289,7 +459,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(find.text('푸쉬 중계 받기'), findsOneWidget);
+    expect(find.text('경기 팔로우하기'), findsOneWidget);
+    expect(find.text('푸쉬 중계 받기'), findsNothing);
     expect(find.text('이 경기를 따라가면'), findsNothing);
     expect(find.text('따라가기 화면'), findsNothing);
     expect(find.text('바로 알림'), findsNothing);
@@ -631,6 +802,54 @@ void main() {
     expect(find.text('9회'), findsNothing);
   });
 
+  testWidgets('예정·취소 경기 상세 상단은 0대0 대신 점수 미정으로 표시한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final routers = <GoRouter>[];
+    addTearDown(() {
+      for (final router in routers) {
+        router.dispose();
+      }
+    });
+
+    for (final game in [_scheduledGame(), _cancelledGame()]) {
+      final router = await _pumpGameDetail(tester, game);
+      routers.add(router);
+
+      final awayScore = tester.widget<Text>(
+        find.byKey(const ValueKey('game-detail-scorebug-away-score')),
+      );
+      final homeScore = tester.widget<Text>(
+        find.byKey(const ValueKey('game-detail-scorebug-home-score')),
+      );
+      expect(awayScore.data, '–');
+      expect(homeScore.data, '–');
+    }
+  });
+
+  testWidgets('서스펜디드 경기 상세 상단은 진행 회차 대신 경기 중단을 명시한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final game = _suspendedGame();
+    final router = await _pumpGameDetail(tester, game);
+    addTearDown(router.dispose);
+
+    expect(find.text('경기 중단'), findsOneWidget);
+    expect(find.text('5회말'), findsNothing);
+    expect(
+      tester
+          .widget<Text>(
+            find.byKey(const ValueKey('game-detail-scorebug-away-score')),
+          )
+          .data,
+      '2',
+    );
+  });
+
   testWidgets('경기 상세 상단은 두 자리 점수를 한 줄로 유지한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -680,6 +899,38 @@ void main() {
   });
 }
 
+Future<GoRouter> _pumpGameDetail(WidgetTester tester, Game game) async {
+  SharedPreferences.setMockInitialValues({});
+  final router = GoRouter(
+    initialLocation: '/game/${game.gameId}',
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (_, _) => const Scaffold(body: Text('홈')),
+      ),
+      GoRoute(
+        path: '/game/:gameId',
+        builder: (_, state) => GameDetailScreen(
+          gameId: state.pathParameters['gameId']!,
+          game: game,
+        ),
+      ),
+    ],
+  );
+
+  await tester.pumpWidget(
+    ProviderScope(
+      retry: (_, _) => null,
+      overrides: [
+        gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
+      ],
+      child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return router;
+}
+
 Game _liveGame() {
   return const Game(
     gameId: '20260520KTLG0',
@@ -698,6 +949,79 @@ Game _liveGame() {
       shortName: 'LG',
       score: 1,
       innings: [],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
+}
+
+Game _scheduledGame() {
+  return const Game(
+    gameId: '20260801KTLG0',
+    status: GameStatus.scheduled,
+    inning: '',
+    away: TeamScore(
+      teamId: 'KT',
+      teamName: 'KT 위즈',
+      shortName: 'KT',
+      score: 0,
+      innings: [],
+    ),
+    home: TeamScore(
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      shortName: 'LG',
+      score: 0,
+      innings: [],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
+}
+
+Game _cancelledGame() {
+  return const Game(
+    gameId: '20260802KTLG0',
+    status: GameStatus.cancelled,
+    inning: '우천 취소',
+    statusLabel: '우천 취소',
+    away: TeamScore(
+      teamId: 'KT',
+      teamName: 'KT 위즈',
+      shortName: 'KT',
+      score: 0,
+      innings: [],
+    ),
+    home: TeamScore(
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      shortName: 'LG',
+      score: 0,
+      innings: [],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
+}
+
+Game _suspendedGame() {
+  return const Game(
+    gameId: '20260803KTLG0',
+    status: GameStatus.suspended,
+    inning: '5회말',
+    away: TeamScore(
+      teamId: 'KT',
+      teamName: 'KT 위즈',
+      shortName: 'KT',
+      score: 2,
+      innings: [0, 1, 0, 1, 0],
+    ),
+    home: TeamScore(
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      shortName: 'LG',
+      score: 1,
+      innings: [0, 0, 1, 0, null],
     ),
     stadium: '잠실',
     startTime: '18:30',

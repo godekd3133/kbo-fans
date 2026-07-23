@@ -83,7 +83,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ? (usesLargeText ? 2 : 3)
         : (usesCompactLayout ? 1 : 2);
     final teamCardHeight = usesLargeText
-        ? 104.0
+        ? 80.0 + (textScaleFactor * 20.0)
         : (viewportWidth >= 900 ? 88.0 : 74.0);
     final topSpacer = widget.isEditMode
         ? 10.0
@@ -278,7 +278,14 @@ class _SelectedTeamPreview extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               const gap = 8.0;
-              final columns = constraints.maxWidth >= 350 ? 3 : 2;
+              final textScale = MediaQuery.textScalerOf(context).scale(1);
+              final columns = textScale >= 1.4
+                  ? 1
+                  : constraints.maxWidth >= 350
+                  ? 3
+                  : constraints.maxWidth >= 260
+                  ? 2
+                  : 1;
               final width =
                   (constraints.maxWidth - (gap * (columns - 1))) / columns;
               const benefits = [
@@ -327,48 +334,51 @@ class _PreviewBenefit extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 42),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.cardSub.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.divider),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 17, color: AppColors.textPrimary),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+    return Semantics(
+      label: '$title, $subtitle',
+      child: ExcludeSemantics(
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 42),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.cardSub.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.divider),
           ),
-        ],
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: AppColors.textPrimary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -477,7 +487,9 @@ class _OnboardingTeamCard extends StatelessWidget {
         onTap: onTap,
         pressedScale: 0.976,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
+          duration: MediaQuery.of(context).disableAnimations
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           decoration: BoxDecoration(

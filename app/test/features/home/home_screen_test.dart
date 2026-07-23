@@ -790,6 +790,10 @@ void main() {
       ValueKey('home-today-game-${game.gameId}'),
     );
     expect(gameRowFinder, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-scoreboard-freshness-banner')),
+      findsNothing,
+    );
     expect(find.text('다시 시도'), findsNothing);
 
     container.invalidate(scoreboardProvider(_todayKey()));
@@ -797,7 +801,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(gameRowFinder, findsOneWidget);
-    expect(find.text('다시 시도'), findsNothing);
+    expect(find.text('업데이트가 지연되고 있습니다'), findsOneWidget);
+    expect(find.textContaining('마지막 갱신'), findsOneWidget);
+    expect(find.textContaining('KST'), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
   });
 
   testWidgets(

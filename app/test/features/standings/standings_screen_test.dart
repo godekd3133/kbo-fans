@@ -216,6 +216,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('280px 순위 헤더는 짧은 제목과 초보자 열 설명을 제공한다', (tester) async {
+    tester.view.physicalSize = const Size(280, 720);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          standingsProvider.overrideWith((ref, season) async {
+            return const [
+              TeamStanding(
+                rank: 1,
+                teamId: 'LG',
+                teamName: 'LG 트윈스',
+                wins: 52,
+                losses: 38,
+                draws: 0,
+                pct: '0.578',
+                gb: '0',
+                streak: '6승',
+              ),
+            ];
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const StandingsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('KBO 순위'), findsOneWidget);
+    expect(find.text('정규시즌 순위표'), findsNothing);
+    expect(find.byTooltip('순위 새로고침'), findsOneWidget);
+    expect(find.text('차: 1위와 경기 차 · 연속: 현재 연승/연패'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('standings empty response shows artwork empty state', (
     tester,
   ) async {

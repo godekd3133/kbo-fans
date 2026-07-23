@@ -94,7 +94,9 @@ class _NavItem extends StatelessWidget {
     final colors = AppTheme.colorsOf(context);
     final iconColor = selected ? colors.live : colors.textSecondary;
     final labelColor = selected ? colors.live : colors.textSecondary;
-    const animationDuration = Duration(milliseconds: 180);
+    final animationDuration = MediaQuery.of(context).disableAnimations
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
     const animationCurve = Curves.easeOutCubic;
 
     return ConstrainedBox(

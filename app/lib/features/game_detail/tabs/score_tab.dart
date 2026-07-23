@@ -35,10 +35,75 @@ class ScoreTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInningTable(),
+            if (_hasAnyInningData)
+              _buildInningTable()
+            else
+              _buildMissingInningCard(),
             if (footer != null) ...[const SizedBox(height: 12), footer!],
           ],
         ),
+      ),
+    );
+  }
+
+  bool get _hasAnyInningData {
+    return game.away.innings.any((score) => score != null) ||
+        game.home.innings.any((score) => score != null);
+  }
+
+  Widget _buildMissingInningCard() {
+    final (icon, title, description) = switch (game.status) {
+      GameStatus.cancelled => (
+        Icons.event_busy_outlined,
+        '경기 취소',
+        '취소된 경기라 이닝별 기록이 없습니다.',
+      ),
+      GameStatus.scheduled => (
+        Icons.schedule_outlined,
+        '경기 전',
+        '경기 시작 후 이닝별 기록이 표시됩니다.',
+      ),
+      GameStatus.suspended => (
+        Icons.pause_circle_outline,
+        '경기 중단',
+        '중단 시점의 이닝별 기록이 제공되지 않았습니다. 상단 총점을 확인해 주세요.',
+      ),
+      GameStatus.live || GameStatus.final_ => (
+        Icons.info_outline,
+        '이닝별 기록 미제공',
+        '이닝별 기록이 제공되지 않았습니다. 상단 총점을 확인해 주세요.',
+      ),
+    };
+
+    return Container(
+      key: const ValueKey('score-inning-empty-state'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 32, color: AppColors.textSecondary),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
   }

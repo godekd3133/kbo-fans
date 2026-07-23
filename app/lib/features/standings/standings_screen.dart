@@ -34,6 +34,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   Widget build(BuildContext context) {
     final myTeamId = ref.watch(myTeamProvider);
     final standingsAsync = ref.watch(standingsProvider(_selectedSeason));
+    final useCompactTitle = MediaQuery.sizeOf(context).width <= 300;
 
     return Scaffold(
       body: SafeArea(
@@ -46,9 +47,9 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: const Text(
-                        '정규시즌 순위표',
-                        style: TextStyle(
+                      child: Text(
+                        useCompactTitle ? 'KBO 순위' : '정규시즌 순위표',
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
                         ),
@@ -57,6 +58,7 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                     _seasonDropdown(),
                     const SizedBox(width: 8),
                     IconButton(
+                      tooltip: '순위 새로고침',
                       icon: Icon(
                         Icons.refresh,
                         size: 20,
@@ -140,6 +142,28 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                                   child: _StandingsPulseRail(
                                     standings: standings,
                                     myTeamId: myTeamId,
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    18,
+                                    0,
+                                    18,
+                                    2,
+                                  ),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      '차: 1위와 경기 차 · 연속: 현재 연승/연패',
+                                      key: const ValueKey(
+                                        'standings-column-help',
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textDisabled,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                 ),
                                 Padding(

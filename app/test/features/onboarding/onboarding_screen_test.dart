@@ -48,6 +48,34 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('280px·240% 글자 크기에서 혜택 설명은 한 열로 온전히 흐른다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await _pumpOnboarding(
+        tester,
+        physicalSize: const Size(280, 720),
+        textScaleFactor: 2.4,
+      );
+
+      expect(tester.takeException(), isNull);
+      final titleRects = [
+        tester.getRect(find.text('경기 우선')),
+        tester.getRect(find.text('득점 알림')),
+        tester.getRect(find.text('순위 추적')),
+      ];
+      expect(titleRects[1].top, greaterThan(titleRects[0].bottom));
+      expect(titleRects[2].top, greaterThan(titleRects[1].bottom));
+      expect(find.text('홈에서 먼저 보기'), findsOneWidget);
+      expect(find.text('실시간 알림 받기'), findsOneWidget);
+      expect(find.text('팀 순위 확인'), findsOneWidget);
+
+      final benefitSemantics = tester.getSemantics(find.text('경기 우선'));
+      expect(benefitSemantics.label, contains('홈에서 먼저 보기'));
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('선택한 응원 팀은 스크린리더에 선택 상태를 노출한다', (tester) async {
     final semantics = tester.ensureSemantics();
     try {

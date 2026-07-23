@@ -92,6 +92,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                   _sourceBadge(_selectedMetric),
                 ],
               ),
+              if (_selectedMetric.disclosure != null) ...[
+                const SizedBox(height: 10),
+                _metricDisclosure(_selectedMetric.disclosure!),
+              ],
               const SizedBox(height: 12),
               if (!_selectedMetric.supportedByOfficialSource)
                 Expanded(child: _unsupportedMetricCard(metric: _selectedMetric))
@@ -227,20 +231,53 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   }
 
   Widget _sourceBadge(LeaderboardMetric metric) {
-    final official = metric.supportedByOfficialSource;
+    final appCalculated = metric.isAppCalculated;
+    final available = metric.supportedByOfficialSource;
+    final badgeColor = appCalculated
+        ? AppColors.accent
+        : available
+        ? AppColors.positive
+        : AppColors.textDisabled;
     return Container(
+      key: ValueKey('leaderboard-source-${metric.key}'),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: (official ? AppColors.positive : AppColors.textDisabled)
-            .withValues(alpha: 0.12),
+        color: badgeColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        official ? '공식' : '미지원',
+        metric.sourceBadgeLabel,
         style: TextStyle(
           fontSize: 11,
-          color: official ? AppColors.positive : AppColors.textSecondary,
+          color: available || appCalculated
+              ? badgeColor
+              : AppColors.textSecondary,
           fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
+  Widget _metricDisclosure(String disclosure) {
+    return Semantics(
+      label: disclosure,
+      child: Container(
+        key: const ValueKey('leaderboard-ops-relative-disclosure'),
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.accent.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.accent.withValues(alpha: 0.28)),
+        ),
+        child: Text(
+          disclosure,
+          style: TextStyle(
+            fontSize: 12,
+            height: 1.4,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );

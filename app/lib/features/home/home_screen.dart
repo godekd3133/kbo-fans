@@ -481,6 +481,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _lastAutoMyTeamFollowKey;
   List<Game>? _lastScoreboardGames;
   String? _lastScoreboardDate;
+  DateTime? _lastScoreboardUpdatedAt;
   String? _lastScoreboardRefreshErrorLogKey;
   String? _lastPreviousScoreboardErrorLogKey;
   String? _openingGameDetailId;
@@ -529,6 +530,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           myTeamId,
                           today,
                           isFresh: false,
+                          refreshFailed: false,
                         ),
                       );
                     }
@@ -550,6 +552,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           myTeamId,
                           today,
                           isFresh: false,
+                          refreshFailed: true,
                         ),
                       );
                     }
@@ -602,6 +605,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     final displayGames = _uniqueGamesById(games);
                     _lastScoreboardDate = today;
                     _lastScoreboardGames = displayGames;
+                    _lastScoreboardUpdatedAt = kboCivilDateTime();
                     _lastScoreboardRefreshErrorLogKey = null;
                     return KeyedSubtree(
                       key: ValueKey(
@@ -613,6 +617,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         myTeamId,
                         today,
                         isFresh: true,
+                        refreshFailed: false,
                       ),
                     );
                   },
@@ -640,6 +645,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String? myTeamId,
     String today, {
     required bool isFresh,
+    required bool refreshFailed,
   }) {
     if (isFresh) {
       _scheduleRefresh(displayGames, myTeamId);
@@ -648,7 +654,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _ensureMyTeamAutoFollow(displayGames, myTeamId);
       _enableSecondarySections();
     }
-    return _buildContent(context, displayGames, myTeamId, today);
+    return _buildContent(
+      context,
+      displayGames,
+      myTeamId,
+      today,
+      isFresh: isFresh,
+      refreshFailed: refreshFailed,
+    );
   }
 
   void _logScoreboardRefreshFailure(String today, Object error) {
@@ -913,8 +926,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     BuildContext context,
     List<Game> games,
     String? myTeamId,
-    String today,
-  ) {
+    String today, {
+    required bool isFresh,
+    required bool refreshFailed,
+  }) {
     Game? myGame;
     if (myTeamId != null) {
       for (final game in games) {
@@ -933,6 +948,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(child: _buildHeader(context)),
+            if (!isFresh)
+              SliverToBoxAdapter(
+                child: _buildScoreboardFreshnessBanner(
+                  refreshFailed: refreshFailed,
+                ),
+              ),
             SliverToBoxAdapter(
               child: Consumer(
                 builder: (context, ref, _) {
@@ -1094,6 +1115,80 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 88)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScoreboardFreshnessBanner({required bool refreshFailed}) {
+    final lastUpdatedAt = _lastScoreboardUpdatedAt;
+    final updatedLabel = lastUpdatedAt == null
+        ? '마지막 갱신 시각 확인 불가'
+        : '마지막 갱신 ${DateFormat('HH:mm').format(lastUpdatedAt)} KST';
+    final title = refreshFailed ? '업데이트가 지연되고 있습니다' : '새 점수를 확인하는 중입니다';
+    final colors = AppTheme.colorsOf(context);
+
+    return Semantics(
+      liveRegion: true,
+      label: '$title, $updatedLabel',
+      child: Container(
+        key: const ValueKey('home-scoreboard-freshness-banner'),
+        margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: refreshFailed
+              ? colors.ballYellow.withValues(alpha: 0.12)
+              : colors.accent.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: refreshFailed
+                ? colors.ballYellow.withValues(alpha: 0.45)
+                : colors.accent.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              refreshFailed ? Icons.cloud_off_rounded : Icons.sync_rounded,
+              size: 18,
+              color: refreshFailed ? colors.ballYellow : colors.accent,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    updatedLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (refreshFailed)
+              TextButton(
+                onPressed: () => _invalidateTodayScoreboard(forceNetwork: true),
+                child: const Text('다시 시도'),
+              )
+            else
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
           ],
         ),
       ),

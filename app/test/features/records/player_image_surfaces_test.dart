@@ -344,6 +344,28 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('records-metric-avg')),
+        matching: find.text('타율 AVG'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('records-metric-hr')),
+        matching: find.text('홈런 HR'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('records-metric-ops')),
+        matching: find.text('출루·장타 OPS'),
+      ),
+      findsOneWidget,
+    );
+
     final panel = find.byKey(const ValueKey('records-pitching-leader-panel'));
     expect(panel, findsOneWidget);
     expect(
@@ -351,21 +373,22 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: panel, matching: find.text('ERA')),
+      find.descendant(of: panel, matching: find.text('평균자책 ERA')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: panel, matching: find.text('W')),
+      find.descendant(of: panel, matching: find.text('다승 W')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: panel, matching: find.text('SV')),
+      find.descendant(of: panel, matching: find.text('세이브 SV')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: panel, matching: find.text('SO')),
+      find.descendant(of: panel, matching: find.text('탈삼진 SO')),
       findsOneWidget,
     );
+    expect(find.textContaining('wRC+'), findsNothing);
     expect(find.text('폰세'), findsWidgets);
   });
 
@@ -705,7 +728,7 @@ const _overviewWithLeaders = RecordsOverview(
     playerType: 'hitter',
     name: '오스틴',
     teamId: 'LG',
-    headline: 'HR/OPS/wRC+ 선두',
+    headline: '홈런(HR)·출루/장타(OPS)·OPS 상대지수 선두',
     summary: '주요 타격 지표를 동시에 끌고 갑니다.',
   ),
   todayPitcher: FeaturedPlayerCard(

@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
@@ -21,6 +20,7 @@ import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/models/game.dart';
 import '../../data/models/highlight_info.dart';
 import '../../data/models/highlight_video.dart';
+import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/game_repository.dart';
 import '../../services/game_event_alert_service.dart';
@@ -135,6 +135,15 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
     });
   }
 
+  Future<void> _retryGame() async {
+    ref.invalidate(gameProvider(widget.gameId));
+    try {
+      await ref.read(gameProvider(widget.gameId).future);
+    } catch (error) {
+      DevConsole.instance.warn('Game detail retry failed: $error');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final gameAsync = ref.watch(gameProvider(widget.gameId));
@@ -181,9 +190,10 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
                   onRefreshSucceeded: _handleRefreshSucceeded,
                   onRefreshFailed: _handleRefreshFailed,
                 )
-              : Scaffold(
-                  appBar: AppBar(title: const Text('경기 상세')),
-                  body: const Center(child: Text('경기를 불러올 수 없습니다')),
+              : _GameDetailUnavailable(
+                  title: '경기를 불러올 수 없습니다',
+                  description: '네트워크 연결을 확인한 뒤 다시 시도해 주세요.',
+                  onRetry: () => unawaited(_retryGame()),
                 ),
         ),
         data: (loadedGame) {
@@ -194,9 +204,10 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
           if (resolvedGame == null) {
             return KeyedSubtree(
               key: ValueKey('game-detail-missing-${widget.gameId}'),
-              child: Scaffold(
-                appBar: AppBar(title: const Text('경기 상세')),
-                body: const Center(child: Text('경기를 찾을 수 없습니다')),
+              child: _GameDetailUnavailable(
+                title: '경기를 찾을 수 없습니다',
+                description: '경기 정보가 아직 준비되지 않았거나 삭제되었을 수 있습니다.',
+                onRetry: () => unawaited(_retryGame()),
               ),
             );
           }
@@ -216,6 +227,101 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _GameDetailUnavailable extends StatelessWidget {
+  final String title;
+  final String description;
+  final VoidCallback onRetry;
+
+  const _GameDetailUnavailable({
+    required this.title,
+    required this.description,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final router = GoRouter.of(context);
+
+    void goBackOrHome() {
+      if (router.canPop()) {
+        router.pop();
+        return;
+      }
+      context.go('/home');
+    }
+
+    return PopScope(
+      canPop: router.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.go('/home');
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            tooltip: '뒤로',
+            onPressed: goBackOrHome,
+            icon: const Icon(Icons.arrow_back),
+          ),
+          title: const Text('경기 상세'),
+        ),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.sports_baseball_outlined,
+                    size: 40,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    description,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('다시 시도'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => context.go('/home'),
+                    icon: const Icon(Icons.home_outlined),
+                    label: const Text('홈으로'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -284,6 +390,12 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   @override
   void didUpdateWidget(covariant _GameDetailBody oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTabIndex != widget.initialTabIndex) {
+      final nextIndex = widget.initialTabIndex.clamp(0, 3);
+      if (_tabController.index != nextIndex) {
+        _tabController.animateTo(nextIndex);
+      }
+    }
     if (oldWidget.gameId != widget.gameId ||
         oldWidget.game.status != widget.game.status) {
       _refreshTimer?.cancel();
@@ -602,18 +714,28 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     });
 
     try {
+      final nextFollowingState = !_isFollowingGame;
+      late final String feedbackMessage;
       if (_isFollowingGame) {
         await LiveActivityService.instance.stopFollowing();
+        feedbackMessage = '경기 팔로우를 해제했습니다.';
       } else {
         await LiveActivityService.instance.followGame(game.gameId);
-        await LiveActivityService.instance.requestPermissions();
-        await GameEventAlertService.instance.requestPermissions();
-        await PushNotificationService.instance.requestPermissionAndSync(
-          myTeam: ref.read(myTeamProvider),
-        );
+        final liveActivityAllowed = await LiveActivityService.instance
+            .requestPermissions();
+        final eventAlertsAllowed = await GameEventAlertService.instance
+            .requestPermissions();
+        final pushAllowed = await PushNotificationService.instance
+            .requestPermissionAndSync(myTeam: ref.read(myTeamProvider));
         await LiveActivityService.instance.syncFollowedGame(
           game,
           repository: ref.read(gameRepositoryProvider),
+        );
+        feedbackMessage = followGameSavedMessage(
+          isWeb: kIsWeb,
+          liveActivityAllowed: liveActivityAllowed,
+          eventAlertsAllowed: eventAlertsAllowed,
+          pushAllowed: pushAllowed,
         );
       }
 
@@ -621,14 +743,12 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         return;
       }
       setState(() {
-        _isFollowingGame = !_isFollowingGame;
+        _isFollowingGame = nextFollowingState;
         _followStateLoaded = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_isFollowingGame ? '푸쉬 중계를 시작했습니다' : '푸쉬 중계를 종료했습니다'),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(feedbackMessage)));
     } catch (error) {
       DevConsole.instance.warn('Follow game toggle failed: $error');
       if (!mounted) {
@@ -639,7 +759,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       });
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('푸쉬 중계 설정에 실패했습니다')));
+      ).showSnackBar(const SnackBar(content: Text('경기 팔로우 설정에 실패했습니다')));
     }
   }
 
@@ -924,7 +1044,7 @@ class _GameScorebug extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     _ScorebugScore(
-                      score: game.away.score,
+                      scoreText: _scorebugScoreText(game, game.away),
                       scoreKey: const ValueKey(
                         'game-detail-scorebug-away-score',
                       ),
@@ -952,7 +1072,7 @@ class _GameScorebug extends StatelessWidget {
                       ),
                     ),
                     _ScorebugScore(
-                      score: game.home.score,
+                      scoreText: _scorebugScoreText(game, game.home),
                       scoreKey: const ValueKey(
                         'game-detail-scorebug-home-score',
                       ),
@@ -1047,6 +1167,12 @@ String _scorebugInningLabel(Game game) {
   if (game.status == GameStatus.final_) {
     return labelForGameStatus(game.status, statusLabel: game.statusLabel);
   }
+  if (game.status == GameStatus.cancelled) {
+    return labelForGameStatus(game.status, statusLabel: game.statusLabel);
+  }
+  if (game.status == GameStatus.suspended) {
+    return '경기 중단';
+  }
 
   final inning = _normalizedInningLabel(game.inning);
   if (inning != null) {
@@ -1072,6 +1198,14 @@ String _scorebugInningLabel(Game game) {
       statusLabel: game.statusLabel,
     ),
   };
+}
+
+String _scorebugScoreText(Game game, TeamScore team) {
+  if (game.status == GameStatus.scheduled ||
+      game.status == GameStatus.cancelled) {
+    return '–';
+  }
+  return '${team.score}';
 }
 
 String? _normalizedInningLabel(String raw) {
@@ -1122,14 +1256,13 @@ class _LiveBadge extends StatelessWidget {
 }
 
 class _ScorebugScore extends StatelessWidget {
-  final int score;
+  final String scoreText;
   final Key scoreKey;
 
-  const _ScorebugScore({required this.score, required this.scoreKey});
+  const _ScorebugScore({required this.scoreText, required this.scoreKey});
 
   @override
   Widget build(BuildContext context) {
-    final scoreText = '$score';
     return SizedBox(
       width: 56,
       height: 58,
@@ -1323,10 +1456,10 @@ class _FollowGameCard extends StatelessWidget {
         ? Icons.notifications_off_outlined
         : Icons.notifications_active_outlined;
     final label = isLoading
-        ? '푸쉬 중계 확인 중'
+        ? '경기 팔로우 확인 중'
         : isFollowing
-        ? '푸쉬 중계 끄기'
-        : '푸쉬 중계 받기';
+        ? '경기 팔로우 해제'
+        : '경기 팔로우하기';
 
     return SizedBox(
       width: double.infinity,
@@ -1358,6 +1491,22 @@ class _FollowGameCard extends StatelessWidget {
       ),
     );
   }
+}
+
+@visibleForTesting
+String followGameSavedMessage({
+  required bool isWeb,
+  required bool liveActivityAllowed,
+  required bool eventAlertsAllowed,
+  required bool pushAllowed,
+}) {
+  if (isWeb) {
+    return '경기 팔로우를 저장했습니다. 이 환경에서는 푸시 알림을 지원하지 않습니다.';
+  }
+  if (!liveActivityAllowed || !eventAlertsAllowed || !pushAllowed) {
+    return '경기 팔로우를 저장했습니다. 알림 권한 또는 지원 환경을 확인해 주세요.';
+  }
+  return '경기 팔로우를 저장했습니다. 알림은 기기와 서버 상태에 따라 전달됩니다.';
 }
 
 int _tabIndexFromName(String? tab) {
@@ -1407,7 +1556,11 @@ class _TicketInfoCard extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           _infoRow('예매처', ticket.vendorName),
-          _infoRow('예매 시작', _formatTicketTime(ticket.openAt)),
+          _infoRow('예매 시작', _formatTicketTime(ticket)),
+          _infoRow(
+            '정보 기준',
+            ticket.isInferred ? ticket.note ?? '홈팀 기본 예매 정책으로 계산' : '예매처 제공 정보',
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -1509,11 +1662,13 @@ class _TicketInfoCard extends ConsumerWidget {
     );
   }
 
-  String _formatTicketTime(DateTime? value) {
+  String _formatTicketTime(TicketInfo ticket) {
+    final value = ticket.openAt;
     if (value == null) {
       return '오픈 시간 미정';
     }
-    return DateFormat('MM.dd HH:mm').format(value);
+    final sourceLabel = ticket.isInferred ? '예상' : '공식';
+    return '${formatTicketOpenAt(value)} KST $sourceLabel';
   }
 }
 

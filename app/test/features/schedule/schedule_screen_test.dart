@@ -14,12 +14,38 @@ import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/player.dart';
 import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
+import 'package:kbo_fans/data/models/ticketing.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/schedule/schedule_screen.dart';
 
 void main() {
   setUpAll(() {
     AppConfig.initialize();
+  });
+
+  test('예매 시각은 KST와 공식·예상 출처를 구분한다', () {
+    expect(
+      formatScheduleTicketSummary(
+        TicketInfo(
+          vendorKey: 'interpark',
+          vendorName: '인터파크 티켓',
+          openAt: DateTime.utc(2026, 7, 13, 2),
+          source: TicketSource.inferred,
+        ),
+      ),
+      '인터파크 티켓 · 07.13 11:00 KST 예상 오픈',
+    );
+    expect(
+      formatScheduleTicketSummary(
+        TicketInfo(
+          vendorKey: 'ticketlink',
+          vendorName: '티켓링크',
+          openAt: DateTime.utc(2026, 7, 13, 2),
+          source: TicketSource.official,
+        ),
+      ),
+      '티켓링크 · 07.13 11:00 KST 공식 오픈',
+    );
   });
 
   testWidgets('일정 초기 로딩은 새로고침 indicator와 중복되지 않는다', (tester) async {
@@ -172,6 +198,10 @@ void main() {
     expect(find.text('어제 LG-KT'), findsNothing);
     expect(find.text('다음달 LG-KT'), findsOneWidget);
     expect(find.text('LG-SSG 제외'), findsNothing);
+    expect(find.text('오늘 진행 중 LG-KT'), findsNothing);
+    expect(find.text('오늘 종료 LG-KT'), findsNothing);
+    expect(find.text('오늘 취소 LG-KT'), findsNothing);
+    expect(find.textContaining('남은 3경기'), findsOneWidget);
 
     final todayTop = tester.getTopLeft(find.text('오늘 LG-KT')).dy;
     final tomorrowTop = tester.getTopLeft(find.text('내일 LG-KT')).dy;
@@ -288,6 +318,49 @@ void main() {
       find.byKey(const ValueKey('schedule-my-team-badge-today-nc-ob')),
       findsNothing,
     );
+  });
+
+  testWidgets('280px 캘린더 날짜는 44px 터치 영역과 전체 맥락을 읽어 준다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.binding.setSurfaceSize(const Size(280, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final today = kboCivilDateTime();
+
+    try {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+            scheduleProvider.overrideWith(
+              (_, yearMonth) async => _myTeamScheduleForToday(today, yearMonth),
+            ),
+          ],
+          child: const MaterialApp(home: ScheduleScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('내 팀 우선'), findsOneWidget);
+      expect(find.text('내 팀 먼저 보기'), findsNothing);
+
+      final dateCell = find.byKey(
+        ValueKey('schedule-date-${today.year}-${today.month}-${today.day}'),
+      );
+      expect(dateCell, findsOneWidget);
+      final size = tester.getSize(dateCell);
+      expect(size.width, greaterThanOrEqualTo(44));
+      expect(size.height, greaterThanOrEqualTo(44));
+
+      final data = tester.getSemantics(dateCell).getSemanticsData();
+      expect(data.label, contains('${today.month}월 ${today.day}일'));
+      expect(data.label, contains('오늘'));
+      expect(data.label, contains('마이팀 경기 있음'));
+      expect(data.label, contains('선택됨'));
+      expect(data.flagsCollection.isSelected.toBoolOrNull(), isTrue);
+      expect(tester.takeException(), isNull);
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('마이팀 필터에서 구장별 보기로 전환해도 월 헤더가 화면 안에 남는다', (tester) async {
@@ -815,6 +888,40 @@ List<ScheduleDay> _seasonWideMatchupSchedule(
         homeId: 'SK',
         homeName: 'SSG 랜더스',
         stadium: 'LG-SSG 제외',
+      ),
+      ScheduleGame(
+        gameId: 'today-live-lg-kt',
+        time: '18:31',
+        awayId: 'LG',
+        awayName: 'LG 트윈스',
+        homeId: 'KT',
+        homeName: 'KT 위즈',
+        stadium: '오늘 진행 중 LG-KT',
+        status: 'LIVE',
+        awayScore: 2,
+        homeScore: 1,
+      ),
+      ScheduleGame(
+        gameId: 'today-final-lg-kt',
+        time: '18:32',
+        awayId: 'LG',
+        awayName: 'LG 트윈스',
+        homeId: 'KT',
+        homeName: 'KT 위즈',
+        stadium: '오늘 종료 LG-KT',
+        status: 'FINAL',
+        awayScore: 3,
+        homeScore: 1,
+      ),
+      ScheduleGame(
+        gameId: 'today-cancelled-lg-kt',
+        time: '18:33',
+        awayId: 'LG',
+        awayName: 'LG 트윈스',
+        homeId: 'KT',
+        homeName: 'KT 위즈',
+        stadium: '오늘 취소 LG-KT',
+        status: 'CANCELLED',
       ),
     ],
     tomorrow: const [

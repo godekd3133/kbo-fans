@@ -137,7 +137,7 @@ class TicketAlertService {
       await _plugin.zonedSchedule(
         _notificationId(game.gameId, index),
         buildTicketAlertTitle(game),
-        '${ticket.vendorName} 예매 ${_relativeLabel(offset)} 전입니다. 오픈 시각 ${formatTicketOpenAt(ticket.openAt!)}',
+        '${ticket.vendorName} 예매 ${_relativeLabel(offset)} 전입니다. 오픈 시각 ${formatTicketOpenAt(ticket.openAt!)} KST',
         tz.TZDateTime.from(reminderTime, tz.local),
         NotificationDetails(
           android: const AndroidNotificationDetails(
@@ -208,7 +208,6 @@ class TicketAlertService {
   }
 }
 
-@visibleForTesting
 String formatTicketOpenAt(DateTime value) {
   final kbo = kboCivilDateTime(value);
   final month = kbo.month.toString().padLeft(2, '0');

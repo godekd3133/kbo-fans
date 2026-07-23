@@ -70,6 +70,26 @@ void main() {
     expect(find.text('최원준'), findsOneWidget);
     expect(requestedKeys, contains('2026|avg'));
 
+    await tester.tap(find.byKey(const ValueKey('leaderboard-metric-opsPlus')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 240));
+
+    expect(find.text('리그 OPS 상대지수 리더보드'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('leaderboard-source-opsPlus')),
+        matching: find.text('앱 계산'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('leaderboard-ops-relative-disclosure')),
+      findsOneWidget,
+    );
+    expect(find.text(opsRelativeIndexDisclosure), findsOneWidget);
+    expect(find.text('공식'), findsNothing);
+    expect(requestedKeys, contains('2026|opsPlus'));
+
     await tester.tap(find.byKey(const ValueKey('leaderboard-group-pitcher')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 240));
@@ -91,6 +111,10 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('폰세'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('leaderboard-ops-relative-disclosure')),
+      findsNothing,
+    );
     expect(requestedKeys, contains('2026|era'));
 
     await tester.tap(

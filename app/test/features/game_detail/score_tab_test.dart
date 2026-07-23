@@ -59,6 +59,93 @@ void main() {
     expect(semantics.label, contains('R은 득점'));
     semanticsHandle.dispose();
   });
+
+  testWidgets('예정 경기의 이닝 기록이 없으면 경기 시작 안내를 표시한다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: const Scaffold(
+          body: ScoreTab(gameId: 'scheduled-game', game: _scheduledGame),
+        ),
+      ),
+    );
+
+    expect(find.text('경기 시작 후 이닝별 기록이 표시됩니다.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('score-scrollable-columns')),
+      findsNothing,
+    );
+    expect(find.text('R 득점 · H 안타 · E 실책 · B 사사구'), findsNothing);
+  });
+
+  testWidgets('취소 경기의 이닝 기록이 없으면 취소 안내를 표시한다', (tester) async {
+    await _pumpScoreTab(tester, _gameWithoutInnings(GameStatus.cancelled));
+
+    expect(find.text('경기 취소'), findsOneWidget);
+    expect(find.text('취소된 경기라 이닝별 기록이 없습니다.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('score-scrollable-columns')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('진행·종료 경기의 이닝 기록이 없으면 상단 총점 안내를 표시한다', (tester) async {
+    for (final status in [GameStatus.live, GameStatus.final_]) {
+      await _pumpScoreTab(tester, _gameWithoutInnings(status));
+
+      expect(find.text('이닝별 기록 미제공'), findsOneWidget);
+      expect(find.text('이닝별 기록이 제공되지 않았습니다. 상단 총점을 확인해 주세요.'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('score-scrollable-columns')),
+        findsNothing,
+      );
+    }
+  });
+
+  testWidgets('중단 경기의 이닝 기록이 없으면 중단 시점 안내를 표시한다', (tester) async {
+    await _pumpScoreTab(tester, _gameWithoutInnings(GameStatus.suspended));
+
+    expect(find.text('경기 중단'), findsOneWidget);
+    expect(
+      find.text('중단 시점의 이닝별 기록이 제공되지 않았습니다. 상단 총점을 확인해 주세요.'),
+      findsOneWidget,
+    );
+  });
+}
+
+Future<void> _pumpScoreTab(WidgetTester tester, Game game) {
+  return tester.pumpWidget(
+    MaterialApp(
+      theme: AppTheme.dark,
+      home: Scaffold(
+        body: ScoreTab(gameId: game.gameId, game: game),
+      ),
+    ),
+  );
+}
+
+Game _gameWithoutInnings(GameStatus status) {
+  return Game(
+    gameId: 'empty-${status.name}',
+    status: status,
+    inning: status == GameStatus.live ? '5회초' : '',
+    away: const TeamScore(
+      teamId: 'KT',
+      teamName: 'KT 위즈',
+      shortName: 'KT',
+      score: 2,
+      innings: [],
+    ),
+    home: const TeamScore(
+      teamId: 'LG',
+      teamName: 'LG 트윈스',
+      shortName: 'LG',
+      score: 1,
+      innings: [],
+    ),
+    stadium: '잠실',
+    startTime: '18:30',
+  );
 }
 
 const _extraGame = Game(
@@ -84,6 +171,28 @@ const _extraGame = Game(
     hits: 8,
     errors: 0,
     walks: 3,
+  ),
+  stadium: '잠실',
+  startTime: '18:30',
+);
+
+const _scheduledGame = Game(
+  gameId: 'scheduled-game',
+  status: GameStatus.scheduled,
+  inning: '',
+  away: TeamScore(
+    teamId: 'KT',
+    teamName: 'KT 위즈',
+    shortName: 'KT',
+    score: 0,
+    innings: [],
+  ),
+  home: TeamScore(
+    teamId: 'LG',
+    teamName: 'LG 트윈스',
+    shortName: 'LG',
+    score: 0,
+    innings: [],
   ),
   stadium: '잠실',
   startTime: '18:30',

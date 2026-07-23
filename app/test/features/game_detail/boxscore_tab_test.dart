@@ -179,6 +179,114 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final width in <double>[280, 320]) {
+    testWidgets('${width.toInt()}px·240% 박스스코어는 긴 선수명과 5개 지표를 리플로우한다', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      tester.view.physicalSize = Size(width, 1100);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      try {
+        await _pumpBoxscoreTab(
+          tester,
+          boxscore: _longNameBoxscore,
+          players: const <PlayerProfile>[],
+        );
+
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        const batterName = '대한민국프로야구최장선수이름';
+        final batterIdentity = find.byKey(
+          const ValueKey('boxscore-record-identity-$batterName'),
+        );
+        final batterMetrics = find.byKey(
+          const ValueKey('boxscore-record-metrics-$batterName'),
+        );
+        final awayToggle = find.byKey(
+          const ValueKey('boxscore-team-toggle-away'),
+        );
+        final homeToggle = find.byKey(
+          const ValueKey('boxscore-team-toggle-home'),
+        );
+
+        expect(tester.takeException(), isNull);
+        expect(batterIdentity, findsOneWidget);
+        expect(batterMetrics, findsOneWidget);
+        expect(
+          find.descendant(of: batterIdentity, matching: find.text(batterName)),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: batterIdentity,
+            matching: find.textContaining('좌익수와지명타자'),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          tester.getTopLeft(batterMetrics).dy,
+          greaterThan(tester.getBottomLeft(batterIdentity).dy),
+        );
+        for (final label in ['타수', '안타', '타점', '득점', '타율']) {
+          expect(
+            find.descendant(of: batterMetrics, matching: find.text(label)),
+            findsOneWidget,
+          );
+        }
+        for (var i = 0; i < 5; i++) {
+          expect(
+            find.byKey(ValueKey('boxscore-summary-metric-$i')),
+            findsOneWidget,
+          );
+        }
+        expect(
+          tester
+              .getTopLeft(
+                find.byKey(const ValueKey('boxscore-summary-metric-2')),
+              )
+              .dy,
+          greaterThan(
+            tester
+                .getTopLeft(
+                  find.byKey(const ValueKey('boxscore-summary-metric-0')),
+                )
+                .dy,
+          ),
+        );
+        expect(
+          tester.getTopLeft(homeToggle).dy,
+          greaterThan(tester.getBottomLeft(awayToggle).dy),
+        );
+
+        final selectedTeamSemantics = tester
+            .getSemantics(awayToggle)
+            .getSemanticsData();
+        expect(
+          selectedTeamSemantics.flagsCollection.isSelected.toBoolOrNull(),
+          isTrue,
+        );
+
+        final batterSemantics = tester
+            .getSemantics(
+              find.byKey(const ValueKey('boxscore-record-row-$batterName')),
+            )
+            .getSemanticsData();
+        expect(batterSemantics.label, contains(batterName));
+        expect(batterSemantics.label, contains('좌익수와지명타자 9번'));
+        expect(batterSemantics.label, contains('타수 5'));
+        expect(batterSemantics.label, contains('타율 0.600'));
+      } finally {
+        semantics.dispose();
+      }
+    });
+  }
+
   testWidgets('박스스코어 오류는 안전한 문구와 재시도만 노출한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -430,6 +538,65 @@ const _officialBoxscore = GameBoxscoreData(
         innings: '4.0',
         hits: 4,
         strikeouts: 3,
+        walks: 1,
+        earnedRuns: 2,
+      ),
+    ],
+  ),
+);
+
+const _longNameBoxscore = GameBoxscoreData(
+  gameId: '20260613KTLG0',
+  officialAvailable: true,
+  away: TeamBoxscoreData(
+    teamId: 'KT',
+    batters: [
+      BatterRecord(
+        order: 9,
+        position: '좌익수와지명타자',
+        name: '대한민국프로야구최장선수이름',
+        atBats: 5,
+        runs: 2,
+        hits: 3,
+        rbi: 4,
+        doubles: 1,
+        triples: 1,
+        homeRuns: 1,
+        walks: 1,
+        strikeouts: 1,
+      ),
+    ],
+    pitchers: [
+      PitcherRecord(
+        name: '대한민국프로야구최장투수이름',
+        innings: '12.2',
+        hits: 10,
+        strikeouts: 11,
+        walks: 2,
+        earnedRuns: 3,
+        decision: '승',
+      ),
+    ],
+  ),
+  home: TeamBoxscoreData(
+    teamId: 'LG',
+    batters: [
+      BatterRecord(
+        order: 1,
+        position: '중견수',
+        name: '홍길동',
+        atBats: 4,
+        runs: 1,
+        hits: 1,
+        rbi: 0,
+      ),
+    ],
+    pitchers: [
+      PitcherRecord(
+        name: '김투수',
+        innings: '5.0',
+        hits: 5,
+        strikeouts: 4,
         walks: 1,
         earnedRuns: 2,
       ),

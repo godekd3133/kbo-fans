@@ -17,6 +17,11 @@ import '../../../data/models/player.dart';
 import '../../../data/models/records_overview.dart';
 import '../../../data/providers.dart';
 
+bool _usesCompactBoxscoreLayout(BuildContext context) {
+  final mediaQuery = MediaQuery.of(context);
+  return mediaQuery.size.width <= 360 || mediaQuery.textScaler.scale(1) >= 1.5;
+}
+
 class BoxscoreTab extends ConsumerStatefulWidget {
   final String gameId;
   final Game game;
@@ -230,27 +235,30 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   }
 
   Widget _buildTeamToggle() {
+    final away = _TeamToggleCard(
+      sideLabel: 'AWAY',
+      teamId: widget.awayTeamId,
+      teamName: widget.awayName,
+      active: _showAway,
+      onTap: () => setState(() => _showAway = true),
+    );
+    final home = _TeamToggleCard(
+      sideLabel: 'HOME',
+      teamId: widget.homeTeamId,
+      teamName: widget.homeName,
+      active: !_showAway,
+      onTap: () => setState(() => _showAway = false),
+    );
+
+    if (_usesCompactBoxscoreLayout(context)) {
+      return Column(children: [away, const SizedBox(height: 10), home]);
+    }
+
     return Row(
       children: [
-        Expanded(
-          child: _TeamToggleCard(
-            sideLabel: 'AWAY',
-            teamId: widget.awayTeamId,
-            teamName: widget.awayName,
-            active: _showAway,
-            onTap: () => setState(() => _showAway = true),
-          ),
-        ),
+        Expanded(child: away),
         const SizedBox(width: 10),
-        Expanded(
-          child: _TeamToggleCard(
-            sideLabel: 'HOME',
-            teamId: widget.homeTeamId,
-            teamName: widget.homeName,
-            active: !_showAway,
-            onTap: () => setState(() => _showAway = false),
-          ),
-        ),
+        Expanded(child: home),
       ],
     );
   }
@@ -530,11 +538,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       values: batter.liveContext
           ? _liveBatterRecordCells(batter, accent)
           : [
-              _RecordCell(value: '${batter.atBats}', width: 38),
-              _RecordCell(value: '${batter.hits}', width: 38),
-              _RecordCell(value: '${batter.rbi}', width: 38),
-              _RecordCell(value: '${batter.runs}', width: 38),
+              _RecordCell(label: '타수', value: '${batter.atBats}', width: 38),
+              _RecordCell(label: '안타', value: '${batter.hits}', width: 38),
+              _RecordCell(label: '타점', value: '${batter.rbi}', width: 38),
+              _RecordCell(label: '득점', value: '${batter.runs}', width: 38),
               _RecordCell(
+                label: '타율',
                 value: todayAvg.toStringAsFixed(3),
                 width: 54,
                 color: accent,
@@ -557,19 +566,20 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
   List<_RecordCell> _liveBatterRecordCells(BatterRecord batter, Color accent) {
     if (!_hasLiveBatterStats(batter)) {
       return const [
-        _RecordCell(value: '-', width: 38),
-        _RecordCell(value: '-', width: 38),
-        _RecordCell(value: '-', width: 38),
-        _RecordCell(value: '-', width: 38),
-        _RecordCell(value: '-', width: 54),
+        _RecordCell(label: '타수', value: '-', width: 38),
+        _RecordCell(label: '안타', value: '-', width: 38),
+        _RecordCell(label: '타점', value: '-', width: 38),
+        _RecordCell(label: '득점', value: '-', width: 38),
+        _RecordCell(label: '타율', value: '-', width: 54),
       ];
     }
     return [
-      _RecordCell(value: '${batter.atBats}', width: 38),
-      _RecordCell(value: '${batter.hits}', width: 38),
-      const _RecordCell(value: '-', width: 38),
-      const _RecordCell(value: '-', width: 38),
+      _RecordCell(label: '타수', value: '${batter.atBats}', width: 38),
+      _RecordCell(label: '안타', value: '${batter.hits}', width: 38),
+      const _RecordCell(label: '타점', value: '-', width: 38),
+      const _RecordCell(label: '득점', value: '-', width: 38),
       _RecordCell(
+        label: '타율',
         value: batter.atBats > 0
             ? (batter.hits / batter.atBats).toStringAsFixed(3)
             : '-',
@@ -605,11 +615,12 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
           : _pitcherAdvancedLabels(pitcher),
       values: pitcher.liveContext
           ? [
-              const _RecordCell(value: '-', width: 42),
-              const _RecordCell(value: '-', width: 42),
-              const _RecordCell(value: '-', width: 38),
-              const _RecordCell(value: '-', width: 38),
+              const _RecordCell(label: '이닝', value: '-', width: 42),
+              const _RecordCell(label: '피안타', value: '-', width: 42),
+              const _RecordCell(label: '자책', value: '-', width: 38),
+              const _RecordCell(label: '삼진', value: '-', width: 38),
               _RecordCell(
+                label: '결과',
                 value: pitcher.decision ?? '-',
                 width: 42,
                 color: pitcher.decision == null
@@ -618,11 +629,20 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
               ),
             ]
           : [
-              _RecordCell(value: pitcher.innings, width: 42),
-              _RecordCell(value: '${pitcher.hits}', width: 42),
-              _RecordCell(value: '${pitcher.earnedRuns}', width: 38),
-              _RecordCell(value: '${pitcher.strikeouts}', width: 38),
+              _RecordCell(label: '이닝', value: pitcher.innings, width: 42),
+              _RecordCell(label: '피안타', value: '${pitcher.hits}', width: 42),
               _RecordCell(
+                label: '자책',
+                value: '${pitcher.earnedRuns}',
+                width: 38,
+              ),
+              _RecordCell(
+                label: '삼진',
+                value: '${pitcher.strikeouts}',
+                width: 38,
+              ),
+              _RecordCell(
+                label: '결과',
                 value: pitcher.decision ?? '-',
                 width: 42,
                 color: pitcher.decision == null
@@ -865,73 +885,127 @@ class _BoxscoreSummaryPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(
-          top: BorderSide(color: AppColors.divider),
-          bottom: BorderSide(color: AppColors.divider),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final useReflowLayout =
+            _usesCompactBoxscoreLayout(context) || constraints.maxWidth <= 328;
+        final useSingleColumnMetrics = textScale >= 1.5;
+        final metricWidth = useSingleColumnMetrics
+            ? constraints.maxWidth
+            : (constraints.maxWidth - 8) / 2;
+
+        return Container(
+          width: double.infinity,
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            border: Border(
+              top: BorderSide(color: AppColors.divider),
+              bottom: BorderSide(color: AppColors.divider),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _TeamLogo(teamId: teamId, fallback: teamName, size: 38),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _TeamLogo(teamId: teamId, fallback: teamName, size: 38),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            teamName,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: accent,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                if (useReflowLayout)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 19,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
+                      for (int i = 0; i < metrics.length; i++)
+                        SizedBox(
+                          key: ValueKey('boxscore-summary-metric-$i'),
+                          width: metricWidth,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AppColors.card,
+                              border: Border.all(color: AppColors.divider),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 10,
+                              ),
+                              child: _SummaryMetricTile(
+                                metric: metrics[i],
+                                allowMultipleLines: true,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        teamName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: accent,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      for (int i = 0; i < metrics.length; i++) ...[
+                        Expanded(
+                          key: ValueKey('boxscore-summary-metric-$i'),
+                          child: _SummaryMetricTile(metric: metrics[i]),
                         ),
-                      ),
+                        if (i != metrics.length - 1)
+                          Container(
+                            width: 1,
+                            height: 34,
+                            color: AppColors.divider,
+                          ),
+                      ],
                     ],
                   ),
-                ),
               ],
             ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                for (int i = 0; i < metrics.length; i++) ...[
-                  Expanded(child: _SummaryMetricTile(metric: metrics[i])),
-                  if (i != metrics.length - 1)
-                    Container(width: 1, height: 34, color: AppColors.divider),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
 class _SummaryMetricTile extends StatelessWidget {
   final _SummaryMetric metric;
+  final bool allowMultipleLines;
 
-  const _SummaryMetricTile({required this.metric});
+  const _SummaryMetricTile({
+    required this.metric,
+    this.allowMultipleLines = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -940,8 +1014,9 @@ class _SummaryMetricTile extends StatelessWidget {
       children: [
         Text(
           metric.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: allowMultipleLines ? null : 1,
+          overflow: allowMultipleLines ? null : TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 11,
             color: AppColors.textSecondary,
@@ -951,8 +1026,9 @@ class _SummaryMetricTile extends StatelessWidget {
         const SizedBox(height: 5),
         Text(
           metric.value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: allowMultipleLines ? null : 1,
+          overflow: allowMultipleLines ? null : TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 18,
             color: AppColors.textPrimary,
@@ -1348,6 +1424,10 @@ class _RecordTableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_usesCompactBoxscoreLayout(context)) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       height: 34,
       decoration: BoxDecoration(
@@ -1412,16 +1492,45 @@ class _RecordDataRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppPressable(
-      pressedScale: onTap == null ? 1 : 0.99,
-      onTap: onTap,
-      child: Container(
-        constraints: BoxConstraints(minHeight: actionLabel == null ? 58 : 68),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          border: Border(bottom: BorderSide(color: AppColors.divider)),
+    final useReflowLayout = _usesCompactBoxscoreLayout(context);
+    final semanticLabel = [
+      name,
+      meta.replaceAll(RegExp(r'\s+'), ' ').trim(),
+      for (final value in values) '${value.label} ${value.value}',
+      ...supportingLabels,
+      ?actionLabel,
+    ].join(', ');
+
+    return Semantics(
+      key: ValueKey('boxscore-record-row-$name'),
+      container: true,
+      excludeSemantics: true,
+      label: semanticLabel,
+      button: onTap != null,
+      enabled: onTap == null ? null : true,
+      child: AppPressable(
+        pressedScale: onTap == null ? 1 : 0.99,
+        onTap: onTap,
+        child: Container(
+          constraints: BoxConstraints(minHeight: actionLabel == null ? 58 : 68),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.divider)),
+          ),
+          child: useReflowLayout
+              ? _buildReflowLayout(context)
+              : _buildTableLayout(),
         ),
-        child: Row(
+      ),
+    );
+  }
+
+  Widget _buildReflowLayout(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _PlayerAvatar(
               accent: accent,
@@ -1433,13 +1542,11 @@ class _RecordDataRow extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Column(
+                key: ValueKey('boxscore-record-identity-$name'),
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -1447,62 +1554,202 @@ class _RecordDataRow extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      if (actionLabel != null) ...[
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            actionLabel!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: accent,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
+                  Text(
+                    meta,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  if (supportingLabels.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      children: [
-                        for (final label in supportingLabels)
-                          _RecordSupportLabel(label: label, accent: accent),
-                      ],
+                  if (actionLabel != null) ...[
+                    const SizedBox(height: 5),
+                    Text(
+                      actionLabel!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: accent,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ],
                 ],
               ),
             ),
-            for (final value in values) value,
-            SizedBox(
-              width: 18,
-              child: Icon(
-                Icons.chevron_right_rounded,
-                size: 20,
-                color: onTap == null ? Colors.transparent : accent,
+            if (onTap != null)
+              Padding(
+                padding: const EdgeInsets.only(left: 6, top: 8),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: accent,
+                ),
               ),
-            ),
           ],
         ),
+        if (supportingLabels.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final label in supportingLabels)
+                _RecordSupportLabel(label: label, accent: accent),
+            ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final useSingleColumn =
+                MediaQuery.textScalerOf(context).scale(1) >= 1.5;
+            final metricWidth = useSingleColumn
+                ? constraints.maxWidth
+                : (constraints.maxWidth - 8) / 2;
+            return Wrap(
+              key: ValueKey('boxscore-record-metrics-$name'),
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final value in values)
+                  SizedBox(
+                    width: metricWidth,
+                    child: _RecordCompactMetric(cell: value),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTableLayout() {
+    return Row(
+      children: [
+        _PlayerAvatar(
+          accent: accent,
+          badgeLabel: badgeLabel,
+          imageUrl: imageUrl,
+          size: 42,
+          radius: 10,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            key: ValueKey('boxscore-record-identity-$name'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  if (actionLabel != null) ...[
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        actionLabel!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: accent,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (supportingLabels.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    for (final label in supportingLabels)
+                      _RecordSupportLabel(label: label, accent: accent),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        for (final value in values) value,
+        SizedBox(
+          width: 18,
+          child: Icon(
+            Icons.chevron_right_rounded,
+            size: 20,
+            color: onTap == null ? Colors.transparent : accent,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RecordCompactMetric extends StatelessWidget {
+  final _RecordCell cell;
+
+  const _RecordCompactMetric({required this.cell});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 44),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        border: Border.all(color: AppColors.divider),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              cell.label,
+              style: TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            cell.value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 16,
+              color: cell.color ?? AppColors.textPrimary,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1537,11 +1784,17 @@ class _RecordSupportLabel extends StatelessWidget {
 }
 
 class _RecordCell extends StatelessWidget {
+  final String label;
   final String value;
   final double width;
   final Color? color;
 
-  const _RecordCell({required this.value, required this.width, this.color});
+  const _RecordCell({
+    required this.label,
+    required this.value,
+    required this.width,
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1571,8 +1824,10 @@ class _InlineAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 4,
       children: [
         Text(
           label,
@@ -1582,7 +1837,6 @@ class _InlineAction extends StatelessWidget {
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(width: 4),
         Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.accent),
       ],
     );
@@ -1607,6 +1861,8 @@ class _TeamToggleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
+    final useReflowLayout = _usesCompactBoxscoreLayout(context);
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
     final team = KboTeams.resolve(
       id: teamId,
       name: teamName,
@@ -1615,12 +1871,16 @@ class _TeamToggleCard extends StatelessWidget {
     final accent = colors.readableAccent(team?.primaryColor ?? colors.accent);
 
     return AppPressable(
+      key: ValueKey('boxscore-team-toggle-${sideLabel.toLowerCase()}'),
       onTap: onTap,
       pressedScale: 0.985,
+      semanticSelected: active,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 58,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        duration: reduceMotion
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        constraints: const BoxConstraints(minHeight: 58),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: active ? AppColors.card : AppColors.background,
           border: Border.all(color: active ? accent : AppColors.divider),
@@ -1645,8 +1905,8 @@ class _TeamToggleCard extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     teamName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: useReflowLayout ? null : 1,
+                    overflow: useReflowLayout ? null : TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,

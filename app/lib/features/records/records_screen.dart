@@ -1679,7 +1679,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             .toDouble();
 
         return SizedBox(
-          height: 116,
+          height: 124,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             clipBehavior: Clip.hardEdge,
@@ -1738,11 +1738,12 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    snapshot.metric.shortLabel,
-                    maxLines: 1,
+                    snapshot.metric.explainedLabel,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
+                      height: 1.08,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1775,8 +1776,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             const SizedBox(height: 3),
             Text(
               leader == null
-                  ? '공식 소스 확인 중'
-                  : '${team?.shortName ?? leader.teamId} · ${_leaderGapText(snapshot.metric, snapshot.leaders)}',
+                  ? snapshot.metric.isAppCalculated
+                        ? '앱 계산 · 데이터 준비 중'
+                        : '공식 소스 확인 중'
+                  : '${snapshot.metric.isAppCalculated ? '앱 계산 · ' : ''}${team?.shortName ?? leader.teamId} · ${_leaderGapText(snapshot.metric, snapshot.leaders)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
@@ -1856,7 +1859,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'ERA, 다승, 세이브, 탈삼진 흐름을 함께 봅니다.',
+                      '평균자책(ERA), 다승(W), 세이브(SV), 탈삼진(SO)을 함께 봅니다.',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -1953,7 +1956,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             Row(
               children: [
                 Text(
-                  snapshot.metric.shortLabel,
+                  snapshot.metric.explainedLabel,
                   style: TextStyle(
                     fontSize: 12,
                     color: snapshot.color,
@@ -2505,12 +2508,12 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return switch (metric) {
       LeaderboardMetric.avg => '타율 1위',
       LeaderboardMetric.hr => '홈런 1위',
-      LeaderboardMetric.era => 'ERA 1위',
+      LeaderboardMetric.era => '평균자책(ERA) 1위',
       LeaderboardMetric.wins => '다승 1위',
       LeaderboardMetric.saves => '세이브 1위',
       LeaderboardMetric.strikeouts => '탈삼진 1위',
-      LeaderboardMetric.ops => 'OPS 1위',
-      LeaderboardMetric.opsPlus => 'wRC+ 1위',
+      LeaderboardMetric.ops => '출루·장타(OPS) 1위',
+      LeaderboardMetric.opsPlus => 'OPS 상대지수 1위',
       LeaderboardMetric.war => 'WAR 1위',
     };
   }
@@ -2537,21 +2540,21 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return [
       _MetricSnapshot(
         metric: LeaderboardMetric.avg,
-        title: '타율 리더',
+        title: '타율(AVG) 리더',
         description: '컨택과 출루 흐름의 첫 기준',
         leaders: overview.avgLeaders,
         color: colors.readableAccent(AppColors.accent),
       ),
       _MetricSnapshot(
         metric: LeaderboardMetric.hr,
-        title: '홈런왕 경쟁',
+        title: '홈런(HR) 경쟁',
         description: '장타 한 방의 순위 변화',
         leaders: overview.hrLeaders,
         color: colors.readableAccent(AppColors.ballYellow),
       ),
       _MetricSnapshot(
         metric: LeaderboardMetric.ops,
-        title: 'OPS 생산력',
+        title: '출루·장타(OPS)',
         description: '출루와 장타를 함께 보는 지표',
         leaders: overview.opsLeaders,
         color: colors.readableAccent(AppColors.positive),
@@ -2559,13 +2562,13 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       _MetricSnapshot(
         metric: LeaderboardMetric.opsPlus,
         title: LeaderboardMetric.opsPlus.title,
-        description: '리그 OPS 리더군 기준 환산',
+        description: '앱 계산 · 포함된 OPS 선수 평균=100',
         leaders: overview.opsPlusLeaders,
         color: colors.readableAccent(const Color(0xFF7B5CFF)),
       ),
       _MetricSnapshot(
         metric: LeaderboardMetric.era,
-        title: 'ERA 마운드',
+        title: '평균자책(ERA) 마운드',
         description: '낮을수록 강한 선발 경쟁',
         leaders: overview.eraLeaders,
         color: colors.readableAccent(AppColors.live),

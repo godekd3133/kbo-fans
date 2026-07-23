@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
@@ -27,6 +30,14 @@ class PlayerDetailScreen extends ConsumerWidget {
       await ref.read(playerDetailProvider('$playerId|$season').future);
     }
 
+    Future<void> retryPlayer() async {
+      try {
+        await refreshPlayer();
+      } catch (_) {
+        // Provider의 오류 상태가 화면에 유지되므로 추가 예외 UI는 필요하지 않다.
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: Text('선수 프로필 · $season')),
       body: SafeArea(
@@ -39,9 +50,12 @@ class PlayerDetailScreen extends ConsumerWidget {
                 key: ValueKey('player-detail-loading'),
                 child: _PlayerDetailLoading(),
               ),
-              error: (_, stackTrace) => const KeyedSubtree(
+              error: (_, stackTrace) => KeyedSubtree(
                 key: ValueKey('player-detail-error'),
-                child: _PlayerDetailError(),
+                child: _PlayerDetailError(
+                  onRetry: () => unawaited(retryPlayer()),
+                  onRecords: () => context.go('/records'),
+                ),
               ),
               data: (player) => KeyedSubtree(
                 key: ValueKey('player-detail-data-${player.id}'),
@@ -587,14 +601,63 @@ class _PlayerDetailLoading extends StatelessWidget {
 }
 
 class _PlayerDetailError extends StatelessWidget {
-  const _PlayerDetailError();
+  final VoidCallback onRetry;
+  final VoidCallback onRecords;
+
+  const _PlayerDetailError({required this.onRetry, required this.onRecords});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      children: const [
-        SizedBox(height: 420, child: Center(child: Text('선수 정보를 불러올 수 없습니다'))),
+      padding: const EdgeInsets.all(24),
+      children: [
+        SizedBox(
+          height: 420,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.person_search_outlined,
+                  size: 40,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '선수 정보를 불러올 수 없습니다',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '네트워크 연결을 확인한 뒤 다시 시도해 주세요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('다시 시도'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: onRecords,
+                  icon: const Icon(Icons.list_alt_outlined),
+                  label: const Text('기록실로'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

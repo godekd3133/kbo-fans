@@ -84,4 +84,54 @@ void main() {
     );
     semantics.dispose();
   });
+
+  testWidgets('동작 줄이기 설정에서는 하단 탭 전환 애니메이션을 즉시 끝낸다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 568));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final router = GoRouter(
+      initialLocation: '/home',
+      routes: [
+        ShellRoute(
+          builder: (context, state, child) => MainScaffold(child: child),
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (context, state) => const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: child!,
+        ),
+      ),
+    );
+    await tester.pump();
+
+    for (final label in ['홈', '일정', '기록', '브리핑', '설정']) {
+      final animatedTextFinder = find.byWidgetPredicate(
+        (widget) =>
+            widget is AnimatedDefaultTextStyle &&
+            widget.child is Text &&
+            (widget.child as Text).data == label,
+      );
+      final animatedText = tester.widget<AnimatedDefaultTextStyle>(
+        animatedTextFinder,
+      );
+      expect(animatedText.duration, Duration.zero);
+    }
+    for (final animatedScale in tester.widgetList<AnimatedScale>(
+      find.byType(AnimatedScale),
+    )) {
+      expect(animatedScale.duration, Duration.zero);
+    }
+  });
 }
