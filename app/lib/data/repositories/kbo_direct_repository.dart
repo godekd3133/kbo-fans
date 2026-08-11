@@ -33,6 +33,13 @@ class KboDirectRepository implements GameRepository {
   static const _relayWarmupTimeout = Duration(seconds: 2);
   static const _relayFetchTimeout = Duration(seconds: 12);
   static const _relaySummaryTimeout = Duration(seconds: 6);
+  static const _standingsPath = '/Record/TeamRank/TeamRank.aspx';
+  static const _standingsSeasonField =
+      'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlYear';
+  static const _standingsSourceSeasonField =
+      'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$hfSearchYear';
+  static const _standingsSourceDateField =
+      'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$hfSearchDate';
   static Future<void> _networkQueue = Future<void>.value();
   static bool _relayLoggedIn = false;
   static final Map<String, String> _sessionCookies = {};
@@ -755,23 +762,126 @@ class KboDirectRepository implements GameRepository {
   Future<List<TeamStanding>> getStandings(int season) async {
     _log.info('순위 조회: $season');
     try {
-      final url = _resolveUrl('/Record/TeamRank/TeamRankDaily.aspx');
-      final response = await _dio.get<String>(
-        url,
-        queryParameters: {'seasonId': season},
-        options: Options(
-          headers: {'Content-Type': 'text/html', 'Accept': 'text/html'},
-          responseType: ResponseType.plain,
-        ),
+      final initialHtml = await _getPlain(
+        _standingsPath,
+        headers: const {'Accept': 'text/html'},
       );
-
-      final standings = _parseStandingsHtml(response.data ?? '');
+      final html = await _postPlain(
+        _standingsPath,
+        _buildStandingsFormPayload(initialHtml, season),
+        headers: const {
+          'Accept': 'text/html',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        },
+      );
+      _validateStandingsSource(html, season);
+      final standings = _parseStandingsHtml(html);
+      if (standings.isEmpty) {
+        throw StateError('KBO standings response is empty for $season');
+      }
       _log.info('순위 파싱 완료: ${standings.length}팀');
       return standings;
     } catch (e) {
       _log.error('순위 조회 실패: $e');
-      return [];
+      rethrow;
     }
+  }
+
+  Map<String, dynamic> _buildStandingsFormPayload(String html, int season) {
+    final document = html_parser.parse(html);
+    final availableSeasons = document
+        .querySelectorAll('select')
+        .where((element) => element.attributes['name'] == _standingsSeasonField)
+        .expand((element) => element.querySelectorAll('option'))
+        .map((element) => element.attributes['value']?.trim() ?? '')
+        .where((value) => value.isNotEmpty)
+        .toSet();
+    if (!availableSeasons.contains('$season')) {
+      throw StateError('KBO standings season is unavailable: $season');
+    }
+
+    final payload = <String, dynamic>{
+      for (final input in document.querySelectorAll('input'))
+        if ((input.attributes['name']?.trim() ?? '').isNotEmpty)
+          input.attributes['name']!.trim(): input.attributes['value'] ?? '',
+    };
+    for (final select in document.querySelectorAll('select')) {
+      final name = select.attributes['name']?.trim() ?? '';
+      if (name.isEmpty) {
+        continue;
+      }
+      final options = select.querySelectorAll('option');
+      final selected = options.where(
+        (option) => option.attributes.containsKey('selected'),
+      );
+      final option = selected.isNotEmpty
+          ? selected.first
+          : (options.isEmpty ? null : options.first);
+      payload[name] = option?.attributes['value'] ?? '';
+    }
+    payload['__EVENTTARGET'] = _standingsSeasonField;
+    payload['__EVENTARGUMENT'] = '';
+    payload[_standingsSeasonField] = '$season';
+    return payload;
+  }
+
+  void _validateStandingsSource(String html, int season) {
+    final document = html_parser.parse(html);
+    final seasonSelect = document
+        .querySelectorAll('select')
+        .where(
+          (element) => element.attributes['name'] == _standingsSeasonField,
+        );
+    if (seasonSelect.isEmpty) {
+      throw StateError('KBO standings response is missing the season selector');
+    }
+    final selectedSeason = seasonSelect.first
+        .querySelectorAll('option')
+        .where((element) => element.attributes.containsKey('selected'))
+        .map((element) => element.attributes['value']?.trim() ?? '')
+        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
+    final sourceSeason = _standingsHiddenValue(
+      document,
+      _standingsSourceSeasonField,
+    );
+    final sourceDate = _standingsHiddenValue(
+      document,
+      _standingsSourceDateField,
+    );
+    if (selectedSeason != '$season' || sourceSeason != '$season') {
+      throw StateError(
+        'KBO standings season mismatch: requested=$season, '
+        'selected=$selectedSeason, source=$sourceSeason',
+      );
+    }
+    final sourceDateMatch = RegExp(
+      r'^(\d{4})(\d{2})(\d{2})$',
+    ).firstMatch(sourceDate);
+    DateTime? sourceDateValue;
+    if (sourceDateMatch != null) {
+      final year = int.parse(sourceDateMatch.group(1)!);
+      final month = int.parse(sourceDateMatch.group(2)!);
+      final day = int.parse(sourceDateMatch.group(3)!);
+      final candidate = DateTime.utc(year, month, day);
+      if (candidate.year == year &&
+          candidate.month == month &&
+          candidate.day == day) {
+        sourceDateValue = candidate;
+      }
+    }
+    if (sourceDateValue == null || sourceDateValue.year != season) {
+      throw StateError(
+        'KBO standings source date mismatch: requested=$season, source=$sourceDate',
+      );
+    }
+  }
+
+  String _standingsHiddenValue(dom.Document document, String name) {
+    return document
+        .querySelectorAll('input')
+        .where((element) => element.attributes['name'] == name)
+        .map((element) => element.attributes['value']?.trim() ?? '')
+        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
   }
 
   List<TeamStanding> _parseStandingsHtml(String html) {
@@ -2022,6 +2132,19 @@ class KboDirectRepository implements GameRepository {
   @visibleForTesting
   List<TeamStanding> parseStandingsHtmlForTesting(String html) {
     return _parseStandingsHtml(html);
+  }
+
+  @visibleForTesting
+  Map<String, dynamic> buildStandingsFormPayloadForTesting(
+    String html,
+    int season,
+  ) {
+    return _buildStandingsFormPayload(html, season);
+  }
+
+  @visibleForTesting
+  void validateStandingsSourceForTesting(String html, int season) {
+    _validateStandingsSource(html, season);
   }
 
   @visibleForTesting

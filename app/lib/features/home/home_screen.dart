@@ -71,6 +71,7 @@ const _gameDetailPlayerImagePrefetchTimeout = Duration(seconds: 8);
 const _gameDetailOpenRefreshTimeout = Duration(seconds: 4);
 const _teamPlayerImagePrefetchTimeout = Duration(seconds: 3);
 const _lineupImagePrefetchSourceTimeout = Duration(seconds: 4);
+const _eagerGameDetailImageWarmupEnabled = false;
 
 @visibleForTesting
 List<String> relayPlayerImagePrefetchUrlsForTesting({
@@ -484,8 +485,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   DateTime? _lastScoreboardUpdatedAt;
   String? _lastScoreboardRefreshErrorLogKey;
   String? _lastPreviousScoreboardErrorLogKey;
-  String? _openingGameDetailId;
-  double _openingGameDetailProgress = 0;
+  bool _gameDetailNavigationInFlight = false;
 
   @override
   void initState() {
@@ -504,7 +504,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     AppColors.sync(AppTheme.colorsOf(context));
-    final today = kboDateKey();
+    final today = ref.watch(kboDateProvider);
     final scoreboardAsync = ref.watch(scoreboardProvider(today));
     final myTeamId = ref.watch(myTeamProvider);
     _logHomeLoad(scoreboardAsync, today);
@@ -624,8 +624,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
-            if (_openingGameDetailId != null)
-              Positioned.fill(child: _buildGameDetailLoadingOverlay(context)),
           ],
         ),
       ),
@@ -775,76 +773,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           color: AppColors.cardSub,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(color: AppColors.divider.withValues(alpha: 0.35)),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGameDetailLoadingOverlay(BuildContext context) {
-    final progress = _openingGameDetailProgress.clamp(0.0, 1.0).toDouble();
-    final percent = (progress * 100).round();
-
-    return ColoredBox(
-      key: const ValueKey('home-game-detail-loading'),
-      color: AppColors.background.withValues(alpha: 0.72),
-      child: Center(
-        child: Container(
-          width: 224,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: AppColors.live,
-                ),
-              ),
-              SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '경기 정보 갱신 중',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Text(
-                    '$percent%',
-                    key: const ValueKey('home-game-detail-loading-percent'),
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.live,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  key: const ValueKey('home-game-detail-loading-progress'),
-                  value: progress,
-                  minHeight: 6,
-                  color: AppColors.live,
-                  backgroundColor: AppColors.divider.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -1196,60 +1124,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _openGameDetail(Game game, {String? tab, bool focusRelay = false}) {
-    if (_openingGameDetailId != null) {
+    if (_gameDetailNavigationInFlight) {
       return;
     }
-    unawaited(
-      _openGameDetailAfterRefresh(game, tab: tab, focusRelay: focusRelay),
+    _gameDetailNavigationInFlight = true;
+    final navigation = GoRouter.of(context).push(
+      gameDetailLocationFor(game, tab: tab, focusRelay: focusRelay),
+      extra: game,
     );
+    unawaited(
+      navigation.whenComplete(() => _gameDetailNavigationInFlight = false),
+    );
+    unawaited(_refreshGameDetailInBackground(game, tab: tab));
   }
 
-  void _updateGameDetailOpenProgress(double progress) {
-    if (!mounted || _openingGameDetailId == null) {
-      return;
-    }
-    final nextProgress = progress.clamp(0.0, 1.0).toDouble();
-    if ((_openingGameDetailProgress - nextProgress).abs() < 0.001) {
-      return;
-    }
-    setState(() {
-      _openingGameDetailProgress = nextProgress;
-    });
-  }
-
-  Future<void> _openGameDetailAfterRefresh(
-    Game game, {
-    String? tab,
-    required bool focusRelay,
-  }) async {
-    setState(() {
-      _openingGameDetailId = game.gameId;
-      _openingGameDetailProgress = 0;
-    });
-
+  Future<void> _refreshGameDetailInBackground(Game game, {String? tab}) async {
     try {
-      var gameToOpen = game;
-      try {
-        gameToOpen = await _refreshGameDetailBeforeOpen(game, tab: tab);
-      } catch (error) {
-        DevConsole.instance.warn(
-          'HOME game detail open refresh failed; opening existing game: ${game.gameId} $error',
-        );
-      }
-      if (!mounted) {
-        return;
-      }
-      GoRouter.of(context).push(
-        gameDetailLocationFor(gameToOpen, tab: tab, focusRelay: focusRelay),
-        extra: gameToOpen,
+      await _refreshGameDetailBeforeOpen(game, tab: tab);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'HOME game detail background refresh failed: ${game.gameId} $error',
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _openingGameDetailId = null;
-          _openingGameDetailProgress = 0;
-        });
-      }
     }
   }
 
@@ -1322,7 +1217,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         lineupFuture = startLineupWarmup();
         break;
       case null:
-        lineupFuture = startLineupWarmup();
         break;
     }
 
@@ -1332,26 +1226,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (refreshedGame == null) {
       throw StateError('game detail missing: $gameId');
     }
-    _updateGameDetailOpenProgress(1);
-
-    unawaited(() async {
-      try {
-        relayData = await _awaitGameDetailWarmup(relayFuture);
-        lineupData = await _awaitGameDetailWarmup(lineupFuture);
-        boxscoreData = await _awaitGameDetailWarmup(boxscoreFuture);
-        await _precacheGameDetailPlayerImagesBeforeOpen(
-          refreshedGame,
-          targetTab: targetTab,
-          relayData: relayData,
-          lineupData: lineupData,
-          boxscoreData: boxscoreData,
-        ).timeout(_gameDetailPlayerImagePrefetchTimeout, onTimeout: () {});
-      } catch (error) {
-        DevConsole.instance.warn(
-          'HOME game detail background warmup skipped: $gameId $error',
-        );
-      }
-    }());
+    if (_eagerGameDetailImageWarmupEnabled) {
+      unawaited(() async {
+        try {
+          relayData = await _awaitGameDetailWarmup(relayFuture);
+          lineupData = await _awaitGameDetailWarmup(lineupFuture);
+          boxscoreData = await _awaitGameDetailWarmup(boxscoreFuture);
+          await _precacheGameDetailPlayerImagesBeforeOpen(
+            refreshedGame,
+            targetTab: targetTab,
+            relayData: relayData,
+            lineupData: lineupData,
+            boxscoreData: boxscoreData,
+          ).timeout(_gameDetailPlayerImagePrefetchTimeout, onTimeout: () {});
+        } catch (error) {
+          DevConsole.instance.warn(
+            'HOME game detail background warmup skipped: $gameId $error',
+          );
+        }
+      }());
+    }
     return refreshedGame;
   }
 
@@ -2373,7 +2267,7 @@ class _MyTeamBriefCard extends StatelessWidget {
           textAlign: centered ? TextAlign.center : TextAlign.start,
           style: TextStyle(
             fontSize: 11,
-            color: AppColors.textDisabled,
+            color: AppColors.textSupporting,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -2841,7 +2735,7 @@ class _RecordSpotlightTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textDisabled,
+                    color: AppColors.textSupporting,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -3180,7 +3074,7 @@ class _LiveMyTeamGameCard extends StatelessWidget {
                   child: _LiveTeamScoreInline(
                     team: myTeamInfo,
                     fallbackLabel: myTeam.shortName,
-                    score: myTeam.score,
+                    score: myTeam.displayScore,
                     highlighted: true,
                   ),
                 ),
@@ -3200,7 +3094,7 @@ class _LiveMyTeamGameCard extends StatelessWidget {
                   child: _LiveTeamScoreInline(
                     team: opponentInfo,
                     fallbackLabel: opponent.shortName,
-                    score: opponent.score,
+                    score: opponent.displayScore,
                     alignEnd: true,
                   ),
                 ),
@@ -3272,7 +3166,7 @@ class _LiveMyTeamGameCard extends StatelessWidget {
 class _LiveTeamScoreInline extends StatelessWidget {
   final KboTeam? team;
   final String fallbackLabel;
-  final int score;
+  final String score;
   final bool highlighted;
   final bool alignEnd;
 
@@ -3325,7 +3219,7 @@ class _LiveTeamScoreInline extends StatelessWidget {
       ),
     );
     final scoreText = Text(
-      '$score',
+      score,
       maxLines: 1,
       softWrap: false,
       style: TextStyle(
@@ -4440,7 +4334,7 @@ class _ResultBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = switch (result) {
       '승' => AppColors.live,
-      '패' => AppColors.textDisabled,
+      '패' => AppColors.textSupporting,
       '무' => AppColors.accent,
       _ => AppColors.divider,
     };
@@ -5297,14 +5191,14 @@ class _QuickContentListItem extends ConsumerWidget {
                   '더보기',
                   style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textDisabled,
+                    color: AppColors.textSupporting,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
                   size: 18,
-                  color: AppColors.textDisabled,
+                  color: AppColors.textSupporting,
                 ),
               ],
             ),

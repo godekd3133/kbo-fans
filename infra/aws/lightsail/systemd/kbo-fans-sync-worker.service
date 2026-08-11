@@ -9,6 +9,7 @@ User=kbo-fans
 Group=kbo-fans
 WorkingDirectory=/opt/kbo-fans/current/backend
 EnvironmentFile=/etc/kbo-fans/backend.env
+Environment=SNAPSHOT_SEED_DIR=/opt/kbo-fans/current/backend/data/snapshots
 Environment=PYTHONUNBUFFERED=1
 ExecStart=/opt/kbo-fans/venv/bin/python -m kbo_fans_backend.scheduler.live_activity_sync_loop
 Restart=always

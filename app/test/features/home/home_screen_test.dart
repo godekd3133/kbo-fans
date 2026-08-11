@@ -1005,6 +1005,61 @@ void main() {
     },
   );
 
+  testWidgets('홈 마이팀 LIVE 카드는 미확정 점수를 0으로 단정하지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final game = _liveGame(
+      gameId: '20260611SSLG9',
+      awayTeamId: 'SS',
+      homeTeamId: 'LG',
+      awayScore: 0,
+      homeScore: 0,
+      scoreAvailable: false,
+    );
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        scoreboardGames: [game],
+        child: ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            gameProvider.overrideWith((ref, gameId) async => game),
+            relayDataProvider.overrideWith(
+              (ref, gameId) async =>
+                  const RelayData(currentAtBat: null, relayItems: []),
+            ),
+            gameLineupProvider.overrideWith(
+              (ref, gameId) async => _emptyLineupForGame(game),
+            ),
+            teamPlayersProvider.overrideWith((ref, key) async {
+              return const <PlayerProfile>[];
+            }),
+          ],
+          child: MaterialApp.router(routerConfig: _homeInteractionRouter()),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final liveCard = find.byKey(const ValueKey('home-live-my-team-game'));
+    expect(liveCard, findsOneWidget);
+    expect(
+      find.descendant(of: liveCard, matching: find.text('–')),
+      findsNWidgets(2),
+    );
+    expect(
+      find.descendant(of: liveCard, matching: find.text('0')),
+      findsNothing,
+    );
+  });
+
   testWidgets('deduplicates today games and keeps my-team row visible', (
     tester,
   ) async {
@@ -1219,6 +1274,11 @@ void main() {
     );
     expect(find.text('최근 5경기'), findsWidgets);
     expect(find.text('타율'), findsOneWidget);
+    final avgLabel = find.text('타율');
+    expect(
+      tester.widget<Text>(avgLabel).style?.color,
+      AppTheme.colorsOf(tester.element(avgLabel)).textSupporting,
+    );
     expect(find.text('ERA'), findsOneWidget);
     expect(find.text('팀 타율'), findsNothing);
     expect(find.text('팀 ERA'), findsNothing);
@@ -2092,7 +2152,7 @@ void main() {
     expect(uri.queryParameters['focus'], 'relay');
   });
 
-  testWidgets('홈 경기 상세 진입은 최신 상세 데이터 갱신 후 첫 탭을 기다리지 않고 이동한다', (tester) async {
+  testWidgets('홈 경기 상세 진입은 기존 정보로 즉시 이동하고 갱신은 뒤에서 수행한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -2167,36 +2227,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pump();
-
-    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
-    expect(
-      find.byKey(const ValueKey('home-game-detail-loading')),
-      findsOneWidget,
-    );
-    expect(
-      tester
-          .widget<Text>(
-            find.byKey(const ValueKey('home-game-detail-loading-percent')),
-          )
-          .data,
-      '0%',
-    );
-    expect(
-      tester
-          .widget<LinearProgressIndicator>(
-            find.byKey(const ValueKey('home-game-detail-loading-progress')),
-          )
-          .value,
-      0,
-    );
-    expect(find.text('game-detail-${liveGame.gameId}-tab-relay'), findsNothing);
-    expect(detailFetches, 1);
-    expect(relayFetches, 1);
-
-    detailCompleter.complete(freshDetail);
-    await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
-
     expect(
       find.byKey(const ValueKey('home-game-detail-loading')),
       findsNothing,
@@ -2205,6 +2236,11 @@ void main() {
       find.text('game-detail-${liveGame.gameId}-tab-relay'),
       findsOneWidget,
     );
+    expect(detailFetches, 1);
+    expect(relayFetches, 1);
+
+    detailCompleter.complete(freshDetail);
+    await tester.pump();
 
     relayCompleter.complete(
       const RelayData(currentAtBat: null, relayItems: []),
@@ -2316,17 +2352,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(detailFetches, 1);
     expect(relayFetches, 1);
-    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
     expect(
       find.byKey(const ValueKey('home-game-detail-loading')),
-      findsOneWidget,
+      findsNothing,
     );
-
-    await tester.pump(const Duration(milliseconds: 4100));
-    await tester.pumpAndSettle();
 
     expect(
       find.text('game-detail-${liveGame.gameId}-tab-relay'),
@@ -2412,7 +2445,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('홈 기본 상세 진입은 라인업 사진 source를 기다리지 않고 이동한다', (tester) async {
+  testWidgets('홈 기본 상세 진입은 미선택 라인업과 선수 사진을 미리 요청하지 않는다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -2479,35 +2512,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pump();
-
-    expect(detailFetches, 1);
-    expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
-    expect(
-      find.byKey(const ValueKey('home-game-detail-loading')),
-      findsOneWidget,
-    );
-
-    detailCompleter.complete(finalGame);
-    await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
 
-    expect(lineupFetches, 1);
+    expect(detailFetches, 1);
     expect(
       find.byKey(const ValueKey('home-game-detail-loading')),
       findsNothing,
     );
+    expect(lineupFetches, 0);
     expect(find.text('game-detail-${finalGame.gameId}-tab-'), findsOneWidget);
-    expect(lineupCompleter.isCompleted, isFalse);
 
-    lineupCompleter.complete(
-      GameLineupData(
-        gameId: finalGame.gameId,
-        away: const TeamLineupData(teamId: 'SS', lineup: []),
-        home: const TeamLineupData(teamId: 'LG', lineup: []),
-      ),
-    );
+    detailCompleter.complete(finalGame);
     await tester.pump();
-    await tester.pumpAndSettle();
+    expect(lineupCompleter.isCompleted, isFalse);
   });
 }
 
@@ -2929,6 +2946,9 @@ Game _liveGame({
   required String gameId,
   required String awayTeamId,
   required String homeTeamId,
+  int awayScore = 2,
+  int homeScore = 1,
+  bool scoreAvailable = true,
 }) {
   return Game(
     gameId: gameId,
@@ -2938,14 +2958,16 @@ Game _liveGame({
       teamId: awayTeamId,
       teamName: awayTeamId,
       shortName: awayTeamId,
-      score: 2,
+      score: awayScore,
+      scoreAvailable: scoreAvailable,
       innings: const [],
     ),
     home: TeamScore(
       teamId: homeTeamId,
       teamName: homeTeamId,
       shortName: homeTeamId,
-      score: 1,
+      score: homeScore,
+      scoreAvailable: scoreAvailable,
       innings: const [],
     ),
     stadium: '잠실',

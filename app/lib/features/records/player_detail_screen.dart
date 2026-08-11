@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../data/models/player.dart';
@@ -15,19 +16,26 @@ import '../../data/providers.dart';
 class PlayerDetailScreen extends ConsumerWidget {
   final String playerId;
   final int season;
+  final bool followsCurrentSeason;
 
   const PlayerDetailScreen({
     super.key,
     required this.playerId,
     required this.season,
+    this.followsCurrentSeason = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final playerAsync = ref.watch(playerDetailProvider('$playerId|$season'));
+    final effectiveSeason = followsCurrentSeason
+        ? kboSeasonFromDateKey(ref.watch(kboDateProvider)) ?? season
+        : season;
+    final playerAsync = ref.watch(
+      playerDetailProvider('$playerId|$effectiveSeason'),
+    );
     Future<void> refreshPlayer() async {
-      ref.invalidate(playerDetailProvider('$playerId|$season'));
-      await ref.read(playerDetailProvider('$playerId|$season').future);
+      ref.invalidate(playerDetailProvider('$playerId|$effectiveSeason'));
+      await ref.read(playerDetailProvider('$playerId|$effectiveSeason').future);
     }
 
     Future<void> retryPlayer() async {
@@ -39,7 +47,7 @@ class PlayerDetailScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text('선수 프로필 · $season')),
+      appBar: AppBar(title: Text('선수 프로필 · $effectiveSeason')),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: refreshPlayer,
@@ -59,7 +67,7 @@ class PlayerDetailScreen extends ConsumerWidget {
               ),
               data: (player) => KeyedSubtree(
                 key: ValueKey('player-detail-data-${player.id}'),
-                child: _buildBody(player),
+                child: _buildBody(player, season: effectiveSeason),
               ),
             ),
           ),
@@ -68,7 +76,7 @@ class PlayerDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBody(PlayerProfile player) {
+  Widget _buildBody(PlayerProfile player, {required int season}) {
     final team = KboTeams.byId(player.teamId);
     final photoUrl = playerProfileImageUrl(player, season: season);
     final recentGames = player.recentGames.take(5).toList();
@@ -198,7 +206,10 @@ class PlayerDetailScreen extends ConsumerWidget {
           child: recentGames.isEmpty
               ? Text(
                   '최근 5경기 기록이 없습니다',
-                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSupporting,
+                  ),
                 )
               : Column(
                   children: [
@@ -212,7 +223,10 @@ class PlayerDetailScreen extends ConsumerWidget {
           child: player.highlights.isEmpty
               ? Text(
                   '표시할 메모가 없습니다',
-                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSupporting,
+                  ),
                 )
               : Column(
                   children: [
@@ -334,7 +348,7 @@ class PlayerDetailScreen extends ConsumerWidget {
             width: 68,
             child: Text(
               label,
-              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+              style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
             ),
           ),
           Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),

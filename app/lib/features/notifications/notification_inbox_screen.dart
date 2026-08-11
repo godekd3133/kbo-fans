@@ -7,6 +7,7 @@ import '../../core/router/app_route_sanitizer.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/app_page_frame.dart';
+import '../../core/widgets/dev_console.dart';
 import '../../services/notification_inbox_service.dart';
 import '../../services/push_notification_service.dart';
 
@@ -14,6 +15,7 @@ typedef NotificationInboxEntriesLoader =
     Future<List<NotificationInboxEntry>> Function();
 typedef NotificationInboxSettingsLoader =
     Future<PushNotificationSettings> Function();
+typedef NotificationInboxMarkRead = Future<void> Function(String entryId);
 
 enum _InboxFilter {
   all(label: '전체'),
@@ -28,11 +30,13 @@ enum _InboxFilter {
 class NotificationInboxScreen extends StatefulWidget {
   final NotificationInboxEntriesLoader? entriesLoader;
   final NotificationInboxSettingsLoader? settingsLoader;
+  final NotificationInboxMarkRead? markRead;
 
   const NotificationInboxScreen({
     super.key,
     this.entriesLoader,
     this.settingsLoader,
+    this.markRead,
   });
 
   @override
@@ -122,28 +126,32 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
     await _load();
   }
 
-  Future<void> _openEntry(NotificationInboxEntry entry) async {
-    await NotificationInboxService.instance.markRead(entry.id);
-    if (!mounted) {
-      return;
-    }
+  void _openEntry(NotificationInboxEntry entry) {
     final entries = _entries;
-    if (entries == null) {
-      return;
+    if (entries != null) {
+      setState(() {
+        _entries = [
+          for (final item in entries)
+            item.id == entry.id ? item.copyWith(read: true) : item,
+        ];
+      });
     }
-    setState(() {
-      _entries = [
-        for (final item in entries)
-          item.id == entry.id ? item.copyWith(read: true) : item,
-      ];
-    });
+    unawaited(_markEntryRead(entry.id));
     if (!entry.hasRoute) {
       return;
     }
-    if (!mounted) {
-      return;
-    }
     context.pushAppRoute(entry.route, fallback: '/home');
+  }
+
+  Future<void> _markEntryRead(String entryId) async {
+    try {
+      await (widget.markRead?.call(entryId) ??
+          NotificationInboxService.instance.markRead(entryId));
+    } catch (error) {
+      DevConsole.instance.warn(
+        'NOTIFICATION inbox mark read failed: $entryId $error',
+      );
+    }
   }
 
   @override
@@ -300,7 +308,7 @@ class _InboxHeader extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
-                  color: AppColors.textDisabled,
+                  color: AppColors.textSupporting,
                 ),
               ),
               SizedBox(height: 4),
@@ -347,6 +355,7 @@ class _InboxSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     final hasCounts =
         totalCount != null && visibleCount != null && unreadCount != null;
     final summary = hasCounts
@@ -406,8 +415,10 @@ class _InboxSummaryCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       summary,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                      maxLines: useLargeText ? null : 2,
+                      overflow: useLargeText
+                          ? TextOverflow.visible
+                          : TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -419,33 +430,56 @@ class _InboxSummaryCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _SummaryMetric(
+          if (useLargeText)
+            Column(
+              children: [
+                _SummaryMetric(
                   label: '보관',
                   value: totalCount?.toString() ?? '—',
                   color: AppColors.live,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _SummaryMetric(
+                const SizedBox(height: 8),
+                _SummaryMetric(
                   label: '현재 표시',
                   value: visibleCount?.toString() ?? '—',
                   color: AppColors.accent,
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _SummaryMetric(
+                const SizedBox(height: 8),
+                _SummaryMetric(
                   label: '안 읽음',
                   value: unreadCount?.toString() ?? '—',
                   color: AppColors.positive,
                 ),
-              ),
-            ],
-          ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: _SummaryMetric(
+                    label: '보관',
+                    value: totalCount?.toString() ?? '—',
+                    color: AppColors.live,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _SummaryMetric(
+                    label: '현재 표시',
+                    value: visibleCount?.toString() ?? '—',
+                    color: AppColors.accent,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _SummaryMetric(
+                    label: '안 읽음',
+                    value: unreadCount?.toString() ?? '—',
+                    color: AppColors.positive,
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -465,8 +499,10 @@ class _SummaryMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     return Container(
-      height: 62,
+      key: ValueKey('inbox-summary-metric-$label'),
+      constraints: const BoxConstraints(minHeight: 62),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.cardSub,
@@ -479,8 +515,10 @@ class _SummaryMetric extends StatelessWidget {
         children: [
           Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            maxLines: useLargeText ? null : 1,
+            overflow: useLargeText
+                ? TextOverflow.visible
+                : TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 10,
               color: color,
@@ -490,8 +528,10 @@ class _SummaryMetric extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+            maxLines: useLargeText ? null : 1,
+            overflow: useLargeText
+                ? TextOverflow.visible
+                : TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900),
           ),
         ],
@@ -635,7 +675,7 @@ class _InboxEntryRow extends StatelessWidget {
                         _timeLabel(entry.receivedAt),
                         style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.textDisabled,
+                          color: AppColors.textSupporting,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -675,7 +715,7 @@ class _InboxEntryRow extends StatelessWidget {
                   ? Icons.chevron_right_rounded
                   : Icons.check_rounded,
               size: 20,
-              color: AppColors.textDisabled,
+              color: AppColors.textSupporting,
             ),
           ],
         ),
@@ -976,7 +1016,7 @@ class _PlaybookLoadingRow extends StatelessWidget {
                   : hasError
                   ? '알림 설정을 확인할 수 없습니다. 알림 목록은 그대로 유지됩니다.'
                   : '저장된 알림 설정이 없습니다',
-              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+              style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
             ),
           ),
           if (hasError)
@@ -1017,7 +1057,10 @@ class _PlaybookMomentRow extends StatelessWidget {
                   item.description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSupporting,
+                  ),
                 ),
               ],
             ),
@@ -1200,6 +1243,6 @@ Color _deliveryColor(PushNotificationDelivery delivery) {
     PushNotificationDelivery.immediate => AppColors.live,
     PushNotificationDelivery.summary => AppColors.positive,
     PushNotificationDelivery.liveOnly => AppColors.accent,
-    PushNotificationDelivery.off => AppColors.textDisabled,
+    PushNotificationDelivery.off => AppColors.textSupporting,
   };
 }

@@ -228,6 +228,36 @@ class _RacingMainCrawler(_MutableMainCrawler):
         ]
 
 
+def _historical_suspended_service(tmp_path: Path):
+    target_date = "2020-03-31"
+    game_id = "20200331HTLG0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    suspended_game = {
+        "gameId": game_id,
+        "status": "SUSPENDED",
+        "awayId": "HT",
+        "homeId": "LG",
+        "away": {"teamId": "HT", "score": 1},
+        "home": {"teamId": "LG", "score": 0},
+    }
+    snapshot_store.save(
+        "scoreboard",
+        target_date,
+        {"date": target_date, "games": [suspended_game]},
+    )
+    snapshot_store.save("games", game_id, suspended_game)
+    schedule = _MutableScheduleCrawler(game_id)
+    main = _MutableMainCrawler(game_id)
+    main.status = "3"
+    service = ScoreboardService(
+        main_crawler=main,
+        schedule_crawler=schedule,
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=snapshot_store,
+    )
+    return service, snapshot_store, schedule, target_date, game_id
+
+
 def _get_scoreboard_surface(
     service: ScoreboardService,
     surface: str,
@@ -249,6 +279,56 @@ def _scoreboard_surface_status(payload: dict, surface: str) -> str:
     if surface == "game":
         return payload["status"]
     return payload["games"][0]["status"]
+
+
+def test_historical_suspended_scoreboard_refreshes_and_replaces_snapshot(
+    tmp_path: Path,
+) -> None:
+    service, snapshot_store, schedule, target_date, _ = _historical_suspended_service(tmp_path)
+
+    payload = service.get_scoreboard(target_date)
+
+    assert payload["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert snapshot_store.load_payload("scoreboard", target_date) == payload
+
+
+def test_historical_suspended_home_scoreboard_refreshes_source(tmp_path: Path) -> None:
+    service, _, schedule, target_date, _ = _historical_suspended_service(tmp_path)
+
+    payload = service.get_home_scoreboard(target_date)
+
+    assert payload["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+
+
+def test_historical_suspended_prime_home_scoreboard_refreshes_source(tmp_path: Path) -> None:
+    service, _, schedule, target_date, _ = _historical_suspended_service(tmp_path)
+
+    payload = service.prime_home_scoreboard(target_date)
+
+    assert payload["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+
+
+def test_historical_suspended_compact_scoreboard_refreshes_source(tmp_path: Path) -> None:
+    service, _, schedule, target_date, _ = _historical_suspended_service(tmp_path)
+
+    payload = service.get_compact_scoreboard(target_date, my_team="LG")
+
+    assert payload["games"][0]["status"] == "FINAL"
+    assert schedule.calls == 1
+
+
+def test_historical_suspended_game_refreshes_and_replaces_snapshot(tmp_path: Path) -> None:
+    service, snapshot_store, schedule, _, game_id = _historical_suspended_service(tmp_path)
+
+    payload = service.get_game(game_id)
+
+    assert payload is not None
+    assert payload["status"] == "FINAL"
+    assert schedule.calls == 1
+    assert snapshot_store.load_payload("games", game_id) == payload
 
 
 def test_get_scoreboard_uses_ttl_cache_for_same_date(tmp_path: Path) -> None:

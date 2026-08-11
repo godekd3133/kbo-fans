@@ -59,14 +59,28 @@ class Settings:
     snapshot_dir: str
     live_scoreboard_state_path: str
     live_scoreboard_max_age_seconds: int
+    snapshot_seed_dir: str = ""
+    push_device_test_cooldown_seconds: int = 60
+    push_device_test_global_window_seconds: int = 60
+    push_device_test_global_max_attempts: int = 30
+    push_registry_max_devices: int = 5000
+    push_registry_max_live_activities: int = 5000
+    push_registry_max_live_activity_start_tokens: int = 5000
+    push_registry_max_bytes: int = 32 * 1024 * 1024
+    push_registry_device_ttl_seconds: int = 90 * 24 * 60 * 60
+    push_registry_live_activity_ttl_seconds: int = 2 * 24 * 60 * 60
+    push_registry_live_activity_start_token_ttl_seconds: int = 90 * 24 * 60 * 60
+    push_registration_new_owner_window_seconds: int = 60
+    push_registration_new_owner_max_attempts: int = 120
 
 
 @lru_cache
 def get_settings() -> Settings:
     app_env = os.getenv("APP_ENV", "local")
+    data_dir = Path(__file__).resolve().parents[3] / "data"
     push_registry_path = os.getenv(
         "PUSH_REGISTRY_PATH",
-        str(Path(__file__).resolve().parents[3] / "data" / "runtime" / "push_registry.json"),
+        str(data_dir / "runtime" / "push_registry.json"),
     )
     return Settings(
         app_name=os.getenv("APP_NAME", "KBO Fans API"),
@@ -94,11 +108,60 @@ def get_settings() -> Settings:
         apns_use_sandbox=_get_bool("APNS_USE_SANDBOX", app_env != "release"),
         snapshot_dir=os.getenv(
             "SNAPSHOT_DIR",
-            str(Path(__file__).resolve().parents[3] / "data" / "snapshots"),
+            str(data_dir / "runtime" / "snapshots"),
         ),
         live_scoreboard_state_path=os.getenv(
             "LIVE_SCOREBOARD_STATE_PATH",
             str(Path(push_registry_path).expanduser().with_name("live_scoreboard.json")),
         ),
         live_scoreboard_max_age_seconds=_get_int("LIVE_SCOREBOARD_MAX_AGE_SECONDS", 8),
+        snapshot_seed_dir=os.getenv(
+            "SNAPSHOT_SEED_DIR",
+            str(data_dir / "snapshots"),
+        ),
+        push_device_test_cooldown_seconds=_get_int(
+            "PUSH_DEVICE_TEST_COOLDOWN_SECONDS",
+            60,
+        ),
+        push_device_test_global_window_seconds=_get_int(
+            "PUSH_DEVICE_TEST_GLOBAL_WINDOW_SECONDS",
+            60,
+        ),
+        push_device_test_global_max_attempts=_get_int(
+            "PUSH_DEVICE_TEST_GLOBAL_MAX_ATTEMPTS",
+            30,
+        ),
+        push_registry_max_devices=_get_int("PUSH_REGISTRY_MAX_DEVICES", 5000),
+        push_registry_max_live_activities=_get_int(
+            "PUSH_REGISTRY_MAX_LIVE_ACTIVITIES",
+            5000,
+        ),
+        push_registry_max_live_activity_start_tokens=_get_int(
+            "PUSH_REGISTRY_MAX_LIVE_ACTIVITY_START_TOKENS",
+            5000,
+        ),
+        push_registry_max_bytes=_get_int(
+            "PUSH_REGISTRY_MAX_BYTES",
+            32 * 1024 * 1024,
+        ),
+        push_registry_device_ttl_seconds=_get_int(
+            "PUSH_REGISTRY_DEVICE_TTL_SECONDS",
+            90 * 24 * 60 * 60,
+        ),
+        push_registry_live_activity_ttl_seconds=_get_int(
+            "PUSH_REGISTRY_LIVE_ACTIVITY_TTL_SECONDS",
+            2 * 24 * 60 * 60,
+        ),
+        push_registry_live_activity_start_token_ttl_seconds=_get_int(
+            "PUSH_REGISTRY_LIVE_ACTIVITY_START_TOKEN_TTL_SECONDS",
+            90 * 24 * 60 * 60,
+        ),
+        push_registration_new_owner_window_seconds=_get_int(
+            "PUSH_REGISTRATION_NEW_OWNER_WINDOW_SECONDS",
+            60,
+        ),
+        push_registration_new_owner_max_attempts=_get_int(
+            "PUSH_REGISTRATION_NEW_OWNER_MAX_ATTEMPTS",
+            120,
+        ),
     )

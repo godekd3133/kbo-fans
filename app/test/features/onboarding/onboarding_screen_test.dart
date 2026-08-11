@@ -97,6 +97,35 @@ void main() {
     }
   });
 
+  testWidgets('팀 선택 편집 화면의 뒤로가기는 접근 가능한 이름을 제공한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      SharedPreferences.setMockInitialValues({});
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const OnboardingScreen(isEditMode: true),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final backButton = find.byIcon(Icons.arrow_back_rounded);
+      expect(backButton, findsOneWidget);
+      final namedBackButton = find.byTooltip('뒤로');
+      expect(namedBackButton, findsOneWidget);
+      expect(find.bySemanticsLabel('뒤로'), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('나중에 선택은 44px 터치 높이와 활성 텍스트 색을 사용한다', (tester) async {
     await _pumpOnboarding(
       tester,

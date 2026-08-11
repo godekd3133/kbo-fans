@@ -365,7 +365,7 @@ class MyTeamGameCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 10, color: AppColors.textDisabled),
+            style: TextStyle(fontSize: 10, color: AppColors.textSupporting),
           ),
           const SizedBox(height: 4),
           Text(

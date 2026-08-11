@@ -6,12 +6,18 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/widgets/dev_console.dart';
 
 class ApiClient {
   late final Dio _dio;
   static const _requestTimeout = Duration(seconds: 25);
   static const _cachePrefix = 'api_cache:';
+  static const _maxCacheStorageKeyBytes = 192;
+  static const _maxCacheEntries = 64;
+  static const _maxCacheEntryBytes = 256 * 1024;
+  static const _maxCacheTotalBytes = 2 * 1024 * 1024;
+  static Future<void> _cacheMutationQueue = Future<void>.value();
 
   ApiClient({Dio? dio, bool enableRequestTiming = true}) {
     _dio =
@@ -89,12 +95,26 @@ class ApiClient {
     bool preferCache = false,
     Duration? maxAge,
     bool Function(Map<String, dynamic> data)? isValid,
+    bool Function(Map<String, dynamic> data)? isCacheable,
     bool allowCacheOnFailure = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = '$_cachePrefix$cacheKey';
-    var cached = _readCachedPayload(prefs, storageKey);
-    if (cached != null && isValid != null && !isValid(cached.data)) {
+    final persistsResponse = _shouldPersistResponse(
+      path,
+      cacheKey: cacheKey,
+      queryParameters: queryParameters,
+    );
+    if (!persistsResponse && prefs.containsKey(storageKey)) {
+      await _removeCachedPayload(prefs, storageKey);
+    }
+    var cached = persistsResponse
+        ? _readCachedPayload(prefs, storageKey)
+        : null;
+    if (cached != null &&
+        ((isValid != null && !isValid(cached.data)) ||
+            (isCacheable != null && !isCacheable(cached.data)))) {
+      await _removeCachedPayload(prefs, storageKey);
       cached = null;
     }
     if (cached != null && cached.cachedAt.isAfter(DateTime.now().toUtc())) {
@@ -115,6 +135,7 @@ class ApiClient {
             prefs: prefs,
             storageKey: storageKey,
             isValid: isValid,
+            isCacheable: isCacheable,
           ),
         );
       }
@@ -126,7 +147,11 @@ class ApiClient {
       if (isValid != null && !isValid(fresh)) {
         throw StateError('Invalid API cache payload for $cacheKey');
       }
-      await _writeCachedPayload(prefs, storageKey, fresh);
+      if (persistsResponse && (isCacheable == null || isCacheable(fresh))) {
+        await _writeCachedPayload(prefs, storageKey, fresh);
+      } else if (prefs.containsKey(storageKey)) {
+        await _removeCachedPayload(prefs, storageKey);
+      }
       return fresh;
     } catch (_) {
       if (allowCacheOnFailure && cached != null && isFresh) {
@@ -221,8 +246,12 @@ class ApiClient {
     SharedPreferences prefs,
     String storageKey,
   ) {
-    final raw = prefs.getString(storageKey);
-    if (raw == null || raw.isEmpty) {
+    final raw = prefs.get(storageKey);
+    if (raw is! String || raw.isEmpty) {
+      return null;
+    }
+    if (_utf8Bytes(storageKey) > _maxCacheStorageKeyBytes ||
+        _cacheEntryBytes(storageKey, raw) > _maxCacheEntryBytes) {
       return null;
     }
 
@@ -251,7 +280,61 @@ class ApiClient {
       'cachedAt': DateTime.now().toUtc().toIso8601String(),
       'data': data,
     });
-    await prefs.setString(storageKey, encoded);
+    final storageKeyBytes = _utf8Bytes(storageKey);
+    final entryBytes = _cacheEntryBytes(storageKey, encoded);
+    if (storageKeyBytes > _maxCacheStorageKeyBytes ||
+        entryBytes > _maxCacheEntryBytes ||
+        entryBytes > _maxCacheTotalBytes) {
+      await _removeCachedPayload(prefs, storageKey);
+      return;
+    }
+
+    await _enqueueCacheMutation(() async {
+      final entries = <_CacheEntryMetadata>[];
+      for (final key in prefs.getKeys()) {
+        if (!key.startsWith(_cachePrefix) || key == storageKey) {
+          continue;
+        }
+        final value = prefs.get(key);
+        if (value is! String) {
+          await prefs.remove(key);
+          continue;
+        }
+        entries.add(_cacheEntryMetadata(key, value));
+      }
+
+      entries.sort((left, right) {
+        if (left.isWithinLimits != right.isWithinLimits) {
+          return left.isWithinLimits ? 1 : -1;
+        }
+        final timestampOrder = left.cachedAt.compareTo(right.cachedAt);
+        return timestampOrder != 0
+            ? timestampOrder
+            : left.storageKey.compareTo(right.storageKey);
+      });
+
+      var entryCount = entries.length + 1;
+      var totalBytes = entryBytes;
+      for (final entry in entries) {
+        totalBytes += entry.bytes;
+      }
+      for (final entry in entries) {
+        final mustEvict =
+            !entry.isWithinLimits ||
+            entryCount > _maxCacheEntries ||
+            totalBytes > _maxCacheTotalBytes;
+        if (!mustEvict) {
+          continue;
+        }
+        await prefs.remove(entry.storageKey);
+        entryCount -= 1;
+        totalBytes -= entry.bytes;
+      }
+
+      if (entryCount <= _maxCacheEntries && totalBytes <= _maxCacheTotalBytes) {
+        await prefs.setString(storageKey, encoded);
+      }
+    });
   }
 
   Future<void> _refreshCached(
@@ -260,13 +343,18 @@ class ApiClient {
     required String storageKey,
     Map<String, dynamic>? queryParameters,
     bool Function(Map<String, dynamic> data)? isValid,
+    bool Function(Map<String, dynamic> data)? isCacheable,
   }) async {
     try {
       final fresh = await get(path, queryParameters: queryParameters);
       if (isValid != null && !isValid(fresh)) {
         return;
       }
-      await _writeCachedPayload(prefs, storageKey, fresh);
+      if (isCacheable == null || isCacheable(fresh)) {
+        await _writeCachedPayload(prefs, storageKey, fresh);
+      } else {
+        await _removeCachedPayload(prefs, storageKey);
+      }
     } catch (_) {
       // Cached-first paths should remain silent on refresh failure.
     }
@@ -278,6 +366,67 @@ class ApiClient {
     }
     final age = DateTime.now().toUtc().difference(cached.cachedAt);
     return !age.isNegative && age <= maxAge;
+  }
+
+  bool _shouldPersistResponse(
+    String path, {
+    required String cacheKey,
+    Map<String, dynamic>? queryParameters,
+  }) {
+    if (path == '/home' ||
+        path == '/scoreboard/home' ||
+        path == '/scoreboard/compact') {
+      final date =
+          queryParameters?['date']?.toString() ??
+          RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(cacheKey)?.group(0) ??
+          '';
+      return isHistoricalKboDate(date);
+    }
+
+    final gameMatch = RegExp(r'^/game/(\d{8})[^/]*(?:/.*)?$').firstMatch(path);
+    if (gameMatch != null) {
+      final compactDate = gameMatch.group(1)!;
+      final date =
+          '${compactDate.substring(0, 4)}-'
+          '${compactDate.substring(4, 6)}-'
+          '${compactDate.substring(6, 8)}';
+      return isHistoricalKboDate(date);
+    }
+
+    if (path == '/schedule') {
+      final month =
+          queryParameters?['month']?.toString() ??
+          RegExp(r'\d{4}-\d{2}').firstMatch(cacheKey)?.group(0) ??
+          '';
+      return isHistoricalKboMonth(month);
+    }
+
+    if (path == '/standings' ||
+        path.startsWith('/records/') ||
+        path.startsWith('/team/') ||
+        path.startsWith('/player/')) {
+      final season = int.tryParse(
+        queryParameters?['season']?.toString() ??
+            RegExp(r'(\d{4})$').firstMatch(cacheKey)?.group(1) ??
+            '',
+      );
+      return season != null && season < kboCurrentSeason();
+    }
+
+    return true;
+  }
+
+  Future<void> _removeCachedPayload(
+    SharedPreferences prefs,
+    String storageKey,
+  ) {
+    return _enqueueCacheMutation(() => prefs.remove(storageKey));
+  }
+
+  Future<void> _enqueueCacheMutation(Future<void> Function() mutation) {
+    final operation = _cacheMutationQueue.then((_) => mutation());
+    _cacheMutationQueue = operation.catchError((Object _) {});
+    return operation;
   }
 
   void _logRequestTiming(
@@ -313,6 +462,52 @@ class _CachedPayload {
 
   const _CachedPayload({required this.data, required this.cachedAt});
 }
+
+class _CacheEntryMetadata {
+  final String storageKey;
+  final int bytes;
+  final DateTime cachedAt;
+  final bool isWithinLimits;
+
+  const _CacheEntryMetadata({
+    required this.storageKey,
+    required this.bytes,
+    required this.cachedAt,
+    required this.isWithinLimits,
+  });
+}
+
+_CacheEntryMetadata _cacheEntryMetadata(String storageKey, String encoded) {
+  DateTime? cachedAt;
+  var hasValidShape = false;
+  try {
+    final decoded = jsonDecode(encoded);
+    if (decoded is Map<String, dynamic>) {
+      cachedAt = DateTime.tryParse(
+        decoded['cachedAt']?.toString() ?? '',
+      )?.toUtc();
+      hasValidShape =
+          cachedAt != null && decoded['data'] is Map<String, dynamic>;
+    }
+  } catch (_) {
+    // Malformed entries are evicted before valid cache entries.
+  }
+  final bytes = _cacheEntryBytes(storageKey, encoded);
+  return _CacheEntryMetadata(
+    storageKey: storageKey,
+    bytes: bytes,
+    cachedAt: cachedAt ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+    isWithinLimits:
+        hasValidShape &&
+        _utf8Bytes(storageKey) <= ApiClient._maxCacheStorageKeyBytes &&
+        bytes <= ApiClient._maxCacheEntryBytes,
+  );
+}
+
+int _cacheEntryBytes(String storageKey, String encoded) =>
+    _utf8Bytes(storageKey) + _utf8Bytes(encoded);
+
+int _utf8Bytes(String value) => utf8.encode(value).length;
 
 class ApiException implements Exception {
   final String code;

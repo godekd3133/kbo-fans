@@ -171,7 +171,7 @@ class _ReleaseCard extends StatelessWidget {
                         release.subtitle!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: AppColors.textDisabled,
+                          color: AppColors.textSupporting,
                         ),
                       ),
                     ],

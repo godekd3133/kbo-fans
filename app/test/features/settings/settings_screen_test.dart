@@ -164,6 +164,50 @@ void main() {
     expect(find.text('타석 변화'), findsOneWidget);
   });
 
+  testWidgets('활성 설정의 보조 정보는 disabled가 아닌 supporting 색을 쓴다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const SettingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final label in ['마이팀', '기본 대상', '라인업이 뜨면 알림']) {
+      expect(
+        tester.widget<Text>(find.text(label)).style?.color,
+        AppTheme.darkColors.textSupporting,
+        reason: '$label is readable supporting information, not disabled state',
+      );
+    }
+
+    final mainScroll = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('최근 받은 알림을 확인합니다'),
+      500,
+      scrollable: mainScroll,
+    );
+    expect(
+      tester.widget<Text>(find.text('최근 받은 알림을 확인합니다')).style?.color,
+      AppTheme.darkColors.textSupporting,
+    );
+
+    await tester.scrollUntilVisible(
+      find.text('0.1.0+1'),
+      500,
+      scrollable: mainScroll,
+    );
+    expect(
+      tester.widget<Text>(find.text('0.1.0+1')).style?.color,
+      AppTheme.darkColors.textSupporting,
+    );
+  });
+
   testWidgets('푸시 설정 로드 실패는 오류와 다시 시도를 보여주고 복구한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));

@@ -1,12 +1,46 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+import json
+from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 NotificationDelivery = Literal["immediate", "summary", "live_only", "off"]
 NotificationSummaryDetailLevel = Literal["essential", "standard", "detailed"]
 NotificationLiveDetailLevel = Literal["essential", "standard", "detailed"]
+BoundedGameId = Annotated[str, Field(min_length=1, max_length=32)]
+BoundedDeviceToken = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=2048),
+]
+BoundedOwnerId = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=128),
+]
+OptionalOwnerId = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=128),
+]
+BoundedPlatform = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=16),
+]
+BoundedLiveActivityToken = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=512),
+]
+OptionalLiveActivityToken = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=512),
+]
+ReceiptDataKey = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=64),
+]
+ReceiptDataValue = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=1024),
+]
 
 
 class NotificationDeliveryModes(BaseModel):
@@ -40,14 +74,14 @@ class NotificationSettings(BaseModel):
 
 
 class PushRegisterRequest(BaseModel):
-    deviceToken: str
-    platform: str
-    installationId: Optional[str] = None
-    myTeam: Optional[str] = None
+    deviceToken: BoundedDeviceToken
+    platform: BoundedPlatform
+    installationId: Optional[OptionalOwnerId] = None
+    myTeam: Optional[str] = Field(default=None, max_length=8)
     notifications: NotificationSettings
-    followedGameIds: list[str] = Field(default_factory=list)
+    followedGameIds: list[BoundedGameId] = Field(default_factory=list, max_length=16)
     notificationsAllowed: Optional[bool] = None
-    authorizationStatus: Optional[str] = None
+    authorizationStatus: Optional[str] = Field(default=None, max_length=32)
     apnsTokenReady: Optional[bool] = None
 
 
@@ -59,18 +93,34 @@ class PushTestRequest(BaseModel):
 
 
 class PushDeviceTestRequest(BaseModel):
-    deviceToken: str
+    deviceToken: BoundedDeviceToken
+    installationId: Optional[BoundedOwnerId] = None
 
 
 class PushReceiptRequest(BaseModel):
-    deviceToken: str
-    messageId: Optional[str] = None
-    source: str
-    type: Optional[str] = None
-    gameId: Optional[str] = None
-    route: Optional[str] = None
-    receivedAt: Optional[str] = None
-    data: dict[str, Any] = Field(default_factory=dict)
+    deviceToken: BoundedDeviceToken
+    installationId: Optional[BoundedOwnerId] = None
+    messageId: Optional[str] = Field(default=None, max_length=256)
+    source: str = Field(min_length=1, max_length=32)
+    type: Optional[str] = Field(default=None, max_length=64)
+    gameId: Optional[str] = Field(default=None, max_length=32)
+    route: Optional[str] = Field(default=None, max_length=512)
+    receivedAt: Optional[str] = Field(default=None, max_length=64)
+    data: dict[ReceiptDataKey, ReceiptDataValue] = Field(
+        default_factory=dict,
+        max_length=8,
+    )
+
+    @model_validator(mode="after")
+    def validate_data_byte_size(self) -> PushReceiptRequest:
+        serialized = json.dumps(
+            self.data,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        if len(serialized) > 4096:
+            raise ValueError("receipt data exceeds 4096 bytes")
+        return self
 
 
 class PushBaseballInfoRequest(BaseModel):
@@ -120,25 +170,26 @@ class LiveActivityContentState(BaseModel):
 
 
 class LiveActivityRegisterRequest(BaseModel):
-    gameId: str
-    activityPushToken: str
-    activityId: Optional[str] = None
-    previousActivityPushToken: Optional[str] = None
-    installationId: Optional[str] = None
-    platform: str = "ios"
+    gameId: BoundedGameId
+    activityPushToken: BoundedLiveActivityToken
+    activityId: Optional[OptionalOwnerId] = None
+    previousActivityPushToken: Optional[OptionalLiveActivityToken] = None
+    installationId: Optional[OptionalOwnerId] = None
+    platform: BoundedPlatform = "ios"
 
 
 class LiveActivityStartTokenRegisterRequest(BaseModel):
-    pushToStartToken: str
-    previousPushToStartToken: Optional[str] = None
-    installationId: str
-    platform: str = "ios"
+    pushToStartToken: BoundedLiveActivityToken
+    previousPushToStartToken: Optional[OptionalLiveActivityToken] = None
+    installationId: BoundedOwnerId
+    platform: BoundedPlatform = "ios"
 
 
 class LiveActivityUnregisterRequest(BaseModel):
-    gameId: str
-    activityPushToken: Optional[str] = None
-    activityId: Optional[str] = None
+    gameId: BoundedGameId
+    activityPushToken: Optional[OptionalLiveActivityToken] = None
+    activityId: Optional[OptionalOwnerId] = None
+    installationId: Optional[BoundedOwnerId] = None
 
 
 class LiveActivityUpdateRequest(BaseModel):

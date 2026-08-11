@@ -36,6 +36,7 @@ const _scheduleGameDetailOpenTimeout = Duration(seconds: 4);
 const _scheduleGameDetailPlayerImagePrefetchTimeout = Duration(seconds: 8);
 const _scheduleTeamPlayerImagePrefetchTimeout = Duration(seconds: 3);
 const _scheduleGameDetailPlayerImagePrefetchLimit = 80;
+const _eagerScheduleGameDetailWarmupEnabled = false;
 
 @visibleForTesting
 String formatScheduleTicketSummary(TicketInfo ticketInfo) {
@@ -184,7 +185,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   int? _scheduleLoadStartedAtMicros;
   String? _lastScheduleLoadLogKey;
   int? _pendingSelectedDay;
-  String? _openingGameDetailId;
+  bool _gameDetailNavigationInFlight = false;
+  late String _observedKboDate;
 
   @override
   void initState() {
@@ -193,6 +195,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     _currentMonth = DateTime(now.year, now.month);
     _calendarPageController = PageController(initialPage: _calendarInitialPage);
     _selectedDay = now.day;
+    _observedKboDate = kboDateKey();
     _scheduleLoadStartedAtMicros = DateTime.now().microsecondsSinceEpoch;
   }
 
@@ -206,8 +209,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       '${_currentMonth.year}-${_currentMonth.month.toString().padLeft(2, '0')}';
 
   Future<void> _refreshSchedule() async {
+    final season = _currentMonth.year;
     if (_viewMode == ScheduleViewMode.matchup) {
-      final season = _currentMonth.year;
       for (final yearMonth in kboScheduleSeasonMonths(season)) {
         ref.invalidate(scheduleProvider(yearMonth));
       }
@@ -217,58 +220,47 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     }
 
     ref.invalidate(scheduleProvider(_yearMonth));
+    ref.invalidate(seasonScheduleProvider(season));
     await ref.read(scheduleProvider(_yearMonth).future);
   }
 
   void _openGameDetail(ScheduleGame scheduleGame) {
-    if (_openingGameDetailId != null) {
+    if (_gameDetailNavigationInFlight) {
       return;
     }
-    unawaited(_openGameDetailAfterRefresh(scheduleGame));
+    _gameDetailNavigationInFlight = true;
+    final navigation = context.push(
+      _gameDetailLocation(
+        scheduleGame.gameId,
+        tab: _defaultTabForScheduleGame(scheduleGame),
+      ),
+    );
+    unawaited(
+      navigation.whenComplete(() => _gameDetailNavigationInFlight = false),
+    );
+    unawaited(_refreshGameDetailInBackground(scheduleGame));
   }
 
-  Future<void> _openGameDetailAfterRefresh(ScheduleGame scheduleGame) async {
+  Future<void> _refreshGameDetailInBackground(ScheduleGame scheduleGame) async {
     final gameId = scheduleGame.gameId;
-    setState(() {
-      _openingGameDetailId = gameId;
-    });
 
     try {
       ref.invalidate(gameProvider(gameId));
       final game = await ref
           .read(gameProvider(gameId).future)
           .timeout(_scheduleGameDetailOpenTimeout);
-      if (!mounted) {
-        return;
-      }
-
-      final tab = _defaultTabForGame(game, fallback: scheduleGame);
-      if (game != null) {
-        unawaited(_warmGameDetailFirstTab(game, tab: tab));
-      }
-      if (!mounted) {
-        return;
-      }
-
-      context.push(_gameDetailLocation(gameId, tab: tab), extra: game);
-    } catch (error) {
-      DevConsole.instance.warn(
-        'SCHEDULE game detail open refresh failed; opening route: $gameId $error',
-      );
-      if (mounted) {
-        context.push(
-          _gameDetailLocation(
-            gameId,
-            tab: _defaultTabForScheduleGame(scheduleGame),
+      if (_eagerScheduleGameDetailWarmupEnabled && game != null) {
+        unawaited(
+          _warmGameDetailFirstTab(
+            game,
+            tab: _defaultTabForGame(game, fallback: scheduleGame),
           ),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _openingGameDetailId = null;
-        });
-      }
+    } catch (error) {
+      DevConsole.instance.warn(
+        'SCHEDULE game detail background refresh failed: $gameId $error',
+      );
     }
   }
 
@@ -583,6 +575,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _syncKboDate(ref.watch(kboDateProvider));
     final scheduleAsync = ref.watch(scheduleProvider(_yearMonth));
     _logScheduleLoad(scheduleAsync);
 
@@ -599,51 +592,34 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 ],
               ),
             ),
-            if (_openingGameDetailId != null)
-              Positioned.fill(child: _buildGameDetailLoadingOverlay()),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildGameDetailLoadingOverlay() {
-    return ColoredBox(
-      key: const ValueKey('schedule-game-detail-loading'),
-      color: AppColors.background.withValues(alpha: 0.72),
-      child: Center(
-        child: Container(
-          width: 224,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-          decoration: BoxDecoration(
-            color: AppColors.card,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: AppColors.live,
-                ),
-              ),
-              SizedBox(width: 12),
-              Flexible(
-                child: Text(
-                  '경기 정보 갱신 중',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  void _syncKboDate(String nextDateKey) {
+    if (nextDateKey == _observedKboDate) {
+      return;
+    }
+    final previousDate = DateTime.tryParse(_observedKboDate);
+    final nextDate = DateTime.tryParse(nextDateKey);
+    _observedKboDate = nextDateKey;
+    if (previousDate == null ||
+        nextDate == null ||
+        _currentMonth.year != previousDate.year ||
+        _currentMonth.month != previousDate.month) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      _goToMonth(
+        DateTime(nextDate.year, nextDate.month),
+        selectedDay: nextDate.day,
+      );
+    });
   }
 
   Widget _buildMonthHeader() {
@@ -665,7 +641,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     ).format(_currentMonth).toUpperCase(),
                     style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textDisabled,
+                      color: AppColors.textSupporting,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
                     ),
@@ -979,7 +955,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             style: _CalendarLegendStyle.outline,
           ),
           _legendItem(AppColors.accent, '마이팀 경기'),
-          _legendItem(AppColors.textDisabled, '일반 경기'),
+          _legendItem(AppColors.textSupporting, '일반 경기'),
           _legendItem(
             AppColors.live,
             '선택한 날짜',
@@ -1021,7 +997,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
+          style: TextStyle(fontSize: 11, color: AppColors.textSupporting),
         ),
       ],
     );
@@ -1131,7 +1107,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: AppColors.textDisabled,
+              color: AppColors.textSupporting,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1304,13 +1280,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   double _calendarPagerHeight(BuildContext context) {
     final viewportHeight = MediaQuery.sizeOf(context).height;
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final scaledTextAllowance = (textScale - 1).clamp(0.0, 1.4) * 18;
     if (viewportHeight < 700) {
-      return 286;
+      return 286 + scaledTextAllowance;
     }
     if (viewportHeight < 780) {
-      return 310;
+      return 310 + scaledTextAllowance;
     }
-    return 322;
+    return 322 + scaledTextAllowance;
   }
 
   Widget _buildStadiumPager() {
@@ -1481,7 +1459,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         ? AppColors.accent
                         : d == '일'
                         ? AppColors.live
-                        : AppColors.textDisabled;
+                        : AppColors.textSupporting;
                     return Expanded(
                       child: Center(
                         child: Text(
@@ -1590,10 +1568,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                           color: isSelected
                                               ? AppColors.textPrimary
                                               : !isInCurrentMonth
-                                              ? AppColors.textDisabled
-                                                    .withValues(alpha: 0.55)
+                                              ? AppColors.textSupporting
                                               : isPast
-                                              ? AppColors.textDisabled
+                                              ? AppColors.textSupporting
                                               : isSaturday
                                               ? AppColors.accent
                                               : isSunday
@@ -1622,7 +1599,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                                                 ),
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
-                                                  color: AppColors.textDisabled,
+                                                  color:
+                                                      AppColors.textSupporting,
                                                 ),
                                               ),
                                       ),
@@ -1730,11 +1708,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     required String title,
     required String message,
   }) {
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final cardHeight = 178 + (textScale - 1).clamp(0.0, 1.4) * 42;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 48, 16, 24),
       child: AppArtworkCard(
         assetName: VisualAssets.scheduleEmptyCalendar,
-        height: 178,
+        height: cardHeight,
         alignment: Alignment.center,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1989,7 +1969,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             '팀 매치업 일정',
             style: TextStyle(
               fontSize: 12,
-              color: AppColors.textDisabled,
+              color: AppColors.textSupporting,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -2049,7 +2029,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               '$gameCount',
               style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textDisabled,
+                color: AppColors.textSupporting,
                 fontWeight: FontWeight.w600,
               ),
             ),

@@ -175,6 +175,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             season:
                 int.tryParse(state.uri.queryParameters['season'] ?? '') ??
                 kboCurrentSeason(),
+            followsCurrentSeason: recordsRouteFollowsCurrentSeason(state.uri),
           ),
         ),
       ),
@@ -192,6 +193,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             season:
                 int.tryParse(state.uri.queryParameters['season'] ?? '') ??
                 kboCurrentSeason(),
+            followsCurrentSeason: recordsRouteFollowsCurrentSeason(state.uri),
           ),
         ),
       ),
@@ -251,6 +253,11 @@ String? _hashLocation(Uri uri) {
 
 String _safeRedirectPath(String? target) {
   return sanitizeAppRoute(target, fallback: '/home') ?? '/home';
+}
+
+bool recordsRouteFollowsCurrentSeason(Uri uri) {
+  return !uri.queryParameters.containsKey('season') ||
+      uri.queryParameters['seasonMode'] == 'current';
 }
 
 CustomTransitionPage<void> _fadeTransitionPage(

@@ -3,7 +3,6 @@ from datetime import date
 import pytest
 
 from kbo_fans_backend.services.lineup import LineupService
-from kbo_fans_backend.services.push_registry import PushRegistry
 from kbo_fans_backend.storage import JsonSnapshotStore
 
 
@@ -72,28 +71,12 @@ class _EmptyPlayerStatsService:
         return {"teamId": team_id, "season": season, "players": []}
 
 
-class _NoopPushService:
-    def send_lineup_opened(self, **kwargs):
-        return None
-
-
-class _RecordingPushService:
-    def __init__(self, registry: PushRegistry) -> None:
-        self.registry = registry
-        self.calls = []
-
-    def send_lineup_opened(self, **kwargs):
-        self.calls.append(kwargs)
-        return {"sent": True}
-
-
 def test_lineup_starter_images_are_built_from_main_game(tmp_path) -> None:
     service = LineupService(
         lineup_crawler=_StubLineupCrawler(),
         boxscore_crawler=_StubBoxscoreCrawler(),
         main_crawler=_StubMainCrawler(),
         snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
-        push_service=_NoopPushService(),
         player_stats_service=_StubPlayerStatsService(),
     )
 
@@ -113,7 +96,6 @@ def test_lineup_rows_are_enriched_with_player_images(tmp_path) -> None:
         boxscore_crawler=_StubBoxscoreCrawler(),
         main_crawler=_StubMainCrawler(),
         snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
-        push_service=_NoopPushService(),
         player_stats_service=_StubPlayerStatsService(),
     )
 
@@ -149,7 +131,6 @@ def test_lineup_service_uses_snapshot_first_for_past_game(tmp_path) -> None:
         boxscore_crawler=FailingBoxscoreCrawler(),
         main_crawler=_StubMainCrawler(),
         snapshot_store=snapshot_store,
-        push_service=_NoopPushService(),
         player_stats_service=_EmptyPlayerStatsService(),
     )
 
@@ -183,7 +164,6 @@ def test_lineup_service_enriches_past_snapshot_with_missing_player_images(tmp_pa
         boxscore_crawler=FailingBoxscoreCrawler(),
         main_crawler=_StubMainCrawler(),
         snapshot_store=snapshot_store,
-        push_service=_NoopPushService(),
         player_stats_service=_StubPlayerStatsService(),
     )
 
@@ -221,65 +201,23 @@ def test_lineup_service_does_not_use_snapshot_for_current_game_failure(tmp_path)
         boxscore_crawler=FailingBoxscoreCrawler(),
         main_crawler=_StubMainCrawler(),
         snapshot_store=snapshot_store,
-        push_service=_NoopPushService(),
     )
 
     with pytest.raises(RuntimeError, match="lineup unavailable"):
         service.get_lineup("29990101LGOB0")
 
 
-def test_lineup_service_marks_lineup_opened_after_push(tmp_path) -> None:
-    registry = PushRegistry(str(tmp_path / "push_registry.json"))
-    push_service = _RecordingPushService(registry)
+def test_lineup_query_does_not_emit_lineup_opened_push(tmp_path) -> None:
     service = LineupService(
         lineup_crawler=_StubLineupCrawler(),
         boxscore_crawler=_StubBoxscoreCrawler(),
         main_crawler=_StubMainCrawler(),
         snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
-        push_service=push_service,
         player_stats_service=_StubPlayerStatsService(),
         today_provider=lambda: date(2026, 4, 25),
     )
 
-    service.get_lineup("20260425LGOB0")
+    payload = service.get_lineup("20260425LGOB0")
 
-    assert len(push_service.calls) == 1
-    assert registry.pregame_alert_sent("20260425LGOB0", "lineup_opened") is True
-
-
-def test_lineup_service_does_not_send_lineup_opened_for_past_game(tmp_path) -> None:
-    registry = PushRegistry(str(tmp_path / "push_registry.json"))
-    push_service = _RecordingPushService(registry)
-    service = LineupService(
-        lineup_crawler=_StubLineupCrawler(),
-        boxscore_crawler=_StubBoxscoreCrawler(),
-        main_crawler=_StubMainCrawler(),
-        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
-        push_service=push_service,
-        player_stats_service=_StubPlayerStatsService(),
-        today_provider=lambda: date(2026, 6, 30),
-    )
-
-    service.get_lineup("20260618LGOB0")
-
-    assert push_service.calls == []
-    assert registry.pregame_alert_sent("20260618LGOB0", "lineup_opened") is False
-
-
-def test_lineup_service_skips_lineup_opened_when_scheduler_already_sent(tmp_path) -> None:
-    registry = PushRegistry(str(tmp_path / "push_registry.json"))
-    registry.mark_pregame_alert_sent("20260425LGOB0", "lineup_opened")
-    push_service = _RecordingPushService(registry)
-    service = LineupService(
-        lineup_crawler=_StubLineupCrawler(),
-        boxscore_crawler=_StubBoxscoreCrawler(),
-        main_crawler=_StubMainCrawler(),
-        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
-        push_service=push_service,
-        player_stats_service=_StubPlayerStatsService(),
-        today_provider=lambda: date(2026, 4, 25),
-    )
-
-    service.get_lineup("20260425LGOB0")
-
-    assert push_service.calls == []
+    assert payload["gameId"] == "20260425LGOB0"
+    assert not (tmp_path / "push_registry.json").exists()

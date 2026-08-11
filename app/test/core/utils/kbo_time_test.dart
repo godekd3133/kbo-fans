@@ -14,7 +14,23 @@ void main() {
 
     expect(kboYearMonthKey(instant), '2027-01');
     expect(kboCurrentSeason(instant), 2027);
+    expect(kboSeasonFromDateKey('2027-01-01'), 2027);
+    expect(kboSeasonFromDateKey('2027-02-31'), isNull);
   });
+
+  test(
+    'next KBO date delay targets Seoul midnight across month boundaries',
+    () {
+      expect(
+        durationUntilNextKboDate(DateTime.utc(2026, 12, 31, 14, 59, 30)),
+        const Duration(seconds: 30),
+      );
+      expect(
+        durationUntilNextKboDate(DateTime.utc(2026, 12, 31, 15)),
+        const Duration(days: 1),
+      );
+    },
+  );
 
   test('historical date classification uses the KBO civil date', () {
     final instant = DateTime.utc(2026, 7, 12, 19);

@@ -6,10 +6,7 @@ import 'package:kbo_fans/data/repositories/kbo_direct_repository.dart';
 
 void main() {
   test('direct relay rejects missing credentials before network access', () {
-    final repository = KboDirectRepository(
-      relayUserId: '',
-      relayPassword: '',
-    );
+    final repository = KboDirectRepository(relayUserId: '', relayPassword: '');
 
     expect(
       repository.validateRelayCredentialsForTesting,
@@ -186,6 +183,51 @@ void main() {
     expect(standings.single.streak, '3승');
     expect(standings.single.streakLabel, '3연승');
   });
+
+  test('direct standings annual request posts the requested WebForms season', () {
+    final repository = KboDirectRepository();
+    final payload = repository.buildStandingsFormPayloadForTesting('''
+      <input type="hidden" name="__VIEWSTATE" value="state-token" />
+      <select name="ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlYear">
+        <option value="2026" selected="selected">2026</option>
+        <option value="2025">2025</option>
+      </select>
+      <select name="series"><option value="0" selected="selected">정규</option></select>
+    ''', 2025);
+
+    expect(payload['__VIEWSTATE'], 'state-token');
+    expect(
+      payload['__EVENTTARGET'],
+      'ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlYear',
+    );
+    expect(
+      payload['ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlYear'],
+      '2025',
+    );
+    expect(payload['series'], '0');
+  });
+
+  test(
+    'direct standings rejects a response relabelled from another season',
+    () {
+      const response = '''
+      <select name="ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$ddlYear">
+        <option value="2026" selected="selected">2026</option>
+        <option value="2025">2025</option>
+      </select>
+      <input type="hidden" name="ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$hfSearchYear" value="2026" />
+      <input type="hidden" name="ctl00\$ctl00\$ctl00\$cphContents\$cphContents\$cphContents\$hfSearchDate" value="20261231" />
+    ''';
+
+      expect(
+        () => KboDirectRepository().validateStandingsSourceForTesting(
+          response,
+          2025,
+        ),
+        throwsStateError,
+      );
+    },
+  );
 
   test('direct lineup analysis parser preserves live lineup stats', () {
     final repository = KboDirectRepository();

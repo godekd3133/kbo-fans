@@ -51,7 +51,9 @@ def test_boxscore_crawler_marks_pitcher_placeholder_only_payload_unofficial() ->
 
     payload = crawler.get_boxscore("20260613KTLG0")
 
+    assert payload["availability"] == "official_unavailable"
     assert payload["officialAvailable"] is False
+    assert payload["unavailableReason"] == "official_partial"
     assert payload["away"]["batters"] == []
     assert payload["away"]["pitchers"] == []
     assert payload["home"]["pitchers"] == []
@@ -132,7 +134,27 @@ def test_boxscore_crawler_enriches_live_context_with_relay_today_batting_line() 
     assert payload["away"]["batters"][0]["liveStatsAvailable"] is True
 
 
-def test_boxscore_crawler_keeps_zero_value_batter_rows_official() -> None:
+def test_boxscore_crawler_rejects_pitcher_only_official_payload() -> None:
+    crawler = _PayloadBoxscoreCrawler(
+        {
+            "arrHitter": [_hitter_payload([]), _hitter_payload([])],
+            "arrPitcher": [
+                _pitcher_payload([_pitcher_row(name="선발투수", innings="2.0")]),
+                _pitcher_payload([_pitcher_row(name="상대투수", innings="2.0")]),
+            ],
+        }
+    )
+
+    payload = crawler.get_boxscore("20260613KTLG0")
+
+    assert payload["availability"] == "official_unavailable"
+    assert payload["officialAvailable"] is False
+    assert payload["unavailableReason"] == "official_partial"
+    assert payload["away"]["pitchers"] == []
+    assert payload["home"]["pitchers"] == []
+
+
+def test_boxscore_crawler_rejects_zero_value_single_team_batter_rows() -> None:
     crawler = _PayloadBoxscoreCrawler(
         {
             "arrHitter": [
@@ -148,9 +170,9 @@ def test_boxscore_crawler_keeps_zero_value_batter_rows_official() -> None:
 
     payload = crawler.get_boxscore("20260613KTLG0")
 
-    assert payload["officialAvailable"] is True
-    assert payload["away"]["batters"][0]["name"] == "타자"
-    assert payload["away"]["batters"][0]["atBats"] == 0
+    assert payload["availability"] == "official_unavailable"
+    assert payload["officialAvailable"] is False
+    assert payload["away"]["batters"] == []
     assert payload["away"]["pitchers"] == []
 
 
@@ -197,7 +219,7 @@ def test_boxscore_crawler_parses_optional_hitter_and_pitcher_stats() -> None:
                         "병살",
                     ],
                 ),
-                _hitter_payload([]),
+                _hitter_payload([(["4", "좌", "상대타자"], ["3", "1", "0", "0"])]),
             ],
             "arrPitcher": [
                 _pitcher_payload(
@@ -221,13 +243,15 @@ def test_boxscore_crawler_parses_optional_hitter_and_pitcher_stats() -> None:
                         "자책",
                     ],
                 ),
-                _pitcher_payload([]),
+                _pitcher_payload([_pitcher_row(name="상대투수", innings="1.0")]),
             ],
         }
     )
 
     payload = crawler.get_boxscore("20260613KTLG0")
 
+    assert payload["availability"] == "official"
+    assert payload["officialAvailable"] is True
     batter = payload["away"]["batters"][0]
     assert batter["plateAppearances"] == 5
     assert batter["atBats"] == 4
@@ -250,7 +274,10 @@ def test_boxscore_crawler_parses_optional_hitter_and_pitcher_stats() -> None:
 def test_boxscore_crawler_totals_innings_follow_reordered_header() -> None:
     crawler = _PayloadBoxscoreCrawler(
         {
-            "arrHitter": [_hitter_payload([]), _hitter_payload([])],
+            "arrHitter": [
+                _hitter_payload([(["1", "중", "타자"], ["2", "1", "0", "0"])]),
+                _hitter_payload([(["1", "중", "상대타자"], ["2", "1", "0", "0"])]),
+            ],
             "arrPitcher": [
                 _pitcher_payload(
                     [["김영현", "1.2", "2", "3", "1", "1", "-", "25", "1"]],
@@ -266,7 +293,7 @@ def test_boxscore_crawler_totals_innings_follow_reordered_header() -> None:
                         "실점",
                     ],
                 ),
-                _pitcher_payload([]),
+                _pitcher_payload([_pitcher_row(name="상대투수", innings="1.0")]),
             ],
         }
     )

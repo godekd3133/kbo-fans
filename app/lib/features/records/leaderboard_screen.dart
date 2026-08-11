@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/constants/team_data.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/kbo_time.dart';
 import '../../core/utils/kbo_player_image_cache.dart';
 import '../../core/widgets/app_motion.dart';
 import '../../core/widgets/kbo_team_logo_image.dart';
@@ -15,11 +16,13 @@ import '../../data/providers.dart';
 class LeaderboardScreen extends ConsumerStatefulWidget {
   final int season;
   final LeaderboardMetric metric;
+  final bool followsCurrentSeason;
 
   const LeaderboardScreen({
     super.key,
     required this.season,
     required this.metric,
+    this.followsCurrentSeason = false,
   });
 
   @override
@@ -54,8 +57,12 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   @override
   Widget build(BuildContext context) {
     AppColors.sync(AppTheme.colorsOf(context));
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
+    final effectiveSeason = widget.followsCurrentSeason
+        ? kboSeasonFromDateKey(ref.watch(kboDateProvider)) ?? widget.season
+        : widget.season;
     final asyncValue = ref.watch(
-      leaderboardProvider('${widget.season}|${_selectedMetric.key}'),
+      leaderboardProvider('$effectiveSeason|${_selectedMetric.key}'),
     );
 
     return Scaffold(
@@ -67,31 +74,47 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${widget.season} 시즌 · ${_selectedGroup.label} 지표',
+                '$effectiveSeason 시즌 · ${_selectedGroup.label} 지표',
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 10),
               _groupSegment(),
               const SizedBox(height: 10),
-              _metricSelector(),
+              _metricSelector(useLargeText: useLargeText),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
+              if (useLargeText)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       _selectedMetric.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  _sourceBadge(_selectedMetric),
-                ],
-              ),
+                    const SizedBox(height: 8),
+                    _sourceBadge(_selectedMetric),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _selectedMetric.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _sourceBadge(_selectedMetric),
+                  ],
+                ),
               if (_selectedMetric.disclosure != null) ...[
                 const SizedBox(height: 10),
                 _metricDisclosure(_selectedMetric.disclosure!),
@@ -113,11 +136,15 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                         error: (error, _) => Center(
                           child: Text(
                             describeAsyncError(error),
-                            style: TextStyle(color: AppColors.textDisabled),
+                            style: TextStyle(color: AppColors.textSupporting),
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        data: (leaders) => _leaderList(leaders),
+                        data: (leaders) => _leaderList(
+                          leaders,
+                          season: effectiveSeason,
+                          useLargeText: useLargeText,
+                        ),
                       ),
                     ),
                   ),
@@ -131,8 +158,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
 
   Widget _groupSegment() {
     return Container(
-      height: 44,
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(8),
@@ -150,10 +176,11 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   Widget _groupButton(LeaderboardPlayerGroup group) {
     final selected = _selectedGroup == group;
     return AppPressable(
+      key: ValueKey('leaderboard-group-${group.name}'),
       onTap: selected ? null : () => _selectGroup(group),
       pressedScale: 0.98,
+      semanticSelected: selected,
       child: AnimatedContainer(
-        key: ValueKey('leaderboard-group-${group.name}'),
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         alignment: Alignment.center,
@@ -182,9 +209,9 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     });
   }
 
-  Widget _metricSelector() {
+  Widget _metricSelector({required bool useLargeText}) {
     return SizedBox(
-      height: 42,
+      height: useLargeText ? 58 : 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _selectedGroup.metrics.length,
@@ -200,13 +227,14 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   Widget _metricChip(LeaderboardMetric metric) {
     final selected = _selectedMetric == metric;
     return AppPressable(
+      key: ValueKey('leaderboard-metric-${metric.key}'),
       onTap: selected ? null : () => setState(() => _selectedMetric = metric),
       pressedScale: 0.97,
+      semanticSelected: selected,
       child: AnimatedContainer(
-        key: ValueKey('leaderboard-metric-${metric.key}'),
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        height: 42,
+        constraints: const BoxConstraints(minHeight: 44),
         padding: const EdgeInsets.symmetric(horizontal: 14),
         alignment: Alignment.center,
         decoration: BoxDecoration(
@@ -237,7 +265,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
         ? AppColors.accent
         : available
         ? AppColors.positive
-        : AppColors.textDisabled;
+        : AppColors.textSupporting;
     return Container(
       key: ValueKey('leaderboard-source-${metric.key}'),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
@@ -283,12 +311,16 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     );
   }
 
-  Widget _leaderList(List<RecordLeader> leaders) {
+  Widget _leaderList(
+    List<RecordLeader> leaders, {
+    required int season,
+    required bool useLargeText,
+  }) {
     if (leaders.isEmpty) {
       return Center(
         child: Text(
           '표시할 리더보드 데이터가 없습니다',
-          style: TextStyle(color: AppColors.textDisabled),
+          style: TextStyle(color: AppColors.textSupporting),
         ),
       );
     }
@@ -303,8 +335,10 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           child: _leaderRow(
             context,
             leader: leader,
-            season: widget.season,
+            season: season,
+            followsCurrentSeason: widget.followsCurrentSeason,
             metric: _selectedMetric,
+            useLargeText: useLargeText,
           ),
         );
       },
@@ -315,19 +349,48 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     BuildContext context, {
     required RecordLeader leader,
     required int season,
+    required bool followsCurrentSeason,
     required LeaderboardMetric metric,
+    required bool useLargeText,
   }) {
     final team = KboTeams.byId(leader.teamId);
     final imageUrl = kboPlayerImageUrl(
       season: season,
       playerId: leader.playerId,
     );
+    final avatar = ClipOval(
+      child: CachedNetworkImage(
+        imageUrl: imageUrl,
+        httpHeaders: kboPlayerImageHeaders,
+        cacheManager: kboPlayerImageCacheManager,
+        width: useLargeText ? 48 : 40,
+        height: useLargeText ? 48 : 40,
+        memCacheWidth: kboPlayerImageCacheSize(useLargeText ? 48 : 40),
+        memCacheHeight: kboPlayerImageCacheSize(useLargeText ? 48 : 40),
+        maxWidthDiskCache: kboPlayerImageCacheSize(useLargeText ? 48 : 40),
+        maxHeightDiskCache: kboPlayerImageCacheSize(useLargeText ? 48 : 40),
+        fit: BoxFit.cover,
+        errorWidget: (_, _, _) => Container(
+          width: useLargeText ? 48 : 40,
+          height: useLargeText ? 48 : 40,
+          color: AppColors.cardSub,
+          alignment: Alignment.center,
+          child: Text(
+            leader.name.isEmpty ? '?' : leader.name.substring(0, 1),
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
 
     return AppPressable(
       onTap: leader.isRetired
           ? null
           : () => context.push(
-              '/records/player/${leader.playerId}?season=$season',
+              '/records/player/${leader.playerId}?season=$season${followsCurrentSeason ? '&seasonMode=current' : ''}',
             ),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -336,118 +399,148 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.divider),
         ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 28,
-              child: Text(
-                '${leader.rank}',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            ClipOval(
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                httpHeaders: kboPlayerImageHeaders,
-                cacheManager: kboPlayerImageCacheManager,
-                width: 40,
-                height: 40,
-                memCacheWidth: kboPlayerImageCacheSize(40),
-                memCacheHeight: kboPlayerImageCacheSize(40),
-                maxWidthDiskCache: kboPlayerImageCacheSize(40),
-                maxHeightDiskCache: kboPlayerImageCacheSize(40),
-                fit: BoxFit.cover,
-                errorWidget: (_, _, _) => Container(
-                  width: 40,
-                  height: 40,
-                  color: AppColors.cardSub,
-                  alignment: Alignment.center,
-                  child: Text(
-                    leader.name.isEmpty ? '?' : leader.name.substring(0, 1),
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Row(
+        child: useLargeText
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (team != null) ...[
-                    KboTeamLogoImage(
-                      teamId: team.id,
-                      fallback: team.shortName,
-                      size: 26,
-                      padding: 0,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      avatar,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: Text(
-                                leader.name,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            Text(
+                              '${leader.rank}위',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              leader.name,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              team?.name ?? leader.teamId,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
                               ),
                             ),
                             if (leader.isRetired) ...[
-                              const SizedBox(width: 6),
+                              const SizedBox(height: 6),
                               _retiredBadge(),
                             ],
                           ],
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          team?.name ?? leader.teamId,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '${metric.shortLabel} ${leader.value}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  SizedBox(
+                    width: 28,
+                    child: Text(
+                      '${leader.rank}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  avatar,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        if (team != null) ...[
+                          KboTeamLogoImage(
+                            teamId: team.id,
+                            fallback: team.shortName,
+                            size: 26,
+                            padding: 0,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      leader.name,
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  if (leader.isRetired) ...[
+                                    const SizedBox(width: 6),
+                                    _retiredBadge(),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                team?.name ?? leader.teamId,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        leader.value,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        metric.shortLabel,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textSupporting,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  leader.value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  metric.shortLabel,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textDisabled,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -488,7 +581,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: AppColors.textDisabled.withValues(alpha: 0.14),
+        color: AppColors.textSupporting.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

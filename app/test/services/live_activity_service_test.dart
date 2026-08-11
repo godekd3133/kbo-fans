@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -17,6 +20,10 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    LiveActivityService.instance.unregisterRequestSenderForTesting = null;
+    LiveActivityService.instance.registerRequestSenderForTesting = null;
+    LiveActivityService.instance.startTokenRegisterRequestSenderForTesting =
+        null;
   });
 
   test('Live Activity updatedAt text uses KST', () {
@@ -76,10 +83,406 @@ void main() {
     await LiveActivityService.instance.syncPushToStartToken();
 
     expect(capturedCall?.method, 'syncPushToStartToken');
-    expect(capturedCall?.arguments, <String, dynamic>{
-      'apiBaseUrl': AppConfig.instance.apiBaseUrl,
-    });
+    final arguments = Map<String, dynamic>.from(capturedCall?.arguments as Map);
+    expect(arguments['apiBaseUrl'], AppConfig.instance.apiBaseUrl);
+    expect(arguments['installationId'], startsWith('kbo-'));
   });
+
+  test(
+    'iOS push-to-start sync does not wait for pending unregister network drain',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+      });
+      SharedPreferences.setMockInitialValues({
+        'live_activity.pending_unregister_requests': <String>[
+          jsonEncode({
+            'gameId': '20260520LGKT0',
+            'activityPushToken': 'old-token',
+            'activityId': 'old-activity',
+            'installationId': 'install-owner',
+          }),
+        ],
+      });
+      final unregisterStarted = Completer<void>();
+      final releaseUnregister = Completer<void>();
+      LiveActivityService.instance.unregisterRequestSenderForTesting =
+          (_) async {
+            if (!unregisterStarted.isCompleted) {
+              unregisterStarted.complete();
+            }
+            await releaseUnregister.future;
+          };
+
+      MethodCall? capturedCall;
+      const channel = MethodChannel('kbo_fans/live_activity');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            capturedCall = call;
+            return <String, dynamic>{'supported': true, 'pushToStartToken': ''};
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      final sync = LiveActivityService.instance.syncPushToStartToken();
+      await unregisterStarted.future.timeout(const Duration(seconds: 2));
+      try {
+        final completedBeforeRelease = await Future.any<bool>([
+          sync.then((_) => true),
+          Future<bool>.delayed(const Duration(seconds: 1), () => false),
+        ]);
+        expect(completedBeforeRelease, isTrue);
+        expect(capturedCall?.method, 'syncPushToStartToken');
+      } finally {
+        releaseUnregister.complete();
+        await sync;
+      }
+    },
+  );
+
+  test(
+    'empty native previous token falls back to the persisted activity token',
+    () async {
+      const gameId = '20260520LGKT0';
+      const tokenKey = 'live_activity.activity_push_token.$gameId';
+      const activityIdKey = 'live_activity.activity_id.$gameId';
+      SharedPreferences.setMockInitialValues({
+        tokenKey: 'token-before-restart',
+        activityIdKey: 'same-activity',
+        'push_notifications.installation_id': 'install-owner',
+      });
+      final captured = <Map<String, dynamic>>[];
+      LiveActivityService.instance.registerRequestSenderForTesting =
+          (request) async => captured.add(Map<String, dynamic>.from(request));
+
+      await LiveActivityService.instance.registerLiveActivityTokenForTesting(
+        gameId: gameId,
+        activityId: 'same-activity',
+        activityPushToken: 'token-after-restart',
+        previousActivityPushToken: '',
+      );
+
+      expect(captured, hasLength(1));
+      expect(captured.single, {
+        'gameId': gameId,
+        'activityId': 'same-activity',
+        'activityPushToken': 'token-after-restart',
+        'previousActivityPushToken': 'token-before-restart',
+        'installationId': 'install-owner',
+        'platform': 'ios',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(tokenKey), 'token-after-restart');
+      expect(prefs.getString(activityIdKey), 'same-activity');
+    },
+  );
+
+  test(
+    'activity token rotations are serialized before persisted owner advances',
+    () async {
+      const gameId = '20260520LGKT0';
+      const tokenKey = 'live_activity.activity_push_token.$gameId';
+      SharedPreferences.setMockInitialValues({
+        tokenKey: 'activity-token-a',
+        'live_activity.activity_id.$gameId': 'same-activity',
+        'push_notifications.installation_id': 'install-owner',
+      });
+      final firstSend = Completer<void>();
+      final captured = <Map<String, dynamic>>[];
+      LiveActivityService.instance.registerRequestSenderForTesting =
+          (request) async {
+            captured.add(Map<String, dynamic>.from(request));
+            if (captured.length == 1) {
+              await firstSend.future;
+            }
+          };
+
+      final registerB = LiveActivityService.instance
+          .registerLiveActivityTokenForTesting(
+            gameId: gameId,
+            activityId: 'same-activity',
+            activityPushToken: 'activity-token-b',
+            previousActivityPushToken: '',
+          );
+      await Future<void>.delayed(Duration.zero);
+      final registerC = LiveActivityService.instance
+          .registerLiveActivityTokenForTesting(
+            gameId: gameId,
+            activityId: 'same-activity',
+            activityPushToken: 'activity-token-c',
+            previousActivityPushToken: 'activity-token-b',
+          );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(captured, hasLength(1));
+      expect(captured.single['previousActivityPushToken'], 'activity-token-a');
+
+      firstSend.complete();
+      await Future.wait([registerB, registerC]);
+
+      expect(captured, hasLength(2));
+      expect(captured.last['activityPushToken'], 'activity-token-c');
+      expect(captured.last['previousActivityPushToken'], 'activity-token-b');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(tokenKey), 'activity-token-c');
+    },
+  );
+
+  test(
+    'empty native previous push-to-start token falls back to persisted owner token',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'live_activity.push_to_start_token': 'start-token-before-restart',
+        'push_notifications.installation_id': 'install-owner',
+      });
+      final captured = <Map<String, dynamic>>[];
+      LiveActivityService.instance.startTokenRegisterRequestSenderForTesting =
+          (request) async => captured.add(Map<String, dynamic>.from(request));
+
+      await LiveActivityService.instance.registerPushToStartTokenForTesting(
+        pushToStartToken: 'start-token-after-restart',
+        previousPushToStartToken: '',
+      );
+
+      expect(captured, [
+        {
+          'pushToStartToken': 'start-token-after-restart',
+          'previousPushToStartToken': 'start-token-before-restart',
+          'installationId': 'install-owner',
+          'platform': 'ios',
+        },
+      ]);
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getString('live_activity.push_to_start_token'),
+        'start-token-after-restart',
+      );
+    },
+  );
+
+  test(
+    'push-to-start rotations are serialized before the persisted owner advances',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'live_activity.push_to_start_token': 'start-token-a',
+        'push_notifications.installation_id': 'install-owner',
+      });
+      final firstSend = Completer<void>();
+      final captured = <Map<String, dynamic>>[];
+      LiveActivityService.instance.startTokenRegisterRequestSenderForTesting =
+          (request) async {
+            captured.add(Map<String, dynamic>.from(request));
+            if (captured.length == 1) {
+              await firstSend.future;
+            }
+          };
+
+      final registerB = LiveActivityService.instance
+          .registerPushToStartTokenForTesting(
+            pushToStartToken: 'start-token-b',
+            previousPushToStartToken: '',
+          );
+      await Future<void>.delayed(Duration.zero);
+      final registerC = LiveActivityService.instance
+          .registerPushToStartTokenForTesting(
+            pushToStartToken: 'start-token-c',
+            previousPushToStartToken: 'start-token-b',
+          );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(captured, hasLength(1));
+      expect(captured.single['previousPushToStartToken'], 'start-token-a');
+
+      firstSend.complete();
+      await Future.wait([registerB, registerC]);
+
+      expect(captured, hasLength(2));
+      expect(captured.last['pushToStartToken'], 'start-token-c');
+      expect(captured.last['previousPushToStartToken'], 'start-token-b');
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getString('live_activity.push_to_start_token'),
+        'start-token-c',
+      );
+    },
+  );
+
+  test(
+    'failed unregister retry removes only the old owner and preserves new prefs',
+    () async {
+      const gameId = '20260520LGKT0';
+      const tokenKey = 'live_activity.activity_push_token.$gameId';
+      const activityIdKey = 'live_activity.activity_id.$gameId';
+      const pendingKey = 'live_activity.pending_unregister_requests';
+      SharedPreferences.setMockInitialValues({
+        tokenKey: 'old-token',
+        activityIdKey: 'old-activity',
+        'push_notifications.installation_id': 'install-owner',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final calls = <Map<String, dynamic>>[];
+      var shouldFail = true;
+      LiveActivityService.instance.unregisterRequestSenderForTesting =
+          (request) async {
+            calls.add(Map<String, dynamic>.from(request));
+            if (shouldFail) {
+              throw StateError('offline');
+            }
+          };
+
+      await LiveActivityService.instance.unregisterLiveActivityForTesting(
+        gameId,
+      );
+
+      expect(calls, hasLength(1));
+      expect(calls.single, {
+        'gameId': gameId,
+        'activityPushToken': 'old-token',
+        'activityId': 'old-activity',
+        'installationId': 'install-owner',
+      });
+      expect(prefs.getStringList(pendingKey), hasLength(1));
+      expect(prefs.getString(tokenKey), 'old-token');
+      expect(prefs.getString(activityIdKey), 'old-activity');
+
+      await prefs.setString(tokenKey, 'new-token');
+      await prefs.setString(activityIdKey, 'new-activity');
+      shouldFail = false;
+
+      await LiveActivityService.instance
+          .retryPendingLiveActivityUnregistersForTesting();
+
+      expect(calls, hasLength(2));
+      expect(calls.last, calls.first);
+      expect(prefs.getStringList(pendingKey), isNull);
+      expect(prefs.getString(tokenKey), 'new-token');
+      expect(prefs.getString(activityIdKey), 'new-activity');
+    },
+  );
+
+  test(
+    'pending unregister dedupes an exact request and retains owner generations',
+    () async {
+      const gameId = '20260520LGKT1';
+      const tokenKey = 'live_activity.activity_push_token.$gameId';
+      const activityIdKey = 'live_activity.activity_id.$gameId';
+      const pendingKey = 'live_activity.pending_unregister_requests';
+      SharedPreferences.setMockInitialValues({
+        tokenKey: 'first-token',
+        activityIdKey: 'first-activity',
+        'push_notifications.installation_id': 'install-owner',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final calls = <Map<String, dynamic>>[];
+      var shouldFail = true;
+      LiveActivityService.instance.unregisterRequestSenderForTesting =
+          (request) async {
+            calls.add(Map<String, dynamic>.from(request));
+            if (shouldFail) {
+              throw StateError('offline');
+            }
+          };
+
+      await LiveActivityService.instance.unregisterLiveActivityForTesting(
+        gameId,
+      );
+      await LiveActivityService.instance.unregisterLiveActivityForTesting(
+        gameId,
+      );
+      await prefs.setString(tokenKey, 'second-token');
+      await prefs.setString(activityIdKey, 'second-activity');
+      await LiveActivityService.instance.unregisterLiveActivityForTesting(
+        gameId,
+      );
+
+      final pending = prefs
+          .getStringList(pendingKey)!
+          .map((item) => jsonDecode(item) as Map<String, dynamic>)
+          .toList();
+      expect(pending, hasLength(2));
+      expect(pending.map((request) => request['activityPushToken']), [
+        'first-token',
+        'second-token',
+      ]);
+      expect(pending.map((request) => request['activityId']), [
+        'first-activity',
+        'second-activity',
+      ]);
+      expect(pending.map((request) => request['installationId']).toSet(), {
+        'install-owner',
+      });
+
+      shouldFail = false;
+      calls.clear();
+      await LiveActivityService.instance
+          .retryPendingLiveActivityUnregistersForTesting();
+
+      expect(calls.map((request) => request['activityPushToken']), [
+        'first-token',
+        'second-token',
+      ]);
+      expect(prefs.getStringList(pendingKey), isNull);
+      expect(prefs.getString(tokenKey), isNull);
+      expect(prefs.getString(activityIdKey), isNull);
+    },
+  );
+
+  test(
+    'pending unregister storage drops malformed data and caps entries',
+    () async {
+      const pendingKey = 'live_activity.pending_unregister_requests';
+      const legacyKey = 'live_activity.pending_unregister_game_ids';
+      final encodedRequests = <String>[
+        'not-json',
+        jsonEncode({'gameId': 'missing-fields'}),
+        jsonEncode({
+          'gameId': '20260520LGKT2',
+          'activityPushToken': List<String>.filled(513, 'x').join(),
+          'activityId': 'activity-too-long-token',
+          'installationId': 'install-owner',
+        }),
+        for (var index = 0; index < 40; index++)
+          jsonEncode({
+            'gameId': '20260520LGKT2',
+            'activityPushToken': 'token-$index',
+            'activityId': 'activity-$index',
+            'installationId': 'install-owner',
+          }),
+      ];
+      encodedRequests.add(encodedRequests.last);
+      SharedPreferences.setMockInitialValues({
+        pendingKey: encodedRequests,
+        legacyKey: <String>['20260520LGKT2'],
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final calls = <Map<String, dynamic>>[];
+      LiveActivityService.instance.unregisterRequestSenderForTesting =
+          (request) async {
+            calls.add(Map<String, dynamic>.from(request));
+            throw StateError('offline');
+          };
+
+      await LiveActivityService.instance
+          .retryPendingLiveActivityUnregistersForTesting();
+
+      final cleaned = prefs
+          .getStringList(pendingKey)!
+          .map((item) => jsonDecode(item) as Map<String, dynamic>)
+          .toList();
+      expect(cleaned, hasLength(32));
+      expect(calls, hasLength(32));
+      expect(cleaned.first['activityPushToken'], 'token-8');
+      expect(cleaned.last['activityPushToken'], 'token-39');
+      expect(
+        cleaned.map((request) => request['activityPushToken']).toSet(),
+        hasLength(32),
+      );
+      expect(prefs.getStringList(legacyKey), isNull);
+    },
+  );
 
   test(
     'suspended game keeps follow state and updates its current surface',
@@ -115,12 +518,11 @@ void main() {
 
       expect(await LiveActivityService.instance.followedGameId(), gameId);
       expect(capturedCall?.method, 'syncCurrentScore');
-      expect(
-        Map<String, dynamic>.from(
-          capturedCall?.arguments as Map,
-        )['scoreAvailable'],
-        isTrue,
+      final arguments = Map<String, dynamic>.from(
+        capturedCall?.arguments as Map,
       );
+      expect(arguments['scoreAvailable'], isTrue);
+      expect(arguments['installationId'], startsWith('kbo-'));
     },
   );
 
@@ -362,6 +764,7 @@ void main() {
       expect(payload['strikes'], 2);
       expect(payload['outs'], 1);
       expect(payload['situationText'], '1사 1,2루');
+      expect(payload['installationId'], 'install-test');
     },
   );
 

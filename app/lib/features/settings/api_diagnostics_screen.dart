@@ -12,8 +12,12 @@ import '../../data/providers.dart';
 import '../../services/game_event_alert_service.dart';
 import '../../services/push_notification_service.dart';
 
+typedef PushDiagnosticsLoader = Future<Map<String, dynamic>> Function();
+
 class ApiDiagnosticsScreen extends ConsumerStatefulWidget {
-  const ApiDiagnosticsScreen({super.key});
+  final PushDiagnosticsLoader? pushStateLoader;
+
+  const ApiDiagnosticsScreen({super.key, this.pushStateLoader});
 
   @override
   ConsumerState<ApiDiagnosticsScreen> createState() =>
@@ -30,7 +34,25 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
   void initState() {
     super.initState();
     _future = _load();
-    _pushFuture = PushNotificationService.instance.debugState();
+    _pushFuture = _loadPushState();
+  }
+
+  Future<Map<String, dynamic>> _loadPushState() async {
+    return await (widget.pushStateLoader?.call() ??
+        PushNotificationService.instance.debugState());
+  }
+
+  void _refreshPushState() {
+    setState(() {
+      _pushFuture = _loadPushState();
+    });
+  }
+
+  void _refreshAllDiagnostics() {
+    setState(() {
+      _future = _load();
+      _pushFuture = _loadPushState();
+    });
   }
 
   Future<List<_DiagnosticResult>> _load() async {
@@ -136,7 +158,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text(result.message)));
       setState(() {
-        _pushFuture = PushNotificationService.instance.debugState();
+        _pushFuture = _loadPushState();
       });
     } finally {
       if (mounted) {
@@ -189,10 +211,50 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
               FutureBuilder<Map<String, dynamic>>(
                 future: _pushFuture,
                 builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const SizedBox.shrink();
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return AppMotionListItem(
+                      index: results.length + 1,
+                      child: const _DiagnosticCard(
+                        key: ValueKey('api-diagnostics-push-loading'),
+                        result: _DiagnosticResult(
+                          key: 'push',
+                          ok: false,
+                          muted: true,
+                          elapsedMs: 0,
+                          detail: '푸시 상태 확인 중',
+                          note: '진단 결과를 불러오고 있습니다.',
+                        ),
+                      ),
+                    );
                   }
-                  final data = snapshot.data!;
+                  if (snapshot.hasError) {
+                    return AppMotionListItem(
+                      index: results.length + 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _DiagnosticCard(
+                            key: const ValueKey('api-diagnostics-push-error'),
+                            result: _DiagnosticResult(
+                              key: 'push',
+                              ok: false,
+                              elapsedMs: 0,
+                              detail: '푸시 상태를 확인할 수 없습니다',
+                              note: describeAsyncError(snapshot.error!),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          TextButton.icon(
+                            key: const ValueKey('api-diagnostics-push-retry'),
+                            onPressed: _refreshPushState,
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('푸시 상태 다시 시도'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  final data = snapshot.data ?? const <String, dynamic>{};
                   final topics = (data['topics'] as List<dynamic>? ?? const [])
                       .join(', ');
                   final status = data['status'] as String? ?? 'idle';
@@ -256,11 +318,7 @@ class _ApiDiagnosticsScreenState extends ConsumerState<ApiDiagnosticsScreen> {
                     label: Text(_remoteNotificationBusy ? '요청 중' : '원격 푸시 테스트'),
                   ),
                   TextButton.icon(
-                    onPressed: () => setState(() {
-                      _future = _load();
-                      _pushFuture = PushNotificationService.instance
-                          .debugState();
-                    }),
+                    onPressed: _refreshAllDiagnostics,
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('다시 진단'),
                   ),
@@ -296,7 +354,7 @@ class _DiagnosticResult {
 class _DiagnosticCard extends StatelessWidget {
   final _DiagnosticResult result;
 
-  const _DiagnosticCard({required this.result});
+  const _DiagnosticCard({super.key, required this.result});
 
   @override
   Widget build(BuildContext context) {
@@ -350,7 +408,7 @@ class _DiagnosticCard extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               result.note!,
-              style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+              style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
             ),
           ],
         ],

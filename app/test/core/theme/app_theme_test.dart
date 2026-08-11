@@ -72,7 +72,8 @@ void main() {
         final textRoles = <String, Color>{
           'primary': colors.textPrimary,
           'secondary': colors.textSecondary,
-          'small supporting label': colors.textDisabled,
+          'supporting': colors.textSupporting,
+          'disabled': colors.textDisabled,
         };
         final surfaces = <String, Color>{
           'background': colors.background,
@@ -96,14 +97,61 @@ void main() {
     },
   );
 
+  test('default theme supporting text meets WCAG AA on every app surface', () {
+    final palettes = <String, AppThemeColors>{
+      'light': AppTheme.lightColors,
+      'dark': AppTheme.darkColors,
+    };
+
+    for (final paletteEntry in palettes.entries) {
+      final colors = paletteEntry.value;
+      final surfaces = <String, Color>{
+        'background': colors.background,
+        'surface': colors.surface,
+        'card': colors.card,
+        'cardSub': colors.cardSub,
+      };
+
+      for (final surfaceEntry in surfaces.entries) {
+        expect(
+          _contrastRatio(colors.textSupporting, surfaceEntry.value),
+          greaterThanOrEqualTo(4.5),
+          reason:
+              '${paletteEntry.key} supporting text must remain readable on '
+              '${surfaceEntry.key}',
+        );
+      }
+    }
+  });
+
+  test('high contrast dark accent meets AA on every dark app surface', () {
+    final colors = AppTheme.highContrastDarkColors;
+    final surfaces = <String, Color>{
+      'background': colors.background,
+      'surface': colors.surface,
+      'card': colors.card,
+      'cardSub': colors.cardSub,
+    };
+
+    for (final surface in surfaces.entries) {
+      expect(
+        _contrastRatio(colors.accent, surface.value),
+        greaterThanOrEqualTo(4.5),
+        reason: 'selected tabs and controls must be readable on ${surface.key}',
+      );
+    }
+  });
+
   test('legacy app colors can be synced to the active theme palette', () {
     AppColors.sync(AppTheme.lightColors);
     expect(AppColors.background, AppTheme.lightColors.background);
     expect(AppColors.textPrimary, AppTheme.lightColors.textPrimary);
+    expect(AppColors.textSupporting, AppTheme.lightColors.textSupporting);
 
     AppColors.sync(AppTheme.darkColors);
     expect(AppColors.background, AppTheme.darkColors.background);
     expect(AppColors.textPrimary, AppTheme.darkColors.textPrimary);
+    expect(AppColors.textSupporting, AppTheme.darkColors.textSupporting);
   });
 
   test('readable accent lifts black team color on dark backgrounds', () {

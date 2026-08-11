@@ -1,3 +1,5 @@
+from datetime import date as date_type
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -208,6 +210,26 @@ def test_current_home_does_not_mask_records_overview_failure() -> None:
 
     with pytest.raises(RuntimeError, match="records unavailable"):
         service.get_home("2999-01-01", my_team="LG")
+
+
+def test_current_scheduled_home_uses_short_cache_instead_of_stable_cache(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "kbo_fans_backend.services.home.current_kbo_date",
+        lambda: date_type(2026, 8, 9),
+    )
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=_EmptyScheduleService(),
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_EmptyRecordsOverviewService(),
+    )
+
+    payload = service.get_home("2026-08-09", my_team="LG")
+    cache_key = "2026-08-09|LG"
+
+    assert service._current_cache.ttl_seconds == 30
+    assert service._current_cache.get(cache_key) == payload
+    assert service._stable_cache.get(cache_key) is None
 
 
 def test_current_home_my_team_recent_results_cross_month_boundary() -> None:
@@ -465,9 +487,7 @@ def test_kbo_brief_surfaces_my_team_record_milestone() -> None:
         },
     )
 
-    milestone_items = [
-        item for item in brief["items"] if item["type"] == "record_milestone"
-    ]
+    milestone_items = [item for item in brief["items"] if item["type"] == "record_milestone"]
 
     assert milestone_items
     assert milestone_items[0]["eyebrow"] == "기록 달성"

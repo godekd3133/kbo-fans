@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +10,47 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/standings/standings_screen.dart';
 
 void main() {
+  testWidgets('현재 시즌을 보던 순위 화면은 KST 연도 전환을 즉시 따른다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final currentSeason = kboCurrentSeason();
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          standingsProvider.overrideWith((ref, season) async => const []),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const StandingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<DropdownButton<int>>(find.byType(DropdownButton<int>))
+          .value,
+      currentSeason,
+    );
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(StandingsScreen)),
+    );
+    container
+        .read(kboDateProvider.notifier)
+        .refresh(instant: DateTime.utc(currentSeason, 12, 31, 15));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<DropdownButton<int>>(find.byType(DropdownButton<int>))
+          .value,
+      currentSeason + 1,
+    );
+  });
+
   testWidgets('standings season dropdown reloads selected year', (
     tester,
   ) async {
@@ -98,6 +141,77 @@ void main() {
     expect(find.text('1위 경쟁'), findsOneWidget);
     expect(find.text('연속 흐름'), findsOneWidget);
     expect(find.text('3연승'), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('standings pull refresh는 새 provider 응답이 끝날 때까지 대기한다', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final pendingRefresh = Completer<List<TeamStanding>>();
+    var requests = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          standingsProvider.overrideWith((ref, season) async {
+            requests += 1;
+            if (requests == 1) {
+              return const [
+                TeamStanding(
+                  rank: 1,
+                  teamId: 'LG',
+                  teamName: 'LG 트윈스',
+                  wins: 25,
+                  losses: 17,
+                  draws: 1,
+                  pct: '0.595',
+                  gb: '0',
+                  streak: '3승',
+                ),
+              ];
+            }
+            return pendingRefresh.future;
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const StandingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final refreshIndicator = tester.widget<RefreshIndicator>(
+      find.byType(RefreshIndicator),
+    );
+    var refreshCompleted = false;
+    final refresh = refreshIndicator.onRefresh().then((_) {
+      refreshCompleted = true;
+    });
+    await tester.pump();
+
+    expect(requests, 2);
+    expect(refreshCompleted, isFalse);
+
+    pendingRefresh.complete(const [
+      TeamStanding(
+        rank: 1,
+        teamId: 'KT',
+        teamName: 'KT 위즈',
+        wins: 26,
+        losses: 17,
+        draws: 1,
+        pct: '0.605',
+        gb: '0',
+        streak: '1승',
+      ),
+    ]);
+    await refresh;
+    await tester.pumpAndSettle();
+
+    expect(refreshCompleted, isTrue);
+    expect(find.text('KT'), findsOneWidget);
   });
 
   testWidgets('standings table highlights my team row', (tester) async {
@@ -213,6 +327,75 @@ void main() {
       reason: '좁은 폭에서는 행 색·왼쪽 강조선으로 마이팀을 구분한다.',
     );
     expect(tester.getRect(myTeamRow).right, lessThanOrEqualTo(320));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('320px·240% 순위표는 헤더와 모든 팀 기록을 줄임표 없이 재배치한다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          standingsProvider.overrideWith((ref, season) async {
+            return const [
+              TeamStanding(
+                rank: 1,
+                teamId: 'LG',
+                teamName: 'LG 트윈스',
+                wins: 52,
+                losses: 38,
+                draws: 0,
+                pct: '0.578',
+                gb: '0',
+                streak: '6승',
+              ),
+            ];
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const StandingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollable = find.descendant(
+      of: find.byType(CustomScrollView),
+      matching: find.byType(Scrollable),
+    );
+    final largeTextHeader = find.byKey(
+      const ValueKey('standings-large-text-header'),
+    );
+    await tester.scrollUntilVisible(
+      largeTextHeader,
+      300,
+      scrollable: scrollable,
+    );
+    expect(largeTextHeader, findsOneWidget);
+    final row = find.byKey(const ValueKey('standing-LG-1'));
+    await tester.scrollUntilVisible(row, 300, scrollable: scrollable);
+    expect(row, findsOneWidget);
+    for (final label in [
+      '1위',
+      'LG 트윈스',
+      '52승',
+      '38패',
+      '0무',
+      '승률 0.578',
+      '차 -',
+      '6연승',
+    ]) {
+      final textFinder = find.descendant(of: row, matching: find.text(label));
+      expect(textFinder, findsOneWidget, reason: '$label 정보가 온전히 보여야 한다.');
+      expect(
+        tester.widget<Text>(textFinder).overflow,
+        isNot(TextOverflow.ellipsis),
+      );
+    }
     expect(tester.takeException(), isNull);
   });
 

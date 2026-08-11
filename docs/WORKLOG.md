@@ -2,6 +2,140 @@
 
 ---
 
+## 2026-08-11: 0.1.24+92 TestFlight 배포 준비 및 진행
+
+### 결정
+- 현재 `main`의 앱·backend·접근성·Live Activity·푸시 변경을 기존 `0.1.23+91` 재업로드가 아닌 새 tester-facing release `0.1.24+92`로 승격한다.
+- TestFlight 앱 빌드 업로드와 backend 변경 배포는 별도 경계로 둔다. 이번 요청은 iOS 앱의 내부·외부 TestFlight 배포이며, backend 변경은 운영 API에 자동 반영하지 않는다.
+- 외부 그룹에는 새 빌드가 `VALID`가 된 뒤 연결하고, 새 빌드의 Beta App Review/외부 설치 가능 상태가 확인되기 전까지 현재 승인·설치 가능 빌드를 제거하지 않는다.
+
+### 검증 및 진행
+- [x] Flutter analyze 통과: `No issues found`.
+- [x] Flutter test 통과: `484 passed`.
+- [x] backend pytest 통과: `513 passed`.
+- [x] backend `compileall` 통과.
+- [x] 운영 release API health gate 통과: health, home, scoreboard, schedule, standings, records overview, relay.
+- [x] App Store Connect API 인증 확인. 앱 `KBO Fans` / bundle `com.kbofans.kboFans`, 최신 기존 build `91`은 `VALID`이며 내부 `Tester`·외부 `External Testers` 그룹에 연결되어 있다.
+- [ ] 현재 브랜치 커밋 및 push.
+- [ ] `0.1.24+92` release IPA archive/export 및 App Store Connect upload.
+- [ ] 새 build `92` 처리 완료 및 `VALID` 확인.
+- [ ] 내부·외부 그룹 연결, Beta App Review 상태, 외부 설치 가능 상태 확인.
+
+---
+
+## 2026-08-10: 3차 경쟁 감사 인수와 stale-state 경계
+
+### 결정
+- 두 경쟁 비평의 1·2차 결과를 완료로 가정하지 않고 통합 skeptic이 새 반례를 던지는 3차 인수 감사를 수행했다. 이번 우선순위는 과거 `SUSPENDED` 영구 동결, 공개 cache-bypass, 다중 token APNs 순서 역전, 공개 register capacity 고착, 240%·스크린리더·KST 하위 route 회귀다.
+- 로컬 schema/cap/TTL은 공개 자기신고 설치를 암호학적으로 인증하지 않는다. stale·burst 방어와 App Attest/Play Integrity/WAF 같은 신뢰 계층을 분리해, 후자가 없는 상태를 Sybil 완전 차단으로 기록하지 않는다.
+
+### 진행
+- [x] backend historical scoreboard/home/prime/compact/game snapshot은 `FINAL`/`CANCELLED`만 재사용·저장하도록 변경. 과거 `SUSPENDED`는 다섯 public surface에서 원천을 다시 확인하고 terminal 결과가 오면 snapshot을 교체한다.
+- [x] 앱 historical scoreboard/home/compact/game 30일 cache도 payload status predicate를 적용. `SUSPENDED` cache를 읽을 때 폐기하고 fresh non-terminal 응답은 화면에는 반환하되 다시 저장하지 않는다. 저장 한도를 넘는 fresh payload는 같은 key의 stale entry를 먼저 제거한다.
+- [x] 공개 `forceRefresh=true`는 4xx 없이 normal cached request로 downgrade하고, configured `PUSH_SYNC_SECRET`과 exact match하는 `X-KBO-Push-Sync-Secret` header가 있을 때만 scoreboard/home/game/relay의 server-side force를 전달한다.
+- [x] Live Activity update state에 token별 desired content signature/revision을 저장하고 실제 APNs 호출 직전에 claim revision fence와 lease 갱신을 수행. 다중 token batch 중 새 worker가 S2를 보낸 뒤 옛 worker가 S1을 후발 전송하는 반례와 A→B→A unfenced claim 반례를 sender 미호출로 고정했다.
+- [x] 공개 device/Activity/start-token registration에 별도 `lastSeenAt`, device/start 90일·Activity 2일 stale GC, 공용 영속 신규-owner 60초/120건 admission을 적용. exact owner refresh와 정상 rotation은 제한을 소모하지 않고 stale cooldown/delivery/claim state를 함께 정리하며 손상 state는 503 fail closed한다.
+- [x] iOS push-to-start 시작 동기화가 최대 32개 pending unregister의 직렬 network timeout을 기다리지 않도록 background drain으로 분리. owner 세대·exact cleanup 계약은 유지한다.
+- [x] 기록실·리더보드·알림 요약·문자중계 필터를 320px·240%에서 세로/Wrap으로 재배치하고 최소 44px 선택 영역과 selected semantics를 보강. current-season 하위 route만 KST rollover를 따르고 명시 과거 시즌은 고정하며, 한국어 localization으로 자동 leading도 `뒤로`로 읽게 했다.
+- [x] high-contrast dark accent를 모든 dark surface 4.5:1 이상으로 조정하고, 웹 Cupertino back icon font를 정식 dependency로 포함했다.
+- [x] backend 선배포 시 기존 앱의 installation id 없는 `test-device`·receipt·unregister와 부분 token/activity id unregister가 422가 되던 하위 호환 반례를 200 safe-noop로 보정. test/receipt의 installation id가 missing/null이면 FCM·cooldown·receipt를 변경하지 않고, unregister는 installation id missing/null 또는 token/activity id missing/null/blank이면 registry를 읽거나 Activity 등록을 변경하지 않는다. 완전한 nonblank exact owner만 기존 발송·기록·삭제 권한을 유지하며 installation id 공백과 identity 상한 초과는 계속 422로 거절한다.
+- [x] `CHANGELOG.md`, `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`와 이 문서에 3차 계약·기본값·잔여 운영 한계를 동기화했다.
+
+### 검증과 한계
+- [x] 최종 Flutter 전체 **484 passed**, `flutter analyze --no-pub` `No issues found`.
+- [x] 최종 backend 전체 **513 passed**, Ruff lint, Python compileall 통과. 변경 Python 파일 formatter를 적용했다.
+- [x] backend API mode의 Flutter web release build와 iOS simulator `Runner.app` build 통과. Cupertino icon font 누락은 보강했으며, web의 남은 Wasm dry-run notice는 `flutter_timezone 4.1.1` upstream JS interop lint다.
+- [x] 최신 web build를 390px viewport에서 전 route current-run 캡처·육안 비교했다. 홈·일정·기록실·리더보드·선수·브리핑·설정·순위·알림함·API 진단·온보딩과 경기 상세 4개 탭 증거는 `artifacts/ux-completion-audit-2026-08-10/`의 `10-home-final-accepted.jpg`, `11-schedule-final.jpg`~`19-diagnostics-final.jpg`, `21-onboarding-final-accepted.jpg`, `22-game-score-final.jpg`~`25-game-lineup-final.jpg`에 보존했다.
+- [ ] 실제 KST 자정 장시간 대기, 실제 LIVE source 전이, iOS VoiceOver·Android TalkBack, APNs/FCM receipt, Live Activity/Dynamic Island 실기기 전달과 운영 backend 배포는 미실행.
+- [ ] 감사 runtime이 우발적으로 덮어쓴 tracked seed snapshot 6개는 사장님의 명시적 폐기 승인 전까지 복구·삭제하지 않고 보존한다.
+- paced Sybil, 5,000-entry JSON scan/file lock CPU·lock 압박, legacy no-timestamp entry는 local TTL/admission만으로 닫히지 않는다. WAF/IP rate limit과 platform attestation은 외부 운영 후속이다.
+
+---
+
+## 2026-08-10: 2차 경쟁 감사 보강과 공개 push 경계
+
+### 결정
+- 1차 경쟁 감사의 UI·데이터 진실성 경계를 유지하면서, 2차 skeptic이 재현한 public push state 증식·owner 우회·self-test 남용·registry 손상을 P1로 수렴했다. 모바일 앱에 배포 비밀을 넣지 않고 stable `installationId`를 ownership correlator로 사용하되, 이것이 cryptographic installation proof는 아니라는 한계를 명시한다.
+- source/static test, registry file 회귀, widget test, 운영 배포, 실제 APNs/FCM·Live Activity 전달은 서로 다른 증거다. 이번 기록은 local source와 focused 회귀 수준이며 운영 backend/Lightsail/TestFlight/Android 또는 실기기 성공으로 확대 해석하지 않는다.
+
+### 진행
+- [x] public push schema에 device/Activity token, installation/activity/game id, platform, followed game 목록의 상한을 적용. receipt는 모든 문자열과 data key/value/count를 제한하고 직렬화 data를 4 KiB로 묶었으며, 앱의 기기 self-test와 receipt가 등록 때와 같은 stable `installationId`를 전송하도록 계약을 맞춤.
+- [x] 이미 owner가 있는 device/Live Activity/start token을 다른 owner가 가져가는 등록을 거절하고, 같은 `gameId + activityId + installationId` Activity owner와 같은 installation start/device owner의 정상 token rotation은 보존. ownership 충돌은 409, section 또는 전체 byte capacity 초과는 429, 기존 JSON/root/security section/owner/rate timestamp 손상은 원본을 빈 registry로 덮지 않고 503으로 fail closed하도록 공개 route 계약을 고정.
+- [x] registry 기본 상한을 `devices`, `liveActivities`, `liveActivityStartTokens` 각각 5,000개와 전체 32 MiB로 설정. `/push/test-device`는 exact `deviceToken + installationId`만 대상으로 하고 설치별 60초 cooldown과 전체 60초당 30회 window를 registry에 영속화해 프로세스 재시작·동일 설치 token rotation 뒤에도 유지. 미등록·owner 불일치·cooldown/global-window 거절은 registry 전체 rewrite와 결과 기록을 만들지 않도록 정리.
+- [x] 공개 자기신고 `installationId`로는 새 owner/token을 계속 만드는 Sybil을 증명할 수 없음을 운영 한계로 남김. 현재 cap은 기존 owner 탈취·무제한 파일 증가·무제한 FCM self-test를 제한하지만, 공격자가 5,000개 capacity를 채우는 신규 등록 거부는 edge/WAF rate limit, stale-registration 운영 정책, App Attest/Play Integrity 같은 별도 신뢰 계층이 필요하다.
+- [x] Lightsail API/worker가 current release의 `SNAPSHOT_SEED_DIR=/opt/kbo-fans/current/backend/data/snapshots`를 read fallback으로 사용하고 mutable `SNAPSHOT_DIR=/var/lib/kbo-fans/snapshots`에만 쓰도록 배포 계약을 맞춤. deploy는 runtime 디렉터리를 만들 뿐 release seed를 복사해 기존 runtime snapshot을 덮어쓰지 않음.
+- [x] 일정 달력·구장별·매치업 수동 갱신이 현재 월 provider와 `seasonScheduleProvider(season)`을 함께 무효화하도록 변경해, 한 달 갱신 후 매치업으로 돌아갈 때 이전 시즌 aggregate가 다시 보이던 seam을 제거.
+- [x] 기본 light/dark surface의 정상 설명·메타데이터를 disabled 색과 분리한 `textSupporting`으로 이동하고 WCAG AA 4.5:1 대비를 고정. 경기 상세 뒤로가기에 `뒤로` semantics/tooltip을 추가하고, 280px·320px·240% 글자에서 상세 hero/탭/중계·박스스코어·라인업 카드와 데이터 브리핑 filter가 말줄임·overflow 대신 재배치되도록 보강.
+- [x] 데이터 브리핑이 `kboDateProvider`를 watch해 KST 자정·resume 뒤 새 날짜와 마이팀 aggregate key로 이동하고 수동 갱신도 최신 key를 사용하도록 변경.
+- [x] iOS native가 재시작 뒤 빈 `previousActivityPushToken` 또는 `previousPushToStartToken`을 보내면 prefs의 current token으로 fallback하도록 보강. activity와 push-to-start 등록을 종류별 queue에서 직렬화하고 서버 성공 뒤에만 persisted owner를 전진시켜 연속 rotation의 순서 역전을 차단.
+- [x] push-to-start server rotation을 same-owner CAS로 고정. 최초 등록과 exact-current 멱등 재시도는 허용하고, 다른 current token으로 바꾸려면 nonblank previous가 유일 current owner token과 정확히 같아야 하며 delayed/blank/동시 경쟁은 409로 거절해 최신 token을 보존.
+- [x] LIVE/SUSPENDED 공식 하향 점수를 첫 관측에 영속 candidate로 저장하고 동일 값이 기본 8초 뒤 재확인될 때만 수용. 다른 후보·정상/상향 값은 candidate를 reset/clear하고 이닝 회귀는 계속 거절하며, 확정 정정의 Live Activity는 갱신하되 `scoring`·`reversal` event는 생성하지 않음.
+- [x] APNs non-2xx의 status/reason을 typed error로 보존하고 `400 BadDeviceToken`, `400 DeviceTokenNotForTopic`, `410 Unregistered`만 영구 token 실패로 분류. exact Activity/start token과 관련 claim/delivery state를 원자적으로 제거하고 stale completion은 새 token 세대를 건드리지 않으며 transient 오류는 재시도 유지. A→B→A처럼 token 문자열이 재사용되는 반례도 registration generation으로 fence하고, end claim id와 generation을 같은 lock에서 획득해 성공·영구 실패 완료까지 검증.
+- [x] 별칭 `colors.textDisabled`로 남아 있던 라인업 VS와 설정의 버전·마이팀·기본 대상·활성 알림 설명·알림함·시행일을 `textSupporting`으로 이동. 실제 disabled 알림 항목 두 분기와 기존 inactive indicator만 disabled 역할로 유지.
+- [x] 5초 Live Activity scoreboard cadence를 유지하면서 한 game/tick의 relay moment와 현재 타석 보강이 한 fetch를 공유하도록 변경. token별 content signature가 동일한 일반 update는 APNs와 registry rewrite를 건너뛰고, 부분 실패 token만 재시도하며 terminal `end`는 signature와 무관하게 발송·정리하도록 유지.
+- [x] `CHANGELOG.md`, `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`와 이 WORKLOG에 2차 감사 계약과 운영 한계를 동기화.
+
+### 검증과 한계
+- [x] backend public push abuse focused `backend/tests/test_push_public_abuse_limits.py`: 66 passed.
+- [x] backend Live Activity sync/runtime snapshot focused `backend/tests/test_live_activity_sync_optimization.py`, `test_release_runtime_contract.py`, `test_snapshot_store.py`: 24 passed.
+- [x] Flutter Live Activity·일정 aggregate·supporting contrast·KST 브리핑 rollover·accessible back·240% reflow focused 10파일: 133 passed.
+- [x] Flutter push registration/self-test/receipt installation owner focused 2파일: 38 passed.
+- [x] push-to-start CAS, LIVE 하향 정정, APNs 영구 token 정리와 A→B→A registration generation fence를 포함한 전체 push named suite 250 passed. backend 전체는 sandbox-safe 459 passed 뒤 loopback/세마포어 제한 3건을 권한 환경에서 별도 재실행해 모두 통과(총 462). sync 최적화 8건과 sync loop 6건도 통과.
+- [x] 설정·라인업의 정상 보조 정보 역할 focused 19 passed, scoped analyze `No issues found`.
+- [x] 최종 Flutter 전체 471 passed와 전체 `flutter analyze --no-pub` 통과. backend 전체 460 passed, Ruff check, Python 3.9 compileall, 변경 Python/Dart formatter check, CloudFormation/ECS JSON, Lightsail shell syntax, repository `git diff --check` 통과.
+- [x] 최종 웹 release build와 iOS simulator `Runner.app` build 통과. 인앱 브라우저 390×844에서 홈·일정·기록실·브리핑·설정·순위, 실제 종료 경기 `20260804LGSK0`의 스코어·문자중계·박스스코어·라인업, 1024px 홈을 캡처·비교. 결과는 `artifacts/ux-competitive-audit-2026-08-09/final-current/24~35`에 보존.
+- [x] 문서 변경 5파일의 `git diff --check` 통과. `installationId`, `liveActivities`, `liveActivityStartTokens`, 409/429/503, 5,000개/32 MiB, 60초/30회, `SNAPSHOT_SEED_DIR` 용어와 값은 현재 schema/routes/config/runtime 파일과 대조.
+- [ ] 감사 runtime이 우발적으로 덮어쓴 tracked seed snapshot 6개는 기존 사용자 변경으로 보존 중이며, 폐기 승인 전에는 복구하거나 문서 동기화 범위에 포함하지 않는다.
+- [ ] 실제 KST 자정 장시간 대기, 실제 LIVE relay/scoreboard 전이, iOS VoiceOver·Android TalkBack, 240% 실기기 렌더링은 미확인.
+- [ ] 운영 backend/ECS/Lightsail 배포, TestFlight/Android 배포, APNs/FCM receipt, Live Activity/Dynamic Island token rotation·부분 실패 전달은 미실행.
+- Lightsail runtime/seed 분리의 실제 filesystem 권한과 운영 인스턴스의 non-overwrite, ECS/EFS 공유는 배포 후 확인이 필요하다. Sybil capacity 고갈은 현재 local 방어만으로 닫히지 않는다. 기존 사용자 소유 untracked artifact는 수정·삭제하지 않았다.
+
+---
+
+## 2026-08-09: 두 경쟁 감사 수렴과 앱 전면 개선
+
+### 결정
+- 사용자·제품·디자인 관점과 코드·성능·backend 관점의 독립 감사 두 개를 같은 전체 route/feature 범위에서 경쟁시키고, 공통 P0/P1과 상대가 놓친 고확신 항목을 실제 runtime 캡처와 source/test 근거로 재채점했다.
+- `artifacts/ux-competitive-audit-2026-08-09/before/00~15`의 현재 실행에서는 일정·기록·브리핑 실패가 숨겨지지 않고, diagnostics의 health/scoreboard 실패·schedule 성공, 빈 relay, 장시간 lineup spinner가 확인됐다. 정적 코드만으로 runtime 성공을 단정하지 않고 before 증거와 구현 후 검증을 분리한다.
+- 핵심 우선순위는 취향성 재디자인이 아니라 상세 진입 지연, 거짓 loading, current/live 데이터 오염, 자정 lifecycle, 접근성 selected 상태, snapshot write-on-read, 인증 없는 Live Activity mutation, polling/전송 중복 제거로 정했다.
+- 이 항목은 local source와 회귀 테스트 수준의 개선 기록이다. 운영 backend 배포, TestFlight/Android 배포, 실기기 APNs/FCM·Live Activity/Dynamic Island, 실제 LIVE 경기와 KST 자정 장시간 실행을 완료로 간주하지 않는다.
+
+### 진행
+- [x] 홈/일정 경기 카드가 상세 갱신 4초와 최대 80개 이미지 warm-up을 기다리지 않고 즉시 상세 route를 열도록 변경. 단건/첫 탭 갱신은 background로 넘기고 eager 이미지 warm-up을 기본 비활성화.
+- [x] 라인업 timeout/error의 거짓 자동갱신 spinner를 원인 설명과 명시적 `다시 시도`로 교체하고, 390×844·큰 글자에서 문구/버튼이 잘리지 않는 유동 높이를 적용.
+- [x] push diagnostics Future에 loading/error/retry를 표시하고 전체 재진단이 push 상태 Future도 교체하도록 변경. 알림함은 행을 즉시 읽음 표시·이동하고 영속 mark-read 실패는 Dev Console에 남기되 deep link를 막지 않도록 변경.
+- [x] 기록실 필터·정렬·타자/투수 그룹·리더보드 지표 선택에 `semanticSelected`를 전달하고, Android/web에도 그려지던 가짜 iOS home indicator를 제거해 실제 `SafeArea`만 사용.
+- [x] 문자중계 moment 전체를 eager `Column`으로 만들던 경로를 lazy `SliverList`로 바꾸고 사용되지 않던 moment별 `GlobalKey` map을 제거. 기존 새 중계 배너, 필터, scroll controller, 접근성 동작은 유지.
+- [x] KST 다음 자정 timer와 resume refresh를 `kboDateProvider`에 연결하고 홈/일정이 새 날짜 key를 구독하도록 변경. 일정이 보고 있던 현재 월에서는 새 KBO 날짜로 선택일도 이동.
+- [x] 순위/기록실에 현재 시즌 추적 상태를 분리해 현재 시즌을 보고 있을 때만 1월 1일 KST rollover를 새 시즌으로 반영하고, 사용자가 직접 선택한 과거 시즌은 유지하도록 변경.
+- [x] backend Home aggregate cache를 LIVE 8초, KBO 오늘의 예정/빈 non-LIVE 30초, 비오늘 300초로 분리해 오늘 예정→LIVE 전환이 stable 5분 cache에 가려지지 않도록 변경.
+- [x] 시즌 일정 3~11월 조회를 최대 3개 bounded worker로 제한하고, 비동기 완료 순서와 무관하게 월 순서를 보존하며 월별 실패는 부분 정상값으로 숨기지 않도록 변경.
+- [x] bounded loader의 중간 구현이 월별 `scheduleProvider`를 우회해 widget test override가 적용되지 않고 실제 repository Future를 기다리며 timeout 난 원인을 확인. worker의 `loadMonth`를 `scheduleProvider(yearMonth).future`로 되돌려 월별 cache/override seam을 보존하고 provider 경계 회귀 테스트를 추가.
+- [x] 순위 crawler를 KBO 연도별 WebForms page로 전환하고 요청 시즌·selected/hidden 원천 시즌·원천 날짜 연도·비어 있지 않은 rows를 검증. historical cache/snapshot도 exact-season payload만 허용하고, 순위 pull-to-refresh는 새 provider Future 완료까지 await.
+- [x] 박스스코어에 `official/live_context/official_unavailable` availability 계약을 추가. current/LIVE/예정/취소/서스펜디드가 인접 경기나 과거 snapshot을 공식 기록으로 빌리지 않게 하고, 투수 정보만 있는 팀 타율을 `0.000` 대신 `확인 불가`로 표시.
+- [x] lineup GET에서 `lineup_opened` push 발송·registry mutation을 제거해 조회 path를 notification-pure로 만들고, 알림 감지/발송 owner를 sync worker로 단일화.
+- [x] Live Activity update endpoint에 configured `PUSH_SYNC_SECRET`과 UTF-8 byte constant-time 비교를 적용해 비 ASCII secret도 500 없이 인증/401로 처리. unregister는 네 필드 owner tuple 일치만 허용하고, 실패 요청은 exact 4-field 불변 세대로 보존하며 exact duplicate 제거·malformed cleanup·최신 32개 cap을 적용.
+- [x] Live Activity register의 previous token rotation도 기존 entry의 `gameId + activityId + installationId` exact owner가 일치할 때만 삭제하도록 제한. `gameId` 32자, 현재/이전 token 512자, `activityId`/`installationId` 128자 schema cap과 owner 누락·불일치 회귀 테스트를 추가.
+- [x] tracked snapshot seed와 runtime write를 분리. Docker image에는 seed를 포함하고 runtime 기본은 `data/runtime/snapshots`, CloudFormation과 standalone ECS task definition의 API/worker는 모두 `SNAPSHOT_DIR=/var/lib/kbo-fans/snapshots` 공용 EFS path를 사용하도록 변경.
+- [x] 앱의 current 날짜·월·시즌과 current/LIVE game API 응답을 `SharedPreferences` cache에 저장하지 않도록 변경. historical cache는 key 192 bytes, entry 256 KiB, 64 entries, total 2 MiB 제한과 oldest-first eviction, 직렬 mutation을 적용.
+- [x] 한 sync tick의 relay moment/Live Activity 보강이 game별 한 fetch를 공유하도록 변경. token별 content signature·claim/lease를 저장해 무변경 APNs update를 건너뛰고 부분 실패 token만 재시도하며, claim/resolve를 batch mutation으로 묶고 no-op registry write를 생략. end/unregister 때 delivery state를 정리하고 앱 push registration convergence도 serial queue로 직렬화.
+- [x] 이 WORKLOG와 `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`, `CHANGELOG.md`에 UX 상태, 데이터 진실성, 보안, cache/snapshot, delivery dedupe 계약을 동기화.
+
+### 검증과 한계
+- [x] Flutter truth/accessibility 집중 widget test 43개와 relay/navigation 집중 test 35개가 각 구현 단계에서 통과했고, 해당 단계의 `flutter analyze --no-pub`는 `No issues found`였다.
+- [x] provider seam 복구 뒤 `kbo_time`, provider routing, 일정, 순위, 기록실 rollover focused Flutter 5파일을 다시 실행해 41 tests가 통과했다.
+- [x] app에는 KST rollover, cache persistence/cap, 시즌 일정 최대 동시 3개·월 순서, 즉시 route, lineup/diagnostics/inbox error, selected semantics, relay large-list, Live Activity pending owner 세대·32개 cap 회귀 테스트가 추가·보강됐다. backend에는 Home cache 계층, annual standings, boxscore availability, lineup no-push, standalone/CloudFormation snapshot runtime path, UTF-8 push auth, Live Activity auth/owner, relay single-fetch와 batch/no-op/cleanup delivery dedupe 테스트가 추가·보강됐다.
+- [x] 합쳐진 전체 worktree에서 `fvm flutter analyze --no-pub`가 `No issues found`, 전체 Flutter test가 450개, 전체 backend pytest가 363개 통과했다. backend 전체 Ruff lint와 변경 Python 23파일의 format check, Python 3.9 compile, `git diff --check`도 통과했다.
+- [x] backend API를 주입한 Flutter web release build가 성공했다. 현재 dependency의 Wasm interop 및 CupertinoIcons font notice는 남지만 JavaScript 산출물 생성에는 실패가 없었다.
+- [x] code signing을 끈 iPhone 17 Pro / iOS 26.5 simulator build가 Runner와 Widget extension을 함께 컴파일했다. stale build-file/script-output 및 구형 76px icon warning은 남았다.
+- [x] 구현 후 홈·일정·순위·기록실·diagnostics·경기 상세 boxscore/lineup을 390×844 runtime으로 다시 확인하고, 동일 viewport의 before/after를 한 비교 입력으로 합쳐 `artifacts/ux-competitive-audit-2026-08-09/`에 보존했다. 홈은 부분 실패 상태에서 최신 데이터·팀 지표·순위가 표시되는 상태로, lineup은 장시간 spinner에서 실제 타순·선발 정보가 표시되는 상태로 개선됨을 확인했다.
+- [ ] 감사 runtime이 우발적으로 덮어쓴 tracked seed snapshot 6개는 다른 사용자 artifact와 분리했으며, 현재 변경 폐기에 대한 사용자 승인 뒤 정확한 파일 목록만 HEAD로 복구한다. runtime snapshot은 새 `data/runtime/snapshots` 경계를 사용한다.
+- [ ] 실제 KST 자정 장시간 대기, 실제 LIVE relay/scoreboard 전이, iOS VoiceOver·Android TalkBack은 미확인.
+- [ ] 운영 backend/ECS/Lightsail 배포, TestFlight/Android 배포, APNs/FCM receipt, Live Activity/Dynamic Island token owner·부분 실패 전달은 미실행.
+- 새 runtime/seed 분리의 실제 운영 filesystem 권한·EFS 공유는 배포 후 확인이 필요하다. 기존 사용자 소유 untracked artifact는 수정·삭제하지 않았다.
+
+---
+
 ## 2026-07-23: 추가 113개 페르소나 기반 시스템 전면 개선
 
 ### 결정

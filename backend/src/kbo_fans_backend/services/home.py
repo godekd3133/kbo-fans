@@ -17,6 +17,7 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 class HomeService:
     _LIVE_CACHE_TTL_SECONDS = 8
+    _CURRENT_CACHE_TTL_SECONDS = 30
     _STABLE_CACHE_TTL_SECONDS = 300
     _TEAM_LABELS = {
         "LG": "LG 트윈스",
@@ -55,6 +56,9 @@ class HomeService:
         self.standings_service = standings_service or StandingsService()
         self.records_overview_service = records_overview_service or RecordsOverviewService()
         self._live_cache: TtlCache[str, Dict[str, Any]] = TtlCache(self._LIVE_CACHE_TTL_SECONDS)
+        self._current_cache: TtlCache[str, Dict[str, Any]] = TtlCache(
+            self._CURRENT_CACHE_TTL_SECONDS
+        )
         self._stable_cache: TtlCache[str, Dict[str, Any]] = TtlCache(self._STABLE_CACHE_TTL_SECONDS)
 
     def get_home(self, date: str, my_team: Optional[str] = None) -> Dict[str, Any]:
@@ -63,9 +67,15 @@ class HomeService:
         if live_cached is not None:
             return live_cached
 
-        stable_cached = self._stable_cache.get(cache_key)
-        if stable_cached is not None:
-            return stable_cached
+        is_current_date = self._is_current_date(date)
+        if is_current_date:
+            current_cached = self._current_cache.get(cache_key)
+            if current_cached is not None:
+                return current_cached
+        else:
+            stable_cached = self._stable_cache.get(cache_key)
+            if stable_cached is not None:
+                return stable_cached
 
         scoreboard_payload = self.scoreboard_service.get_home_scoreboard(date)
         games = scoreboard_payload.get("games", [])
@@ -146,6 +156,8 @@ class HomeService:
 
         if any(game.get("status") == "LIVE" for game in games):
             self._live_cache.set(cache_key, payload)
+        elif is_current_date:
+            self._current_cache.set(cache_key, payload)
         else:
             self._stable_cache.set(cache_key, payload)
         return payload
@@ -161,11 +173,14 @@ class HomeService:
         if not my_team:
             return schedule_days
 
-        if self._recent_result_count(
-            schedule_days=schedule_days,
-            my_team=my_team,
-            today=today,
-        ) >= 5:
+        if (
+            self._recent_result_count(
+                schedule_days=schedule_days,
+                my_team=my_team,
+                today=today,
+            )
+            >= 5
+        ):
             return schedule_days
 
         previous_month = self._previous_year_month(today)
@@ -358,8 +373,7 @@ class HomeService:
                     ),
                     title=self._score_line(game),
                     subtitle=(
-                        f"양팀 {self._game_total_score(game)}득점 · "
-                        f"{self._game_time_label(game)}"
+                        f"양팀 {self._game_total_score(game)}득점 · {self._game_time_label(game)}"
                     ),
                     route=f"/game/{game.get('gameId')}",
                     game=game,
@@ -388,9 +402,7 @@ class HomeService:
                 )
             )
 
-        high_error_games = [
-            game for game in active_games if self._game_total_errors(game) >= 3
-        ]
+        high_error_games = [game for game in active_games if self._game_total_errors(game) >= 3]
         high_error_games.sort(
             key=lambda game: self._game_total_errors(game),
             reverse=True,
@@ -729,9 +741,7 @@ class HomeService:
         my_team: Optional[str],
     ) -> Optional[Dict[str, Any]]:
         raw_leaders = (
-            (overview.get("leaders") or {}).get("milestones")
-            or overview.get("milestones")
-            or []
+            (overview.get("leaders") or {}).get("milestones") or overview.get("milestones") or []
         )
         leaders = [
             leader
@@ -744,11 +754,7 @@ class HomeService:
             return None
 
         leader = next(
-            (
-                item
-                for item in leaders
-                if my_team and str(item.get("teamId") or "") == my_team
-            ),
+            (item for item in leaders if my_team and str(item.get("teamId") or "") == my_team),
             leaders[0],
         )
         player_id = str(leader.get("playerId") or "")
@@ -839,9 +845,7 @@ class HomeService:
             "subtitle": f"{self._month_day_label(today)} 경기 기준 · 실책 많은 팀 순",
             "route": "/schedule",
             "gameId": None,
-            "teamIds": [
-                item["teamId"] for item in leaders if isinstance(item.get("teamId"), str)
-            ],
+            "teamIds": [item["teamId"] for item in leaders if isinstance(item.get("teamId"), str)],
         }
 
     def _build_avg_brief_item(
@@ -857,11 +861,7 @@ class HomeService:
         leader = avg_leaders[0]
         player_id = str(leader.get("playerId") or "")
         team_id = str(leader.get("teamId") or "")
-        route = (
-            f"/records/player/{player_id}?season={season}"
-            if player_id
-            else "/records"
-        )
+        route = f"/records/player/{player_id}?season={season}" if player_id else "/records"
         return {
             "type": "batting_leader",
             "eyebrow": f"{self._month_label(today)} 현재 타율",
@@ -1073,6 +1073,14 @@ class HomeService:
         except ValueError:
             return False
         return target < current_kbo_date()
+
+    @staticmethod
+    def _is_current_date(value: str) -> bool:
+        try:
+            target = date_type.fromisoformat(value)
+        except ValueError:
+            return False
+        return target == current_kbo_date()
 
     @staticmethod
     def _previous_year_month(value: str) -> Optional[str]:

@@ -517,6 +517,10 @@
               {
                 "Name": "PUSH_REGISTRY_PATH",
                 "Value": "/var/lib/kbo-fans/push_registry.json"
+              },
+              {
+                "Name": "SNAPSHOT_DIR",
+                "Value": "/var/lib/kbo-fans/snapshots"
               }
             ],
             "Secrets": [
@@ -664,6 +668,10 @@
               {
                 "Name": "PUSH_REGISTRY_PATH",
                 "Value": "/var/lib/kbo-fans/push_registry.json"
+              },
+              {
+                "Name": "SNAPSHOT_DIR",
+                "Value": "/var/lib/kbo-fans/snapshots"
               },
               {
                 "Name": "PUSH_SYNC_INTERVAL_SECONDS",

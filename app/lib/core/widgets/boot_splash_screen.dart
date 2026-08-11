@@ -106,7 +106,7 @@ class BootSplashScreen extends ConsumerWidget {
                           : '곧 시작합니다',
                       style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.textDisabled,
+                        color: AppColors.textSupporting,
                       ),
                     ),
                     Text(

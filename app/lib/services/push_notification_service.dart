@@ -34,6 +34,17 @@ enum PushNotificationSummaryDetailLevel { essential, standard, detailed }
 
 enum PushNotificationLiveDetailLevel { essential, standard, detailed }
 
+@visibleForTesting
+class PushRegistrationSerialQueue {
+  Future<void> _tail = Future<void>.value();
+
+  Future<void> schedule(Future<void> Function() task) {
+    final scheduled = _tail.catchError((_) {}).then((_) => task());
+    _tail = scheduled.catchError((_) {});
+    return scheduled;
+  }
+}
+
 class PushDiagnosticTestResult {
   final bool sent;
   final String message;
@@ -224,6 +235,7 @@ Future<void> _reportRemotePushReceipt(
       '/push/receipt',
       data: buildPushReceiptPayload(
         deviceToken: token,
+        installationId: await PushNotificationService.instance.installationId(),
         messageId: message.messageId,
         source: source,
         route: route,
@@ -808,6 +820,8 @@ class PushNotificationService {
   bool _notificationOpenHandlersAttached = false;
   String? _lastToken;
   bool _notificationsAllowed = false;
+  final PushRegistrationSerialQueue _registrationQueue =
+      PushRegistrationSerialQueue();
   final StreamController<String> _notificationRouteController =
       StreamController<String>.broadcast();
   final StreamController<PushForegroundNotification>
@@ -1171,6 +1185,15 @@ class PushNotificationService {
       return;
     }
 
+    await _registrationQueue.schedule(
+      () => _syncRegistrationOnce(myTeam: myTeam, forceToken: forceToken),
+    );
+  }
+
+  Future<void> _syncRegistrationOnce({
+    String? myTeam,
+    String? forceToken,
+  }) async {
     try {
       final settings = await loadSettings();
       final resolvedMyTeam = myTeam ?? await _loadStoredMyTeam();
@@ -1276,10 +1299,14 @@ class PushNotificationService {
       }
 
       _lastToken = token;
+      final ownerInstallationId = await installationId();
       await syncRegistration(myTeam: myTeam, forceToken: token);
       final response = await ApiClient().post(
         '/push/test-device',
-        data: buildPushDeviceTestPayload(deviceToken: token),
+        data: buildPushDeviceTestPayload(
+          deviceToken: token,
+          installationId: ownerInstallationId,
+        ),
       );
       final sent = response['sent'] == true;
       if (sent) {
@@ -1521,13 +1548,17 @@ Map<String, dynamic> buildPushRegistrationPayload({
 }
 
 @visibleForTesting
-Map<String, dynamic> buildPushDeviceTestPayload({required String deviceToken}) {
-  return {'deviceToken': deviceToken};
+Map<String, dynamic> buildPushDeviceTestPayload({
+  required String deviceToken,
+  required String installationId,
+}) {
+  return {'deviceToken': deviceToken, 'installationId': installationId.trim()};
 }
 
 @visibleForTesting
 Map<String, dynamic> buildPushReceiptPayload({
   required String deviceToken,
+  required String installationId,
   required String? messageId,
   required String source,
   required String route,
@@ -1536,6 +1567,7 @@ Map<String, dynamic> buildPushReceiptPayload({
 }) {
   final payload = <String, dynamic>{
     'deviceToken': deviceToken,
+    'installationId': installationId.trim(),
     'source': source,
     'receivedAt': receivedAt.toUtc().toIso8601String(),
     'data': _pushReceiptData(data),

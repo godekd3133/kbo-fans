@@ -48,6 +48,7 @@ class LineupTab extends ConsumerStatefulWidget {
 
 class _LineupTabState extends ConsumerState<LineupTab> {
   String? _lastPrefetchedImageSignature;
+  bool _lineupRetrying = false;
 
   @override
   Widget build(BuildContext context) {
@@ -285,73 +286,111 @@ class _LineupTabState extends ConsumerState<LineupTab> {
   Widget _buildLineupErrorState(Object error) {
     if (_isTransientLineupLoadError(error)) {
       return _buildUnavailableState(
-        '라인업을 다시 불러오고 있습니다',
-        detail: '잠시 후 자동으로 갱신됩니다',
-        showProgress: true,
+        '라인업 응답이 지연되고 있습니다',
+        detail: '네트워크 상태를 확인하고 다시 시도해 주세요',
+        showRetry: true,
       );
     }
 
     return _buildUnavailableState(
       '라인업을 불러올 수 없습니다',
-      detail: '화면을 아래로 당겨 다시 시도해 주세요',
+      detail: '네트워크 상태를 확인하고 다시 시도해 주세요',
+      showRetry: true,
     );
   }
 
   Widget _buildUnavailableState(
     String message, {
     String? detail,
-    bool showProgress = false,
+    bool showRetry = false,
   }) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: AppArtworkCard(
-        assetName: VisualAssets.lineupDugout,
-        height: 178,
-        alignment: Alignment.center,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            const Text(
-              '선발 라인업',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              message,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            if (detail != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  if (showProgress) ...[
-                    SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.live,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: Text(
-                      detail,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textDisabled,
-                      ),
+      child: Container(
+        key: const ValueKey('lineup-state-card'),
+        constraints: const BoxConstraints(minHeight: 178),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.divider),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: AppArtworkBackdrop(
+          assetName: VisualAssets.lineupDugout,
+          alignment: Alignment.center,
+          borderRadius: BorderRadius.circular(8),
+          padding: const EdgeInsets.all(14),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 148),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const Text(
+                  '선발 라인업',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.35,
+                  ),
+                ),
+                if (detail != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    detail,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSupporting,
+                      height: 1.35,
                     ),
                   ),
                 ],
-              ),
-            ],
-          ],
+                if (showRetry) ...[
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    key: const ValueKey('lineup-retry-button'),
+                    onPressed: _lineupRetrying
+                        ? null
+                        : () => unawaited(_retryLineup()),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text(_lineupRetrying ? '다시 불러오는 중' : '다시 시도'),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _retryLineup() async {
+    if (_lineupRetrying) {
+      return;
+    }
+    setState(() => _lineupRetrying = true);
+    try {
+      final onRefresh = widget.onRefresh;
+      if (onRefresh != null) {
+        await onRefresh();
+      } else {
+        final provider = gameLineupProvider(widget.gameId);
+        ref.invalidate(provider);
+        await ref.read(provider.future);
+      }
+    } catch (_) {
+      // Provider 오류 상태가 재시도 UI를 계속 유지한다.
+    } finally {
+      if (mounted) {
+        setState(() => _lineupRetrying = false);
+      }
+    }
   }
 
   void _prefetchLineupPlayerImages(Iterable<String?> imageUrls) {
@@ -682,7 +721,7 @@ class _MatchupHeader extends StatelessWidget {
             style: TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.w900,
-              color: colors.textDisabled,
+              color: colors.textSupporting,
             ),
           ),
         ),
@@ -1025,7 +1064,7 @@ class _StarterDuelSection extends StatelessWidget {
                     'VS',
                     style: TextStyle(
                       fontSize: 48,
-                      color: colors.textDisabled,
+                      color: colors.textSupporting,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -2124,7 +2163,7 @@ class _EmptyLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+      style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
     );
   }
 }

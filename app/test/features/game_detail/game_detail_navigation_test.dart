@@ -83,6 +83,24 @@ void main() {
     expect(router.routerDelegate.currentConfiguration.uri.path, '/home');
   });
 
+  testWidgets('경기 상세의 뒤로가기는 접근 가능한 이름을 제공한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final router = await _pumpGameDetail(tester, _liveGame());
+      addTearDown(router.dispose);
+
+      expect(find.byTooltip('뒤로'), findsOneWidget);
+      expect(find.bySemanticsLabel('뒤로'), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets('복귀 refresh 실패 시 기존 경기 상세를 유지한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -250,6 +268,62 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.widget<TabBar>(find.byType(TabBar)).controller?.index, 2);
+  });
+
+  testWidgets('명시 탭 없는 예정 경기가 LIVE로 갱신되면 문자중계로 교정한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final scheduled = _scheduledGame();
+    final live = Game(
+      gameId: scheduled.gameId,
+      status: GameStatus.live,
+      inning: '1회초',
+      away: scheduled.away,
+      home: scheduled.home,
+      stadium: scheduled.stadium,
+      startTime: scheduled.startTime,
+    );
+    final loadedGame = Completer<Game?>();
+    final router = GoRouter(
+      initialLocation: '/game/${scheduled.gameId}',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: scheduled,
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) => loadedGame.future),
+          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(live)),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller?.index, 0);
+
+    loadedGame.complete(live);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TabBar>(find.byType(TabBar)).controller?.index, 1);
   });
 
   testWidgets('기존 경기로 진입한 첫 상세 조회 실패도 즉시 갱신 지연과 재시도를 보여준다', (tester) async {
@@ -938,6 +1012,7 @@ void main() {
           tester,
           _liveGame(),
           textScaler: const TextScaler.linear(2.4),
+          initialTab: 'score',
         );
         routers.add(router);
 
@@ -1041,6 +1116,7 @@ Future<GoRouter> _pumpGameDetail(
   WidgetTester tester,
   Game game, {
   TextScaler? textScaler,
+  String? initialTab,
 }) async {
   SharedPreferences.setMockInitialValues({});
   final router = GoRouter(
@@ -1055,6 +1131,7 @@ Future<GoRouter> _pumpGameDetail(
         builder: (_, state) => GameDetailScreen(
           gameId: state.pathParameters['gameId']!,
           game: game,
+          initialTab: initialTab,
         ),
       ),
     ],

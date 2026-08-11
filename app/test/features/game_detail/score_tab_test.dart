@@ -27,6 +27,18 @@ void main() {
       findsOneWidget,
     );
     expect(
+      tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(const ValueKey('score-inning-header-10')),
+              matching: find.byType(Text),
+            ),
+          )
+          .style
+          ?.color,
+      AppTheme.darkColors.textSupporting,
+    );
+    expect(
       find.byKey(const ValueKey('score-inning-header-12')),
       findsOneWidget,
     );
@@ -110,6 +122,53 @@ void main() {
       find.text('중단 시점의 이닝별 기록이 제공되지 않았습니다. 상단 총점을 확인해 주세요.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('공식 점수가 미확정이면 합계와 접근성 안내에 0을 표시하지 않는다', (
+    tester,
+  ) async {
+    const game = Game(
+      gameId: 'unverified-score-game',
+      status: GameStatus.live,
+      inning: '3회초',
+      away: TeamScore(
+        teamId: 'KT',
+        teamName: 'KT 위즈',
+        shortName: 'KT',
+        score: 0,
+        scoreAvailable: false,
+        innings: [0, 0, null],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 0,
+        scoreAvailable: false,
+        innings: [0, null, null],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+
+    await _pumpScoreTab(tester, game);
+
+    expect(
+      tester
+          .widget<Text>(
+            find.descendant(
+              of: find.byKey(const ValueKey('score-KT-total-runs')),
+              matching: find.byType(Text),
+            ),
+          )
+          .data,
+      '–',
+    );
+    final label = tester
+        .getSemantics(find.byKey(const ValueKey('score-table-semantics')))
+        .label;
+    expect(label, contains('합계 미확정'));
+    expect(label, isNot(contains('합계 0점')));
   });
 }
 

@@ -39,9 +39,21 @@ class _FreshStandingsCrawler:
         self.calls += 1
         return {
             "season": season,
+            "sourceSeason": season,
+            "sourceDate": f"{season}-04-01",
             "standings": [{"rank": 1, "teamId": "KT", "teamName": "KT 위즈"}],
             "updatedAt": f"{season}-04-01T16:30:00+09:00",
         }
+
+
+class _PayloadStandingsCrawler:
+    def __init__(self, payload) -> None:
+        self.payload = payload
+        self.calls = 0
+
+    def get_standings(self, season: int):
+        self.calls += 1
+        return self.payload
 
 
 class _FailingPlayerCrawler:
@@ -177,6 +189,78 @@ def test_current_standings_reject_old_snapshot_on_failure(tmp_path) -> None:
 
     with pytest.raises(RuntimeError):
         service.get_standings(season)
+
+
+def test_historical_standings_rejects_cross_season_snapshot_before_crawling(
+    tmp_path,
+) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = current_kbo_year() - 1
+    store.save(
+        "standings_latest",
+        str(season),
+        {
+            "season": season,
+            "standings": [{"rank": 1, "teamId": "LG", "teamName": "LG 트윈스"}],
+            "updatedAt": f"{current_kbo_year()}년 04월10일",
+        },
+    )
+    crawler = _FreshStandingsCrawler()
+    service = StandingsService(crawler=crawler, snapshot_store=store)
+
+    payload = service.get_standings(season)
+
+    assert crawler.calls == 1
+    assert payload["standings"][0]["teamId"] == "KT"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "season": 2025,
+            "sourceSeason": 2026,
+            "sourceDate": "2026-04-01",
+            "updatedAt": "2026-04-01",
+            "standings": [{"rank": 1, "teamId": "LG"}],
+        },
+        {
+            "season": 2025,
+            "sourceSeason": 2025,
+            "sourceDate": "2025-04-01",
+            "updatedAt": "2025-04-01",
+            "standings": [],
+        },
+    ],
+)
+def test_standings_rejects_invalid_crawler_payload_without_cache_or_snapshot(
+    tmp_path,
+    payload,
+) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    crawler = _PayloadStandingsCrawler(payload)
+    service = StandingsService(crawler=crawler, snapshot_store=store)
+
+    with pytest.raises(ValueError):
+        service.get_standings(2025)
+    with pytest.raises(ValueError):
+        service.get_standings(2025)
+
+    assert crawler.calls == 2
+    assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_standings_daily_snapshot_key_uses_iso_source_date(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = current_kbo_year() - 1
+    crawler = _FreshStandingsCrawler()
+    service = StandingsService(crawler=crawler, snapshot_store=store)
+
+    payload = service.get_standings(season)
+
+    record = store.load("standings_daily", f"{season}-{season}-04-01")
+    assert record is not None
+    assert record["payload"] == payload
 
 
 def test_historical_player_detail_falls_back_to_snapshot(tmp_path) -> None:

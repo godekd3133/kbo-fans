@@ -6,6 +6,11 @@ from html import unescape
 from typing import Any, Optional, Union
 
 from kbo_fans_backend.crawlers.base import BaseCrawler
+from kbo_fans_backend.schemas.boxscore import (
+    BoxscoreAvailability,
+    empty_boxscore_totals,
+    official_unavailable_boxscore,
+)
 from kbo_fans_backend.utils.html import strip_tags
 
 
@@ -35,30 +40,42 @@ class BoxscoreCrawler(BaseCrawler):
 
         hitters_payload = payload.get("arrHitter")
         pitchers_payload = payload.get("arrPitcher")
-        if not hitters_payload or not pitchers_payload:
+        if (
+            not isinstance(hitters_payload, list)
+            or len(hitters_payload) < 2
+            or not isinstance(pitchers_payload, list)
+            or len(pitchers_payload) < 2
+        ):
             return self._live_context_boxscore(game_id) or self._empty_boxscore(
-                game_id, away_id, home_id
+                game_id,
+                away_id,
+                home_id,
+                reason="official_not_available",
             )
 
         away_hitters = self._parse_hitter_team(hitters_payload[0])
         home_hitters = self._parse_hitter_team(hitters_payload[1])
         away_pitchers = self._parse_pitcher_team(pitchers_payload[0])
         home_pitchers = self._parse_pitcher_team(pitchers_payload[1])
-        if not self._has_displayable_records(
+        if not self._has_complete_official_records(
             away_hitters["batters"],
             away_pitchers["pitchers"],
-        ) and not self._has_displayable_records(
             home_hitters["batters"],
             home_pitchers["pitchers"],
         ):
             return self._live_context_boxscore(game_id) or self._empty_boxscore(
-                game_id, away_id, home_id
+                game_id,
+                away_id,
+                home_id,
+                reason="official_partial",
             )
 
         return {
             "gameId": game_id,
+            "availability": BoxscoreAvailability.OFFICIAL.value,
             "officialAvailable": True,
             "liveContextAvailable": False,
+            "source": "official_endpoint",
             "away": {
                 "teamId": away_id,
                 "batters": away_hitters["batters"],
@@ -80,34 +97,19 @@ class BoxscoreCrawler(BaseCrawler):
         }
 
     @staticmethod
-    def _empty_boxscore(game_id: str, away_id: str, home_id: str) -> dict[str, Any]:
-        empty_totals = {
-            "batting": {"atBats": 0, "runs": 0, "hits": 0, "rbi": 0},
-            "pitching": {
-                "innings": "0.0",
-                "hits": 0,
-                "strikeouts": 0,
-                "walks": 0,
-                "earnedRuns": 0,
-            },
-        }
-        return {
-            "gameId": game_id,
-            "officialAvailable": False,
-            "liveContextAvailable": False,
-            "away": {
-                "teamId": away_id,
-                "batters": [],
-                "pitchers": [],
-                "totals": empty_totals,
-            },
-            "home": {
-                "teamId": home_id,
-                "batters": [],
-                "pitchers": [],
-                "totals": empty_totals,
-            },
-        }
+    def _empty_boxscore(
+        game_id: str,
+        away_id: str,
+        home_id: str,
+        *,
+        reason: str,
+    ) -> dict[str, Any]:
+        return official_unavailable_boxscore(
+            game_id,
+            away_id,
+            home_id,
+            reason=reason,
+        )
 
     def _live_context_boxscore(self, game_id: str) -> Optional[dict[str, Any]]:
         main_game = self._main_game_for_game(game_id)
@@ -127,9 +129,7 @@ class BoxscoreCrawler(BaseCrawler):
             main_game.get("T_P_NM") if is_top else main_game.get("B_P_NM")
         )
         relay_batter = (
-            relay_current_at_bat.get("batter", {})
-            if isinstance(relay_current_at_bat, dict)
-            else {}
+            relay_current_at_bat.get("batter", {}) if isinstance(relay_current_at_bat, dict) else {}
         )
         relay_batter_name = self._clean_name(relay_batter.get("name"))
         if not current_batter and relay_batter_name:
@@ -167,13 +167,9 @@ class BoxscoreCrawler(BaseCrawler):
             "선발 투수",
         )
         if is_top:
-            self._add_live_pitcher(
-                home_pitchers, current_pitcher, pitcher_label, decision="LIVE"
-            )
+            self._add_live_pitcher(home_pitchers, current_pitcher, pitcher_label, decision="LIVE")
         else:
-            self._add_live_pitcher(
-                away_pitchers, current_pitcher, pitcher_label, decision="LIVE"
-            )
+            self._add_live_pitcher(away_pitchers, current_pitcher, pitcher_label, decision="LIVE")
 
         if not self._has_displayable_records(away_batters, away_pitchers) and not (
             self._has_displayable_records(home_batters, home_pitchers)
@@ -182,9 +178,11 @@ class BoxscoreCrawler(BaseCrawler):
 
         return {
             "gameId": game_id,
+            "availability": BoxscoreAvailability.LIVE_CONTEXT.value,
             "officialAvailable": False,
             "liveContextAvailable": True,
             "source": "live_context",
+            "unavailableReason": "official_not_available",
             "away": {
                 "teamId": away_id,
                 "batters": away_batters,
@@ -254,16 +252,7 @@ class BoxscoreCrawler(BaseCrawler):
 
     @staticmethod
     def _empty_totals() -> dict[str, Any]:
-        return {
-            "batting": {"atBats": 0, "runs": 0, "hits": 0, "rbi": 0},
-            "pitching": {
-                "innings": "0.0",
-                "hits": 0,
-                "strikeouts": 0,
-                "walks": 0,
-                "earnedRuns": 0,
-            },
-        }
+        return empty_boxscore_totals()
 
     @staticmethod
     def _live_batter(
@@ -357,9 +346,7 @@ class BoxscoreCrawler(BaseCrawler):
         table1 = json.loads(team_payload["table1"])
         table3 = json.loads(team_payload["table3"])
         stat_tables = [
-            json.loads(team_payload[key])
-            for key in ("table2", "table3")
-            if key in team_payload
+            json.loads(team_payload[key]) for key in ("table2", "table3") if key in team_payload
         ]
 
         batters = []
@@ -517,9 +504,36 @@ class BoxscoreCrawler(BaseCrawler):
         batters: list[dict[str, Any]],
         pitchers: list[dict[str, Any]],
     ) -> bool:
-        return any((batter.get("name") or "").strip() for batter in batters) or bool(
-            pitchers
+        return any((batter.get("name") or "").strip() for batter in batters) or bool(pitchers)
+
+    @classmethod
+    def _has_complete_official_records(
+        cls,
+        away_batters: list[dict[str, Any]],
+        away_pitchers: list[dict[str, Any]],
+        home_batters: list[dict[str, Any]],
+        home_pitchers: list[dict[str, Any]],
+    ) -> bool:
+        return all(
+            (
+                cls._has_official_batting_line(away_batters),
+                bool(away_pitchers),
+                cls._has_official_batting_line(home_batters),
+                bool(home_pitchers),
+            )
         )
+
+    @staticmethod
+    def _has_official_batting_line(batters: list[dict[str, Any]]) -> bool:
+        for batter in batters:
+            if not str(batter.get("name") or "").strip():
+                continue
+            if any(
+                (batter.get(key) or 0) > 0
+                for key in ("plateAppearances", "atBats", "runs", "hits", "rbi")
+            ):
+                return True
+        return False
 
     @staticmethod
     def _is_displayable_pitcher(pitcher: dict[str, Any]) -> bool:
@@ -574,10 +588,7 @@ class BoxscoreCrawler(BaseCrawler):
 
     @staticmethod
     def _row_values(row: dict[str, Any]) -> list[str]:
-        return [
-            strip_tags(cell["Text"]).replace("\xa0", "").strip()
-            for cell in row.get("row", [])
-        ]
+        return [strip_tags(cell["Text"]).replace("\xa0", "").strip() for cell in row.get("row", [])]
 
     def _stat_rows_for_index(
         self,

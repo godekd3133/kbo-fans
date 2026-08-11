@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
+import math
 import os
 import re
 import tempfile
 import threading
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any, Callable, Iterator, Optional
 
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.schemas.push import (
@@ -26,16 +29,168 @@ _PUSH_OUTBOX_TARGET_LEASE_SECONDS = 60
 _SCHEDULED_DELIVERY_LEASE_SECONDS = 60
 _LIVE_ACTIVITY_END_LEASE_SECONDS = 60
 _LIVE_ACTIVITY_START_LEASE_SECONDS = 60
+# Keep this above the APNs sender timeout so a fenced network call cannot be overtaken.
+_LIVE_ACTIVITY_UPDATE_LEASE_SECONDS = 60
+_SCORE_CORRECTION_CONFIRMATION_SECONDS = 8.0
+_SCORE_CORRECTION_CANDIDATE_KEY = "scoreCorrectionCandidate"
+
+
+class PushRegistryCapacityError(RuntimeError):
+    pass
+
+
+class PushRegistryOwnershipError(RuntimeError):
+    pass
+
+
+class PushRegistryCorruptionError(RuntimeError):
+    pass
 
 
 class PushRegistry:
     _thread_locks: dict[Path, threading.Lock] = {}
     _thread_locks_guard = threading.Lock()
 
-    def __init__(self, path: Optional[str] = None) -> None:
-        self.path = Path(path or get_settings().push_registry_path).expanduser()
+    def __init__(
+        self,
+        path: Optional[str] = None,
+        *,
+        device_test_cooldown_seconds: Optional[int] = None,
+        device_test_global_window_seconds: Optional[int] = None,
+        device_test_global_max_attempts: Optional[int] = None,
+        max_devices: Optional[int] = None,
+        max_live_activities: Optional[int] = None,
+        max_live_activity_start_tokens: Optional[int] = None,
+        max_registry_bytes: Optional[int] = None,
+        device_registration_ttl_seconds: Optional[int] = None,
+        live_activity_registration_ttl_seconds: Optional[int] = None,
+        live_activity_start_token_ttl_seconds: Optional[int] = None,
+        registration_new_owner_window_seconds: Optional[int] = None,
+        registration_new_owner_max_attempts: Optional[int] = None,
+        registration_now_provider: Optional[Callable[[], datetime]] = None,
+        score_correction_confirmation_seconds: Optional[float] = None,
+        score_correction_now_provider: Optional[Callable[[], datetime]] = None,
+    ) -> None:
+        settings = get_settings()
+        self.path = Path(path or settings.push_registry_path).expanduser()
+        configured_cooldown = (
+            settings.push_device_test_cooldown_seconds
+            if device_test_cooldown_seconds is None
+            else device_test_cooldown_seconds
+        )
+        self._device_test_cooldown_seconds = max(1, int(configured_cooldown))
+        configured_global_window = (
+            settings.push_device_test_global_window_seconds
+            if device_test_global_window_seconds is None
+            else device_test_global_window_seconds
+        )
+        self._device_test_global_window_seconds = max(
+            1,
+            int(configured_global_window),
+        )
+        configured_global_max_attempts = (
+            settings.push_device_test_global_max_attempts
+            if device_test_global_max_attempts is None
+            else device_test_global_max_attempts
+        )
+        self._device_test_global_max_attempts = max(
+            1,
+            int(configured_global_max_attempts),
+        )
+        configured_max_devices = (
+            settings.push_registry_max_devices if max_devices is None else max_devices
+        )
+        self._max_devices = max(1, int(configured_max_devices))
+        configured_max_live_activities = (
+            settings.push_registry_max_live_activities
+            if max_live_activities is None
+            else max_live_activities
+        )
+        self._max_live_activities = max(1, int(configured_max_live_activities))
+        configured_max_start_tokens = (
+            settings.push_registry_max_live_activity_start_tokens
+            if max_live_activity_start_tokens is None
+            else max_live_activity_start_tokens
+        )
+        self._max_live_activity_start_tokens = max(
+            1,
+            int(configured_max_start_tokens),
+        )
+        configured_max_bytes = (
+            settings.push_registry_max_bytes if max_registry_bytes is None else max_registry_bytes
+        )
+        self._max_registry_bytes = max(1024, int(configured_max_bytes))
+        configured_device_ttl = (
+            settings.push_registry_device_ttl_seconds
+            if device_registration_ttl_seconds is None
+            else device_registration_ttl_seconds
+        )
+        self._device_registration_ttl_seconds = max(1, int(configured_device_ttl))
+        configured_live_activity_ttl = (
+            settings.push_registry_live_activity_ttl_seconds
+            if live_activity_registration_ttl_seconds is None
+            else live_activity_registration_ttl_seconds
+        )
+        self._live_activity_registration_ttl_seconds = max(
+            1,
+            int(configured_live_activity_ttl),
+        )
+        configured_start_token_ttl = (
+            settings.push_registry_live_activity_start_token_ttl_seconds
+            if live_activity_start_token_ttl_seconds is None
+            else live_activity_start_token_ttl_seconds
+        )
+        self._live_activity_start_token_ttl_seconds = max(
+            1,
+            int(configured_start_token_ttl),
+        )
+        configured_admission_window = (
+            settings.push_registration_new_owner_window_seconds
+            if registration_new_owner_window_seconds is None
+            else registration_new_owner_window_seconds
+        )
+        self._registration_new_owner_window_seconds = max(
+            1,
+            int(configured_admission_window),
+        )
+        configured_admission_max = (
+            settings.push_registration_new_owner_max_attempts
+            if registration_new_owner_max_attempts is None
+            else registration_new_owner_max_attempts
+        )
+        self._registration_new_owner_max_attempts = max(
+            1,
+            int(configured_admission_max),
+        )
+        self._registration_now_provider = registration_now_provider or (
+            lambda: datetime.now(timezone.utc)
+        )
+        configured_confirmation_seconds = (
+            _SCORE_CORRECTION_CONFIRMATION_SECONDS
+            if score_correction_confirmation_seconds is None
+            else float(score_correction_confirmation_seconds)
+        )
+        self._score_correction_confirmation_seconds = max(
+            0.0,
+            configured_confirmation_seconds,
+        )
+        self._score_correction_now_provider = score_correction_now_provider or (
+            lambda: datetime.now(timezone.utc)
+        )
         self._lock_path = self.path.with_name(f"{self.path.name}.lock")
         self._thread_lock = self._thread_lock_for_path(self._lock_path)
+
+    def _scoreboard_now(self) -> datetime:
+        now = self._score_correction_now_provider()
+        if now.tzinfo is None:
+            return now.replace(tzinfo=timezone.utc)
+        return now.astimezone(timezone.utc)
+
+    def _registration_now(self) -> datetime:
+        now = self._registration_now_provider()
+        if now.tzinfo is None:
+            return now.replace(tzinfo=timezone.utc)
+        return now.astimezone(timezone.utc)
 
     @classmethod
     def _thread_lock_for_path(cls, path: Path) -> threading.Lock:
@@ -53,19 +208,73 @@ class PushRegistry:
     ) -> dict[str, Any]:
         with self._mutate_data() as data:
             devices = data.setdefault("devices", {})
-            now = _now_iso()
+            if not isinstance(devices, dict):
+                devices = {}
+                data["devices"] = devices
+            now_datetime = self._registration_now()
+            now = now_datetime.isoformat()
             installation_id = _clean_optional_string(payload.installationId)
+            existing = devices.get(payload.deviceToken)
+            existing_installation_id = (
+                _clean_optional_string(existing.get("installationId"))
+                if isinstance(existing, dict)
+                else None
+            )
+            if existing_installation_id and existing_installation_id != installation_id:
+                raise PushRegistryOwnershipError("device token ownership conflict")
             if installation_id:
-                stale_tokens = [
+                owner_tokens = {
+                    token
+                    for token, registration in devices.items()
+                    if isinstance(registration, dict)
+                    and _clean_optional_string(registration.get("installationId"))
+                    == installation_id
+                }
+            elif isinstance(existing, dict):
+                owner_tokens = {payload.deviceToken}
+            else:
+                owner_tokens = set()
+            removed_devices = _prune_stale_registrations(
+                devices,
+                now=now_datetime,
+                ttl_seconds=self._device_registration_ttl_seconds,
+                preserve_tokens=owner_tokens,
+                section_name="devices",
+            )
+            device_test_states = data.get("deviceTestStates")
+            if isinstance(device_test_states, dict):
+                remaining_installation_ids = {
+                    _clean_optional_string(registration.get("installationId"))
+                    for registration in devices.values()
+                    if isinstance(registration, dict)
+                }
+                for _, registration in removed_devices:
+                    removed_installation_id = _clean_optional_string(
+                        registration.get("installationId")
+                    )
+                    if (
+                        removed_installation_id
+                        and removed_installation_id not in remaining_installation_ids
+                    ):
+                        device_test_states.pop(
+                            _device_test_state_id(removed_installation_id),
+                            None,
+                        )
+            if not owner_tokens:
+                self._claim_new_owner_admission(data, now=now_datetime)
+            if installation_id:
+                stale_tokens = sorted(
                     token
                     for token, registration in devices.items()
                     if token != payload.deviceToken
                     and isinstance(registration, dict)
                     and _clean_optional_string(registration.get("installationId"))
                     == installation_id
-                ]
+                )
                 for token in stale_tokens:
                     devices.pop(token, None)
+            if payload.deviceToken not in devices and len(devices) >= self._max_devices:
+                raise PushRegistryCapacityError("device registration capacity reached")
             existing = devices.get(payload.deviceToken, {})
             devices[payload.deviceToken] = {
                 **existing,
@@ -79,10 +288,43 @@ class PushRegistry:
                 "authorizationStatus": str(payload.authorizationStatus or "").strip(),
                 "apnsTokenReady": payload.apnsTokenReady,
                 "topics": topics,
+                "lastSeenAt": now,
                 "updatedAt": now,
                 "createdAt": existing.get("createdAt", now),
             }
             return devices[payload.deviceToken]
+
+    def _claim_new_owner_admission(
+        self,
+        data: dict[str, Any],
+        *,
+        now: datetime,
+    ) -> None:
+        state = data.setdefault("registrationAdmissionState", {})
+        if not isinstance(state, dict):
+            raise PushRegistryCorruptionError("registration admission state is invalid")
+        raw_accepted_at = state.get("newOwnerAcceptedAt")
+        if raw_accepted_at is None:
+            raw_accepted_at = []
+        if not isinstance(raw_accepted_at, list):
+            raise PushRegistryCorruptionError("registration admission timestamps are invalid")
+
+        recent = []
+        for raw_timestamp in raw_accepted_at:
+            if not isinstance(raw_timestamp, str):
+                raise PushRegistryCorruptionError("registration admission timestamp is invalid")
+            accepted_at = _parse_iso_datetime(raw_timestamp)
+            if accepted_at is None:
+                raise PushRegistryCorruptionError("registration admission timestamp is invalid")
+            if (now - accepted_at).total_seconds() < self._registration_new_owner_window_seconds:
+                recent.append(accepted_at)
+        recent.sort()
+        if len(recent) >= self._registration_new_owner_max_attempts:
+            raise PushRegistryCapacityError("new owner registration rate limit reached")
+
+        recent.append(now)
+        state["newOwnerAcceptedAt"] = [timestamp.isoformat() for timestamp in recent]
+        state["updatedAt"] = now.isoformat()
 
     def save_device_topics(
         self,
@@ -111,10 +353,71 @@ class PushRegistry:
     ) -> dict[str, Any]:
         with self._mutate_data() as data:
             activities = data.setdefault("liveActivities", {})
-            if payload.previousActivityPushToken:
-                activities.pop(payload.previousActivityPushToken, None)
+            now_datetime = self._registration_now()
+            existing = activities.get(payload.activityPushToken)
+            exact_token_owner_matches = self._live_activity_exact_owner_matches(
+                existing,
+                payload,
+            )
+            if self._live_activity_has_strong_owner(
+                existing
+            ) and not self._live_activity_rotation_owner_matches(existing, payload):
+                raise PushRegistryOwnershipError("live activity token ownership conflict")
+            owner_tokens = {
+                token
+                for token, activity in activities.items()
+                if self._live_activity_rotation_owner_matches(activity, payload)
+            }
+            if exact_token_owner_matches:
+                owner_tokens.add(payload.activityPushToken)
+            removed_activities = _prune_stale_registrations(
+                activities,
+                now=now_datetime,
+                ttl_seconds=self._live_activity_registration_ttl_seconds,
+                preserve_tokens=owner_tokens,
+                section_name="liveActivities",
+            )
+            for token, activity in removed_activities:
+                game_id = _clean_optional_string(activity.get("gameId"))
+                if game_id:
+                    self._remove_live_activity_update_delivery(
+                        data,
+                        game_id=game_id,
+                        activity_push_token=token,
+                    )
+            if not owner_tokens:
+                self._claim_new_owner_admission(data, now=now_datetime)
+            rotation_tokens = {
+                token
+                for token, activity in activities.items()
+                if token != payload.activityPushToken
+                and self._live_activity_rotation_owner_matches(activity, payload)
+            }
+            previous_token = payload.previousActivityPushToken
+            if (
+                previous_token
+                and previous_token != payload.activityPushToken
+                and self._live_activity_rotation_owner_matches(
+                    activities.get(previous_token),
+                    payload,
+                )
+            ):
+                rotation_tokens.add(previous_token)
+            for token in sorted(rotation_tokens):
+                activities.pop(token, None)
+                self._remove_live_activity_update_delivery(
+                    data,
+                    game_id=payload.gameId,
+                    activity_push_token=token,
+                )
 
-            now = _now_iso()
+            if (
+                payload.activityPushToken not in activities
+                and len(activities) >= self._max_live_activities
+            ):
+                raise PushRegistryCapacityError("live activity registration capacity reached")
+
+            now = now_datetime.isoformat()
             existing = activities.get(payload.activityPushToken, {})
             activities[payload.activityPushToken] = {
                 **existing,
@@ -123,6 +426,8 @@ class PushRegistry:
                 "activityPushToken": payload.activityPushToken,
                 "installationId": _clean_optional_string(payload.installationId),
                 "platform": payload.platform,
+                "registrationGeneration": uuid.uuid4().hex,
+                "lastSeenAt": now,
                 "updatedAt": now,
                 "createdAt": existing.get("createdAt", now),
             }
@@ -130,48 +435,175 @@ class PushRegistry:
             activities[payload.activityPushToken].pop("endClaimedAt", None)
             return activities[payload.activityPushToken]
 
+    @staticmethod
+    def _live_activity_exact_owner_matches(
+        activity: Any,
+        payload: LiveActivityRegisterRequest,
+    ) -> bool:
+        return (
+            isinstance(activity, dict)
+            and activity.get("gameId") == payload.gameId
+            and _clean_optional_string(activity.get("activityId"))
+            == _clean_optional_string(payload.activityId)
+            and _clean_optional_string(activity.get("installationId"))
+            == _clean_optional_string(payload.installationId)
+        )
+
+    @staticmethod
+    def _live_activity_rotation_owner_matches(
+        previous: Any,
+        payload: LiveActivityRegisterRequest,
+    ) -> bool:
+        activity_id = payload.activityId
+        installation_id = payload.installationId
+        return (
+            isinstance(previous, dict)
+            and isinstance(activity_id, str)
+            and bool(activity_id.strip())
+            and isinstance(installation_id, str)
+            and bool(installation_id.strip())
+            and previous.get("gameId") == payload.gameId
+            and previous.get("activityId") == activity_id
+            and previous.get("installationId") == installation_id
+        )
+
+    @staticmethod
+    def _live_activity_has_strong_owner(activity: Any) -> bool:
+        if not isinstance(activity, dict):
+            return False
+        return all(
+            _clean_optional_string(activity.get(field_name))
+            for field_name in ("gameId", "activityId", "installationId")
+        )
+
     def save_live_activity_start_token(
         self,
         payload: LiveActivityStartTokenRegisterRequest,
     ) -> dict[str, Any]:
         with self._mutate_data() as data:
             tokens = data.setdefault("liveActivityStartTokens", {})
-            if payload.previousPushToStartToken:
-                tokens.pop(payload.previousPushToStartToken, None)
+            if not isinstance(tokens, dict):
+                tokens = {}
+                data["liveActivityStartTokens"] = tokens
 
-            now = _now_iso()
+            now_datetime = self._registration_now()
+            installation_id = _clean_optional_string(payload.installationId)
+            existing = tokens.get(payload.pushToStartToken)
+            existing_installation_id = (
+                _clean_optional_string(existing.get("installationId"))
+                if isinstance(existing, dict)
+                else None
+            )
+            if existing_installation_id and existing_installation_id != installation_id:
+                raise PushRegistryOwnershipError("start token ownership conflict")
+            owner_tokens = {
+                token
+                for token, registration in tokens.items()
+                if isinstance(registration, dict)
+                and _clean_optional_string(registration.get("installationId")) == installation_id
+            }
+            removed_tokens = _prune_stale_registrations(
+                tokens,
+                now=now_datetime,
+                ttl_seconds=self._live_activity_start_token_ttl_seconds,
+                preserve_tokens=owner_tokens,
+                section_name="liveActivityStartTokens",
+            )
+            for token, _ in removed_tokens:
+                self._remove_live_activity_start_token_states(data, token)
+            if existing_installation_id == installation_id:
+                existing["platform"] = payload.platform
+                existing["lastSeenAt"] = now_datetime.isoformat()
+                existing["updatedAt"] = now_datetime.isoformat()
+                return existing
+
+            if not owner_tokens:
+                self._claim_new_owner_admission(data, now=now_datetime)
+
+            current_owner_tokens = sorted(
+                token
+                for token, registration in tokens.items()
+                if token != payload.pushToStartToken
+                and isinstance(registration, dict)
+                and _clean_optional_string(registration.get("installationId")) == installation_id
+            )
+            previous_token = _clean_optional_string(payload.previousPushToStartToken)
+            if current_owner_tokens and (
+                len(current_owner_tokens) != 1 or previous_token != current_owner_tokens[0]
+            ):
+                raise PushRegistryOwnershipError("start token ownership conflict")
+            for token in current_owner_tokens:
+                tokens.pop(token, None)
+                self._remove_live_activity_start_token_states(data, token)
+
+            if (
+                payload.pushToStartToken not in tokens
+                and len(tokens) >= self._max_live_activity_start_tokens
+            ):
+                raise PushRegistryCapacityError("start token registration capacity reached")
+
+            now = now_datetime.isoformat()
             existing = tokens.get(payload.pushToStartToken, {})
             tokens[payload.pushToStartToken] = {
                 **existing,
                 "pushToStartToken": payload.pushToStartToken,
-                "previousPushToStartToken": _clean_optional_string(
-                    payload.previousPushToStartToken
-                ),
-                "installationId": _clean_optional_string(payload.installationId),
+                "previousPushToStartToken": previous_token,
+                "installationId": installation_id,
                 "platform": payload.platform,
+                "lastSeenAt": now,
                 "updatedAt": now,
                 "createdAt": existing.get("createdAt", now),
             }
             return tokens[payload.pushToStartToken]
 
+    @staticmethod
+    def _remove_live_activity_start_token_states(
+        data: dict[str, Any],
+        push_to_start_token: str,
+    ) -> None:
+        states = data.get("liveActivityStartStates")
+        if not isinstance(states, dict):
+            return
+        empty_game_ids = []
+        for game_id, game_state in states.items():
+            if not isinstance(game_state, dict):
+                continue
+            game_state.pop(push_to_start_token, None)
+            if not game_state:
+                empty_game_ids.append(game_id)
+        for game_id in empty_game_ids:
+            states.pop(game_id, None)
+
     def remove_live_activity(
         self,
         payload: LiveActivityUnregisterRequest,
     ) -> int:
+        activity_push_token = _clean_optional_string(payload.activityPushToken)
+        activity_id = _clean_optional_string(payload.activityId)
+        installation_id = _clean_optional_string(payload.installationId)
+        if not activity_push_token or not activity_id or not installation_id:
+            return 0
         with self._mutate_data() as data:
             activities = data.setdefault("liveActivities", {})
             remove_tokens = []
             for token, activity in activities.items():
                 if activity.get("gameId") != payload.gameId:
                     continue
-                if payload.activityPushToken and token != payload.activityPushToken:
+                if token != activity_push_token:
                     continue
-                if payload.activityId and activity.get("activityId") != payload.activityId:
+                if _clean_optional_string(activity.get("activityId")) != activity_id:
+                    continue
+                if _clean_optional_string(activity.get("installationId")) != installation_id:
                     continue
                 remove_tokens.append(token)
 
             for token in remove_tokens:
                 activities.pop(token, None)
+                self._remove_live_activity_update_delivery(
+                    data,
+                    game_id=payload.gameId,
+                    activity_push_token=token,
+                )
 
             return len(remove_tokens)
 
@@ -184,12 +616,42 @@ class PushRegistry:
         tokens.sort()
         return tokens
 
+    def ensure_live_activity_registration_generation(
+        self,
+        *,
+        game_id: str,
+        activity_push_token: str,
+    ) -> Optional[str]:
+        with self._mutate_data() as data:
+            activities = data.setdefault("liveActivities", {})
+            activity = activities.get(activity_push_token)
+            if not isinstance(activity, dict) or activity.get("gameId") != game_id:
+                return None
+            generation = _clean_optional_string(activity.get("registrationGeneration"))
+            if generation:
+                return generation
+            generation = uuid.uuid4().hex
+            activity["registrationGeneration"] = generation
+            return generation
+
     def claim_live_activity_end(
         self,
         *,
         game_id: str,
         activity_push_token: str,
     ) -> Optional[str]:
+        claim = self.claim_live_activity_end_with_generation(
+            game_id=game_id,
+            activity_push_token=activity_push_token,
+        )
+        return claim[0] if claim is not None else None
+
+    def claim_live_activity_end_with_generation(
+        self,
+        *,
+        game_id: str,
+        activity_push_token: str,
+    ) -> Optional[tuple[str, str]]:
         now = datetime.now(timezone.utc)
         claim_id = uuid.uuid4().hex
         with self._mutate_data() as data:
@@ -204,10 +666,14 @@ class PushRegistry:
                 if lease_age.total_seconds() < _LIVE_ACTIVITY_END_LEASE_SECONDS:
                     return None
 
+            generation = _clean_optional_string(activity.get("registrationGeneration"))
+            if not generation:
+                generation = uuid.uuid4().hex
+                activity["registrationGeneration"] = generation
             activity["endClaimId"] = claim_id
             activity["endClaimedAt"] = now.isoformat()
             activity["updatedAt"] = now.isoformat()
-            return claim_id
+            return claim_id, generation
 
     def complete_live_activity_end(
         self,
@@ -215,6 +681,7 @@ class PushRegistry:
         game_id: str,
         activity_push_token: str,
         claim_id: str,
+        expected_registration_generation: Optional[str] = None,
     ) -> bool:
         with self._mutate_data() as data:
             activities = data.setdefault("liveActivities", {})
@@ -225,8 +692,66 @@ class PushRegistry:
                 or activity.get("endClaimId") != claim_id
             ):
                 return False
+            if (
+                expected_registration_generation is not None
+                and _clean_optional_string(activity.get("registrationGeneration"))
+                != expected_registration_generation
+            ):
+                return False
             activities.pop(activity_push_token, None)
+            self._remove_live_activity_update_delivery(
+                data,
+                game_id=game_id,
+                activity_push_token=activity_push_token,
+            )
             return True
+
+    def prune_live_activity_token(
+        self,
+        *,
+        game_id: str,
+        activity_push_token: str,
+        expected_registration_generation: Optional[str],
+        end_claim_id: Optional[str] = None,
+    ) -> bool:
+        with self._mutate_data() as data:
+            activities = data.setdefault("liveActivities", {})
+            activity = activities.get(activity_push_token)
+            if not isinstance(activity, dict) or activity.get("gameId") != game_id:
+                return False
+            current_generation = _clean_optional_string(activity.get("registrationGeneration"))
+            if (
+                not expected_registration_generation
+                or current_generation != expected_registration_generation
+            ):
+                return False
+            if end_claim_id is not None and activity.get("endClaimId") != end_claim_id:
+                return False
+            activities.pop(activity_push_token, None)
+            self._remove_live_activity_update_delivery(
+                data,
+                game_id=game_id,
+                activity_push_token=activity_push_token,
+            )
+            return True
+
+    @staticmethod
+    def _remove_live_activity_update_delivery(
+        data: dict[str, Any],
+        *,
+        game_id: str,
+        activity_push_token: str,
+    ) -> None:
+        states = data.get("liveActivityUpdateStates")
+        if not isinstance(states, dict):
+            return
+        game_state = states.get(game_id)
+        deliveries = game_state.get("deliveries") if isinstance(game_state, dict) else None
+        if not isinstance(deliveries, dict):
+            return
+        deliveries.pop(_live_activity_delivery_id(activity_push_token), None)
+        if not deliveries:
+            states.pop(game_id, None)
 
     def release_live_activity_end(
         self,
@@ -248,6 +773,235 @@ class PushRegistry:
             activity.pop("endClaimedAt", None)
             activity["updatedAt"] = _now_iso()
             return True
+
+    def claim_live_activity_update(
+        self,
+        *,
+        game_id: str,
+        delivery_id: str,
+        content_signature: str,
+    ) -> Optional[str]:
+        claims = self.claim_live_activity_updates(
+            game_id=game_id,
+            delivery_ids=[delivery_id],
+            content_signature=content_signature,
+        )
+        return claims.get(delivery_id)
+
+    def claim_live_activity_updates(
+        self,
+        *,
+        game_id: str,
+        delivery_ids: list[str],
+        content_signature: str,
+    ) -> dict[str, str]:
+        now = datetime.now(timezone.utc)
+        claims: dict[str, str] = {}
+        with self._mutate_data() as data:
+            states = data.setdefault("liveActivityUpdateStates", {})
+            game_state = states.get(game_id)
+            if not isinstance(game_state, dict):
+                game_state = {"gameId": game_id, "deliveries": {}}
+                states[game_id] = game_state
+            deliveries = game_state.setdefault("deliveries", {})
+            if not isinstance(deliveries, dict):
+                deliveries = {}
+                game_state["deliveries"] = deliveries
+            for delivery_id in dict.fromkeys(delivery_ids):
+                state = deliveries.get(delivery_id)
+                if not isinstance(state, dict):
+                    state = {}
+                    deliveries[delivery_id] = state
+
+                desired_revision = _live_activity_update_revision(state)
+                if state.get("desiredContentSignature") != content_signature:
+                    desired_revision += 1
+                    state["desiredContentSignature"] = content_signature
+                    state["desiredRevision"] = desired_revision
+                    state["updatedAt"] = now.isoformat()
+                elif desired_revision == 0:
+                    desired_revision = 1
+                    state["desiredRevision"] = desired_revision
+
+                claimed_at = _parse_iso_datetime(state.get("claimedAt"))
+                claim_id = _clean_optional_string(state.get("claimId"))
+                claim_active = False
+                if claim_id and claimed_at is not None:
+                    lease_age = now - claimed_at
+                    claim_active = lease_age.total_seconds() < _LIVE_ACTIVITY_UPDATE_LEASE_SECONDS
+
+                if state.get("contentSignature") == content_signature:
+                    pending_differs = (
+                        claim_id and state.get("pendingContentSignature") != content_signature
+                    )
+                    if not pending_differs:
+                        continue
+                    if state.get("fencedAt"):
+                        if claim_active:
+                            continue
+                    else:
+                        self._clear_live_activity_update_claim(state)
+                        state["updatedAt"] = now.isoformat()
+                        continue
+
+                if claim_active:
+                    current_claim_matches = (
+                        state.get("pendingContentSignature") == content_signature
+                        and state.get("claimRevision") == desired_revision
+                    )
+                    if current_claim_matches or state.get("fencedAt"):
+                        continue
+
+                claim_id = uuid.uuid4().hex
+                state.update(
+                    {
+                        "pendingContentSignature": content_signature,
+                        "claimId": claim_id,
+                        "claimRevision": desired_revision,
+                        "claimedAt": now.isoformat(),
+                        "updatedAt": now.isoformat(),
+                    }
+                )
+                state.pop("fencedAt", None)
+                claims[delivery_id] = claim_id
+            if claims:
+                game_state["updatedAt"] = now.isoformat()
+        return claims
+
+    def fence_live_activity_update(
+        self,
+        *,
+        game_id: str,
+        delivery_id: str,
+        content_signature: str,
+        claim_id: str,
+    ) -> bool:
+        with self._mutate_data() as data:
+            states = data.setdefault("liveActivityUpdateStates", {})
+            game_state = states.get(game_id)
+            deliveries = game_state.get("deliveries") if isinstance(game_state, dict) else None
+            state = deliveries.get(delivery_id) if isinstance(deliveries, dict) else None
+            if not self._matches_live_activity_update_claim(
+                state,
+                content_signature=content_signature,
+                claim_id=claim_id,
+            ) or state.get("claimRevision") != state.get("desiredRevision"):
+                return False
+
+            now = _now_iso()
+            state["claimedAt"] = now
+            state["fencedAt"] = now
+            state["updatedAt"] = now
+            game_state["updatedAt"] = now
+            return True
+
+    def resolve_live_activity_updates(
+        self,
+        *,
+        game_id: str,
+        content_signature: str,
+        completed_claims: dict[str, str],
+        released_claims: dict[str, str],
+    ) -> int:
+        resolved = 0
+        with self._mutate_data() as data:
+            states = data.setdefault("liveActivityUpdateStates", {})
+            game_state = states.get(game_id)
+            deliveries = game_state.get("deliveries") if isinstance(game_state, dict) else None
+            if not isinstance(deliveries, dict):
+                return 0
+
+            now = _now_iso()
+            for delivery_id, claim_id in completed_claims.items():
+                state = deliveries.get(delivery_id)
+                if not self._matches_live_activity_update_claim(
+                    state,
+                    content_signature=content_signature,
+                    claim_id=claim_id,
+                ):
+                    continue
+                state.update(
+                    {
+                        "contentSignature": content_signature,
+                        "sentAt": now,
+                        "updatedAt": now,
+                    }
+                )
+                self._clear_live_activity_update_claim(state)
+                resolved += 1
+
+            for delivery_id, claim_id in released_claims.items():
+                state = deliveries.get(delivery_id)
+                if not self._matches_live_activity_update_claim(
+                    state,
+                    content_signature=content_signature,
+                    claim_id=claim_id,
+                ):
+                    continue
+                self._clear_live_activity_update_claim(state)
+                state["updatedAt"] = now
+                resolved += 1
+
+            if resolved and isinstance(game_state, dict):
+                game_state["updatedAt"] = now
+        return resolved
+
+    @staticmethod
+    def _matches_live_activity_update_claim(
+        state: Any,
+        *,
+        content_signature: str,
+        claim_id: str,
+    ) -> bool:
+        return (
+            isinstance(state, dict)
+            and state.get("claimId") == claim_id
+            and state.get("pendingContentSignature") == content_signature
+        )
+
+    @staticmethod
+    def _clear_live_activity_update_claim(state: dict[str, Any]) -> None:
+        state.pop("pendingContentSignature", None)
+        state.pop("claimId", None)
+        state.pop("claimRevision", None)
+        state.pop("claimedAt", None)
+        state.pop("fencedAt", None)
+
+    def complete_live_activity_update(
+        self,
+        *,
+        game_id: str,
+        delivery_id: str,
+        content_signature: str,
+        claim_id: str,
+    ) -> bool:
+        return (
+            self.resolve_live_activity_updates(
+                game_id=game_id,
+                content_signature=content_signature,
+                completed_claims={delivery_id: claim_id},
+                released_claims={},
+            )
+            == 1
+        )
+
+    def release_live_activity_update(
+        self,
+        *,
+        game_id: str,
+        delivery_id: str,
+        content_signature: str,
+        claim_id: str,
+    ) -> bool:
+        return (
+            self.resolve_live_activity_updates(
+                game_id=game_id,
+                content_signature=content_signature,
+                completed_claims={},
+                released_claims={delivery_id: claim_id},
+            )
+            == 1
+        )
 
     def live_activity_game_ids(self) -> list[str]:
         data = self._load()
@@ -418,6 +1172,29 @@ class PushRegistry:
             state.pop("lastError", None)
             return True
 
+    def prune_live_activity_start_token(
+        self,
+        *,
+        game_id: str,
+        push_to_start_token: str,
+        claim_id: str,
+    ) -> bool:
+        token = _clean_optional_string(push_to_start_token)
+        with self._mutate_data() as data:
+            states = data.setdefault("liveActivityStartStates", {})
+            game_state = states.get(game_id)
+            state = game_state.get(token) if isinstance(game_state, dict) else None
+            if not isinstance(state, dict) or state.get("claimId") != claim_id:
+                return False
+
+            tokens = data.setdefault("liveActivityStartTokens", {})
+            registration = tokens.get(token) if isinstance(tokens, dict) else None
+            if not isinstance(registration, dict):
+                return False
+            tokens.pop(token, None)
+            self._remove_live_activity_start_token_states(data, token)
+            return True
+
     def release_live_activity_start(
         self,
         *,
@@ -487,6 +1264,141 @@ class PushRegistry:
         devices = data.get("devices", {})
         return device_token in devices
 
+    def device_registration_owned_by(
+        self,
+        *,
+        device_token: str,
+        installation_id: str,
+    ) -> bool:
+        data = self._load()
+        devices = data.get("devices", {})
+        registration = devices.get(device_token) if isinstance(devices, dict) else None
+        return (
+            isinstance(registration, dict)
+            and bool(installation_id)
+            and _clean_optional_string(registration.get("installationId")) == installation_id
+        )
+
+    def claim_device_test(
+        self,
+        *,
+        device_token: str,
+        installation_id: str,
+    ) -> dict[str, Any]:
+        now = datetime.now(timezone.utc)
+        with self._mutate_data() as data:
+            devices = data.setdefault("devices", {})
+            registration = devices.get(device_token) if isinstance(devices, dict) else None
+            if not isinstance(registration, dict):
+                return {"allowed": False, "status": "unregistered"}
+            if (
+                not installation_id
+                or _clean_optional_string(registration.get("installationId")) != installation_id
+            ):
+                return {"allowed": False, "status": "ownership_mismatch"}
+
+            states = data.get("deviceTestStates")
+            if states is None:
+                states = {}
+            if not isinstance(states, dict):
+                raise PushRegistryCorruptionError("invalid device test state section")
+            state_id = _device_test_state_id(installation_id)
+            state = states.get(state_id)
+            if state is not None and not isinstance(state, dict):
+                raise PushRegistryCorruptionError("invalid device test owner state")
+
+            if isinstance(state, dict) and "attemptedAt" in state:
+                attempted_at = _parse_iso_datetime(state.get("attemptedAt"))
+                if attempted_at is None:
+                    raise PushRegistryCorruptionError("invalid device test cooldown timestamp")
+                elapsed = max(0.0, (now - attempted_at).total_seconds())
+                if elapsed < self._device_test_cooldown_seconds:
+                    return {
+                        "allowed": False,
+                        "status": "cooldown",
+                        "retryAfterSeconds": max(
+                            1,
+                            math.ceil(self._device_test_cooldown_seconds - elapsed),
+                        ),
+                    }
+
+            global_rate = data.get("deviceTestRateState")
+            if global_rate is None:
+                global_rate = {}
+            if not isinstance(global_rate, dict):
+                raise PushRegistryCorruptionError("invalid device test global rate state")
+            raw_attempts = global_rate.get("attemptedAt")
+            if raw_attempts is None:
+                raw_attempts = []
+            if not isinstance(raw_attempts, list):
+                raise PushRegistryCorruptionError("invalid device test global timestamps")
+            parsed_attempts = []
+            for raw_attempt in raw_attempts:
+                if not isinstance(raw_attempt, str):
+                    raise PushRegistryCorruptionError("invalid device test global timestamp")
+                parsed_attempt = _parse_iso_datetime(raw_attempt)
+                if parsed_attempt is None:
+                    raise PushRegistryCorruptionError("invalid device test global timestamp")
+                if (now - parsed_attempt).total_seconds() < self._device_test_global_window_seconds:
+                    parsed_attempts.append(parsed_attempt)
+            recent_attempts = sorted(parsed_attempts)[-self._device_test_global_max_attempts :]
+            if len(recent_attempts) >= self._device_test_global_max_attempts:
+                oldest = recent_attempts[0]
+                elapsed = max(0.0, (now - oldest).total_seconds())
+                return {
+                    "allowed": False,
+                    "status": "global_cooldown",
+                    "retryAfterSeconds": max(
+                        1,
+                        math.ceil(self._device_test_global_window_seconds - elapsed),
+                    ),
+                }
+
+            if not isinstance(state, dict):
+                state = {}
+            data["deviceTestStates"] = states
+            states[state_id] = state
+            data["deviceTestRateState"] = global_rate
+            recent_attempts.append(now)
+            global_rate["attemptedAt"] = [attempted.isoformat() for attempted in recent_attempts]
+            global_rate["updatedAt"] = now.isoformat()
+
+            claim_id = uuid.uuid4().hex
+            state.update(
+                {
+                    "installationId": installation_id,
+                    "deviceTokenSuffix": device_token[-8:],
+                    "claimId": claim_id,
+                    "attemptedAt": now.isoformat(),
+                    "updatedAt": now.isoformat(),
+                }
+            )
+            return {
+                "allowed": True,
+                "status": "claimed",
+                "claimId": claim_id,
+            }
+
+    def complete_device_test(
+        self,
+        *,
+        device_token: str,
+        installation_id: str,
+        claim_id: str,
+    ) -> bool:
+        with self._mutate_data() as data:
+            states = data.setdefault("deviceTestStates", {})
+            state = (
+                states.get(_device_test_state_id(installation_id))
+                if isinstance(states, dict)
+                else None
+            )
+            if not isinstance(state, dict) or state.get("claimId") != claim_id:
+                return False
+            state.pop("claimId", None)
+            state["updatedAt"] = _now_iso()
+            return True
+
     def record_device_test_result(
         self,
         *,
@@ -535,13 +1447,17 @@ class PushRegistry:
 
     def record_push_receipt(self, payload: PushReceiptRequest) -> Optional[dict[str, Any]]:
         device_token = payload.deviceToken.strip()
-        if not device_token:
+        installation_id = _clean_optional_string(payload.installationId)
+        if not device_token or not installation_id:
             return None
 
         with self._mutate_data() as data:
             devices = data.setdefault("devices", {})
             registration = devices.get(device_token)
-            if not isinstance(registration, dict):
+            if (
+                not isinstance(registration, dict)
+                or _clean_optional_string(registration.get("installationId")) != installation_id
+            ):
                 return None
 
             receipts = data.setdefault("pushReceipts", [])
@@ -645,15 +1561,52 @@ class PushRegistry:
             )
             if previous_updated_at != str(expected_updated_at or ""):
                 return False
-            if isinstance(previous, dict) and not _scoreboard_state_can_advance(
-                previous,
-                state,
-            ):
-                return False
+            now = self._scoreboard_now()
+            updated_at = _next_scoreboard_updated_at(previous_updated_at, now)
+            score_correction_confirmed = False
+            if isinstance(previous, dict):
+                correction_candidate = _live_score_correction_candidate(previous, state)
+                if correction_candidate is not None:
+                    persisted_candidate = previous.get(_SCORE_CORRECTION_CANDIDATE_KEY)
+                    first_observed_at = _matching_score_correction_first_observed_at(
+                        persisted_candidate,
+                        correction_candidate,
+                    )
+                    if first_observed_at is None:
+                        states[game_id] = {
+                            **previous,
+                            _SCORE_CORRECTION_CANDIDATE_KEY: {
+                                **correction_candidate,
+                                "firstObservedAt": now.isoformat(),
+                            },
+                            "updatedAt": updated_at,
+                        }
+                        return False
+                    elapsed_seconds = (now - first_observed_at).total_seconds()
+                    if elapsed_seconds < self._score_correction_confirmation_seconds:
+                        return False
+                    if not _scoreboard_state_can_advance(
+                        previous,
+                        state,
+                        allow_live_score_correction=True,
+                    ):
+                        return False
+                    score_correction_confirmed = True
+                elif not _scoreboard_state_can_advance(previous, state):
+                    if _SCORE_CORRECTION_CANDIDATE_KEY in previous:
+                        cleared_state = dict(previous)
+                        cleared_state.pop(_SCORE_CORRECTION_CANDIDATE_KEY, None)
+                        cleared_state["updatedAt"] = updated_at
+                        states[game_id] = cleared_state
+                    return False
+            if score_correction_confirmed:
+                events[:] = [
+                    event for event in events if not _is_score_correction_duplicate_moment(event)
+                ]
             states[game_id] = {
                 **state,
                 "gameId": game_id,
-                "updatedAt": _now_iso(),
+                "updatedAt": updated_at,
             }
             _enqueue_push_outbox_events(data, events)
             return True
@@ -1171,12 +2124,21 @@ class PushRegistry:
         with self._thread_lock:
             with self._file_lock(exclusive=True):
                 data = self._load_unlocked()
+                original = deepcopy(data)
                 try:
                     yield data
                 except Exception:
                     raise
                 else:
-                    self._save_unlocked(data)
+                    if data != original:
+                        serialized = _serialize_registry(data)
+                        updated_size = len(serialized.encode("utf-8"))
+                        if (
+                            updated_size > self._max_registry_bytes
+                            and updated_size > _registry_size_bytes(original)
+                        ):
+                            raise PushRegistryCapacityError("registry byte capacity reached")
+                        self._save_unlocked(data)
 
     @contextmanager
     def _file_lock(self, *, exclusive: bool) -> Iterator[None]:
@@ -1195,24 +2157,38 @@ class PushRegistry:
 
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            return _empty_registry()
+        except (json.JSONDecodeError, OSError) as error:
+            raise PushRegistryCorruptionError("push registry is unreadable") from error
 
         if not isinstance(data, dict):
-            return _empty_registry()
-        data.setdefault("devices", {})
-        data.setdefault("liveActivities", {})
-        data.setdefault("scoreboardStates", {})
-        data.setdefault("relayStates", {})
-        data.setdefault("pushOutbox", {})
-        data.setdefault("pregameAlertStates", {})
-        data.setdefault("scheduledAlertStates", {})
-        data.setdefault("scheduledDeliveryStates", {})
-        data.setdefault("liveActivityStartTokens", {})
-        data.setdefault("liveActivityStartStates", {})
-        data.setdefault("pushReceipts", [])
-        data.setdefault("deviceTestResults", [])
-        data.setdefault("syncHeartbeat", {})
+            raise PushRegistryCorruptionError("push registry root is invalid")
+
+        defaults = _empty_registry()
+        for section_name, default_value in defaults.items():
+            section = data.get(section_name)
+            if section is None and section_name not in data:
+                data[section_name] = deepcopy(default_value)
+                continue
+            if not isinstance(section, type(default_value)):
+                raise PushRegistryCorruptionError(
+                    f"push registry section is invalid: {section_name}"
+                )
+        _validate_registry_owner_entries(
+            data,
+            section_name="devices",
+            owner_fields=("installationId",),
+        )
+        _validate_registry_owner_entries(
+            data,
+            section_name="liveActivities",
+            owner_fields=("gameId", "activityId", "installationId"),
+        )
+        _validate_registry_owner_entries(
+            data,
+            section_name="liveActivityStartTokens",
+            owner_fields=("installationId",),
+        )
+        _validate_registration_admission_state(data)
         return data
 
     def _save_unlocked(self, data: dict[str, Any]) -> None:
@@ -1225,8 +2201,7 @@ class PushRegistry:
         temporary_file = Path(temporary_path)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as file:
-                file.write(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True))
-                file.write("\n")
+                file.write(_serialize_registry(data))
                 file.flush()
                 os.fsync(file.fileno())
             os.replace(temporary_file, self.path)
@@ -1243,6 +2218,119 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _live_activity_delivery_id(activity_push_token: str) -> str:
+    return hashlib.sha256(activity_push_token.encode("utf-8")).hexdigest()
+
+
+def _live_activity_update_revision(state: dict[str, Any]) -> int:
+    revision = state.get("desiredRevision")
+    if isinstance(revision, bool) or not isinstance(revision, int) or revision < 0:
+        return 0
+    return revision
+
+
+def _prune_stale_registrations(
+    registrations: dict[str, Any],
+    *,
+    now: datetime,
+    ttl_seconds: int,
+    preserve_tokens: set[str],
+    section_name: str,
+) -> list[tuple[str, dict[str, Any]]]:
+    removed = []
+    for token, registration in list(registrations.items()):
+        last_seen_at = _registration_last_seen_at(
+            registration,
+            section_name=section_name,
+        )
+        if token in preserve_tokens:
+            continue
+        if last_seen_at is None:
+            continue
+        if (now - last_seen_at).total_seconds() < ttl_seconds:
+            continue
+        removed.append((token, registration))
+        registrations.pop(token, None)
+    return removed
+
+
+def _registration_last_seen_at(
+    registration: Any,
+    *,
+    section_name: str,
+) -> Optional[datetime]:
+    if not isinstance(registration, dict):
+        raise PushRegistryCorruptionError(f"push registry registration is invalid: {section_name}")
+    parsed_timestamps = {}
+    for field_name in ("lastSeenAt", "updatedAt", "createdAt"):
+        if field_name not in registration:
+            continue
+        raw_timestamp = registration[field_name]
+        if not isinstance(raw_timestamp, str) or not raw_timestamp.strip():
+            raise PushRegistryCorruptionError(
+                f"push registry registration timestamp is invalid: {section_name}"
+            )
+        parsed_timestamp = _parse_iso_datetime(raw_timestamp)
+        if parsed_timestamp is None:
+            raise PushRegistryCorruptionError(
+                f"push registry registration timestamp is invalid: {section_name}"
+            )
+        parsed_timestamps[field_name] = parsed_timestamp
+    for field_name in ("lastSeenAt", "updatedAt", "createdAt"):
+        if field_name in parsed_timestamps:
+            return parsed_timestamps[field_name]
+    return None
+
+
+def _device_test_state_id(installation_id: str) -> str:
+    return hashlib.sha256(installation_id.encode("utf-8")).hexdigest()
+
+
+def _serialize_registry(data: dict[str, Any]) -> str:
+    return f"{json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True)}\n"
+
+
+def _registry_size_bytes(data: dict[str, Any]) -> int:
+    return len(_serialize_registry(data).encode("utf-8"))
+
+
+def _validate_registry_owner_entries(
+    data: dict[str, Any],
+    *,
+    section_name: str,
+    owner_fields: tuple[str, ...],
+) -> None:
+    section = data[section_name]
+    for token, registration in section.items():
+        if not isinstance(token, str) or not token:
+            raise PushRegistryCorruptionError(f"push registry token key is invalid: {section_name}")
+        if not isinstance(registration, dict):
+            raise PushRegistryCorruptionError(
+                f"push registry registration is invalid: {section_name}"
+            )
+        for field_name in owner_fields:
+            value = registration.get(field_name)
+            if value is not None and not isinstance(value, str):
+                raise PushRegistryCorruptionError(
+                    f"push registry owner field is invalid: {section_name}.{field_name}"
+                )
+
+
+def _validate_registration_admission_state(data: dict[str, Any]) -> None:
+    state = data["registrationAdmissionState"]
+    raw_accepted_at = state.get("newOwnerAcceptedAt")
+    if raw_accepted_at is not None:
+        if not isinstance(raw_accepted_at, list):
+            raise PushRegistryCorruptionError("registration admission timestamps are invalid")
+        for raw_timestamp in raw_accepted_at:
+            if not isinstance(raw_timestamp, str) or _parse_iso_datetime(raw_timestamp) is None:
+                raise PushRegistryCorruptionError("registration admission timestamp is invalid")
+    if "updatedAt" in state:
+        updated_at = state["updatedAt"]
+        if not isinstance(updated_at, str) or _parse_iso_datetime(updated_at) is None:
+            raise PushRegistryCorruptionError("registration admission timestamp is invalid")
+
+
 def _empty_registry() -> dict[str, Any]:
     return {
         "devices": {},
@@ -1255,6 +2343,10 @@ def _empty_registry() -> dict[str, Any]:
         "scheduledDeliveryStates": {},
         "liveActivityStartTokens": {},
         "liveActivityStartStates": {},
+        "liveActivityUpdateStates": {},
+        "deviceTestStates": {},
+        "deviceTestRateState": {},
+        "registrationAdmissionState": {},
         "pushReceipts": [],
         "deviceTestResults": [],
         "syncHeartbeat": {},
@@ -1368,6 +2460,8 @@ def _push_outbox_event_complete(event: dict[str, Any]) -> bool:
 def _scoreboard_state_can_advance(
     previous: dict[str, Any],
     current: dict[str, Any],
+    *,
+    allow_live_score_correction: bool = False,
 ) -> bool:
     previous_status = str(previous.get("status") or "").upper()
     current_status = str(current.get("status") or "").upper()
@@ -1414,6 +2508,7 @@ def _scoreboard_state_can_advance(
             previous_away is not None
             and previous_home is not None
             and (current_away < previous_away or current_home < previous_home)
+            and not allow_live_score_correction
         ):
             return False
 
@@ -1431,6 +2526,65 @@ def _scoreboard_state_can_advance(
             return False
 
     return True
+
+
+def _live_score_correction_candidate(
+    previous: dict[str, Any],
+    current: dict[str, Any],
+) -> Optional[dict[str, int]]:
+    previous_status = str(previous.get("status") or "").upper()
+    current_status = str(current.get("status") or "").upper()
+    if previous_status not in {"LIVE", "SUSPENDED"} or current_status not in {
+        "LIVE",
+        "SUSPENDED",
+    }:
+        return None
+
+    previous_score_state = _last_verified_registry_score_state(previous)
+    if previous_score_state is None:
+        return None
+    previous_away = _optional_registry_int(previous_score_state.get("awayScore"))
+    previous_home = _optional_registry_int(previous_score_state.get("homeScore"))
+    current_away = _optional_registry_int(current.get("awayScore"))
+    current_home = _optional_registry_int(current.get("homeScore"))
+    if None in (previous_away, previous_home, current_away, current_home):
+        return None
+    if current_away >= previous_away and current_home >= previous_home:
+        return None
+    return {
+        "awayScore": current_away,
+        "homeScore": current_home,
+    }
+
+
+def _matching_score_correction_first_observed_at(
+    persisted_candidate: Any,
+    current_candidate: dict[str, int],
+) -> Optional[datetime]:
+    if not isinstance(persisted_candidate, dict):
+        return None
+    if (
+        _optional_registry_int(persisted_candidate.get("awayScore"))
+        != current_candidate["awayScore"]
+        or _optional_registry_int(persisted_candidate.get("homeScore"))
+        != current_candidate["homeScore"]
+    ):
+        return None
+    return _parse_iso_datetime(persisted_candidate.get("firstObservedAt"))
+
+
+def _next_scoreboard_updated_at(previous_updated_at: Any, now: datetime) -> str:
+    previous = _parse_iso_datetime(previous_updated_at)
+    if previous is not None and now <= previous:
+        now = previous + timedelta(microseconds=1)
+    return now.isoformat()
+
+
+def _is_score_correction_duplicate_moment(event: dict[str, Any]) -> bool:
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        return False
+    return str(payload.get("moment") or "") in {"scoring", "reversal"}
 
 
 def _last_verified_registry_score_state(

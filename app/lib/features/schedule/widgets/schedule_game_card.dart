@@ -85,7 +85,7 @@ class ScheduleGameCard extends StatelessWidget {
                           dateLabel!,
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textDisabled,
+                            color: AppColors.textSupporting,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -128,7 +128,7 @@ class ScheduleGameCard extends StatelessWidget {
                           textAlign: TextAlign.right,
                           style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textDisabled,
+                            color: AppColors.textSupporting,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -369,7 +369,7 @@ class _ScoreOrVersus extends StatelessWidget {
     if (!hasScore) {
       return Text(
         'vs',
-        style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+        style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
       );
     }
 
@@ -389,7 +389,7 @@ class _ScoreOrVersus extends StatelessWidget {
             ':',
             style: TextStyle(
               fontSize: 18,
-              color: AppColors.textDisabled,
+              color: AppColors.textSupporting,
               fontWeight: FontWeight.w800,
             ),
           ),

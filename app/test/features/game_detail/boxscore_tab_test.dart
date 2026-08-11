@@ -105,6 +105,67 @@ void main() {
     expect(find.text('삼진 0'), findsNothing);
   });
 
+  testWidgets('투수 기록만 있는 박스스코어는 팀 타율을 0.000으로 만들지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pumpBoxscoreTab(
+      tester,
+      boxscore: const GameBoxscoreData(
+        gameId: '20260613KTLG0',
+        officialAvailable: true,
+        away: TeamBoxscoreData(
+          teamId: 'KT',
+          batters: [],
+          pitchers: [
+            PitcherRecord(
+              name: '엄상백',
+              innings: '6.0',
+              hits: 4,
+              strikeouts: 7,
+              walks: 1,
+              earnedRuns: 1,
+            ),
+          ],
+        ),
+        home: TeamBoxscoreData(
+          teamId: 'LG',
+          batters: [],
+          pitchers: [
+            PitcherRecord(
+              name: '임찬규',
+              innings: '5.0',
+              hits: 5,
+              strikeouts: 4,
+              walks: 2,
+              earnedRuns: 2,
+            ),
+          ],
+        ),
+      ),
+      players: const <PlayerProfile>[],
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final battingAverage = find.byKey(
+      const ValueKey('boxscore-summary-metric-4'),
+    );
+    expect(
+      find.descendant(of: battingAverage, matching: find.text('팀 타율')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: battingAverage, matching: find.text('확인 불가')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: battingAverage, matching: find.text('0.000')),
+      findsNothing,
+    );
+  });
+
   testWidgets('매칭된 박스스코어 선수는 CTA와 선수 사진을 렌더한다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -343,6 +404,50 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, '다시 시도'));
     await tester.pump();
     expect(retryCalls, 1);
+  });
+
+  testWidgets('320px·240% 박스스코어 오류 카드는 안내와 재시도를 모두 리플로우한다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameBoxscoreProvider.overrideWith((ref, gameId) async {
+            throw Exception('network unavailable');
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: BoxscoreTab(
+              gameId: '20260613KTLG0',
+              game: _liveGame,
+              gameStatus: GameStatus.live,
+              awayName: 'KT',
+              homeName: 'LG',
+              awayTeamId: 'KT',
+              homeTeamId: 'LG',
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final card = find.byKey(const ValueKey('boxscore-unavailable-card'));
+    expect(card, findsOneWidget);
+    expect(find.text('박스스코어를 불러올 수 없습니다'), findsOneWidget);
+    expect(find.text('네트워크 상태를 확인하고 다시 시도해 주세요'), findsOneWidget);
+    expect(find.text('다시 시도'), findsOneWidget);
+    expect(tester.getSize(card).height, greaterThan(178));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('박스스코어는 프로필 id 기반 선수 사진도 렌더한다', (tester) async {

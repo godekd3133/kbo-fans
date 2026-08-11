@@ -260,10 +260,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             if (trailing != null)
               Text(
                 trailing,
-                style: TextStyle(fontSize: 14, color: colors.textDisabled),
+                style: TextStyle(fontSize: 14, color: colors.textSupporting),
               ),
             if (hasArrow)
-              Icon(Icons.chevron_right, color: colors.textDisabled, size: 20),
+              Icon(Icons.chevron_right, color: colors.textSupporting, size: 20),
           ],
         ),
       ),
@@ -465,7 +465,7 @@ class _MoreHeroCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
-                            color: colors.textDisabled,
+                            color: colors.textSupporting,
                             letterSpacing: 0,
                           ),
                         ),
@@ -851,7 +851,7 @@ class _NotificationTargetStrip extends StatelessWidget {
             '기본 대상',
             style: TextStyle(
               fontSize: 12,
-              color: colors.textDisabled,
+              color: colors.textSupporting,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -982,7 +982,9 @@ class _NotificationToggleRow extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: colors.textDisabled,
+                        color: enabled
+                            ? colors.textSupporting
+                            : colors.textDisabled,
                       ),
                     ),
                   ],
@@ -1121,7 +1123,7 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
                             '최근 받은 알림을 확인합니다',
                             style: TextStyle(
                               fontSize: 11,
-                              color: colors.textDisabled,
+                              color: colors.textSupporting,
                             ),
                           ),
                         ],
@@ -1159,7 +1161,7 @@ class _NotificationInboxPreviewCard extends StatelessWidget {
                     Icon(
                       Icons.chevron_right,
                       size: 20,
-                      color: colors.textDisabled,
+                      color: colors.textSupporting,
                     ),
                   ],
                 ),
@@ -1383,7 +1385,7 @@ class _LegalDocumentSheet extends StatelessWidget {
                         '시행일 $updatedAt',
                         style: TextStyle(
                           fontSize: 12,
-                          color: colors.textDisabled,
+                          color: colors.textSupporting,
                         ),
                       ),
                     ],

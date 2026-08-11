@@ -1,3 +1,4 @@
+import secrets
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
@@ -24,6 +25,11 @@ from kbo_fans_backend.schemas.push import (
 from kbo_fans_backend.services.live_activity_scoreboard import LiveActivityScoreboardSyncService
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.services.push_diagnostics import PushConfigurationDiagnostics
+from kbo_fans_backend.services.push_registry import (
+    PushRegistryCapacityError,
+    PushRegistryCorruptionError,
+    PushRegistryOwnershipError,
+)
 
 router = APIRouter(prefix="/push")
 service = PushService()
@@ -38,7 +44,21 @@ diagnostics_service = PushConfigurationDiagnostics()
 
 @router.post("/register", response_model=ApiEnvelope[dict])
 def register_push(payload: PushRegisterRequest) -> ApiEnvelope[dict]:
-    return ApiEnvelope.success_response(service.register(payload))
+    try:
+        registration = service.register(payload)
+    except PushRegistryCapacityError as error:
+        raise HTTPException(
+            status_code=429,
+            detail="push registry capacity reached",
+        ) from error
+    except PushRegistryOwnershipError as error:
+        raise HTTPException(
+            status_code=409,
+            detail="push registration ownership conflict",
+        ) from error
+    except PushRegistryCorruptionError as error:
+        raise HTTPException(status_code=503, detail="push registry unavailable") from error
+    return ApiEnvelope.success_response(registration)
 
 
 @router.post("/test", response_model=ApiEnvelope[dict])
@@ -52,12 +72,30 @@ def send_test_push(
 
 @router.post("/test-device", response_model=ApiEnvelope[dict])
 def send_device_test_push(payload: PushDeviceTestRequest) -> ApiEnvelope[dict]:
-    return ApiEnvelope.success_response(service.send_device_test(payload))
+    try:
+        result = service.send_device_test(payload)
+    except PushRegistryCapacityError as error:
+        raise HTTPException(
+            status_code=429,
+            detail="push registry capacity reached",
+        ) from error
+    except PushRegistryCorruptionError as error:
+        raise HTTPException(status_code=503, detail="push registry unavailable") from error
+    return ApiEnvelope.success_response(result)
 
 
 @router.post("/receipt", response_model=ApiEnvelope[dict])
 def record_push_receipt(payload: PushReceiptRequest) -> ApiEnvelope[dict]:
-    return ApiEnvelope.success_response(service.record_receipt(payload))
+    try:
+        result = service.record_receipt(payload)
+    except PushRegistryCapacityError as error:
+        raise HTTPException(
+            status_code=429,
+            detail="push registry capacity reached",
+        ) from error
+    except PushRegistryCorruptionError as error:
+        raise HTTPException(status_code=503, detail="push registry unavailable") from error
+    return ApiEnvelope.success_response(result)
 
 
 @router.post("/baseball-info", response_model=ApiEnvelope[dict])
@@ -101,23 +139,59 @@ def get_push_config_status(
 
 @router.post("/live-activity/register", response_model=ApiEnvelope[dict])
 def register_live_activity(payload: LiveActivityRegisterRequest) -> ApiEnvelope[dict]:
-    return ApiEnvelope.success_response(service.register_live_activity(payload))
+    try:
+        registration = service.register_live_activity(payload)
+    except PushRegistryCapacityError as error:
+        raise HTTPException(
+            status_code=429,
+            detail="push registry capacity reached",
+        ) from error
+    except PushRegistryOwnershipError as error:
+        raise HTTPException(
+            status_code=409,
+            detail="push registration ownership conflict",
+        ) from error
+    except PushRegistryCorruptionError as error:
+        raise HTTPException(status_code=503, detail="push registry unavailable") from error
+    return ApiEnvelope.success_response(registration)
 
 
 @router.post("/live-activity/start-token/register", response_model=ApiEnvelope[dict])
 def register_live_activity_start_token(
     payload: LiveActivityStartTokenRegisterRequest,
 ) -> ApiEnvelope[dict]:
-    return ApiEnvelope.success_response(service.register_live_activity_start_token(payload))
+    try:
+        registration = service.register_live_activity_start_token(payload)
+    except PushRegistryCapacityError as error:
+        raise HTTPException(
+            status_code=429,
+            detail="push registry capacity reached",
+        ) from error
+    except PushRegistryOwnershipError as error:
+        raise HTTPException(
+            status_code=409,
+            detail="push registration ownership conflict",
+        ) from error
+    except PushRegistryCorruptionError as error:
+        raise HTTPException(status_code=503, detail="push registry unavailable") from error
+    return ApiEnvelope.success_response(registration)
 
 
 @router.post("/live-activity/unregister", response_model=ApiEnvelope[dict])
 def unregister_live_activity(payload: LiveActivityUnregisterRequest) -> ApiEnvelope[dict]:
-    return ApiEnvelope.success_response(service.unregister_live_activity(payload))
+    try:
+        result = service.unregister_live_activity(payload)
+    except PushRegistryCorruptionError as error:
+        raise HTTPException(status_code=503, detail="push registry unavailable") from error
+    return ApiEnvelope.success_response(result)
 
 
 @router.post("/live-activity/update", response_model=ApiEnvelope[dict])
-def update_live_activity(payload: LiveActivityUpdateRequest) -> ApiEnvelope[dict]:
+def update_live_activity(
+    payload: LiveActivityUpdateRequest,
+    x_kbo_push_sync_secret: Optional[str] = Header(default=None),
+) -> ApiEnvelope[dict]:
+    _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
     return ApiEnvelope.success_response(service.send_live_activity_update(payload))
 
 
@@ -139,5 +213,8 @@ def _ensure_sync_allowed(
     expected = get_settings().push_sync_secret
     if not expected and require_configured:
         raise HTTPException(status_code=503, detail="Push sync secret is not configured")
-    if expected and secret != expected:
+    if expected and (
+        secret is None
+        or not secrets.compare_digest(secret.encode("utf-8"), expected.encode("utf-8"))
+    ):
         raise HTTPException(status_code=401, detail="Invalid push sync secret")

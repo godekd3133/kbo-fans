@@ -17,7 +17,10 @@ from kbo_fans_backend.schemas.push import (
     PushRegisterRequest,
     PushTestRequest,
 )
-from kbo_fans_backend.services.apns_live_activity import ApnsLiveActivitySender
+from kbo_fans_backend.services.apns_live_activity import (
+    ApnsLiveActivitySender,
+    ApnsLiveActivitySendError,
+)
 from kbo_fans_backend.services.push_registry import PushRegistry
 
 KBO_TEAM_IDS = ("LG", "KT", "SK", "SS", "NC", "HH", "LT", "HT", "OB", "WO")
@@ -170,67 +173,105 @@ class PushService:
 
     def send_device_test(self, payload: PushDeviceTestRequest) -> dict[str, Any]:
         device_token = payload.deviceToken.strip()
-        if not device_token or not self.registry.has_device_token(device_token):
-            result = {
+        installation_id = str(payload.installationId or "").strip()
+        if not installation_id:
+            return {
+                "sent": False,
+                "registered": False,
+                "reason": "device token ownership does not match",
+            }
+        claim = self.registry.claim_device_test(
+            device_token=device_token,
+            installation_id=installation_id,
+        )
+        status = claim.get("status")
+        if status == "unregistered":
+            return {
                 "sent": False,
                 "registered": False,
                 "reason": "device token is not registered",
             }
-            if device_token:
+        if status == "ownership_mismatch":
+            return {
+                "sent": False,
+                "registered": False,
+                "reason": "device token ownership does not match",
+            }
+        if status == "cooldown":
+            return {
+                "sent": False,
+                "registered": True,
+                "reason": "device test cooldown is active",
+                "retryAfterSeconds": claim.get("retryAfterSeconds", 1),
+            }
+        if status == "global_cooldown":
+            return {
+                "sent": False,
+                "registered": True,
+                "reason": "device test global rate limit is active",
+                "retryAfterSeconds": claim.get("retryAfterSeconds", 1),
+            }
+        claim_id = str(claim.get("claimId") or "")
+        if not claim.get("allowed") or not claim_id:
+            return {
+                "sent": False,
+                "registered": True,
+                "reason": "device test request was not claimed",
+            }
+
+        try:
+            title = "KBO Fans 원격 푸시 테스트"
+            body = "이 기기로 백엔드 원격 푸시가 도착했습니다."
+            messaging = self._get_messaging()
+            visible_options = _visible_push_options(messaging, title=title, body=body)
+            message = messaging.Message(
+                notification=messaging.Notification(title=title, body=body),
+                data={
+                    "type": "test_push",
+                    "route": "/diagnostics",
+                },
+                token=device_token,
+                **visible_options,
+            )
+            try:
+                response = messaging.send(message)
+            except Exception as error:
+                reason = _push_send_error_reason(error)
+                result = {
+                    "sent": False,
+                    "registered": True,
+                    "reason": reason,
+                    "errorType": type(error).__name__,
+                    "debugReason": str(error).strip(),
+                }
                 self.registry.record_device_test_result(
                     device_token=device_token,
                     sent=False,
-                    registered=False,
-                    reason=result["reason"],
+                    registered=True,
+                    reason=reason,
+                    error_type=result["errorType"],
+                    debug_reason=result["debugReason"],
                 )
-            return result
-
-        title = "KBO Fans 원격 푸시 테스트"
-        body = "이 기기로 백엔드 원격 푸시가 도착했습니다."
-        messaging = self._get_messaging()
-        visible_options = _visible_push_options(messaging, title=title, body=body)
-        message = messaging.Message(
-            notification=messaging.Notification(title=title, body=body),
-            data={
-                "type": "test_push",
-                "route": "/diagnostics",
-            },
-            token=device_token,
-            **visible_options,
-        )
-        try:
-            response = messaging.send(message)
-        except Exception as error:
-            reason = _push_send_error_reason(error)
+                return result
             result = {
-                "sent": False,
+                "sent": True,
                 "registered": True,
-                "reason": reason,
-                "errorType": type(error).__name__,
-                "debugReason": str(error).strip(),
+                "target": "token",
+                "messageId": response,
             }
             self.registry.record_device_test_result(
                 device_token=device_token,
-                sent=False,
+                sent=True,
                 registered=True,
-                reason=reason,
-                error_type=result["errorType"],
-                debug_reason=result["debugReason"],
+                message_id=response,
             )
             return result
-        result = {
-            "sent": True,
-            "registered": True,
-            "target": "token",
-            "messageId": response,
-        }
-        self.registry.record_device_test_result(
-            device_token=device_token,
-            sent=True,
-            registered=True,
-            message_id=response,
-        )
-        return result
+        finally:
+            self.registry.complete_device_test(
+                device_token=device_token,
+                installation_id=installation_id,
+                claim_id=claim_id,
+            )
 
     def record_receipt(self, payload: PushReceiptRequest) -> dict[str, Any]:
         receipt = self.registry.record_push_receipt(payload)
@@ -367,13 +408,14 @@ class PushService:
 
         messages = []
         for token in tokens:
+            registration_generation = None
             end_claim_id = None
             if payload.event == "end" and token in registered_tokens:
-                end_claim_id = self.registry.claim_live_activity_end(
+                end_claim = self.registry.claim_live_activity_end_with_generation(
                     game_id=payload.gameId,
                     activity_push_token=token,
                 )
-                if end_claim_id is None:
+                if end_claim is None:
                     messages.append(
                         {
                             "activityPushToken": token,
@@ -383,6 +425,14 @@ class PushService:
                         }
                     )
                     continue
+                end_claim_id, registration_generation = end_claim
+            else:
+                registration_generation = (
+                    self.registry.ensure_live_activity_registration_generation(
+                        game_id=payload.gameId,
+                        activity_push_token=token,
+                    )
+                )
             try:
                 response = self.live_activity_sender.send(
                     activity_push_token=token,
@@ -400,6 +450,7 @@ class PushService:
                             game_id=payload.gameId,
                             activity_push_token=token,
                             claim_id=end_claim_id,
+                            expected_registration_generation=registration_generation,
                         )
                     else:
                         self.registry.release_live_activity_end(
@@ -408,19 +459,38 @@ class PushService:
                             claim_id=end_claim_id,
                         )
             except Exception as error:
-                if end_claim_id is not None:
+                permanent_token_failure = (
+                    isinstance(error, ApnsLiveActivitySendError)
+                    and error.is_permanent_token_failure
+                )
+                if permanent_token_failure:
+                    pruned = self.registry.prune_live_activity_token(
+                        game_id=payload.gameId,
+                        activity_push_token=token,
+                        expected_registration_generation=registration_generation,
+                        end_claim_id=end_claim_id if payload.event == "end" else None,
+                    )
+                else:
+                    pruned = False
+                if end_claim_id is not None and not permanent_token_failure:
                     self.registry.release_live_activity_end(
                         game_id=payload.gameId,
                         activity_push_token=token,
                         claim_id=end_claim_id,
                     )
-                messages.append(
-                    {
-                        "activityPushToken": token,
-                        "sent": False,
-                        "error": str(error),
-                    }
-                )
+                message = {
+                    "activityPushToken": token,
+                    "sent": False,
+                    "error": str(error),
+                }
+                if permanent_token_failure:
+                    message.update(
+                        {
+                            "permanentTokenFailure": True,
+                            "pruned": pruned,
+                        }
+                    )
+                messages.append(message)
 
         return {
             "sent": any(message.get("sent") for message in messages),
@@ -500,19 +570,37 @@ class PushService:
                         error=str(response.get("reason") or "delivery returned sent=false"),
                     )
             except Exception as error:
-                self.registry.release_live_activity_start(
-                    game_id=game_id,
-                    push_to_start_token=token,
-                    claim_id=claim_id,
-                    error=str(error),
+                permanent_token_failure = (
+                    isinstance(error, ApnsLiveActivitySendError)
+                    and error.is_permanent_token_failure
                 )
-                messages.append(
-                    {
-                        "pushToStartToken": token,
-                        "sent": False,
-                        "error": str(error),
-                    }
-                )
+                if permanent_token_failure:
+                    pruned = self.registry.prune_live_activity_start_token(
+                        game_id=game_id,
+                        push_to_start_token=token,
+                        claim_id=claim_id,
+                    )
+                else:
+                    pruned = False
+                    self.registry.release_live_activity_start(
+                        game_id=game_id,
+                        push_to_start_token=token,
+                        claim_id=claim_id,
+                        error=str(error),
+                    )
+                message = {
+                    "pushToStartToken": token,
+                    "sent": False,
+                    "error": str(error),
+                }
+                if permanent_token_failure:
+                    message.update(
+                        {
+                            "permanentTokenFailure": True,
+                            "pruned": pruned,
+                        }
+                    )
+                messages.append(message)
 
         return {
             "sent": any(message.get("sent") for message in messages),

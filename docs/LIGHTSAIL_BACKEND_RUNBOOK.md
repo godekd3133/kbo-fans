@@ -72,9 +72,29 @@ Use file paths for multiline secrets:
 ```text
 LOG_DIR=/var/log/kbo-fans
 SNAPSHOT_DIR=/var/lib/kbo-fans/snapshots
+SNAPSHOT_SEED_DIR=/opt/kbo-fans/current/backend/data/snapshots
 FIREBASE_SERVICE_ACCOUNT_PATH=/etc/kbo-fans/firebase-service-account.json
 APNS_AUTH_KEY_PATH=/etc/kbo-fans/apns-auth-key.p8
+PUSH_REGISTRY_DEVICE_TTL_SECONDS=7776000
+PUSH_REGISTRY_LIVE_ACTIVITY_TTL_SECONDS=172800
+PUSH_REGISTRY_LIVE_ACTIVITY_START_TOKEN_TTL_SECONDS=7776000
+PUSH_REGISTRATION_NEW_OWNER_WINDOW_SECONDS=60
+PUSH_REGISTRATION_NEW_OWNER_MAX_ATTEMPTS=120
 ```
+
+`SNAPSHOT_SEED_DIR` is the read-only fallback shipped with the current release.
+`SNAPSHOT_DIR` is the mutable runtime store shared by the API and sync worker.
+Reads prefer runtime data and fall back to the current release seed; all writes go
+only to `/var/lib/kbo-fans/snapshots`.
+
+The push TTL/admission values are the code defaults written explicitly for
+operational visibility: inactive device/start registrations are eligible for
+lazy cleanup after 90 days, Live Activity registrations after 2 days, and new
+self-asserted owners are admitted at most 120 times per persisted 60-second
+window. Exact-owner refresh and valid token rotation do not consume that
+window. This is burst and stale-capacity protection, not device attestation;
+keep an edge/WAF rate policy and App Attest / Play Integrity on the hardening
+roadmap before broad public exposure.
 
 Pass the local source files to the deploy script. The script installs them under
 `/etc/kbo-fans/` with restricted permissions.
@@ -93,12 +113,18 @@ Pass the local source files to the deploy script. The script installs them under
 Use `--ssh-key /path/to/key.pem` if the SSH key is not already configured in
 `~/.ssh/config`.
 
-The deploy script packages only the backend runtime files and snapshots, uploads
-them with `scp`, installs Python dependencies into `/opt/kbo-fans/venv`, then
-restarts:
+The deploy script packages only the backend runtime files and read-only seed
+snapshots, uploads them with `scp`, installs Python dependencies into
+`/opt/kbo-fans/venv`, then restarts:
 
 - `kbo-fans-api`
 - `kbo-fans-sync-worker`
+
+Deployment creates `/var/lib/kbo-fans/snapshots` if needed, but it does not copy
+the release seed into that directory and does not overwrite existing runtime
+snapshots. After every release, confirm both systemd units still have
+`SNAPSHOT_SEED_DIR=/opt/kbo-fans/current/backend/data/snapshots` and
+`SNAPSHOT_DIR=/var/lib/kbo-fans/snapshots`.
 
 ## Verify
 

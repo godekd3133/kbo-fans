@@ -11,19 +11,34 @@ from kbo_fans_backend.core.config import get_settings
 
 
 class JsonSnapshotStore:
-    def __init__(self, base_dir: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        base_dir: Optional[str] = None,
+        *,
+        seed_dir: Optional[str] = None,
+    ) -> None:
+        if base_dir is not None:
+            self.base_dir = Path(base_dir)
+            self.seed_dir = Path(seed_dir) if seed_dir else None
+            return
+
         settings = get_settings()
-        self.base_dir = Path(base_dir or settings.snapshot_dir)
+        self.base_dir = Path(settings.snapshot_dir)
+        configured_seed_dir = seed_dir or settings.snapshot_seed_dir
+        self.seed_dir = Path(configured_seed_dir) if configured_seed_dir else None
 
     def load(self, namespace: str, key: str) -> Optional[dict[str, Any]]:
         path = self._path_for(namespace, key)
-        if not path.exists():
-            return None
+        record = self._read(path)
+        if record is not None:
+            return record
 
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+        if self.seed_dir is None:
             return None
+        seed_path = self._path_for(namespace, key, base_dir=self.seed_dir)
+        if seed_path == path:
+            return None
+        return self._read(seed_path)
 
     def load_payload(self, namespace: str, key: str) -> Optional[Any]:
         record = self.load(namespace, key)
@@ -40,10 +55,26 @@ class JsonSnapshotStore:
         }
         self._atomic_write(path, json.dumps(record, ensure_ascii=False, indent=2))
 
-    def _path_for(self, namespace: str, key: str) -> Path:
+    def _path_for(
+        self,
+        namespace: str,
+        key: str,
+        *,
+        base_dir: Optional[Path] = None,
+    ) -> Path:
         safe_namespace = self._sanitize(namespace)
         safe_key = self._sanitize(key)
-        return self.base_dir / safe_namespace / f"{safe_key}.json"
+        return (base_dir or self.base_dir) / safe_namespace / f"{safe_key}.json"
+
+    @staticmethod
+    def _read(path: Path) -> Optional[dict[str, Any]]:
+        if not path.exists():
+            return None
+        try:
+            record = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        return record if isinstance(record, dict) else None
 
     @staticmethod
     def _sanitize(value: str) -> str:

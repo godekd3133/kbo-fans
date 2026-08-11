@@ -58,6 +58,10 @@
           "value": "/var/lib/kbo-fans/push_registry.json"
         },
         {
+          "name": "SNAPSHOT_DIR",
+          "value": "/var/lib/kbo-fans/snapshots"
+        },
+        {
           "name": "PUSH_SYNC_INTERVAL_SECONDS",
           "value": "5"
         },

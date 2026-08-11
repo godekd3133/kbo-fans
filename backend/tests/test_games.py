@@ -1,6 +1,9 @@
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 
 from kbo_fans_backend.api.routes import games
+from kbo_fans_backend.api.routes import scoreboard as scoreboard_routes
 from kbo_fans_backend.main import app
 
 
@@ -52,7 +55,7 @@ def test_get_game_returns_game_payload(monkeypatch) -> None:
     assert body["data"]["game"] == expected_game
 
 
-def test_get_game_forwards_force_refresh(monkeypatch) -> None:
+def test_public_get_game_force_refresh_keeps_backend_ttl(monkeypatch) -> None:
     captured = {}
     expected_game = {
         "gameId": "20260330KTLG0",
@@ -63,14 +66,47 @@ def test_get_game_forwards_force_refresh(monkeypatch) -> None:
     monkeypatch.setattr(
         games.scoreboard_service,
         "get_game",
-        lambda game_id, force_refresh=False: captured.update(
-            {"gameId": game_id, "forceRefresh": force_refresh}
-        )
-        or expected_game,
+        lambda game_id, force_refresh=False: (
+            captured.update({"gameId": game_id, "forceRefresh": force_refresh}) or expected_game
+        ),
     )
     client = TestClient(app)
 
     response = client.get("/api/game/20260330KTLG0?forceRefresh=true")
+
+    assert response.status_code == 200
+    assert captured == {
+        "gameId": "20260330KTLG0",
+        "forceRefresh": False,
+    }
+
+
+def test_trusted_get_game_force_refresh_bypasses_backend_ttl(monkeypatch) -> None:
+    captured = {}
+    expected_game = {
+        "gameId": "20260330KTLG0",
+        "status": "LIVE",
+        "away": {"teamId": "KT", "score": 1},
+        "home": {"teamId": "LG", "score": 2},
+    }
+    monkeypatch.setattr(
+        scoreboard_routes,
+        "get_settings",
+        lambda: SimpleNamespace(push_sync_secret="internal-secret"),
+    )
+    monkeypatch.setattr(
+        games.scoreboard_service,
+        "get_game",
+        lambda game_id, force_refresh=False: (
+            captured.update({"gameId": game_id, "forceRefresh": force_refresh}) or expected_game
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.get(
+        "/api/game/20260330KTLG0?forceRefresh=true",
+        headers={"X-KBO-Push-Sync-Secret": "internal-secret"},
+    )
 
     assert response.status_code == 200
     assert captured == {
@@ -85,13 +121,57 @@ def test_get_game_returns_404_when_missing(monkeypatch) -> None:
         "get_game",
         lambda game_id, force_refresh=False: None,
     )
+    monkeypatch.setattr(
+        games.schedule_service,
+        "get_schedule_game",
+        lambda game_id: None,
+    )
     client = TestClient(app)
 
-    response = client.get("/api/game/20260330KTLG0")
+    response = TestClient(app).get("/api/game/20260330KTLG0")
 
     assert response.status_code == 404
     body = response.json()
     assert body["detail"] == "해당 경기를 찾을 수 없습니다"
+
+
+def test_get_game_schedule_fallback_preserves_terminal_status_and_unknown_totals(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        games.scoreboard_service,
+        "get_game",
+        lambda game_id, force_refresh=False: None,
+    )
+    monkeypatch.setattr(
+        games.schedule_service,
+        "get_schedule_game",
+        lambda game_id: {
+            "gameId": game_id,
+            "status": "FINAL",
+            "statusLabel": "경기종료",
+            "time": "18:30",
+            "stadium": "잠실",
+            "awayId": "KT",
+            "awayName": "KT 위즈",
+            "awayScore": None,
+            "homeId": "LG",
+            "homeName": "LG 트윈스",
+            "homeScore": None,
+        },
+    )
+
+    response = TestClient(app).get("/api/game/20260330KTLG0")
+
+    assert response.status_code == 200
+    game = response.json()["data"]["game"]
+    assert game["status"] == "FINAL"
+    assert game["inning"] == "경기종료"
+    assert game["away"]["score"] is None
+    assert game["away"]["hits"] is None
+    assert game["away"]["errors"] is None
+    assert game["away"]["balls"] is None
+    assert "예정" not in game["inning"]
 
 
 def test_get_highlights_returns_youtube_search_fallback_when_video_search_is_empty(
@@ -145,28 +225,68 @@ def test_get_relay_returns_empty_payload(monkeypatch) -> None:
     assert body["data"] == expected
 
 
-def test_get_relay_forwards_force_refresh(monkeypatch) -> None:
+def test_public_get_relay_force_refresh_keeps_backend_ttl(monkeypatch) -> None:
     captured = {}
     monkeypatch.setattr(
         games.relay_service,
         "get_relay",
-        lambda game_id, after=None, force_refresh=False: captured.update(
-            {
+        lambda game_id, after=None, force_refresh=False: (
+            captured.update(
+                {
+                    "gameId": game_id,
+                    "after": after,
+                    "forceRefresh": force_refresh,
+                }
+            )
+            or {
                 "gameId": game_id,
-                "after": after,
-                "forceRefresh": force_refresh,
+                "currentAtBat": None,
+                "relayItems": [],
             }
-        )
-        or {
-            "gameId": game_id,
-            "currentAtBat": None,
-            "relayItems": [],
-        },
+        ),
+    )
+    client = TestClient(app)
+
+    response = client.get("/api/game/20260330KTLG0/relay?after=10&forceRefresh=true")
+
+    assert response.status_code == 200
+    assert captured == {
+        "gameId": "20260330KTLG0",
+        "after": 10,
+        "forceRefresh": False,
+    }
+
+
+def test_trusted_get_relay_force_refresh_bypasses_backend_ttl(monkeypatch) -> None:
+    captured = {}
+    monkeypatch.setattr(
+        scoreboard_routes,
+        "get_settings",
+        lambda: SimpleNamespace(push_sync_secret="internal-secret"),
+    )
+    monkeypatch.setattr(
+        games.relay_service,
+        "get_relay",
+        lambda game_id, after=None, force_refresh=False: (
+            captured.update(
+                {
+                    "gameId": game_id,
+                    "after": after,
+                    "forceRefresh": force_refresh,
+                }
+            )
+            or {
+                "gameId": game_id,
+                "currentAtBat": None,
+                "relayItems": [],
+            }
+        ),
     )
     client = TestClient(app)
 
     response = client.get(
-        "/api/game/20260330KTLG0/relay?after=10&forceRefresh=true"
+        "/api/game/20260330KTLG0/relay?after=10&forceRefresh=true",
+        headers={"X-KBO-Push-Sync-Secret": "internal-secret"},
     )
 
     assert response.status_code == 200
@@ -183,6 +303,11 @@ def test_get_boxscore_returns_empty_payload_when_crawler_has_no_data(monkeypatch
         "get_boxscore",
         lambda game_id: {
             "gameId": game_id,
+            "availability": "official_unavailable",
+            "officialAvailable": False,
+            "liveContextAvailable": False,
+            "source": "official_endpoint",
+            "unavailableReason": "official_not_available",
             "away": {
                 "teamId": "KT",
                 "batters": [],
@@ -222,5 +347,7 @@ def test_get_boxscore_returns_empty_payload_when_crawler_has_no_data(monkeypatch
     assert response.status_code == 200
     body = response.json()
     assert body["success"] is True
+    assert body["data"]["availability"] == "official_unavailable"
+    assert body["data"]["officialAvailable"] is False
     assert body["data"]["away"]["batters"] == []
     assert body["data"]["home"]["pitchers"] == []

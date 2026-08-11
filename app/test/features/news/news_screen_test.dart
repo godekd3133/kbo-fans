@@ -46,6 +46,98 @@ void main() {
     expect(find.textContaining('07:13 생성'), findsOneWidget);
   });
 
+  testWidgets('브리핑은 KST 자정 rollover와 즉시 새로고침에 최신 날짜 key를 쓴다', (tester) async {
+    const beforeMidnight = '2026-12-31';
+    const afterMidnight = '2027-01-01';
+    final requestedKeys = <String>[];
+    final container = ProviderContainer(
+      retry: (_, _) => null,
+      overrides: [
+        homeAggregateProvider.overrideWith((ref, key) async {
+          requestedKeys.add(key);
+          return HomeAggregate(
+            date: key.split('|').first,
+            myTeam: null,
+            myTeamBrief: null,
+            kboBrief: null,
+            quickItems: const [],
+          );
+        }),
+      ],
+    );
+    addTearDown(container.dispose);
+    container
+        .read(kboDateProvider.notifier)
+        .refresh(instant: DateTime.utc(2026, 12, 31, 14, 59));
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(requestedKeys.last.split('|').first, beforeMidnight);
+    expect(find.text('2026.12.31 기준'), findsOneWidget);
+
+    requestedKeys.clear();
+    container
+        .read(kboDateProvider.notifier)
+        .refresh(instant: DateTime.utc(2026, 12, 31, 15));
+    await tester.tap(find.byTooltip('데이터 브리핑 새로고침'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(requestedKeys, isNotEmpty);
+    expect(requestedKeys.first.split('|').first, afterMidnight);
+    expect(find.text('2027.01.01 기준'), findsOneWidget);
+  });
+
+  testWidgets('320px·240% 브리핑 필터는 모든 이름을 줄임표 없이 재배치한다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          homeAggregateProvider.overrideWith((ref, key) async {
+            return HomeAggregate(
+              date: key.split('|').first,
+              myTeam: null,
+              myTeamBrief: null,
+              kboBrief: null,
+              quickItems: const [],
+            );
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.scrollUntilVisible(
+      find.text('전체'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    for (final label in ['전체', '경기', '순위', '기록', '마이팀']) {
+      final textFinder = find.text(label);
+      expect(textFinder, findsOneWidget);
+      expect(
+        tester.widget<Text>(textFinder).overflow,
+        isNot(TextOverflow.ellipsis),
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('news cards push shell screens with iOS swipe-back routes', (
     tester,
   ) async {
@@ -155,6 +247,12 @@ void main() {
     expect(find.text('순위 보기'), findsWidgets);
     expect(find.text('기록 보기'), findsWidgets);
     expect(find.text('삼라'), findsNothing);
+    expect(
+      tester
+          .widgetList<Icon>(find.byIcon(Icons.chevron_right_rounded))
+          .every((icon) => icon.color == AppTheme.darkColors.textSupporting),
+      isTrue,
+    );
   });
 
   testWidgets('derives diverse news from my team and standings preview', (

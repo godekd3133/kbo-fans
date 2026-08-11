@@ -9,6 +9,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
   final Color divider;
   final Color textPrimary;
   final Color textSecondary;
+  final Color textSupporting;
   final Color textDisabled;
   final Color live;
   final Color positive;
@@ -24,6 +25,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     required this.divider,
     required this.textPrimary,
     required this.textSecondary,
+    required this.textSupporting,
     required this.textDisabled,
     required this.live,
     required this.positive,
@@ -41,6 +43,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
     Color? divider,
     Color? textPrimary,
     Color? textSecondary,
+    Color? textSupporting,
     Color? textDisabled,
     Color? live,
     Color? positive,
@@ -56,6 +59,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       divider: divider ?? this.divider,
       textPrimary: textPrimary ?? this.textPrimary,
       textSecondary: textSecondary ?? this.textSecondary,
+      textSupporting: textSupporting ?? this.textSupporting,
       textDisabled: textDisabled ?? this.textDisabled,
       live: live ?? this.live,
       positive: positive ?? this.positive,
@@ -78,6 +82,7 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       divider: Color.lerp(divider, other.divider, t)!,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
       textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      textSupporting: Color.lerp(textSupporting, other.textSupporting, t)!,
       textDisabled: Color.lerp(textDisabled, other.textDisabled, t)!,
       live: Color.lerp(live, other.live, t)!,
       positive: Color.lerp(positive, other.positive, t)!,
@@ -162,6 +167,7 @@ class AppColors {
   static Color get divider => _active.divider;
   static Color get textPrimary => _active.textPrimary;
   static Color get textSecondary => _active.textSecondary;
+  static Color get textSupporting => _active.textSupporting;
   static Color get textDisabled => _active.textDisabled;
   static Color get live => _active.live;
   static Color get positive => _active.positive;
@@ -188,6 +194,7 @@ class AppTheme {
     divider: AppColors._divider,
     textPrimary: AppColors._textPrimary,
     textSecondary: AppColors._textSecondary,
+    textSupporting: AppColors._textSecondary,
     textDisabled: AppColors._textDisabled,
     live: AppColors._live,
     positive: AppColors._positive,
@@ -204,6 +211,7 @@ class AppTheme {
     divider: Color(0xFFD9E2EC),
     textPrimary: Color(0xFF101828),
     textSecondary: Color(0xFF526173),
+    textSupporting: Color(0xFF526173),
     textDisabled: Color(0xFF8A96A8),
     live: Color(0xFFE53935),
     positive: Color(0xFF008A56),
@@ -220,10 +228,11 @@ class AppTheme {
     divider: Color(0xFF8A8A8A),
     textPrimary: Color(0xFFFFFFFF),
     textSecondary: Color(0xFFE6E6E6),
+    textSupporting: Color(0xFFE6E6E6),
     textDisabled: Color(0xFFB8B8B8),
     live: Color(0xFFFF6B6B),
     positive: Color(0xFF4ADE80),
-    accent: Color(0xFF0066CC),
+    accent: Color(0xFF338DFF),
     ballYellow: Color(0xFFFFE45E),
     navShadow: Color(0xCC000000),
   );
@@ -236,6 +245,7 @@ class AppTheme {
     divider: Color(0xFF5A5A5A),
     textPrimary: Color(0xFF000000),
     textSecondary: Color(0xFF303030),
+    textSupporting: Color(0xFF303030),
     textDisabled: Color(0xFF555555),
     live: Color(0xFF9F1D17),
     positive: Color(0xFF005B35),

@@ -18,6 +18,25 @@ void main() {
     expect(mainNavigationIndexForLocation('/records/team/LG'), 2);
   });
 
+  test('기록 하위 route는 current 출처와 명시 과거 시즌을 구분한다', () {
+    expect(
+      recordsRouteFollowsCurrentSeason(
+        Uri.parse('/records/leaderboard/avg?season=2026&seasonMode=current'),
+      ),
+      isTrue,
+    );
+    expect(
+      recordsRouteFollowsCurrentSeason(
+        Uri.parse('/records/player/69102?season=2025'),
+      ),
+      isFalse,
+    );
+    expect(
+      recordsRouteFollowsCurrentSeason(Uri.parse('/records/leaderboard/avg')),
+      isTrue,
+    );
+  });
+
   test('onboarding 상태 변경은 GoRouter 인스턴스를 재생성하지 않는다', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);

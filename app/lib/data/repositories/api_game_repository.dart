@@ -48,6 +48,7 @@ class ApiGameRepository
       cacheKey: 'scoreboard_home:$date',
       preferCache: isHistoricalDate && !forceRefresh,
       maxAge: isHistoricalDate ? _historicalCacheAge : _liveishCacheAge,
+      isCacheable: isHistoricalDate ? _hasOnlyTerminalGames : null,
       allowCacheOnFailure: isHistoricalDate && !forceRefresh,
     );
     final games = data['games'] as List<dynamic>? ?? [];
@@ -69,6 +70,7 @@ class ApiGameRepository
       cacheKey: 'scoreboard_compact:$date:${myTeamId ?? ''}',
       preferCache: isHistoricalDate,
       maxAge: isHistoricalDate ? _historicalCacheAge : _liveishCacheAge,
+      isCacheable: isHistoricalDate ? _hasOnlyTerminalGames : null,
       allowCacheOnFailure: isHistoricalDate,
     );
     final games = data['games'] as List<dynamic>? ?? [];
@@ -85,6 +87,7 @@ class ApiGameRepository
       cacheKey: 'game_detail_v2:$gameId',
       preferCache: isHistoricalGame && !forceRefresh,
       maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
+      isCacheable: isHistoricalGame ? _hasTerminalGame : null,
       allowCacheOnFailure: isHistoricalGame && !forceRefresh,
     );
     final game = data['game'] as Map<String, dynamic>?;
@@ -546,5 +549,24 @@ class ApiGameRepository
     final date =
         '${gameId.substring(0, 4)}-${gameId.substring(4, 6)}-${gameId.substring(6, 8)}';
     return _isHistoricalDate(date);
+  }
+
+  static bool _hasOnlyTerminalGames(Map<String, dynamic> data) {
+    final games = data['games'];
+    if (games is! List) {
+      return false;
+    }
+    return games.every(
+      (game) => game is Map && _isTerminalStatus(game['status']),
+    );
+  }
+
+  static bool _hasTerminalGame(Map<String, dynamic> data) {
+    final game = data['game'];
+    return game is Map && _isTerminalStatus(game['status']);
+  }
+
+  static bool _isTerminalStatus(Object? status) {
+    return status == 'FINAL' || status == 'CANCELLED';
   }
 }

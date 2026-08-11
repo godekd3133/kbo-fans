@@ -1,7 +1,49 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/services/push_notification_service.dart';
 
 void main() {
+  test(
+    'push registration convergence serializes overlapping topic writes',
+    () async {
+      final queue = PushRegistrationSerialQueue();
+      final releaseFirst = Completer<void>();
+      final order = <String>[];
+
+      final first = queue.schedule(() async {
+        order.add('first-start');
+        await releaseFirst.future;
+        order.add('first-end');
+      });
+      final second = queue.schedule(() async {
+        order.add('second');
+      });
+
+      await Future<void>.delayed(Duration.zero);
+      expect(order, ['first-start']);
+
+      releaseFirst.complete();
+      await Future.wait([first, second]);
+      expect(order, ['first-start', 'first-end', 'second']);
+    },
+  );
+
+  test('push registration queue continues after a failed write', () async {
+    final queue = PushRegistrationSerialQueue();
+    final order = <String>[];
+
+    await expectLater(
+      queue.schedule(() async => throw StateError('offline')),
+      throwsStateError,
+    );
+    await queue.schedule(() async {
+      order.add('recovered');
+    });
+
+    expect(order, ['recovered']);
+  });
+
   test('마이팀이 없고 allGames가 꺼져 있으면 토픽을 만들지 않는다', () {
     final settings = const PushNotificationSettings.defaults().copyWith(
       gameEndDelivery: PushNotificationDelivery.immediate,
@@ -486,15 +528,22 @@ void main() {
     expect(payload['followedGameIds'], isEmpty);
   });
 
-  test('원격 테스트 push payload는 현재 기기 토큰만 보낸다', () {
-    final payload = buildPushDeviceTestPayload(deviceToken: 'fcm-token');
+  test('원격 테스트 push payload는 현재 기기 토큰과 설치 소유자를 보낸다', () {
+    final payload = buildPushDeviceTestPayload(
+      deviceToken: 'fcm-token',
+      installationId: 'install-12345678',
+    );
 
-    expect(payload, {'deviceToken': 'fcm-token'});
+    expect(payload, {
+      'deviceToken': 'fcm-token',
+      'installationId': 'install-12345678',
+    });
   });
 
   test('원격 push receipt payload는 등록 토큰과 라우팅 단서만 보낸다', () {
     final payload = buildPushReceiptPayload(
       deviceToken: 'fcm-token',
+      installationId: 'install-12345678',
       messageId: 'message-1',
       source: 'foreground',
       route: '/game/20260620HTKT0?tab=relay',
@@ -507,6 +556,7 @@ void main() {
     );
 
     expect(payload['deviceToken'], 'fcm-token');
+    expect(payload['installationId'], 'install-12345678');
     expect(payload['messageId'], 'message-1');
     expect(payload['source'], 'foreground');
     expect(payload['type'], 'hit');

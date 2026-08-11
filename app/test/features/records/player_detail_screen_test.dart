@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:kbo_fans/data/models/player.dart';
 import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/records/player_detail_screen.dart';
@@ -42,6 +43,12 @@ void main() {
     expect(loadCount, greaterThan(1));
     expect(find.text('테스트 선수'), findsOneWidget);
     expect(find.text('선수 정보를 불러올 수 없습니다'), findsNothing);
+    for (final label in const ['최근 5경기 기록이 없습니다', '표시할 메모가 없습니다']) {
+      expect(
+        tester.widget<Text>(find.text(label)).style?.color,
+        AppTheme.darkColors.textSupporting,
+      );
+    }
   });
 
   testWidgets('선수 상세 오류는 기록실 루트로 복구한다', (tester) async {
@@ -66,6 +73,59 @@ void main() {
 
     expect(router.routerDelegate.currentConfiguration.uri.path, '/records');
     expect(find.text('기록실'), findsOneWidget);
+  });
+
+  testWidgets('선수 상세는 current 출처만 KST 새 시즌을 따르고 과거 시즌은 유지한다', (tester) async {
+    final currentSeason = kboCurrentSeason();
+    final requestedKeys = <String>[];
+
+    Future<void> pumpPlayer({
+      required int season,
+      required bool followsCurrentSeason,
+    }) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            playerDetailProvider.overrideWith((ref, key) async {
+              requestedKeys.add(key);
+              return _player;
+            }),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: PlayerDetailScreen(
+              playerId: '69102',
+              season: season,
+              followsCurrentSeason: followsCurrentSeason,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await pumpPlayer(season: currentSeason, followsCurrentSeason: true);
+    var container = ProviderScope.containerOf(
+      tester.element(find.byType(PlayerDetailScreen)),
+    );
+    container
+        .read(kboDateProvider.notifier)
+        .refresh(instant: DateTime.utc(currentSeason, 12, 31, 15));
+    await tester.pumpAndSettle();
+    expect(requestedKeys, contains('69102|${currentSeason + 1}'));
+
+    requestedKeys.clear();
+    await pumpPlayer(season: currentSeason - 1, followsCurrentSeason: false);
+    container = ProviderScope.containerOf(
+      tester.element(find.byType(PlayerDetailScreen)),
+    );
+    container
+        .read(kboDateProvider.notifier)
+        .refresh(instant: DateTime.utc(currentSeason, 12, 31, 15));
+    await tester.pumpAndSettle();
+    expect(requestedKeys, everyElement('69102|${currentSeason - 1}'));
+    expect(find.text('선수 프로필 · ${currentSeason - 1}'), findsOneWidget);
   });
 }
 

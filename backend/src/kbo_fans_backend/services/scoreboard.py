@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 class ScoreboardService:
     _SCOREBOARD_CACHE_TTL_SECONDS = 8
     _DATE_REFRESH_LOCK_STRIPES = 32
+    _TERMINAL_STATUSES = frozenset({"FINAL", "CANCELLED"})
 
     def __init__(
         self,
@@ -89,7 +90,7 @@ class ScoreboardService:
         started_at: float,
     ) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("scoreboard", date)
-        if self._is_historical_date(date) and snapshot is not None:
+        if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             logger.info("scoreboard snapshot hit %s", date)
             return snapshot
         force_refresh = force_refresh and not self._is_historical_date(date)
@@ -211,7 +212,7 @@ class ScoreboardService:
         force_refresh: bool,
     ) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("scoreboard", date)
-        if self._is_historical_date(date) and snapshot is not None:
+        if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             return {
                 "date": snapshot["date"],
                 "games": [self._strip_home_payload(game) for game in snapshot["games"]],
@@ -246,7 +247,7 @@ class ScoreboardService:
 
     def _prime_home_scoreboard_serialized(self, date: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("scoreboard", date)
-        if self._is_historical_date(date) and snapshot is not None:
+        if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             return {
                 "date": snapshot["date"],
                 "games": [self._strip_home_payload(game) for game in snapshot["games"]],
@@ -355,7 +356,7 @@ class ScoreboardService:
             return cached
 
         snapshot = self.snapshot_store.load_payload("scoreboard", date)
-        if self._is_historical_date(date) and snapshot is not None:
+        if self._can_use_historical_scoreboard_snapshot(date, snapshot):
             payload = self._compact_from_snapshot(date, snapshot, my_team)
             self._compact_scoreboard_cache.set(cache_key, payload)
             return payload
@@ -434,9 +435,10 @@ class ScoreboardService:
         force_refresh: bool,
     ) -> Optional[dict[str, Any]]:
         snapshot = self.snapshot_store.load_payload("games", game_id)
-        if snapshot is not None and self._should_use_game_snapshot(game_id):
+        can_use_snapshot = self._can_use_historical_game_snapshot(game_id, snapshot)
+        if can_use_snapshot:
             return snapshot
-        force_refresh = force_refresh and not self._should_use_game_snapshot(game_id)
+        force_refresh = force_refresh and not can_use_snapshot
 
         if not force_refresh:
             cached = self._game_cache.get(game_id)
@@ -516,9 +518,7 @@ class ScoreboardService:
             if cached is not None:
                 logger.info("scoreboard main list cache hit %s", date)
                 return cached
-        game_map = {
-            game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)
-        }
+        game_map = {game["G_ID"]: game for game in self.main_crawler.get_kbo_game_list(date)}
         self._main_game_map_cache.set(date, game_map)
         return game_map
 
@@ -976,29 +976,46 @@ class ScoreboardService:
         except ValueError:
             return False
 
-    def _should_use_game_snapshot(self, game_id: str) -> bool:
-        if len(game_id) < 8:
+    def _can_use_historical_game_snapshot(
+        self,
+        game_id: str,
+        snapshot: Optional[dict[str, Any]],
+    ) -> bool:
+        if len(game_id) < 8 or not isinstance(snapshot, dict):
             return False
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
-        return self._is_historical_date(date)
+        return (
+            self._is_historical_date(date)
+            and snapshot.get("gameId") == game_id
+            and snapshot.get("status") in self._TERMINAL_STATUSES
+        )
 
     def _should_persist_snapshot(self, date: str, games: list[dict[str, Any]]) -> bool:
-        if self._is_historical_date(date):
-            return True
+        return bool(games) and all(game.get("status") in self._TERMINAL_STATUSES for game in games)
 
-        terminal_statuses = {"FINAL", "CANCELLED", "SUSPENDED"}
-        return bool(games) and all(game.get("status") in terminal_statuses for game in games)
+    def _can_use_historical_scoreboard_snapshot(
+        self,
+        date: str,
+        snapshot: Optional[dict[str, Any]],
+    ) -> bool:
+        if not self._is_historical_date(date) or not isinstance(snapshot, dict):
+            return False
+        if snapshot.get("date") != date:
+            return False
+        games = snapshot.get("games")
+        if not isinstance(games, list):
+            return False
+        return all(
+            isinstance(game, dict) and game.get("status") in self._TERMINAL_STATUSES
+            for game in games
+        )
 
     def _can_use_scoreboard_snapshot_after_failure(
         self,
         date: str,
         snapshot: Optional[dict[str, Any]],
     ) -> bool:
-        if snapshot is None:
-            return False
-        if self._is_historical_date(date):
-            return True
-        return False
+        return self._can_use_historical_scoreboard_snapshot(date, snapshot)
 
     @staticmethod
     def _strip_home_payload(game: dict[str, Any]) -> dict[str, Any]:

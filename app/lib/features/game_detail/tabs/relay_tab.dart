@@ -38,7 +38,6 @@ class RelayTab extends ConsumerStatefulWidget {
 class _RelayTabState extends ConsumerState<RelayTab> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _scrollViewKey = GlobalKey();
-  final Map<String, GlobalKey> _inningKeys = {};
   String? _selectedInningLabel;
   _RelayMomentFilter _selectedMomentFilter = _RelayMomentFilter.all;
   int? _latestSeenSeq;
@@ -269,50 +268,41 @@ class _RelayTabState extends ConsumerState<RelayTab> {
               ),
             ),
           ),
-        SliverToBoxAdapter(
-          child: Padding(
+        if (filteredMoments.isNotEmpty)
+          SliverPadding(
             padding: EdgeInsets.fromLTRB(16, 14, 16, 24),
-            child: Column(
-              children: [
-                for (
-                  int index = 0;
-                  index < filteredMoments.length;
-                  index++
-                ) ...[
-                  KeyedSubtree(
-                    key: _inningKeys.putIfAbsent(
-                      '${filteredMoments[index].inningLabel}-$index',
-                      () => GlobalKey(),
-                    ),
-                    child: _RelayMomentCard(
-                      moment: filteredMoments[index],
-                      game: game,
-                      imageMap: imageMap,
-                      playersByName: playersByName,
-                      currentAtBat: atBat,
-                      lineupData: lineupData,
-                      season: season,
-                    ),
+            sliver: SliverList.separated(
+              itemCount: filteredMoments.length,
+              itemBuilder: (context, index) {
+                final moment = filteredMoments[index];
+                return KeyedSubtree(
+                  key: ValueKey('relay-moment-${moment.lead.seqNo}'),
+                  child: _RelayMomentCard(
+                    moment: moment,
+                    game: game,
+                    imageMap: imageMap,
+                    playersByName: playersByName,
+                    currentAtBat: atBat,
+                    lineupData: lineupData,
+                    season: season,
                   ),
-                  if (index != filteredMoments.length - 1) SizedBox(height: 12),
-                ],
-                if (filteredMoments.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.only(top: 16),
-                    child: Text(
-                      _selectedMomentFilter == _RelayMomentFilter.all
-                          ? '선택한 회차의 문자중계가 아직 없습니다'
-                          : '선택한 조건의 주요 장면이 없습니다',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-              ],
+                );
+              },
+              separatorBuilder: (_, _) => SizedBox(height: 12),
+            ),
+          )
+        else
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 30, 16, 24),
+              child: Text(
+                _selectedMomentFilter == _RelayMomentFilter.all
+                    ? '선택한 회차의 문자중계가 아직 없습니다'
+                    : '선택한 조건의 주요 장면이 없습니다',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -412,6 +402,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   }
 
   Widget _buildInningChips(List<RelayItem> items) {
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     final chips = <String>['전체'];
     for (final item in items) {
       if (item.inning >= 900) continue;
@@ -426,7 +417,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     if (chips.isEmpty) return SizedBox.shrink();
 
     return SizedBox(
-      height: 40,
+      height: useLargeText ? 64 : AppPressable.minimumHitTargetSize,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -440,6 +431,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
           return AppPressable(
             onTap: () => _selectInning(label),
             pressedScale: 0.94,
+            semanticSelected: isActive,
             child: AnimatedContainer(
               duration: Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
@@ -457,7 +449,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                   fontSize: 12,
                   color: isActive
                       ? AppColors.background
-                      : AppColors.textDisabled,
+                      : AppColors.textSupporting,
                   fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
@@ -471,8 +463,9 @@ class _RelayTabState extends ConsumerState<RelayTab> {
   Widget _buildMomentFilterChips(List<_RelayMoment> moments) {
     final filters = _RelayMomentFilter.values;
     final colors = AppTheme.colorsOf(context);
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     return SizedBox(
-      height: 40,
+      height: useLargeText ? 64 : AppPressable.minimumHitTargetSize,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 16),
@@ -487,6 +480,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
           return AppPressable(
             onTap: () => _selectMomentFilter(filter),
             pressedScale: 0.94,
+            semanticSelected: isActive,
             child: AnimatedContainer(
               duration: Duration(milliseconds: 180),
               curve: Curves.easeOutCubic,
@@ -504,7 +498,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
                   fontSize: 12,
                   color: isActive
                       ? colors.readableForegroundOn(AppColors.live)
-                      : AppColors.textDisabled,
+                      : AppColors.textSupporting,
                   fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
                 ),
               ),
@@ -1000,7 +994,7 @@ class _RelayStatCell extends StatelessWidget {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: AppColors.textDisabled,
+            color: AppColors.textSupporting,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -1043,7 +1037,7 @@ class _LineScoreStrip extends StatelessWidget {
 
     List<String> totalsOf(TeamScore team) {
       return [
-        team.score.toString(),
+        team.displayScore,
         team.hasStats ? team.hits.toString() : '-',
         team.hasStats ? team.errors.toString() : '-',
       ];
@@ -1073,7 +1067,7 @@ class _LineScoreStrip extends StatelessWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textDisabled,
+                        color: AppColors.textSupporting,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1997,7 +1991,10 @@ class _CurrentAtBatHero extends StatelessWidget {
                 SizedBox(height: 12),
                 Text(
                   '루상 주자',
-                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSupporting,
+                  ),
                 ),
                 SizedBox(height: 8),
                 Wrap(
@@ -2304,7 +2301,10 @@ class _ParticipantCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSupporting,
+                  ),
                 ),
                 SizedBox(height: 6),
                 Text(
@@ -2537,7 +2537,7 @@ class _CountMeter extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
         ),
         SizedBox(width: 6),
         for (int i = 0; i < total; i++)
@@ -3396,7 +3396,7 @@ class _MomentPlayerSummary extends StatelessWidget {
               pitcherName == null ? '상대팀' : '상대투수',
               style: TextStyle(
                 fontSize: 11,
-                color: AppColors.textDisabled,
+                color: AppColors.textSupporting,
                 fontWeight: FontWeight.w700,
               ),
             ),

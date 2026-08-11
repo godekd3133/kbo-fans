@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
@@ -33,6 +34,11 @@ class LiveActivityService {
   static const _followedGameIdKey = 'live_activity.followed_game_id';
   static const _activityPushTokenPrefix = 'live_activity.activity_push_token.';
   static const _activityIdPrefix = 'live_activity.activity_id.';
+  static const _legacyPendingUnregisterGameIdsKey =
+      'live_activity.pending_unregister_game_ids';
+  static const _pendingUnregisterRequestsKey =
+      'live_activity.pending_unregister_requests';
+  static const _maxPendingUnregisterRequests = 32;
   static const _pushToStartTokenKey = 'live_activity.push_to_start_token';
   static const _androidNotificationId = 4420;
   static const _androidChannelId = 'followed_game_live_surface';
@@ -45,6 +51,22 @@ class LiveActivityService {
   bool _androidInitialized = false;
   bool _androidNotificationsAllowed = false;
   bool _channelHandlerInitialized = false;
+  bool _retryingPendingUnregisters = false;
+  Future<void> _pendingUnregisterMutationQueue = Future<void>.value();
+  Future<void> _liveActivityRegistrationQueue = Future<void>.value();
+  Future<void> _pushToStartRegistrationQueue = Future<void>.value();
+
+  @visibleForTesting
+  Future<void> Function(Map<String, dynamic> request)?
+  unregisterRequestSenderForTesting;
+
+  @visibleForTesting
+  Future<void> Function(Map<String, dynamic> request)?
+  registerRequestSenderForTesting;
+
+  @visibleForTesting
+  Future<void> Function(Map<String, dynamic> request)?
+  startTokenRegisterRequestSenderForTesting;
 
   Future<void> followGame(String gameId) async {
     _ensureChannelHandler();
@@ -118,9 +140,21 @@ class LiveActivityService {
 
     try {
       _ensureChannelHandler();
+      unawaited(
+        _retryPendingLiveActivityUnregisters().catchError((Object error) {
+          DevConsole.instance.warn(
+            'Pending Live Activity unregister drain failed: $error',
+          );
+        }),
+      );
+      final installationId = await PushNotificationService.instance
+          .installationId();
       final response = await _channel.invokeMapMethod<String, dynamic>(
         'syncPushToStartToken',
-        <String, dynamic>{'apiBaseUrl': AppConfig.instance.apiBaseUrl},
+        <String, dynamic>{
+          'apiBaseUrl': AppConfig.instance.apiBaseUrl,
+          'installationId': installationId,
+        },
       );
       await _registerPushToStartTokenFromNativeResponse(response);
     } on PlatformException {
@@ -265,6 +299,8 @@ class LiveActivityService {
 
     try {
       _ensureChannelHandler();
+      final installationId = await PushNotificationService.instance
+          .installationId();
       final response = await _channel.invokeMapMethod<String, dynamic>(
         'syncCurrentScore',
         _scorePayloadForGame(
@@ -273,6 +309,7 @@ class LiveActivityService {
           rankLabels: rankLabels,
           updatedAt: _updatedAtText(),
           apiBaseUrl: AppConfig.instance.apiBaseUrl,
+          installationId: installationId,
         ),
       );
       await _registerLiveActivityFromNativeResponse(response);
@@ -292,6 +329,7 @@ class LiveActivityService {
     Game targetGame, {
     required String updatedAt,
     required String apiBaseUrl,
+    required String installationId,
     CurrentAtBat? currentAtBat,
     _LiveActivityRankLabels rankLabels = const _LiveActivityRankLabels(),
     DateTime? now,
@@ -330,6 +368,7 @@ class LiveActivityService {
       'awayRankText': isPregame ? rankLabels.away : '',
       'homeRankText': isPregame ? rankLabels.home : '',
       'apiBaseUrl': apiBaseUrl,
+      'installationId': installationId,
     };
   }
 
@@ -457,26 +496,49 @@ class LiveActivityService {
   Future<void> _registerPushToStartToken({
     required String pushToStartToken,
     String? previousPushToStartToken,
+  }) {
+    final operation = _pushToStartRegistrationQueue.then(
+      (_) => _registerPushToStartTokenNow(
+        pushToStartToken: pushToStartToken,
+        previousPushToStartToken: previousPushToStartToken,
+      ),
+    );
+    _pushToStartRegistrationQueue = operation.catchError((Object _) {});
+    return operation;
+  }
+
+  Future<void> _registerPushToStartTokenNow({
+    required String pushToStartToken,
+    String? previousPushToStartToken,
   }) async {
     if (pushToStartToken.isEmpty) {
       return;
     }
 
     final prefs = await SharedPreferences.getInstance();
+    final nativePreviousToken = previousPushToStartToken?.trim();
     final previousToken =
-        previousPushToStartToken ?? prefs.getString(_pushToStartTokenKey);
+        nativePreviousToken != null && nativePreviousToken.isNotEmpty
+        ? nativePreviousToken
+        : prefs.getString(_pushToStartTokenKey);
 
     try {
-      await ApiClient().post(
-        '/push/live-activity/start-token/register',
-        data: {
-          'pushToStartToken': pushToStartToken,
-          'previousPushToStartToken': previousToken,
-          'installationId': await PushNotificationService.instance
-              .installationId(),
-          'platform': 'ios',
-        },
-      );
+      final request = <String, dynamic>{
+        'pushToStartToken': pushToStartToken,
+        'previousPushToStartToken': previousToken,
+        'installationId': await PushNotificationService.instance
+            .installationId(),
+        'platform': 'ios',
+      };
+      final sender = startTokenRegisterRequestSenderForTesting;
+      if (sender != null) {
+        await sender(request);
+      } else {
+        await ApiClient().post(
+          '/push/live-activity/start-token/register',
+          data: request,
+        );
+      }
       await prefs.setString(_pushToStartTokenKey, pushToStartToken);
       DevConsole.instance.info('Live Activity push-to-start token registered');
     } catch (error) {
@@ -506,36 +568,61 @@ class LiveActivityService {
     required String activityPushToken,
     String? activityId,
     String? previousActivityPushToken,
+  }) {
+    final operation = _liveActivityRegistrationQueue.then(
+      (_) => _registerLiveActivityTokenNow(
+        gameId: gameId,
+        activityPushToken: activityPushToken,
+        activityId: activityId,
+        previousActivityPushToken: previousActivityPushToken,
+      ),
+    );
+    _liveActivityRegistrationQueue = operation.catchError((Object _) {});
+    return operation;
+  }
+
+  Future<void> _registerLiveActivityTokenNow({
+    required String gameId,
+    required String activityPushToken,
+    String? activityId,
+    String? previousActivityPushToken,
   }) async {
     if (gameId.isEmpty || activityPushToken.isEmpty) {
       return;
     }
 
     final prefs = await SharedPreferences.getInstance();
+    final nativePreviousToken = previousActivityPushToken?.trim();
     final previousToken =
-        previousActivityPushToken ??
-        prefs.getString('$_activityPushTokenPrefix$gameId');
+        nativePreviousToken != null && nativePreviousToken.isNotEmpty
+        ? nativePreviousToken
+        : prefs.getString('$_activityPushTokenPrefix$gameId');
 
     try {
-      await ApiClient().post(
-        '/push/live-activity/register',
-        data: {
-          'gameId': gameId,
-          'activityId': activityId,
-          'activityPushToken': activityPushToken,
-          'previousActivityPushToken': previousToken,
-          'installationId': await PushNotificationService.instance
-              .installationId(),
-          'platform': 'ios',
-        },
-      );
-      await prefs.setString(
-        '$_activityPushTokenPrefix$gameId',
-        activityPushToken,
-      );
-      if (activityId != null && activityId.isNotEmpty) {
-        await prefs.setString('$_activityIdPrefix$gameId', activityId);
+      final request = <String, dynamic>{
+        'gameId': gameId,
+        'activityId': activityId,
+        'activityPushToken': activityPushToken,
+        'previousActivityPushToken': previousToken,
+        'installationId': await PushNotificationService.instance
+            .installationId(),
+        'platform': 'ios',
+      };
+      final sender = registerRequestSenderForTesting;
+      if (sender != null) {
+        await sender(request);
+      } else {
+        await ApiClient().post('/push/live-activity/register', data: request);
       }
+      await _enqueuePendingUnregisterMutation(() async {
+        await prefs.setString(
+          '$_activityPushTokenPrefix$gameId',
+          activityPushToken,
+        );
+        if (activityId != null && activityId.isNotEmpty) {
+          await prefs.setString('$_activityIdPrefix$gameId', activityId);
+        }
+      });
       DevConsole.instance.info('Live Activity push token registered: $gameId');
     } catch (error) {
       DevConsole.instance.warn(
@@ -546,27 +633,213 @@ class LiveActivityService {
 
   Future<void> _unregisterLiveActivity(String gameId) async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('$_activityPushTokenPrefix$gameId');
-    final activityId = prefs.getString('$_activityIdPrefix$gameId');
-    if ((token == null || token.isEmpty) &&
-        (activityId == null || activityId.isEmpty)) {
+    final installationId = await PushNotificationService.instance
+        .installationId();
+    final request = await _snapshotPendingLiveActivityUnregister(
+      prefs,
+      gameId: gameId,
+      installationId: installationId,
+    );
+    if (request == null) {
       return;
     }
+    await _sendPendingLiveActivityUnregister(prefs, request);
+  }
+
+  Future<void> _sendPendingLiveActivityUnregister(
+    SharedPreferences prefs,
+    _PendingLiveActivityUnregisterRequest request,
+  ) async {
     try {
-      await ApiClient().post(
-        '/push/live-activity/unregister',
-        data: {
-          'gameId': gameId,
-          'activityPushToken': token,
-          'activityId': activityId,
-        },
-      );
+      final sender = unregisterRequestSenderForTesting;
+      if (sender != null) {
+        await sender(request.toJson());
+      } else {
+        await ApiClient().post(
+          '/push/live-activity/unregister',
+          data: request.toJson(),
+        );
+      }
+      await _completePendingLiveActivityUnregister(prefs, request);
     } catch (error) {
       DevConsole.instance.warn('Live Activity unregister failed: $error');
-    } finally {
-      await prefs.remove('$_activityPushTokenPrefix$gameId');
-      await prefs.remove('$_activityIdPrefix$gameId');
     }
+  }
+
+  Future<void> _retryPendingLiveActivityUnregisters() async {
+    if (_retryingPendingUnregisters) {
+      return;
+    }
+    _retryingPendingUnregisters = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final requests = await _readPendingLiveActivityUnregisters(prefs);
+      for (final request in requests) {
+        await _sendPendingLiveActivityUnregister(prefs, request);
+      }
+    } finally {
+      _retryingPendingUnregisters = false;
+    }
+  }
+
+  Future<_PendingLiveActivityUnregisterRequest?>
+  _snapshotPendingLiveActivityUnregister(
+    SharedPreferences prefs, {
+    required String gameId,
+    required String installationId,
+  }) async {
+    _PendingLiveActivityUnregisterRequest? request;
+    await _enqueuePendingUnregisterMutation(() async {
+      final token = prefs.getString('$_activityPushTokenPrefix$gameId');
+      final activityId = prefs.getString('$_activityIdPrefix$gameId');
+      if (token == null ||
+          token.isEmpty ||
+          activityId == null ||
+          activityId.isEmpty) {
+        return;
+      }
+      request = _PendingLiveActivityUnregisterRequest(
+        gameId: gameId,
+        activityPushToken: token,
+        activityId: activityId,
+        installationId: installationId,
+      );
+      final pending = _readValidPendingLiveActivityUnregisters(prefs);
+      pending.removeWhere((item) => item.identity == request!.identity);
+      pending.add(request!);
+      await _writePendingLiveActivityUnregisters(
+        prefs,
+        _boundedPendingLiveActivityUnregisters(pending),
+      );
+      await prefs.remove(_legacyPendingUnregisterGameIdsKey);
+    });
+    return request;
+  }
+
+  Future<void> _completePendingLiveActivityUnregister(
+    SharedPreferences prefs,
+    _PendingLiveActivityUnregisterRequest request,
+  ) {
+    return _enqueuePendingUnregisterMutation(() async {
+      final currentToken = prefs.getString(
+        '$_activityPushTokenPrefix${request.gameId}',
+      );
+      final currentActivityId = prefs.getString(
+        '$_activityIdPrefix${request.gameId}',
+      );
+      if (currentToken == request.activityPushToken &&
+          currentActivityId == request.activityId) {
+        await prefs.remove('$_activityPushTokenPrefix${request.gameId}');
+        await prefs.remove('$_activityIdPrefix${request.gameId}');
+      }
+      final pending = _readValidPendingLiveActivityUnregisters(
+        prefs,
+      ).where((item) => item.identity != request.identity).toList();
+      await _writePendingLiveActivityUnregisters(prefs, pending);
+    });
+  }
+
+  Future<List<_PendingLiveActivityUnregisterRequest>>
+  _readPendingLiveActivityUnregisters(SharedPreferences prefs) async {
+    late List<_PendingLiveActivityUnregisterRequest> result;
+    await _enqueuePendingUnregisterMutation(() async {
+      result = _boundedPendingLiveActivityUnregisters(
+        _readValidPendingLiveActivityUnregisters(prefs),
+      );
+      await _writePendingLiveActivityUnregisters(prefs, result);
+      await prefs.remove(_legacyPendingUnregisterGameIdsKey);
+    });
+    return result;
+  }
+
+  List<_PendingLiveActivityUnregisterRequest>
+  _readValidPendingLiveActivityUnregisters(SharedPreferences prefs) {
+    final raw = prefs.get(_pendingUnregisterRequestsKey);
+    if (raw is! List<String>) {
+      return <_PendingLiveActivityUnregisterRequest>[];
+    }
+    final byIdentity = <String, _PendingLiveActivityUnregisterRequest>{};
+    for (final encoded in raw.reversed.take(
+      _maxPendingUnregisterRequests * 4,
+    )) {
+      final request = _PendingLiveActivityUnregisterRequest.tryParse(encoded);
+      if (request == null || byIdentity.containsKey(request.identity)) {
+        continue;
+      }
+      byIdentity[request.identity] = request;
+      if (byIdentity.length == _maxPendingUnregisterRequests) {
+        break;
+      }
+    }
+    return byIdentity.values.toList().reversed.toList();
+  }
+
+  List<_PendingLiveActivityUnregisterRequest>
+  _boundedPendingLiveActivityUnregisters(
+    List<_PendingLiveActivityUnregisterRequest> requests,
+  ) {
+    if (requests.length <= _maxPendingUnregisterRequests) {
+      return requests;
+    }
+    return requests.sublist(requests.length - _maxPendingUnregisterRequests);
+  }
+
+  Future<void> _writePendingLiveActivityUnregisters(
+    SharedPreferences prefs,
+    List<_PendingLiveActivityUnregisterRequest> requests,
+  ) async {
+    if (requests.isEmpty) {
+      await prefs.remove(_pendingUnregisterRequestsKey);
+      return;
+    }
+    await prefs.setStringList(
+      _pendingUnregisterRequestsKey,
+      requests.map((request) => request.encode()).toList(),
+    );
+  }
+
+  Future<void> _enqueuePendingUnregisterMutation(
+    Future<void> Function() mutation,
+  ) {
+    final operation = _pendingUnregisterMutationQueue.then((_) => mutation());
+    _pendingUnregisterMutationQueue = operation.catchError((Object _) {});
+    return operation;
+  }
+
+  @visibleForTesting
+  Future<void> unregisterLiveActivityForTesting(String gameId) {
+    return _unregisterLiveActivity(gameId);
+  }
+
+  @visibleForTesting
+  Future<void> registerLiveActivityTokenForTesting({
+    required String gameId,
+    required String activityPushToken,
+    String? activityId,
+    String? previousActivityPushToken,
+  }) {
+    return _registerLiveActivityToken(
+      gameId: gameId,
+      activityPushToken: activityPushToken,
+      activityId: activityId,
+      previousActivityPushToken: previousActivityPushToken,
+    );
+  }
+
+  @visibleForTesting
+  Future<void> registerPushToStartTokenForTesting({
+    required String pushToStartToken,
+    String? previousPushToStartToken,
+  }) {
+    return _registerPushToStartToken(
+      pushToStartToken: pushToStartToken,
+      previousPushToStartToken: previousPushToStartToken,
+    );
+  }
+
+  @visibleForTesting
+  Future<void> retryPendingLiveActivityUnregistersForTesting() {
+    return _retryPendingLiveActivityUnregisters();
   }
 
   Game? _findGame(List<Game> games, String gameId) {
@@ -750,6 +1023,74 @@ class LiveActivityService {
         'Android follow notification cancel failed: $error',
       );
     }
+  }
+}
+
+class _PendingLiveActivityUnregisterRequest {
+  static const _maxEncodedLength = 4096;
+  static const _maxGameIdLength = 32;
+  static const _maxActivityPushTokenLength = 512;
+  static const _maxActivityIdLength = 128;
+  static const _maxInstallationIdLength = 128;
+
+  final String gameId;
+  final String activityPushToken;
+  final String activityId;
+  final String installationId;
+
+  const _PendingLiveActivityUnregisterRequest({
+    required this.gameId,
+    required this.activityPushToken,
+    required this.activityId,
+    required this.installationId,
+  });
+
+  String get identity => encode();
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'gameId': gameId,
+      'activityPushToken': activityPushToken,
+      'activityId': activityId,
+      'installationId': installationId,
+    };
+  }
+
+  String encode() => jsonEncode(toJson());
+
+  static _PendingLiveActivityUnregisterRequest? tryParse(String encoded) {
+    if (encoded.isEmpty || encoded.length > _maxEncodedLength) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(encoded);
+      if (decoded is! Map<String, dynamic>) {
+        return null;
+      }
+      final payload = decoded;
+      final gameId = payload['gameId'];
+      final activityPushToken = payload['activityPushToken'];
+      final activityId = payload['activityId'];
+      final installationId = payload['installationId'];
+      if (!_isValidField(gameId, _maxGameIdLength) ||
+          !_isValidField(activityPushToken, _maxActivityPushTokenLength) ||
+          !_isValidField(activityId, _maxActivityIdLength) ||
+          !_isValidField(installationId, _maxInstallationIdLength)) {
+        return null;
+      }
+      return _PendingLiveActivityUnregisterRequest(
+        gameId: gameId as String,
+        activityPushToken: activityPushToken as String,
+        activityId: activityId as String,
+        installationId: installationId as String,
+      );
+    } on FormatException {
+      return null;
+    }
+  }
+
+  static bool _isValidField(Object? value, int maxLength) {
+    return value is String && value.isNotEmpty && value.length <= maxLength;
   }
 }
 
@@ -938,6 +1279,7 @@ Map<String, dynamic> buildLiveActivityScorePayloadForTesting({
   List<TeamStanding> standings = const [],
   String updatedAt = '12:34:56',
   String apiBaseUrl = 'https://api.example.test',
+  String installationId = 'install-test',
   DateTime? now,
 }) {
   return LiveActivityService.instance._scorePayloadForGame(
@@ -946,6 +1288,7 @@ Map<String, dynamic> buildLiveActivityScorePayloadForTesting({
     rankLabels: _rankLabelsForGame(game, standings),
     updatedAt: updatedAt,
     apiBaseUrl: apiBaseUrl,
+    installationId: installationId,
     now: now,
   );
 }

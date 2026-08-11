@@ -209,13 +209,8 @@ fi
 
 sudo ln -sfn "$RELEASE_DIR" "$APP_DIR/current"
 
-if [[ -d "$APP_DIR/current/backend/data/snapshots" ]]; then
-  sudo mkdir -p /var/lib/kbo-fans/snapshots
-  if ! sudo find /var/lib/kbo-fans/snapshots -mindepth 1 -maxdepth 1 -print -quit | grep -q .; then
-    sudo cp -a "$APP_DIR/current/backend/data/snapshots/." /var/lib/kbo-fans/snapshots/
-  fi
-  sudo chown -R "$SERVICE_USER:$SERVICE_USER" /var/lib/kbo-fans/snapshots
-fi
+sudo install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0750 \
+  /var/lib/kbo-fans/snapshots
 
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -104,6 +105,32 @@ void main() {
 
     expect(find.text('달력 보기'), findsOneWidget);
     expect(find.text('내 팀 먼저 보기'), findsNothing);
+  });
+
+  testWidgets('320px·240% 일정의 선택 가능한 보조 정보는 지원 텍스트로 유지된다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.platformDispatcher.textScaleFactorTestValue = 2.4;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final now = kboCivilDateTime();
+    final monthEyebrow = DateFormat(
+      'MMM yyyy',
+      'en_US',
+    ).format(now).toUpperCase();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [scheduleProvider.overrideWith((_, _) async => const [])],
+        child: MaterialApp(theme: AppTheme.dark, home: const ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final eyebrow = tester.widget<Text>(find.text(monthEyebrow));
+    final legend = tester.widget<Text>(find.text('일반 경기'));
+    expect(eyebrow.style?.color, AppTheme.darkColors.textSupporting);
+    expect(legend.style?.color, AppTheme.darkColors.textSupporting);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('캘린더의 다음달 1일을 누르면 다음달로 이동한다', (tester) async {
@@ -209,6 +236,87 @@ void main() {
 
     expect(todayTop, lessThan(tomorrowTop));
     expect(tomorrowTop, lessThan(nextMonthTop));
+  });
+
+  testWidgets('달력 월 새로고침 뒤 매치업은 갱신된 월 일정을 사용한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final today = kboCivilDateTime();
+    final targetMonth = today.month < 3
+        ? DateTime(today.year, 3)
+        : today.month > 11
+        ? DateTime(today.year + 1, 3)
+        : DateTime(today.year, today.month);
+    final targetDate =
+        targetMonth.year == today.year && targetMonth.month == today.month
+        ? DateTime(today.year, today.month, today.day)
+        : targetMonth;
+    final targetYearMonth = _yearMonthKey(targetMonth);
+    final monthDelta =
+        (targetMonth.year - today.year) * 12 + targetMonth.month - today.month;
+    var targetMonthLoads = 0;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+          scheduleProvider.overrideWith((_, requestedYearMonth) async {
+            if (requestedYearMonth != targetYearMonth) {
+              return const [];
+            }
+            targetMonthLoads += 1;
+            final refreshed = targetMonthLoads > 1;
+            return [
+              ScheduleDay(
+                date: _dateKey(targetDate),
+                games: [
+                  ScheduleGame(
+                    gameId: refreshed ? 'refreshed-lg-kt' : 'cached-lg-kt',
+                    time: '18:30',
+                    awayId: 'LG',
+                    awayName: 'LG 트윈스',
+                    homeId: 'KT',
+                    homeName: 'KT 위즈',
+                    stadium: refreshed ? '갱신 후 LG-KT' : '갱신 전 LG-KT',
+                  ),
+                ],
+              ),
+            ];
+          }),
+        ],
+        child: const MaterialApp(home: ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (var index = 0; index < monthDelta; index += 1) {
+      await tester.tap(find.byIcon(Icons.chevron_right_rounded));
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(find.text('매치업'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('갱신 전 LG-KT'), findsOneWidget);
+    expect(targetMonthLoads, 1);
+
+    await tester.tap(find.text('내 팀 먼저 보기'));
+    await tester.pumpAndSettle();
+    final refreshFuture = tester
+        .state<RefreshIndicatorState>(find.byType(RefreshIndicator))
+        .show();
+    await tester.pump();
+    await tester.pumpAndSettle();
+    await refreshFuture;
+
+    expect(targetMonthLoads, 2);
+
+    await tester.tap(find.text('매치업'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('갱신 후 LG-KT'), findsOneWidget);
+    expect(find.text('갱신 전 LG-KT'), findsNothing);
   });
 
   testWidgets('캘린더 영역에서 위로 밀어도 선택일 경기 목록이 스크롤된다', (tester) async {
@@ -472,7 +580,7 @@ void main() {
     }
   });
 
-  testWidgets('일정 경기 상세 진입은 최신 상세 후 첫 탭을 기다리지 않고 이동한다', (tester) async {
+  testWidgets('일정 경기 상세 진입은 일정 정보로 즉시 이동하고 상세를 뒤에서 갱신한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -555,28 +663,19 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(detailFetches, 1);
-    expect(
-      find.byKey(const ValueKey('schedule-game-detail-loading')),
-      findsOneWidget,
-    );
-    expect(find.text('schedule-detail-$gameId-relay'), findsNothing);
-
-    detailCompleter.complete(_liveGame(gameId));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    expect(relayFetches, 1);
     expect(
       find.byKey(const ValueKey('schedule-game-detail-loading')),
       findsNothing,
     );
     expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
+    expect(relayFetches, 0);
 
-    relayCompleter.complete(
-      const RelayData(currentAtBat: null, relayItems: []),
-    );
+    detailCompleter.complete(_liveGame(gameId));
+    await tester.pump();
+    expect(relayCompleter.isCompleted, isFalse);
   });
 
   testWidgets('일정 경기 상세 진입 refresh 실패 시 live 일정은 중계 탭으로 이동한다', (tester) async {
@@ -629,9 +728,7 @@ void main() {
     expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
   });
 
-  testWidgets('일정 live 상세 진입은 선수 이미지 source provider를 기다리지 않고 이동한다', (
-    tester,
-  ) async {
+  testWidgets('일정 live 상세 진입은 미선택 데이터와 선수 이미지를 미리 요청하지 않는다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -696,26 +793,10 @@ void main() {
       findsNothing,
     );
     expect(find.text('schedule-detail-$gameId-relay'), findsOneWidget);
+    expect(teamPlayerFetches, 0);
     expect(lineupCompleter.isCompleted, isFalse);
-
-    relayCompleter.complete(
-      const RelayData(currentAtBat: null, relayItems: []),
-    );
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    expect(teamPlayerFetches, greaterThanOrEqualTo(2));
+    expect(relayCompleter.isCompleted, isFalse);
     expect(lineupCompleter.isCompleted, isFalse);
-
-    lineupCompleter.complete(
-      const GameLineupData(
-        gameId: gameId,
-        away: TeamLineupData(teamId: 'SS', lineup: []),
-        home: TeamLineupData(teamId: 'LG', lineup: []),
-      ),
-    );
-    await tester.pump();
-    await tester.pumpAndSettle();
   });
 }
 

@@ -28,7 +28,7 @@ enum PlayerSortOption { name, avg, ops, era, whip }
 const firstSupportedRecordsSeason = 2002;
 TextStyle get _tableHeaderStyle => TextStyle(
   fontSize: 11,
-  color: AppColors.textDisabled,
+  color: AppColors.textSupporting,
   fontWeight: FontWeight.w800,
 );
 
@@ -48,16 +48,31 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   PlayerSortOption _sort = PlayerSortOption.avg;
   String _searchQuery = '';
   late int _selectedSeason;
+  late int _currentSeason;
+  bool _followsCurrentSeason = true;
   LeaderboardPlayerGroup _selectedPreviewGroup = LeaderboardPlayerGroup.hitter;
   LeaderboardMetric _selectedPreviewMetric = LeaderboardMetric.avg;
   int? _teamRecordsLoadStartedAtMicros;
   String? _lastTeamRecordsLogKey;
-  String? _lastTeamRecordsDiagKey;
 
   @override
   void initState() {
     super.initState();
-    _selectedSeason = kboCurrentSeason();
+    _currentSeason =
+        kboSeasonFromDateKey(ref.read(kboDateProvider)) ?? kboCurrentSeason();
+    _selectedSeason = _currentSeason;
+    ref.listenManual<String>(kboDateProvider, (_, nextDate) {
+      final nextSeason = kboSeasonFromDateKey(nextDate);
+      if (!mounted || nextSeason == null || nextSeason == _currentSeason) {
+        return;
+      }
+      setState(() {
+        _currentSeason = nextSeason;
+        if (_followsCurrentSeason) {
+          _selectedSeason = nextSeason;
+        }
+      });
+    });
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
@@ -82,6 +97,16 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       return _buildTeamChooser();
     }
     return _buildTeamRecords(widget.teamId!);
+  }
+
+  String _recordsChildLocation(String path) {
+    return Uri(
+      path: path,
+      queryParameters: {
+        'season': '$_selectedSeason',
+        if (_followsCurrentSeason) 'seasonMode': 'current',
+      },
+    ).toString();
   }
 
   Future<void> _refreshOverview() async {
@@ -145,7 +170,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                                   style: TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w900,
-                                    color: AppColors.textDisabled,
+                                    color: AppColors.textSupporting,
                                     letterSpacing: 0,
                                   ),
                                 ),
@@ -198,7 +223,9 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                               subtitle: '핵심 지표별 TOP 5를 빠르게 비교합니다.',
                               actionLabel: '전체 보기',
                               onActionTap: () => context.push(
-                                '/records/leaderboard/${_selectedPreviewMetric.key}?season=$_selectedSeason',
+                                _recordsChildLocation(
+                                  '/records/leaderboard/${_selectedPreviewMetric.key}',
+                                ),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -223,10 +250,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                             setState(() => _searchQuery = value),
                         decoration: InputDecoration(
                           hintText: '팀 검색',
-                          hintStyle: TextStyle(color: AppColors.textDisabled),
+                          hintStyle: TextStyle(color: AppColors.textSupporting),
                           prefixIcon: Icon(
                             Icons.search,
-                            color: AppColors.textDisabled,
+                            color: AppColors.textSupporting,
                           ),
                           filled: true,
                           fillColor: AppColors.card,
@@ -261,7 +288,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                           child: Center(
                             child: Text(
                               '검색 결과가 없습니다',
-                              style: TextStyle(color: AppColors.textDisabled),
+                              style: TextStyle(color: AppColors.textSupporting),
                             ),
                           ),
                         ),
@@ -351,7 +378,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: AppColors.textDisabled),
+            Icon(Icons.chevron_right, color: AppColors.textSupporting),
           ],
         ),
       ),
@@ -381,9 +408,14 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                   child: Row(
                     children: [
-                      IconButton(
-                        onPressed: () => context.go('/records'),
-                        icon: const Icon(Icons.arrow_back),
+                      Semantics(
+                        label: '뒤로',
+                        button: true,
+                        child: IconButton(
+                          tooltip: '뒤로',
+                          onPressed: () => context.go('/records'),
+                          icon: const Icon(Icons.arrow_back),
+                        ),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -558,7 +590,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                                   child: Text(
                                     '선수 기록을 불러올 수 없습니다',
                                     style: TextStyle(
-                                      color: AppColors.textDisabled,
+                                      color: AppColors.textSupporting,
                                     ),
                                   ),
                                 ),
@@ -572,7 +604,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textDisabled,
+                                    color: AppColors.textSupporting,
                                   ),
                                 ),
                               ),
@@ -610,7 +642,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             Icon(
               Icons.info_outline_rounded,
               size: 20,
-              color: AppColors.textDisabled,
+              color: AppColors.textSupporting,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -649,10 +681,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     String teamId,
     AsyncValue<TeamRecordsBundle> teamRecordsAsync,
   ) {
-    if (teamRecordsAsync.hasError) {
-      _logTeamRecordsDiagnostics(teamId);
-    }
-
     if (!teamRecordsAsync.hasValue) {
       _teamRecordsLoadStartedAtMicros ??= DateTime.now().microsecondsSinceEpoch;
       return;
@@ -685,25 +713,6 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     }
     _lastTeamRecordsLogKey = logKey;
     _teamRecordsLoadStartedAtMicros = null;
-  }
-
-  void _logTeamRecordsDiagnostics(String teamId) {
-    final diagKey = '$teamId|$_selectedSeason';
-    if (_lastTeamRecordsDiagKey == diagKey) {
-      return;
-    }
-    _lastTeamRecordsDiagKey = diagKey;
-    unawaited(() async {
-      final diagnostics = await ref
-          .read(apiClientProvider)
-          .diagnoseTeamRecords(teamId: teamId, season: _selectedSeason);
-      DevConsole.instance.warn(
-        'RECORDS DIAG team=$teamId season=$_selectedSeason',
-      );
-      for (final line in diagnostics) {
-        DevConsole.instance.warn(line);
-      }
-    }());
   }
 
   Widget _buildList(List<PlayerProfile> players) {
@@ -750,7 +759,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
             child: Center(
               child: Text(
                 '조건에 맞는 선수가 없습니다',
-                style: TextStyle(color: AppColors.textDisabled),
+                style: TextStyle(color: AppColors.textSupporting),
               ),
             ),
           ),
@@ -854,7 +863,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
         ),
         const SizedBox(height: 6),
         Text(
@@ -878,7 +887,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         onTap: player.isRetired
             ? null
             : () => context.push(
-                '/records/player/${player.id}?season=$_selectedSeason',
+                _recordsChildLocation('/records/player/${player.id}'),
               ),
         pressedScale: 0.985,
         child: Container(
@@ -957,7 +966,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                           color:
                               player.status == PlayerAvailabilityStatus.injured
                               ? AppColors.live
-                              : AppColors.textDisabled,
+                              : AppColors.textSupporting,
                         ),
                       ),
                     ],
@@ -966,7 +975,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
               const SizedBox(width: 8),
               if (!player.isRetired)
-                Icon(Icons.chevron_right, color: AppColors.textDisabled),
+                Icon(Icons.chevron_right, color: AppColors.textSupporting),
             ],
           ),
         ),
@@ -976,7 +985,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _statusBadge(PlayerProfile player) {
     if (player.isRetired) {
-      return _pill('은퇴', AppColors.textDisabled);
+      return _pill('은퇴', AppColors.textSupporting);
     }
     switch (player.status) {
       case PlayerAvailabilityStatus.available:
@@ -984,7 +993,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       case PlayerAvailabilityStatus.injured:
         return _pill('부상', AppColors.live);
       case PlayerAvailabilityStatus.inactive:
-        return _pill('엔트리 제외', AppColors.textDisabled);
+        return _pill('엔트리 제외', AppColors.textSupporting);
     }
   }
 
@@ -1167,6 +1176,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return AppPressable(
       onTap: onTap,
       pressedScale: 0.96,
+      semanticSelected: selected,
       child: Container(
         height: 38,
         alignment: Alignment.center,
@@ -1195,6 +1205,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return AppPressable(
       onTap: onTap,
       pressedScale: 0.96,
+      semanticSelected: selected,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -1208,7 +1219,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           label,
           style: TextStyle(
             fontSize: 12,
-            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            color: selected ? AppColors.textPrimary : AppColors.textSupporting,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -1219,7 +1230,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _seasonSelector() {
     final seasons = [
       for (
-        int year = kboCurrentSeason();
+        int year = _currentSeason;
         year >= firstSupportedRecordsSeason;
         year--
       )
@@ -1237,7 +1248,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         children: [
           Text(
             '시즌',
-            style: TextStyle(fontSize: 11, color: AppColors.textDisabled),
+            style: TextStyle(fontSize: 11, color: AppColors.textSupporting),
           ),
           const Spacer(),
           DropdownButton<int>(
@@ -1257,7 +1268,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 .toList(),
             onChanged: (value) {
               if (value == null) return;
-              setState(() => _selectedSeason = value);
+              setState(() {
+                _selectedSeason = value;
+                _followsCurrentSeason = value == _currentSeason;
+              });
             },
           ),
         ],
@@ -1323,7 +1337,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+          style: TextStyle(fontSize: 12, color: AppColors.textSupporting),
         ),
         const SizedBox(height: 8),
         Text(
@@ -1416,7 +1430,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 '$_selectedSeason',
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textDisabled,
+                  color: AppColors.textSupporting,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -1426,7 +1440,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           if (headline == null && todayFeatured.isEmpty)
             Text(
               '현재 표시할 기록 리더가 없습니다.',
-              style: TextStyle(fontSize: 13, color: AppColors.textDisabled),
+              style: TextStyle(fontSize: 13, color: AppColors.textSupporting),
             )
           else if (todayFeatured.isNotEmpty)
             _todayFeaturedPlayerStrip(todayFeatured)
@@ -1513,7 +1527,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textDisabled,
+                    color: AppColors.textSupporting,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1566,7 +1580,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       ),
       alignment: Alignment.center,
       child: team == null
-          ? Icon(Icons.person_rounded, size: 21, color: AppColors.textDisabled)
+          ? Icon(
+              Icons.person_rounded,
+              size: 21,
+              color: AppColors.textSupporting,
+            )
           : KboTeamLogoImage(
               teamId: team.id,
               fallback: team.shortName,
@@ -1671,6 +1689,17 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _metricSpotlightRail(RecordsOverview overview) {
     final snapshots = _metricSnapshots(overview);
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
+    if (useLargeText) {
+      return Column(
+        children: [
+          for (var index = 0; index < snapshots.length; index++) ...[
+            if (index > 0) const SizedBox(height: 10),
+            _metricSpotlightCard(snapshots[index], useLargeText: true),
+          ],
+        ],
+      );
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         const gap = 10.0;
@@ -1695,13 +1724,16 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     );
   }
 
-  Widget _metricSpotlightCard(_MetricSnapshot snapshot) {
+  Widget _metricSpotlightCard(
+    _MetricSnapshot snapshot, {
+    bool useLargeText = false,
+  }) {
     final isLight = Theme.of(context).brightness == Brightness.light;
     final leader = snapshot.topLeader;
     final team = leader == null ? null : KboTeams.byId(leader.teamId);
     return AppPressable(
       onTap: () => context.push(
-        '/records/leaderboard/${snapshot.metric.key}?season=$_selectedSeason',
+        _recordsChildLocation('/records/leaderboard/${snapshot.metric.key}'),
       ),
       pressedScale: 0.97,
       child: Container(
@@ -1722,8 +1754,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
           border: Border.all(color: snapshot.color.withValues(alpha: 0.62)),
         ),
         child: Column(
+          mainAxisSize: useLargeText ? MainAxisSize.min : MainAxisSize.max,
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: useLargeText
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
@@ -1739,8 +1774,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 Expanded(
                   child: Text(
                     snapshot.metric.explainedLabel,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: useLargeText ? null : 2,
+                    overflow: useLargeText
+                        ? TextOverflow.visible
+                        : TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11,
                       height: 1.08,
@@ -1751,10 +1788,11 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 Icon(
                   Icons.chevron_right_rounded,
                   size: 18,
-                  color: AppColors.textDisabled,
+                  color: AppColors.textSupporting,
                 ),
               ],
             ),
+            if (useLargeText) const SizedBox(height: 12),
             Row(
               children: [
                 if (leader != null)
@@ -1763,8 +1801,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 Expanded(
                   child: Text(
                     leader?.name ?? '준비 중',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: useLargeText ? null : 1,
+                    overflow: useLargeText
+                        ? TextOverflow.visible
+                        : TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
@@ -1773,34 +1813,46 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 3),
+            SizedBox(height: useLargeText ? 8 : 3),
             Text(
               leader == null
                   ? snapshot.metric.isAppCalculated
                         ? '앱 계산 · 데이터 준비 중'
                         : '공식 소스 확인 중'
                   : '${snapshot.metric.isAppCalculated ? '앱 계산 · ' : ''}${team?.shortName ?? leader.teamId} · ${_leaderGapText(snapshot.metric, snapshot.leaders)}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: useLargeText ? null : 1,
+              overflow: useLargeText
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
               style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 4),
-            SizedBox(
-              height: 27,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  leader?.value ?? '-',
-                  maxLines: 1,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    height: 1,
+            SizedBox(height: useLargeText ? 8 : 4),
+            if (useLargeText)
+              Text(
+                leader?.value ?? '-',
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  height: 1,
+                ),
+              )
+            else
+              SizedBox(
+                height: 27,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    leader?.value ?? '-',
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                      height: 1,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -1938,7 +1990,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     final leader = snapshot.topLeader;
     return AppPressable(
       onTap: () => context.push(
-        '/records/leaderboard/${snapshot.metric.key}?season=$_selectedSeason',
+        _recordsChildLocation('/records/leaderboard/${snapshot.metric.key}'),
       ),
       pressedScale: 0.98,
       child: Container(
@@ -1967,7 +2019,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 Icon(
                   Icons.chevron_right_rounded,
                   size: 16,
-                  color: AppColors.textDisabled,
+                  color: AppColors.textSupporting,
                 ),
               ],
             ),
@@ -1995,6 +2047,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _metricHub(RecordsOverview overview) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
     final snapshots = _metricSnapshotsForGroup(overview, _selectedPreviewGroup);
     final selected = snapshots.firstWhere(
       (snapshot) => snapshot.metric == _selectedPreviewMetric,
@@ -2040,26 +2093,44 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
               ),
             ),
           ),
-          SizedBox(
-            height: 50,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final tabWidth = constraints.maxWidth / snapshots.length;
-                return Row(
-                  children: [
-                    for (final snapshot in snapshots)
-                      _leaderboardTab(
-                        snapshot,
-                        width: tabWidth,
-                        selected: snapshot.metric == selected.metric,
-                      ),
+          if (useLargeText)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Column(
+                children: [
+                  for (var index = 0; index < snapshots.length; index++) ...[
+                    if (index > 0) const SizedBox(height: 6),
+                    _leaderboardTab(
+                      snapshots[index],
+                      width: double.infinity,
+                      selected: snapshots[index].metric == selected.metric,
+                      useLargeText: true,
+                    ),
                   ],
-                );
-              },
+                ],
+              ),
+            )
+          else
+            SizedBox(
+              height: 50,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final tabWidth = constraints.maxWidth / snapshots.length;
+                  return Row(
+                    children: [
+                      for (final snapshot in snapshots)
+                        _leaderboardTab(
+                          snapshot,
+                          width: tabWidth,
+                          selected: snapshot.metric == selected.metric,
+                        ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
           Container(height: 1, color: AppColors.divider),
-          _leaderboardHeader(),
+          if (!useLargeText) _leaderboardHeader(),
           if (leaders.isEmpty)
             Padding(
               padding: EdgeInsets.fromLTRB(14, 18, 14, 18),
@@ -2067,7 +2138,10 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '현재 리더보드 준비 중',
-                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSupporting,
+                  ),
                 ),
               ),
             )
@@ -2077,41 +2151,69 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                 leader: leaders[index],
                 color: selected.color,
                 showDivider: index != leaders.length - 1,
+                useLargeText: useLargeText,
               ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
             child: AppPressable(
               onTap: () => context.push(
-                '/records/leaderboard/${selected.metric.key}?season=$_selectedSeason',
+                _recordsChildLocation(
+                  '/records/leaderboard/${selected.metric.key}',
+                ),
               ),
               pressedScale: 0.98,
               child: Container(
-                height: 46,
+                constraints: const BoxConstraints(minHeight: 46),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: useLargeText ? 10 : 0,
+                ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: AppColors.background.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.divider),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${_selectedPreviewGroup.label} ${selected.metric.shortLabel} 전체 보기',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: selected.color,
-                        fontWeight: FontWeight.w900,
+                child: useLargeText
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${_selectedPreviewGroup.label} ${selected.metric.shortLabel} 전체 보기',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: selected.color,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: selected.color,
+                          ),
+                        ],
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${_selectedPreviewGroup.label} ${selected.metric.shortLabel} 전체 보기',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: selected.color,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: selected.color,
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      size: 18,
-                      color: selected.color,
-                    ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -2122,8 +2224,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
   Widget _leaderboardGroupSegment() {
     return Container(
-      height: 42,
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
       decoration: BoxDecoration(
         color: AppColors.background.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(8),
@@ -2143,6 +2244,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     return AppPressable(
       onTap: selected ? null : () => _selectPreviewGroup(group),
       pressedScale: 0.98,
+      semanticSelected: selected,
       child: AnimatedContainer(
         key: ValueKey('records-leaderboard-group-${group.name}'),
         duration: const Duration(milliseconds: 180),
@@ -2177,17 +2279,24 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     _MetricSnapshot snapshot, {
     required double width,
     required bool selected,
+    bool useLargeText = false,
   }) {
     return AppPressable(
       onTap: selected
           ? null
           : () => setState(() => _selectedPreviewMetric = snapshot.metric),
       pressedScale: 0.98,
+      semanticSelected: selected,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
         width: width,
-        height: 50,
+        height: useLargeText ? null : 50,
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: useLargeText ? 8 : 0,
+        ),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected
@@ -2239,6 +2348,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
     required RecordLeader leader,
     required Color color,
     required bool showDivider,
+    required bool useLargeText,
   }) {
     final team = KboTeams.byId(leader.teamId);
     return Container(
@@ -2255,80 +2365,121 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
         onTap: leader.isRetired
             ? null
             : () => context.push(
-                '/records/player/${leader.playerId}?season=$_selectedSeason',
+                _recordsChildLocation('/records/player/${leader.playerId}'),
               ),
         pressedScale: 0.992,
-        child: SizedBox(
-          height: 52,
-          child: Row(
-            children: [
-              SizedBox(
-                width: 34,
-                child: Text(
-                  '${leader.rank}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: color,
-                    fontWeight: FontWeight.w900,
-                  ),
+        child: useLargeText
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${leader.rank}위',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: color,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      leader.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      team?.name ?? leader.teamId,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${_selectedPreviewMetric.shortLabel} ${leader.value}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                flex: 5,
-                child: Text(
-                  leader.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              Expanded(
-                flex: 3,
+              )
+            : SizedBox(
+                height: 52,
                 child: Row(
                   children: [
-                    if (team != null) ...[
-                      KboTeamLogoImage(
-                        teamId: team.id,
-                        fallback: team.shortName,
-                        size: 22,
-                        padding: 0,
-                      ),
-                      const SizedBox(width: 6),
-                    ],
-                    Flexible(
+                    SizedBox(
+                      width: 34,
                       child: Text(
-                        team?.shortName ?? leader.teamId,
+                        '${leader.rank}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: color,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      flex: 5,
+                      child: Text(
+                        leader.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Row(
+                        children: [
+                          if (team != null) ...[
+                            KboTeamLogoImage(
+                              teamId: team.id,
+                              fallback: team.shortName,
+                              size: 22,
+                              padding: 0,
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Flexible(
+                            child: Text(
+                              team?.shortName ?? leader.teamId,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      width: 64,
+                      child: Text(
+                        leader.value,
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(
-                width: 64,
-                child: Text(
-                  leader.value,
-                  textAlign: TextAlign.right,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

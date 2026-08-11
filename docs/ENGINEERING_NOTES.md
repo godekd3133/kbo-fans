@@ -5,6 +5,52 @@
 이 문서는 구현 중 얻은 반복적인 인사이트와 운영/검증 메모를 모은다.
 기획 문서보다는 구현 판단 기준에 가깝고, `AGENTS.md` / `CLAUDE.md` 를 보완하는 용도로 사용한다.
 
+## 2026-08-09~10 Competitive Audit Convergence
+
+두 독립 비평이 사용자 여정·접근성 감사와 데이터/성능/운영 감사로 경쟁한 뒤, 공통 위험을 다음 구현 경계로 수렴시켰다.
+
+### UI truth and lifecycle
+
+- 홈/일정에서 상세 진입 전에 4초 refresh와 최대 80개 이미지 warm-up을 기다리게 하면 데이터 신선도보다 navigation latency가 더 큰 사용자 실패가 된다. 화면은 현재 카드의 `Game`/route로 즉시 열고 provider 갱신을 background로 넘긴다. 상세 화면이 마지막 정상 데이터, loading, 오류, 재시도를 소유해야 한다.
+- timeout을 자동 갱신 중 spinner로 바꾸지 않는다. 라인업, push diagnostics, 알림함처럼 실패 의미가 다른 Future는 loading/error/retry를 독립 상태로 표현하고, 읽음 receipt 같은 보조 write 실패가 deep link를 막지 않게 한다.
+- 긴 relay 목록은 `SliverList`로 lazy build하고 실제 scroll target이 아닌 item마다 `GlobalKey`를 만들지 않는다. 필터·정렬·segment처럼 시각적으로 선택 상태가 있는 공통 pressable에는 `semanticSelected`도 같이 전달한다.
+- 날짜 문자열을 `build()`에서 다시 계산하는 것만으로는 켜진 화면이 KST 자정을 넘을 때 rebuild되지 않는다. root가 다음 `Asia/Seoul` 자정 timer와 resume에서 `kboDateProvider`를 갱신하고, home/schedule 같은 날짜 구독자가 provider key를 교체해야 한다. standings/records는 `followsCurrentSeason` 상태를 별도로 두어 현재 시즌 선택만 1월 1일 KST rollover를 따르고 명시적으로 고른 과거 시즌은 고정한다.
+- 시즌 일정처럼 여러 월을 합치는 조회는 무제한 `Future.wait` 대신 최대 3개 worker로 bounded concurrency를 적용하고 indexed result에 담아 원래 월 순서를 보존한다. bounded helper를 repository에 직접 연결하면 기존 `scheduleProvider` cache/override seam을 우회하므로, 각 worker는 `scheduleProvider(yearMonth).future`를 읽어야 한다. 한 월 실패를 빈 월로 바꾸거나 부분 시즌을 정상 결과로 반환하지 않는다.
+- 월별 일정과 시즌 aggregate는 별도 provider이므로 월 수동 갱신만 invalidate하면 매치업·구장별 전환에서 이전 월이 되살아난다. 달력·구장별·매치업 refresh는 현재 월과 `seasonScheduleProvider(season)`을 함께 무효화하고 새 Future를 기다린다.
+- 기본 surface의 정상 설명·메타데이터에는 disabled 색이 아니라 4.5:1 이상을 보장하는 `textSupporting`을 사용한다. 고대비 dark의 accent도 모든 dark surface에서 4.5:1 이상이어야 한다. 아이콘형 뒤로가기는 visible icon만 두지 말고 `뒤로` semantics/tooltip을 제공하며, 앱에 한국어 localization delegate를 연결해 framework가 자동 생성한 leading도 영어 `Back`으로 남기지 않는다. 280px·320px와 240% 글자에서는 hero/탭/scorebug/선수·지표 카드, 리더보드 행, 알림 요약, 브리핑 filter를 고정 한 줄에 압축하지 않고 높이 증가나 `Wrap`으로 재배치한다.
+- 데이터 브리핑도 화면을 연 시각의 문자열이 아니라 `kboDateProvider`를 watch해야 한다. KST 자정·resume 뒤 aggregate key와 refresh key를 모두 최신 `yyyy-MM-dd|myTeamId`로 바꾸지 않으면 전날 데이터가 계속 보인다.
+
+### Data truth, storage, and security
+
+- KBO 순위는 연도별 WebForms selector를 실제 요청하고 `requested season == selected season == hidden source season == sourceDate.year`를 검증한 뒤 cache/snapshot에 넣는다. historical fallback도 같은 exact-season 검증을 통과해야 한다.
+- 박스스코어는 `official`, `live_context`, `official_unavailable`을 payload에 명시한다. current/LIVE에서 양 팀의 검증된 공식 타자·투수 line이 없으면 인접 경기나 과거 snapshot을 빌리지 않는다. 인접 경기 보정은 같은 팀 조합의 검증된 historical final에서만 허용한다.
+- GET은 조회 결과 때문에 외부 알림을 발송하지 않아야 한다. lineup GET은 enrichment와 snapshot write까지만 수행하고 `lineup_opened` 감지·FCM 발송·registry mutation은 sync worker에 둔다.
+- tracked snapshot seed와 runtime snapshot은 같은 디렉터리를 쓰지 않는다. container image의 `data/snapshots`는 read fallback seed이고, 기본 write는 `data/runtime/snapshots`; CloudFormation과 standalone ECS task definition의 API/worker는 모두 `SNAPSHOT_DIR=/var/lib/kbo-fans/snapshots`로 같은 공용 EFS runtime path를 사용한다. Lightsail current release는 `SNAPSHOT_SEED_DIR=/opt/kbo-fans/current/backend/data/snapshots`, runtime은 `/var/lib/kbo-fans/snapshots`를 사용하며 deploy가 seed를 runtime으로 복사하거나 기존 runtime을 덮어쓰지 않는다. 이 경계가 없으면 조회만 해도 tracked seed가 바뀌고 여러 task가 서로 다른 snapshot을 보게 된다.
+- 앱 API cache는 현재 KBO 날짜·월·시즌과 current/LIVE game payload를 `SharedPreferences`에 쓰지 않는다. historical entry만 허용하되 key 192 bytes, entry 256 KiB, 64 entries, total 2 MiB 제한과 oldest-first eviction을 적용하고 cache mutation은 직렬화한다. 저장 불가능한 fresh response는 같은 key의 stale entry를 먼저 제거한다. 과거 scoreboard/home/compact/game도 payload 안의 모든 상태가 `FINAL`/`CANCELLED`일 때만 cacheable하며 `SUSPENDED`는 표시 후 저장하지 않고 기존 cache도 폐기한다.
+- backend Home cache는 LIVE 응답 8초, KBO 오늘의 non-LIVE 응답 30초, 비오늘 응답 300초로 분리한다. 오늘 예정/빈 응답을 stable cache에 넣으면 scheduled→LIVE 전환과 새 편성이 최대 5분 숨을 수 있다.
+- 공개 앱의 `forceRefresh=true` query를 upstream 권한으로 쓰지 않는다. query는 기기 cache 우회 호환 힌트로만 받고 backend TTL은 유지하며, configured `PUSH_SYNC_SECRET`과 exact match하는 `X-KBO-Push-Sync-Secret` header가 있을 때만 server-side force를 전달한다. 잘못된/없는 header는 4xx 대신 normal cached request로 downgrade해 기존 앱을 깨지 않는다.
+- Live Activity server mutation은 ownership과 operator auth를 분리한다. `/live-activity/update`는 configured `PUSH_SYNC_SECRET`이 필수이고 UTF-8 bytes로 constant-time 비교해 비 ASCII 입력도 인증 실패 401로 처리한다. unregister는 `gameId + activityPushToken + activityId + installationId` 전체 tuple이 모두 nonblank이며 registry owner와 일치해야 한다. upgrade 전 앱의 missing/null installation id 또는 missing/null/blank token·activity id는 422 대신 `removed=0` no-op로 받되 ownerless registration까지 삭제 권한을 주지 않는다. client pending queue는 네 필드를 불변 세대로 보존해 새 owner 세대가 이전 실패 요청을 덮지 않게 하고, exact duplicate만 합치며 malformed 제거와 최신 32개 cap을 적용한다.
+- 앱 시작의 push-to-start/native sync가 pending unregister 32개를 직렬 네트워크 timeout까지 기다리게 하지 않는다. pending drain은 owner 불변 queue를 유지한 채 unawaited background 작업으로 시작하고, native token sync와 Workmanager 등록은 즉시 계속 진행한다.
+- Live Activity register의 previous-token rotation도 삭제 권한으로 취급한다. 기존 entry의 `gameId + activityId + installationId`가 새 요청과 exact match하고 두 owner id가 비어 있지 않을 때만 이전 token과 delivery state를 제거한다. request schema는 `gameId` 32, 현재/이전 token 512, `activityId`/`installationId` 128자 cap으로 비정상 identity가 registry key/state를 키우지 못하게 한다.
+- iOS restart에서 native previous activity/start token이 `''`일 수 있으므로 Dart는 blank를 “명시적으로 이전 owner 없음”으로 해석하지 않고 prefs의 current token으로 fallback한다. activity와 push-to-start 등록은 종류별 serial queue에서 처리하고 HTTP 성공 뒤에만 prefs current token을 전진시켜, A→B가 끝나기 전에 B→C가 잘못된 previous owner로 발송되는 순서를 막는다.
+- push-to-start rotation은 server-side CAS도 필요하다. exact current token의 같은-owner 재등록은 no-op 멱등 성공이지만, 다른 token으로 회전할 때는 nonblank previous가 registry의 유일 current owner token과 정확히 같아야 한다. 앱 queue만 믿으면 지연 A 요청이 B를 되돌리는 replay를 막을 수 없다.
+- public push의 `installationId`는 ownership correlator이지 secret이 아니다. 현재 self-test와 receipt는 exact `deviceToken + installationId`만 권한으로 인정하고, 기존 owner가 있는 device/Activity/start token의 재할당은 409로 거절한다. upgrade 전 missing/null self-test·receipt는 200 safe-noop로 호환하되 발송·기록·registry mutation을 하지 않고 ownerless entry의 `None == None`도 권한으로 인정하지 않는다. token·owner·game·목록·receipt data는 schema에서 bounded하고 receipt data는 8개/4 KiB로 제한한다.
+- registry는 기본적으로 `devices`, `liveActivities`, `liveActivityStartTokens` 각각 5,000개와 전체 32 MiB를 넘는 write를 429로 거절한다. `/push/test-device`의 설치별 60초 cooldown과 전체 60초당 30회 window는 registry에 저장해 process restart와 token rotation에도 유지한다. corrupt JSON/root/security section/owner/rate timestamp는 빈 registry로 바꾸지 않고 503으로 fail closed하며 거절·미등록 경로는 no-op write여야 한다.
+- 세 공개 register는 공용 registry의 신규-owner admission을 기본 60초/120건으로 영속화하고, `lastSeenAt` 기준 device/start token 90일·Live Activity 2일 stale GC를 registration lock 안에서 수행한다. exact owner refresh와 정상 rotation은 admission을 소모하지 않고, stale registration의 cooldown/delivery/claim 부속 상태도 exact token 기준으로 함께 정리한다. timestamp/admission 손상은 fail closed한다.
+- TTL/admission도 공개 자기신고 id를 새로 만드는 paced Sybil을 막지 못한다. 공격자가 분당 120건 이하로 속도를 조절하거나 가짜 owner를 계속 refresh하면 5,000개 capacity를 다시 고갈시킬 수 있고, lazy 5,000-entry scan/JSON file lock도 CPU·lock DoS 표면이다. trusted edge/WAF IP rate limit과 App Attest/Play Integrity 같은 attestation이 별도 계층으로 필요하며 프로세스 내부 limiter만으로 해결됐다고 간주하지 않는다.
+
+### Polling and delivery dedupe
+
+- 한 sync tick에서 relay moment 탐색과 Live Activity 현재 타석 보강은 game별 한 relay fetch를 공유한다. 같은 원천을 두 번 읽으면 latency뿐 아니라 서로 다른 seq snapshot으로 side effect를 계산할 위험이 있다.
+- Live Activity 일반 update는 `updatedAt`을 제외한 content signature와 monotonic desired revision을 token별 registry state에 저장한다. 동일 signature는 건너뛰고, 각 APNs 호출 직전에 claim revision이 current desired revision과 같은지 원자적으로 fence한 뒤 lease를 sender timeout보다 길게 갱신한다. 이 실제-send fence가 없으면 batch 첫 token 전송 중 뒤 token lease가 만료돼 새 worker의 S2 뒤에 옛 worker의 S1이 도착할 수 있다. 부분 실패 뒤에는 성공 token이 아니라 실패 token만 재시도하고, token별 claim/resolve는 batch mutation으로 묶으며 실제 데이터가 같은 registry mutation은 disk write를 생략한다. terminal `end`와 unregister는 token 제거와 함께 delivery signature/revision state도 정리한다.
+- APNs non-2xx를 일반 예외 문자열로 합치지 않는다. status와 JSON reason을 typed error로 보존하고 `400 BadDeviceToken`, `400 DeviceTokenNotForTopic`, `410 Unregistered`만 영구 token 오류로 분류한다. Activity token 문자열만 CAS key로 쓰면 A→B→A 재등록 뒤 오래된 실패가 새 A를 지울 수 있으므로 registration generation도 저장한다. update prune은 exact generation을, end는 한 lock에서 얻은 claim id+generation을 성공·실패 완료까지 확인한 뒤 registration·delivery state를 원자적으로 정리한다. 429·5xx·네트워크·파싱 불가는 기존 transient retry를 유지한다.
+- LIVE/SUSPENDED 점수 하향은 무조건 거절하면 공식 정정도 영구 차단한다. 첫 하향값을 영속 candidate로 저장하고 기본 8초 뒤 같은 값이 다시 확인될 때만 수용하되 이닝 회귀 등 다른 monotonic gate는 유지한다. 확정 정정은 Live Activity state만 바로잡고 득점·역전 이벤트를 새로 만들지 않는다.
+- 앱의 FCM registration/topic convergence도 serial queue를 통과시켜 startup, 마이팀 변경, follow 변경이 서로의 최신 topic write를 덮지 않게 한다.
+
+### Verification boundary
+
+- widget/unit tests와 static analyze는 route timing, state rendering, cache predicate, owner/dedupe contract의 회귀 증거다. 운영 KBO 응답 변화, KST 자정 장시간 실행, APNs/FCM 전달, iOS Live Activity/Dynamic Island, Android background, TestFlight/운영 backend 배포는 별도 runtime·실기기 증거가 필요하다.
+
 ## Local / Dev Data Behavior
 
 - Backend는 active runtime component다. API-backed data, snapshot generation, push notification, Live Activity / Dynamic Island sync를 다루는 작업은 `app/`과 `backend/`를 함께 본다.
@@ -41,16 +87,16 @@
   - `GameEventAlertService`의 scoreboard/relay diff 기반 local notification은 local 개발 모드에서만 처리한다. release/dev에서 이 경로가 켜져 있으면 앱 resume/focus 시 지난 이벤트가 몰아서 표시될 수 있으므로 backend remote push와 역할을 섞지 않는다. 권한 off 상태에서도 snapshot baseline은 갱신하고, snapshot이 오래됐거나 settings signature가 바뀐 첫 tick은 알림 발행 없이 현재 상태만 저장한다. 회귀 확인용으로만 `--dart-define=ENABLE_LOCAL_GAME_EVENT_ALERTS=true`를 명시해 보조 로컬 알림 경로를 켤 수 있다. 이 로컬 경로도 legacy all-games 설정을 무시하고 마이팀 또는 직접 follow한 경기만 추적한다.
   - scoreboard diff만으로 확정하기 어려운 `homerun` moment는 같은 scheduler가 live relay seq baseline을 저장하고, 새 relay item의 `HOMERUN` event 또는 `홈런` 텍스트를 감지해 발행한다.
   - 앱 종료/백그라운드 push가 안 오면 먼저 `/push/register`가 실제 기기에서 성공해 registry `devices`가 채워졌는지 확인한다. 마이팀 자동 push라면 registry `topicCounts`의 `scoring_{팀}` / `hit_{팀}` / `game_start_soon_{팀}`와 `deviceSummaries`의 `installationIdSuffix` / `notificationsAllowed` / `authorizationStatus` / `apnsTokenReady`를 본다. 특정 타 팀 수동 경기 알림이라면 `followedGameIds`와 `scoring_GAME_{gameId}` / `hit_GAME_{gameId}` / `game_start_soon_GAME_{gameId}`도 같이 확인한다. 앱은 마이팀 선택 후 non-local 환경에서 최초 1회 권한 요청과 FCM registration sync를 자동 시도해야 한다.
-  - 앱은 `/push/register`에 stable `installationId`를 함께 보내며, backend는 같은 설치 id로 새 FCM token이 들어오면 이전 token registration을 제거한다. 팔로우 경기 상태가 권한/APNs 준비된 현재 token이 아니라 오래된 token에 남는 증상이 보이면 `installationIdSuffix`와 `updatedAt`을 먼저 비교한다.
+  - 앱은 `/push/register`에 stable `installationId`를 함께 보내며, backend는 같은 설치 id로 새 FCM token이 들어오면 이전 token registration을 제거한다. owner가 설정된 token은 installation id 누락·불일치 갱신으로 가져갈 수 없다. 팔로우 경기 상태가 권한/APNs 준비된 현재 token이 아니라 오래된 token에 남는 증상이 보이면 `installationIdSuffix`와 `updatedAt`을 먼저 비교한다.
   - `deviceSummaries.updatedAt`은 앱이 `/push/register`를 보낸 시각이고, `topicsUpdatedAt`은 운영자가 registry 기반 topic resubscribe를 수행한 시각이다. 단말 최신성 판단에는 `updatedAt`과 권한/APNs 상태를 보고, resubscribe 성공 여부에는 `topicsUpdatedAt`과 topic count를 본다.
   - 배포 후 `GET /api/push/config-status` 또는 `python -m kbo_fans_backend.scheduler.push_config_status`로 Firebase/APNs/registry/scheduler secret 누락을 먼저 확인한다.
-  - local backend에서 `PUSH_SYNC_SECRET`이 없으면 `config-status`는 diagnostics 확인용으로 열어두지만, `/push/test`, `/push/baseball-info`, `/push/resubscribe-topics`, `/push/live-activity/sync-scoreboard` 같은 mutation endpoint는 Firebase/APNs까지 진행하지 않고 503으로 막아야 한다.
-  - 앱 내부 receipt 확인용 `/push/test-device`는 운영 secret을 요구하지 않는다. 대신 앱이 현재 FCM token을 `/push/register`로 먼저 저장해야 하며, backend는 registry에 없는 token에는 발송하지 않는다. 이 endpoint에는 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않기 위한 self-test 경계만 둔다.
+  - local backend에서 `PUSH_SYNC_SECRET`이 없으면 `config-status`는 diagnostics 확인용으로 열어두지만, `/push/test`, `/push/baseball-info`, `/push/resubscribe-topics`, `/push/live-activity/update`, `/push/live-activity/sync-scoreboard` 같은 mutation endpoint는 Firebase/APNs까지 진행하지 않고 503으로 막아야 한다.
+  - 앱 내부 receipt 확인용 `/push/test-device`는 운영 secret을 요구하지 않는다. 대신 현재 앱이 FCM token과 stable `installationId`를 `/push/register`로 먼저 저장하고 self-test에도 exact owner tuple을 보내야 한다. backend는 registry에 없는 token·owner 불일치에는 발송하지 않으며, 설치별 cooldown과 전체 rate window를 registry에 영속화한다. legacy missing/null owner는 200 safe-noop라 배포 순서 호환은 유지하지만 테스트 push 권한을 얻지 않는다. 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않기 위한 self-test 경계이지 public attestation은 아니다.
   - 외부에서 `PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api`를 실행하면 `/health`와 push readiness를 같이 확인할 수 있다.
   - GitHub Actions secret 컨텍스트에서 원격 테스트 푸시를 보낼 때는 `Push Test Notification` workflow 또는 `./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch`를 사용한다. 이 helper는 secret/token 값을 출력하지 않는다.
   - `Push Test Notification`을 `*_GAME_<gameId>` topic으로 보낼 때는 backend가 `type`, `gameId`, `topic`, 상세 `route` data를 함께 실어 receipt 조회에서 해당 팔로우 경기 수신 여부를 필터링할 수 있어야 한다.
-  - 실제 단말이 remote push를 처리했는지 확인할 때는 `PUSH_SYNC_SECRET=<secret> ./scripts/push-receipt-status.sh --expect-receipt --game-id <gameId> --type <type>` 또는 GitHub Actions `Push Receipt Status` workflow / `./scripts/github-push-receipt-status-run.sh --expect-receipt --game-id <gameId> --type <type> --watch`를 사용한다. 이 경로는 `/push/config-status`의 `deviceSummaries`와 `recentPushReceipts`만 요약하고 raw device token은 출력하지 않는다.
-  - 2명 안팎의 tester 상시 운영은 Lightsail 512MB native systemd 경로를 우선한다. `./scripts/lightsail-deploy.sh`는 backend runtime bundle만 SSH/SCP로 올리고, API와 `live_activity_sync_loop`를 같은 인스턴스에서 systemd로 실행한다. 이 경로는 Docker/ECR/ECS/ALB/EFS/Secrets Manager를 쓰지 않고 file secret(`/etc/kbo-fans`)과 local registry(`/var/lib/kbo-fans`)를 쓴다.
+  - 실제 단말이 remote push를 처리했는지 확인할 때는 `PUSH_SYNC_SECRET=<secret> ./scripts/push-receipt-status.sh --expect-receipt --game-id <gameId> --type <type>` 또는 GitHub Actions `Push Receipt Status` workflow / `./scripts/github-push-receipt-status-run.sh --expect-receipt --game-id <gameId> --type <type> --watch`를 사용한다. 앱 receipt write도 등록된 `deviceToken + installationId` exact owner와 bounded data만 허용한다. 조회 경로는 `/push/config-status`의 `deviceSummaries`와 `recentPushReceipts`만 요약하고 raw device token은 출력하지 않는다.
+  - 2명 안팎의 tester 상시 운영은 Lightsail 512MB native systemd 경로를 우선한다. `./scripts/lightsail-deploy.sh`는 backend runtime bundle만 SSH/SCP로 올리고, API와 `live_activity_sync_loop`를 같은 인스턴스에서 systemd로 실행한다. 이 경로는 Docker/ECR/ECS/ALB/EFS/Secrets Manager를 쓰지 않고 file secret(`/etc/kbo-fans`)과 local registry(`/var/lib/kbo-fans`)를 쓴다. current release seed는 `/opt/kbo-fans/current/backend/data/snapshots`, mutable runtime은 `/var/lib/kbo-fans/snapshots`로 분리하고 deploy는 runtime snapshot을 seed로 덮어쓰지 않는다.
   - 기존 AWS 비용 guard는 `kbo-fans-cost-guard` stack으로 AWS Budget SNS, Lambda, EventBridge scheduled check를 묶었지만, 15분마다 Cost Explorer actual/forecast API를 호출해 Cost Explorer 과금을 만들었다. 2026-07-08 기준 stack은 삭제했고 recurring guard는 운영 기본값이 아니다. 비용 확인은 Cost Explorer API를 반복 호출하기보다 ECS/ELB/EIP/NAT/Lightsail 같은 리소스 목록 audit과 native AWS Budgets 알림을 우선한다. `./scripts/aws-cost-guard-deploy.sh`는 사장님이 API 조회 비용을 승인한 비상용 도구로만 쓴다.
   - backend image는 `./scripts/aws-push-image.sh`로 ECR에 push하고, 출력되는 `CONTAINER_IMAGE_URI`를 CloudFormation 배포에 사용할 수 있다.
   - AWS ECS/Fargate에서는 Firebase Admin JSON, APNs `.p8`, KBO relay credential을 Secrets Manager에서 `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `KBO_RELAY_USER_ID`, `KBO_RELAY_PASSWORD` env로 주입하는 것이 파일 mount보다 단순하다. 로컬/EC2 파일 배포는 `*_PATH`를 계속 쓸 수 있다.
@@ -63,7 +109,7 @@
   - 5초 시연에는 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` long-running worker가 EventBridge 1분 one-shot보다 예측 가능하다.
   - `config-status.scheduler.lastSyncAt`은 sync worker가 실제로 registry에 heartbeat를 남겼는지 보는 운영 신호다. secret readiness와 worker activity를 구분해서 판단한다.
 - 홈 scoreboard 자동 refresh cadence는 live 8초, scheduled 5분, terminal 정지로 둔다.
-- 홈 수동 refresh는 provider invalidate 시점이 아니라 새 scoreboard Future 완료 시점까지 기다린다. API-backed 수동 refresh는 `forceRefresh=true`를 한 번 소비해 current backend cache/live-state를 우회하고, historical 앱 cache도 명시적으로 bypass한다.
+- 홈 수동 refresh는 provider invalidate 시점이 아니라 새 scoreboard Future 완료 시점까지 기다린다. API-backed 수동 refresh는 `forceRefresh=true`를 한 번 소비해 historical 기기 cache를 명시적으로 bypass하되, 공개 앱 요청은 current backend TTL을 유지한다. configured sync secret과 exact match하는 운영 header가 있을 때만 backend cache/live-state를 우회한다.
 - 홈/상세 timer는 이전 data가 보인다는 이유만으로 refresh 완료로 판단하지 않는다. 진행 중 provider를 다시 invalidate하지 않고 요청 완료 뒤 one-shot timer를 재예약한다. 홈은 transient failure 뒤에도 visible data의 상태 cadence로 polling을 계속하고, 수동 refresh가 겹치면 force 의도를 보존한 직렬 queue로 합친다.
 - app root lifecycle resume sync는 홈 coordinator와 같은 `scoreboardProvider(today)`가 loading 중이면 직접 invalidate하지 않고 active Future를 기다린 뒤 widget sync만 수행한다.
 - 운영 sync worker는 push/Live Activity 등록이 없더라도 scoreboard warm-up을 수행하고, API service와 같은 runtime filesystem에 `live_scoreboard` state를 남긴다. API는 이 state가 8초 window 안에서 fresh일 때만 `/scoreboard/home` 응답으로 사용하고, stale state는 snapshot처럼 fallback하지 않는다.
@@ -87,7 +133,7 @@
   4. 오늘 다른 라인업 공개 또는 시작 10분 전 예정 경기
 - 라인업 공개/시작 10분 전 예정 경기 Live Activity는 `경기전` 상태와 양 팀 순위를 스코어 자리에 표시하고, 탭하면 라인업 탭으로 진입한다. 라인업 미공개 예정 경기는 시작 10분 전 window 전까지 follow session은 유지해도 Activity를 시작하지 않는다.
 - 홈 위젯과 Live Activity는 가능한 한 같은 source scoreboard 를 기준으로 동기화한다.
-- 중복 업데이트는 signature 비교로 억제한다.
+- 중복 업데이트는 `updatedAt`을 제외한 content signature를 token별 registry state에 저장해 억제하고, 부분 실패 시 실패 token만 재시도한다.
 - iOS 홈 위젯은 하나의 WidgetKit kind가 `systemSmall`, `systemMedium`, `systemLarge`, `accessoryInline`, `accessoryCircular`, `accessoryRectangular`를 family별로 다르게 렌더링한다. Android는 기존 단일 경기 `KboFansScoreWidgetProvider`와 오늘 경기 목록용 `KboFansSlateWidgetProvider`를 함께 등록한다.
 - 위젯 family 다양화를 위해 backend 상세 스코어보드 크롤링을 새로 붙이지 않는다. foreground home scoreboard sync가 여러 경기 summary line을 채우고, background compact sync는 main 경기만 있어도 정상 상태로 degrade 되어야 한다.
 - 앱이 native에서 resumed 될 때만 scoreboard 를 다시 invalidate 해 Live Activity 를 재동기화한다. 웹은 홈 위젯/Live Activity가 없으므로 전역 resume refresh를 등록하지 않는다.
@@ -105,7 +151,7 @@
   - live game polling 간격은 홈 scoreboard 8초, 문자중계 foreground/sync worker 5초 기준으로 맞춘다.
   - static widget timeline은 1분 단위 재로드를 요청한다.
   - Live Activity / widget `updatedAt` 에는 초 단위 시각을 넣어 실제 갱신 여부를 구분한다.
-- widget/live sync signature는 점수/이닝이 안 바뀌더라도 live 중에는 일정 주기로 다시 흘려보내야 체감 갱신이 유지된다.
+- widget timeline reload와 Live Activity APNs delivery를 같은 정책으로 보지 않는다. widget은 timeline cadence로 갱신할 수 있지만, Live Activity APNs update는 content signature가 실제로 바뀔 때만 보내고 worker heartbeat는 별도 registry 신호로 관측한다.
 
 ## Launch / First Frame
 

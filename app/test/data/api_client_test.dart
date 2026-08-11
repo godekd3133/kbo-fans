@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:kbo_fans/data/api/api_client.dart';
+import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/records_overview.dart';
 import 'package:kbo_fans/data/repositories/api_game_repository.dart';
 import 'package:kbo_fans/data/repositories/api_home_repository.dart';
@@ -197,6 +198,89 @@ void main() {
       expect(adapter.calls, 0);
     },
   );
+
+  test(
+    'historical suspended scoreboard cache is discarded and refreshed',
+    () async {
+      const date = '2013-05-01';
+      const gameId = '20130501KTLG0';
+      SharedPreferences.setMockInitialValues({
+        'api_cache:scoreboard_home:$date': _cachedApiPayload({
+          'games': [_gamePayload(gameId: gameId, status: 'SUSPENDED')],
+        }, age: const Duration(days: 1)),
+      });
+      final adapter = _CountingSuccessAdapter({
+        'games': [_gamePayload(gameId: gameId, status: 'FINAL')],
+      });
+      final repository = ApiGameRepository(
+        ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+      );
+
+      final games = await repository.getScoreboard(date);
+
+      expect(adapter.calls, 1);
+      expect(games.single.status, GameStatus.final_);
+      final prefs = await SharedPreferences.getInstance();
+      final cached =
+          jsonDecode(prefs.getString('api_cache:scoreboard_home:$date')!)
+              as Map<String, dynamic>;
+      expect(
+        ((cached['data'] as Map<String, dynamic>)['games'] as List)
+            .single['status'],
+        'FINAL',
+      );
+    },
+  );
+
+  test(
+    'fresh historical suspended game is returned but never persisted',
+    () async {
+      const gameId = '20130501KTLG0';
+      const storageKey = 'api_cache:game_detail_v2:$gameId';
+      SharedPreferences.setMockInitialValues({
+        storageKey: _cachedApiPayload({
+          'game': _gamePayload(gameId: gameId, status: 'SUSPENDED'),
+        }, age: const Duration(days: 1)),
+      });
+      final adapter = _CountingSuccessAdapter({
+        'game': _gamePayload(gameId: gameId, status: 'SUSPENDED'),
+      });
+      final repository = ApiGameRepository(
+        ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+      );
+
+      final first = await repository.getGame(gameId);
+      final second = await repository.getGame(gameId);
+
+      expect(first?.status, GameStatus.suspended);
+      expect(second?.status, GameStatus.suspended);
+      expect(adapter.calls, 2);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey(storageKey), isFalse);
+    },
+  );
+
+  test('historical compact scoreboard also rejects suspended cache', () async {
+    const date = '2013-05-01';
+    const gameId = '20130501KTLG0';
+    const storageKey = 'api_cache:scoreboard_compact:$date:LG';
+    SharedPreferences.setMockInitialValues({
+      storageKey: _cachedApiPayload({
+        'games': [_gamePayload(gameId: gameId, status: 'SUSPENDED')],
+      }, age: const Duration(days: 1)),
+    });
+    final adapter = _CountingSuccessAdapter({
+      'games': [_gamePayload(gameId: gameId, status: 'FINAL')],
+    });
+    final repository = ApiGameRepository(
+      ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+    );
+
+    final games = await repository.getCompactScoreboard(date, myTeamId: 'LG');
+
+    expect(adapter.calls, 1);
+    expect(games.single.status, GameStatus.final_);
+  });
 
   test(
     'manual scoreboard refresh bypasses historical cache and sends force once',
@@ -898,4 +982,35 @@ Map<String, dynamic> _leader({
   'teamId': 'KT',
   'value': value,
   'metricKey': metricKey,
+};
+
+Map<String, dynamic> _gamePayload({
+  required String gameId,
+  required String status,
+}) => {
+  'gameId': gameId,
+  'status': status,
+  'inning': status == 'FINAL' ? '경기종료' : '서스펜디드',
+  'away': {
+    'teamId': 'KT',
+    'teamName': 'KT 위즈',
+    'shortName': 'KT',
+    'score': 1,
+    'scores': <int?>[1, 0, null],
+    'hits': 5,
+    'errors': 0,
+    'balls': 2,
+  },
+  'home': {
+    'teamId': 'LG',
+    'teamName': 'LG 트윈스',
+    'shortName': 'LG',
+    'score': 2,
+    'scores': <int?>[0, 2, null],
+    'hits': 6,
+    'errors': 0,
+    'balls': 3,
+  },
+  'stadium': '잠실',
+  'startTime': '18:30',
 };

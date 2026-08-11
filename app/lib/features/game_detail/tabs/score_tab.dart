@@ -125,7 +125,7 @@ class ScoreTab extends StatelessWidget {
     ];
     final headerStyle = TextStyle(
       fontSize: 12,
-      color: AppColors.textDisabled,
+      color: AppColors.textSupporting,
       fontWeight: FontWeight.w500,
     );
     final dataStyle = TextStyle(fontSize: 14, color: AppColors.textPrimary);
@@ -305,7 +305,7 @@ class ScoreTab extends StatelessWidget {
             isHighlight: (i + 1) == currentInning,
           ),
         _tableCell(
-          '${team.score}',
+          team.displayScore,
           boldStyle,
           key: ValueKey('score-${team.teamId}-total-runs'),
           height: _scoreRowHeight,
@@ -392,6 +392,7 @@ class ScoreTab extends StatelessWidget {
     final statsText = team.hasStats
         ? '안타 ${team.hits}, 실책 ${team.errors}, 사사구 ${team.walks}'
         : '안타, 실책, 사사구 정보 미제공';
-    return '${team.shortName} $inningText, 합계 ${team.score}점, $statsText.';
+    final totalText = team.scoreAvailable ? '합계 ${team.score}점' : '합계 미확정';
+    return '${team.shortName} $inningText, $totalText, $statsText.';
   }
 }

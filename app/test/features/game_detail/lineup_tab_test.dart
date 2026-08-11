@@ -197,11 +197,14 @@ void main() {
     expect(find.text('라인업 공개 전입니다'), findsOneWidget);
   });
 
-  testWidgets('라인업 timeout은 Dio 오류 전문 대신 재시도 대기 상태로 보여준다', (tester) async {
-    tester.view.physicalSize = const Size(390, 844);
+  testWidgets('라인업 timeout은 거짓 자동 갱신 없이 큰 글씨 재시도 상태를 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(280, 720);
     tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2.4;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    var retryCalls = 0;
 
     await tester.pumpWidget(
       ProviderScope(
@@ -220,7 +223,7 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.dark,
-          home: const Scaffold(
+          home: Scaffold(
             body: LineupTab(
               gameId: '20260612SKLG0',
               gameStatus: GameStatus.live,
@@ -228,6 +231,9 @@ void main() {
               homeName: 'LG',
               awayTeamId: 'SK',
               homeTeamId: 'LG',
+              onRefresh: () async {
+                retryCalls += 1;
+              },
             ),
           ),
         ),
@@ -235,11 +241,27 @@ void main() {
     );
 
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('라인업을 다시 불러오고 있습니다'), findsOneWidget);
+    expect(find.text('라인업 응답이 지연되고 있습니다'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('네트워크 상태를 확인하고 다시 시도해 주세요')).style?.color,
+      AppTheme.darkColors.textSupporting,
+    );
+    expect(find.text('잠시 후 자동으로 갱신됩니다'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('다시 시도'), findsOneWidget);
     expect(find.textContaining('DioException'), findsNothing);
     expect(find.textContaining('receive timeout'), findsNothing);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('lineup-state-card'))).height,
+      greaterThanOrEqualTo(178),
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byKey(const ValueKey('lineup-retry-button')));
+    await tester.pump();
+    expect(retryCalls, 1);
   });
 
   testWidgets('라인업 row는 response의 선수 이미지 URL을 우선 표시한다', (tester) async {
@@ -471,6 +493,14 @@ void main() {
     expect(find.text('4.2'), findsOneWidget);
     expect(find.text('7.71'), findsOneWidget);
     expect(find.text('2.14'), findsOneWidget);
+    final versusLabels = tester.widgetList<Text>(find.text('VS')).toList();
+    expect(versusLabels, isNotEmpty);
+    expect(
+      versusLabels.every(
+        (label) => label.style?.color == AppTheme.darkColors.textSupporting,
+      ),
+      isTrue,
+    );
   });
 }
 

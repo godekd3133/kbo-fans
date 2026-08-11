@@ -103,9 +103,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     if (widget.isEditMode)
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: IconButton(
-                          onPressed: () => context.go(_returnRoute),
-                          icon: const Icon(Icons.arrow_back_rounded),
+                        child: Semantics(
+                          label: '뒤로',
+                          button: true,
+                          child: IconButton(
+                            tooltip: '뒤로',
+                            onPressed: () => context.go(_returnRoute),
+                            icon: const Icon(Icons.arrow_back_rounded),
+                          ),
                         ),
                       ),
                     Text(

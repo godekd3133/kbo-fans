@@ -6,7 +6,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 data/runtime/
-data/snapshots/
 firebase-service-account.json
 AuthKey_*.p8
 logs/

@@ -26,6 +26,31 @@ void main() {
     expect(find.byType(DevConsoleOverlay), findsOneWidget);
   });
 
+  testWidgets('앱 전역 자동 leading은 한국어 뒤로 이름을 제공한다', (tester) async {
+    SharedPreferences.setMockInitialValues({'onboardingDone': true});
+    final semantics = tester.ensureSemantics();
+    final container = ProviderContainer(retry: _disableRetry);
+    addTearDown(container.dispose);
+    container.read(onboardingDoneProvider.notifier).setValue(true);
+    final router = container.read(routerProvider)..go('/settings');
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const KboFansApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    router.push('/release-notes');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.byTooltip('뒤로'), findsOneWidget);
+    expect(find.bySemanticsLabel('뒤로'), findsOneWidget);
+    semantics.dispose();
+  });
+
   test('resume sync는 loading 중인 scoreboard를 다시 invalidate하지 않는다', () async {
     final pendingScoreboard = Completer<List<int>>();
     var invalidations = 0;

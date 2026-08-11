@@ -144,6 +144,13 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
     }
   }
 
+  int _initialTabIndexFor(Game game) {
+    if (widget.initialTab != null && widget.initialTab!.trim().isNotEmpty) {
+      return _tabIndexFromName(widget.initialTab);
+    }
+    return game.status == GameStatus.live ? _relayTabIndex : 0;
+  }
+
   @override
   Widget build(BuildContext context) {
     final gameAsync = ref.watch(gameProvider(widget.gameId));
@@ -159,7 +166,7 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
               child: _GameDetailBody(
                 game: fallbackGame,
                 gameId: widget.gameId,
-                initialTabIndex: _tabIndexFromName(widget.initialTab),
+                initialTabIndex: _initialTabIndexFor(fallbackGame),
                 focusInitialRelay: widget.focusRelay,
                 refreshDelayed: _refreshDelayed,
                 onRefreshSucceeded: _handleRefreshSucceeded,
@@ -184,7 +191,7 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
               ? _GameDetailBody(
                   game: fallbackGame,
                   gameId: widget.gameId,
-                  initialTabIndex: _tabIndexFromName(widget.initialTab),
+                  initialTabIndex: _initialTabIndexFor(fallbackGame),
                   focusInitialRelay: widget.focusRelay,
                   refreshDelayed: true,
                   onRefreshSucceeded: _handleRefreshSucceeded,
@@ -219,7 +226,7 @@ class _GameDetailScreenState extends ConsumerState<GameDetailScreen> {
             child: _GameDetailBody(
               game: resolvedGame,
               gameId: widget.gameId,
-              initialTabIndex: _tabIndexFromName(widget.initialTab),
+              initialTabIndex: _initialTabIndexFor(resolvedGame),
               focusInitialRelay: widget.focusRelay,
               refreshDelayed: _refreshDelayed,
               onRefreshSucceeded: _handleRefreshSucceeded,
@@ -721,16 +728,30 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         feedbackMessage = '경기 팔로우를 해제했습니다.';
       } else {
         await LiveActivityService.instance.followGame(game.gameId);
-        final liveActivityAllowed = await LiveActivityService.instance
-            .requestPermissions();
-        final eventAlertsAllowed = await GameEventAlertService.instance
-            .requestPermissions();
-        final pushAllowed = await PushNotificationService.instance
-            .requestPermissionAndSync(myTeam: ref.read(myTeamProvider));
-        await LiveActivityService.instance.syncFollowedGame(
-          game,
-          repository: ref.read(gameRepositoryProvider),
+        final liveActivityAllowed = await _followCapabilityAllowed(
+          'Live Activity permission',
+          LiveActivityService.instance.requestPermissions,
         );
+        final eventAlertsAllowed = await _followCapabilityAllowed(
+          'Game alert permission',
+          GameEventAlertService.instance.requestPermissions,
+        );
+        final pushAllowed = await _followCapabilityAllowed(
+          'Push permission',
+          () => PushNotificationService.instance.requestPermissionAndSync(
+            myTeam: ref.read(myTeamProvider),
+          ),
+        );
+        try {
+          await LiveActivityService.instance.syncFollowedGame(
+            game,
+            repository: ref.read(gameRepositoryProvider),
+          );
+        } catch (error) {
+          DevConsole.instance.warn(
+            'Follow saved but live surface sync is pending: $error',
+          );
+        }
         feedbackMessage = followGameSavedMessage(
           isWeb: kIsWeb,
           liveActivityAllowed: liveActivityAllowed,
@@ -754,12 +775,31 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       if (!mounted) {
         return;
       }
+      final canonicalFollowing = await LiveActivityService.instance.isFollowing(
+        widget.gameId,
+      );
+      if (!mounted) {
+        return;
+      }
       setState(() {
+        _isFollowingGame = canonicalFollowing;
         _followStateLoaded = true;
       });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('경기 팔로우 설정에 실패했습니다')));
+    }
+  }
+
+  Future<bool> _followCapabilityAllowed(
+    String label,
+    Future<bool> Function() request,
+  ) async {
+    try {
+      return await request();
+    } catch (error) {
+      DevConsole.instance.warn('$label failed after follow was saved: $error');
+      return false;
     }
   }
 
@@ -793,7 +833,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       ),
       labelColor: AppColors.accent,
       labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
-      unselectedLabelColor: AppColors.textDisabled,
+      unselectedLabelColor: AppColors.textSupporting,
       unselectedLabelStyle: const TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w800,
@@ -832,9 +872,14 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                     padding: const EdgeInsets.fromLTRB(8, 6, 8, 4),
                     child: Row(
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, size: 24),
-                          onPressed: _goBackOrHome,
+                        Semantics(
+                          label: '뒤로',
+                          button: true,
+                          child: IconButton(
+                            tooltip: '뒤로',
+                            icon: const Icon(Icons.arrow_back, size: 24),
+                            onPressed: _goBackOrHome,
+                          ),
                         ),
                         Expanded(
                           child: Text(
@@ -2224,7 +2269,7 @@ class _HighlightCardState extends State<_HighlightCard> {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textDisabled,
+                      color: AppColors.textSupporting,
                       letterSpacing: 0,
                     ),
                   ),
@@ -2241,7 +2286,7 @@ class _HighlightCardState extends State<_HighlightCard> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textDisabled,
+                            color: AppColors.textSupporting,
                           ),
                         ),
                         teamBadge(homeTeam, widget.game.home.shortName),

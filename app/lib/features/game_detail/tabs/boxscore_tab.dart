@@ -195,8 +195,9 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Container(
-          height: 178,
+          key: const ValueKey('boxscore-unavailable-card'),
           width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 178),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.card,
@@ -204,6 +205,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             border: Border.all(color: AppColors.divider),
           ),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
@@ -220,12 +222,21 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                 const SizedBox(height: 6),
                 Text(
                   detail,
-                  style: TextStyle(fontSize: 12, color: AppColors.textDisabled),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSupporting,
+                  ),
                 ),
               ],
               if (onRetry != null) ...[
-                const Spacer(),
-                TextButton(onPressed: onRetry, child: const Text('다시 시도')),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: onRetry,
+                    child: const Text('다시 시도'),
+                  ),
+                ),
               ],
             ],
           ),
@@ -278,7 +289,9 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     final selectedMetrics = _BoxscoreTeamMetrics.from(selected);
     final opponentMetrics = _BoxscoreTeamMetrics.from(opponent);
 
-    final officialBatters = batters.where((batter) => !batter.liveContext);
+    final officialBatters = batters
+        .where((batter) => !batter.liveContext)
+        .toList();
     final totalAtBats = officialBatters.fold<int>(
       0,
       (sum, batter) => sum + batter.atBats,
@@ -369,7 +382,9 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                   _SummaryMetric(label: '타점', value: '$totalRbi'),
                   _SummaryMetric(
                     label: '팀 타율',
-                    value: teamBattingAverage.toStringAsFixed(3),
+                    value: officialBatters.isEmpty
+                        ? '확인 불가'
+                        : teamBattingAverage.toStringAsFixed(3),
                   ),
                 ],
         ),
@@ -584,7 +599,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             ? (batter.hits / batter.atBats).toStringAsFixed(3)
             : '-',
         width: 54,
-        color: batter.atBats > 0 ? accent : AppColors.textDisabled,
+        color: batter.atBats > 0 ? accent : AppColors.textSupporting,
       ),
     ];
   }
@@ -624,7 +639,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                 value: pitcher.decision ?? '-',
                 width: 42,
                 color: pitcher.decision == null
-                    ? AppColors.textDisabled
+                    ? AppColors.textSupporting
                     : accent,
               ),
             ]
@@ -646,7 +661,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
                 value: pitcher.decision ?? '-',
                 width: 42,
                 color: pitcher.decision == null
-                    ? AppColors.textDisabled
+                    ? AppColors.textSupporting
                     : accent,
               ),
             ],
@@ -1172,7 +1187,7 @@ class _ComparisonMetric extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 10,
-              color: AppColors.textDisabled,
+              color: AppColors.textSupporting,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -1899,7 +1914,7 @@ class _TeamToggleCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      color: active ? accent : AppColors.textDisabled,
+                      color: active ? accent : AppColors.textSupporting,
                     ),
                   ),
                   const SizedBox(height: 3),

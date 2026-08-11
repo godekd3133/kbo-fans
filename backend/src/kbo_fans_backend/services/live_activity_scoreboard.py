@@ -4,6 +4,7 @@ import hashlib
 import json
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
@@ -14,6 +15,12 @@ from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.standings import StandingsService
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class _RelayFetch:
+    payload: Optional[dict[str, Any]] = None
+    error: Optional[Exception] = None
 
 
 class LiveActivityScoreboardSyncService:
@@ -39,36 +46,42 @@ class LiveActivityScoreboardSyncService:
         registered_game_ids = set(self.push_service.registry.live_activity_game_ids())
         has_push_registrations = self.push_service.registry.has_device_registrations()
         has_start_tokens = self.push_service.registry.has_live_activity_start_tokens()
+        if not registered_game_ids and not has_push_registrations and not has_start_tokens:
+            return {
+                "date": date,
+                "checkedGames": 0,
+                "startedGames": [],
+                "updatedGames": [],
+                "pushedMoments": [],
+                "warmed": False,
+                "idle": True,
+            }
+
         retried_moments = self._retry_pending_game_moments()
         scoreboard = self._warm_scoreboard(date)
-        if not registered_game_ids and not has_push_registrations and not has_start_tokens:
-            return self._record_heartbeat(
-                {
-                    "date": scoreboard.get("date", date),
-                    "checkedGames": len(scoreboard.get("games", [])),
-                    "startedGames": [],
-                    "updatedGames": [],
-                    "pushedMoments": retried_moments,
-                    "warmed": True,
-                }
-            )
 
         started_games = []
         updated_games = []
         pushed_moments = list(retried_moments)
+        relay_fetches: dict[str, _RelayFetch] = {}
         for game in scoreboard.get("games", []):
             game_id = str(game.get("gameId") or "")
             status = _status_value(game)
             accepted, game_moments = self._push_moments_for_game(
                 game,
                 deliver_moments=has_push_registrations,
+                relay_fetches=relay_fetches,
             )
             pushed_moments.extend(game_moments)
             if not accepted:
                 continue
 
             if has_start_tokens:
-                start_response = self._start_live_activity_for_game(game, status)
+                start_response = self._start_live_activity_for_game(
+                    game,
+                    status,
+                    relay_fetches=relay_fetches,
+                )
                 if start_response is not None:
                     started_games.append(start_response)
 
@@ -78,10 +91,20 @@ class LiveActivityScoreboardSyncService:
             if status == "SCHEDULED" and not self._should_sync_scheduled_activity(game):
                 continue
 
-            update = self._update_request_for_game(game, status)
+            update = self._update_request_for_game(
+                game,
+                status,
+                relay_fetches=relay_fetches,
+            )
             if update is None:
                 continue
-            response = self.push_service.send_live_activity_update(update)
+
+            if update.event == "end":
+                response = self.push_service.send_live_activity_update(update)
+            else:
+                response = self._send_changed_live_activity_update(update)
+                if response is None:
+                    continue
             updated_games.append(response)
 
         return self._record_heartbeat(
@@ -112,15 +135,96 @@ class LiveActivityScoreboardSyncService:
         )
         return result
 
+    def _send_changed_live_activity_update(
+        self,
+        update: LiveActivityUpdateRequest,
+    ) -> Optional[dict[str, Any]]:
+        tokens = self.push_service.registry.live_activity_tokens_for_game(update.gameId)
+        content_signature = _live_activity_content_signature(update)
+        tokens_by_delivery_id = {_live_activity_delivery_id(token): token for token in tokens}
+        claims = self.push_service.registry.claim_live_activity_updates(
+            game_id=update.gameId,
+            delivery_ids=list(tokens_by_delivery_id),
+            content_signature=content_signature,
+        )
+        if not claims:
+            return None
+
+        messages = []
+        completed_claims: dict[str, str] = {}
+        released_claims: dict[str, str] = {}
+        for delivery_id, claim_id in claims.items():
+            token = tokens_by_delivery_id[delivery_id]
+            if not self.push_service.registry.fence_live_activity_update(
+                game_id=update.gameId,
+                delivery_id=delivery_id,
+                content_signature=content_signature,
+                claim_id=claim_id,
+            ):
+                messages.append(
+                    {
+                        "activityPushToken": token,
+                        "sent": False,
+                        "skipped": True,
+                        "reason": "stale_delivery_claim",
+                    }
+                )
+                continue
+            targeted_update = _targeted_live_activity_update(update, token)
+            try:
+                response = self.push_service.send_live_activity_update(targeted_update)
+            except Exception:
+                released_claims.update(
+                    {
+                        pending_delivery_id: pending_claim_id
+                        for pending_delivery_id, pending_claim_id in claims.items()
+                        if pending_delivery_id not in completed_claims
+                    }
+                )
+                self.push_service.registry.resolve_live_activity_updates(
+                    game_id=update.gameId,
+                    content_signature=content_signature,
+                    completed_claims=completed_claims,
+                    released_claims=released_claims,
+                )
+                raise
+
+            response_messages = response.get("messages")
+            if isinstance(response_messages, list):
+                messages.extend(response_messages)
+            if _live_activity_delivery_complete(response):
+                completed_claims[delivery_id] = claim_id
+            else:
+                released_claims[delivery_id] = claim_id
+
+        self.push_service.registry.resolve_live_activity_updates(
+            game_id=update.gameId,
+            content_signature=content_signature,
+            completed_claims=completed_claims,
+            released_claims=released_claims,
+        )
+
+        return {
+            "sent": any(message.get("sent") for message in messages),
+            "gameId": update.gameId,
+            "messages": messages,
+        }
+
     def _start_live_activity_for_game(
         self,
         game: dict[str, Any],
         status: str,
+        *,
+        relay_fetches: dict[str, _RelayFetch],
     ) -> Optional[dict[str, Any]]:
         is_pregame_start = self._should_start_scheduled_activity(game, status)
         if status != "LIVE" and not is_pregame_start:
             return None
-        update = self._update_request_for_game(game, status)
+        update = self._update_request_for_game(
+            game,
+            status,
+            relay_fetches=relay_fetches,
+        )
         if update is None:
             return None
 
@@ -196,6 +300,7 @@ class LiveActivityScoreboardSyncService:
         game: dict[str, Any],
         *,
         deliver_moments: bool,
+        relay_fetches: dict[str, _RelayFetch],
     ) -> tuple[bool, list[dict[str, Any]]]:
         game_id = str(game.get("gameId") or "")
         if not game_id:
@@ -282,13 +387,21 @@ class LiveActivityScoreboardSyncService:
             pushed.append(response)
 
         if deliver_moments:
-            pushed.extend(self._push_relay_moments_for_game(game_id, current_state))
+            pushed.extend(
+                self._push_relay_moments_for_game(
+                    game_id,
+                    current_state,
+                    relay_fetches=relay_fetches,
+                )
+            )
         return True, pushed
 
     def _push_relay_moments_for_game(
         self,
         game_id: str,
         current_state: dict[str, Any],
+        *,
+        relay_fetches: dict[str, _RelayFetch],
     ) -> list[dict[str, Any]]:
         if self.relay_service is None or current_state["status"] != "LIVE":
             return []
@@ -303,7 +416,11 @@ class LiveActivityScoreboardSyncService:
         )
 
         try:
-            relay = self.relay_service.get_relay(game_id, after=after)
+            relay = self._relay_for_game_once(
+                game_id,
+                after=after,
+                relay_fetches=relay_fetches,
+            )
         except Exception as error:
             return [
                 {
@@ -388,6 +505,29 @@ class LiveActivityScoreboardSyncService:
         if not applied:
             return []
         return [self._deliver_game_moment_event(event) for event in event_specs]
+
+    def _relay_for_game_once(
+        self,
+        game_id: str,
+        *,
+        after: Optional[int],
+        relay_fetches: dict[str, _RelayFetch],
+    ) -> dict[str, Any]:
+        cached = relay_fetches.get(game_id)
+        if cached is None:
+            if self.relay_service is None:
+                raise ValueError("relay service is not configured")
+            try:
+                payload = self.relay_service.get_relay(game_id, after=after)
+            except Exception as error:
+                cached = _RelayFetch(error=error)
+            else:
+                cached = _RelayFetch(payload=payload)
+            relay_fetches[game_id] = cached
+
+        if cached.error is not None:
+            raise cached.error
+        return cached.payload or {}
 
     def _pregame_moment_events_for_game(
         self,
@@ -515,6 +655,8 @@ class LiveActivityScoreboardSyncService:
         self,
         game: dict[str, Any],
         status: str,
+        *,
+        relay_fetches: dict[str, _RelayFetch],
     ) -> Optional[LiveActivityUpdateRequest]:
         game_id = str(game.get("gameId") or "")
         away = game.get("away") or {}
@@ -545,7 +687,11 @@ class LiveActivityScoreboardSyncService:
         )
 
         event = "end" if status in {"FINAL", "CANCELLED"} else "update"
-        current = self._live_activity_current_payload(game, status)
+        current = self._live_activity_current_payload(
+            game,
+            status,
+            relay_fetches=relay_fetches,
+        )
         is_pregame = status == "SCHEDULED" and self._should_sync_scheduled_activity(game)
         ranks = self._rank_labels_for_game(game) if is_pregame else {}
         state = LiveActivityContentState(
@@ -588,6 +734,8 @@ class LiveActivityScoreboardSyncService:
         self,
         game: dict[str, Any],
         status: str,
+        *,
+        relay_fetches: dict[str, _RelayFetch],
     ) -> dict[str, Any]:
         current = _current_payload(game)
         if status in {"FINAL", "CANCELLED", "SUSPENDED"}:
@@ -609,7 +757,11 @@ class LiveActivityScoreboardSyncService:
             return current
 
         try:
-            relay = self.relay_service.get_relay(game_id)
+            relay = self._relay_for_game_once(
+                game_id,
+                after=None,
+                relay_fetches=relay_fetches,
+            )
         except Exception:
             return current
 
@@ -1125,6 +1277,46 @@ def _game_moment_event_id(
     )
     digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
     return f"game-moment:{game_id}:{moment}:{digest}"
+
+
+def _live_activity_content_signature(update: LiveActivityUpdateRequest) -> str:
+    state = (
+        update.state.model_dump() if hasattr(update.state, "model_dump") else update.state.dict()
+    )
+    state.pop("updatedAt", None)
+    canonical = json.dumps(
+        {
+            "event": update.event,
+            "state": state,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _live_activity_delivery_id(activity_push_token: str) -> str:
+    return hashlib.sha256(activity_push_token.encode("utf-8")).hexdigest()
+
+
+def _targeted_live_activity_update(
+    update: LiveActivityUpdateRequest,
+    activity_push_token: str,
+) -> LiveActivityUpdateRequest:
+    payload = update.model_dump() if hasattr(update, "model_dump") else update.dict()
+    payload["activityPushToken"] = activity_push_token
+    return LiveActivityUpdateRequest(**payload)
+
+
+def _live_activity_delivery_complete(response: dict[str, Any]) -> bool:
+    messages = response.get("messages")
+    return (
+        bool(response.get("sent"))
+        and isinstance(messages, list)
+        and bool(messages)
+        and all(isinstance(message, dict) and bool(message.get("sent")) for message in messages)
+    )
 
 
 def _current_payload(game: dict[str, Any]) -> dict[str, Any]:

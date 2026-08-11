@@ -6,8 +6,10 @@ import time as time_module
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from kbo_fans_backend.api.routes import push as push_routes
@@ -27,11 +29,17 @@ from kbo_fans_backend.schemas.push import (
     PushTestRequest,
 )
 from kbo_fans_backend.services import push_registry as push_registry_module
-from kbo_fans_backend.services.apns_live_activity import ApnsLiveActivitySender
+from kbo_fans_backend.services.apns_live_activity import (
+    ApnsLiveActivitySender,
+    ApnsLiveActivitySendError,
+)
 from kbo_fans_backend.services.live_activity_scoreboard import LiveActivityScoreboardSyncService
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.services.push_diagnostics import PushConfigurationDiagnostics
-from kbo_fans_backend.services.push_registry import PushRegistry
+from kbo_fans_backend.services.push_registry import (
+    PushRegistry,
+    PushRegistryOwnershipError,
+)
 
 
 def test_build_topics_returns_empty_without_team_when_all_games_disabled() -> None:
@@ -1405,6 +1413,7 @@ def test_send_device_test_push_targets_registered_token_only(tmp_path) -> None:
         PushRegisterRequest(
             deviceToken="registered-token",
             platform="ios",
+            installationId="install-1",
             myTeam="OB",
             notifications=NotificationSettings(
                 gameStart=True,
@@ -1419,7 +1428,12 @@ def test_send_device_test_push_targets_registered_token_only(tmp_path) -> None:
         )
     )
 
-    response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
+    response = service.send_device_test(
+        PushDeviceTestRequest(
+            deviceToken="registered-token",
+            installationId="install-1",
+        )
+    )
 
     assert response["sent"] is True
     assert response["registered"] is True
@@ -1438,7 +1452,12 @@ def test_send_device_test_push_rejects_unregistered_token(tmp_path) -> None:
     messaging = FakeFcmMessaging()
     service._get_messaging = lambda: messaging
 
-    response = service.send_device_test(PushDeviceTestRequest(deviceToken="missing-token"))
+    response = service.send_device_test(
+        PushDeviceTestRequest(
+            deviceToken="missing-token",
+            installationId="install-missing",
+        )
+    )
 
     assert response == {
         "sent": False,
@@ -1457,6 +1476,7 @@ def test_send_device_test_push_returns_failure_when_firebase_rejects(tmp_path) -
         PushRegisterRequest(
             deviceToken="registered-token",
             platform="ios",
+            installationId="install-1",
             myTeam="OB",
             notifications=NotificationSettings(
                 gameStart=True,
@@ -1471,7 +1491,12 @@ def test_send_device_test_push_returns_failure_when_firebase_rejects(tmp_path) -
         )
     )
 
-    response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
+    response = service.send_device_test(
+        PushDeviceTestRequest(
+            deviceToken="registered-token",
+            installationId="install-1",
+        )
+    )
 
     expected_reason = (
         "FCM 토큰이 만료되었거나 무효입니다. 앱을 완전히 종료한 뒤 다시 열고 다시 시도해주세요."
@@ -1510,6 +1535,7 @@ def test_send_device_test_push_classifies_ios_third_party_auth_as_apns_configura
         PushRegisterRequest(
             deviceToken="registered-token",
             platform="ios",
+            installationId="install-1",
             myTeam="SS",
             notifications=NotificationSettings(
                 gameStart=True,
@@ -1524,7 +1550,12 @@ def test_send_device_test_push_classifies_ios_third_party_auth_as_apns_configura
         )
     )
 
-    response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
+    response = service.send_device_test(
+        PushDeviceTestRequest(
+            deviceToken="registered-token",
+            installationId="install-1",
+        )
+    )
 
     expected_reason = (
         "Firebase/APNs 인증 설정 문제로 iOS 원격 푸시를 발송하지 못했습니다. "
@@ -1554,6 +1585,7 @@ def test_send_device_test_push_classifies_generic_missing_oauth_as_admin_credent
         PushRegisterRequest(
             deviceToken="registered-token",
             platform="ios",
+            installationId="install-1",
             myTeam="SS",
             notifications=NotificationSettings(
                 gameStart=True,
@@ -1568,7 +1600,12 @@ def test_send_device_test_push_classifies_generic_missing_oauth_as_admin_credent
         )
     )
 
-    response = service.send_device_test(PushDeviceTestRequest(deviceToken="registered-token"))
+    response = service.send_device_test(
+        PushDeviceTestRequest(
+            deviceToken="registered-token",
+            installationId="install-1",
+        )
+    )
 
     expected_reason = (
         "Firebase Admin 인증 설정 문제로 원격 푸시를 발송하지 못했습니다. "
@@ -1588,6 +1625,7 @@ def test_record_push_receipt_persists_registered_device_receipt(tmp_path) -> Non
         PushRegisterRequest(
             deviceToken="registered-token-123456",
             platform="ios",
+            installationId="install-receipt-owner",
             myTeam="OB",
             followedGameIds=["20260620HTKT0"],
             notifications=NotificationSettings(
@@ -1606,6 +1644,7 @@ def test_record_push_receipt_persists_registered_device_receipt(tmp_path) -> Non
     response = service.record_receipt(
         PushReceiptRequest(
             deviceToken="registered-token-123456",
+            installationId="install-receipt-owner",
             messageId="projects/kbo-fans-47189/messages/receipt-1",
             source="foreground",
             type="hit",
@@ -1639,6 +1678,7 @@ def test_record_push_receipt_rejects_unregistered_token(tmp_path) -> None:
     response = service.record_receipt(
         PushReceiptRequest(
             deviceToken="missing-token",
+            installationId="install-missing",
             messageId="message-1",
             source="foreground",
         )
@@ -1882,6 +1922,249 @@ def test_push_registry_compare_and_replace_prevents_scoreboard_baseline_regressi
     assert current["awayScore"] == 2
 
 
+def test_push_registry_live_score_correction_candidate_resets_and_skips_noop_write(
+    tmp_path,
+) -> None:
+    now = [datetime(2026, 6, 4, 12, 0, tzinfo=timezone.utc)]
+    registry_path = tmp_path / "push_registry.json"
+    registry = PushRegistry(
+        str(registry_path),
+        score_correction_confirmation_seconds=8,
+        score_correction_now_provider=lambda: now[0],
+    )
+
+    def apply_score(away_score: int, home_score: int) -> bool:
+        previous = registry.scoreboard_state("20260604LGKT0")
+        return registry.replace_scoreboard_state_and_enqueue_if_current(
+            "20260604LGKT0",
+            {
+                "status": "LIVE",
+                "awayScore": away_score,
+                "homeScore": home_score,
+                "inning": "7회말",
+            },
+            events=[],
+            expected_updated_at=(
+                str(previous.get("updatedAt") or "") if previous is not None else None
+            ),
+        )
+
+    assert apply_score(5, 4) is True
+    assert apply_score(3, 4) is False
+    first_candidate_bytes = registry_path.read_bytes()
+
+    assert apply_score(3, 4) is False
+    assert registry_path.read_bytes() == first_candidate_bytes
+
+    now[0] += timedelta(seconds=7)
+    assert apply_score(4, 4) is False
+    different_candidate = registry.scoreboard_state("20260604LGKT0")
+    assert different_candidate is not None
+    assert different_candidate["scoreCorrectionCandidate"] == {
+        "awayScore": 4,
+        "homeScore": 4,
+        "firstObservedAt": now[0].isoformat(),
+    }
+
+    now[0] += timedelta(seconds=2)
+    assert apply_score(4, 4) is False
+    assert apply_score(6, 4) is True
+    normal_state = registry.scoreboard_state("20260604LGKT0")
+    assert normal_state is not None
+    assert normal_state["awayScore"] == 6
+    assert "scoreCorrectionCandidate" not in normal_state
+
+    now[0] += timedelta(seconds=20)
+    assert apply_score(4, 4) is False
+    restarted_candidate = registry.scoreboard_state("20260604LGKT0")
+    assert restarted_candidate is not None
+    assert restarted_candidate["awayScore"] == 6
+    assert restarted_candidate["homeScore"] == 4
+    assert restarted_candidate["scoreCorrectionCandidate"]["firstObservedAt"] == now[0].isoformat()
+
+
+def test_push_registry_concurrent_lower_score_observations_cannot_confirm_immediately(
+    tmp_path,
+) -> None:
+    now = [datetime(2026, 6, 4, 12, 0, tzinfo=timezone.utc)]
+    registry_path = str(tmp_path / "push_registry.json")
+    baseline_registry = PushRegistry(
+        registry_path,
+        score_correction_confirmation_seconds=8,
+        score_correction_now_provider=lambda: now[0],
+    )
+    assert baseline_registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": "LIVE",
+            "awayScore": 5,
+            "homeScore": 4,
+            "inning": "7회말",
+        },
+        events=[],
+        expected_updated_at=None,
+    )
+    baseline = baseline_registry.scoreboard_state("20260604LGKT0")
+    assert baseline is not None
+    now[0] += timedelta(seconds=1)
+    barrier = threading.Barrier(2)
+
+    def observe_correction() -> bool:
+        registry = PushRegistry(
+            registry_path,
+            score_correction_confirmation_seconds=8,
+            score_correction_now_provider=lambda: now[0],
+        )
+        barrier.wait(timeout=5)
+        return registry.replace_scoreboard_state_and_enqueue_if_current(
+            "20260604LGKT0",
+            {
+                "status": "LIVE",
+                "awayScore": 3,
+                "homeScore": 4,
+                "inning": "7회말",
+            },
+            events=[],
+            expected_updated_at=baseline["updatedAt"],
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(lambda _: observe_correction(), range(2)))
+
+    assert results == [False, False]
+    current = baseline_registry.scoreboard_state("20260604LGKT0")
+    assert current is not None
+    assert current["awayScore"] == 5
+    assert current["homeScore"] == 4
+    assert current["scoreCorrectionCandidate"]["awayScore"] == 3
+
+
+def test_push_registry_never_confirms_live_inning_regression(tmp_path) -> None:
+    now = [datetime(2026, 6, 4, 12, 0, tzinfo=timezone.utc)]
+    registry = PushRegistry(
+        str(tmp_path / "push_registry.json"),
+        score_correction_confirmation_seconds=8,
+        score_correction_now_provider=lambda: now[0],
+    )
+    assert registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": "LIVE",
+            "awayScore": 5,
+            "homeScore": 4,
+            "inning": "7회말",
+        },
+        events=[],
+        expected_updated_at=None,
+    )
+    baseline = registry.scoreboard_state("20260604LGKT0")
+    assert baseline is not None
+
+    assert not registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": "LIVE",
+            "awayScore": 5,
+            "homeScore": 4,
+            "inning": "7회초",
+        },
+        events=[],
+        expected_updated_at=baseline["updatedAt"],
+    )
+    unchanged = registry.scoreboard_state("20260604LGKT0")
+    assert unchanged == baseline
+
+    assert not registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": "LIVE",
+            "awayScore": 3,
+            "homeScore": 4,
+            "inning": "7회초",
+        },
+        events=[],
+        expected_updated_at=baseline["updatedAt"],
+    )
+    now[0] += timedelta(seconds=8)
+    candidate = registry.scoreboard_state("20260604LGKT0")
+    assert candidate is not None
+    assert not registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": "LIVE",
+            "awayScore": 3,
+            "homeScore": 4,
+            "inning": "7회초",
+        },
+        events=[],
+        expected_updated_at=candidate["updatedAt"],
+    )
+
+    current = registry.scoreboard_state("20260604LGKT0")
+    assert current is not None
+    assert current["awayScore"] == 5
+    assert current["homeScore"] == 4
+    assert current["inning"] == "7회말"
+
+
+@pytest.mark.parametrize("terminal_status", ["FINAL", "CANCELLED"])
+def test_push_registry_terminal_score_correction_bypasses_confirmation_window(
+    terminal_status,
+    tmp_path,
+) -> None:
+    now = [datetime(2026, 6, 4, 12, 0, tzinfo=timezone.utc)]
+    registry = PushRegistry(
+        str(tmp_path / "push_registry.json"),
+        score_correction_confirmation_seconds=8,
+        score_correction_now_provider=lambda: now[0],
+    )
+    assert registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": "LIVE",
+            "awayScore": 5,
+            "homeScore": 4,
+            "inning": "9회말",
+        },
+        events=[],
+        expected_updated_at=None,
+    )
+    baseline = registry.scoreboard_state("20260604LGKT0")
+    assert baseline is not None
+    assert not registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": "LIVE",
+            "awayScore": 3,
+            "homeScore": 4,
+            "inning": "9회말",
+        },
+        events=[],
+        expected_updated_at=baseline["updatedAt"],
+    )
+    candidate = registry.scoreboard_state("20260604LGKT0")
+    assert candidate is not None
+
+    assert registry.replace_scoreboard_state_and_enqueue_if_current(
+        "20260604LGKT0",
+        {
+            "status": terminal_status,
+            "awayScore": 3,
+            "homeScore": 4,
+            "inning": "경기종료" if terminal_status == "FINAL" else "경기취소",
+        },
+        events=[],
+        expected_updated_at=candidate["updatedAt"],
+    )
+
+    current = registry.scoreboard_state("20260604LGKT0")
+    assert current is not None
+    assert current["status"] == terminal_status
+    assert current["awayScore"] == 3
+    assert current["homeScore"] == 4
+    assert "scoreCorrectionCandidate" not in current
+
+
 def test_push_registry_rejects_terminal_scoreboard_status_regression(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     registry.replace_scoreboard_state(
@@ -1938,6 +2221,7 @@ def test_register_live_activity_replaces_previous_token(tmp_path) -> None:
             gameId="20260604LGKT0",
             activityId="activity-1",
             activityPushToken="old-token",
+            installationId="install-1",
         )
     )
     service.register_live_activity(
@@ -1946,10 +2230,147 @@ def test_register_live_activity_replaces_previous_token(tmp_path) -> None:
             activityId="activity-1",
             activityPushToken="new-token",
             previousActivityPushToken="old-token",
+            installationId="install-1",
         )
     )
 
     assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["new-token"]
+
+
+@pytest.mark.parametrize(
+    ("field_name", "value"),
+    [
+        ("gameId", "g" * 33),
+        ("activityPushToken", "t" * 513),
+        ("activityId", "a" * 129),
+        ("previousActivityPushToken", "p" * 513),
+        ("installationId", "i" * 129),
+    ],
+)
+def test_live_activity_register_rejects_oversized_identity_fields(
+    field_name: str,
+    value: str,
+) -> None:
+    payload = {
+        "gameId": "20260604LGKT0",
+        "activityId": "activity-1",
+        "activityPushToken": "token",
+        "previousActivityPushToken": "previous-token",
+        "installationId": "install-1",
+    }
+    payload[field_name] = value
+
+    with pytest.raises(ValueError):
+        LiveActivityRegisterRequest(**payload)
+
+
+@pytest.mark.parametrize("field_name", ["gameId", "activityPushToken"])
+def test_live_activity_register_rejects_empty_required_identity_field(
+    field_name: str,
+) -> None:
+    payload = {
+        "gameId": "20260604LGKT0",
+        "activityId": "activity-1",
+        "activityPushToken": "token",
+        "installationId": "install-1",
+    }
+    payload[field_name] = ""
+
+    with pytest.raises(ValueError):
+        LiveActivityRegisterRequest(**payload)
+
+
+@pytest.mark.parametrize(
+    (
+        "replacement_game_id",
+        "replacement_activity_id",
+        "replacement_installation_id",
+    ),
+    [
+        ("20260604SSOB0", "activity-1", "install-owner"),
+        ("20260604LGKT0", "activity-attacker", "install-owner"),
+        ("20260604LGKT0", "activity-1", "install-attacker"),
+    ],
+)
+def test_register_live_activity_does_not_rotate_another_owner_token(
+    tmp_path,
+    replacement_game_id: str,
+    replacement_activity_id: str,
+    replacement_installation_id: str,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="victim-token",
+            installationId="install-owner",
+        )
+    )
+
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId=replacement_game_id,
+            activityId=replacement_activity_id,
+            activityPushToken="replacement-token",
+            previousActivityPushToken="victim-token",
+            installationId=replacement_installation_id,
+        )
+    )
+
+    data = registry._load()
+    assert set(data["liveActivities"]) == {"replacement-token", "victim-token"}
+    assert data["liveActivities"]["victim-token"]["gameId"] == "20260604LGKT0"
+    assert data["liveActivities"]["replacement-token"]["gameId"] == replacement_game_id
+
+
+@pytest.mark.parametrize(
+    ("replacement_activity_id", "replacement_installation_id"),
+    [
+        (None, "install-owner"),
+        ("activity-1", None),
+        (None, None),
+        ("", "install-owner"),
+        ("activity-1", ""),
+    ],
+)
+def test_register_live_activity_missing_owner_does_not_delete_previous_token(
+    tmp_path,
+    replacement_activity_id: Optional[str],
+    replacement_installation_id: Optional[str],
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(
+        registry=registry,
+        live_activity_sender=FakeLiveActivitySender(),
+    )
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="victim-token",
+            installationId="install-owner",
+        )
+    )
+
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId=replacement_activity_id,
+            activityPushToken="replacement-token",
+            previousActivityPushToken="victim-token",
+            installationId=replacement_installation_id,
+        )
+    )
+
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == [
+        "replacement-token",
+        "victim-token",
+    ]
 
 
 def test_register_live_activity_start_token_replaces_previous_token(tmp_path) -> None:
@@ -1973,6 +2394,148 @@ def test_register_live_activity_start_token_replaces_previous_token(tmp_path) ->
     data = registry._load()
     assert list(data["liveActivityStartTokens"]) == ["new-start-token"]
     assert registry.live_activity_start_token_count() == 1
+
+
+def test_start_token_rotation_rejects_delayed_replay_and_preserves_current(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token-a",
+            installationId="install-1",
+        )
+    )
+    service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token-b",
+            previousPushToStartToken="start-token-a",
+            installationId="install-1",
+        )
+    )
+
+    with pytest.raises(PushRegistryOwnershipError, match="start token ownership conflict"):
+        service.register_live_activity_start_token(
+            LiveActivityStartTokenRegisterRequest(
+                pushToStartToken="start-token-a",
+                previousPushToStartToken="older-start-token",
+                installationId="install-1",
+            )
+        )
+
+    data = registry._load()
+    assert list(data["liveActivityStartTokens"]) == ["start-token-b"]
+
+
+@pytest.mark.parametrize("previous_token", [None, "start-token-a"])
+def test_start_token_current_owner_retry_is_idempotent(
+    tmp_path,
+    previous_token: Optional[str],
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token-a",
+            installationId="install-1",
+        )
+    )
+    service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token-b",
+            previousPushToStartToken="start-token-a",
+            installationId="install-1",
+        )
+    )
+
+    retry = service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token-b",
+            previousPushToStartToken=previous_token,
+            installationId="install-1",
+        )
+    )
+
+    assert retry["registered"] is True
+    assert retry["installationId"] == "install-1"
+    data = registry._load()
+    assert list(data["liveActivityStartTokens"]) == ["start-token-b"]
+
+
+def test_start_token_rotation_rejects_blank_previous_for_existing_owner(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token-a",
+            installationId="install-1",
+        )
+    )
+
+    with pytest.raises(PushRegistryOwnershipError, match="start token ownership conflict"):
+        service.register_live_activity_start_token(
+            LiveActivityStartTokenRegisterRequest(
+                pushToStartToken="start-token-b",
+                previousPushToStartToken="",
+                installationId="install-1",
+            )
+        )
+
+    data = registry._load()
+    assert list(data["liveActivityStartTokens"]) == ["start-token-a"]
+
+
+def test_start_token_concurrent_rotations_allow_only_one_current_owner(
+    tmp_path,
+) -> None:
+    registry_path = str(tmp_path / "push_registry.json")
+    initial_service = PushService(registry=PushRegistry(registry_path))
+    initial_service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token-a",
+            installationId="install-1",
+        )
+    )
+    services = [
+        PushService(registry=PushRegistry(registry_path)),
+        PushService(registry=PushRegistry(registry_path)),
+    ]
+    barrier = threading.Barrier(3)
+
+    def rotate(service: PushService, token: str) -> tuple[str, str]:
+        barrier.wait()
+        try:
+            service.register_live_activity_start_token(
+                LiveActivityStartTokenRegisterRequest(
+                    pushToStartToken=token,
+                    previousPushToStartToken="start-token-a",
+                    installationId="install-1",
+                )
+            )
+        except PushRegistryOwnershipError as error:
+            return token, str(error)
+        return token, "registered"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [
+            executor.submit(rotate, service, token)
+            for service, token in zip(
+                services,
+                ("start-token-b", "start-token-c"),
+            )
+        ]
+        barrier.wait()
+        results = [future.result(timeout=5) for future in futures]
+
+    registered = [token for token, result in results if result == "registered"]
+    conflicts = [result for _, result in results if result != "registered"]
+    assert len(registered) == 1
+    assert conflicts == ["start token ownership conflict"]
+    data = PushRegistry(registry_path)._load()
+    assert list(data["liveActivityStartTokens"]) == registered
 
 
 def test_live_activity_start_registration_targets_my_team_ios_device(tmp_path) -> None:
@@ -2021,15 +2584,46 @@ def test_unregister_live_activity_by_activity_id(tmp_path) -> None:
             gameId="20260604LGKT0",
             activityId="activity-1",
             activityPushToken="token",
+            installationId="install-1",
         )
     )
 
     response = service.unregister_live_activity(
-        LiveActivityUnregisterRequest(gameId="20260604LGKT0", activityId="activity-1")
+        LiveActivityUnregisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+            installationId="install-1",
+        )
     )
 
     assert response["removed"] == 1
     assert registry.live_activity_tokens_for_game("20260604LGKT0") == []
+
+
+def test_unregister_live_activity_rejects_another_installation(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    service = PushService(registry=registry, live_activity_sender=FakeLiveActivitySender())
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+            installationId="install-owner",
+        )
+    )
+
+    response = service.unregister_live_activity(
+        LiveActivityUnregisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+            installationId="install-attacker",
+        )
+    )
+
+    assert response["removed"] == 0
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["token"]
 
 
 def test_send_live_activity_update_uses_registered_tokens(tmp_path) -> None:
@@ -2056,6 +2650,192 @@ def test_send_live_activity_update_uses_registered_tokens(tmp_path) -> None:
     assert sender.calls[0]["state"].homeScore == 3
 
 
+def test_permanent_live_activity_update_failure_prunes_only_exact_token_and_state(
+    tmp_path,
+) -> None:
+    import hashlib
+
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = SelectivePermanentLiveActivitySender(invalid_update_tokens={"token-a"})
+    service = PushService(registry=registry, live_activity_sender=sender)
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-a",
+            activityPushToken="token-a",
+            installationId="install-a",
+        )
+    )
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-b",
+            activityPushToken="token-b",
+            installationId="install-b",
+        )
+    )
+    delivery_ids = {
+        token: hashlib.sha256(token.encode("utf-8")).hexdigest() for token in ("token-a", "token-b")
+    }
+    registry.claim_live_activity_updates(
+        game_id="20260604LGKT0",
+        delivery_ids=list(delivery_ids.values()),
+        content_signature="signature",
+    )
+
+    failed = service.send_live_activity_update(
+        LiveActivityUpdateRequest(
+            gameId="20260604LGKT0",
+            activityPushToken="token-a",
+            state=_live_activity_state(),
+        )
+    )
+    retried = service.send_live_activity_update(
+        LiveActivityUpdateRequest(
+            gameId="20260604LGKT0",
+            state=_live_activity_state(),
+        )
+    )
+
+    assert failed["sent"] is False
+    assert failed["messages"][0]["permanentTokenFailure"] is True
+    assert failed["messages"][0]["pruned"] is True
+    assert retried["sent"] is True
+    assert [call["activity_push_token"] for call in sender.calls] == ["token-a", "token-b"]
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["token-b"]
+    data = registry._load()
+    deliveries = data["liveActivityUpdateStates"]["20260604LGKT0"]["deliveries"]
+    assert set(deliveries) == {delivery_ids["token-b"]}
+
+
+def test_stale_permanent_update_failure_does_not_prune_rotated_generation(tmp_path) -> None:
+    class _BlockingPermanentSender(FakeLiveActivitySender):
+        def __init__(self) -> None:
+            super().__init__()
+            self.call_started = threading.Event()
+            self.release_call = threading.Event()
+
+        def send(self, **kwargs):
+            self.calls.append(kwargs)
+            self.call_started.set()
+            assert self.release_call.wait(timeout=5)
+            raise ApnsLiveActivitySendError(
+                operation="send",
+                status_code=410,
+                reason="Unregistered",
+                response_text='{"reason":"Unregistered"}',
+            )
+
+    registry_path = str(tmp_path / "push_registry.json")
+    registry = PushRegistry(registry_path)
+    sender = _BlockingPermanentSender()
+    service = PushService(registry=registry, live_activity_sender=sender)
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="old-token",
+            installationId="install-1",
+        )
+    )
+    payload = LiveActivityUpdateRequest(
+        gameId="20260604LGKT0",
+        state=_live_activity_state(),
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(service.send_live_activity_update, payload)
+        assert sender.call_started.wait(timeout=5)
+        PushService(
+            registry=PushRegistry(registry_path),
+            live_activity_sender=FakeLiveActivitySender(),
+        ).register_live_activity(
+            LiveActivityRegisterRequest(
+                gameId="20260604LGKT0",
+                activityId="activity-1",
+                activityPushToken="new-token",
+                previousActivityPushToken="old-token",
+                installationId="install-1",
+            )
+        )
+        sender.release_call.set()
+        response = future.result(timeout=5)
+
+    assert response["sent"] is False
+    assert response["messages"][0]["pruned"] is False
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["new-token"]
+
+
+def test_stale_permanent_update_failure_does_not_prune_reused_token_generation(
+    tmp_path,
+) -> None:
+    class _BlockingPermanentSender(FakeLiveActivitySender):
+        def __init__(self) -> None:
+            super().__init__()
+            self.call_started = threading.Event()
+            self.release_call = threading.Event()
+
+        def send(self, **kwargs):
+            self.calls.append(kwargs)
+            self.call_started.set()
+            assert self.release_call.wait(timeout=5)
+            raise ApnsLiveActivitySendError(
+                operation="send",
+                status_code=410,
+                reason="Unregistered",
+                response_text='{"reason":"Unregistered"}',
+            )
+
+    registry_path = str(tmp_path / "push_registry.json")
+    registry = PushRegistry(registry_path)
+    sender = _BlockingPermanentSender()
+    service = PushService(registry=registry, live_activity_sender=sender)
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token-a",
+            installationId="install-1",
+        )
+    )
+    payload = LiveActivityUpdateRequest(
+        gameId="20260604LGKT0",
+        state=_live_activity_state(),
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(service.send_live_activity_update, payload)
+        assert sender.call_started.wait(timeout=5)
+        rotating_service = PushService(
+            registry=PushRegistry(registry_path),
+            live_activity_sender=FakeLiveActivitySender(),
+        )
+        rotating_service.register_live_activity(
+            LiveActivityRegisterRequest(
+                gameId="20260604LGKT0",
+                activityId="activity-1",
+                activityPushToken="token-b",
+                previousActivityPushToken="token-a",
+                installationId="install-1",
+            )
+        )
+        rotating_service.register_live_activity(
+            LiveActivityRegisterRequest(
+                gameId="20260604LGKT0",
+                activityId="activity-1",
+                activityPushToken="token-a",
+                previousActivityPushToken="token-b",
+                installationId="install-1",
+            )
+        )
+        sender.release_call.set()
+        response = future.result(timeout=5)
+
+    assert response["sent"] is False
+    assert response["messages"][0]["pruned"] is False
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["token-a"]
+
+
 def test_successful_live_activity_end_removes_registered_token(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     sender = FakeLiveActivitySender()
@@ -2078,6 +2858,102 @@ def test_successful_live_activity_end_removes_registered_token(tmp_path) -> None
 
     assert response["sent"] is True
     assert sender.calls[0]["event"] == "end"
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == []
+
+
+def test_permanent_live_activity_end_failure_prunes_exact_claimed_token(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = SelectivePermanentLiveActivitySender(invalid_update_tokens={"token-a"})
+    service = PushService(registry=registry, live_activity_sender=sender)
+    for suffix in ("a", "b"):
+        service.register_live_activity(
+            LiveActivityRegisterRequest(
+                gameId="20260604LGKT0",
+                activityId=f"activity-{suffix}",
+                activityPushToken=f"token-{suffix}",
+                installationId=f"install-{suffix}",
+            )
+        )
+
+    response = service.send_live_activity_update(
+        LiveActivityUpdateRequest(
+            gameId="20260604LGKT0",
+            activityPushToken="token-a",
+            state=_live_activity_state(),
+            event="end",
+        )
+    )
+
+    assert response["sent"] is False
+    assert response["messages"][0]["permanentTokenFailure"] is True
+    assert response["messages"][0]["pruned"] is True
+    assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["token-b"]
+    data = registry._load()
+    assert "endClaimId" not in data["liveActivities"]["token-b"]
+
+
+def test_same_token_reregister_before_end_claim_uses_current_generation(tmp_path) -> None:
+    class _BlockingEndClaimRegistry(PushRegistry):
+        def __init__(self, path: str) -> None:
+            super().__init__(path)
+            self.claim_started = threading.Event()
+            self.release_claim = threading.Event()
+
+        def _wait_before_claim(self) -> None:
+            self.claim_started.set()
+            assert self.release_claim.wait(timeout=5)
+
+        def claim_live_activity_end(self, **kwargs):
+            self._wait_before_claim()
+            return super().claim_live_activity_end(**kwargs)
+
+        def claim_live_activity_end_with_generation(self, **kwargs):
+            self._wait_before_claim()
+            return super().claim_live_activity_end_with_generation(**kwargs)
+
+    registry_path = str(tmp_path / "push_registry.json")
+    registry = _BlockingEndClaimRegistry(registry_path)
+    service = PushService(
+        registry=registry,
+        live_activity_sender=SelectivePermanentLiveActivitySender(
+            invalid_update_tokens={"token-a"}
+        ),
+    )
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token-a",
+            installationId="install-1",
+        )
+    )
+    payload = LiveActivityUpdateRequest(
+        gameId="20260604LGKT0",
+        activityPushToken="token-a",
+        state=_live_activity_state(),
+        event="end",
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(service.send_live_activity_update, payload)
+        assert registry.claim_started.wait(timeout=5)
+        PushService(
+            registry=PushRegistry(registry_path),
+            live_activity_sender=FakeLiveActivitySender(),
+        ).register_live_activity(
+            LiveActivityRegisterRequest(
+                gameId="20260604LGKT0",
+                activityId="activity-1",
+                activityPushToken="token-a",
+                installationId="install-1",
+            )
+        )
+        registry.release_claim.set()
+        response = future.result(timeout=5)
+
+    assert response["sent"] is False
+    assert response["messages"][0]["permanentTokenFailure"] is True
+    assert response["messages"][0]["pruned"] is True
     assert registry.live_activity_tokens_for_game("20260604LGKT0") == []
 
 
@@ -2454,7 +3330,7 @@ def test_live_activity_updated_at_uses_kbo_time_on_utc_host(tmp_path) -> None:
         time_module.tzset()
 
 
-def test_live_activity_scoreboard_sync_warms_scoreboard_without_registrations(
+def test_live_activity_scoreboard_sync_skips_idle_work_without_registrations(
     tmp_path,
 ) -> None:
     class WarmScoreboardService:
@@ -2481,11 +3357,12 @@ def test_live_activity_scoreboard_sync_warms_scoreboard_without_registrations(
 
     response = sync_service.sync_date("2026-06-04")
 
-    assert scoreboard_service.prime_calls == ["2026-06-04"]
-    assert response["checkedGames"] == 1
-    assert response["warmed"] is True
+    assert scoreboard_service.prime_calls == []
+    assert response["checkedGames"] == 0
+    assert response["warmed"] is False
+    assert response["idle"] is True
     assert response["updatedGames"] == []
-    assert registry.sync_heartbeat()["checkedGames"] == 1
+    assert registry.sync_heartbeat() == {}
 
 
 def test_live_activity_scoreboard_sync_starts_my_team_live_activity_from_start_token(
@@ -2620,6 +3497,172 @@ def test_concurrent_live_activity_start_claims_token_once(tmp_path) -> None:
         )
         == []
     )
+
+
+def test_permanent_live_activity_start_failure_prunes_exact_token_and_all_states(
+    tmp_path,
+) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = SelectivePermanentLiveActivitySender(invalid_start_tokens={"start-a"})
+    service = PushService(registry=registry, live_activity_sender=sender)
+    _register_live_activity_start_owner(
+        service,
+        installation_id="install-a",
+        device_token="device-a",
+        start_token="start-a",
+        my_team="LG",
+    )
+    _register_live_activity_start_owner(
+        service,
+        installation_id="install-b",
+        device_token="device-b",
+        start_token="start-b",
+        my_team="KT",
+    )
+    registry.mark_live_activity_start_sent(
+        game_id="20260603LGKT0",
+        push_to_start_token="start-a",
+    )
+
+    response = service.send_live_activity_start(
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG 트윈스",
+        home_team_id="KT",
+        home_team_name="KT 위즈",
+        state=_live_activity_state(),
+    )
+    retried = service.send_live_activity_start(
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        away_team_name="LG 트윈스",
+        home_team_id="KT",
+        home_team_name="KT 위즈",
+        state=_live_activity_state(),
+    )
+
+    assert response["sent"] is True
+    assert response["messages"][0]["pushToStartToken"] == "start-a"
+    assert response["messages"][0]["permanentTokenFailure"] is True
+    assert response["messages"][0]["pruned"] is True
+    assert response["messages"][1]["pushToStartToken"] == "start-b"
+    assert response["messages"][1]["sent"] is True
+    assert retried["messages"] == []
+    assert [call["push_to_start_token"] for call in sender.start_calls] == [
+        "start-a",
+        "start-b",
+    ]
+    data = registry._load()
+    assert set(data["liveActivityStartTokens"]) == {"start-b"}
+    assert "20260603LGKT0" not in data.get("liveActivityStartStates", {})
+    assert "start-a" not in data["liveActivityStartStates"]["20260604LGKT0"]
+
+
+def test_transient_live_activity_start_failure_retains_token_for_retry(tmp_path) -> None:
+    class _TransientStartSender(FakeLiveActivitySender):
+        def __init__(self) -> None:
+            super().__init__()
+            self.failures_remaining = 1
+
+        def send_start(self, **kwargs):
+            self.start_calls.append(kwargs)
+            if self.failures_remaining:
+                self.failures_remaining -= 1
+                raise RuntimeError("temporary APNs failure")
+            return {"sent": True, "apnsId": "apns-start-id", "statusCode": 200}
+
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = _TransientStartSender()
+    service = PushService(registry=registry, live_activity_sender=sender)
+    _register_live_activity_start_owner(
+        service,
+        installation_id="install-1",
+        device_token="device-1",
+        start_token="start-token",
+        my_team="LG",
+    )
+    arguments = {
+        "game_id": "20260604LGKT0",
+        "away_team_id": "LG",
+        "away_team_name": "LG 트윈스",
+        "home_team_id": "KT",
+        "home_team_name": "KT 위즈",
+        "state": _live_activity_state(),
+    }
+
+    failed = service.send_live_activity_start(**arguments)
+    retried = service.send_live_activity_start(**arguments)
+
+    assert failed["sent"] is False
+    assert "permanentTokenFailure" not in failed["messages"][0]
+    assert retried["sent"] is True
+    assert len(sender.start_calls) == 2
+    assert set(registry._load()["liveActivityStartTokens"]) == {"start-token"}
+
+
+def test_stale_permanent_start_failure_does_not_prune_rotated_generation(tmp_path) -> None:
+    class _BlockingPermanentStartSender(FakeLiveActivitySender):
+        def __init__(self) -> None:
+            super().__init__()
+            self.call_started = threading.Event()
+            self.release_call = threading.Event()
+
+        def send_start(self, **kwargs):
+            self.start_calls.append(kwargs)
+            self.call_started.set()
+            assert self.release_call.wait(timeout=5)
+            raise ApnsLiveActivitySendError(
+                operation="start",
+                status_code=410,
+                reason="Unregistered",
+                response_text='{"reason":"Unregistered"}',
+            )
+
+    registry_path = str(tmp_path / "push_registry.json")
+    registry = PushRegistry(registry_path)
+    sender = _BlockingPermanentStartSender()
+    service = PushService(registry=registry, live_activity_sender=sender)
+    _register_live_activity_start_owner(
+        service,
+        installation_id="install-1",
+        device_token="device-1",
+        start_token="old-start-token",
+        my_team="LG",
+    )
+    arguments = {
+        "game_id": "20260604LGKT0",
+        "away_team_id": "LG",
+        "away_team_name": "LG 트윈스",
+        "home_team_id": "KT",
+        "home_team_name": "KT 위즈",
+        "state": _live_activity_state(),
+    }
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(service.send_live_activity_start, **arguments)
+        assert sender.call_started.wait(timeout=5)
+        PushService(
+            registry=PushRegistry(registry_path),
+            live_activity_sender=FakeLiveActivitySender(),
+        ).register_live_activity_start_token(
+            LiveActivityStartTokenRegisterRequest(
+                pushToStartToken="new-start-token",
+                previousPushToStartToken="old-start-token",
+                installationId="install-1",
+            )
+        )
+        sender.release_call.set()
+        response = future.result(timeout=5)
+
+    assert response["sent"] is False
+    assert response["messages"][0]["pruned"] is False
+    assert set(registry._load()["liveActivityStartTokens"]) == {"new-start-token"}
+    eligible = registry.live_activity_start_registrations_for_game(
+        game_id="20260604LGKT0",
+        away_team_id="LG",
+        home_team_id="KT",
+    )
+    assert [item["pushToStartToken"] for item in eligible] == ["new-start-token"]
 
 
 def test_live_activity_scoreboard_sync_starts_my_team_activity_ten_minutes_before_first_pitch(
@@ -3104,6 +4147,93 @@ def test_scoreboard_sync_rejects_delayed_lower_score_without_duplicate_scoring(
     assert state is not None
     assert state["awayScore"] == 2
     assert state["homeScore"] == 0
+
+
+def test_scoreboard_sync_accepts_persisted_live_score_correction_after_window(
+    tmp_path,
+) -> None:
+    now = [datetime(2026, 6, 4, 12, 0, tzinfo=timezone.utc)]
+    registry = PushRegistry(
+        str(tmp_path / "push_registry.json"),
+        score_correction_confirmation_seconds=8,
+        score_correction_now_provider=lambda: now[0],
+    )
+    sender = FakeLiveActivitySender()
+    push_service = FakePushService(
+        registry=registry,
+        live_activity_sender=sender,
+    )
+    push_service.register(
+        PushRegisterRequest(
+            deviceToken="fcm-token",
+            platform="ios",
+            myTeam="LG",
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=True,
+                allGames=False,
+            ),
+        )
+    )
+    push_service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId="20260604LGKT0",
+            activityId="activity-1",
+            activityPushToken="token",
+        )
+    )
+    sync_service = LiveActivityScoreboardSyncService(
+        scoreboard_service=FakeScoreboardSequenceService(
+            [
+                _scoreboard_game(away_score=5, home_score=4, inning="7회말"),
+                _scoreboard_game(away_score=3, home_score=4, inning="7회말"),
+                _scoreboard_game(away_score=3, home_score=4, inning="7회말"),
+                _scoreboard_game(away_score=3, home_score=4, inning="7회말"),
+            ]
+        ),
+        push_service=push_service,
+        now_provider=lambda: now[0],
+    )
+
+    baseline = sync_service.sync_date("2026-06-04")
+    baseline_state = registry.scoreboard_state("20260604LGKT0")
+    assert baseline_state is not None
+    first_candidate = sync_service.sync_date("2026-06-04")
+    concurrent_candidate = sync_service.sync_date("2026-06-04")
+
+    assert len(baseline["updatedGames"]) == 1
+    assert first_candidate["updatedGames"] == []
+    assert concurrent_candidate["updatedGames"] == []
+    assert push_service.moment_calls == []
+    state = registry.scoreboard_state("20260604LGKT0")
+    assert state is not None
+    assert state["awayScore"] == 5
+    assert state["homeScore"] == 4
+    assert state["updatedAt"] != baseline_state["updatedAt"]
+    assert state["scoreCorrectionCandidate"]["awayScore"] == 3
+    assert state["scoreCorrectionCandidate"]["homeScore"] == 4
+
+    now[0] += timedelta(seconds=8)
+    confirmed = sync_service.sync_date("2026-06-04")
+
+    assert len(confirmed["updatedGames"]) == 1
+    assert confirmed["pushedMoments"] == []
+    assert push_service.moment_calls == []
+    assert len(sender.calls) == 2
+    assert registry._load()["pushOutbox"] == {}
+    assert sender.calls[-1]["event"] == "update"
+    assert sender.calls[-1]["state"].awayScore == 3
+    assert sender.calls[-1]["state"].homeScore == 4
+    state = registry.scoreboard_state("20260604LGKT0")
+    assert state is not None
+    assert state["awayScore"] == 3
+    assert state["homeScore"] == 4
+    assert "scoreCorrectionCandidate" not in state
 
 
 def test_scoreboard_sync_rejects_terminal_to_live_regression_without_duplicate_end(
@@ -4150,6 +5280,7 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
     service.record_receipt(
         PushReceiptRequest(
             deviceToken="secret-fcm-token",
+            installationId="install-87654321",
             messageId="message-1",
             source="foreground",
             type="hit",
@@ -4157,7 +5288,12 @@ def test_push_config_status_reports_redacted_registration_topics(tmp_path) -> No
             route="/game/20260618KTOB0?tab=relay",
         )
     )
-    service.send_device_test(PushDeviceTestRequest(deviceToken="secret-fcm-token"))
+    service.send_device_test(
+        PushDeviceTestRequest(
+            deviceToken="secret-fcm-token",
+            installationId="install-87654321",
+        )
+    )
     settings = _settings(
         app_env="release",
         firebase_service_account_path=str(firebase_path),
@@ -4389,12 +5525,122 @@ def test_send_test_push_endpoint_requires_configured_sync_secret(monkeypatch) ->
     assert response.json()["detail"] == "Push sync secret is not configured"
 
 
+def test_live_activity_update_endpoint_uses_sync_secret(monkeypatch) -> None:
+    class SecretSettings:
+        push_sync_secret = "secret"
+
+    captured = {}
+
+    class FakeService:
+        def send_live_activity_update(self, payload) -> dict:
+            captured["gameId"] = payload.gameId
+            captured["event"] = payload.event
+            return {"sent": True, "gameId": payload.gameId, "messages": []}
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: SecretSettings())
+    monkeypatch.setattr(push_routes, "service", FakeService())
+    client = TestClient(app)
+    body = {
+        "gameId": "20260604LGKT0",
+        "state": {
+            "awayTeamId": "LG",
+            "awayTeam": "LG",
+            "homeTeamId": "KT",
+            "homeTeam": "KT",
+            "awayScore": 2,
+            "homeScore": 3,
+            "inning": "7회말",
+            "stadium": "수원",
+            "updatedAt": "21:10:00",
+        },
+    }
+
+    denied = client.post("/api/push/live-activity/update", json=body)
+    allowed = client.post(
+        "/api/push/live-activity/update",
+        json=body,
+        headers={"X-Kbo-Push-Sync-Secret": "secret"},
+    )
+
+    assert denied.status_code == 401
+    assert allowed.status_code == 200
+    assert captured == {"gameId": "20260604LGKT0", "event": "update"}
+
+
+def test_live_activity_update_endpoint_requires_configured_sync_secret(monkeypatch) -> None:
+    class LocalSettings:
+        push_sync_secret = ""
+
+    class FakeService:
+        def send_live_activity_update(self, payload) -> dict:
+            raise AssertionError("update must not run without PUSH_SYNC_SECRET")
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: LocalSettings())
+    monkeypatch.setattr(push_routes, "service", FakeService())
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/push/live-activity/update",
+        json={
+            "gameId": "20260604LGKT0",
+            "state": {
+                "awayTeamId": "LG",
+                "awayTeam": "LG",
+                "homeTeamId": "KT",
+                "homeTeam": "KT",
+                "awayScore": 2,
+                "homeScore": 3,
+                "inning": "7회말",
+                "stadium": "수원",
+                "updatedAt": "21:10:00",
+            },
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Push sync secret is not configured"
+
+
+def test_sync_secret_comparison_accepts_utf8_without_server_error(monkeypatch) -> None:
+    class SecretSettings:
+        push_sync_secret = "비밀-key"
+
+    monkeypatch.setattr(push_routes, "get_settings", lambda: SecretSettings())
+
+    push_routes._ensure_sync_allowed("비밀-key", require_configured=True)
+    with pytest.raises(HTTPException) as error:
+        push_routes._ensure_sync_allowed("다른-key", require_configured=True)
+
+    assert error.value.status_code == 401
+
+
+def test_live_activity_unregister_still_requires_game_id(monkeypatch) -> None:
+    class FakeService:
+        def unregister_live_activity(self, payload) -> dict:
+            raise AssertionError("invalid owner identity must not reach the service")
+
+    monkeypatch.setattr(push_routes, "service", FakeService())
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/push/live-activity/unregister",
+        json={
+            "activityPushToken": "token",
+            "activityId": "activity-1",
+            "installationId": "install-1",
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_send_device_test_push_endpoint_does_not_require_sync_secret(monkeypatch) -> None:
     captured = {}
 
     class FakeService:
         def send_device_test(self, payload) -> dict:
             captured["deviceToken"] = payload.deviceToken
+            captured["installationId"] = payload.installationId
             return {"sent": True, "registered": True, "target": "token"}
 
     monkeypatch.setattr(push_routes, "service", FakeService())
@@ -4402,11 +5648,15 @@ def test_send_device_test_push_endpoint_does_not_require_sync_secret(monkeypatch
 
     response = client.post(
         "/api/push/test-device",
-        json={"deviceToken": "registered-token"},
+        json={
+            "deviceToken": "registered-token",
+            "installationId": "install-1",
+        },
     )
 
     assert response.status_code == 200
     assert captured["deviceToken"] == "registered-token"
+    assert captured["installationId"] == "install-1"
     assert response.json()["data"]["sent"] is True
 
 
@@ -4416,6 +5666,7 @@ def test_record_push_receipt_endpoint_does_not_require_sync_secret(monkeypatch) 
     class FakeService:
         def record_receipt(self, payload) -> dict:
             captured["deviceToken"] = payload.deviceToken
+            captured["installationId"] = payload.installationId
             captured["source"] = payload.source
             return {"recorded": True, "registered": True}
 
@@ -4426,6 +5677,7 @@ def test_record_push_receipt_endpoint_does_not_require_sync_secret(monkeypatch) 
         "/api/push/receipt",
         json={
             "deviceToken": "registered-token",
+            "installationId": "install-1",
             "messageId": "message-1",
             "source": "foreground",
             "type": "hit",
@@ -4434,7 +5686,11 @@ def test_record_push_receipt_endpoint_does_not_require_sync_secret(monkeypatch) 
     )
 
     assert response.status_code == 200
-    assert captured == {"deviceToken": "registered-token", "source": "foreground"}
+    assert captured == {
+        "deviceToken": "registered-token",
+        "installationId": "install-1",
+        "source": "foreground",
+    }
     assert response.json()["data"]["recorded"] is True
 
 
@@ -4624,6 +5880,131 @@ def test_apns_live_activity_start_payload_includes_activity_attributes(tmp_path)
     assert aps["content-state"]["homeScore"] == 3
 
 
+@pytest.mark.parametrize(
+    ("status_code", "response_payload", "response_text", "expected_reason", "permanent"),
+    [
+        (400, {"reason": "BadDeviceToken"}, "", "BadDeviceToken", True),
+        (
+            400,
+            {"reason": "DeviceTokenNotForTopic"},
+            "",
+            "DeviceTokenNotForTopic",
+            True,
+        ),
+        (410, {"reason": "Unregistered"}, "", "Unregistered", True),
+        (410, {"reason": "BadDeviceToken"}, "", "BadDeviceToken", False),
+        (400, {"reason": "Unregistered"}, "", "Unregistered", False),
+        (429, {"reason": "BadDeviceToken"}, "", "BadDeviceToken", False),
+        (500, {"reason": "Unregistered"}, "", "Unregistered", False),
+        (400, None, "not-json", None, False),
+        (300, None, "redirect", None, False),
+    ],
+)
+def test_apns_live_activity_error_preserves_reason_and_classifies_exact_status_pair(
+    monkeypatch,
+    tmp_path,
+    status_code,
+    response_payload,
+    response_text,
+    expected_reason,
+    permanent,
+) -> None:
+    class _Response:
+        headers = {}
+
+        def __init__(self) -> None:
+            self.status_code = status_code
+            self.text = response_text
+
+        def json(self):
+            if response_payload is None:
+                raise ValueError("invalid json")
+            return response_payload
+
+    class _Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        def post(self, url, *, json, headers):
+            return _Response()
+
+    monkeypatch.setattr("httpx.Client", lambda **kwargs: _Client())
+    settings = _settings(
+        app_env="release",
+        firebase_service_account_path="",
+        push_registry_path=str(tmp_path / "runtime" / "push_registry.json"),
+        apns_auth_key_path="",
+        apns_use_sandbox=False,
+        push_sync_secret="secret",
+        apns_auth_key_p8="unused",
+    )
+    sender = ApnsLiveActivitySender(settings)
+    monkeypatch.setattr(sender, "_headers", lambda **kwargs: {})
+
+    with pytest.raises(ValueError) as caught:
+        sender.send(
+            activity_push_token="activity-token",
+            game_id="20260604LGKT0",
+            state=_live_activity_state(),
+        )
+
+    assert type(caught.value).__name__ == "ApnsLiveActivitySendError"
+    assert caught.value.status_code == status_code
+    assert caught.value.reason == expected_reason
+    assert caught.value.is_permanent_token_failure is permanent
+
+
+def test_apns_live_activity_start_error_preserves_json_reason(monkeypatch, tmp_path) -> None:
+    class _Response:
+        status_code = 410
+        text = '{"reason":"Unregistered"}'
+        headers = {}
+
+        @staticmethod
+        def json():
+            return {"reason": "Unregistered"}
+
+    class _Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        def post(self, url, *, json, headers):
+            return _Response()
+
+    monkeypatch.setattr("httpx.Client", lambda **kwargs: _Client())
+    settings = _settings(
+        app_env="release",
+        firebase_service_account_path="",
+        push_registry_path=str(tmp_path / "runtime" / "push_registry.json"),
+        apns_auth_key_path="",
+        apns_use_sandbox=False,
+        push_sync_secret="secret",
+        apns_auth_key_p8="unused",
+    )
+    sender = ApnsLiveActivitySender(settings)
+    monkeypatch.setattr(sender, "_headers", lambda **kwargs: {})
+
+    with pytest.raises(ValueError) as caught:
+        sender.send_start(
+            push_to_start_token="start-token",
+            game_id="20260604LGKT0",
+            state=_live_activity_state(),
+            alert_title="경기 시작",
+            alert_body="LG vs KT",
+        )
+
+    assert type(caught.value).__name__ == "ApnsLiveActivitySendError"
+    assert caught.value.status_code == 410
+    assert caught.value.reason == "Unregistered"
+    assert caught.value.is_permanent_token_failure is True
+
+
 class FakeLiveActivitySender:
     def __init__(self) -> None:
         self.calls = []
@@ -4636,6 +6017,74 @@ class FakeLiveActivitySender:
     def send_start(self, **kwargs):
         self.start_calls.append(kwargs)
         return {"sent": True, "apnsId": "apns-start-id", "statusCode": 200}
+
+
+class SelectivePermanentLiveActivitySender(FakeLiveActivitySender):
+    def __init__(
+        self,
+        *,
+        invalid_update_tokens=None,
+        invalid_start_tokens=None,
+    ) -> None:
+        super().__init__()
+        self.invalid_update_tokens = set(invalid_update_tokens or [])
+        self.invalid_start_tokens = set(invalid_start_tokens or [])
+
+    @staticmethod
+    def _error(operation: str) -> ApnsLiveActivitySendError:
+        return ApnsLiveActivitySendError(
+            operation=operation,
+            status_code=410,
+            reason="Unregistered",
+            response_text='{"reason":"Unregistered"}',
+        )
+
+    def send(self, **kwargs):
+        self.calls.append(kwargs)
+        if kwargs["activity_push_token"] in self.invalid_update_tokens:
+            raise self._error("send")
+        return {"sent": True, "apnsId": "apns-id", "statusCode": 200}
+
+    def send_start(self, **kwargs):
+        self.start_calls.append(kwargs)
+        if kwargs["push_to_start_token"] in self.invalid_start_tokens:
+            raise self._error("start")
+        return {"sent": True, "apnsId": "apns-start-id", "statusCode": 200}
+
+
+def _register_live_activity_start_owner(
+    service: PushService,
+    *,
+    installation_id: str,
+    device_token: str,
+    start_token: str,
+    my_team: str,
+) -> None:
+    service.register(
+        PushRegisterRequest(
+            deviceToken=device_token,
+            platform="ios",
+            installationId=installation_id,
+            myTeam=my_team,
+            notifications=NotificationSettings(
+                gameStart=True,
+                scoring=True,
+                homerun=True,
+                reversal=True,
+                gameEnd=True,
+                lineupOpened=True,
+                inningChange=False,
+                allGames=False,
+            ),
+            notificationsAllowed=True,
+        )
+    )
+    service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken=start_token,
+            installationId=installation_id,
+        )
+    )
 
 
 class FakeTopicResponse:

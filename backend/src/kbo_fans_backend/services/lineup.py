@@ -8,7 +8,6 @@ from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
 from kbo_fans_backend.crawlers.lineup import LineupCrawler
 from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.services.player_stats import PlayerStatsService
-from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
@@ -19,15 +18,12 @@ def _current_kbo_date() -> date_type:
 
 
 class LineupService:
-    _LINEUP_OPENED_ALERT_KEY = "lineup_opened"
-
     def __init__(
         self,
         lineup_crawler: Optional[LineupCrawler] = None,
         boxscore_crawler: Optional[BoxscoreCrawler] = None,
         main_crawler: Optional[MainCrawler] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
-        push_service: Optional[PushService] = None,
         player_stats_service: Optional[PlayerStatsService] = None,
         today_provider: Optional[Callable[[], date_type]] = None,
     ) -> None:
@@ -35,7 +31,6 @@ class LineupService:
         self.boxscore_crawler = boxscore_crawler or BoxscoreCrawler()
         self.main_crawler = main_crawler or MainCrawler()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
-        self.push_service = push_service or PushService()
         self.player_stats_service = player_stats_service or PlayerStatsService()
         self.today_provider = today_provider or _current_kbo_date
 
@@ -83,45 +78,8 @@ class LineupService:
 
         self._enrich_lineup_rows(lineup, game_id)
 
-        if (
-            self._should_send_lineup_opened_alert(game_id, snapshot, lineup)
-            and not self._lineup_opened_already_sent(game_id)
-        ):
-            try:
-                response = self.push_service.send_lineup_opened(
-                    game_id=game_id,
-                    away_team_id=lineup["away"]["teamId"],
-                    away_team_name=lineup["away"].get("teamName") or lineup["away"]["teamId"],
-                    home_team_id=lineup["home"]["teamId"],
-                    home_team_name=lineup["home"].get("teamName") or lineup["home"]["teamId"],
-                )
-                if isinstance(response, dict) and response.get("sent"):
-                    self._mark_lineup_opened_sent(game_id)
-            except Exception:
-                pass
-
         self.snapshot_store.save("lineup", game_id, lineup)
         return lineup
-
-    def _lineup_opened_already_sent(self, game_id: str) -> bool:
-        registry = getattr(self.push_service, "registry", None)
-        if registry is None:
-            return False
-        try:
-            return bool(
-                registry.pregame_alert_sent(game_id, self._LINEUP_OPENED_ALERT_KEY)
-            )
-        except Exception:
-            return False
-
-    def _mark_lineup_opened_sent(self, game_id: str) -> None:
-        registry = getattr(self.push_service, "registry", None)
-        if registry is None:
-            return
-        try:
-            registry.mark_pregame_alert_sent(game_id, self._LINEUP_OPENED_ALERT_KEY)
-        except Exception:
-            pass
 
     def _get_main_game(self, game_id: str) -> Optional[dict[str, Any]]:
         if len(game_id) < 8:
@@ -224,9 +182,7 @@ class LineupService:
                     continue
                 if not str(row.get("name") or "").strip():
                     continue
-                has_player_id = bool(
-                    str(row.get("id") or row.get("playerId") or "").strip()
-                )
+                has_player_id = bool(str(row.get("id") or row.get("playerId") or "").strip())
                 has_image_url = bool(str(row.get("imageUrl") or "").strip())
                 if not has_player_id and not has_image_url:
                     return False
@@ -269,38 +225,8 @@ class LineupService:
         return re.sub(r"[^0-9A-Za-z가-힣]", "", text)
 
     @staticmethod
-    def _should_notify_lineup_opened(
-        previous: Optional[dict[str, Any]],
-        current: dict[str, Any],
-    ) -> bool:
-        prev_ready = bool(
-            previous
-            and previous.get("away", {}).get("lineup")
-            and previous.get("home", {}).get("lineup")
-        )
-        curr_ready = bool(
-            current.get("away", {}).get("lineup") and current.get("home", {}).get("lineup")
-        )
-        return (not prev_ready) and curr_ready
-
-    @staticmethod
     def _has_ready_lineup(payload: dict[str, Any]) -> bool:
         return bool(payload.get("away", {}).get("lineup") and payload.get("home", {}).get("lineup"))
-
-    def _should_send_lineup_opened_alert(
-        self,
-        game_id: str,
-        previous: Optional[dict[str, Any]],
-        current: dict[str, Any],
-    ) -> bool:
-        return self._is_current_kbo_game_id(game_id) and self._should_notify_lineup_opened(
-            previous,
-            current,
-        )
-
-    def _is_current_kbo_game_id(self, game_id: str) -> bool:
-        game_date = self._game_date_from_id(game_id)
-        return game_date is not None and game_date == self.today_provider()
 
     def _is_past_game_id(self, game_id: str) -> bool:
         game_date = self._game_date_from_id(game_id)

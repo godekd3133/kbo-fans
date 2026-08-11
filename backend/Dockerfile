@@ -9,6 +9,7 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src ./src
+COPY data/snapshots ./data/snapshots
 
 RUN pip install --no-cache-dir .
 

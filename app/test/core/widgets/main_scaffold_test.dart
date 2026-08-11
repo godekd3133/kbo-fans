@@ -180,6 +180,28 @@ void main() {
       expect(animatedScale.duration, Duration.zero);
     }
   });
+
+  testWidgets('하단 내비게이션은 운영체제 홈 인디케이터를 앱에서 흉내 내지 않는다', (tester) async {
+    _setViewport(tester, const Size(390, 844));
+
+    final router = _testRouter();
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+
+    final fakeHomeIndicators = find.byWidgetPredicate((widget) {
+      if (widget is! Container || widget.constraints == null) {
+        return false;
+      }
+      return widget.constraints!.minWidth == 128 &&
+          widget.constraints!.maxWidth == 128 &&
+          widget.constraints!.minHeight == 4 &&
+          widget.constraints!.maxHeight == 4;
+    });
+    expect(fakeHomeIndicators, findsNothing);
+  });
 }
 
 GoRouter _testRouter({String initialLocation = '/home'}) {

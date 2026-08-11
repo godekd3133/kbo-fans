@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kbo_fans/core/theme/app_theme.dart';
 import 'package:kbo_fans/features/schedule/widgets/schedule_game_card.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 
 void main() {
   Widget wrap(Widget child) {
     return MaterialApp(
+      theme: AppTheme.dark,
       home: Scaffold(
         body: Center(child: SizedBox(width: 390, child: child)),
       ),
@@ -115,6 +117,35 @@ void main() {
 
     expect(find.text('경기 전'), findsOneWidget);
     expect(find.text('vs'), findsOneWidget);
+  });
+
+  testWidgets('예정 경기 카드의 날짜·구장·대결 표시는 지원 텍스트를 쓴다', (tester) async {
+    const game = ScheduleGame(
+      gameId: '20260331KTLG0',
+      time: '18:30',
+      awayId: 'KT',
+      awayName: 'KT',
+      homeId: 'LG',
+      homeName: 'LG',
+      stadium: '잠실',
+      status: 'SCHEDULED',
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        const ScheduleGameCard(
+          game: game,
+          dateLabel: '3월 31일',
+          showTeamLogos: false,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final label in const ['3월 31일', '잠실', 'vs']) {
+      final text = tester.widget<Text>(find.text(label));
+      expect(text.style?.color, AppTheme.darkColors.textSupporting);
+    }
   });
 
   testWidgets('예정 경기는 0:0 점수가 들어와도 vs를 노출한다', (tester) async {

@@ -79,8 +79,8 @@ class GameStatusBadge extends StatelessWidget {
         }
         if (label.contains('취소')) {
           return (
-            AppColors.textDisabled.withValues(alpha: 0.18),
-            AppColors.textDisabled,
+            AppColors.textSupporting.withValues(alpha: 0.18),
+            AppColors.textSupporting,
           );
         }
         return (AppColors.cardSub, AppColors.textSecondary);

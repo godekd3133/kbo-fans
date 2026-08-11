@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Header, HTTPException, Query, status
 
+from kbo_fans_backend.api.routes.scoreboard import trusted_force_refresh
 from kbo_fans_backend.api.runtime_services import (
     boxscore_service,
     lineup_service,
@@ -11,6 +12,7 @@ from kbo_fans_backend.api.runtime_services import (
     schedule_service,
     scoreboard_service,
 )
+from kbo_fans_backend.schemas.boxscore import BoxscorePayload
 from kbo_fans_backend.schemas.common import ApiEnvelope
 from kbo_fans_backend.services.youtube_highlight import YoutubeHighlightService
 
@@ -22,8 +24,15 @@ youtube_highlight_service = YoutubeHighlightService()
 def get_game(
     game_id: str,
     forceRefresh: bool = Query(default=False),
+    x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
-    game = scoreboard_service.get_game(game_id, force_refresh=forceRefresh)
+    game = scoreboard_service.get_game(
+        game_id,
+        force_refresh=trusted_force_refresh(
+            forceRefresh,
+            x_kbo_push_sync_secret,
+        ),
+    )
     scheduled_game = None
     if game is None:
         scheduled_game = schedule_service.get_schedule_game(game_id)
@@ -35,10 +44,31 @@ def get_game(
         )
 
     if game is None and scheduled_game is not None:
+        schedule_status = str(scheduled_game.get("status") or "SCHEDULED").upper()
+        schedule_status_label = str(scheduled_game.get("statusLabel") or "").strip()
+        if not schedule_status_label:
+            schedule_status_label = {
+                "FINAL": "경기종료",
+                "CANCELLED": "경기 취소",
+                "SUSPENDED": "경기 중단",
+                "LIVE": "경기 진행 중",
+            }.get(schedule_status, "")
+        inning_label = schedule_status_label or (
+            f"{scheduled_game.get('time') or ''} 예정"
+            if schedule_status == "SCHEDULED"
+            else schedule_status
+        )
+        away_score = scheduled_game.get("awayScore")
+        home_score = scheduled_game.get("homeScore")
+        if not isinstance(away_score, int) or isinstance(away_score, bool):
+            away_score = None
+        if not isinstance(home_score, int) or isinstance(home_score, bool):
+            home_score = None
         game = {
             "gameId": scheduled_game["gameId"],
-            "status": scheduled_game["status"],
-            "inning": f"{scheduled_game['time']} 예정",
+            "status": schedule_status,
+            "statusLabel": schedule_status_label or None,
+            "inning": inning_label,
             "stadium": scheduled_game["stadium"],
             "startTime": scheduled_game["time"],
             "crowd": None,
@@ -46,21 +76,21 @@ def get_game(
                 "teamId": scheduled_game["awayId"],
                 "teamName": scheduled_game["awayName"],
                 "shortName": scheduled_game["awayName"],
-                "score": 0,
+                "score": away_score,
                 "scores": [None] * 9,
-                "hits": 0,
-                "errors": 0,
-                "balls": 0,
+                "hits": None,
+                "errors": None,
+                "balls": None,
             },
             "home": {
                 "teamId": scheduled_game["homeId"],
                 "teamName": scheduled_game["homeName"],
                 "shortName": scheduled_game["homeName"],
-                "score": 0,
+                "score": home_score,
                 "scores": [None] * 9,
-                "hits": 0,
-                "errors": 0,
-                "balls": 0,
+                "hits": None,
+                "errors": None,
+                "balls": None,
             },
         }
 
@@ -119,18 +149,22 @@ def get_relay(
     game_id: str,
     after: Optional[int] = Query(default=None),
     forceRefresh: bool = Query(default=False),
+    x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
     return ApiEnvelope.success_response(
         relay_service.get_relay(
             game_id,
             after=after,
-            force_refresh=forceRefresh,
+            force_refresh=trusted_force_refresh(
+                forceRefresh,
+                x_kbo_push_sync_secret,
+            ),
         )
     )
 
 
-@router.get("/boxscore", response_model=ApiEnvelope[dict])
-def get_boxscore(game_id: str) -> ApiEnvelope[dict]:
+@router.get("/boxscore", response_model=ApiEnvelope[BoxscorePayload])
+def get_boxscore(game_id: str) -> ApiEnvelope[BoxscorePayload]:
     return ApiEnvelope.success_response(boxscore_service.get_boxscore(game_id))
 
 

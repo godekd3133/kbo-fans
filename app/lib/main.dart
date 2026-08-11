@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:home_widget/home_widget.dart';
@@ -13,8 +14,8 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
 import 'core/router/app_router.dart';
 import 'core/router/app_route_sanitizer.dart';
-import 'core/utils/kbo_time.dart';
 import 'core/widgets/dev_console.dart';
+import 'core/utils/kbo_time.dart';
 import 'data/providers.dart';
 import 'features/settings/release_notes_prompt.dart';
 import 'services/game_event_alert_service.dart';
@@ -165,10 +166,12 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
   bool _didInitializePushNotificationRouting = false;
   bool _foregroundPushDialogVisible = false;
   DateTime? _lastResumeSyncAt;
+  Timer? _kboDateRolloverTimer;
 
   @override
   void initState() {
     super.initState();
+    _scheduleKboDateRollover();
     unawaited(ref.read(appThemeModeProvider.notifier).load());
     if (!kIsWeb && !_isWidgetTestBinding()) {
       WidgetsBinding.instance.addObserver(_lifecycleObserver);
@@ -183,6 +186,7 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
 
   @override
   void dispose() {
+    _kboDateRolloverTimer?.cancel();
     unawaited(_homeWidgetClickSubscription?.cancel());
     unawaited(_pushNotificationRouteSubscription?.cancel());
     unawaited(_foregroundPushNotificationSubscription?.cancel());
@@ -190,6 +194,18 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
       WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     }
     super.dispose();
+  }
+
+  void _scheduleKboDateRollover() {
+    _kboDateRolloverTimer?.cancel();
+    final delay = durationUntilNextKboDate() + const Duration(milliseconds: 50);
+    _kboDateRolloverTimer = Timer(delay, () {
+      if (!mounted) {
+        return;
+      }
+      ref.read(kboDateProvider.notifier).refresh();
+      _scheduleKboDateRollover();
+    });
   }
 
   Future<void> _bootstrapApp() async {
@@ -285,6 +301,9 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
 
     return MaterialApp.router(
       title: 'KBO Fans',
+      locale: const Locale('ko', 'KR'),
+      supportedLocales: const [Locale('ko', 'KR')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode.themeMode,
@@ -334,10 +353,6 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     }
   }
 
-  String _todayKey() {
-    return kboDateKey();
-  }
-
   Future<void> _syncLiveSurfacesOnResume() async {
     final now = DateTime.now();
     final lastResumeSyncAt = _lastResumeSyncAt;
@@ -349,7 +364,8 @@ class _KboFansAppState extends ConsumerState<KboFansApp> {
     _lastResumeSyncAt = now;
 
     try {
-      final today = _todayKey();
+      ref.read(kboDateProvider.notifier).refresh();
+      final today = ref.read(kboDateProvider);
       final provider = scoreboardProvider(today);
       final games = await refreshOnResumeUnlessLoading(
         current: ref.read(provider),

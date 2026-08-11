@@ -79,6 +79,10 @@ void main() {
     );
 
     expect(find.text('안타'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('안타')).style?.color,
+      AppTheme.darkColors.textSupporting,
+    );
     expect(find.text('7-5'), findsOneWidget);
     expect(find.text('실책'), findsOneWidget);
     expect(find.text('1-0'), findsOneWidget);

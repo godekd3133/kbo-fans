@@ -23,7 +23,22 @@ String kboYearMonthKey([DateTime? instant]) {
   return '${_fourDigits(kbo.year)}-${_twoDigits(kbo.month)}';
 }
 
+Duration durationUntilNextKboDate([DateTime? instant]) {
+  final now = (instant ?? DateTime.now()).toUtc();
+  final kbo = kboCivilDateTime(now);
+  final nextCivilDate = DateTime.utc(
+    kbo.year,
+    kbo.month,
+    kbo.day,
+  ).add(const Duration(days: 1));
+  final nextKboMidnight = nextCivilDate.subtract(kboUtcOffset);
+  final remaining = nextKboMidnight.difference(now);
+  return remaining.isNegative ? Duration.zero : remaining;
+}
+
 int kboCurrentSeason([DateTime? instant]) => kboCivilDateTime(instant).year;
+
+int? kboSeasonFromDateKey(String value) => _parseCivilDate(value)?.year;
 
 bool isHistoricalKboDate(String date, {DateTime? now}) {
   final target = _parseCivilDate(date);

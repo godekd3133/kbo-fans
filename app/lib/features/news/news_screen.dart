@@ -38,8 +38,8 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final today = kboDateKey();
-    final displayDate = kboDisplayDateKey();
+    final today = ref.watch(kboDateProvider);
+    final displayDate = today.replaceAll('-', '.');
     final myTeamId = ref.watch(myTeamProvider);
     final aggregateKey = '$today|${myTeamId ?? ''}';
     final aggregateAsync = ref.watch(homeAggregateProvider(aggregateKey));
@@ -49,14 +49,14 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
         child: AppPageFrame(
           child: RefreshIndicator(
             color: AppColors.live,
-            onRefresh: () => _refresh(aggregateKey),
+            onRefresh: _refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
               children: [
                 _NewsHeader(
                   displayDate: displayDate,
-                  onRefresh: () => unawaited(_refresh(aggregateKey)),
+                  onRefresh: () => unawaited(_refresh()),
                 ),
                 const SizedBox(height: 14),
                 AppMotionSwitcher(
@@ -68,7 +68,7 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
                     error: (error, stackTrace) => KeyedSubtree(
                       key: const ValueKey('news-error'),
                       child: _NewsErrorState(
-                        onRetry: () => unawaited(_refresh(aggregateKey)),
+                        onRetry: () => unawaited(_refresh()),
                       ),
                     ),
                     data: (aggregate) => KeyedSubtree(
@@ -92,7 +92,10 @@ class _NewsScreenState extends ConsumerState<NewsScreen> {
     );
   }
 
-  Future<void> _refresh(String aggregateKey) async {
+  Future<void> _refresh() async {
+    final today = ref.read(kboDateProvider);
+    final myTeamId = ref.read(myTeamProvider);
+    final aggregateKey = '$today|${myTeamId ?? ''}';
     ref.invalidate(homeAggregateProvider(aggregateKey));
     try {
       await ref.read(homeAggregateProvider(aggregateKey).future);
@@ -120,7 +123,7 @@ class _NewsHeader extends StatelessWidget {
                 '$displayDate 기준',
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textDisabled,
+                  color: AppColors.textSupporting,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -163,31 +166,49 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.divider),
-        ),
-        child: Row(
-          children: [
-            for (final filter in _NewsFilter.values)
-              Expanded(
-                child: AppPressable(
-                  semanticSelected: filter == selected,
-                  onTap: () => onChanged(filter),
-                  pressedScale: 0.98,
-                  child: _FilterTab(
-                    filter: filter,
-                    selected: filter == selected,
-                  ),
-                ),
-              ),
-          ],
-        ),
+    final useLargeText = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
+
+    Widget buildTab(_NewsFilter filter) => AppPressable(
+      semanticSelected: filter == selected,
+      onTap: () => onChanged(filter),
+      pressedScale: 0.98,
+      child: _FilterTab(
+        filter: filter,
+        selected: filter == selected,
+        useLargeText: useLargeText,
       ),
+    );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: useLargeText
+          ? Padding(
+              padding: const EdgeInsets.all(4),
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  for (final filter in _NewsFilter.values)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minWidth: 80),
+                      child: buildTab(filter),
+                    ),
+                ],
+              ),
+            )
+          : SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  for (final filter in _NewsFilter.values)
+                    Expanded(child: buildTab(filter)),
+                ],
+              ),
+            ),
     );
   }
 }
@@ -195,8 +216,13 @@ class _FilterBar extends StatelessWidget {
 class _FilterTab extends StatelessWidget {
   final _NewsFilter filter;
   final bool selected;
+  final bool useLargeText;
 
-  const _FilterTab({required this.filter, required this.selected});
+  const _FilterTab({
+    required this.filter,
+    required this.selected,
+    required this.useLargeText,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -204,6 +230,9 @@ class _FilterTab extends StatelessWidget {
       duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
       margin: const EdgeInsets.all(4),
+      padding: useLargeText
+          ? const EdgeInsets.symmetric(horizontal: 12, vertical: 10)
+          : EdgeInsets.zero,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected
@@ -218,8 +247,8 @@ class _FilterTab extends StatelessWidget {
       ),
       child: Text(
         filter.label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        maxLines: useLargeText ? null : 1,
+        overflow: useLargeText ? TextOverflow.visible : TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w900,
@@ -441,7 +470,7 @@ class _LeadRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textDisabled,
+                    color: AppColors.textSupporting,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -452,7 +481,7 @@ class _LeadRow extends StatelessWidget {
           Icon(
             Icons.chevron_right_rounded,
             size: 18,
-            color: AppColors.textDisabled.withValues(alpha: 0.8),
+            color: AppColors.textSupporting,
           ),
         ],
       ),
@@ -480,7 +509,7 @@ class _NewsSectionHeader extends StatelessWidget {
           '$count개',
           style: TextStyle(
             fontSize: 11,
-            color: AppColors.textDisabled,
+            color: AppColors.textSupporting,
             fontWeight: FontWeight.w800,
             fontFeatures: [FontFeature.tabularFigures()],
           ),
@@ -537,7 +566,7 @@ class _NewsCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.textDisabled,
+                              color: AppColors.textSupporting,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -571,7 +600,7 @@ class _NewsCard extends StatelessWidget {
                       item.actionLabel,
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textDisabled,
+                        color: AppColors.textSupporting,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -582,7 +611,7 @@ class _NewsCard extends StatelessWidget {
               Icon(
                 Icons.chevron_right_rounded,
                 size: 20,
-                color: AppColors.textDisabled.withValues(alpha: 0.8),
+                color: AppColors.textSupporting,
               ),
             ],
           ),

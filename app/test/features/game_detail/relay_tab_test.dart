@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kbo_fans/core/utils/kbo_time.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/core/widgets/app_motion.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/player.dart';
@@ -13,7 +14,13 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/relay_tab.dart';
 
 void main() {
-  testWidgets('이닝 전환 원문의 공격 배너는 회차 버튼으로 노출하지 않는다', (tester) async {
+  testWidgets('240% 중계 필터는 44px 선택 영역과 선택 의미를 보존한다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final semantics = tester.ensureSemantics();
+
     const game = Game(
       gameId: '20260612OBLT0',
       status: GameStatus.live,
@@ -75,6 +82,12 @@ void main() {
         ],
         child: MaterialApp(
           theme: AppTheme.dark,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2.4)),
+            child: child ?? const SizedBox.shrink(),
+          ),
           home: const Scaffold(
             body: RelayTab(
               gameId: '20260612OBLT0',
@@ -90,8 +103,49 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('전체'), findsOneWidget);
+    expect(find.text('전체 1'), findsOneWidget);
     expect(find.text('1회초'), findsWidgets);
     expect(find.textContaining('두산공격'), findsNothing);
+    final inningAll = find.ancestor(
+      of: find.text('전체'),
+      matching: find.byType(AppPressable),
+    );
+    final momentAll = find.ancestor(
+      of: find.text('전체 1'),
+      matching: find.byType(AppPressable),
+    );
+    expect(tester.getSize(inningAll).height, greaterThanOrEqualTo(44));
+    expect(tester.getSize(momentAll).height, greaterThanOrEqualTo(44));
+    expect(
+      tester
+          .getSemantics(inningAll)
+          .getSemanticsData()
+          .flagsCollection
+          .isSelected
+          .toBoolOrNull(),
+      isTrue,
+    );
+    expect(
+      tester
+          .getSemantics(momentAll)
+          .getSemanticsData()
+          .flagsCollection
+          .isSelected
+          .toBoolOrNull(),
+      isTrue,
+    );
+    final inactiveInningChip = tester.widget<Text>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is Text &&
+            widget.data == '1회초' &&
+            widget.style?.fontSize == 12 &&
+            widget.style?.fontWeight == FontWeight.w500,
+      ),
+    );
+    expect(inactiveInningChip.style?.color, AppTheme.darkColors.textSupporting);
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
   });
 
   testWidgets('문자중계 상단 스코어보드는 R/H/E 합계를 같이 보여준다', (tester) async {
@@ -424,6 +478,102 @@ void main() {
     }
   });
 
+  testWidgets('390px 중계 이력은 큰 글씨에서도 화면 밖 moment를 지연 생성한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const game = Game(
+      gameId: '20260611SSLG8',
+      status: GameStatus.live,
+      inning: '7회초',
+      away: TeamScore(
+        teamId: 'SS',
+        teamName: '삼성 라이온즈',
+        shortName: '삼성',
+        score: 3,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LG',
+        teamName: 'LG 트윈스',
+        shortName: 'LG',
+        score: 2,
+        innings: [],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+    final relayItems = List<RelayItem>.generate(
+      80,
+      (index) => RelayItem(
+        seqNo: index + 1,
+        inning: 7,
+        half: 'top',
+        event: 'HIT',
+        text: '타자$index: 중전 안타 $index',
+      ),
+    );
+
+    Future<void> pumpRelay(TextScaler textScaler) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            gameProvider.overrideWith((ref, gameId) async => game),
+            relayDataProvider.overrideWith(
+              (ref, gameId) async =>
+                  RelayData(currentAtBat: null, relayItems: relayItems),
+            ),
+            gameLineupProvider.overrideWith((ref, gameId) async {
+              return const GameLineupData(
+                gameId: '20260611SSLG8',
+                away: TeamLineupData(teamId: 'SS', lineup: []),
+                home: TeamLineupData(teamId: 'LG', lineup: []),
+              );
+            }),
+            teamPlayersProvider.overrideWith((ref, key) async {
+              return const <PlayerProfile>[];
+            }),
+          ],
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+              child: child ?? const SizedBox.shrink(),
+            ),
+            home: const Scaffold(
+              body: RelayTab(
+                gameId: '20260611SSLG8',
+                gameStatus: GameStatus.live,
+                game: game,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    for (final textScaler in const [
+      TextScaler.noScaling,
+      TextScaler.linear(2.4),
+    ]) {
+      await pumpRelay(textScaler);
+
+      expect(find.text('타자79: 중전 안타 79'), findsOneWidget);
+      expect(
+        find.text('타자0: 중전 안타 0'),
+        findsNothing,
+        reason: '화면 밖 마지막 moment까지 첫 프레임에 만들면 안 된다.',
+      );
+      expect(find.text('전체 80'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('중계 주요 장면 필터는 선택한 이벤트 카드만 남긴다', (tester) async {
     tester.view.physicalSize = const Size(390, 1200);
     tester.view.devicePixelRatio = 1;
@@ -536,6 +686,10 @@ void main() {
     expect(find.text('안타 1'), findsOneWidget);
     expect(find.text('홈런 1'), findsOneWidget);
     expect(find.text('교체 1'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('안타 1')).style?.color,
+      AppTheme.darkColors.textSupporting,
+    );
 
     await tester.tap(find.text('홈런 1'));
     await tester.pumpAndSettle();

@@ -9,6 +9,33 @@ from kbo_fans_backend.core.config import Settings, get_settings
 from kbo_fans_backend.schemas.push import LiveActivityContentState
 
 
+class ApnsLiveActivitySendError(ValueError):
+    _PERMANENT_TOKEN_FAILURES = {
+        (400, "BadDeviceToken"),
+        (400, "DeviceTokenNotForTopic"),
+        (410, "Unregistered"),
+    }
+
+    def __init__(
+        self,
+        *,
+        operation: str,
+        status_code: int,
+        reason: Optional[str],
+        response_text: str,
+    ) -> None:
+        self.operation = operation
+        self.status_code = status_code
+        self.reason = reason
+        self.response_text = response_text
+        detail = reason or response_text or "unknown APNs error"
+        super().__init__(f"APNs live activity {operation} failed: {status_code} {detail}")
+
+    @property
+    def is_permanent_token_failure(self) -> bool:
+        return (self.status_code, self.reason) in self._PERMANENT_TOKEN_FAILURES
+
+
 class ApnsLiveActivitySender:
     def __init__(self, settings: Optional[Settings] = None) -> None:
         self.settings = settings or get_settings()
@@ -47,10 +74,7 @@ class ApnsLiveActivitySender:
 
         with httpx.Client(http2=True, timeout=10) as client:
             response = client.post(url, json=payload, headers=headers)
-        if response.status_code >= 400:
-            raise ValueError(
-                f"APNs live activity send failed: {response.status_code} {response.text}"
-            )
+        _raise_for_apns_error(response, operation="send")
 
         return {
             "sent": True,
@@ -90,10 +114,7 @@ class ApnsLiveActivitySender:
 
         with httpx.Client(http2=True, timeout=10) as client:
             response = client.post(url, json=payload, headers=headers)
-        if response.status_code >= 400:
-            raise ValueError(
-                f"APNs live activity start failed: {response.status_code} {response.text}"
-            )
+        _raise_for_apns_error(response, operation="start")
 
         return {
             "sent": True,
@@ -184,6 +205,29 @@ class ApnsLiveActivitySender:
         if relevance_score is not None:
             aps["relevance-score"] = relevance_score
         return {"aps": aps}
+
+
+def _raise_for_apns_error(response: Any, *, operation: str) -> None:
+    status_code = int(response.status_code)
+    if 200 <= status_code < 300:
+        return
+
+    reason = None
+    try:
+        response_payload = response.json()
+    except (TypeError, ValueError):
+        response_payload = None
+    if isinstance(response_payload, dict):
+        raw_reason = response_payload.get("reason")
+        if isinstance(raw_reason, str) and raw_reason.strip():
+            reason = raw_reason.strip()
+
+    raise ApnsLiveActivitySendError(
+        operation=operation,
+        status_code=status_code,
+        reason=reason,
+        response_text=str(response.text or ""),
+    )
 
 
 def _model_to_dict(model: Any) -> dict[str, Any]:

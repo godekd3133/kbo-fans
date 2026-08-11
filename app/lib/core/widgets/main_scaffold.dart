@@ -120,15 +120,6 @@ class MainScaffold extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Container(
-                width: 128,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: colors.textPrimary,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
             ],
           ),
         ),

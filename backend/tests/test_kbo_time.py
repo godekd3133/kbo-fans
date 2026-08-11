@@ -30,10 +30,9 @@ def test_home_route_defaults_to_current_kbo_date(monkeypatch) -> None:
     monkeypatch.setattr(
         home.service,
         "get_home",
-        lambda target_date, my_team: captured.update(
-            {"date": target_date, "myTeam": my_team}
-        )
-        or {"date": target_date},
+        lambda target_date, my_team: (
+            captured.update({"date": target_date, "myTeam": my_team}) or {"date": target_date}
+        ),
     )
 
     response = TestClient(app).get("/api/home")
@@ -48,20 +47,23 @@ def test_scoreboard_routes_default_to_current_kbo_date(monkeypatch) -> None:
     monkeypatch.setattr(
         scoreboard.service,
         "get_scoreboard",
-        lambda target_date, force_refresh=False: captured.append(target_date)
-        or {"date": target_date},
+        lambda target_date, force_refresh=False: (
+            captured.append(target_date) or {"date": target_date}
+        ),
     )
     monkeypatch.setattr(
         scoreboard.service,
         "get_home_scoreboard",
-        lambda target_date, force_refresh=False: captured.append(target_date)
-        or {"date": target_date},
+        lambda target_date, force_refresh=False: (
+            captured.append(target_date) or {"date": target_date}
+        ),
     )
     monkeypatch.setattr(
         scoreboard.service,
         "get_compact_scoreboard",
-        lambda target_date, my_team=None: captured.append(target_date)
-        or {"date": target_date, "myTeam": my_team},
+        lambda target_date, my_team=None: (
+            captured.append(target_date) or {"date": target_date, "myTeam": my_team}
+        ),
     )
     client = TestClient(app)
 
@@ -75,33 +77,45 @@ def test_scoreboard_routes_default_to_current_kbo_date(monkeypatch) -> None:
     assert captured == ["2026-07-13", "2026-07-13", "2026-07-13"]
 
 
-def test_scoreboard_routes_forward_force_refresh(monkeypatch) -> None:
+def test_scoreboard_routes_require_trusted_header_for_force_refresh(monkeypatch) -> None:
+    class Settings:
+        push_sync_secret = "internal-secret"
+
     captured = []
+    monkeypatch.setattr(scoreboard, "get_settings", Settings)
     monkeypatch.setattr(
         scoreboard.service,
         "get_scoreboard",
-        lambda target_date, force_refresh=False: captured.append(
-            ("scoreboard", target_date, force_refresh)
-        )
-        or {"date": target_date},
+        lambda target_date, force_refresh=False: (
+            captured.append(("scoreboard", target_date, force_refresh)) or {"date": target_date}
+        ),
     )
     monkeypatch.setattr(
         scoreboard.service,
         "get_home_scoreboard",
-        lambda target_date, force_refresh=False: captured.append(
-            ("home", target_date, force_refresh)
-        )
-        or {"date": target_date},
+        lambda target_date, force_refresh=False: (
+            captured.append(("home", target_date, force_refresh)) or {"date": target_date}
+        ),
     )
     client = TestClient(app)
 
     responses = [
         client.get("/api/scoreboard?date=2026-07-13&forceRefresh=true"),
         client.get("/api/scoreboard/home?date=2026-07-13&forceRefresh=true"),
+        client.get(
+            "/api/scoreboard?date=2026-07-13&forceRefresh=true",
+            headers={"X-KBO-Push-Sync-Secret": "internal-secret"},
+        ),
+        client.get(
+            "/api/scoreboard/home?date=2026-07-13&forceRefresh=true",
+            headers={"X-KBO-Push-Sync-Secret": "internal-secret"},
+        ),
     ]
 
     assert all(response.status_code == 200 for response in responses)
     assert captured == [
+        ("scoreboard", "2026-07-13", False),
+        ("home", "2026-07-13", False),
         ("scoreboard", "2026-07-13", True),
         ("home", "2026-07-13", True),
     ]
@@ -120,7 +134,13 @@ def test_standings_treats_previous_utc_year_as_historical_after_kbo_new_year(
     store.save(
         "standings_latest",
         "2026",
-        {"season": 2026, "standings": [{"rank": 1, "teamId": "LG"}]},
+        {
+            "season": 2026,
+            "sourceSeason": 2026,
+            "sourceDate": "2026-12-31",
+            "updatedAt": "2026-12-31",
+            "standings": [{"rank": 1, "teamId": "LG"}],
+        },
     )
     service = StandingsService(crawler=FailingCrawler(), snapshot_store=store)
 
@@ -142,6 +162,10 @@ def test_boxscore_treats_previous_utc_day_as_historical_after_kbo_midnight(
         def get_team_players(self, team_id: str, season: int):
             return {"teamId": team_id, "season": season, "players": []}
 
+    class FinalScheduleService:
+        def get_schedule_game(self, requested_game_id: str):
+            return {"gameId": requested_game_id, "status": "FINAL"}
+
     game_id = "20261231KTLG0"
     monkeypatch.setattr(boxscore_module, "current_kbo_date", lambda: date(2027, 1, 1))
     store = JsonSnapshotStore(base_dir=str(tmp_path))
@@ -150,12 +174,25 @@ def test_boxscore_treats_previous_utc_day_as_historical_after_kbo_midnight(
         game_id,
         {
             "gameId": game_id,
-            "away": {"teamId": "KT", "batters": [{"name": "A"}], "pitchers": []},
-            "home": {"teamId": "LG", "batters": [], "pitchers": [{"name": "P"}]},
+            "availability": "official",
+            "officialAvailable": True,
+            "liveContextAvailable": False,
+            "source": "official_endpoint",
+            "away": {
+                "teamId": "KT",
+                "batters": [{"name": "A", "atBats": 4}],
+                "pitchers": [{"name": "P", "innings": "1.0"}],
+            },
+            "home": {
+                "teamId": "LG",
+                "batters": [{"name": "B", "atBats": 3}],
+                "pitchers": [{"name": "Q", "innings": "1.0"}],
+            },
         },
     )
     service = BoxscoreService(
         crawler=FailingCrawler(),
+        schedule_service=FinalScheduleService(),
         player_stats_service=EmptyPlayerStatsService(),
         snapshot_store=store,
     )

@@ -293,7 +293,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.textDisabled,
+                                        color: AppColors.textSupporting,
                                       ),
                                     ),
                                   ],
@@ -340,7 +340,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                 child: Icon(
                                   Icons.close,
                                   size: 18,
-                                  color: AppColors.textDisabled,
+                                  color: AppColors.textSupporting,
                                 ),
                               ),
                             ],
@@ -399,12 +399,12 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                     hintText: '로그 검색',
                                     hintStyle: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.textDisabled,
+                                      color: AppColors.textSupporting,
                                     ),
                                     prefixIcon: Icon(
                                       Icons.search,
                                       size: 16,
-                                      color: AppColors.textDisabled,
+                                      color: AppColors.textSupporting,
                                     ),
                                     suffixIcon: _query.isEmpty
                                         ? null
@@ -416,7 +416,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                             child: Icon(
                                               Icons.close,
                                               size: 16,
-                                              color: AppColors.textDisabled,
+                                              color: AppColors.textSupporting,
                                             ),
                                           ),
                                     filled: true,
@@ -474,7 +474,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
                                 '표시할 로그가 없습니다',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.textDisabled,
+                                  color: AppColors.textSupporting,
                                 ),
                               ),
                             )
@@ -582,7 +582,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            color: selected ? AppColors.textPrimary : AppColors.textSupporting,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -612,7 +612,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            color: selected ? AppColors.textPrimary : AppColors.textSupporting,
             fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
           ),
         ),
@@ -669,7 +669,7 @@ class _DevConsoleOverlayState extends State<DevConsoleOverlay> {
           label,
           style: TextStyle(
             fontSize: 11,
-            color: selected ? AppColors.textPrimary : AppColors.textDisabled,
+            color: selected ? AppColors.textPrimary : AppColors.textSupporting,
             fontWeight: selected ? FontWeight.w700 : FontWeight.normal,
           ),
         ),

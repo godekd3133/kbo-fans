@@ -5,10 +5,12 @@ import workmanager_apple
 
 private struct LiveActivityBackendContext {
   let apiBaseUrl: String
+  let installationId: String
 }
 
 private let widgetRefreshTaskIdentifier = "kbo-widget-periodic"
 private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base_url"
+private let liveActivityInstallationIdDefaultsKey = "kbo_fans.live_activity.installation_id"
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -125,7 +127,8 @@ private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base
     }
 
     let backendContext = rememberLiveActivityBackendContext(
-      apiBaseUrl: arguments["apiBaseUrl"] as? String
+      apiBaseUrl: arguments["apiBaseUrl"] as? String,
+      installationId: arguments["installationId"] as? String
     )
     observeExistingLiveActivities(context: backendContext)
     observeLiveActivityUpdates(context: backendContext)
@@ -248,7 +251,8 @@ private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base
       return
     }
     let backendContext = rememberLiveActivityBackendContext(
-      apiBaseUrl: arguments["apiBaseUrl"] as? String
+      apiBaseUrl: arguments["apiBaseUrl"] as? String,
+      installationId: arguments["installationId"] as? String
     )
 
     let attributes = KboFansScoreAttributes(gameId: gameId)
@@ -425,10 +429,15 @@ private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base
     gameId: String
   ) {
     let context = liveActivityBackendContext(for: activity.id)
+    let activityPushToken = activity.pushToken?.hexString ?? liveActivityLastTokens[activity.id]
+    guard activityPushToken != nil, !context.installationId.isEmpty else {
+      NSLog("[KBOFansLiveActivity] backend unregister skipped: missing owner identity")
+      return
+    }
     sendLiveActivityUnregisterToBackend(
       gameId: gameId,
       activityId: activity.id,
-      activityPushToken: activity.pushToken?.hexString,
+      activityPushToken: activityPushToken,
       context: context
     )
   }
@@ -445,6 +454,7 @@ private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base
       "activityId": activityId,
       "activityPushToken": activityPushToken,
       "previousActivityPushToken": previousActivityPushToken ?? "",
+      "installationId": context.installationId,
       "platform": "ios"
     ]
     postLiveActivityPayload(
@@ -463,7 +473,8 @@ private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base
     let body: [String: Any] = [
       "gameId": gameId,
       "activityId": activityId,
-      "activityPushToken": activityPushToken ?? ""
+      "activityPushToken": activityPushToken ?? "",
+      "installationId": context.installationId
     ]
     postLiveActivityPayload(
       path: "/push/live-activity/unregister",
@@ -506,28 +517,45 @@ private let liveActivityApiBaseUrlDefaultsKey = "kbo_fans.live_activity.api_base
   }
 
   private func rememberLiveActivityBackendContext(
-    apiBaseUrl: String?
+    apiBaseUrl: String?,
+    installationId: String?
   ) -> LiveActivityBackendContext {
-    let candidate = apiBaseUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    if !candidate.isEmpty {
-      UserDefaults.standard.set(candidate, forKey: liveActivityApiBaseUrlDefaultsKey)
-      return LiveActivityBackendContext(apiBaseUrl: candidate)
+    let apiCandidate = apiBaseUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let installationCandidate =
+      installationId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if !apiCandidate.isEmpty {
+      UserDefaults.standard.set(apiCandidate, forKey: liveActivityApiBaseUrlDefaultsKey)
+    }
+    if !installationCandidate.isEmpty {
+      UserDefaults.standard.set(
+        installationCandidate,
+        forKey: liveActivityInstallationIdDefaultsKey
+      )
     }
 
-    let stored = UserDefaults.standard.string(
+    let storedApiBaseUrl = UserDefaults.standard.string(
       forKey: liveActivityApiBaseUrlDefaultsKey
     ) ?? ""
-    return LiveActivityBackendContext(apiBaseUrl: stored)
+    let storedInstallationId = UserDefaults.standard.string(
+      forKey: liveActivityInstallationIdDefaultsKey
+    ) ?? ""
+    return LiveActivityBackendContext(
+      apiBaseUrl: apiCandidate.isEmpty ? storedApiBaseUrl : apiCandidate,
+      installationId: installationCandidate.isEmpty
+        ? storedInstallationId
+        : installationCandidate
+    )
   }
 
   private func liveActivityBackendContext(
     for activityId: String
   ) -> LiveActivityBackendContext {
     if let current = liveActivityBackendContexts[activityId],
-       !current.apiBaseUrl.isEmpty {
+       !current.apiBaseUrl.isEmpty,
+       !current.installationId.isEmpty {
       return current
     }
-    return rememberLiveActivityBackendContext(apiBaseUrl: nil)
+    return rememberLiveActivityBackendContext(apiBaseUrl: nil, installationId: nil)
   }
 
   @available(iOS 16.1, *)

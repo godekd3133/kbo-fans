@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/config/app_config.dart';
+import '../core/utils/kbo_time.dart';
 import '../core/widgets/dev_console.dart';
 
 import 'api/api_client.dart';
@@ -83,6 +85,22 @@ class MyTeamNotifier extends Notifier<String?> {
 
 final myTeamProvider = NotifierProvider<MyTeamNotifier, String?>(
   () => MyTeamNotifier(),
+);
+
+class KboDateNotifier extends Notifier<String> {
+  @override
+  String build() => kboDateKey();
+
+  void refresh({DateTime? instant}) {
+    final nextDate = kboDateKey(instant);
+    if (state != nextDate) {
+      state = nextDate;
+    }
+  }
+}
+
+final kboDateProvider = NotifierProvider<KboDateNotifier, String>(
+  KboDateNotifier.new,
 );
 
 // ── 스코어보드 ──
@@ -202,17 +220,62 @@ List<String> kboScheduleSeasonMonths(int season) {
   ];
 }
 
+@visibleForTesting
+Future<List<ScheduleDay>> loadKboSeasonScheduleBounded({
+  required List<String> yearMonths,
+  required Future<List<ScheduleDay>> Function(String yearMonth) loadMonth,
+  int maxConcurrent = 3,
+}) async {
+  if (yearMonths.isEmpty) {
+    return const [];
+  }
+  if (maxConcurrent <= 0) {
+    throw ArgumentError.value(
+      maxConcurrent,
+      'maxConcurrent',
+      'must be positive',
+    );
+  }
+
+  final results = List<List<ScheduleDay>?>.filled(yearMonths.length, null);
+  var nextIndex = 0;
+  Object? firstError;
+  StackTrace? firstStackTrace;
+
+  Future<void> worker() async {
+    while (firstError == null) {
+      final index = nextIndex;
+      if (index >= yearMonths.length) {
+        return;
+      }
+      nextIndex += 1;
+      try {
+        results[index] = await loadMonth(yearMonths[index]);
+      } catch (error, stackTrace) {
+        firstError ??= error;
+        firstStackTrace ??= stackTrace;
+      }
+    }
+  }
+
+  final workerCount = maxConcurrent < yearMonths.length
+      ? maxConcurrent
+      : yearMonths.length;
+  await Future.wait(List.generate(workerCount, (_) => worker()));
+  if (firstError != null) {
+    Error.throwWithStackTrace(firstError!, firstStackTrace!);
+  }
+  return [for (final days in results) ...days!];
+}
+
 final seasonScheduleProvider = FutureProvider.family<List<ScheduleDay>, int>((
   ref,
   season,
 ) async {
-  final monthSchedules = await Future.wait(
-    kboScheduleSeasonMonths(
-      season,
-    ).map((yearMonth) => ref.watch(scheduleProvider(yearMonth).future)),
+  return loadKboSeasonScheduleBounded(
+    yearMonths: kboScheduleSeasonMonths(season),
+    loadMonth: (yearMonth) => ref.read(scheduleProvider(yearMonth).future),
   );
-
-  return [for (final days in monthSchedules) ...days];
 });
 
 final standingsProvider = FutureProvider.family<List<TeamStanding>, int>((

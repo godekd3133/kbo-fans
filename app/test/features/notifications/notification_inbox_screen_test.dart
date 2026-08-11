@@ -52,9 +52,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('알림함'), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.text('푸시 알림')).style?.color,
+      AppTheme.darkColors.textSupporting,
+    );
     expect(find.text('득점 장면'), findsOneWidget);
     expect(find.text('7회말 문보경 우전 적시타 · 현재 4:3'), findsOneWidget);
     expect(find.text('새 알림'), findsOneWidget);
+    expect(
+      tester.widget<Icon>(find.byIcon(Icons.chevron_right_rounded)).color,
+      AppTheme.darkColors.textSupporting,
+    );
   });
 
   testWidgets(
@@ -143,6 +151,43 @@ void main() {
       }
     },
   );
+
+  testWidgets('320px 240% 알림 요약은 수치와 설명을 줄임표 없이 재배치한다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(2.4)),
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: NotificationInboxScreen(
+          entriesLoader: () async => [
+            _entry(
+              id: 'large-text-entry',
+              title: '연장전 득점 알림',
+              type: 'scoring',
+              read: false,
+            ),
+          ],
+          settingsLoader: () async => const PushNotificationSettings.defaults(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('최근 최대 50개 보관 · 1개 중 1개 표시'), findsOneWidget);
+    for (final label in const ['보관', '현재 표시', '안 읽음']) {
+      final metric = find.byKey(ValueKey('inbox-summary-metric-$label'));
+      expect(metric, findsOneWidget);
+      expect(tester.getSize(metric).height, greaterThanOrEqualTo(62));
+    }
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('empty inbox is distinct from a load failure', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 900));
@@ -293,6 +338,51 @@ void main() {
     expect(find.text('새 알림'), findsNothing);
   });
 
+  testWidgets('읽음 저장 실패가 알림 deep link 이동을 막지 않는다', (tester) async {
+    var markReadAttempted = false;
+    final router = GoRouter(
+      initialLocation: '/notifications',
+      routes: [
+        GoRoute(
+          path: '/notifications',
+          builder: (_, _) => NotificationInboxScreen(
+            entriesLoader: () async => [
+              _entry(
+                id: 'route-entry',
+                title: '경기 상세 열기',
+                type: 'scoring',
+                read: false,
+                route: '/home',
+              ),
+            ],
+            settingsLoader: () async =>
+                const PushNotificationSettings.defaults(),
+            markRead: (_) async {
+              markReadAttempted = true;
+              throw StateError('storage unavailable');
+            },
+          ),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈 도착')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('경기 상세 열기'));
+    await tester.pumpAndSettle();
+
+    expect(markReadAttempted, isTrue);
+    expect(find.text('홈 도착'), findsOneWidget);
+  });
+
   testWidgets('inbox settings link returns to the settings tab body', (
     tester,
   ) async {
@@ -346,13 +436,14 @@ NotificationInboxEntry _entry({
   required String title,
   required String type,
   required bool read,
+  String route = '',
 }) {
   return NotificationInboxEntry(
     id: id,
     title: title,
     body: '$title 본문',
     type: type,
-    route: '',
+    route: route,
     gameId: '',
     teamId: '',
     source: 'test',
