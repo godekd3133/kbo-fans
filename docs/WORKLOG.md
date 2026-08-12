@@ -18,9 +18,13 @@
 - [x] backend Ruff, compileall 통과.
 - [x] 운영 release API health gate 통과: health, home, scoreboard, relay, schedule, standings, records overview.
 - [x] App Store Connect live state 확인: 기존 build 92 `VALID`, Beta App Review `APPROVED`, 내부 `Tester`·외부 `External Testers` 연결.
-- [ ] 최신 변경 commit 및 `main` push.
-- [ ] `0.1.25+93` clean worktree IPA archive/export 및 App Store Connect upload.
-- [ ] build 93 `VALID`, 내부·외부 그룹 연결, Beta App Review 상태, 실제 설치 가능 상태 확인.
+- [x] 최신 변경 commit 및 `main` push 완료: `2ac02799` (`0.1.25 TestFlight 재배포 준비 및 안정성 보강`).
+- [x] `0.1.25+93` clean worktree IPA archive/export 완료: `/tmp/kbo-fans-release-2ac02799/app/build/ios/ipa/kbo_fans.ipa`; 서명 검증과 `altool --validate-app` 통과.
+- [x] App Store Connect upload 완료: delivery UUID `42273f44-94b5-4a90-92c7-f92ec8364889`; build `93` 처리 상태 `VALID`.
+- [x] 내부 `Tester` 그룹 접근 확인: `hasAccessToAllBuilds=true`, 그룹 builds 조회에서 build 93 `VALID`.
+- [x] 외부 `External Testers` 그룹 연결 완료: relationship POST `204`, 그룹 builds 조회에서 build 93 `VALID`.
+- [x] build 93 Beta App Review 제출 완료: `201`, 현재 `WAITING_FOR_REVIEW`; 승인 전까지 기존 build 92는 유지.
+- [ ] build 93을 실제 내부·외부 테스터 기기에 설치/업데이트했다는 device-level 증거는 아직 확인하지 않음. 현재 두 그룹의 기존 tester 계정 상태 `INSTALLED`는 새 build 93 설치 증거와 분리한다.
 
 ## 2026-08-12: 10차 backend 반례 감사 — current relay truth와 잔여 snapshot 경계
 
