@@ -392,6 +392,36 @@ void main() {
     expect(find.text('폰세'), findsWidgets);
   });
 
+  testWidgets('기록실 지표 가로 rail은 잘린 카드가 있을 때 스크롤바를 노출한다', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          recordsOverviewProvider.overrideWith((ref, season) async {
+            return _overviewWithLeaders;
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const RecordsScreen()),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final scrollbar = tester.widget<Scrollbar>(
+      find.byKey(const ValueKey('records-metric-spotlight-scrollbar')),
+    );
+    expect(scrollbar.thumbVisibility, isTrue);
+    expect(scrollbar.trackVisibility, isTrue);
+  });
+
   testWidgets('시즌 리더 요약은 중복 수치 상자 없이 타자와 투수를 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

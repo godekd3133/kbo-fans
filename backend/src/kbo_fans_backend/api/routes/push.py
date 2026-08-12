@@ -1,8 +1,10 @@
 import secrets
+from datetime import date as date_type
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Query
 
+from kbo_fans_backend.api.routes.validation import ensure_supported_kbo_date
 from kbo_fans_backend.api.runtime_services import (
     relay_service,
     scoreboard_service,
@@ -133,7 +135,7 @@ def resubscribe_push_topics(
 def get_push_config_status(
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
-    _ensure_sync_allowed(x_kbo_push_sync_secret)
+    _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
     return ApiEnvelope.success_response(diagnostics_service.status())
 
 
@@ -197,11 +199,13 @@ def update_live_activity(
 
 @router.post("/live-activity/sync-scoreboard", response_model=ApiEnvelope[dict])
 def sync_live_activity_scoreboard(
-    date: Optional[str] = Query(default=None),
+    date: Optional[date_type] = None,
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
     _ensure_sync_allowed(x_kbo_push_sync_secret, require_configured=True)
-    target_date = date or current_kbo_date()
+    if date is not None:
+        ensure_supported_kbo_date(date)
+    target_date = date.isoformat() if date is not None else current_kbo_date()
     return ApiEnvelope.success_response(live_activity_sync_service.sync_date(target_date))
 
 

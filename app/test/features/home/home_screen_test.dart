@@ -1301,6 +1301,42 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('최근 결과 aggregate가 비어도 확정 scoreboard 경기로 결과를 복원한다', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final finalGame = _finalGame(
+      gameId: '20260618SSLG0',
+      awayTeamId: 'SS',
+      awayShortName: '삼성',
+      homeTeamId: 'LG',
+      homeShortName: 'LG',
+      awayScore: 2,
+      homeScore: 5,
+    );
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: _homeInteractionRouter()),
+        scoreboardGames: [finalGame],
+        recentSummaries: const [],
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('최근 결과 없음'), findsNothing);
+    expect(find.text('최근 1경기'), findsOneWidget);
+    expect(find.text('승'), findsWidgets);
+  });
+
   testWidgets(
     'my team brief shows team AVG and ERA while player highlights are still loading',
     (tester) async {
@@ -1450,6 +1486,101 @@ void main() {
       }
     },
   );
+
+  testWidgets('홈은 확정 점수가 있는 중단 경기를 점수와 함께 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final suspendedGame = Game(
+      gameId: '20260619SSLG0',
+      status: GameStatus.suspended,
+      inning: '6회말 중단',
+      away: const TeamScore(
+        teamId: 'SS',
+        teamName: '삼성',
+        shortName: '삼성',
+        score: 3,
+        scoreAvailable: true,
+        innings: <int?>[0, 1, 0, 0, 2, 0],
+      ),
+      home: const TeamScore(
+        teamId: 'LG',
+        teamName: 'LG',
+        shortName: 'LG',
+        score: 2,
+        scoreAvailable: true,
+        innings: <int?>[0, 0, 1, 0, 1, 0],
+      ),
+      stadium: '잠실',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: _homeInteractionRouter()),
+        scoreboardGames: [suspendedGame],
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final todayGame = find.byKey(
+      const ValueKey('home-today-game-20260619SSLG0'),
+    );
+    expect(todayGame, findsOneWidget);
+    expect(
+      find.descendant(of: todayGame, matching: find.text('3 : 2')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: todayGame, matching: find.text('– : –')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('홈 오늘 경기 행은 320px·240% 글씨에서도 잘리지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+    final scheduledGame = _scheduledGame(
+      gameId: '20260619SSLG0',
+      awayTeamId: 'SS',
+      awayShortName: '삼성',
+      homeTeamId: 'LG',
+      homeShortName: 'LG',
+      stadium: '잠실야구장',
+    );
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.4)),
+          child: MaterialApp.router(routerConfig: _homeInteractionRouter()),
+        ),
+        myTeamId: null,
+        standingsPreview: const [],
+        scoreboardGames: [scheduledGame],
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('home-today-game-20260619SSLG0')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('recent 5 games row opens team records with press interaction', (
     tester,
@@ -2637,6 +2768,7 @@ GoRouter _homeInteractionRouter() {
 
 Widget _homeInteractionScope({
   required Widget child,
+  String? myTeamId = 'LG',
   HomeKboBrief? kboBrief,
   List<HomeQuickItem> quickItems = const [],
   List<Game>? scoreboardGames,
@@ -2650,7 +2782,7 @@ Widget _homeInteractionScope({
   return ProviderScope(
     retry: (_, _) => null,
     overrides: [
-      myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+      myTeamProvider.overrideWith(() => _FixedMyTeamNotifier(myTeamId)),
       scoreboardProvider.overrideWith((ref, date) async {
         return scoreboardGames ??
             [
@@ -2667,7 +2799,7 @@ Widget _homeInteractionScope({
       homeAggregateProvider.overrideWith((ref, key) async {
         return HomeAggregate(
           date: key.split('|').first,
-          myTeam: 'LG',
+          myTeam: myTeamId,
           myTeamBrief: HomeMyTeamBrief(
             teamId: 'LG',
             teamLabel: 'LG 트윈스',

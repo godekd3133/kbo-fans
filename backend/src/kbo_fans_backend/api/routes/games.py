@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
+from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Header, HTTPException, Query, status
+from fastapi import APIRouter, Header, HTTPException, Path, Query, status
 
 from kbo_fans_backend.api.routes.scoreboard import trusted_force_refresh
 from kbo_fans_backend.api.runtime_services import (
@@ -18,14 +20,30 @@ from kbo_fans_backend.services.youtube_highlight import YoutubeHighlightService
 
 router = APIRouter(prefix="/game/{game_id}")
 youtube_highlight_service = YoutubeHighlightService()
+_KBO_TEAM_IDS = frozenset(("LG", "KT", "SK", "SS", "NC", "HH", "LT", "HT", "OB", "WO"))
+_GAME_ID_RE = re.compile(r"^20\d{6}([A-Z]{2})([A-Z]{2})([A-Za-z0-9_-]{1,20})$")
+
+
+def _validate_game_id(game_id: str) -> str:
+    match = _GAME_ID_RE.fullmatch(game_id)
+    if match is None:
+        raise HTTPException(status_code=422, detail="유효하지 않은 경기 ID입니다")
+    try:
+        datetime.strptime(game_id[:8], "%Y%m%d")
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail="유효하지 않은 경기 날짜입니다") from error
+    if match.group(1) not in _KBO_TEAM_IDS or match.group(2) not in _KBO_TEAM_IDS:
+        raise HTTPException(status_code=422, detail="유효하지 않은 경기 팀 코드입니다")
+    return game_id
 
 
 @router.get("", response_model=ApiEnvelope[dict])
 def get_game(
-    game_id: str,
+    game_id: str = Path(..., min_length=8, max_length=32, pattern=r"^[A-Za-z0-9_-]+$"),
     forceRefresh: bool = Query(default=False),
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
+    _validate_game_id(game_id)
     game = scoreboard_service.get_game(
         game_id,
         force_refresh=trusted_force_refresh(
@@ -109,7 +127,10 @@ def get_game(
 
 
 @router.get("/highlights", response_model=ApiEnvelope[dict])
-def get_highlights(game_id: str) -> ApiEnvelope[dict]:
+def get_highlights(
+    game_id: str = Path(..., min_length=8, max_length=32, pattern=r"^[A-Za-z0-9_-]+$"),
+) -> ApiEnvelope[dict]:
+    _validate_game_id(game_id)
     scheduled_game = schedule_service.get_schedule_game(game_id)
     if scheduled_game is None:
         raise HTTPException(
@@ -146,11 +167,12 @@ def get_highlights(game_id: str) -> ApiEnvelope[dict]:
 
 @router.get("/relay", response_model=ApiEnvelope[dict])
 def get_relay(
-    game_id: str,
+    game_id: str = Path(..., min_length=8, max_length=32, pattern=r"^[A-Za-z0-9_-]+$"),
     after: Optional[int] = Query(default=None),
     forceRefresh: bool = Query(default=False),
     x_kbo_push_sync_secret: Optional[str] = Header(default=None),
 ) -> ApiEnvelope[dict]:
+    _validate_game_id(game_id)
     return ApiEnvelope.success_response(
         relay_service.get_relay(
             game_id,
@@ -164,10 +186,16 @@ def get_relay(
 
 
 @router.get("/boxscore", response_model=ApiEnvelope[BoxscorePayload])
-def get_boxscore(game_id: str) -> ApiEnvelope[BoxscorePayload]:
+def get_boxscore(
+    game_id: str = Path(..., min_length=8, max_length=32, pattern=r"^[A-Za-z0-9_-]+$"),
+) -> ApiEnvelope[BoxscorePayload]:
+    _validate_game_id(game_id)
     return ApiEnvelope.success_response(boxscore_service.get_boxscore(game_id))
 
 
 @router.get("/lineup", response_model=ApiEnvelope[dict])
-def get_lineup(game_id: str) -> ApiEnvelope[dict]:
+def get_lineup(
+    game_id: str = Path(..., min_length=8, max_length=32, pattern=r"^[A-Za-z0-9_-]+$"),
+) -> ApiEnvelope[dict]:
+    _validate_game_id(game_id)
     return ApiEnvelope.success_response(lineup_service.get_lineup(game_id))

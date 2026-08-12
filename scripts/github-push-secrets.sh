@@ -43,10 +43,11 @@ Required variable inputs:
   - PUBLIC_SUBNET_A_ID
   - PUBLIC_SUBNET_B_ID
   - ACM_CERTIFICATE_ARN (when ENABLE_HTTPS=true)
+  - API_DOMAIN_NAME (when ENABLE_HTTPS=true; must match ACM_CERTIFICATE_ARN)
 
 Optional variable inputs:
   - ENABLE_HTTPS (default true; set false for temporary HTTP-only AWS smoke deploys)
-  - API_DOMAIN_NAME (custom API domain matching ACM_CERTIFICATE_ARN)
+  - API_DOMAIN_NAME (required for HTTPS; custom domain matching ACM_CERTIFICATE_ARN)
 EOF
 }
 
@@ -332,7 +333,8 @@ reject_placeholder_env \
   AWS_SECRET_ACCESS_KEY
 
 if [[ "$ENABLE_HTTPS" == "true" ]]; then
-  reject_placeholder_env ACM_CERTIFICATE_ARN
+  require_env ACM_CERTIFICATE_ARN API_DOMAIN_NAME
+  reject_placeholder_env ACM_CERTIFICATE_ARN API_DOMAIN_NAME
 fi
 if [[ -n "${API_DOMAIN_NAME:-}" ]]; then
   reject_placeholder_env API_DOMAIN_NAME

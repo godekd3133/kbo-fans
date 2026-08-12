@@ -4,6 +4,7 @@ import pytest
 
 from kbo_fans_backend.services.relay import RelayService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 
 
 class _StubScoreboardService:
@@ -60,6 +61,24 @@ def test_relay_service_builds_summary_items_for_final_game(tmp_path: Path) -> No
     assert relay["relayItems"][3]["text"] == "7회초 롯데 4득점"
     assert relay["relayItems"][4]["text"] == "7회말 삼성 1득점"
     assert relay["relayItems"][-1]["event"] == "GAME_END"
+
+
+def test_relay_service_ignores_malformed_historical_snapshot(tmp_path: Path) -> None:
+    game_id = "20260329LTSS0"
+    store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    store.save("relay", game_id, [])
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {"gameId": game_id, "status": "FINAL", "away": {}, "home": {}}
+        ),
+        snapshot_store=store,
+    )
+
+    relay = service.get_relay(game_id)
+
+    assert relay["gameId"] == game_id
+    assert relay["currentAtBat"] is None
 
 
 def test_relay_service_summary_items_normalize_team_codes(tmp_path: Path) -> None:
@@ -341,6 +360,122 @@ def test_relay_service_uses_snapshot_first_for_final_game(tmp_path: Path) -> Non
 
     assert relay["relayItems"][0]["event"] == "HIT"
     assert relay["relayItems"][0]["text"] == "나승엽 : 우익수 앞 1루타"
+
+
+def test_relay_service_rejects_snapshot_for_another_game(tmp_path: Path) -> None:
+    game_id = "20260329LTSS0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "relay",
+        game_id,
+        {
+            "gameId": "20260328KTLG0",
+            "currentAtBat": None,
+            "relayItems": [
+                {
+                    "seqNo": 10,
+                    "inning": 1,
+                    "half": "top",
+                    "event": "HIT",
+                    "isScoring": False,
+                    "text": "잘못된 경기의 안타",
+                    "pitchSequence": "B-S-HIT",
+                }
+            ],
+        },
+    )
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "FINAL",
+                "away": {"shortName": "롯데", "score": 6, "scores": [0]},
+                "home": {"shortName": "삼성", "score": 2, "scores": [0]},
+            }
+        ),
+        snapshot_store=snapshot_store,
+    )
+
+    relay = service.get_relay(game_id)
+
+    assert relay["gameId"] == game_id
+    assert all(item["text"] != "잘못된 경기의 안타" for item in relay["relayItems"])
+
+
+def test_relay_service_ignores_non_dict_relay_items(tmp_path: Path) -> None:
+    game_id = "20260329LTSS0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "relay",
+        game_id,
+        {
+            "gameId": game_id,
+            "currentAtBat": None,
+            "relayItems": ["malformed-item"],
+        },
+    )
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "FINAL",
+                "away": {"shortName": "롯데", "score": 6, "scores": [0]},
+                "home": {"shortName": "삼성", "score": 2, "scores": [0]},
+            }
+        ),
+        snapshot_store=snapshot_store,
+    )
+
+    relay = service.get_relay(game_id)
+
+    assert relay["gameId"] == game_id
+    assert relay["relayItems"][-1]["event"] == "GAME_END"
+
+
+def test_relay_service_does_not_use_snapshot_for_current_unknown_game(tmp_path: Path) -> None:
+    game_id = f"{current_kbo_date().strftime('%Y%m%d')}LTSS0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    snapshot_store.save(
+        "relay",
+        game_id,
+        {
+            "gameId": game_id,
+            "currentAtBat": None,
+            "relayItems": [
+                {
+                    "seqNo": 10,
+                    "inning": 1,
+                    "half": "top",
+                    "event": "HIT",
+                    "isScoring": False,
+                    "text": "현재 경기의 오래된 snapshot 안타",
+                    "pitchSequence": "B-S-HIT",
+                }
+            ],
+        },
+    )
+    service = RelayService(
+        relay_crawler=_FailingRelayCrawler(),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "UNKNOWN",
+                "away": {"shortName": "롯데", "score": None, "scores": []},
+                "home": {"shortName": "삼성", "score": None, "scores": []},
+            }
+        ),
+        snapshot_store=snapshot_store,
+    )
+
+    relay = service.get_relay(game_id)
+
+    assert relay["gameId"] == game_id
+    assert all(
+        item.get("text") != "현재 경기의 오래된 snapshot 안타"
+        for item in relay["relayItems"]
+    )
 
 
 def test_relay_service_skips_crawler_for_scheduled_game() -> None:

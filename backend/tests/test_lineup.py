@@ -140,6 +140,60 @@ def test_lineup_service_uses_snapshot_first_for_past_game(tmp_path) -> None:
     assert payload["home"]["lineup"] == [{"name": "박준영"}]
 
 
+def test_lineup_service_rejects_snapshot_for_another_game(tmp_path) -> None:
+    class FailingLineupCrawler:
+        def get_lineup(self, game_id: str):
+            raise RuntimeError("lineup unavailable")
+
+    class FailingBoxscoreCrawler:
+        def get_boxscore(self, game_id: str):
+            raise RuntimeError("boxscore unavailable")
+
+    game_id = "20260425LGOB0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
+    snapshot_store.save(
+        "lineup",
+        game_id,
+        {
+            "gameId": "20260424KTLG0",
+            "away": {"teamId": "KT", "lineup": [{"name": "잘못된 원정"}]},
+            "home": {"teamId": "LG", "lineup": [{"name": "잘못된 홈"}]},
+        },
+    )
+    service = LineupService(
+        lineup_crawler=FailingLineupCrawler(),
+        boxscore_crawler=FailingBoxscoreCrawler(),
+        snapshot_store=snapshot_store,
+        today_provider=lambda: date(2026, 5, 1),
+    )
+
+    with pytest.raises(RuntimeError, match="lineup unavailable"):
+        service.get_lineup(game_id)
+
+
+def test_lineup_service_ignores_malformed_historical_snapshot(tmp_path) -> None:
+    class FailingLineupCrawler:
+        def get_lineup(self, game_id: str):
+            raise RuntimeError("lineup unavailable")
+
+    class FailingBoxscoreCrawler:
+        def get_boxscore(self, game_id: str):
+            raise RuntimeError("boxscore unavailable")
+
+    game_id = "20260425LGOB0"
+    snapshot_store = JsonSnapshotStore(base_dir=str(tmp_path))
+    snapshot_store.save("lineup", game_id, [])
+    service = LineupService(
+        lineup_crawler=FailingLineupCrawler(),
+        boxscore_crawler=FailingBoxscoreCrawler(),
+        snapshot_store=snapshot_store,
+        today_provider=lambda: date(2026, 5, 1),
+    )
+
+    with pytest.raises(RuntimeError, match="lineup unavailable"):
+        service.get_lineup(game_id)
+
+
 def test_lineup_service_enriches_past_snapshot_with_missing_player_images(tmp_path) -> None:
     class FailingLineupCrawler:
         def get_lineup(self, game_id: str):

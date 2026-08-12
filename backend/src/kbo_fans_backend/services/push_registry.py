@@ -33,6 +33,10 @@ _LIVE_ACTIVITY_START_LEASE_SECONDS = 60
 _LIVE_ACTIVITY_UPDATE_LEASE_SECONDS = 60
 _SCORE_CORRECTION_CONFIRMATION_SECONDS = 8.0
 _SCORE_CORRECTION_CANDIDATE_KEY = "scoreCorrectionCandidate"
+_RUNTIME_STATE_TTL_SECONDS = 90 * 24 * 60 * 60
+_PUSH_OUTBOX_PENDING_TTL_SECONDS = 7 * 24 * 60 * 60
+_PUSH_OUTBOX_PENDING_LIMIT = 2048
+_SYNC_HEARTBEAT_MIN_WRITE_INTERVAL_SECONDS = 30
 
 
 class PushRegistryCapacityError(RuntimeError):
@@ -70,6 +74,11 @@ class PushRegistry:
         registration_now_provider: Optional[Callable[[], datetime]] = None,
         score_correction_confirmation_seconds: Optional[float] = None,
         score_correction_now_provider: Optional[Callable[[], datetime]] = None,
+        runtime_state_ttl_seconds: Optional[int] = None,
+        outbox_pending_ttl_seconds: Optional[int] = None,
+        max_pending_outbox_events: Optional[int] = None,
+        runtime_state_now_provider: Optional[Callable[[], datetime]] = None,
+        sync_heartbeat_min_write_interval_seconds: Optional[int] = None,
     ) -> None:
         settings = get_settings()
         self.path = Path(path or settings.push_registry_path).expanduser()
@@ -165,6 +174,42 @@ class PushRegistry:
         self._registration_now_provider = registration_now_provider or (
             lambda: datetime.now(timezone.utc)
         )
+        self._runtime_state_ttl_seconds = max(
+            1,
+            int(
+                _RUNTIME_STATE_TTL_SECONDS
+                if runtime_state_ttl_seconds is None
+                else runtime_state_ttl_seconds
+            ),
+        )
+        self._outbox_pending_ttl_seconds = max(
+            1,
+            int(
+                _PUSH_OUTBOX_PENDING_TTL_SECONDS
+                if outbox_pending_ttl_seconds is None
+                else outbox_pending_ttl_seconds
+            ),
+        )
+        self._max_pending_outbox_events = max(
+            1,
+            int(
+                _PUSH_OUTBOX_PENDING_LIMIT
+                if max_pending_outbox_events is None
+                else max_pending_outbox_events
+            ),
+        )
+        self._runtime_state_now_provider = runtime_state_now_provider or (
+            self._registration_now_provider
+        )
+        configured_heartbeat_interval = (
+            _SYNC_HEARTBEAT_MIN_WRITE_INTERVAL_SECONDS
+            if sync_heartbeat_min_write_interval_seconds is None
+            else sync_heartbeat_min_write_interval_seconds
+        )
+        self._sync_heartbeat_min_write_interval_seconds = max(
+            0,
+            int(configured_heartbeat_interval),
+        )
         configured_confirmation_seconds = (
             _SCORE_CORRECTION_CONFIRMATION_SECONDS
             if score_correction_confirmation_seconds is None
@@ -188,6 +233,12 @@ class PushRegistry:
 
     def _registration_now(self) -> datetime:
         now = self._registration_now_provider()
+        if now.tzinfo is None:
+            return now.replace(tzinfo=timezone.utc)
+        return now.astimezone(timezone.utc)
+
+    def _runtime_state_now(self) -> datetime:
+        now = self._runtime_state_now_provider()
         if now.tzinfo is None:
             return now.replace(tzinfo=timezone.utc)
         return now.astimezone(timezone.utc)
@@ -2102,9 +2153,27 @@ class PushRegistry:
 
     def record_sync_heartbeat(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self._mutate_data() as data:
+            now = self._runtime_state_now()
+            previous = data.get("syncHeartbeat")
+            if isinstance(previous, dict):
+                previous_updated_at = _parse_iso_datetime(previous.get("updatedAt"))
+                previous_payload = {
+                    key: value for key, value in previous.items() if key != "updatedAt"
+                }
+                age_seconds = (
+                    (now - previous_updated_at).total_seconds()
+                    if previous_updated_at is not None
+                    else None
+                )
+                if (
+                    previous_payload == payload
+                    and age_seconds is not None
+                    and 0 <= age_seconds < self._sync_heartbeat_min_write_interval_seconds
+                ):
+                    return previous
             heartbeat = {
                 **payload,
-                "updatedAt": _now_iso(),
+                "updatedAt": now.isoformat(),
             }
             data["syncHeartbeat"] = heartbeat
             return heartbeat
@@ -2130,6 +2199,7 @@ class PushRegistry:
                 except Exception:
                     raise
                 else:
+                    self._prune_runtime_state(data)
                     if data != original:
                         serialized = _serialize_registry(data)
                         updated_size = len(serialized.encode("utf-8"))
@@ -2139,6 +2209,42 @@ class PushRegistry:
                         ):
                             raise PushRegistryCapacityError("registry byte capacity reached")
                         self._save_unlocked(data)
+
+    def _prune_runtime_state(self, data: dict[str, Any]) -> None:
+        now = self._runtime_state_now()
+        for section_name in (
+            "scoreboardStates",
+            "relayStates",
+            "pregameAlertStates",
+            "scheduledAlertStates",
+            "scheduledDeliveryStates",
+            "liveActivityUpdateStates",
+            "deviceTestStates",
+        ):
+            section = data.get(section_name)
+            if isinstance(section, dict):
+                _prune_timestamped_mapping(
+                    section,
+                    now=now,
+                    ttl_seconds=self._runtime_state_ttl_seconds,
+                )
+
+        start_states = data.get("liveActivityStartStates")
+        if isinstance(start_states, dict):
+            _prune_nested_timestamped_mapping(
+                start_states,
+                now=now,
+                ttl_seconds=self._runtime_state_ttl_seconds,
+            )
+
+        outbox = data.get("pushOutbox")
+        if isinstance(outbox, dict):
+            _prune_push_outbox_retention(
+                outbox,
+                now=now,
+                pending_ttl_seconds=self._outbox_pending_ttl_seconds,
+                pending_limit=self._max_pending_outbox_events,
+            )
 
     @contextmanager
     def _file_lock(self, *, exclusive: bool) -> Iterator[None]:
@@ -2420,6 +2526,104 @@ def _prune_completed_push_outbox(outbox: dict[str, Any]) -> None:
         )
     )
     for event in completed[:-_PUSH_OUTBOX_COMPLETED_LIMIT]:
+        outbox.pop(str(event.get("eventId") or ""), None)
+
+
+def _prune_timestamped_mapping(
+    values: dict[str, Any],
+    *,
+    now: datetime,
+    ttl_seconds: int,
+) -> None:
+    for key, value in list(values.items()):
+        if not isinstance(value, dict):
+            continue
+        timestamp = _state_timestamp(value)
+        if timestamp is None:
+            continue
+        if (now - timestamp).total_seconds() >= ttl_seconds:
+            values.pop(key, None)
+
+
+def _prune_nested_timestamped_mapping(
+    values: dict[str, Any],
+    *,
+    now: datetime,
+    ttl_seconds: int,
+) -> None:
+    """Prune token-scoped state nested below a game key."""
+    for parent_key, nested in list(values.items()):
+        if not isinstance(nested, dict):
+            continue
+        for child_key, value in list(nested.items()):
+            if not isinstance(value, dict):
+                continue
+            timestamp = _state_timestamp(value)
+            if timestamp is None:
+                continue
+            if (now - timestamp).total_seconds() >= ttl_seconds:
+                nested.pop(child_key, None)
+        if not nested:
+            values.pop(parent_key, None)
+
+
+def _state_timestamp(value: dict[str, Any]) -> Optional[datetime]:
+    for field_name in ("updatedAt", "createdAt", "recordedAt"):
+        raw_value = value.get(field_name)
+        if isinstance(raw_value, str) and raw_value.strip():
+            parsed = _parse_iso_datetime(raw_value)
+            if parsed is not None:
+                return parsed
+    return None
+
+
+def _push_outbox_has_active_claim(event: dict[str, Any], now: datetime) -> bool:
+    targets = event.get("targets")
+    if not isinstance(targets, dict):
+        return False
+    for target_state in targets.values():
+        if not isinstance(target_state, dict) or target_state.get("status") != "sending":
+            continue
+        claimed_at = _parse_iso_datetime(target_state.get("claimedAt"))
+        lease_age_seconds = (now - claimed_at).total_seconds() if claimed_at is not None else None
+        if lease_age_seconds is not None and lease_age_seconds < _PUSH_OUTBOX_TARGET_LEASE_SECONDS:
+            return True
+    return False
+
+
+def _prune_push_outbox_retention(
+    outbox: dict[str, Any],
+    *,
+    now: datetime,
+    pending_ttl_seconds: int,
+    pending_limit: int,
+) -> None:
+    _prune_completed_push_outbox(outbox)
+
+    pending: list[dict[str, Any]] = []
+    for event_id, event in list(outbox.items()):
+        if not isinstance(event, dict) or _push_outbox_event_complete(event):
+            continue
+        if _push_outbox_has_active_claim(event, now):
+            pending.append(event)
+            continue
+        timestamp = _state_timestamp(event)
+        if timestamp is not None and (now - timestamp).total_seconds() >= pending_ttl_seconds:
+            outbox.pop(str(event_id), None)
+            continue
+        pending.append(event)
+
+    if len(pending) <= pending_limit:
+        return
+
+    pending.sort(
+        key=lambda event: (
+            str(event.get("updatedAt") or event.get("createdAt") or ""),
+            str(event.get("eventId") or ""),
+        )
+    )
+    removable = [event for event in pending if not _push_outbox_has_active_claim(event, now)]
+    for event in removable[: max(0, len(pending) - pending_limit)]:
         outbox.pop(str(event.get("eventId") or ""), None)
 
 

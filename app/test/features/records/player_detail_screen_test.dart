@@ -75,6 +75,39 @@ void main() {
     expect(find.text('기록실'), findsOneWidget);
   });
 
+  testWidgets('선수 프로필은 비어 있는 메타 정보를 pill로 만들지 않는다', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          playerDetailProvider.overrideWith(
+            (ref, key) async => _playerEmptyMeta,
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const PlayerDetailScreen(playerId: '69102', season: 2026),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final pills = find.byKey(const ValueKey('player-profile-pills'));
+    expect(pills, findsOneWidget);
+    expect(
+      find.descendant(of: pills, matching: find.text('2024 신인왕')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widgetList<Text>(
+            find.descendant(of: pills, matching: find.byType(Text)),
+          )
+          .length,
+      1,
+    );
+  });
+
   testWidgets('선수 상세는 current 출처만 KST 새 시즌을 따르고 과거 시즌은 유지한다', (tester) async {
     final currentSeason = kboCurrentSeason();
     final requestedKeys = <String>[];
@@ -158,6 +191,26 @@ const _player = PlayerProfile(
   handedness: '우투우타',
   heightWeight: '180cm / 80kg',
   birthDate: '2000.01.01',
+  status: PlayerAvailabilityStatus.available,
+  rosterGroup: PlayerRosterGroup.entry,
+  headlineStat: 'AVG 0.300',
+  secondaryStat: 'OPS 0.800',
+  seasonStats: [],
+  highlights: [],
+  recentGames: [],
+);
+
+const _playerEmptyMeta = PlayerProfile(
+  id: '69102',
+  teamId: 'LG',
+  name: '테스트 선수',
+  number: 1,
+  position: '',
+  roleLabel: '타자',
+  handedness: ' ',
+  heightWeight: '',
+  birthDate: '',
+  career: '2024 신인왕',
   status: PlayerAvailabilityStatus.available,
   rosterGroup: PlayerRosterGroup.entry,
   headlineStat: 'AVG 0.300',

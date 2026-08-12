@@ -1,4 +1,7 @@
 import json
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -80,6 +83,37 @@ class _FailingScheduleCrawler:
 class _FailingMainCrawler:
     def get_kbo_game_list(self, date: str):
         raise RuntimeError("main unavailable")
+
+
+class _BlockingScheduleCrawler:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.first_started = threading.Event()
+        self.release = threading.Event()
+        self._lock = threading.Lock()
+
+    def get_month_schedule(self, month: str):
+        with self._lock:
+            self.calls += 1
+            call_number = self.calls
+        if call_number == 1:
+            self.first_started.set()
+            assert self.release.wait(timeout=2)
+        return [
+            {
+                "date": f"{month}-01",
+                "gameId": f"{month.replace('-', '')}LGOB0",
+                "time": "18:30",
+                "awayId": "LG",
+                "awayName": "LG",
+                "awayScore": None,
+                "homeId": "OB",
+                "homeName": "두산",
+                "homeScore": None,
+                "stadium": "잠실",
+                "status": "SCHEDULED",
+            }
+        ]
 
 
 def test_derive_status_marks_start_pit_as_scheduled() -> None:
@@ -218,6 +252,29 @@ def test_current_day_cancelled_game_uses_cancel_label_and_keeps_scores_empty(
     assert game["homeScore"] is None
 
 
+def test_concurrent_month_schedule_requests_share_one_crawler_call(tmp_path) -> None:
+    crawler = _BlockingScheduleCrawler()
+    service = ScheduleService(
+        schedule_crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(service.get_month_schedule, "2099-01")
+        assert crawler.first_started.wait(timeout=2)
+        second = executor.submit(service.get_month_schedule, "2099-01")
+
+        deadline = time.monotonic() + 1
+        while crawler.calls < 2 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert crawler.calls == 1
+
+        crawler.release.set()
+        assert first.result(timeout=2) == second.result(timeout=2)
+
+    assert crawler.calls == 1
+
+
 def test_schedule_saves_non_terminal_month_snapshot(tmp_path) -> None:
     today = current_kbo_date().isoformat()
     store = JsonSnapshotStore(base_dir=str(tmp_path))
@@ -230,6 +287,21 @@ def test_schedule_saves_non_terminal_month_snapshot(tmp_path) -> None:
     payload = service.get_month_schedule(today[:7])
 
     assert store.load_payload("schedule", today[:7]) == payload
+
+
+def test_historical_schedule_rejects_snapshot_for_another_month(tmp_path) -> None:
+    season = current_kbo_date().year - 1
+    month = f"{season}-06"
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    store.save("schedule", month, {"month": f"{season}-05", "days": []})
+
+    service = ScheduleService(
+        schedule_crawler=_FailingScheduleCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="schedule unavailable"):
+        service.get_month_schedule(month)
 
 
 def test_current_month_schedule_rejects_old_snapshot_on_failure(tmp_path) -> None:

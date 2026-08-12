@@ -48,6 +48,30 @@ void main() {
     expect(identical(container.read(routerProvider), router), isTrue);
   });
 
+  testWidgets('웹 imperative push는 현재 화면을 브라우저 URL에 반영한다', (tester) async {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    container.read(onboardingDoneProvider.notifier).setValue(true);
+    final router = container.read(routerProvider);
+    router.go('/news');
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+
+    router.push('/standings', extra: AppRoutePresentation.swipeBack);
+    await tester.pump();
+
+    final routeInformation = router.routeInformationParser
+        .restoreRouteInformation(router.routerDelegate.currentConfiguration);
+    expect(routeInformation?.uri.path, '/standings');
+  });
+
   testWidgets('root push 화면은 iOS 스와이프 백 가능한 Cupertino route를 사용한다', (
     tester,
   ) async {

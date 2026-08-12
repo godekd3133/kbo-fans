@@ -46,8 +46,30 @@ class PlayerDetailScreen extends ConsumerWidget {
       }
     }
 
+    final router = GoRouter.maybeOf(context);
+    final navigator = Navigator.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text('선수 프로필 · $effectiveSeason')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: Semantics(
+          label: '뒤로',
+          button: true,
+          child: IconButton(
+            tooltip: '뒤로',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (router?.canPop() == true) {
+                router!.pop();
+              } else if (router != null) {
+                router.go('/records');
+              } else if (navigator.canPop()) {
+                navigator.pop();
+              }
+            },
+          ),
+        ),
+        title: Text('선수 프로필 · $effectiveSeason'),
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: refreshPlayer,
@@ -165,14 +187,18 @@ class PlayerDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
               Wrap(
+                key: const ValueKey('player-profile-pills'),
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  _pill(player.position),
-                  _pill(player.handedness),
-                  _pill(player.heightWeight),
-                  _pill(player.birthDate),
-                  if (player.career.isNotEmpty) _pill(player.career),
+                  for (final value in [
+                    player.position,
+                    player.handedness,
+                    player.heightWeight,
+                    player.birthDate,
+                    player.career,
+                  ])
+                    if (value.trim().isNotEmpty) _pill(value.trim()),
                 ],
               ),
               if (player.statusNote != null) ...[

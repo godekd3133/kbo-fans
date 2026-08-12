@@ -365,7 +365,7 @@ GitHub Actions에 넣을 값:
 - `PUBLIC_SUBNET_A_ID`
 - `PUBLIC_SUBNET_B_ID`
 - `ENABLE_HTTPS` (`true` 기본값, 도메인 전 HTTP-only smoke는 `false`)
-- `API_DOMAIN_NAME` (선택, ACM certificate와 일치하는 커스텀 도메인)
+- `API_DOMAIN_NAME` (`ENABLE_HTTPS=true`이면 필수, ACM certificate와 일치하는 커스텀 도메인)
 - `ACM_CERTIFICATE_ARN` (`ENABLE_HTTPS=true`일 때 필수)
 
 Actions workflow `Push Demo Deploy`에서 `dry_run=true`를 먼저 실행하면 secret/env 형태와 repo script path를 검증한다. `dry_run=false`는 실제 secret upload, ECR image push, CloudFormation deploy, stack output export, readiness를 실행한다.
@@ -383,7 +383,7 @@ $EDITOR /tmp/kbo-fans-aws.env
 ./scripts/github-push-secrets.sh --env-file /tmp/kbo-fans-aws.env --apply
 ```
 
-이 스크립트는 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET`, `AWS_ROLE_TO_ASSUME` 또는 AWS access key를 GitHub Secrets로 넣고, `AWS_REGION`, `FIREBASE_PROJECT_ID`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `ECR_REPOSITORY_URI`, `VPC_ID`, subnet, `ENABLE_HTTPS`, 선택 `API_DOMAIN_NAME`, 조건부 ACM ARN은 GitHub Variables로 넣는다. secret 값은 로그에 출력하지 않고, obvious placeholder 값은 업로드 전에 실패시킨다.
+이 스크립트는 `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `PUSH_SYNC_SECRET`, `AWS_ROLE_TO_ASSUME` 또는 AWS access key를 GitHub Secrets로 넣고, `AWS_REGION`, `FIREBASE_PROJECT_ID`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `ECR_REPOSITORY_URI`, `VPC_ID`, subnet, `ENABLE_HTTPS`, HTTPS일 때 필수인 `API_DOMAIN_NAME`, 조건부 ACM ARN은 GitHub Variables로 넣는다. secret 값은 로그에 출력하지 않고, obvious placeholder 값은 업로드 전에 실패시킨다.
 
 workflow 파일이 GitHub default branch에 올라간 뒤에는 CLI로 dispatch할 수 있다.
 

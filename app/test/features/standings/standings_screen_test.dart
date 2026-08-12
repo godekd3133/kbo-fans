@@ -330,6 +330,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('1.5x 순위 화면은 고정 행 대신 읽기 쉬운 적응형 행을 사용한다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          standingsProvider.overrideWith((ref, season) async {
+            return const [
+              TeamStanding(
+                rank: 1,
+                teamId: 'LG',
+                teamName: 'LG 트윈스',
+                wins: 51,
+                losses: 35,
+                draws: 2,
+                pct: '0.593',
+                gb: '0',
+                streak: '7연승',
+              ),
+            ];
+          }),
+        ],
+        child: MaterialApp(theme: AppTheme.dark, home: const StandingsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('standings-large-text-header')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('320px·240% 순위표는 헤더와 모든 팀 기록을 줄임표 없이 재배치한다', (tester) async {
     tester.view.physicalSize = const Size(320, 844);
     tester.view.devicePixelRatio = 1;

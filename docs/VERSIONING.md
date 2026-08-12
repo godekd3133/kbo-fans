@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.24+92`
-- Current release tag: `0.1.24`
+- Flutter app version: `0.1.25+93`
+- Current release tag: `0.1.25`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -63,6 +63,7 @@ Every version or release change must update these surfaces in the same work unit
 
 ## Numeric Release Map
 
+- `0.1.25`: current/future 데이터 truth state, snapshot identity, 큰 글자·좁은 화면 복구성, web deep-link URL, Live Activity/APNs 효율, API 입력 검증을 보강하고 current app build `0.1.25+93`으로 배포한다.
 - `0.1.24`: 경기 상세 즉시 진입과 긴 문자중계 표시 개선, KST 날짜·시즌 전환, 현재·과거 데이터 경계, 작은 화면·스크린리더 접근성, Live Activity·푸시 순서와 stale 상태 보강, and current app build `0.1.24+92`.
 
 - `0.0.1`: initial project scaffold, Flutter/FastAPI baseline, MVP screen skeletons.

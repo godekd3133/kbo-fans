@@ -159,8 +159,9 @@ class _RelayTabState extends ConsumerState<RelayTab> {
       Padding(
         padding: EdgeInsets.symmetric(horizontal: 16),
         child: Container(
-          height: 178,
+          key: const ValueKey('relay-unavailable-notice'),
           width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 178),
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.card,
@@ -908,8 +909,9 @@ class _RelayFallbackNotice extends StatelessWidget {
     };
 
     return Container(
-      height: 156,
+      key: const ValueKey('relay-fallback-notice'),
       width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 156),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.card,

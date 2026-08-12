@@ -1529,6 +1529,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final todayGame = brief.todayGameId == null
         ? null
         : games.where((game) => game.gameId == brief.todayGameId).firstOrNull;
+    final aggregateSummaries = brief.recentSummaries
+        .map(
+          (item) => _RecentGameSummaryData(
+            gameId: item.gameId,
+            result: item.result,
+            opponentName: item.opponentName,
+            score: item.score,
+          ),
+        )
+        .toList();
+    final recentSummaries = aggregateSummaries.isNotEmpty
+        ? aggregateSummaries
+        : _verifiedFinalSummariesForTeam(games, brief.teamId);
+    final recentGamesCount = aggregateSummaries.isEmpty
+        ? recentSummaries.length
+        : brief.recentGamesCount > aggregateSummaries.length
+        ? brief.recentGamesCount
+        : aggregateSummaries.length;
 
     return _MyTeamBriefData(
       teamId: brief.teamId,
@@ -1539,18 +1557,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       recentWins: brief.recentWins,
       recentLosses: brief.recentLosses,
       recentDraws: brief.recentDraws,
-      recentGamesCount: brief.recentGamesCount,
-      recentSummaries: brief.recentSummaries
-          .map(
-            (item) => _RecentGameSummaryData(
-              gameId: item.gameId,
-              result: item.result,
-              opponentName: item.opponentName,
-              score: item.score,
-            ),
-          )
-          .toList(),
+      recentGamesCount: recentGamesCount,
+      recentSummaries: recentSummaries,
     );
+  }
+
+  List<_RecentGameSummaryData> _verifiedFinalSummariesForTeam(
+    List<Game> games,
+    String teamId,
+  ) {
+    return games
+        .where(
+          (game) =>
+              game.status == GameStatus.final_ &&
+              game.hasVerifiedScore &&
+              (game.away.teamId == teamId || game.home.teamId == teamId),
+        )
+        .take(5)
+        .map((game) {
+          final isAway = game.away.teamId == teamId;
+          final teamScore = isAway ? game.away.score : game.home.score;
+          final opponentScore = isAway ? game.home.score : game.away.score;
+          final result = teamScore > opponentScore
+              ? '승'
+              : teamScore < opponentScore
+              ? '패'
+              : '무';
+          final opponent = isAway ? game.home : game.away;
+          return _RecentGameSummaryData(
+            gameId: game.gameId,
+            result: result,
+            opponentName: opponent.shortName,
+            score: '$teamScore:$opponentScore',
+          );
+        })
+        .toList();
   }
 
   _QuickContentItemData _quickItemFromAggregate(HomeQuickItem item) {
@@ -3418,6 +3459,11 @@ class _TodayGameReferenceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final largeText = textScale >= 1.3;
+    final rowHeight = largeText
+        ? (48 * textScale).clamp(72.0, 104.0).toDouble()
+        : 48.0;
     final statusText = secondaryTextForGameStatus(
       game.status,
       inning: game.inning,
@@ -3429,7 +3475,7 @@ class _TodayGameReferenceRow extends StatelessWidget {
       onTap: onTap,
       pressedScale: 0.985,
       child: SizedBox(
-        height: 48,
+        height: rowHeight,
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 5, 14, 5),
           decoration: BoxDecoration(
@@ -3540,9 +3586,9 @@ class _TodayGameReferenceRow extends StatelessWidget {
   }
 
   String _gameScoreText(Game game) {
-    if (game.status == GameStatus.scheduled ||
-        game.status == GameStatus.cancelled ||
-        game.status == GameStatus.suspended) {
+    if (!game.hasVerifiedScore ||
+        game.status == GameStatus.scheduled ||
+        game.status == GameStatus.cancelled) {
       return '– : –';
     }
     return '${game.away.displayScore} : ${game.home.displayScore}';
@@ -3564,6 +3610,7 @@ class _TodayTeamInline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final largeText = MediaQuery.textScalerOf(context).scale(1) >= 1.3;
     final team = KboTeams.byId(teamId);
     final logo = _TeamLogo(
       team: team,
@@ -3603,8 +3650,9 @@ class _TodayTeamInline extends StatelessWidget {
           ? MainAxisAlignment.end
           : MainAxisAlignment.start,
       children: [
-        if (!alignEnd) ...[logo, const SizedBox(width: 8), label],
-        if (alignEnd) ...[label, const SizedBox(width: 8), logo],
+        if (!alignEnd && !largeText) ...[logo, const SizedBox(width: 8)],
+        label,
+        if (alignEnd && !largeText) ...[const SizedBox(width: 8), logo],
       ],
     );
   }

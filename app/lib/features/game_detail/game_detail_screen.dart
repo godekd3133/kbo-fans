@@ -1702,33 +1702,52 @@ class _FollowGameCard extends StatelessWidget {
         : isFollowing
         ? '경기 팔로우 해제'
         : '경기 팔로우하기';
+    final iconWidget = isLoading
+        ? SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                AppColors.textSecondary,
+              ),
+            ),
+          )
+        : Icon(icon, size: 18);
+    final useStackedLayout =
+        MediaQuery.textScalerOf(context).scale(1) >= 1.6 ||
+        MediaQuery.sizeOf(context).width <= 320;
 
     return SizedBox(
       width: double.infinity,
-      height: 48,
-      child: ElevatedButton.icon(
-        onPressed: isLoading ? null : onPressed,
-        icon: isLoading
-            ? SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.textSecondary,
-                  ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: ElevatedButton(
+          onPressed: isLoading ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: backgroundColor,
+            disabledBackgroundColor: AppColors.cardSub,
+            foregroundColor: AppColors.textPrimary,
+            disabledForegroundColor: AppColors.textSecondary,
+            minimumSize: const Size.fromHeight(48),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: useStackedLayout
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    iconWidget,
+                    const SizedBox(height: 4),
+                    Text(label, textAlign: TextAlign.center),
+                  ],
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [iconWidget, const SizedBox(width: 8), Text(label)],
                 ),
-              )
-            : Icon(icon, size: 18),
-        label: Text(label),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor,
-          disabledBackgroundColor: AppColors.cardSub,
-          foregroundColor: AppColors.textPrimary,
-          disabledForegroundColor: AppColors.textSecondary,
-          minimumSize: const Size.fromHeight(48),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
     );

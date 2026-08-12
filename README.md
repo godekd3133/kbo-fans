@@ -285,7 +285,7 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 - `python -m kbo_fans_backend.scheduler.baseball_info --smart-daily --dry-run`: 해당 날짜 scoreboard를 기준으로 팀별 `game_day` / `records_check` / `rival_watch` / `off_day` 브리프 계획을 자동 생성해 발송 전에 확인
 - `python -m kbo_fans_backend.scheduler.baseball_info --smart-daily --now-time 16:00 --dry-run`: 경기 시작 3시간 이내 팀은 `lineup_day`로 자동 전환해 라인업/예매/중계 진입을 유도
 - `./scripts/push-live-preflight.sh --env-file /path/to/kbo-fans-aws.env --aws`: 배포 전 앱 Firebase 설정, iOS APNs/Live Activity capability, release `API_BASE_URL` token-registration handoff, backend secret env, AWS env 형태를 secret 값 노출 없이 점검. 필수 배포값이 obvious placeholder로 남아 있으면 실패합니다.
-- `GET /api/push/config-status`: Firebase/APNs/registry/scheduler 설정 누락을 secret 값 노출 없이 점검
+- `GET /api/push/config-status`: `X-Kbo-Push-Sync-Secret`이 일치할 때만 Firebase/APNs/registry/scheduler 설정 누락을 secret 값 노출 없이 점검하며, secret 미설정·불일치는 503/401로 거절
 - `./scripts/push-readiness-check.sh https://3-39-79-1.sslip.io/api`: 배포 후 `/health`, push config readiness, scheduler heartbeat 최신성을 한 번에 점검. 기본적으로 `scheduler.lastSyncAt`이 180초 이내여야 통과하며, 설정값만 확인할 때는 `PUSH_READINESS_REQUIRE_SCHEDULER=false`로 우회합니다. `PUSH_READINESS_RUN_SYNC=true`로 one-shot sync를 실행하면 sync 후 config-status를 다시 읽어 heartbeat를 확인합니다. 날짜를 생략하면 backend의 `Asia/Seoul` KBO 경기일 기본값을 사용하고, 재현용 날짜가 필요할 때만 `PUSH_READINESS_DATE=YYYY-MM-DD`를 지정합니다.
 - `./scripts/lightsail-deploy.sh`: Lightsail 512MB/1GB 단일 서버에 backend runtime bundle을 SSH/SCP로 배포하고, API service와 sync worker를 systemd로 재시작합니다. Docker/ECR/ECS/ALB/EFS/Secrets Manager를 쓰지 않는 저비용 운영 경로입니다. 상세 절차는 `docs/LIGHTSAIL_BACKEND_RUNBOOK.md`를 기준으로 합니다.
 - `./scripts/aws-push-secrets.sh`: Firebase Admin JSON / APNs `.p8` / sync secret / KBO relay credential을 AWS Secrets Manager에 생성 또는 갱신하고 `SECRET_ARN_*` export를 생성
@@ -313,7 +313,7 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 GitHub Actions 배포:
 
 - Workflow: `.github/workflows/push-demo-deploy.yml` (`Push Demo Deploy`)
-- Required secrets/vars: `AWS_ROLE_TO_ASSUME` 또는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `PUSH_SYNC_SECRET`, `KBO_RELAY_USER_ID`, `KBO_RELAY_PASSWORD`, `ECR_REPOSITORY_URI`, `VPC_ID`, `PUBLIC_SUBNET_A_ID`, `PUBLIC_SUBNET_B_ID`. `ENABLE_HTTPS`는 기본 `true`이며, `ACM_CERTIFICATE_ARN`은 `ENABLE_HTTPS=true`일 때 필수입니다. `API_DOMAIN_NAME`은 ACM 인증서와 일치하는 커스텀 도메인이 있을 때 설정합니다.
+- Required secrets/vars: `AWS_ROLE_TO_ASSUME` 또는 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `IOS_GOOGLE_SERVICE_INFO_PLIST`, `ANDROID_GOOGLE_SERVICES_JSON`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT_JSON`, `APNS_AUTH_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `PUSH_SYNC_SECRET`, `KBO_RELAY_USER_ID`, `KBO_RELAY_PASSWORD`, `ECR_REPOSITORY_URI`, `VPC_ID`, `PUBLIC_SUBNET_A_ID`, `PUBLIC_SUBNET_B_ID`. `ENABLE_HTTPS`는 기본 `true`이며, `ACM_CERTIFICATE_ARN`과 인증서에 일치하는 `API_DOMAIN_NAME`은 `ENABLE_HTTPS=true`일 때 함께 필수입니다.
 - `dry_run=true`는 AWS/Docker deploy call 없이 repo script와 secret/env 형태를 검증합니다.
 - `dry_run=false`는 secret 업로드, ECR image push, CloudFormation deploy, stack output export, readiness를 실행합니다.
 - AWS 인증은 `AWS_ROLE_TO_ASSUME` OIDC role을 우선 사용합니다. `./scripts/aws-github-oidc-role.sh --env-file /path/to/kbo-fans-aws.env --repo godekd3133/kbo-fans --update-env-file`는 GitHub OIDC provider와 main branch trust policy를 준비하고 env 파일에 role ARN을 씁니다.

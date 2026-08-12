@@ -86,6 +86,7 @@
       "Type": "Number",
       "Default": 1,
       "MinValue": 1,
+      "MaxValue": 1,
       "Description": "Number of scoreboard sync worker tasks."
     },
     "PushSyncIntervalSeconds": {
@@ -226,8 +227,13 @@
     },
     "PushRegistryFileSystem": {
       "Type": "AWS::EFS::FileSystem",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
       "Properties": {
         "Encrypted": true,
+        "BackupPolicy": {
+          "Status": "ENABLED"
+        },
         "FileSystemTags": [
           {
             "Key": "Name",
@@ -399,10 +405,23 @@
         "Protocol": "HTTP",
         "DefaultActions": [
           {
-            "Type": "forward",
-            "TargetGroupArn": {
-              "Ref": "ApiTargetGroup"
-            }
+            "Fn::If": [
+              "UseHttps",
+              {
+                "Type": "redirect",
+                "RedirectConfig": {
+                  "Protocol": "HTTPS",
+                  "Port": "443",
+                  "StatusCode": "HTTP_301"
+                }
+              },
+              {
+                "Type": "forward",
+                "TargetGroupArn": {
+                  "Ref": "ApiTargetGroup"
+                }
+              }
+            ]
           }
         ]
       }

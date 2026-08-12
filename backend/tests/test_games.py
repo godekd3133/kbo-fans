@@ -126,8 +126,6 @@ def test_get_game_returns_404_when_missing(monkeypatch) -> None:
         "get_schedule_game",
         lambda game_id: None,
     )
-    client = TestClient(app)
-
     response = TestClient(app).get("/api/game/20260330KTLG0")
 
     assert response.status_code == 404

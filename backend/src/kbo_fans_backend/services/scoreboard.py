@@ -1006,9 +1006,26 @@ class ScoreboardService:
         if not isinstance(games, list):
             return False
         return all(
-            isinstance(game, dict) and game.get("status") in self._TERMINAL_STATUSES
+            self._is_snapshot_game_for_date(game, date)
+            and game.get("status") in self._TERMINAL_STATUSES
             for game in games
         )
+
+    @staticmethod
+    def _is_snapshot_game_for_date(game: Any, date: str) -> bool:
+        if not isinstance(game, dict):
+            return False
+        game_id = game.get("gameId")
+        if not isinstance(game_id, str) or not re.fullmatch(
+            r"20\d{6}[A-Z]{4}[A-Za-z0-9_-]{1,20}",
+            game_id,
+        ):
+            return False
+        try:
+            snapshot_date = date_type.fromisoformat(date)
+        except ValueError:
+            return False
+        return game_id[:8] == snapshot_date.strftime("%Y%m%d")
 
     def _can_use_scoreboard_snapshot_after_failure(
         self,

@@ -133,6 +133,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('320px 일정 달력은 수평 스크롤 없이 일요일 열까지 보인다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [scheduleProvider.overrideWith((_, _) async => const [])],
+        child: MaterialApp(theme: AppTheme.dark, home: const ScheduleScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final calendar = find.byKey(const ValueKey('schedule-calendar-card'));
+    expect(tester.getSize(calendar).width, lessThanOrEqualTo(320));
+    expect(find.text('일'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('캘린더의 다음달 1일을 누르면 다음달로 이동한다', (tester) async {
     final now = kboCivilDateTime();
     final visibleMonth = _monthWithVisibleNextMonthDay(now);

@@ -254,6 +254,43 @@ void main() {
     expect(find.textContaining('Bad state'), findsNothing);
   });
 
+  testWidgets('리더보드 오류 상태에서 다시 시도하면 데이터를 복구한다', (tester) async {
+    var attempts = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          leaderboardProvider.overrideWith((ref, key) async {
+            attempts += 1;
+            if (attempts == 1) {
+              throw StateError('temporary failure');
+            }
+            return const [_choiAvgLeader];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const LeaderboardScreen(
+            season: 2026,
+            metric: LeaderboardMetric.wins,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('다시 시도'), findsOneWidget);
+    expect(find.text('최원준'), findsNothing);
+
+    await tester.tap(find.text('다시 시도'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('최원준'), findsOneWidget);
+    expect(attempts, 2);
+  });
+
   testWidgets('현재 시즌에서 연 리더보드는 KST 1월 1일에 다음 시즌을 요청한다', (tester) async {
     final currentSeason = kboCurrentSeason();
     final requestedKeys = <String>[];

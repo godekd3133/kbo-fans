@@ -31,7 +31,7 @@ class TeamStatsService:
         snapshot_key = f"{team_id}-{season}"
         snapshot_record = self.snapshot_store.load("team_stats", snapshot_key)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
-        if self._can_use_snapshot_before_crawling(season, snapshot):
+        if self._can_use_snapshot_before_crawling(team_id, season, snapshot):
             return snapshot
 
         try:
@@ -40,7 +40,7 @@ class TeamStatsService:
             stale = self._team_stats_cache.get_stale(cache_key)
             if self._is_historical_season(season) and stale is not None:
                 return stale
-            if self._can_use_snapshot_after_failure(season, snapshot):
+            if self._can_use_snapshot_after_failure(team_id, season, snapshot):
                 return snapshot
             raise
         self._team_stats_cache.set(cache_key, payload)
@@ -52,19 +52,46 @@ class TeamStatsService:
 
     def _can_use_snapshot_before_crawling(
         self,
+        team_id: str,
         season: int,
         snapshot: Optional[Dict[str, Any]],
     ) -> bool:
-        return snapshot is not None and self._is_historical_season(season)
+        return (
+            snapshot is not None
+            and self._is_historical_season(season)
+            and self._is_consistent_snapshot(snapshot, team_id=team_id, season=season)
+        )
 
     def _can_use_snapshot_after_failure(
         self,
+        team_id: str,
         season: int,
         snapshot: Optional[Dict[str, Any]],
     ) -> bool:
         if snapshot is None:
             return False
-        return self._is_historical_season(season)
+        return self._is_historical_season(season) and self._is_consistent_snapshot(
+            snapshot,
+            team_id=team_id,
+            season=season,
+        )
+
+    @staticmethod
+    def _is_consistent_snapshot(
+        snapshot: Dict[str, Any],
+        *,
+        team_id: str,
+        season: int,
+    ) -> bool:
+        if not isinstance(snapshot, dict):
+            return False
+        snapshot_team_id = snapshot.get("teamId")
+        snapshot_season = snapshot.get("season")
+        return (
+            isinstance(snapshot_team_id, str)
+            and snapshot_team_id.strip().upper() == team_id.strip().upper()
+            and snapshot_season == season
+        )
 
     @staticmethod
     def _is_historical_season(season: int) -> bool:

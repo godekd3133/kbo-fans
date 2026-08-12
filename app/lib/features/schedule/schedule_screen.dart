@@ -1433,15 +1433,21 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewportWidth = constraints.maxWidth;
-        final calendarWidth = viewportWidth < 360 ? 330.0 : viewportWidth - 32;
+        final fitsNarrowCalendar = viewportWidth >= 312 && viewportWidth < 360;
+        final calendarWidth = viewportWidth < 312
+            ? 330.0
+            : fitsNarrowCalendar
+            ? viewportWidth
+            : viewportWidth - 32;
+        final horizontalCardPadding = fitsNarrowCalendar ? 2.0 : 10.0;
         final calendar = SizedBox(
           key: const ValueKey('schedule-calendar-card'),
           width: calendarWidth,
           child: Container(
             padding: EdgeInsets.fromLTRB(
-              10,
+              horizontalCardPadding,
               usesDenseCalendarSpacing ? 4 : 14,
-              10,
+              horizontalCardPadding,
               usesDenseCalendarSpacing ? 4 : 8,
             ),
             decoration: BoxDecoration(
@@ -1619,12 +1625,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             ),
           ),
         );
-        if (viewportWidth < 360) {
+        if (viewportWidth < 312) {
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(mainAxisSize: MainAxisSize.min, children: [calendar]),
           );
+        }
+        if (fitsNarrowCalendar) {
+          return calendar;
         }
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),

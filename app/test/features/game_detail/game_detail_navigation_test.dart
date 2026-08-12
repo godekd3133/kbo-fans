@@ -1033,6 +1033,10 @@ void main() {
         );
         expect(find.text('KT 위즈'), findsWidgets);
         expect(find.text('LG 트윈스'), findsWidgets);
+        final followButton = find.widgetWithText(ElevatedButton, '경기 팔로우하기');
+        expect(followButton, findsOneWidget);
+        expect(tester.getSize(followButton).height, greaterThan(48));
+        expect(tester.takeException(), isNull);
 
         final tabBar = tester.widget<TabBar>(find.byType(TabBar));
         expect(tabBar.isScrollable, isTrue);

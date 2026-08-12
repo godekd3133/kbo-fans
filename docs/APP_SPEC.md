@@ -1,6 +1,6 @@
 # KBO Fans 앱 기획서 (App Specification)
 
-> 최종 수정: 2026-08-10
+> 최종 수정: 2026-08-12
 > 상태: Draft v1
 
 ---
@@ -41,6 +41,32 @@
 - Live Activity update는 token별 desired revision을 저장하고 APNs 호출 직전에 claim revision을 다시 fence한다. 다중 token 순차 발송과 worker lease 경쟁에서도 오래된 content-state가 최신 상태 뒤에 도착하지 않아야 한다.
 - 공개 register는 stale TTL GC와 영속 신규-owner admission을 적용한다. exact owner refresh/rotation은 보존하되 자기신고 ID의 paced Sybil은 외부 attestation/WAF 없이는 완전히 증명·차단할 수 없음을 운영 한계로 유지한다.
 - 기록실·리더보드·알림 요약·문자중계 필터는 320px·240%에서 내용에 맞춰 재배치되고 44px 이상 선택 영역·selected semantics를 유지한다. 앱 locale은 한국어를 포함해 자동 AppBar leading도 `뒤로`로 읽는다. 고대비 dark accent는 모든 dark surface에서 4.5:1 이상이다.
+
+### 0.4 2026-08-11 전체 개선 추가 계약
+
+- 공식 점수가 미확정인 경기의 화면·접근성 라벨·Live Activity score surface는 `0:0`을 추정하지 않고 `–`/`점수 확인 중`을 사용한다. schedule fallback도 FINAL/CANCELLED/SUSPENDED 상태를 예정 경기로 바꾸지 않으며, 확인되지 않은 H/E/B는 `null`로 전달한다.
+- 등록된 device, Live Activity, push-to-start가 하나도 없는 sync worker tick은 scoreboard warm-up과 registry heartbeat write를 건너뛰어 idle EFS 비용을 만들지 않는다. 등록이 생긴 뒤에는 기존 5초 sync/heartbeat 계약을 따른다.
+- 동일한 sync heartbeat payload는 30초 안에 registry JSON을 다시 쓰지 않는다. 5초 cadence의 worker liveness 신호는 유지하되, 변경 없는 heartbeat가 EFS 전체 serialize/fsync 비용을 만들지 않도록 한다.
+- 리더보드 API 오류는 설명만 남기지 않고 화면 안 `다시 시도` action으로 provider를 재요청한다. 문자중계 unavailable/fallback와 선수 profile metadata는 큰 글씨에서 카드 높이를 늘리고 빈 pill을 만들지 않는다.
+- `/api/metrics/client`는 최대 16 KiB JSON object만 수집하며 oversized/malformed body는 기록 전에 413/422로 거절한다. AWS `EnableHttps=true`에서는 ALB HTTP listener가 HTTPS 301로 redirect되고, `false`는 임시 smoke 전용이다.
+- 기록실 선수 기록 오류와 리더보드 오류는 화면 안 명시적 `다시 시도`로 provider를 재요청한다. 알림 갱신 notice는 좁은 폭·큰 글씨에서 설명과 action을 세로로 쌓고, 선수 profile은 비어 있는 메타정보를 pill로 만들지 않는다.
+- 순위표는 1.4x 이상 text scale에서 고정 56px 행 대신 내용 높이에 맞는 적응형 행을 사용하며, 각 팀 행은 순위·팀·승/패/무·승률·경기 차·연속·마이팀을 하나의 screen-reader label로 제공한다.
+- API route의 schedule month, game/team/player identifier, season, leaderboard metric은 bounded 형식·범위를 먼저 검증한다. `/push/config-status`는 `PUSH_SYNC_SECRET` 미설정 시 503으로 diagnostics를 노출하지 않는다.
+- push registry runtime 상태는 90일, pending outbox는 7일·2,048건까지 자동 정리하고 active delivery claim은 보존한다. live scoreboard shared store는 최대 14개 날짜만 유지한다. 동일 worker의 일시 APNs 실패는 token/content별 5·15·30·60초 backoff를 적용한다.
+- APNs Live Activity sender는 HTTP/2 client를 sender 수명 동안 재사용하고, update/start fanout은 기본 최대 4개 bounded worker로 처리한다. 결과 배열은 기존 token 순서를 유지하며 token별 claim·generation·permanent prune 경계는 병렬 전송에서도 독립적으로 보존한다.
+
+### 0.5 2026-08-12 4차 경쟁 재감사 계약
+
+- historical team stats/team players/player detail/schedule/scoreboard snapshot은 요청한 team/player/game/date/month/season과 payload identity가 정확히 일치하고 기본 shape가 유효할 때만 재사용한다. 불일치·손상 snapshot은 crawler 또는 명시적 오류 경계로 이동하며 다른 경기·시즌의 데이터를 조용히 섞지 않는다.
+- `/scoreboard`, `/scoreboard/home`, `/scoreboard/compact`, `/home`, `/push/live-activity/sync-scoreboard`의 civil date와 `/schedule` month는 1900~2100 KBO 지원 연도 범위까지 검증한 뒤 service/crawler로 전달한다. Python이 parse할 수 있다는 이유만으로 0001·9999 요청을 upstream key로 사용하지 않는다.
+- 웹 미리보기는 개발 로그를 플로팅 overlay로 덮지 않는다. 네이티브 local/debug에서만 `SHOW_DEV_CONSOLE=true`로 개발 콘솔을 선택적으로 표시하며, root deep-link로 열린 리더보드·선수 상세도 명시적인 `뒤로` 버튼을 제공한다.
+- 웹에서 일정·홈 카드의 imperative 상세 이동은 현재 route를 브라우저 URL에도 반영한다. 상세 화면을 새로고침하거나 공유해도 underlying shell tab(`/schedule`, `/home`)로 되돌아가지 않는다.
+
+### 0.6 2026-08-12 5차 경쟁 감사 계약
+
+- `/api/metrics/client`는 source별 60초 요청 창과 최대 key 수를 적용하고, 16 KiB·JSON object 경계를 넘는 요청은 로그에 기록하지 않는다. 초과 요청은 429/413/422로 명시한다.
+- 선수 상세 route의 `player_type`은 `hitter` 또는 `pitcher`만 허용한다. 알 수 없는 역할을 타자 기본값으로 조용히 대체하지 않는다.
+- historical records overview/leaderboard snapshot의 root payload가 object가 아니면 재사용하지 않고 원천 조회 또는 명시적 오류로 이동한다.
 
 ---
 
@@ -258,7 +284,7 @@
 | 진행 중인 내 경기 | 마이팀 오늘 경기가 live 상태이면 마이팀 브리프 바로 아래, `오늘 경기` 위에 현재 스코어/이닝/구장을 compact 카드로 노출하고 탭하면 해당 경기 문자중계로 이동 |
 | 오늘 경기 | scoreboardProvider의 오늘 경기 전체를 compact row로 노출. 마이팀 경기를 우선 정렬하되 `전체 보기` CTA로 축약하지 않는다 |
 | 순위 | secondary section 활성화 이후 `/home.standingsPreview`를 읽어 전체 팀을 순위표로 표시 |
-| 최근 5경기 | 순위 바로 아래에서 `/home.standingsPreview` 전체 팀의 `streak`를 5개 결과 버블과 연승/연패 텍스트로 표시. 마이팀 행은 `myTeamBrief.recentSummaries`가 있으면 실제 최근 경기 요약을 우선 사용 |
+| 최근 5경기 | 순위 바로 아래에서 `/home.standingsPreview` 전체 팀의 `streak`를 5개 결과 버블과 연승/연패 텍스트로 표시. 마이팀 행은 `myTeamBrief.recentSummaries`가 있으면 실제 최근 경기 요약을 우선 사용하고, 집계가 비어 있으면 현재 scoreboard에서 점수와 상태가 모두 확인된 `FINAL` 경기만 보조해 표시한다 |
 | KBO 브리프 | 위 네 섹션 아래에서 그날 리그 전체의 주요 경기/확정 기록/핵심 흐름 요약 |
 | 빠른 콘텐츠 | 홈런왕, 오늘의 플레이어, 마이팀 순위 등 짧은 정보 카드. 첫 화면보다 아래에 배치 |
 
@@ -290,6 +316,7 @@
 - 마이팀 미선택 상태의 `마이팀 선택` CTA는 `/onboarding?mode=edit&redirect=/home`으로 이동하고, 선택 완료 뒤 홈으로 복귀한다.
 - 340px 이하에서는 마이팀 브리프의 최근 5경기를 위 행, 타율·ERA를 아래 2열에 배치한다. 홈 순위 표도 안쪽 여백과 수치 열 폭을 함께 줄여 팀명·전적을 축소 글자나 가로 넘침 없이 유지한다.
 - 최근 최대 5경기 결과는 오늘이 월초라 현재 월 일정만으로 충분하지 않을 때 이전 월 종료 경기도 함께 사용한다. 예정 경기의 0:0 스코어는 최근 결과로 집계하지 않는다.
+- 집계 응답이 비어도 현재 scoreboard에 확인된 종료 경기가 있으면 그 경기만 최근 결과 보조 데이터로 사용한다. `scoreAvailable=false` 경기나 `SUSPENDED`/예정 경기의 숫자는 최근 결과로 추정하지 않는다.
 - 브리프 문구는 홈 첫 프레임 전략을 해치지 않도록 기존 scoreboard와 지연 로딩된 `/home` aggregate 안의 `myTeamBrief` 데이터를 먼저 사용한다. 팀 타율/ERA는 secondary section 활성화 뒤 `teamStatsProvider`(`/api/team/{teamId}/stats`)로 먼저 표시하고, 팀 홈런 1위/뜨는 선수는 `teamPlayersProvider`(`/api/team/{teamId}/players`)가 도착하면 보강한다. 홈 첫 데이터 프레임 전에는 두 provider를 구독하지 않는다. 선발/라인업/직전 플레이처럼 별도 상세 fetch가 필요한 정보는 경기 상세/문자중계 진입 뒤에 확인하게 한다.
 - 마이팀 브리프의 `my_team_brief_command` 로컬 생성 비주얼은 별도 strip/banner가 아니라 브리프 카드 내부 background layer로 낮게 깔아 개인화 영역의 질감을 만든다. 추가 네트워크 fetch나 로고/구단 엠블럼/읽을 수 있는 임의 텍스트를 포함하지 않는다.
 - 마이팀이 선택되어 있고 오늘 마이팀 경기가 live 상태이거나 라인업 공개/시작 10분 전 예정 상태이면 홈/위젯/재동기화 경로에서 해당 경기를 기본 Live Activity target 으로 맞춘다. 단, 참조형 오늘 경기 행에는 상태 문구를 반복 노출하지 않고 Live Activity / Widget sync target만 조용히 유지한다.

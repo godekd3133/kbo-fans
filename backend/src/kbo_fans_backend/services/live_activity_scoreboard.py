@@ -27,6 +27,7 @@ class LiveActivityScoreboardSyncService:
     _KST = timezone(timedelta(hours=9))
     _PREGAME_ALERT_WINDOW = timedelta(minutes=10)
     _STALE_BASELINE_WINDOW = timedelta(minutes=2)
+    _TRANSIENT_UPDATE_BACKOFF_RETENTION = timedelta(minutes=15)
 
     def __init__(
         self,
@@ -41,21 +42,37 @@ class LiveActivityScoreboardSyncService:
         self.relay_service = relay_service
         self.standings_service = standings_service or StandingsService()
         self.now_provider = now_provider or (lambda: datetime.now(timezone.utc))
+        self._transient_update_backoff: dict[str, tuple[str, int, datetime]] = {}
+
+    def _sync_now(self) -> datetime:
+        now = self.now_provider()
+        if now.tzinfo is None:
+            return now.replace(tzinfo=timezone.utc)
+        return now.astimezone(timezone.utc)
+
+    def close(self) -> None:
+        sender = getattr(self.push_service, "live_activity_sender", None)
+        close = getattr(sender, "close", None)
+        if callable(close):
+            close()
 
     def sync_date(self, date: str) -> dict[str, Any]:
+        self._prune_transient_update_backoff(self._sync_now())
         registered_game_ids = set(self.push_service.registry.live_activity_game_ids())
         has_push_registrations = self.push_service.registry.has_device_registrations()
         has_start_tokens = self.push_service.registry.has_live_activity_start_tokens()
         if not registered_game_ids and not has_push_registrations and not has_start_tokens:
-            return {
-                "date": date,
-                "checkedGames": 0,
-                "startedGames": [],
-                "updatedGames": [],
-                "pushedMoments": [],
-                "warmed": False,
-                "idle": True,
-            }
+            return self._record_heartbeat(
+                {
+                    "date": date,
+                    "checkedGames": 0,
+                    "startedGames": [],
+                    "updatedGames": [],
+                    "pushedMoments": [],
+                    "warmed": False,
+                    "idle": True,
+                }
+            )
 
         retried_moments = self._retry_pending_game_moments()
         scoreboard = self._warm_scoreboard(date)
@@ -142,9 +159,23 @@ class LiveActivityScoreboardSyncService:
         tokens = self.push_service.registry.live_activity_tokens_for_game(update.gameId)
         content_signature = _live_activity_content_signature(update)
         tokens_by_delivery_id = {_live_activity_delivery_id(token): token for token in tokens}
+        eligible_delivery_ids = []
+        now = self._sync_now()
+        self._prune_transient_update_backoff(now)
+        for delivery_id in tokens_by_delivery_id:
+            backoff = self._transient_update_backoff.get(delivery_id)
+            if backoff is None:
+                eligible_delivery_ids.append(delivery_id)
+                continue
+            backoff_signature, _, retry_at = backoff
+            if backoff_signature != content_signature or now >= retry_at:
+                self._transient_update_backoff.pop(delivery_id, None)
+                eligible_delivery_ids.append(delivery_id)
+        if not eligible_delivery_ids:
+            return None
         claims = self.push_service.registry.claim_live_activity_updates(
             game_id=update.gameId,
-            delivery_ids=list(tokens_by_delivery_id),
+            delivery_ids=eligible_delivery_ids,
             content_signature=content_signature,
         )
         if not claims:
@@ -193,8 +224,30 @@ class LiveActivityScoreboardSyncService:
             if isinstance(response_messages, list):
                 messages.extend(response_messages)
             if _live_activity_delivery_complete(response):
+                self._transient_update_backoff.pop(delivery_id, None)
                 completed_claims[delivery_id] = claim_id
             else:
+                permanent_failure = any(
+                    isinstance(message, dict) and bool(message.get("permanentTokenFailure"))
+                    for message in response_messages or []
+                )
+                if permanent_failure:
+                    self._transient_update_backoff.pop(delivery_id, None)
+                else:
+                    previous_attempts = self._transient_update_backoff.get(
+                        delivery_id,
+                        (content_signature, 0, now),
+                    )
+                    attempts = (
+                        previous_attempts[1] if previous_attempts[0] == content_signature else 0
+                    )
+                    attempts = min(attempts + 1, 6)
+                    delay_seconds = min(60, 5 * (2 ** (attempts - 1)))
+                    self._transient_update_backoff[delivery_id] = (
+                        content_signature,
+                        attempts,
+                        now + timedelta(seconds=delay_seconds),
+                    )
                 released_claims[delivery_id] = claim_id
 
         self.push_service.registry.resolve_live_activity_updates(
@@ -209,6 +262,12 @@ class LiveActivityScoreboardSyncService:
             "gameId": update.gameId,
             "messages": messages,
         }
+
+    def _prune_transient_update_backoff(self, now: datetime) -> None:
+        cutoff = now - self._TRANSIENT_UPDATE_BACKOFF_RETENTION
+        for delivery_id, (_, _, retry_at) in list(self._transient_update_backoff.items()):
+            if retry_at <= cutoff:
+                self._transient_update_backoff.pop(delivery_id, None)
 
     def _start_live_activity_for_game(
         self,

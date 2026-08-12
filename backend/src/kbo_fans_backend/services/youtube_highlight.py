@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from urllib.parse import quote
 
@@ -11,6 +13,7 @@ from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 class YoutubeHighlightService:
     _CACHE_TTL_SECONDS = 600
+    _OEMBED_MAX_WORKERS = 3
     _SEARCH_URL = "https://www.youtube.com/results?search_query={query}"
     _OEMBED_URL = "https://www.youtube.com/oembed?url={video_url}&format=json"
     _VIDEO_ID_PATTERN = re.compile(r'"videoId":"([A-Za-z0-9_-]{11})"')
@@ -47,6 +50,7 @@ class YoutubeHighlightService:
         self.timeout_seconds = timeout_seconds
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "Mozilla/5.0"})
+        self._thread_local = threading.local()
         self._cache: TtlCache[str, list[dict[str, Any]]] = TtlCache(self._CACHE_TTL_SECONDS)
 
     def fetch_highlights(
@@ -65,9 +69,10 @@ class YoutubeHighlightService:
         query = self._build_query(game_id=game_id, away_name=away_name, home_name=home_name)
         video_ids = self._search_video_ids(query, limit=limit)
         videos = []
-        for video_id in video_ids:
+        titles = self._fetch_titles(video_ids)
+        for video_id, title in zip(video_ids, titles):
             video_url = f"https://www.youtube.com/watch?v={video_id}"
-            title = self._fetch_title(video_url) or f"{away_name} vs {home_name} 하이라이트"
+            title = title or f"{away_name} vs {home_name} 하이라이트"
             if not self._is_relevant_title(
                 title=title,
                 away_name=away_name,
@@ -88,6 +93,21 @@ class YoutubeHighlightService:
                 break
         self._cache.set(cache_key, videos)
         return videos
+
+    def _fetch_titles(self, video_ids: list[str]) -> list[str]:
+        if not video_ids:
+            return []
+        worker_count = min(self._OEMBED_MAX_WORKERS, len(video_ids))
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            return list(executor.map(self._fetch_title_for_video_id, video_ids))
+
+    def _fetch_title_for_video_id(self, video_id: str) -> str:
+        if getattr(self._thread_local, "session", None) is None:
+            session = requests.Session()
+            session.headers.update({"User-Agent": "Mozilla/5.0"})
+            self._thread_local.session = session
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+        return self._fetch_title(video_url)
 
     def build_search_fallback(
         self,
@@ -132,7 +152,10 @@ class YoutubeHighlightService:
         return seen
 
     def _fetch_title(self, video_url: str) -> str:
-        response = self.session.get(
+        session = getattr(self._thread_local, "session", None)
+        if session is None:
+            session = self.session
+        response = session.get(
             self._OEMBED_URL.format(video_url=quote(video_url, safe="")),
             timeout=self.timeout_seconds,
         )

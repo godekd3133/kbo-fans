@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 class BaseCrawler:
     _CIRCUIT_BREAKER_THRESHOLD = 3
     _CIRCUIT_BREAKER_COOLDOWN_SECONDS = 30
+    _CIRCUIT_BREAKER_STATE_TTL_SECONDS = 600
+    _CIRCUIT_BREAKER_MAX_KEYS = 4096
     _breaker_state: Dict[str, Dict[str, Any]] = {}
 
     def __init__(self) -> None:
@@ -34,9 +36,10 @@ class BaseCrawler:
         )
 
     def _request(self, method: str, url: str, *, breaker_key: Optional[str] = None, **kwargs):
+        now = time.monotonic()
+        self._prune_breaker_state(now)
         key = breaker_key or url
         state = self._breaker_state.get(key, {"failures": 0, "opened_until": 0.0})
-        now = time.monotonic()
         opened_until = state.get("opened_until", 0.0)
         if opened_until and now < opened_until:
             raise RuntimeError(f"Circuit open for {key}")
@@ -44,7 +47,11 @@ class BaseCrawler:
         try:
             response = self.session.request(method, url, timeout=self.timeout, **kwargs)
             response.raise_for_status()
-            self._breaker_state[key] = {"failures": 0, "opened_until": 0.0}
+            self._breaker_state[key] = {
+                "failures": 0,
+                "opened_until": 0.0,
+                "updated_at": now,
+            }
             return response
         except Exception:
             failures = int(state.get("failures", 0)) + 1
@@ -59,15 +66,34 @@ class BaseCrawler:
             self._breaker_state[key] = {
                 "failures": failures,
                 "opened_until": opened_until,
+                "updated_at": now,
             }
             raise
+
+    @classmethod
+    def _prune_breaker_state(cls, now: float) -> None:
+        for key, state in list(cls._breaker_state.items()):
+            opened_until = float(state.get("opened_until", 0.0) or 0.0)
+            updated_at = float(state.get("updated_at", 0.0) or 0.0)
+            if (opened_until and now >= opened_until) or (
+                not opened_until and now - updated_at >= cls._CIRCUIT_BREAKER_STATE_TTL_SECONDS
+            ):
+                cls._breaker_state.pop(key, None)
+
+        overflow = len(cls._breaker_state) - cls._CIRCUIT_BREAKER_MAX_KEYS
+        if overflow <= 0:
+            return
+        oldest_keys = sorted(
+            cls._breaker_state,
+            key=lambda key: float(cls._breaker_state[key].get("updated_at", 0.0) or 0.0),
+        )[:overflow]
+        for key in oldest_keys:
+            cls._breaker_state.pop(key, None)
 
     def _get_text(self, url: str, *, breaker_key: Optional[str] = None, **kwargs) -> str:
         return self._request("GET", url, breaker_key=breaker_key, **kwargs).text
 
-    def _post_text(
-        self, url: str, *, breaker_key: Optional[str] = None, **kwargs
-    ) -> str:
+    def _post_text(self, url: str, *, breaker_key: Optional[str] = None, **kwargs) -> str:
         return self._request("POST", url, breaker_key=breaker_key, **kwargs).text
 
     def _get_json(self, url: str, *, breaker_key: Optional[str] = None, **kwargs):
@@ -96,9 +122,7 @@ class BaseCrawler:
             html,
             re.S | re.I,
         ):
-            fields[match.group(1)] = unescape(
-                self._selected_option_value(match.group(2))
-            )
+            fields[match.group(1)] = unescape(self._selected_option_value(match.group(2)))
 
         fields.update(overrides or {})
         fields["__EVENTTARGET"] = event_target

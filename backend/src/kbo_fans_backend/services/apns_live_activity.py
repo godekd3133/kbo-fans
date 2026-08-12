@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -39,6 +40,8 @@ class ApnsLiveActivitySendError(ValueError):
 class ApnsLiveActivitySender:
     def __init__(self, settings: Optional[Settings] = None) -> None:
         self.settings = settings or get_settings()
+        self._client_lock = threading.Lock()
+        self._client = None
 
     def send(
         self,
@@ -67,13 +70,7 @@ class ApnsLiveActivitySender:
         )
         url = f"https://{host}/3/device/{activity_push_token}"
 
-        try:
-            import httpx
-        except ImportError as error:
-            raise ValueError("httpx is not installed") from error
-
-        with httpx.Client(http2=True, timeout=10) as client:
-            response = client.post(url, json=payload, headers=headers)
+        response = self._post(url, payload=payload, headers=headers)
         _raise_for_apns_error(response, operation="send")
 
         return {
@@ -107,13 +104,7 @@ class ApnsLiveActivitySender:
         )
         url = f"https://{host}/3/device/{push_to_start_token}"
 
-        try:
-            import httpx
-        except ImportError as error:
-            raise ValueError("httpx is not installed") from error
-
-        with httpx.Client(http2=True, timeout=10) as client:
-            response = client.post(url, json=payload, headers=headers)
+        response = self._post(url, payload=payload, headers=headers)
         _raise_for_apns_error(response, operation="start")
 
         return {
@@ -121,6 +112,40 @@ class ApnsLiveActivitySender:
             "apnsId": response.headers.get("apns-id"),
             "statusCode": response.status_code,
         }
+
+    def _post(
+        self,
+        url: str,
+        *,
+        payload: dict[str, Any],
+        headers: dict[str, str],
+    ) -> Any:
+        client = self._get_client()
+        return client.post(url, json=payload, headers=headers)
+
+    def _get_client(self) -> Any:
+        client = self._client
+        if client is not None:
+            return client
+
+        try:
+            import httpx
+        except ImportError as error:
+            raise ValueError("httpx is not installed") from error
+
+        with self._client_lock:
+            if self._client is None:
+                self._client = httpx.Client(http2=True, timeout=10)
+            return self._client
+
+    def close(self) -> None:
+        with self._client_lock:
+            client = self._client
+            self._client = None
+        if client is not None:
+            close = getattr(client, "close", None)
+            if callable(close):
+                close()
 
     def _headers(self, *, game_id: str) -> dict[str, str]:
         return {

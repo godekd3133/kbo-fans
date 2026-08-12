@@ -228,7 +228,7 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
         key: const ValueKey('notification-inbox-entries-error'),
         child: _InboxLoadErrorState(
           title: '최근 알림을 불러오지 못했습니다',
-          body: '보관된 알림 목록만 확인할 수 없습니다. 알림 설정은 별도로 계속 불러옵니다.',
+          body: '보관된 알림 목록을 확인할 수 없습니다. 알림 설정은 별도로 계속 불러옵니다.',
           actionLabel: '알림 목록 다시 시도',
           onRetry: () => unawaited(_loadEntries()),
         ),
@@ -867,27 +867,58 @@ class _InboxLoadNotice extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.ballYellow.withValues(alpha: 0.32)),
       ),
-      child: Row(
-        children: [
-          Icon(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isStacked =
+              constraints.maxWidth < 360 ||
+              MediaQuery.textScalerOf(context).scale(14) > 18;
+          final messageText = Text(
+            message,
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.35,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          );
+          final icon = Icon(
             Icons.info_outline_rounded,
             size: 18,
             color: AppColors.ballYellow,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: TextStyle(
-                fontSize: 11,
-                height: 1.35,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          TextButton(onPressed: onRetry, child: Text(actionLabel)),
-        ],
+          );
+
+          if (isStacked) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    icon,
+                    const SizedBox(width: 8),
+                    Expanded(child: messageText),
+                  ],
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: onRetry,
+                    child: Text(actionLabel),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              icon,
+              const SizedBox(width: 8),
+              Expanded(child: messageText),
+              TextButton(onPressed: onRetry, child: Text(actionLabel)),
+            ],
+          );
+        },
       ),
     );
   }

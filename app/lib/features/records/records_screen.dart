@@ -54,6 +54,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   LeaderboardMetric _selectedPreviewMetric = LeaderboardMetric.avg;
   int? _teamRecordsLoadStartedAtMicros;
   String? _lastTeamRecordsLogKey;
+  late final ScrollController _metricSpotlightScrollController;
 
   @override
   void initState() {
@@ -74,6 +75,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
       });
     });
     _tabController = TabController(length: 2, vsync: this);
+    _metricSpotlightScrollController = ScrollController();
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       setState(() {
@@ -87,6 +89,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _metricSpotlightScrollController.dispose();
     super.dispose();
   }
 
@@ -587,11 +590,23 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                               SizedBox(
                                 height: 420,
                                 child: Center(
-                                  child: Text(
-                                    '선수 기록을 불러올 수 없습니다',
-                                    style: TextStyle(
-                                      color: AppColors.textSupporting,
-                                    ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '선수 기록을 불러올 수 없습니다',
+                                        style: TextStyle(
+                                          color: AppColors.textSupporting,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      OutlinedButton(
+                                        onPressed: () => unawaited(
+                                          _refreshTeamRecords(teamId),
+                                        ),
+                                        child: const Text('다시 시도'),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -1709,14 +1724,33 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
 
         return SizedBox(
           height: 124,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            clipBehavior: Clip.hardEdge,
-            itemCount: snapshots.length,
-            separatorBuilder: (_, _) => const SizedBox(width: gap),
-            itemBuilder: (context, index) => SizedBox(
-              width: cardWidth,
-              child: _metricSpotlightCard(snapshots[index]),
+          child: ScrollbarTheme(
+            data: ScrollbarTheme.of(context).copyWith(
+              thumbColor: WidgetStatePropertyAll(
+                AppColors.accent.withValues(alpha: 0.9),
+              ),
+              trackColor: WidgetStatePropertyAll(
+                AppColors.divider.withValues(alpha: 0.72),
+              ),
+            ),
+            child: Scrollbar(
+              key: const ValueKey('records-metric-spotlight-scrollbar'),
+              controller: _metricSpotlightScrollController,
+              thumbVisibility: true,
+              trackVisibility: true,
+              thickness: 4,
+              radius: const Radius.circular(4),
+              child: ListView.separated(
+                controller: _metricSpotlightScrollController,
+                scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.hardEdge,
+                itemCount: snapshots.length,
+                separatorBuilder: (_, _) => const SizedBox(width: gap),
+                itemBuilder: (context, index) => SizedBox(
+                  width: cardWidth,
+                  child: _metricSpotlightCard(snapshots[index]),
+                ),
+              ),
             ),
           ),
         );

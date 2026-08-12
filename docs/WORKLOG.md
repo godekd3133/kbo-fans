@@ -2,6 +2,160 @@
 
 ---
 
+## 2026-08-13: 0.1.25+93 TestFlight 재배포 준비
+
+### 결정
+
+- 현재 `main`의 최신 tracked 앱·backend·테스트·배포 스크립트 변경을 tester-facing release `0.1.25+93`으로 승격한다.
+- 캡처·이미지·PPT·Pages·output 산출물은 release commit에서 제외하고, 코드·테스트·제품 문서만 포함한다.
+- 이전 build 92가 이미 `VALID`·Beta App Review `APPROVED` 상태이므로 build number는 93으로 올리고, 외부 그룹의 기존 설치 가능 build는 새 build가 확인될 때까지 유지한다.
+
+### 검증 및 진행
+
+- [x] Flutter analyze 통과: `No issues found`.
+- [x] Flutter 전체 테스트 통과: `498 passed`.
+- [x] backend 전체 pytest 통과: `560 passed` (깨진 저장소 `.venv` 대신 시스템 Python 3.12 pytest로 실행).
+- [x] backend Ruff, compileall 통과.
+- [x] 운영 release API health gate 통과: health, home, scoreboard, relay, schedule, standings, records overview.
+- [x] App Store Connect live state 확인: 기존 build 92 `VALID`, Beta App Review `APPROVED`, 내부 `Tester`·외부 `External Testers` 연결.
+- [ ] 최신 변경 commit 및 `main` push.
+- [ ] `0.1.25+93` clean worktree IPA archive/export 및 App Store Connect upload.
+- [ ] build 93 `VALID`, 내부·외부 그룹 연결, Beta App Review 상태, 실제 설치 가능 상태 확인.
+
+## 2026-08-12: 10차 backend 반례 감사 — current relay truth와 잔여 snapshot 경계
+
+### 결정 및 반영
+
+- [x] current-day/unknown relay가 historical detailed snapshot을 재사용하던 경로를 RED→GREEN으로 닫았다. relay snapshot-first와 failure fallback 모두 game-id 날짜가 KBO `Asia/Seoul` 기준 과거일 때만 허용하고, 현재/미래 경기는 crawler 또는 summary/error 경계로 남긴다.
+- [x] 9차에서 추가한 relay payload identity·non-dict item shape, lineup identity, records season/metric identity를 재감사해 GREEN을 유지했다.
+- [x] JsonSnapshotStore GC는 historical retention 계약 미확정 상태라 구현하지 않았다. namespace cardinality/bytes 관측과 EFS 경보가 선행되어야 하며, API task 간 분산 SingleFlight도 별도 lease/queue 설계가 필요하다.
+
+### 검증
+
+- [x] RED: 오늘 KBO 경기의 `UNKNOWN` 상태에서 오래된 detailed relay snapshot이 반환됨을 재현.
+- [x] GREEN: relay focused 14 passed, records focused 24 passed, backend 전체 `560 passed`; Ruff, Python compileall, `git diff --check` 통과.
+- [ ] 실제 KBO current/future status 변동·운영 다중 task·snapshot 비용/GC 정책은 외부 runtime/운영 게이트다.
+
+## 2026-08-12: 9차 backend 반례 감사 — relay/lineup snapshot identity
+
+### 결정 및 반영
+
+- [x] final relay snapshot은 상세 relay shape만 확인하고 payload `gameId`를 요청 경기와 대조하지 않던 경로를 RED→GREEN으로 닫았다. mismatch는 snapshot-first 응답 대신 현재 경기의 summary/error 경계로 이동한다.
+- [x] 같은 relay validator가 `relayItems` list 내부의 비-dict 원소를 `.get()`으로 읽어 500을 만들던 malformed shape도 RED→GREEN으로 닫고 summary fallback으로 보낸다.
+- [x] 과거 lineup snapshot도 root shape만 확인하고 payload `gameId`를 대조하지 않던 경로를 RED→GREEN으로 닫았다. mismatch는 crawler/error 경계로 이동하며 정상 snapshot의 player image enrichment는 유지한다.
+- [x] RecordsOverview/Leaderboard historical snapshot이 missing/mismatched `season`/`metric`을 normalization fallback으로 요청값에 덮어쓰던 경로를 RED→GREEN으로 닫았다. cache·snapshot·stale fallback 모두 exact identity를 먼저 확인한다.
+- [x] JsonSnapshotStore 장기 retention은 historical 보존 정책 없이 삭제하지 않았다. ECS API 다중 task SingleFlight는 프로세스 로컬이라는 한계를 재확인했고 분산 lease/queue는 별도 운영 설계로 남겼다.
+
+### 검증
+
+- [x] RED: relay/lineup 요청 ID와 다른 snapshot payload가 그대로 반환되는 반례를 각각 확인.
+- [x] GREEN: relay focused 13 passed, lineup focused 8 passed, records focused 24 passed, backend 전체 `559 passed`; Ruff, Python compileall, `git diff --check` 통과.
+- [ ] 실제 KBO historical payload 변동·다중 ECS API task scale-out·snapshot GC 정책은 외부 runtime/운영 게이트다.
+
+## 2026-08-12: 8차 backend 반례 감사 — Live Activity backoff state retention
+
+### 결정 및 반영
+
+- [x] APNs transient update 실패 backoff가 token rotation/unregister 뒤 현재 registry에 없는 delivery id를 worker 메모리에 계속 남길 수 있음을 재현했다. 등록 token A의 transient 실패 후 unregister하고 16분 idle tick을 돌리면 기존 구현의 backoff map entry가 잔류했다.
+- [x] `LiveActivityScoreboardSyncService`가 매 tick 15분 이상 재시도되지 않은 transient backoff를 정리하도록 최소 수정했다. idle tick에서도 정리하고, 새 content signature·permanent token failure·성공 시 기존 prune/backoff 의미를 유지한다.
+- [x] API 다중 task SingleFlight는 프로세스 로컬 경계임을 재확인했다. `ApiDesiredCount`를 수평 확장하면 task별 crawler 중복이 가능하므로 분산 lease/queue는 별도 운영 설계로 남겼다.
+
+### 검증
+
+- [x] RED: `test_expired_backoff_for_removed_activity_does_not_accumulate_forever`에서 기존 backoff entry 잔류를 확인.
+- [x] GREEN: focused Live Activity/scheduler/push 79 passed; backend 전체 `555 passed`; Ruff, Python compileall, `git diff --check` 통과.
+- [ ] 실제 APNs 전달·token rotation 실기기·다중 ECS API task scale-out은 외부 runtime/운영 게이트다.
+
+## 2026-08-12: 7차 경쟁 감사 — 동시 일정 fetch와 화면 상태 교차 검수
+
+
+### 결정 및 반영
+
+- [x] 동일 월 일정 cache miss 동시 요청이 같은 프로세스에서 crawler를 중복 호출하던 경로를 월 key `SingleFlight`로 coalesce했다. cache·historical snapshot identity·예외 전달 순서는 기존 계약을 유지한다.
+- [x] 실제 local web preview에서 홈·온보딩 편집·일정·순위·기록실·브리핑·알림함·설정·경기 상세와 boxscore/lineup/relay 상태를 새로 캡처해 교차 검수했다. onboarding 일반 route가 완료 상태에서 홈으로 redirect되는 것은 persisted onboarding guard로 확인했고, 편집 route(`/onboarding?mode=edit`)를 별도 캡처했다.
+- [x] 기록실 지표 가로 rail은 390/320/280px에서 partial card가 의도된 scroll content임을 확인하고, 발견성을 위해 persistent scrollbar thumb/track을 추가했다. 1.6x 이상 큰 글씨의 세로 재배치에는 scrollbar를 적용하지 않는다.
+- [x] JsonSnapshotStore의 namespace GC는 historical 보존 정책 없이 도입하지 않았다. 임시 store에서 3,000개 고유 player detail key가 3,000 files·약 322,890 bytes로 선형 증가하는 것을 수치화하고, 운영 cardinality/bytes 경보를 별도 후속으로 남겼다.
+
+### 검증
+
+- [x] backend focused schedule 15 passed, backend 전체 `554 passed`, Ruff, Python compileall, `git diff --check` 통과.
+- [x] Flutter 전체 `497 passed`, `flutter analyze`에서 `No issues found`, 대상 format과 `git diff --check`를 통과했다. 7차 캡처는 `artifacts/ux-audit-2026-08-12/7th-*.png`에 보존했다. UI 390/320/280px·240% 회귀와 기록실 rail post-fix 캡처를 교차 확인했고 rail focused test 11개도 통과했다.
+- [ ] 실제 APNs/FCM·실기기 VoiceOver/TalkBack·운영 AWS scale-out과 snapshot GC 적용은 외부 runtime/운영 정책 게이트다.
+
+## 2026-08-12: 6차 경쟁 감사 — 웹 route 상태와 전체 게이트 재확인
+
+### 결정 및 반영
+
+- [x] 실제 release web preview에서 home 화면을 새로 캡처·검수하고, DevConsole overlay가 제품 콘텐츠를 가리지 않는 상태를 다시 확인했다. 캡처는 `artifacts/ux-audit-2026-08-12/6th-home-390.png`에 보존했다.
+- [x] GoRouter imperative push가 화면만 바꾸고 브라우저 hash를 shell 탭에 남기지 않도록 `optionURLReflectsImperativeAPIs`를 활성화했다. 뉴스 → 순위 push와 상세 deep-link의 route information을 회귀 테스트로 고정했다.
+- [x] backend와 Flutter 두 독립 비평의 6차 재감사에서 새 P1/P2를 추가 수용할 근거가 없음을 확인했다. snapshot namespace별 파일/총량 GC는 데이터 보존 정책이 필요한 별도 운영 항목으로 남겼다.
+
+### 검증
+
+- [x] backend 전체 `553 passed`, Flutter 전체 `496 passed`, Flutter analyze, Ruff, Python compileall, `git diff --check` 통과.
+- [x] UI 390/320/280px·240% 회귀 67개와 최신 web build 로드 확인. 실제 APNs/FCM·실기기 VoiceOver/TalkBack·운영 배포는 외부 runtime 게이트로 남겨 두었다.
+- [ ] 외부 배포·commit·stage는 수행하지 않았다. 보호 대상 tracked snapshot 6개는 열람·수정하지 않았다.
+
+## 2026-08-12: 4차 경쟁 재감사 — snapshot identity와 웹 화면 보호
+
+### 결정 및 반영
+
+- [x] 두 독립 비평의 최신 worktree를 다시 읽고, 이전 GREEN 결과를 새 완료 근거로 재사용하지 않은 채 화면·데이터·운영 반례를 재검증했다. user-facing 팀 공유·외부 배포·commit은 수행하지 않았다.
+- [x] historical team stats/team players/player detail/schedule/scoreboard snapshot의 요청 identity·root shape를 TDD RED→GREEN으로 검증했다. 교차 팀·시즌·선수·월·경기 날짜 payload는 재사용하지 않고 crawler/error path로 이동한다. relay/lineup root list snapshot도 예외 대신 fallback 경계를 통과한다.
+- [x] `/scoreboard*`, `/home`, Live Activity sync date와 `/schedule` month에 1900~2100 지원 연도 검증을 추가해 Python 날짜 parser가 허용하는 0001·9999가 crawler/cache key가 되지 않게 했다.
+- [x] 웹에서는 DevConsole overlay를 숨겨 FAB가 홈·설정·라인업을 가리지 않게 하고, root deep-link 리더보드·선수 상세에 명시적 한국어 뒤로가기를 추가했다. GoRouter imperative 상세 push도 현재 URL/hash에 반영해 새로고침·공유 시 shell tab으로 되돌아가지 않게 했다.
+- [x] Live Activity sync worker는 수명 동안 동일 서비스를 재사용하고 종료 시 APNs HTTP/2 sender를 닫아, 5초 tick마다 transient backoff와 connection pool이 초기화되지 않게 했다.
+
+### 검증
+
+- [x] backend snapshot/scoreboard/schedule/relay/lineup/route focused tests와 Ruff 통과. 새 identity·malformed snapshot 회귀는 임시 `JsonSnapshotStore`만 사용했고 보호 대상 tracked snapshot 6개는 열람·수정하지 않았다.
+- [x] Flutter player/leaderboard focused tests 9개, analyze 대상 2개 clean; UI 경쟁 재감사 63개 focused tests와 8개 화면 analyze도 clean.
+- [x] 4차 기준 backend `549 passed`, Flutter `495 passed`, Flutter analyze, backend Ruff/compileall, `git diff --check`, web release build를 통과했다. 현재 API를 연결한 390×844 홈과 320×844 일정 캡처에서 DevConsole overlay와 일요일 열 잘림이 재현되지 않았다.
+- [ ] 실제 APNs/FCM·실기기·운영 배포는 여전히 별도 게이트다.
+
+### 5차 경쟁 감사 추가 반영
+
+- [x] metrics endpoint를 source별 60초 sliding window(기본 120건, source map 1,024개)로 제한해 oversized/malformed 요청이 로그에 도달하기 전에 429/413/422로 종료되게 했다.
+- [x] 선수 상세 `player_type`을 `hitter`/`pitcher` enum으로 제한하고, historical records overview/leaderboard snapshot root가 list·비정상 shape면 재사용하지 않는 회귀를 추가했다.
+- [ ] namespace별 snapshot 파일 수·총량 GC는 현재 서비스 bounds와 충돌하지 않는 운영 정책을 먼저 정한 뒤 별도 작업으로 진행한다. 다중 worker 수동 scale-out·실제 WAF 전역 rate limit도 운영 게이트다.
+
+### 5차 검증
+
+- [x] 5차 최종 backend 전체 `553 passed`, Flutter 전체 `496 passed`, Flutter analyze, Ruff, Python compileall, `git diff --check` 통과. 추가 focused metrics/records/route/UI 검증도 통과했다.
+
+## 2026-08-11: 전체 개선 추가 라운드 — 진실성·복구성·idle 비용·반응형 UI
+
+### 결정 및 반영
+- [x] 공식 점수가 미확정인 LIVE/SUSPENDED 경기의 홈·스코어·문자중계 합계를 `0`으로 추정하지 않고 `–`와 `합계 미확정`으로 표시하도록 통일했다. 점수표 접근성 라벨도 같은 truth state를 읽는다.
+- [x] 홈 마이팀 LIVE 카드도 `TeamScore.displayScore`를 사용해 미확정 `0:0`을 막았다.
+- [x] 홈 aggregate의 최근 결과가 비어 있을 때 scoreboard에서 `FINAL`·양팀 공식 점수가 확인된 마이팀 경기만 최대 5개 보조해 `최근 결과 없음` 오표시를 막았다.
+- [x] scoreboard crawler가 실패해 schedule fallback으로 내려갈 때 FINAL/CANCELLED/SUSPENDED 상태·statusLabel을 유지하고 score/H/E/B는 실제 정수만 전달한다. 확인되지 않은 통계는 `null`로 남겨 앱이 unavailable state를 표시한다.
+- [x] 등록 device·Live Activity·push-to-start가 전혀 없는 sync worker는 KBO scoreboard warm-up과 불필요한 registry full rewrite를 수행하지 않고 idle 결과를 반환한다. lightweight heartbeat는 유지하고, 등록이 생긴 경우의 5초 cadence와 heartbeat도 유지한다.
+- [x] 리더보드 API 실패 화면에 명시적 `다시 시도` 버튼을 추가해 화면 이탈 없이 provider를 재요청할 수 있게 했다.
+- [x] 문자중계 fallback 카드가 320px·240% 글자에서 고정 높이를 넘겨도 자연스럽게 확장되며, 선수 상세의 빈 메타정보 pill은 만들지 않는다.
+- [x] 공개 client metrics 수집은 16 KiB body 상한과 JSON object 검증을 적용해 로그·파싱 기반 payload 고갈을 제한했다.
+- [x] AWS HTTPS 모드의 ALB HTTP listener는 HTTPS 301 redirect를 사용하고, 임시 `EnableHttps=false` smoke 모드에서만 HTTP forward를 허용한다.
+- [x] 기록실 선수 기록 오류에도 화면 안 `다시 시도`를 제공하고, 알림 갱신 notice는 320px·240%에서 메시지와 action을 세로로 재배치한다. 순위는 1.5x부터 적응형 큰 글씨 행을 사용하며 한 행의 순위·승패·승률·경기 차·연속을 하나의 접근성 label로 묶는다.
+- [x] 일정·게임·선수·팀·순위·리더보드 API의 month/game/team/player/season/metric 입력을 bounded pattern/range로 검증해 잘못된 고카디널리티 요청이 crawler와 snapshot까지 도달하지 않게 했다. `/push/config-status`도 sync secret 미설정 시 diagnostics를 공개하지 않고 503으로 거절한다.
+- [x] push registry의 scoreboard/relay/pregame/start/update/device 상태는 90일 runtime TTL로, pending outbox는 7일·2,048건 cap으로 오래된 상태를 정리한다. completed outbox 기존 512건 cap은 유지하며 active claim은 보존한다. live scoreboard shared store도 최근 14개 날짜만 유지한다.
+- [x] 같은 worker의 APNs 일시 실패는 token·content signature별 5→15→30→60초 메모리 backoff를 적용해 5초 cadence retry storm을 줄이고, 새 content/permanent token 실패는 즉시 재평가한다.
+- [x] 동일한 sync heartbeat payload는 30초 안에 registry JSON을 다시 쓰지 않도록 no-op write suppression을 적용해, 5초 worker cadence가 EFS 전체 serialize/fsync를 불필요하게 반복하지 않게 했다.
+- [x] 홈 오늘 경기 표는 `SUSPENDED`라도 양 팀 `scoreAvailable`이 모두 true인 공식 점수는 표시하고, 미확정 점수만 `– : –`로 남긴다. 320px·240%에서는 고정 48px 행을 104px adaptive row로 확장하고 팀 로고를 생략해 overflow를 막는다.
+- [x] `sync_once()`가 매 5초마다 `LiveActivityScoreboardSyncService`를 새로 만들지 않고 worker 수명 동안 재사용하도록 바꿔 token/content별 APNs transient backoff를 보존한다.
+- [x] `/scoreboard`, `/home`, compact/home scoreboard 및 Live Activity sync 날짜는 실제 `YYYY-MM-DD` civil date로 먼저 파싱하고, game ID는 유효한 날짜·KBO 팀 코드, team route는 canonical team allowlist를 crawler 앞에서 검증한다.
+- [x] `ENABLE_HTTPS=true` 배포·GitHub 설정은 ACM 인증서와 일치하는 `API_DOMAIN_NAME`을 함께 요구하도록 스크립트와 env 예제를 정합화했다.
+- [x] YouTube 하이라이트 oEmbed 제목은 최대 3개 worker로 병렬 조회하고 worker thread별 requests session을 사용해 6개 제목의 순차 10초 timeout 누적을 줄였다.
+- [x] KBO crawler circuit breaker는 cooldown/비활성 TTL과 4,096 key 상한으로 고카디널리티 game 요청이 process-wide 메모리를 무한히 늘리지 않도록 했다.
+- [x] APNs Live Activity sender는 lazy shared HTTP/2 client를 sender 수명 동안 재사용하고, update/start fanout은 token별 claim·generation·prune 경계를 유지한 채 기본 최대 4개로 제한된 병렬 전송과 기존 응답 순서를 제공한다. sender에는 명시적 `close()`를 남겨 worker shutdown wiring에서 회수할 수 있게 했다.
+
+### 검증
+- [x] Flutter focused: home, score, relay, leaderboard, player detail 테스트 통과.
+- [x] Backend focused: games, live-activity sync, route input validation, metrics, release runtime contract 테스트 통과.
+- [x] full Flutter suite **494 passed**, backend suite **537 passed**, `flutter analyze`와 web release build 통과. backend compileall·Ruff lint·scoped formatter·diff-check도 통과했다. web Wasm dry-run notice는 `flutter_timezone 4.1.1` upstream JS interop lint다.
+- [x] 최신 web build를 390×844와 320×844에서 다시 열어 홈·오늘 경기·하단 내비게이션을 육안 확인했다. 좁은 화면 캡처는 `artifacts/ux-audit-2026-08-11/17-home-latest.png`, `18-home-narrow.png`에 보존했다.
+- [ ] 실제 APNs/FCM·실기기·운영 배포는 외부 runtime 게이트로 남겨 두었다.
+- [ ] 기존 사용자 변경으로 보존 중인 tracked snapshot 6개는 열람·복구·삭제하지 않았다.
+
 ## 2026-08-11: 0.1.24+92 TestFlight 배포 준비 및 진행
 
 ### 결정

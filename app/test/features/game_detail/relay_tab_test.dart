@@ -14,6 +14,82 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/relay_tab.dart';
 
 void main() {
+  testWidgets('문자중계 fallback은 큰 글씨에서 카드 높이를 늘려 안내를 보존한다', (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const game = Game(
+      gameId: '20260612OBLT0',
+      status: GameStatus.live,
+      inning: '1회초',
+      away: TeamScore(
+        teamId: 'OB',
+        teamName: '두산 베어스',
+        shortName: '두산',
+        score: 0,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LT',
+        teamName: '롯데 자이언츠',
+        shortName: '롯데',
+        score: 0,
+        innings: [],
+      ),
+      stadium: '사직',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith(
+            (ref, gameId) async =>
+                const RelayData(currentAtBat: null, relayItems: []),
+          ),
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260612OBLT0',
+              away: TeamLineupData(teamId: 'OB', lineup: []),
+              home: TeamLineupData(teamId: 'LT', lineup: []),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2.4)),
+            child: child ?? const SizedBox.shrink(),
+          ),
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260612OBLT0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final notice = find.byKey(const ValueKey('relay-fallback-notice'));
+    expect(notice, findsOneWidget);
+    expect(tester.getSize(notice).height, greaterThan(156));
+    expect(find.textContaining('공식 문자중계 원문은'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('240% 중계 필터는 44px 선택 영역과 선택 의미를 보존한다', (tester) async {
     tester.view.physicalSize = const Size(320, 844);
     tester.view.devicePixelRatio = 1;

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import concurrent.futures
 import json
 from collections import defaultdict
 from pathlib import Path
@@ -68,9 +69,12 @@ class PushService:
         self,
         registry: Optional[PushRegistry] = None,
         live_activity_sender: Optional[ApnsLiveActivitySender] = None,
+        *,
+        live_activity_max_concurrency: int = 4,
     ) -> None:
         self.registry = registry or PushRegistry()
         self.live_activity_sender = live_activity_sender or ApnsLiveActivitySender()
+        self._live_activity_max_concurrency = max(1, int(live_activity_max_concurrency))
 
     def register(self, payload: PushRegisterRequest) -> dict[str, Any]:
         topics = self._build_topics(payload)
@@ -406,97 +410,121 @@ class PushService:
         if not tokens:
             return {"sent": False, "gameId": payload.gameId, "messages": []}
 
-        messages = []
-        for token in tokens:
-            registration_generation = None
-            end_claim_id = None
-            if payload.event == "end" and token in registered_tokens:
-                end_claim = self.registry.claim_live_activity_end_with_generation(
-                    game_id=payload.gameId,
-                    activity_push_token=token,
+        if len(tokens) == 1 or self._live_activity_max_concurrency == 1:
+            messages = [
+                self._send_live_activity_update_for_token(
+                    payload,
+                    token,
+                    registered_tokens=registered_tokens,
                 )
-                if end_claim is None:
-                    messages.append(
-                        {
-                            "activityPushToken": token,
-                            "sent": False,
-                            "skipped": True,
-                            "reason": "delivery_in_progress",
-                        }
-                    )
-                    continue
-                end_claim_id, registration_generation = end_claim
-            else:
-                registration_generation = (
-                    self.registry.ensure_live_activity_registration_generation(
-                        game_id=payload.gameId,
-                        activity_push_token=token,
+                for token in tokens
+            ]
+        else:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(self._live_activity_max_concurrency, len(tokens))
+            ) as executor:
+                messages = list(
+                    executor.map(
+                        lambda token: self._send_live_activity_update_for_token(
+                            payload,
+                            token,
+                            registered_tokens=registered_tokens,
+                        ),
+                        tokens,
                     )
                 )
-            try:
-                response = self.live_activity_sender.send(
-                    activity_push_token=token,
-                    game_id=payload.gameId,
-                    state=payload.state,
-                    event=payload.event,
-                    stale_date=payload.staleDate,
-                    dismissal_date=payload.dismissalDate,
-                    relevance_score=payload.relevanceScore,
-                )
-                messages.append({"activityPushToken": token, **response})
-                if payload.event == "end" and end_claim_id is not None:
-                    if response.get("sent"):
-                        self.registry.complete_live_activity_end(
-                            game_id=payload.gameId,
-                            activity_push_token=token,
-                            claim_id=end_claim_id,
-                            expected_registration_generation=registration_generation,
-                        )
-                    else:
-                        self.registry.release_live_activity_end(
-                            game_id=payload.gameId,
-                            activity_push_token=token,
-                            claim_id=end_claim_id,
-                        )
-            except Exception as error:
-                permanent_token_failure = (
-                    isinstance(error, ApnsLiveActivitySendError)
-                    and error.is_permanent_token_failure
-                )
-                if permanent_token_failure:
-                    pruned = self.registry.prune_live_activity_token(
-                        game_id=payload.gameId,
-                        activity_push_token=token,
-                        expected_registration_generation=registration_generation,
-                        end_claim_id=end_claim_id if payload.event == "end" else None,
-                    )
-                else:
-                    pruned = False
-                if end_claim_id is not None and not permanent_token_failure:
-                    self.registry.release_live_activity_end(
-                        game_id=payload.gameId,
-                        activity_push_token=token,
-                        claim_id=end_claim_id,
-                    )
-                message = {
-                    "activityPushToken": token,
-                    "sent": False,
-                    "error": str(error),
-                }
-                if permanent_token_failure:
-                    message.update(
-                        {
-                            "permanentTokenFailure": True,
-                            "pruned": pruned,
-                        }
-                    )
-                messages.append(message)
 
         return {
             "sent": any(message.get("sent") for message in messages),
             "gameId": payload.gameId,
             "messages": messages,
         }
+
+    def _send_live_activity_update_for_token(
+        self,
+        payload: LiveActivityUpdateRequest,
+        token: str,
+        *,
+        registered_tokens: set[str],
+    ) -> dict[str, Any]:
+        registration_generation = None
+        end_claim_id = None
+        if payload.event == "end" and token in registered_tokens:
+            end_claim = self.registry.claim_live_activity_end_with_generation(
+                game_id=payload.gameId,
+                activity_push_token=token,
+            )
+            if end_claim is None:
+                return {
+                    "activityPushToken": token,
+                    "sent": False,
+                    "skipped": True,
+                    "reason": "delivery_in_progress",
+                }
+            end_claim_id, registration_generation = end_claim
+        else:
+            registration_generation = self.registry.ensure_live_activity_registration_generation(
+                game_id=payload.gameId,
+                activity_push_token=token,
+            )
+        try:
+            response = self.live_activity_sender.send(
+                activity_push_token=token,
+                game_id=payload.gameId,
+                state=payload.state,
+                event=payload.event,
+                stale_date=payload.staleDate,
+                dismissal_date=payload.dismissalDate,
+                relevance_score=payload.relevanceScore,
+            )
+            if payload.event == "end" and end_claim_id is not None:
+                if response.get("sent"):
+                    self.registry.complete_live_activity_end(
+                        game_id=payload.gameId,
+                        activity_push_token=token,
+                        claim_id=end_claim_id,
+                        expected_registration_generation=registration_generation,
+                    )
+                else:
+                    self.registry.release_live_activity_end(
+                        game_id=payload.gameId,
+                        activity_push_token=token,
+                        claim_id=end_claim_id,
+                    )
+            return {"activityPushToken": token, **response}
+        except Exception as error:
+            permanent_token_failure = (
+                isinstance(error, ApnsLiveActivitySendError)
+                and error.is_permanent_token_failure
+            )
+            if permanent_token_failure:
+                pruned = self.registry.prune_live_activity_token(
+                    game_id=payload.gameId,
+                    activity_push_token=token,
+                    expected_registration_generation=registration_generation,
+                    end_claim_id=end_claim_id if payload.event == "end" else None,
+                )
+            else:
+                pruned = False
+            if end_claim_id is not None and not permanent_token_failure:
+                self.registry.release_live_activity_end(
+                    game_id=payload.gameId,
+                    activity_push_token=token,
+                    claim_id=end_claim_id,
+                )
+            message = {
+                "activityPushToken": token,
+                "sent": False,
+                "error": str(error),
+            }
+            if permanent_token_failure:
+                message.update(
+                    {
+                        "permanentTokenFailure": True,
+                        "pruned": pruned,
+                    }
+                )
+            return message
 
     def send_live_activity_start(
         self,
@@ -528,85 +556,123 @@ class PushService:
             home_team_name=home_team_name,
         )
         body = alert_body or f"{matchup} 경기가 시작됐습니다."
-        messages = []
-        for registration in registrations:
-            token = str(registration.get("pushToStartToken") or "")
-            claim_id = self.registry.claim_live_activity_start(
-                game_id=game_id,
-                push_to_start_token=token,
-            )
-            if claim_id is None:
-                messages.append(
-                    {
-                        "pushToStartToken": token,
-                        "sent": False,
-                        "skipped": True,
-                        "reason": "delivery_in_progress_or_complete",
-                    }
-                )
-                continue
-            try:
-                response = self.live_activity_sender.send_start(
-                    push_to_start_token=token,
+        if len(registrations) == 1 or self._live_activity_max_concurrency == 1:
+            messages = [
+                self._send_live_activity_start_for_registration(
                     game_id=game_id,
+                    registration=registration,
                     state=state,
-                    alert_title=title,
-                    alert_body=body,
+                    title=title,
+                    body=body,
                     stale_date=stale_date,
                     relevance_score=relevance_score,
                 )
-                messages.append({"pushToStartToken": token, **response})
-                if response.get("sent"):
-                    self.registry.complete_live_activity_start(
-                        game_id=game_id,
-                        push_to_start_token=token,
-                        claim_id=claim_id,
+                for registration in registrations
+            ]
+        else:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=min(self._live_activity_max_concurrency, len(registrations))
+            ) as executor:
+                messages = list(
+                    executor.map(
+                        lambda registration: self._send_live_activity_start_for_registration(
+                            game_id=game_id,
+                            registration=registration,
+                            state=state,
+                            title=title,
+                            body=body,
+                            stale_date=stale_date,
+                            relevance_score=relevance_score,
+                        ),
+                        registrations,
                     )
-                else:
-                    self.registry.release_live_activity_start(
-                        game_id=game_id,
-                        push_to_start_token=token,
-                        claim_id=claim_id,
-                        error=str(response.get("reason") or "delivery returned sent=false"),
-                    )
-            except Exception as error:
-                permanent_token_failure = (
-                    isinstance(error, ApnsLiveActivitySendError)
-                    and error.is_permanent_token_failure
                 )
-                if permanent_token_failure:
-                    pruned = self.registry.prune_live_activity_start_token(
-                        game_id=game_id,
-                        push_to_start_token=token,
-                        claim_id=claim_id,
-                    )
-                else:
-                    pruned = False
-                    self.registry.release_live_activity_start(
-                        game_id=game_id,
-                        push_to_start_token=token,
-                        claim_id=claim_id,
-                        error=str(error),
-                    )
-                message = {
-                    "pushToStartToken": token,
-                    "sent": False,
-                    "error": str(error),
-                }
-                if permanent_token_failure:
-                    message.update(
-                        {
-                            "permanentTokenFailure": True,
-                            "pruned": pruned,
-                        }
-                    )
-                messages.append(message)
 
         return {
             "sent": any(message.get("sent") for message in messages),
             "gameId": game_id,
             "messages": messages,
         }
+
+    def _send_live_activity_start_for_registration(
+        self,
+        *,
+        game_id: str,
+        registration: dict[str, Any],
+        state: LiveActivityContentState,
+        title: str,
+        body: str,
+        stale_date: Optional[int],
+        relevance_score: Optional[float],
+    ) -> dict[str, Any]:
+        token = str(registration.get("pushToStartToken") or "")
+        claim_id = self.registry.claim_live_activity_start(
+            game_id=game_id,
+            push_to_start_token=token,
+        )
+        if claim_id is None:
+            return {
+                "pushToStartToken": token,
+                "sent": False,
+                "skipped": True,
+                "reason": "delivery_in_progress_or_complete",
+            }
+        try:
+            response = self.live_activity_sender.send_start(
+                push_to_start_token=token,
+                game_id=game_id,
+                state=state,
+                alert_title=title,
+                alert_body=body,
+                stale_date=stale_date,
+                relevance_score=relevance_score,
+            )
+            if response.get("sent"):
+                self.registry.complete_live_activity_start(
+                    game_id=game_id,
+                    push_to_start_token=token,
+                    claim_id=claim_id,
+                )
+            else:
+                self.registry.release_live_activity_start(
+                    game_id=game_id,
+                    push_to_start_token=token,
+                    claim_id=claim_id,
+                    error=str(response.get("reason") or "delivery returned sent=false"),
+                )
+            return {"pushToStartToken": token, **response}
+        except Exception as error:
+            permanent_token_failure = (
+                isinstance(error, ApnsLiveActivitySendError)
+                and error.is_permanent_token_failure
+            )
+            if permanent_token_failure:
+                pruned = self.registry.prune_live_activity_start_token(
+                    game_id=game_id,
+                    push_to_start_token=token,
+                    claim_id=claim_id,
+                )
+            else:
+                pruned = False
+                self.registry.release_live_activity_start(
+                    game_id=game_id,
+                    push_to_start_token=token,
+                    claim_id=claim_id,
+                    error=str(error),
+                )
+            message = {
+                "pushToStartToken": token,
+                "sent": False,
+                "error": str(error),
+            }
+            if permanent_token_failure:
+                message.update(
+                    {
+                        "permanentTokenFailure": True,
+                        "pruned": pruned,
+                    }
+                )
+            return message
 
     def send_lineup_opened(
         self,

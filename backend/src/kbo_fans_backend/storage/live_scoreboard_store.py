@@ -22,6 +22,7 @@ class LiveScoreboardStore:
         self,
         path: Optional[str] = None,
         max_age_seconds: Optional[int] = None,
+        max_entries: Optional[int] = None,
     ) -> None:
         settings = get_settings()
         self.path = Path(path or settings.live_scoreboard_state_path).expanduser()
@@ -30,6 +31,7 @@ class LiveScoreboardStore:
             if max_age_seconds is not None
             else settings.live_scoreboard_max_age_seconds
         )
+        self.max_entries = max(1, int(max_entries if max_entries is not None else 14))
         self._lock_path = self.path.with_name(f"{self.path.name}.lock")
         self._thread_lock = self._thread_lock_for_path(self._lock_path)
 
@@ -76,6 +78,7 @@ class LiveScoreboardStore:
                 "savedAt": datetime.now(timezone.utc).isoformat(),
                 "payload": payload,
             }
+            _prune_oldest_records(records, self.max_entries)
 
     def _load(self) -> dict[str, Any]:
         if not self.path.exists():
@@ -128,3 +131,17 @@ def _parse_datetime(value: Any) -> Optional[datetime]:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _prune_oldest_records(records: dict[str, Any], max_entries: int) -> None:
+    if len(records) <= max_entries:
+        return
+    ordered = sorted(
+        records.items(),
+        key=lambda item: (
+            str(item[1].get("savedAt") or "") if isinstance(item[1], dict) else "",
+            str(item[0]),
+        ),
+    )
+    for date, _ in ordered[: max(0, len(records) - max_entries)]:
+        records.pop(date, None)

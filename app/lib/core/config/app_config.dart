@@ -96,7 +96,10 @@ class AppConfig {
   bool get isDev => environment == AppEnvironment.dev;
   bool get isRelease => environment == AppEnvironment.release;
   bool get isProduction => environment == AppEnvironment.release;
-  bool get shouldShowDevConsole => !isRelease && showDevConsole;
+  // Web previews are user-facing surfaces; keep diagnostics in the browser
+  // console instead of floating over cards and controls. Native local/debug
+  // builds can still opt in with SHOW_DEV_CONSOLE=true.
+  bool get shouldShowDevConsole => !isRelease && !kIsWeb && showDevConsole;
   bool get shouldUseBackendApi => useBackendApi;
   bool get shouldUseDirectData => !useBackendApi;
   bool get shouldPreferLocalNativeData => shouldUseDirectData && !kIsWeb;

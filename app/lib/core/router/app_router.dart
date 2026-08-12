@@ -40,6 +40,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   final onboardingDoneRefresh = ref.watch(onboardingDoneRefreshProvider);
   _lastTabIndex = null;
 
+  // Keep imperative deep links (game detail, notifications, player detail)
+  // visible in the web URL so refresh/share does not leave the address bar on
+  // the underlying shell tab. This option only affects web route information.
+  GoRouter.optionURLReflectsImperativeAPIs = true;
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     refreshListenable: onboardingDoneRefresh,

@@ -33,9 +33,15 @@ emergency, follow `docs/AWS_COST_GUARD_RUNBOOK.md`.
 
 1. Firebase Admin service account JSON
 2. Apple APNs Auth Key `.p8`
-3. ACM certificate in the target AWS region when `ENABLE_HTTPS=true`
+3. ACM certificate and a matching `API_DOMAIN_NAME` in the target AWS region when `ENABLE_HTTPS=true`
 4. ECR repository with the backend image pushed as `:latest`, or set `CONTAINER_IMAGE_URI` to an exact image tag
 5. VPC with two public subnets in different Availability Zones
+
+The sync worker is intentionally capped at one task in the CloudFormation
+parameter. Running more than one scheduler would duplicate KBO crawling and
+push evaluation. The EFS registry is encrypted, backup-enabled, and retained
+across stack deletion or replacement; restore operations must be planned before
+removing the retained file system.
 
 If GitHub Actions will run the deployment, create the OIDC role first:
 

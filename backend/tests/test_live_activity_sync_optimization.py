@@ -3,11 +3,12 @@ from __future__ import annotations
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from kbo_fans_backend.schemas.push import (
     LiveActivityRegisterRequest,
+    LiveActivityUnregisterRequest,
     NotificationSettings,
     PushRegisterRequest,
 )
@@ -159,6 +160,73 @@ def test_partial_update_retry_targets_only_the_failed_activity(tmp_path) -> None
         "activity-token-b",
         "activity-token-a",
     ]
+
+
+def test_transient_update_failure_is_backed_off_within_same_worker(tmp_path) -> None:
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = _LiveActivitySender(fail_count=10)
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    _register_live_activity(push_service)
+    service = _sync_service(registry=registry, sender=sender, game=_game())
+
+    first = service.sync_date("2026-06-04")
+    second = service.sync_date("2026-06-04")
+
+    assert first["updatedGames"][0]["sent"] is False
+    assert second["updatedGames"] == []
+    assert len(sender.calls) == 1
+
+
+def test_expired_backoff_for_removed_activity_does_not_accumulate_forever(tmp_path) -> None:
+    now = [datetime(2026, 6, 4, 12, 0, tzinfo=timezone.utc)]
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = _LiveActivitySender(fail_count=1)
+    push_service = PushService(registry=registry, live_activity_sender=sender)
+    _register_live_activity(push_service, token="activity-token-a", activity_id="activity-a")
+    service = LiveActivityScoreboardSyncService(
+        scoreboard_service=_ScoreboardService(_game()),
+        push_service=push_service,
+        now_provider=lambda: now[0],
+    )
+
+    first = service.sync_date("2026-06-04")
+    assert first["updatedGames"][0]["sent"] is False
+    assert len(service._transient_update_backoff) == 1
+
+    push_service.unregister_live_activity(
+        LiveActivityUnregisterRequest(
+            gameId="20260604LGKT0",
+            activityPushToken="activity-token-a",
+            activityId="activity-a",
+            installationId="installation-1",
+        )
+    )
+    now[0] += timedelta(minutes=16)
+
+    service.sync_date("2026-06-04")
+
+    assert service._transient_update_backoff == {}
+
+
+def test_sync_service_close_closes_shared_activity_sender(tmp_path) -> None:
+    class _CloseableSender(_LiveActivitySender):
+        def __init__(self) -> None:
+            super().__init__()
+            self.closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    sender = _CloseableSender()
+    service = _sync_service(
+        registry=PushRegistry(str(tmp_path / "push_registry.json")),
+        sender=sender,
+        game=_game(),
+    )
+
+    service.close()
+
+    assert sender.closed is True
 
 
 def test_expired_batch_claim_is_fenced_before_stale_sender_call(monkeypatch, tmp_path) -> None:

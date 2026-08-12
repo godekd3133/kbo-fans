@@ -39,7 +39,7 @@ class LineupService:
         if (
             snapshot is not None
             and self._is_past_game_id(game_id)
-            and self._has_ready_lineup(snapshot)
+            and self._has_ready_lineup(game_id, snapshot)
         ):
             enriched_snapshot = self._enrich_snapshot_if_missing_player_images(
                 snapshot,
@@ -56,7 +56,7 @@ class LineupService:
             if (
                 snapshot is not None
                 and self._is_past_game_id(game_id)
-                and self._has_ready_lineup(snapshot)
+                and self._has_ready_lineup(game_id, snapshot)
             ):
                 return snapshot
             raise
@@ -225,8 +225,16 @@ class LineupService:
         return re.sub(r"[^0-9A-Za-z가-힣]", "", text)
 
     @staticmethod
-    def _has_ready_lineup(payload: dict[str, Any]) -> bool:
-        return bool(payload.get("away", {}).get("lineup") and payload.get("home", {}).get("lineup"))
+    def _has_ready_lineup(game_id: str, payload: Any) -> bool:
+        if not isinstance(payload, dict):
+            return False
+        if payload.get("gameId") != game_id:
+            return False
+        away = payload.get("away")
+        home = payload.get("home")
+        if not isinstance(away, dict) or not isinstance(home, dict):
+            return False
+        return bool(away.get("lineup") and home.get("lineup"))
 
     def _is_past_game_id(self, game_id: str) -> bool:
         game_date = self._game_date_from_id(game_id)

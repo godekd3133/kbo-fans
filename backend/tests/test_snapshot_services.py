@@ -112,6 +112,75 @@ def test_scoreboard_uses_historical_snapshot_before_crawling(tmp_path) -> None:
     assert service.get_game("20260328KTLG0") == expected["games"][0]
 
 
+def test_historical_scoreboard_rejects_snapshot_game_from_another_date(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    requested_date = "2025-01-01"
+    store.save(
+        "scoreboard",
+        requested_date,
+        {
+            "date": requested_date,
+            "games": [{"gameId": "20240101KTLG0", "status": "FINAL"}],
+        },
+    )
+
+    service = ScoreboardService(
+        main_crawler=_FailingMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_FailingScoreboardCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="schedule unavailable"):
+        service.get_scoreboard(requested_date)
+
+
+def test_historical_scoreboard_rejects_snapshot_game_without_identity(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    requested_date = "2025-01-01"
+    store.save(
+        "scoreboard",
+        requested_date,
+        {
+            "date": requested_date,
+            "games": [{"status": "FINAL"}],
+        },
+    )
+
+    service = ScoreboardService(
+        main_crawler=_FailingMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_FailingScoreboardCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="schedule unavailable"):
+        service.get_scoreboard(requested_date)
+
+
+def test_historical_scoreboard_rejects_snapshot_game_with_malformed_id(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    requested_date = "2025-01-01"
+    store.save(
+        "scoreboard",
+        requested_date,
+        {
+            "date": requested_date,
+            "games": [{"gameId": "20250101", "status": "FINAL"}],
+        },
+    )
+
+    service = ScoreboardService(
+        main_crawler=_FailingMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_FailingScoreboardCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="schedule unavailable"):
+        service.get_scoreboard(requested_date)
+
+
 def test_historical_standings_falls_back_to_snapshot(tmp_path) -> None:
     store = JsonSnapshotStore(base_dir=str(tmp_path))
     season = current_kbo_year() - 1
@@ -269,6 +338,7 @@ def test_historical_player_detail_falls_back_to_snapshot(tmp_path) -> None:
     expected = {
         "id": "61102",
         "teamId": "LG",
+        "season": season,
         "playerType": "hitter",
         "name": "홍길동",
         "recentGames": [],
@@ -281,6 +351,54 @@ def test_historical_player_detail_falls_back_to_snapshot(tmp_path) -> None:
     )
 
     assert service.get_player_detail("61102", season=season) == expected
+
+
+def test_historical_player_detail_rejects_snapshot_for_another_player_or_season(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = current_kbo_year() - 1
+    store.save(
+        "player_detail",
+        f"61102-{season}-auto",
+        {
+            "id": "99999",
+            "teamId": "LG",
+            "season": season - 1,
+            "playerType": "hitter",
+            "name": "다른 선수",
+            "recentGames": [],
+        },
+    )
+
+    service = PlayerStatsService(
+        crawler=_FailingPlayerCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="player unavailable"):
+        service.get_player_detail("61102", season=season)
+
+
+def test_historical_team_stats_rejects_snapshot_for_another_team_or_season(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = current_kbo_year() - 1
+    store.save(
+        "team_stats",
+        f"LG-{season}",
+        {
+            "teamId": "KT",
+            "season": season - 1,
+            "hitting": {"AVG": "0.382"},
+            "pitching": {"ERA": "6.00"},
+        },
+    )
+
+    service = TeamStatsService(
+        crawler=_FailingTeamStatsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="team stats unavailable"):
+        service.get_team_stats("LG", season=season)
 
 
 def test_current_player_detail_rejects_snapshot_on_failure(tmp_path) -> None:
@@ -324,6 +442,28 @@ def test_current_season_team_players_crawl_before_snapshot(tmp_path) -> None:
 
     payload = service.get_team_players("KT", season=season)
     assert payload["players"][0]["name"] == "박성한"
+
+
+def test_historical_team_players_rejects_snapshot_for_another_team_or_season(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = current_kbo_year() - 1
+    store.save(
+        "team_players",
+        f"LG-{season}",
+        {
+            "teamId": "KT",
+            "season": season - 1,
+            "players": [{"id": "79240", "name": "홍길동", "position": "내야수"}],
+        },
+    )
+
+    service = PlayerStatsService(
+        crawler=_FailingPlayerCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="players unavailable"):
+        service.get_team_players("LG", season=season)
 
 
 def test_current_season_team_players_reject_old_snapshot_on_failure(tmp_path) -> None:

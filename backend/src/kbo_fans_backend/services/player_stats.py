@@ -29,13 +29,17 @@ class PlayerStatsService:
     def get_team_players(self, team_id: str, season: int) -> Dict[str, Any]:
         cache_key = (team_id, season)
         cached = self._get_cached_team_players(cache_key)
-        if cached is not None and self._is_localized_team_players_payload(cached):
+        if cached is not None and self._is_consistent_team_players_payload(
+            cached,
+            team_id=team_id,
+            season=season,
+        ):
             return cached
 
         snapshot_key = self._team_players_snapshot_key(team_id, season)
         snapshot_record = self.snapshot_store.load("team_players", snapshot_key)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
-        if self._can_use_snapshot_before_crawling(season, snapshot):
+        if self._can_use_snapshot_before_crawling(team_id, season, snapshot):
             return snapshot
 
         try:
@@ -48,7 +52,7 @@ class PlayerStatsService:
             stale = self._team_players_cache.get_stale(cache_key)
             if self._is_historical_season(season) and stale is not None:
                 return stale
-            if self._can_use_snapshot_after_failure(season, snapshot):
+            if self._can_use_snapshot_after_failure(team_id, season, snapshot):
                 return snapshot
             raise
         self._team_players_cache.set(cache_key, payload)
@@ -60,7 +64,12 @@ class PlayerStatsService:
     ) -> Dict[str, Any]:
         cache_key = (player_id, season, player_type or "")
         cached = self._player_detail_cache.get(cache_key)
-        if cached is not None:
+        if cached is not None and self._is_consistent_player_detail_payload(
+            cached,
+            player_id=player_id,
+            season=season,
+            player_type=player_type,
+        ):
             return cached
 
         snapshot_key = self._player_detail_snapshot_key(player_id, season, player_type)
@@ -68,7 +77,12 @@ class PlayerStatsService:
         if (
             snapshot is not None
             and self._is_historical_season(season)
-            and self._is_consistent_player_detail_payload(snapshot)
+            and self._is_consistent_player_detail_payload(
+                snapshot,
+                player_id=player_id,
+                season=season,
+                player_type=player_type,
+            )
         ):
             return snapshot
 
@@ -86,7 +100,12 @@ class PlayerStatsService:
             if (
                 snapshot is not None
                 and self._is_historical_season(season)
-                and self._is_consistent_player_detail_payload(snapshot)
+                and self._is_consistent_player_detail_payload(
+                    snapshot,
+                    player_id=player_id,
+                    season=season,
+                    player_type=player_type,
+                )
             ):
                 return snapshot
             raise
@@ -128,23 +147,50 @@ class PlayerStatsService:
 
     def _can_use_snapshot_before_crawling(
         self,
+        team_id: str,
         season: int,
         snapshot: Optional[Dict[str, Any]],
     ) -> bool:
         return (
             snapshot is not None
             and self._is_historical_season(season)
-            and self._is_localized_team_players_payload(snapshot)
+            and self._is_consistent_team_players_payload(
+                snapshot,
+                team_id=team_id,
+                season=season,
+            )
         )
 
     def _can_use_snapshot_after_failure(
         self,
+        team_id: str,
         season: int,
         snapshot: Optional[Dict[str, Any]],
     ) -> bool:
-        if snapshot is None or not self._is_localized_team_players_payload(snapshot):
+        if snapshot is None or not self._is_consistent_team_players_payload(
+            snapshot,
+            team_id=team_id,
+            season=season,
+        ):
             return False
         return self._is_historical_season(season)
+
+    @classmethod
+    def _is_consistent_team_players_payload(
+        cls,
+        payload: Dict[str, Any],
+        *,
+        team_id: str,
+        season: int,
+    ) -> bool:
+        if not isinstance(payload, dict):
+            return False
+        return (
+            isinstance(payload.get("teamId"), str)
+            and payload["teamId"].strip().upper() == team_id.strip().upper()
+            and payload.get("season") == season
+            and cls._is_localized_team_players_payload(payload)
+        )
 
     @staticmethod
     def _is_historical_season(season: int) -> bool:
@@ -155,10 +201,24 @@ class PlayerStatsService:
         return f"{player_id}-{season}-{player_type or 'auto'}"
 
     @staticmethod
-    def _is_consistent_player_detail_payload(payload: Dict[str, Any]) -> bool:
-        player_type = str(payload.get("playerType") or "")
+    def _is_consistent_player_detail_payload(
+        payload: Dict[str, Any],
+        *,
+        player_id: str,
+        season: int,
+        player_type: Optional[str],
+    ) -> bool:
+        if not isinstance(payload, dict):
+            return False
+        if not isinstance(payload.get("id"), str) or payload["id"].strip() != player_id.strip():
+            return False
+        if payload.get("season") != season:
+            return False
+        payload_type = str(payload.get("playerType") or "")
+        if player_type and payload_type != player_type:
+            return False
         position = str(payload.get("position") or "")
         role_label = str(payload.get("roleLabel") or "")
-        if player_type == "hitter" and ("투수" in position or "투수" in role_label):
+        if payload_type == "hitter" and ("투수" in position or "투수" in role_label):
             return False
         return True

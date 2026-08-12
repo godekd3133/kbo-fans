@@ -2650,6 +2650,55 @@ def test_send_live_activity_update_uses_registered_tokens(tmp_path) -> None:
     assert sender.calls[0]["state"].homeScore == 3
 
 
+def test_live_activity_update_fanout_respects_bounded_concurrency(tmp_path) -> None:
+    class _BoundedSender(FakeLiveActivitySender):
+        def __init__(self) -> None:
+            super().__init__()
+            self._lock = threading.Lock()
+            self.active = 0
+            self.max_active = 0
+
+        def send(self, **kwargs):
+            with self._lock:
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+            try:
+                time_module.sleep(0.03)
+                return {"sent": True, "apnsId": "apns-id", "statusCode": 200}
+            finally:
+                with self._lock:
+                    self.active -= 1
+
+    registry = PushRegistry(str(tmp_path / "push_registry.json"))
+    sender = _BoundedSender()
+    service = PushService(
+        registry=registry,
+        live_activity_sender=sender,
+        live_activity_max_concurrency=2,
+    )
+    for index in range(5):
+        service.register_live_activity(
+            LiveActivityRegisterRequest(
+                gameId="20260604LGKT0",
+                activityId=f"activity-{index}",
+                activityPushToken=f"token-{index}",
+            )
+        )
+
+    response = service.send_live_activity_update(
+        LiveActivityUpdateRequest(
+            gameId="20260604LGKT0",
+            state=_live_activity_state(),
+        )
+    )
+
+    assert response["sent"] is True
+    assert [message["activityPushToken"] for message in response["messages"]] == [
+        f"token-{index}" for index in range(5)
+    ]
+    assert 1 < sender.max_active <= 2
+
+
 def test_permanent_live_activity_update_failure_prunes_only_exact_token_and_state(
     tmp_path,
 ) -> None:
@@ -2701,7 +2750,8 @@ def test_permanent_live_activity_update_failure_prunes_only_exact_token_and_stat
     assert failed["messages"][0]["permanentTokenFailure"] is True
     assert failed["messages"][0]["pruned"] is True
     assert retried["sent"] is True
-    assert [call["activity_push_token"] for call in sender.calls] == ["token-a", "token-b"]
+    assert {call["activity_push_token"] for call in sender.calls} == {"token-a", "token-b"}
+    assert len(sender.calls) == 2
     assert registry.live_activity_tokens_for_game("20260604LGKT0") == ["token-b"]
     data = registry._load()
     deliveries = data["liveActivityUpdateStates"]["20260604LGKT0"]["deliveries"]
@@ -3362,7 +3412,9 @@ def test_live_activity_scoreboard_sync_skips_idle_work_without_registrations(
     assert response["warmed"] is False
     assert response["idle"] is True
     assert response["updatedGames"] == []
-    assert registry.sync_heartbeat() == {}
+    heartbeat = registry.sync_heartbeat()
+    assert heartbeat["checkedGames"] == 0
+    assert heartbeat["updatedGames"] == 0
 
 
 def test_live_activity_scoreboard_sync_starts_my_team_live_activity_from_start_token(
@@ -3548,10 +3600,11 @@ def test_permanent_live_activity_start_failure_prunes_exact_token_and_all_states
     assert response["messages"][1]["pushToStartToken"] == "start-b"
     assert response["messages"][1]["sent"] is True
     assert retried["messages"] == []
-    assert [call["push_to_start_token"] for call in sender.start_calls] == [
+    assert {call["push_to_start_token"] for call in sender.start_calls} == {
         "start-a",
         "start-b",
-    ]
+    }
+    assert len(sender.start_calls) == 2
     data = registry._load()
     assert set(data["liveActivityStartTokens"]) == {"start-b"}
     assert "20260603LGKT0" not in data.get("liveActivityStartStates", {})
@@ -5694,7 +5747,7 @@ def test_record_push_receipt_endpoint_does_not_require_sync_secret(monkeypatch) 
     assert response.json()["data"]["recorded"] is True
 
 
-def test_push_config_status_allows_missing_sync_secret_for_diagnostics(monkeypatch) -> None:
+def test_push_config_status_denies_missing_sync_secret_for_diagnostics(monkeypatch) -> None:
     class LocalSettings:
         push_sync_secret = ""
 
@@ -5708,8 +5761,8 @@ def test_push_config_status_allows_missing_sync_secret_for_diagnostics(monkeypat
 
     response = client.get("/api/push/config-status")
 
-    assert response.status_code == 200
-    assert response.json()["data"]["missing"] == ["PUSH_SYNC_SECRET"]
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Push sync secret is not configured"
 
 
 def test_send_baseball_info_endpoint_uses_sync_secret(monkeypatch) -> None:
@@ -6003,6 +6056,67 @@ def test_apns_live_activity_start_error_preserves_json_reason(monkeypatch, tmp_p
     assert caught.value.status_code == 410
     assert caught.value.reason == "Unregistered"
     assert caught.value.is_permanent_token_failure is True
+
+
+def test_apns_sender_reuses_http_client_for_update_and_start(monkeypatch, tmp_path) -> None:
+    created_clients = []
+
+    class _Response:
+        status_code = 200
+        text = ""
+        headers = {"apns-id": "apns-id"}
+
+        @staticmethod
+        def json():
+            return {}
+
+    class _Client:
+        def __init__(self) -> None:
+            self.posts = 0
+            self.closed = False
+
+        def post(self, url, *, json, headers):
+            self.posts += 1
+            return _Response()
+
+        def close(self) -> None:
+            self.closed = True
+
+    def _build_client(**kwargs):
+        client = _Client()
+        created_clients.append(client)
+        return client
+
+    monkeypatch.setattr("httpx.Client", _build_client)
+    settings = _settings(
+        app_env="release",
+        firebase_service_account_path="",
+        push_registry_path=str(tmp_path / "runtime" / "push_registry.json"),
+        apns_auth_key_path="",
+        apns_use_sandbox=False,
+        push_sync_secret="secret",
+        apns_auth_key_p8="unused",
+    )
+    sender = ApnsLiveActivitySender(settings)
+    monkeypatch.setattr(sender, "_headers", lambda **kwargs: {})
+
+    sender.send(
+        activity_push_token="activity-token",
+        game_id="20260604LGKT0",
+        state=_live_activity_state(),
+    )
+    sender.send_start(
+        push_to_start_token="start-token",
+        game_id="20260604LGKT0",
+        state=_live_activity_state(),
+        alert_title="경기 시작",
+        alert_body="LG vs KT",
+    )
+
+    sender.close()
+    assert len(created_clients) == 1
+    assert created_clients[0].posts == 2
+    assert created_clients[0].closed is True
 
 
 class FakeLiveActivitySender:

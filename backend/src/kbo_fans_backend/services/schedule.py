@@ -7,6 +7,7 @@ from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -25,6 +26,7 @@ class ScheduleService:
         self.ticketing_service = ticketing_service or TicketingService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self._cache: TtlCache[str, dict[str, Any]] = TtlCache(self._CACHE_TTL_SECONDS)
+        self._singleflight: SingleFlight[str] = SingleFlight()
 
     def get_month_schedule(self, month: str) -> dict[str, Any]:
         cached = self._cache.get(month)
@@ -33,10 +35,20 @@ class ScheduleService:
 
         snapshot_record = self.snapshot_store.load("schedule", month)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
-        if self._is_historical_month(month) and snapshot is not None:
+        if self._is_historical_month(month) and self._is_consistent_snapshot(month, snapshot):
             self._cache.set(month, snapshot)
             return snapshot
 
+        return self._singleflight.call(
+            f"schedule:{month}",
+            lambda: self._load_month_schedule(month, snapshot),
+        )
+
+    def _load_month_schedule(
+        self,
+        month: str,
+        snapshot: Optional[dict[str, Any]],
+    ) -> dict[str, Any]:
         try:
             rows = self.schedule_crawler.get_month_schedule(month)
         except Exception:
@@ -113,9 +125,26 @@ class ScheduleService:
         month: str,
         snapshot: Optional[dict[str, Any]],
     ) -> bool:
-        if snapshot is None:
+        if not self._is_consistent_snapshot(month, snapshot):
             return False
         return self._is_historical_month(month)
+
+    @staticmethod
+    def _is_consistent_snapshot(month: str, snapshot: Optional[dict[str, Any]]) -> bool:
+        if not isinstance(snapshot, dict) or snapshot.get("month") != month:
+            return False
+        days = snapshot.get("days")
+        if not isinstance(days, list):
+            return False
+        for day in days:
+            if not isinstance(day, dict):
+                return False
+            date = day.get("date")
+            if not isinstance(date, str) or not date.startswith(f"{month}-"):
+                return False
+            if not isinstance(day.get("games"), list):
+                return False
+        return True
 
     def _enrich_current_day_with_main_games(self, payload: dict[str, Any]) -> dict[str, Any]:
         today = current_kbo_date().isoformat()

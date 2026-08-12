@@ -424,7 +424,7 @@ check_aws_env() {
   require_env PUBLIC_SUBNET_B_ID
 
   if is_truthy "$enable_https"; then
-    require_env ACM_CERTIFICATE_ARN
+    require_env ACM_CERTIFICATE_ARN API_DOMAIN_NAME
     if [[ -n "${ACM_CERTIFICATE_ARN:-}" && "$ACM_CERTIFICATE_ARN" != arn:aws:acm:* ]]; then
       fail "ACM_CERTIFICATE_ARN must be an ACM certificate ARN"
     fi

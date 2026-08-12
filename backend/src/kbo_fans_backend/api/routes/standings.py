@@ -9,5 +9,5 @@ router = APIRouter()
 
 
 @router.get("/standings", response_model=ApiEnvelope[dict])
-def get_standings(season: int = Query(...)) -> ApiEnvelope[dict]:
+def get_standings(season: int = Query(..., ge=1900, le=2100)) -> ApiEnvelope[dict]:
     return ApiEnvelope.success_response(service.get_standings(season))

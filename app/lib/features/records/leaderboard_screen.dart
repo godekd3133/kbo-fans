@@ -61,12 +61,33 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
     final effectiveSeason = widget.followsCurrentSeason
         ? kboSeasonFromDateKey(ref.watch(kboDateProvider)) ?? widget.season
         : widget.season;
-    final asyncValue = ref.watch(
-      leaderboardProvider('$effectiveSeason|${_selectedMetric.key}'),
-    );
+    final leaderboardKey = '$effectiveSeason|${_selectedMetric.key}';
+    final asyncValue = ref.watch(leaderboardProvider(leaderboardKey));
 
+    final router = GoRouter.maybeOf(context);
+    final navigator = Navigator.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('리그 리더보드')),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        leading: Semantics(
+          label: '뒤로',
+          button: true,
+          child: IconButton(
+            tooltip: '뒤로',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (router?.canPop() == true) {
+                router!.pop();
+              } else if (router != null) {
+                router.go('/records');
+              } else if (navigator.canPop()) {
+                navigator.pop();
+              }
+            },
+          ),
+        ),
+        title: const Text('리그 리더보드'),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
@@ -134,10 +155,25 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
                           ),
                         ),
                         error: (error, _) => Center(
-                          child: Text(
-                            describeAsyncError(error),
-                            style: TextStyle(color: AppColors.textSupporting),
-                            textAlign: TextAlign.center,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                describeAsyncError(error),
+                                style: TextStyle(
+                                  color: AppColors.textSupporting,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 14),
+                              OutlinedButton(
+                                key: const ValueKey('leaderboard-retry'),
+                                onPressed: () => ref.invalidate(
+                                  leaderboardProvider(leaderboardKey),
+                                ),
+                                child: const Text('다시 시도'),
+                              ),
+                            ],
                           ),
                         ),
                         data: (leaders) => _leaderList(

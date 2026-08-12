@@ -37,7 +37,7 @@ Optional env:
   KBO_PUSH_STACK_NAME
   KBO_STACK_NAME_PREFIX
   ENABLE_HTTPS        Default true. Set false for temporary HTTP-only AWS smoke deploys.
-  API_DOMAIN_NAME     Optional custom API domain that matches ACM_CERTIFICATE_ARN.
+  API_DOMAIN_NAME     Required when ENABLE_HTTPS=true; must match ACM_CERTIFICATE_ARN.
   ACM_CERTIFICATE_ARN Required when ENABLE_HTTPS=true.
   CONTAINER_IMAGE_URI
   API_DESIRED_COUNT
@@ -125,7 +125,7 @@ case "$enable_https" in
 esac
 
 if [[ "$enable_https" == "true" ]]; then
-  require_env ACM_CERTIFICATE_ARN
+  require_env ACM_CERTIFICATE_ARN API_DOMAIN_NAME
 fi
 
 container_image_uri="${CONTAINER_IMAGE_URI:-$ECR_REPOSITORY_URI:latest}"

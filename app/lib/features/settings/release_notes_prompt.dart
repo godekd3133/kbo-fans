@@ -91,121 +91,123 @@ class _ReleaseNotesPromptDialog extends StatelessWidget {
       ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: AppColors.live.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.live.withValues(alpha: 0.36),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: AppColors.live.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.live.withValues(alpha: 0.36),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.system_update_alt_rounded,
+                        size: 19,
+                        color: AppColors.live,
                       ),
                     ),
-                    child: Icon(
-                      Icons.system_update_alt_rounded,
-                      size: 19,
-                      color: AppColors.live,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '업데이트 소식',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            height: 1.1,
-                            color: AppColors.textPrimary,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '업데이트 소식',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              height: 1.1,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          '버전 ${release.version}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textSecondary,
+                          const SizedBox(height: 5),
+                          Text(
+                            '버전 ${release.version}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: '닫기',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () => Navigator.of(
-                      context,
-                      rootNavigator: true,
-                    ).pop(_ReleaseNotesPromptAction.close),
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                  ),
-                ],
-              ),
-              if (release.subtitle != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  release.subtitle!,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                    height: 1.32,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: maxNotesHeight),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final note in release.notes) ...[
-                        _ReleaseNoteBullet(note),
-                        if (note != release.notes.last)
-                          const SizedBox(height: 10),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
+                    IconButton(
+                      tooltip: '닫기',
+                      visualDensity: VisualDensity.compact,
                       onPressed: () => Navigator.of(
                         context,
                         rootNavigator: true,
                       ).pop(_ReleaseNotesPromptAction.close),
-                      child: const Text('닫기'),
+                      icon: const Icon(Icons.close_rounded, size: 20),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(
-                        context,
-                        rootNavigator: true,
-                      ).pop(_ReleaseNotesPromptAction.openFullNotes),
-                      child: const Text('전체 보기'),
+                  ],
+                ),
+                if (release.subtitle != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    release.subtitle!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      height: 1.32,
                     ),
                   ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 14),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxNotesHeight),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final note in release.notes) ...[
+                          _ReleaseNoteBullet(note),
+                          if (note != release.notes.last)
+                            const SizedBox(height: 10),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).pop(_ReleaseNotesPromptAction.close),
+                        child: const Text('닫기'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).pop(_ReleaseNotesPromptAction.openFullNotes),
+                        child: const Text('전체 보기'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

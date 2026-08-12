@@ -5,9 +5,51 @@
 이 문서는 구현 중 얻은 반복적인 인사이트와 운영/검증 메모를 모은다.
 기획 문서보다는 구현 판단 기준에 가깝고, `AGENTS.md` / `CLAUDE.md` 를 보완하는 용도로 사용한다.
 
+## 2026-08-12 Eighth competitive audit
+
+- Live Activity transient backoff는 worker 수명 동안 유지하되, 15분 이상 재시도되지 않은 delivery id를 매 tick 정리해야 한다. token unregister·rotation 뒤에도 만료 map entry를 남겨 두면 실제 발송 대상 없이 메모리가 선형 증가한다.
+- API 일정 `SingleFlight`는 현재 프로세스 경계 안에서만 중복을 줄인다. API task를 수평 확장할 때의 분산 crawler coalescing은 별도 lease/queue와 운영 scale 정책이 필요하며, 이를 현재 구현의 보장으로 표현하지 않는다.
+
+## 2026-08-12 Seventh competitive audit
+
+- 동시 요청을 줄이는 `SingleFlight`는 캐시보다 앞선 miss 경로에 붙여야 한다. 같은 프로세스에서 동일 월 일정을 동시에 요청하면 첫 crawler Future를 공유하고, 결과·예외를 모든 waiter에게 그대로 전달해야 한다. 캐시 hit와 historical snapshot identity 검증은 single-flight를 기다리지 않고 기존 순서를 유지한다.
+- `SingleFlight`는 프로세스 로컬 seam이다. ECS API task를 여러 개로 늘리면 task별 coalescing만 제공하므로 분산 중복 fetch를 해결한다고 문서화하지 않는다. API scale-out이 필요하면 분산 lease/queue를 별도 설계하고, 현재 demo sync worker는 단일 task 정책을 유지한다.
+- `JsonSnapshotStore`의 namespace별 retention/GC는 historical player·team·schedule 보존 계약과 직접 충돌할 수 있다. 정책 없이 오래된 파일을 삭제하지 말고 namespace별 파일 수·바이트를 측정해 80% 용량 경보를 먼저 두며, dry-run 승인 뒤 삭제 정책을 도입한다.
+- 가로 지표 rail은 partial card만으로 스크롤을 추측하게 하지 않는다. 390/320/280px에서 마지막 카드가 잘릴 수 있는 rail에는 항상 보이는 짧은 scrollbar thumb/track을 제공하고, 1.6x 이상 큰 글씨에서는 세로 카드 목록으로 바꿔 scrollbar가 내용 높이를 압박하지 않게 한다.
+
+## 2026-08-12 Fourth competitive re-audit
+
+- Snapshot key만 믿는 것은 identity 검증이 아니다. team/player/schedule/scoreboard payload는 요청 key와 별도로 payload 안의 team/player/season/month/date/game identity와 root shape를 확인해야 한다. 손상 payload는 `.get()` 예외로 500을 만들지 말고 crawler 또는 명시적 unavailable 경계로 되돌린다.
+- FastAPI의 `date` 타입은 연도 0001~9999를 허용하므로, KBO API route는 실제 upstream이 지원하는 1900~2100 범위를 별도 검사한다. 형식 검증만으로는 고카디널리티 crawler/cache key 오염을 막지 못한다.
+- 웹은 제품 미리보기이므로 native debug diagnostics를 화면 위에 띄우지 않는다. `kIsWeb`에서는 DevConsole overlay를 끄고 browser console에 로그를 남기며, native local/debug에서만 명시 flag로 overlay를 켠다. root deep-link 화면은 router stack이 비어 있어도 `/records`로 돌아갈 visible leading을 소유해야 한다.
+- GoRouter의 imperative `push`는 웹 주소에도 반영되도록 `optionURLReflectsImperativeAPIs`를 켠다. 그렇지 않으면 화면은 상세로 바뀌어도 hash가 `/schedule`·`/home`에 남아 새로고침·공유 시 상세 상태가 사라진다.
+
+## 2026-08-12 Fifth competitive re-audit
+
+- client metrics는 raw body 상한만으로 충분하지 않다. source별 process-local sliding window와 bounded source map을 함께 적용해 정상 진단량은 유지하면서 로그 회전·동기 I/O 폭주를 줄인다. 이 제한은 WAF/다중 worker 전역 rate limit을 대체하지 않는다.
+- `player_type`처럼 외부 crawler 분기에서 의미가 바뀌는 query는 임의 문자열을 허용하지 말고 API schema에서 enum으로 닫아 unknown role이 타자 경로로 조용히 폴백하지 않게 한다.
+- snapshot의 파일 key가 안전해도 root payload가 list이면 `.get()` 호출에서 500이 날 수 있다. historical overview/leaderboard 재사용 predicate는 root dict와 rank-one shape를 먼저 확인한다.
+- JsonSnapshotStore의 namespace별 파일 수·총량 GC는 운영 정책과 충돌할 수 있어 이번 라운드에서는 변경하지 않았다. 현재 서비스 route의 season/key bounds와 runtime cache cap은 유지하며, 장기 EFS inode/backup 비용은 별도 운영 작업으로 추적한다.
+
 ## 2026-08-09~10 Competitive Audit Convergence
 
 두 독립 비평이 사용자 여정·접근성 감사와 데이터/성능/운영 감사로 경쟁한 뒤, 공통 위험을 다음 구현 경계로 수렴시켰다.
+
+## 2026-08-11 Follow-up hardening
+
+- `TeamScore.scoreAvailable`은 모델 보조 플래그가 아니라 숫자 표시의 truth gate다. ScoreTab 합계·접근성 문구·relay score strip·home my-team LIVE card는 모두 `displayScore`를 사용하고, backend schedule fallback은 score/H/E/B를 실제 원천 값이 없을 때 `null`로 유지한다.
+- `LiveActivityScoreboardSyncService.sync_date`는 registry에 device/live/start registration이 없으면 KBO warm-up·pending moment scan·heartbeat full rewrite를 하지 않고 `idle=true, warmed=false`를 반환한다. 이 경계는 등록 사용자가 있는 cadence를 줄이는 것이 아니라 0-user worker의 불필요한 upstream/EFS 작업만 제거한다.
+- 에러 화면은 pull-to-refresh만으로 복구를 암시하지 않는다. leaderboard는 provider key를 캡처한 명시 `다시 시도` button으로 invalidate하고, large-text relay fallback은 fixed height 대신 `minHeight`만 둬 안내가 natural height로 늘어난다. profile metadata는 trim 후 non-empty 값만 pill로 만든다.
+- 공개 client metrics는 운영 telemetry이므로 임의 JSON을 그대로 받지 않는다. route가 raw body를 먼저 16 KiB로 제한하고 JSON object만 logger에 기록해 oversized body가 Pydantic/log serialization까지 도달하지 않게 한다.
+- AWS ALB의 HTTP listener는 `UseHttps` 조건부 action으로 HTTPS 301 redirect를 사용한다. HTTP forward는 certificate/domain이 없는 일시적 smoke 모드에만 남긴다.
+- 순위의 normal 56px 행은 1.4x부터 large-text variant로 전환한다. normal/large 행 모두 하나의 `Semantics(container: true)` label로 순위·팀·승패·승률·경기 차·연속을 읽게 하고 내부 장식 텍스트는 제외한다.
+- API 입력은 crawler 호출 전에 route boundary에서 제한한다. month는 `YYYY-MM`, current/home/compact/push sync date는 실제 `YYYY-MM-DD` civil date, game id는 선두 날짜·KBO 두 팀 코드·bounded suffix, team id는 canonical KBO allowlist, player id는 영숫자·`_`·`-` bounded string, season은 1900~2100, leaderboard metric은 32자 이하 식별자로 고정한다. 구성 상태 diagnostics도 sync secret 없이는 503이다.
+- `PushRegistry._mutate_data`는 90일 지난 runtime state와 7일 이상 pending outbox를 정리하고 pending outbox를 2,048건으로 제한한다. 전송 중인 outbox claim은 lease 만료 전 제거하지 않는다. `LiveScoreboardStore`는 shared JSON을 최근 14개 날짜로 제한해 날짜 rollover가 파일을 무한히 키우지 않게 한다.
+- `record_sync_heartbeat`는 payload가 같으면 기본 30초 동안 기존 `updatedAt`을 유지해 no-op mutation이 registry 전체 JSON을 다시 쓰지 않게 한다. 실제 heartbeat payload가 바뀌거나 간격이 지나면 갱신하므로 diagnostics의 liveness 신호는 유지한다.
+- Live Activity scoreboard sync의 transient APNs 실패는 worker 생명주기 동안 token/content signature별 지수 backoff(5·15·30·60초)를 유지한다. 새 content signature와 영구 token 실패는 backoff를 폐기해 정상 전환·prune을 막지 않는다. 15분 동안 재시도되지 않은 token backoff는 매 tick 정리해 token rotation·unregister 뒤 worker 메모리가 누적되지 않게 한다.
+- APNs Live Activity sender는 lazy HTTP/2 client를 sender 수명 동안 공유하고 `close()`를 제공한다. 여러 token update/start fanout은 기본 최대 4개 bounded worker로 처리하되 executor 결과 순서는 기존 token 순서를 유지하고, 각 worker의 claim·generation·permanent prune 경계는 독립적으로 보존한다.
+- CloudFormation sync worker는 단일 task로 제한해 같은 경기의 KBO crawl과 push diff를 중복 실행하지 않는다. EFS push registry는 암호화·AWS Backup 활성화·Retain 정책으로 stack 교체/삭제 시에도 보존한다.
+- `BaseCrawler` circuit breaker는 열린 회로가 cooldown을 지나거나 비활성 실패 상태가 TTL을 지나면 제거하고, 고카디널리티 breaker key도 4,096개 상한을 넘기지 않는다. 임의 game id가 process-wide dict를 무한히 키우지 않게 하는 메모리 방어선이다.
 
 ### UI truth and lifecycle
 
@@ -90,7 +132,7 @@
   - 앱은 `/push/register`에 stable `installationId`를 함께 보내며, backend는 같은 설치 id로 새 FCM token이 들어오면 이전 token registration을 제거한다. owner가 설정된 token은 installation id 누락·불일치 갱신으로 가져갈 수 없다. 팔로우 경기 상태가 권한/APNs 준비된 현재 token이 아니라 오래된 token에 남는 증상이 보이면 `installationIdSuffix`와 `updatedAt`을 먼저 비교한다.
   - `deviceSummaries.updatedAt`은 앱이 `/push/register`를 보낸 시각이고, `topicsUpdatedAt`은 운영자가 registry 기반 topic resubscribe를 수행한 시각이다. 단말 최신성 판단에는 `updatedAt`과 권한/APNs 상태를 보고, resubscribe 성공 여부에는 `topicsUpdatedAt`과 topic count를 본다.
   - 배포 후 `GET /api/push/config-status` 또는 `python -m kbo_fans_backend.scheduler.push_config_status`로 Firebase/APNs/registry/scheduler secret 누락을 먼저 확인한다.
-  - local backend에서 `PUSH_SYNC_SECRET`이 없으면 `config-status`는 diagnostics 확인용으로 열어두지만, `/push/test`, `/push/baseball-info`, `/push/resubscribe-topics`, `/push/live-activity/update`, `/push/live-activity/sync-scoreboard` 같은 mutation endpoint는 Firebase/APNs까지 진행하지 않고 503으로 막아야 한다.
+  - local·운영 backend 모두 `PUSH_SYNC_SECRET`이 없으면 공개 `config-status` diagnostics를 열지 않고 503으로 거절한다. `/push/test`, `/push/baseball-info`, `/push/resubscribe-topics`, `/push/live-activity/update`, `/push/live-activity/sync-scoreboard` 같은 mutation endpoint도 secret 미설정·불일치 상태에서는 Firebase/APNs까지 진행하지 않고 503/401로 막아야 한다. 로컬 진단은 `PushConfigurationDiagnostics`를 직접 실행하거나 secret을 명시한 readiness 경로로 수행한다.
   - 앱 내부 receipt 확인용 `/push/test-device`는 운영 secret을 요구하지 않는다. 대신 현재 앱이 FCM token과 stable `installationId`를 `/push/register`로 먼저 저장하고 self-test에도 exact owner tuple을 보내야 한다. backend는 registry에 없는 token·owner 불일치에는 발송하지 않으며, 설치별 cooldown과 전체 rate window를 registry에 영속화한다. legacy missing/null owner는 200 safe-noop라 배포 순서 호환은 유지하지만 테스트 push 권한을 얻지 않는다. 앱 번들에 `PUSH_SYNC_SECRET`을 넣지 않기 위한 self-test 경계이지 public attestation은 아니다.
   - 외부에서 `PUSH_SYNC_SECRET=<secret> ./scripts/push-readiness-check.sh https://api.kbofans.com/api`를 실행하면 `/health`와 push readiness를 같이 확인할 수 있다.
   - GitHub Actions secret 컨텍스트에서 원격 테스트 푸시를 보낼 때는 `Push Test Notification` workflow 또는 `./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch`를 사용한다. 이 helper는 secret/token 값을 출력하지 않는다.

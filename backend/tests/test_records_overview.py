@@ -477,6 +477,71 @@ def test_historical_leaderboard_ignores_snapshot_missing_rank_one(tmp_path) -> N
     assert crawler.leaderboard_calls == 1
 
 
+def test_historical_overview_ignores_malformed_root_snapshot(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = current_kbo_year() - 1
+    store.save("records_overview", str(season), [])
+
+    service = RecordsOverviewService(
+        crawler=_FailingRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="overview unavailable"):
+        service.get_overview(season)
+
+
+def test_historical_leaderboard_ignores_malformed_root_snapshot(tmp_path) -> None:
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    season = current_kbo_year() - 1
+    store.save("leaderboard", f"{season}:avg", [])
+
+    service = RecordsOverviewService(
+        crawler=_FailingRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="leaderboard unavailable"):
+        service.get_leaderboard(season, "avg")
+
+
+def test_historical_records_snapshots_require_exact_identity(tmp_path) -> None:
+    season = current_kbo_year() - 1
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    leaders = {
+        "avg": [
+            {
+                "rank": 1,
+                "playerId": "wrong-snapshot",
+                "playerType": "hitter",
+                "metricKey": "AVG",
+                "name": "Wrong Snapshot",
+                "teamId": "LG",
+                "value": ".999",
+            }
+        ]
+    }
+    store.save(
+        "records_overview",
+        str(season),
+        {"season": season - 1, "leaders": leaders},
+    )
+    store.save(
+        "leaderboard",
+        f"{season}:avg",
+        {"season": season, "leaders": leaders["avg"]},
+    )
+    service = RecordsOverviewService(
+        crawler=_FailingRecordsCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="overview unavailable"):
+        service.get_overview(season)
+    with pytest.raises(RuntimeError, match="leaderboard unavailable"):
+        service.get_leaderboard(season, "avg")
+
+
 def test_leaderboard_does_not_cache_fresh_payload_missing_rank_one(tmp_path) -> None:
     crawler = _RecoveringLeaderboardCrawler()
     service = RecordsOverviewService(

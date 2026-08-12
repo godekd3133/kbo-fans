@@ -41,7 +41,7 @@ class RecordsOverviewService:
             return RecordsOverviewCrawler.empty_overview(season)
 
         cached = self._overview_cache.get(season)
-        if cached is not None:
+        if cached is not None and self._has_overview_identity(cached, season):
             normalized_cached = self._normalize_overview_payload(cached, season)
             if self._is_reusable_ranked_payload(normalized_cached):
                 return normalized_cached
@@ -56,7 +56,10 @@ class RecordsOverviewService:
             payload = self.crawler.get_overview(season)
         except Exception:
             stale = self._overview_cache.get_stale(season)
-            if self._is_historical_season(season) and stale is not None:
+            if (
+                self._is_historical_season(season)
+                and self._has_overview_identity(stale, season)
+            ):
                 normalized_stale = self._normalize_overview_payload(stale, season)
                 if self._is_reusable_ranked_payload(normalized_stale):
                     return normalized_stale
@@ -76,14 +79,14 @@ class RecordsOverviewService:
 
         cache_key = f"{season}:{metric}"
         cached = self._leaderboard_cache.get(cache_key)
-        if cached is not None:
+        if cached is not None and self._has_leaderboard_identity(cached, season, metric):
             normalized_cached = self._normalize_leaderboard_payload(cached, season, metric)
             if self._is_reusable_ranked_payload(normalized_cached):
                 return normalized_cached
 
         snapshot_record = self.snapshot_store.load("leaderboard", cache_key)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
-        if self._can_use_snapshot_before_crawling(season, snapshot):
+        if self._can_use_snapshot_before_crawling(season, snapshot, metric=metric):
             payload = self._normalize_leaderboard_payload(snapshot, season, metric)
             self._leaderboard_cache.set(cache_key, payload)
             return payload
@@ -91,7 +94,10 @@ class RecordsOverviewService:
             leaders = self.crawler.get_leaderboard(season, metric)
         except Exception:
             stale = self._leaderboard_cache.get_stale(cache_key)
-            if self._is_historical_season(season) and stale is not None:
+            if (
+                self._is_historical_season(season)
+                and self._has_leaderboard_identity(stale, season, metric)
+            ):
                 normalized_stale = self._normalize_leaderboard_payload(
                     stale,
                     season,
@@ -99,7 +105,7 @@ class RecordsOverviewService:
                 )
                 if self._is_reusable_ranked_payload(normalized_stale):
                     return normalized_stale
-            if self._can_use_snapshot_after_failure(season, snapshot):
+            if self._can_use_snapshot_after_failure(season, snapshot, metric=metric):
                 return self._normalize_leaderboard_payload(snapshot, season, metric)
             raise
 
@@ -178,8 +184,14 @@ class RecordsOverviewService:
         self,
         season: int,
         snapshot: Optional[Dict[str, Any]],
+        *,
+        metric: Optional[str] = None,
     ) -> bool:
-        if snapshot is None:
+        if metric is None:
+            has_identity = self._has_overview_identity(snapshot, season)
+        else:
+            has_identity = self._has_leaderboard_identity(snapshot, season, metric)
+        if not has_identity:
             return False
         return self._is_historical_season(season) and self._is_reusable_ranked_payload(snapshot)
 
@@ -187,13 +199,33 @@ class RecordsOverviewService:
         self,
         season: int,
         snapshot: Optional[Dict[str, Any]],
+        *,
+        metric: Optional[str] = None,
     ) -> bool:
-        if snapshot is None:
+        if metric is None:
+            has_identity = self._has_overview_identity(snapshot, season)
+        else:
+            has_identity = self._has_leaderboard_identity(snapshot, season, metric)
+        if not has_identity:
             return False
         return self._is_historical_season(season) and self._is_reusable_ranked_payload(snapshot)
 
     @staticmethod
+    def _has_overview_identity(payload: Any, season: int) -> bool:
+        return isinstance(payload, dict) and payload.get("season") == season
+
+    @staticmethod
+    def _has_leaderboard_identity(payload: Any, season: int, metric: str) -> bool:
+        return (
+            isinstance(payload, dict)
+            and payload.get("season") == season
+            and payload.get("metric") == metric
+        )
+
+    @staticmethod
     def _is_reusable_ranked_payload(payload: Dict[str, Any]) -> bool:
+        if not isinstance(payload, dict):
+            return False
         leaders = payload.get("leaders")
         if isinstance(leaders, list):
             return RecordsOverviewService._leaders_start_at_rank_one(leaders)

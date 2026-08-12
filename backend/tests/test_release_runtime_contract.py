@@ -170,6 +170,58 @@ def test_cloudformation_task_runtime_fields_match_ecs_templates() -> None:
     )
 
 
+def test_cloudformation_preserves_and_backs_up_push_registry_storage() -> None:
+    stack = json.loads(_read("infra/aws/cloudformation/push-demo-stack.json"))
+    resources = stack["Resources"]
+    filesystem = resources["PushRegistryFileSystem"]
+
+    assert filesystem["DeletionPolicy"] == "Retain"
+    assert filesystem["UpdateReplacePolicy"] == "Retain"
+    assert filesystem["Properties"]["BackupPolicy"] == {"Status": "ENABLED"}
+
+
+def test_cloudformation_keeps_live_sync_worker_singleton() -> None:
+    stack = json.loads(_read("infra/aws/cloudformation/push-demo-stack.json"))
+    parameter = stack["Parameters"]["SyncWorkerDesiredCount"]
+
+    assert parameter["MaxValue"] == 1
+
+
+def test_cloudformation_https_mode_redirects_http_listener() -> None:
+    stack = json.loads(_read("infra/aws/cloudformation/push-demo-stack.json"))
+    action = stack["Resources"]["HttpListener"]["Properties"]["DefaultActions"][0]
+    conditional = action["Fn::If"]
+
+    assert conditional[0] == "UseHttps"
+    assert conditional[1] == {
+        "Type": "redirect",
+        "RedirectConfig": {
+            "Protocol": "HTTPS",
+            "Port": "443",
+            "StatusCode": "HTTP_301",
+        },
+    }
+    assert conditional[2] == {
+        "Type": "forward",
+        "TargetGroupArn": {"Ref": "ApiTargetGroup"},
+    }
+
+
+def test_https_deploy_requires_certificate_matching_custom_domain() -> None:
+    deploy_script = _read("scripts/aws-push-cloudformation.sh")
+    github_script = _read("scripts/github-push-secrets.sh")
+    preflight_script = _read("scripts/push-live-preflight.sh")
+    readiness_script = _read("scripts/push-demo-readiness-audit.sh")
+    env_example = _read("infra/aws/ecs-fargate/deploy.env.example")
+
+    assert "API_DOMAIN_NAME     Required when ENABLE_HTTPS=true" in deploy_script
+    assert "require_env ACM_CERTIFICATE_ARN API_DOMAIN_NAME" in deploy_script
+    assert "reject_placeholder_env ACM_CERTIFICATE_ARN API_DOMAIN_NAME" in github_script
+    assert "require_env ACM_CERTIFICATE_ARN API_DOMAIN_NAME" in preflight_script
+    assert '"aws-https-domain"' in readiness_script
+    assert "export API_DOMAIN_NAME=api.example.com" in env_example
+
+
 def test_codex_run_help_succeeds() -> None:
     subprocess.run(
         ["bash", "scripts/codex-run.sh", "--help"],

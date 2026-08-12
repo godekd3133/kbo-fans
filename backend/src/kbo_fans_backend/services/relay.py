@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from datetime import date as date_type
 from typing import Any, Optional
 
 from kbo_fans_backend.crawlers.relay import RelayCrawler
 from kbo_fans_backend.services.push import KBO_TEAM_NAMES, KBO_TEAM_SHORT_NAMES
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
+from kbo_fans_backend.utils.kbo_time import current_kbo_date
 
 
 class RelayService:
@@ -33,9 +35,9 @@ class RelayService:
         game_status = game.get("status") if game is not None else None
 
         if (
-            game_status == "FINAL"
-            and snapshot is not None
-            and self._has_detailed_items(snapshot.get("relayItems", []))
+            self._is_past_game_id(game_id)
+            and game_status == "FINAL"
+            and self._has_detailed_snapshot(game_id, snapshot)
         ):
             snapshot = self._without_current_at_bat(snapshot)
             if after is not None:
@@ -81,9 +83,8 @@ class RelayService:
             return payload
         except Exception:
             if (
-                game_status != "LIVE"
-                and snapshot is not None
-                and self._has_detailed_items(snapshot.get("relayItems", []))
+                self._is_past_game_id(game_id)
+                and self._has_detailed_snapshot(game_id, snapshot)
             ):
                 snapshot = self._without_current_at_bat(snapshot)
                 if after is not None:
@@ -208,8 +209,29 @@ class RelayService:
         return int(value)
 
     @staticmethod
+    def _is_past_game_id(game_id: str) -> bool:
+        try:
+            game_date = date_type.fromisoformat(
+                f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
+            )
+        except (TypeError, ValueError):
+            return False
+        return game_date < current_kbo_date()
+
+    @staticmethod
+    def _has_detailed_snapshot(game_id: str, snapshot: Any) -> bool:
+        return (
+            isinstance(snapshot, dict)
+            and snapshot.get("gameId") == game_id
+            and isinstance(snapshot.get("relayItems"), list)
+            and RelayService._has_detailed_items(snapshot["relayItems"])
+        )
+
+    @staticmethod
     def _has_detailed_items(items: list[dict[str, Any]]) -> bool:
         for item in items:
+            if not isinstance(item, dict):
+                return False
             event = item.get("event")
             text = item.get("text") or ""
             if event not in {"RUNS", "GAME_END", "INNING_CHANGE"}:

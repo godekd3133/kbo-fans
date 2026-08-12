@@ -495,6 +495,14 @@ audit_github() {
         "aws-https" \
         ACM_CERTIFICATE_ARN \
         "aws-https: issue or select an ACM certificate in the deploy region and set ACM_CERTIFICATE_ARN")"
+    check_github_variable_or_secret \
+      API_DOMAIN_NAME \
+      "$secret_names" \
+      "$variable_names" \
+      "$(github_variable_action \
+        "aws-https-domain" \
+        API_DOMAIN_NAME \
+        "aws-https-domain: set the custom DNS name covered by ACM_CERTIFICATE_ARN")"
   fi
 
   local latest_run

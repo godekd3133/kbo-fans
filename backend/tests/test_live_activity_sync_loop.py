@@ -4,10 +4,66 @@ from datetime import datetime, timezone
 
 import pytest
 
+from kbo_fans_backend.scheduler import live_activity_sync as live_activity_sync_scheduler
 from kbo_fans_backend.scheduler.live_activity_sync_loop import (
     maybe_send_smart_daily_baseball_info,
 )
 from kbo_fans_backend.services.push_registry import PushRegistry
+
+
+def test_live_activity_sync_scheduler_reuses_worker_service_instance(monkeypatch) -> None:
+    created = []
+
+    class _FakeSyncService:
+        def __init__(self, **kwargs) -> None:
+            del kwargs
+            created.append(self)
+
+        def sync_date(self, date: str) -> dict:
+            return {"date": date, "service": len(created)}
+
+    monkeypatch.setattr(
+        live_activity_sync_scheduler,
+        "LiveActivityScoreboardSyncService",
+        _FakeSyncService,
+    )
+    monkeypatch.setattr(live_activity_sync_scheduler, "_sync_service_instance", None)
+
+    first = live_activity_sync_scheduler.sync_once("2026-06-22")
+    second = live_activity_sync_scheduler.sync_once("2026-06-22")
+
+    assert first == {"date": "2026-06-22", "service": 1}
+    assert second == {"date": "2026-06-22", "service": 1}
+    assert len(created) == 1
+
+
+def test_live_activity_sync_scheduler_closes_worker_service(monkeypatch) -> None:
+    created = []
+
+    class _FakeSyncService:
+        def __init__(self, **kwargs) -> None:
+            del kwargs
+            self.closed = False
+            created.append(self)
+
+        def sync_date(self, date: str) -> dict:
+            return {"date": date}
+
+        def close(self) -> None:
+            self.closed = True
+
+    monkeypatch.setattr(
+        live_activity_sync_scheduler,
+        "LiveActivityScoreboardSyncService",
+        _FakeSyncService,
+    )
+    monkeypatch.setattr(live_activity_sync_scheduler, "_sync_service_instance", None)
+
+    live_activity_sync_scheduler.sync_once("2026-06-22")
+    live_activity_sync_scheduler.close_sync_service()
+
+    assert created[0].closed is True
+    assert live_activity_sync_scheduler._sync_service_instance is None
 
 
 class _FakeScoreboardService:
