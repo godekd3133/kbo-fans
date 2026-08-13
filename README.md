@@ -276,6 +276,10 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 원격 푸시 / Live Activity 운영 설정:
 
+- `DATA_REQUEST_TIMEOUT_SECONDS=15`, `DATA_REQUEST_MAX_CONCURRENCY=8`, `DATA_REQUEST_QUEUE_TIMEOUT_SECONDS=0.1`: 화면 데이터 GET의 전체 응답 마감시간과 process-local bulkhead. timeout된 sync 작업은 실제 종료 전까지 슬롯을 유지하며 포화 요청은 503으로 빠르게 종료합니다.
+- `SCOREBOARD_WARM_INTERVAL_SECONDS=5`: relay/FCM/APNs delivery polling과 독립된 scoreboard warmer 주기입니다. `PUSH_SYNC_INTERVAL_SECONDS`를 30초나 60초로 늘려도 기본 5초 warm은 유지됩니다.
+- `LIVE_SCOREBOARD_MAX_AGE_SECONDS=20`: shared live-state freshness 상한입니다. worker 시작 시 `SCOREBOARD_WARM_INTERVAL_SECONDS + 5초 scheduler jitter <= LIVE_SCOREBOARD_MAX_AGE_SECONDS` 계약을 검사합니다.
+- `PUSH_SYNC_INTERVAL_SECONDS=5`: relay/push delivery loop 주기이며 scoreboard warm 주기를 제어하지 않습니다.
 - `FIREBASE_SERVICE_ACCOUNT_JSON` 또는 `FIREBASE_SERVICE_ACCOUNT_PATH`, `FIREBASE_PROJECT_ID`: FCM 일반 푸시 발송
 - `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_AUTH_KEY_P8` 또는 `APNS_AUTH_KEY_PATH`, `APNS_BUNDLE_ID`: iOS Live Activity APNs 발송
 - `APNS_USE_SANDBOX=false`: TestFlight/운영 배포용 APNs production endpoint 사용
@@ -326,6 +330,7 @@ GitHub Actions 배포:
 
 ## Operational Notes
 
+- 앱 화면 GET은 모든 재시도를 합쳐 25초 안에 끝나며 deadline 시 transport를 취소합니다. backend는 기본 15초 뒤 `504 UPSTREAM_DEADLINE_EXCEEDED`, 포화 시 `503 UPSTREAM_BUSY + Retry-After: 1`을 반환하므로 로딩 Future가 영구 pending으로 남지 않아야 합니다.
 - 앱 API cache는 성공 응답 저장과 히스토리 cached-first 조회용입니다. `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜/월/시즌 경로는 API 실패 시 이 cache를 정상 데이터처럼 읽지 않습니다.
 - 홈 스코어보드는 오늘 데이터 로딩 중 별도 로컬 cache를 먼저 렌더링하지 않습니다. 최신 API 응답 또는 명시적 오류 상태를 기준으로 화면을 갱신합니다.
 - 홈 secondary aggregate는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전에 `/home` 부가 API가 시작되지 않도록 합니다.

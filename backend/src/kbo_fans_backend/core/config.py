@@ -34,6 +34,11 @@ def _get_int(name: str, default: int) -> int:
     return int(value) if value is not None else default
 
 
+def _get_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    return float(value) if value is not None else default
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str
@@ -60,6 +65,9 @@ class Settings:
     live_scoreboard_state_path: str
     live_scoreboard_max_age_seconds: int
     snapshot_seed_dir: str = ""
+    data_request_timeout_seconds: float = 15.0
+    data_request_max_concurrency: int = 8
+    data_request_queue_timeout_seconds: float = 0.1
     push_device_test_cooldown_seconds: int = 60
     push_device_test_global_window_seconds: int = 60
     push_device_test_global_max_attempts: int = 30
@@ -114,10 +122,16 @@ def get_settings() -> Settings:
             "LIVE_SCOREBOARD_STATE_PATH",
             str(Path(push_registry_path).expanduser().with_name("live_scoreboard.json")),
         ),
-        live_scoreboard_max_age_seconds=_get_int("LIVE_SCOREBOARD_MAX_AGE_SECONDS", 8),
+        live_scoreboard_max_age_seconds=_get_int("LIVE_SCOREBOARD_MAX_AGE_SECONDS", 20),
         snapshot_seed_dir=os.getenv(
             "SNAPSHOT_SEED_DIR",
             str(data_dir / "snapshots"),
+        ),
+        data_request_timeout_seconds=_get_float("DATA_REQUEST_TIMEOUT_SECONDS", 15.0),
+        data_request_max_concurrency=_get_int("DATA_REQUEST_MAX_CONCURRENCY", 8),
+        data_request_queue_timeout_seconds=_get_float(
+            "DATA_REQUEST_QUEUE_TIMEOUT_SECONDS",
+            0.1,
         ),
         push_device_test_cooldown_seconds=_get_int(
             "PUSH_DEVICE_TEST_COOLDOWN_SECONDS",

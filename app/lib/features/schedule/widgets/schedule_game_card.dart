@@ -41,6 +41,7 @@ class ScheduleGameCard extends StatelessWidget {
     final cardColor = isMyTeamGame
         ? Color.alphaBlend(myTeamColor.withValues(alpha: 0.18), AppColors.card)
         : AppColors.card.withValues(alpha: 0.92);
+    final useLargeTextLayout = MediaQuery.textScalerOf(context).scale(1) >= 1.6;
 
     return AppPressable(
       onTap: onTap,
@@ -78,94 +79,175 @@ class ScheduleGameCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      if (dateLabel != null) ...[
+                  if (useLargeTextLayout) ...[
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (dateLabel != null)
+                          Text(
+                            dateLabel!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSupporting,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         Text(
-                          dateLabel!,
+                          game.time,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSupporting,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        if (game.status.isNotEmpty)
+                          GameStatusBadge.forSchedule(
+                            game.status,
+                            statusLabel: game.statusLabel,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            fontSize: 11,
+                          ),
+                        if (isMyTeamGame)
+                          _MyTeamBadge(
+                            key: ValueKey(
+                              'schedule-my-team-badge-${game.gameId}',
+                            ),
+                            color: myTeamColor,
+                          ),
                       ],
+                    ),
+                    if (game.stadium.isNotEmpty) ...[
+                      const SizedBox(height: 8),
                       Text(
-                        game.time,
+                        game.stadium,
                         style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (game.status.isNotEmpty)
-                        GameStatusBadge.forSchedule(
-                          game.status,
-                          statusLabel: game.statusLabel,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          fontSize: 11,
-                        ),
-                      if (isMyTeamGame) ...[
-                        const SizedBox(width: 8),
-                        _MyTeamBadge(
-                          key: ValueKey(
-                            'schedule-my-team-badge-${game.gameId}',
-                          ),
-                          color: myTeamColor,
-                        ),
-                      ],
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          game.stadium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSupporting,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          fontSize: 12,
+                          color: AppColors.textSupporting,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
-                  ),
+                  ] else
+                    Row(
+                      children: [
+                        if (dateLabel != null) ...[
+                          Text(
+                            dateLabel!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSupporting,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          game.time,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        if (game.status.isNotEmpty)
+                          GameStatusBadge.forSchedule(
+                            game.status,
+                            statusLabel: game.statusLabel,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            fontSize: 11,
+                          ),
+                        if (isMyTeamGame) ...[
+                          const SizedBox(width: 8),
+                          _MyTeamBadge(
+                            key: ValueKey(
+                              'schedule-my-team-badge-${game.gameId}',
+                            ),
+                            color: myTeamColor,
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            game.stadium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSupporting,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 13),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _TeamInfo(
+                  if (useLargeTextLayout)
+                    Column(
+                      children: [
+                        _TeamInfo(
                           teamId: game.awayId,
                           fallbackName: game.awayName,
-                          alignEnd: true,
                           showLogo: showTeamLogos,
                           highlighted: game.awayId == normalizedMyTeamId,
                           accentColor: myTeamColor,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      _ScoreOrVersus(
-                        awayScore: game.awayScore,
-                        homeScore: game.homeScore,
-                        status: game.status,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _TeamInfo(
+                        const SizedBox(height: 10),
+                        _ScoreOrVersus(
+                          awayScore: game.awayScore,
+                          homeScore: game.homeScore,
+                          status: game.status,
+                        ),
+                        const SizedBox(height: 10),
+                        _TeamInfo(
                           teamId: game.homeId,
                           fallbackName: game.homeName,
                           showLogo: showTeamLogos,
                           highlighted: game.homeId == normalizedMyTeamId,
                           accentColor: myTeamColor,
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _TeamInfo(
+                            teamId: game.awayId,
+                            fallbackName: game.awayName,
+                            alignEnd: true,
+                            showLogo: showTeamLogos,
+                            highlighted: game.awayId == normalizedMyTeamId,
+                            accentColor: myTeamColor,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _ScoreOrVersus(
+                          awayScore: game.awayScore,
+                          homeScore: game.homeScore,
+                          status: game.status,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _TeamInfo(
+                            teamId: game.homeId,
+                            fallbackName: game.homeName,
+                            showLogo: showTeamLogos,
+                            highlighted: game.homeId == normalizedMyTeamId,
+                            accentColor: myTeamColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   if (ticketSummary != null &&
                       shouldShowTicketInfoForScheduleStatus(game.status)) ...[
                     const SizedBox(height: 12),

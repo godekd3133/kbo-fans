@@ -1,3 +1,6 @@
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date as date_type
 
 import pytest
@@ -16,10 +19,24 @@ from kbo_fans_backend.api.routes import (
 from kbo_fans_backend.api.runtime_services import team_stats_service
 from kbo_fans_backend.main import app
 from kbo_fans_backend.services.home import HomeService
+from kbo_fans_backend.utils.resilience import UpstreamDeadlineExceeded
 
 
 class _EmptyScoreboardService:
     def get_home_scoreboard(self, date: str):
+        return {"date": date, "games": []}
+
+
+class _BlockingScoreboardService:
+    def __init__(self) -> None:
+        self.calls = 0
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def get_home_scoreboard(self, date: str):
+        self.calls += 1
+        self.started.set()
+        assert self.release.wait(timeout=2)
         return {"date": date, "games": []}
 
 
@@ -101,6 +118,17 @@ class _FailingRecordsOverviewService:
 
 class _EmptyRecordsOverviewService:
     def get_overview(self, season: int):
+        return {"season": season, "leaders": {"hr": []}, "featured": {}}
+
+
+class _BlockingRecordsOverviewService:
+    def __init__(self) -> None:
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def get_overview(self, season: int):
+        self.started.set()
+        assert self.release.wait(timeout=2)
         return {"season": season, "leaders": {"hr": []}, "featured": {}}
 
 
@@ -230,6 +258,47 @@ def test_current_scheduled_home_uses_short_cache_instead_of_stable_cache(monkeyp
     assert service._current_cache.ttl_seconds == 30
     assert service._current_cache.get(cache_key) == payload
     assert service._stable_cache.get(cache_key) is None
+
+
+def test_concurrent_home_requests_share_one_aggregate_load() -> None:
+    scoreboard = _BlockingScoreboardService()
+    service = HomeService(
+        scoreboard_service=scoreboard,
+        schedule_service=_EmptyScheduleService(),
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=_EmptyRecordsOverviewService(),
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(service.get_home, "2099-01-01")
+        assert scoreboard.started.wait(timeout=2)
+        second = executor.submit(service.get_home, "2099-01-01")
+        time.sleep(0.05)
+        scoreboard.release.set()
+        assert first.result(timeout=2) == second.result(timeout=2)
+
+    assert scoreboard.calls == 1
+
+
+def test_current_home_aggregate_exits_when_one_section_never_completes() -> None:
+    records = _BlockingRecordsOverviewService()
+    service = HomeService(
+        scoreboard_service=_EmptyScoreboardService(),
+        schedule_service=_EmptyScheduleService(),
+        standings_service=_EmptyStandingsService(),
+        records_overview_service=records,
+        aggregate_timeout_seconds=0.05,
+    )
+
+    started_at = time.monotonic()
+    try:
+        with pytest.raises(UpstreamDeadlineExceeded, match="home records overview"):
+            service.get_home("2999-01-01", my_team="LG")
+        assert records.started.wait(timeout=0.5)
+    finally:
+        records.release.set()
+
+    assert time.monotonic() - started_at < 0.3
 
 
 def test_current_home_my_team_recent_results_cross_month_boundary() -> None:

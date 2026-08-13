@@ -18,7 +18,7 @@
 - Use `docs/PLANNING.md` for product goals, MVP scope, UX principles, and risk context.
 - Use `docs/FIGMA_PROMPT.md` for visual system, frame sizing, dark theme rules, page ordering, and wireframe/detail screen composition.
 - Use `docs/WORKLOG.md` for recent decisions and change history.
-- When documents conflict, prefer the newest decision recorded in `CLAUDE.md` and `docs/WORKLOG.md`.
+- For policy, follow the closest `AGENTS.md`, applicable repository skill, and task/spec authority. For current behavior, prefer the checked-out source, generated artifact, and observed runtime. Treat `CLAUDE.md` and `docs/WORKLOG.md` as project context and decision history, not automatic proof that an older priority or checkpoint is still current.
 
 ## Current Product Scope
 - MVP Phase 1 centers on scoreboard, relay, box score, lineup, push notifications, my team selection, schedule, and standings.
@@ -41,6 +41,14 @@
 - When changing UX flows, screen states, or navigation, update both the relevant spec doc and the work log in the same task when feasible.
 - Treat design artifacts as first-class project context, not secondary references.
 - Codex app action commands created in the repo still require manual registration in the app UI; do not assume scripts auto-populate the action menu.
+
+## Harness and evidence boundaries
+
+- A non-trivial task packet must identify the affected app, backend, infrastructure, and release surfaces. For data routing, push, Live Activity, snapshot, or API-contract work, trace the producer and consumer across both `app/` and `backend/` before narrowing scope.
+- Run Flutter commands from `app/` and backend commands from `backend/`. Choose the exact repository-declared checks for the touched surface rather than treating one side's success as whole-product proof.
+- Report Flutter analysis/tests, backend tests or compile checks, API health, web/simulator behavior, real-device behavior, signed artifacts, upload/processing, build `VALID` state, tester-group assignment, Beta App Review, and external installability as separate evidence layers. Never collapse a lower layer into a later release claim.
+- Prepare tester-facing release artifacts from a clean isolated worktree at the exact pushed SHA. If the current worktree is dirty, stage only the requested paths and do not use unrelated local changes as release input.
+- Reusable lessons from one incident are proposals, not self-authorizing policy changes. Record the evidence and minimal compatibility impact, then route the proposed `AGENTS.md`, skill, or workflow change through review and manager/user approval.
 
 ## Runtime Notes
 - Backend is now a first-class runtime surface. When a task touches live data delivery, push, Live Activity, snapshots, release routing, or API contracts, inspect both `app/` and `backend/` before deciding scope.
@@ -107,6 +115,8 @@
   - LIVE summary scoreboard paths should prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0.
   - App UI must treat null H/E/B team totals as unavailable instead of rendering fake 0 records.
 - App-wide Provider retry is intentionally disabled. Do not depend on Riverpod automatic retries to hide API failures; surface errors in screen state and log technical detail to Dev Console.
+- App screen-data GETs must use one absolute deadline across bounded retries and cancel active transport at expiry. Backend screen-data GETs must combine a response deadline with a bounded bulkhead; do not leave lock or SingleFlight follower waits unbounded.
+- Keep scoreboard warming independent from relay/push delivery cadence. `SCOREBOARD_WARM_INTERVAL_SECONDS` defaults to 5 seconds even if `PUSH_SYNC_INTERVAL_SECONDS` is raised to 30/60 seconds, and `LIVE_SCOREBOARD_MAX_AGE_SECONDS` must be at least the warm interval plus 5 seconds of scheduler jitter (20 seconds by default).
 - When touching direct KBO parsers in `app/lib/data/repositories/kbo_direct_repository.dart`, keep field parity with backend contracts. Schedule status, scores, and standings parsing have already drifted once and broke UI state.
 - Dev-only diagnostics should stay in Dev Console when possible. Avoid promoting debugging affordances to user-facing UI unless explicitly requested.
 - Snapshot fallback is only approved for relatively stable data:
@@ -197,7 +207,7 @@
 
 ## Known Document Notes
 - The active mobile direction for this repository is Flutter, not Expo or React Native.
-- If future planning notes conflict with implementation docs, treat `CLAUDE.md`, `docs/WORKLOG.md`, and the latest code as the current direction.
+- Use the latest explicit Director decision and the current applicable spec to establish intended behavior; reconcile any mismatch instead of choosing by recency alone. Establish current behavior from the checked-out source, generated artifacts, and runtime evidence. Treat `CLAUDE.md` and `docs/WORKLOG.md` as historical context until reconciled with both.
 - `docs/FIGMA_PROMPT.md` is more detailed than `CLAUDE.md` for visual decisions; prefer it for screen composition and styling details.
 - `flutter devices` 와 `xcodebuild -showdestinations` 결과가 다를 수 있으니, 실기기 실행 이슈는 두 경로를 같이 본다.
 

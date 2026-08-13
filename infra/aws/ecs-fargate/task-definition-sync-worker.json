@@ -62,6 +62,14 @@
           "value": "/var/lib/kbo-fans/snapshots"
         },
         {
+          "name": "LIVE_SCOREBOARD_MAX_AGE_SECONDS",
+          "value": "20"
+        },
+        {
+          "name": "SCOREBOARD_WARM_INTERVAL_SECONDS",
+          "value": "5"
+        },
+        {
           "name": "PUSH_SYNC_INTERVAL_SECONDS",
           "value": "5"
         },

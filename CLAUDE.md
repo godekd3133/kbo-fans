@@ -1,4 +1,8 @@
+@AGENTS.md
+
 # KBO Fans 프로젝트
+
+> 저장소 작업 정책은 `AGENTS.md`가 정본이다. 이 문서와 `docs/WORKLOG.md`는 프로젝트 맥락과 결정 이력이며, 현재 동작은 체크아웃된 소스·생성 산출물·실제 런타임에서 다시 확인한다. 과거 우선순위나 배포 checkpoint를 현재 상태로 자동 승격하지 않는다.
 
 ## 프로젝트 개요
 KBO 프로야구 팬을 위한 실시간 경기 정보 모바일 앱 (iOS/Android)
@@ -49,7 +53,7 @@ kbo_fans/
 - 구현 인사이트/배포 메모: `docs/ENGINEERING_NOTES.md`
 - Figma 화면 구성, 다크 테마, 컬러/레이아웃 기준: `docs/FIGMA_PROMPT.md`
 - 최신 작업 이력과 결정 사항: `docs/WORKLOG.md`
-- 문서가 충돌하면 최신 결정은 `docs/WORKLOG.md`와 실제 코드/산출물을 우선한다
+- 정책 충돌은 `AGENTS.md`와 가장 가까운 적용 스킬/명세로 해결한다. 현재 동작은 실제 코드·생성 산출물·런타임을 우선하고, `docs/WORKLOG.md`는 결정 이력으로 사용한다
 
 ## Git 설정
 - **레포**: github.com/godekd3133/kbo-fans (Private)
@@ -119,6 +123,8 @@ kbo_fans/
 - LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다
 - 앱 UI는 scoreboard 팀 합계 H/E/B가 `null`인 값을 실제 0 기록처럼 렌더링하지 않는다
 - 앱 전역 Provider retry 는 비활성화한다. API 실패를 자동 재시도로 숨기지 말고 화면 오류 상태와 Dev Console 로그로 드러낸다
+- 앱 화면 GET은 transport timeout만 믿지 않고 모든 bounded retry를 합친 absolute deadline과 active cancellation을 사용한다. backend 화면 GET도 response deadline과 bounded bulkhead를 함께 두며 lock/SingleFlight follower 대기는 무기한 허용하지 않는다
+- Live Activity sync worker의 scoreboard warming은 relay/push delivery cadence와 분리한다. `PUSH_SYNC_INTERVAL_SECONDS`를 30/60초로 늘려도 `SCOREBOARD_WARM_INTERVAL_SECONDS` 기본 5초는 유지하고, `LIVE_SCOREBOARD_MAX_AGE_SECONDS`는 warm interval + scheduler jitter 5초 이상이어야 한다(기본 20초)
 - 팀 기록실은 팀 리스트 → 팀 상세 진입 구조를 기본 정보 구조로 본다
 - Git push 시 기본 `origin` 이슈가 있으면 `git@github-personal:godekd3133/kbo-fans.git` 경로를 사용한다
 
@@ -221,7 +227,10 @@ kbo_fans/
 5. 마이팀 설정
 6. 경기 일정 / 팀 순위
 
-## 다음 기본 우선순위
+## 과거 우선순위 스냅샷 (현재 실행 큐 아님)
+
+아래 항목은 과거 우선순위 기록이다. 현재 사용자 목표가 없으면 자동 실행하지 않는다. 최신 명시적 Director 결정, 현재 적용 spec, source와 dirty state에 재대조된 항목만 현재 backlog로 활성화한다.
+
 1. APNs Auth Key / Key ID / Team ID 준비 후 push demo backend secret 반영
 2. iPhone 실기기에서 push, WidgetKit, Live Activity / Dynamic Island 동작 검증
 3. TestFlight와 Android internal testing 배포 경로 확정

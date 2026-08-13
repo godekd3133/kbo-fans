@@ -9,6 +9,7 @@ from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 
 
 class _StubScheduleCrawler:
@@ -950,6 +951,123 @@ def test_get_scoreboard_coalesces_concurrent_same_date_requests(
     assert results[0] == results[1] == results[2]
     assert schedule.calls == 1
     assert main.calls == 1
+
+
+def test_scoreboard_waiter_does_not_block_past_date_lock_deadline(
+    tmp_path: Path,
+) -> None:
+    target_date = "2999-03-31"
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_StubScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+        date_lock_wait_timeout_seconds=0.03,
+    )
+    lock = service._date_refresh_locks[hash(target_date) % len(service._date_refresh_locks)]
+    lock.acquire()
+    started_at = time.monotonic()
+    try:
+        with pytest.raises(UpstreamBusyError, match="scoreboard refresh is busy"):
+            service.get_home_scoreboard(target_date)
+    finally:
+        lock.release()
+
+    assert time.monotonic() - started_at < 0.2
+
+
+def test_home_scoreboard_uses_fresh_live_state_when_date_refresh_is_busy(
+    tmp_path: Path,
+) -> None:
+    target_date = "2999-03-31"
+    expected = {
+        "date": target_date,
+        "games": [{"gameId": "29990331HTLG0", "status": "LIVE"}],
+    }
+    live_store = LiveScoreboardStore(
+        path=str(tmp_path / "runtime" / "live_scoreboard.json"),
+        max_age_seconds=20,
+    )
+    live_store.save(target_date, expected)
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+        live_scoreboard_store=live_store,
+        date_lock_wait_timeout_seconds=0.03,
+    )
+    lock = service._date_refresh_locks[hash(target_date) % len(service._date_refresh_locks)]
+    lock.acquire()
+    try:
+        result = service.get_home_scoreboard(target_date)
+    finally:
+        lock.release()
+
+    assert result == expected
+
+
+def test_compact_scoreboard_uses_fresh_live_state_when_date_refresh_is_busy(
+    tmp_path: Path,
+) -> None:
+    target_date = "2999-03-31"
+    game_id = "29990331HTLG0"
+    expected = {
+        "date": target_date,
+        "games": [
+            {
+                "gameId": game_id,
+                "status": "LIVE",
+                "awayId": "HT",
+                "homeId": "LG",
+            }
+        ],
+    }
+    live_store = LiveScoreboardStore(
+        path=str(tmp_path / "runtime" / "live_scoreboard.json"),
+        max_age_seconds=20,
+    )
+    live_store.save(target_date, expected)
+    service = ScoreboardService(
+        main_crawler=_StubMainCrawler(),
+        schedule_crawler=_FailingScheduleCrawler(),
+        scoreboard_crawler=_StubScoreboardCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+        live_scoreboard_store=live_store,
+        date_lock_wait_timeout_seconds=0.03,
+    )
+    lock = service._date_refresh_locks[hash(target_date) % len(service._date_refresh_locks)]
+    lock.acquire()
+    try:
+        result = service.get_compact_scoreboard(target_date, my_team="HT")
+    finally:
+        lock.release()
+
+    assert result["source"] == "live"
+    assert result["games"][0]["gameId"] == game_id
+
+
+def test_trusted_force_refresh_does_not_use_old_live_state_when_busy(
+    tmp_path: Path,
+) -> None:
+    target_date = "2999-03-31"
+    live_store = LiveScoreboardStore(
+        path=str(tmp_path / "runtime" / "live_scoreboard.json"),
+        max_age_seconds=20,
+    )
+    live_store.save(target_date, {"date": target_date, "games": []})
+    service = ScoreboardService(
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+        live_scoreboard_store=live_store,
+        date_lock_wait_timeout_seconds=0.03,
+    )
+    lock = service._date_refresh_locks[hash(target_date) % len(service._date_refresh_locks)]
+    lock.acquire()
+    try:
+        with pytest.raises(UpstreamBusyError, match="scoreboard refresh is busy"):
+            service.get_home_scoreboard(target_date, force_refresh=True)
+    finally:
+        lock.release()
 
 
 def _write_snapshot_record(

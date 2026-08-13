@@ -225,6 +225,7 @@ Future<List<ScheduleDay>> loadKboSeasonScheduleBounded({
   required List<String> yearMonths,
   required Future<List<ScheduleDay>> Function(String yearMonth) loadMonth,
   int maxConcurrent = 3,
+  Duration overallDeadline = const Duration(seconds: 25),
 }) async {
   if (yearMonths.isEmpty) {
     return const [];
@@ -233,6 +234,13 @@ Future<List<ScheduleDay>> loadKboSeasonScheduleBounded({
     throw ArgumentError.value(
       maxConcurrent,
       'maxConcurrent',
+      'must be positive',
+    );
+  }
+  if (overallDeadline <= Duration.zero) {
+    throw ArgumentError.value(
+      overallDeadline,
+      'overallDeadline',
       'must be positive',
     );
   }
@@ -261,7 +269,13 @@ Future<List<ScheduleDay>> loadKboSeasonScheduleBounded({
   final workerCount = maxConcurrent < yearMonths.length
       ? maxConcurrent
       : yearMonths.length;
-  await Future.wait(List.generate(workerCount, (_) => worker()));
+  await Future.wait(List.generate(workerCount, (_) => worker())).timeout(
+    overallDeadline,
+    onTimeout: () => throw TimeoutException(
+      'Season schedule loading exceeded ${overallDeadline.inMilliseconds}ms',
+      overallDeadline,
+    ),
+  );
   if (firstError != null) {
     Error.throwWithStackTrace(firstError!, firstStackTrace!);
   }

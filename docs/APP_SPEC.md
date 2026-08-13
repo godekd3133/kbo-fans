@@ -1,6 +1,6 @@
 # KBO Fans 앱 기획서 (App Specification)
 
-> 최종 수정: 2026-08-12
+> 최종 수정: 2026-08-13
 > 상태: Draft v1
 
 ---
@@ -84,7 +84,7 @@
 └─────────┴─────────┴─────────┴─────────┴────────────┘
 ```
 
-- 700px 미만 모바일은 `홈 / 일정 / 기록 / 브리핑 / 설정` 5탭을 사용한다. `/standings`와 `/records` 하위 route는 모두 모바일 `기록` 목적지 소속이며, 순위 화면에서도 `기록` 탭을 선택 상태로 유지한다.
+- 700px 미만 모바일은 `홈 / 일정 / 기록 / 브리핑 / 설정` 5탭을 사용한다. `/standings`와 `/records` 하위 route는 모두 모바일 `기록` 목적지 소속이며, 두 화면 상단의 공통 `순위표 / 선수 기록` 전환으로 한 번에 발견·이동한다. 순위 화면에서도 하단 `기록` 탭을 선택 상태로 유지한다.
 - 700px 이상은 하단 탭 대신 `홈 / 일정 / 순위 / 기록 / 브리핑 / 설정` 6개 목적지의 `NavigationRail`을 사용한다. 순위와 기록을 직접 분리해 넓은 화면의 탐색 단계를 줄인다.
 - 1000px 이상에서는 같은 rail을 label이 항상 보이는 extended 형태로 전환한다.
 - 일반 페이지 콘텐츠 폭은 모바일에서 최대 430px, 700px 이상에서 최대 720px로 확장하고 화면 중앙에 정렬한다. rail을 제외한 나머지 폭을 무조건 한 열로 늘리지 않는다.
@@ -284,7 +284,7 @@
 | 진행 중인 내 경기 | 마이팀 오늘 경기가 live 상태이면 마이팀 브리프 바로 아래, `오늘 경기` 위에 현재 스코어/이닝/구장을 compact 카드로 노출하고 탭하면 해당 경기 문자중계로 이동 |
 | 오늘 경기 | scoreboardProvider의 오늘 경기 전체를 compact row로 노출. 마이팀 경기를 우선 정렬하되 `전체 보기` CTA로 축약하지 않는다 |
 | 순위 | secondary section 활성화 이후 `/home.standingsPreview`를 읽어 전체 팀을 순위표로 표시 |
-| 최근 5경기 | 순위 바로 아래에서 `/home.standingsPreview` 전체 팀의 `streak`를 5개 결과 버블과 연승/연패 텍스트로 표시. 마이팀 행은 `myTeamBrief.recentSummaries`가 있으면 실제 최근 경기 요약을 우선 사용하고, 집계가 비어 있으면 현재 scoreboard에서 점수와 상태가 모두 확인된 `FINAL` 경기만 보조해 표시한다 |
+| 최근 5경기 | 순위 바로 아래에서 마이팀의 검증된 `recentSummaries`만 결과 버블로 표시한다. 집계가 비어 있을 때는 현재 scoreboard에서 점수와 상태가 모두 확인된 `FINAL` 경기만 보조하며, 검증된 결과가 없으면 빈 상태를 보여준다. 다른 팀의 공식 streak는 이 섹션에 섞지 않고 순위표의 `연속` 정보로만 유지한다 |
 | KBO 브리프 | 위 네 섹션 아래에서 그날 리그 전체의 주요 경기/확정 기록/핵심 흐름 요약 |
 | 빠른 콘텐츠 | 홈런왕, 오늘의 플레이어, 마이팀 순위 등 짧은 정보 카드. 첫 화면보다 아래에 배치 |
 
@@ -297,7 +297,7 @@
 | KBO 브리프 | `KBO 소식`, `지금 KBO`, `오늘의 KBO 요약`처럼 날짜/경기 상태별 리그 전체 핵심 이슈 3~5개 노출. 홈에서는 전체 폭 row 카드로 배치해 긴 팀명/전적 문구를 말줄임으로 숨기지 않고, 팀 기반 순위/흐름 항목은 reference team logo를 우선 사용 |
 | 오늘 경기 | 구장/시간, 원정팀 로고/명, 중앙 스코어 또는 `- : -`, 상태 badge, 홈팀 로고/명을 한 행에 표시하고 오늘 편성된 모든 경기 row를 보여준다. 자정 이후 오늘 경기가 모두 시작 전이면 오늘 스코어보드 첫 렌더 후 전날 스코어보드를 보조 조회해 종료 경기만 `어제 결과` 그룹으로 함께 보여준다. 오늘 live/final 경기가 하나라도 있으면 어제 결과를 추가 조회하거나 섞지 않는다 |
 | 순위 snapshot | 현재 시즌 전체 팀 순위를 compact table로 표시하고 마이팀 행은 팀 컬러 배경으로 강조. 팀 행 탭은 전체 순위 화면으로 이동 |
-| 최근 5경기 | 전체 팀을 순위 순서대로 표시하고, 각 팀의 최근 결과를 원형 `승`/`패`/`무` 버블과 오른쪽 연승/연패 요약으로 보여준다 |
+| 최근 5경기 | 실제로 확인된 마이팀 최근 경기만 원형 `승`/`패`/`무` 버블로 보여준다. 확인된 요약이 없으면 다른 팀의 빈 행을 채우지 않고 섹션 빈 상태를 표시하며 결과를 추정하지 않는다. 240% 글자에서는 행 높이가 내용에 맞게 늘어나고, 접근성 label은 팀·결과·연속 기록·이동 목적을 함께 전달한다 |
 | 빠른 콘텐츠 | 리그 리더/오늘의 플레이어/마이팀 순위 등 2~3개 카드형 콘텐츠. 홈에서는 전체 폭 row 카드로 배치해 긴 팀명/전적 문구가 잘리지 않게 하고, 선수 카드 탭 시 최근 기록 요약 바텀시트 후 상세 진입 가능 |
 | 경기 상태 뱃지 | `경기 전` / `1회초` ~ `12회말` / `경기종료` / `우천취소` |
 
@@ -312,11 +312,11 @@
 | 취소/지연 | 취소/지연 사유, 다음 일정 | `일정 보기` |
 
 - 원천 score가 `null`이면 정수 기본값 `0`으로 바꾸지 않고 `–`로 표시한다. 실제 0점과 미확인 점수는 모델·semantics·위젯/Live Activity payload까지 분리한다.
-- 마이팀 브리프는 단순 지표 나열보다 `지금 내 팀 상황`을 먼저 판단하게 한다. 선택된 팀이 있으면 카드 title, 팀 로고, 최근 최대 5경기 결과 버블, 순위/팀 타율/팀 ERA, 팀 홈런 1위, OPS/AVG/ERA 기준 눈에 띄는 선수, `경기 일정`/`팀 기록` CTA 순서로 구성한다.
+- 마이팀 브리프는 단순 지표 나열보다 `지금 내 팀 상황`을 먼저 판단하게 한다. 선택된 팀이 있으면 카드 title, 팀 로고, 확인된 최근 최대 5경기 결과 버블, 순위/팀 타율/팀 ERA, 팀 홈런 1위, OPS/AVG/ERA 기준 눈에 띄는 선수, `경기 일정`/`팀 기록` CTA 순서로 구성한다. 결과가 없으면 `최근 결과 없음`을 표시하고 streak를 경기 결과처럼 반복하지 않는다.
 - 마이팀 미선택 상태의 `마이팀 선택` CTA는 `/onboarding?mode=edit&redirect=/home`으로 이동하고, 선택 완료 뒤 홈으로 복귀한다.
 - 340px 이하에서는 마이팀 브리프의 최근 5경기를 위 행, 타율·ERA를 아래 2열에 배치한다. 홈 순위 표도 안쪽 여백과 수치 열 폭을 함께 줄여 팀명·전적을 축소 글자나 가로 넘침 없이 유지한다.
 - 최근 최대 5경기 결과는 오늘이 월초라 현재 월 일정만으로 충분하지 않을 때 이전 월 종료 경기도 함께 사용한다. 예정 경기의 0:0 스코어는 최근 결과로 집계하지 않는다.
-- 집계 응답이 비어도 현재 scoreboard에 확인된 종료 경기가 있으면 그 경기만 최근 결과 보조 데이터로 사용한다. `scoreAvailable=false` 경기나 `SUSPENDED`/예정 경기의 숫자는 최근 결과로 추정하지 않는다.
+- 집계 응답이 비어도 현재 scoreboard에 확인된 종료 경기가 있으면 마이팀에 한해 그 경기만 최근 결과 보조 데이터로 사용한다. 다른 팀은 standings의 `streak`를 최근 경기 버블로 변환하지 않는다. `scoreAvailable=false` 경기나 `SUSPENDED`/예정 경기의 숫자는 최근 결과로 추정하지 않는다.
 - 브리프 문구는 홈 첫 프레임 전략을 해치지 않도록 기존 scoreboard와 지연 로딩된 `/home` aggregate 안의 `myTeamBrief` 데이터를 먼저 사용한다. 팀 타율/ERA는 secondary section 활성화 뒤 `teamStatsProvider`(`/api/team/{teamId}/stats`)로 먼저 표시하고, 팀 홈런 1위/뜨는 선수는 `teamPlayersProvider`(`/api/team/{teamId}/players`)가 도착하면 보강한다. 홈 첫 데이터 프레임 전에는 두 provider를 구독하지 않는다. 선발/라인업/직전 플레이처럼 별도 상세 fetch가 필요한 정보는 경기 상세/문자중계 진입 뒤에 확인하게 한다.
 - 마이팀 브리프의 `my_team_brief_command` 로컬 생성 비주얼은 별도 strip/banner가 아니라 브리프 카드 내부 background layer로 낮게 깔아 개인화 영역의 질감을 만든다. 추가 네트워크 fetch나 로고/구단 엠블럼/읽을 수 있는 임의 텍스트를 포함하지 않는다.
 - 마이팀이 선택되어 있고 오늘 마이팀 경기가 live 상태이거나 라인업 공개/시작 10분 전 예정 상태이면 홈/위젯/재동기화 경로에서 해당 경기를 기본 Live Activity target 으로 맞춘다. 단, 참조형 오늘 경기 행에는 상태 문구를 반복 노출하지 않고 Live Activity / Widget sync target만 조용히 유지한다.
@@ -353,7 +353,7 @@
 - `GET /api/home`의 `data.standingsPreview`로 내려간다.
 - 구조는 `TeamStanding[]`과 동일하며 `rank`, `teamId`, `teamName`, `wins`, `losses`, `draws`, `pct`, `gb`, `streak`를 가진다.
 - 기본은 순위 오름차순 전체 팀이다.
-- 홈 UI는 이 배열만 사용해 순위 프리뷰와 최근 5경기 전체 팀 행을 렌더링하고, 홈 화면에서 별도 current-season standings provider를 추가 호출하지 않는다.
+- 홈 UI는 이 배열만 사용해 순위 프리뷰를 렌더링하고, 최근 5경기는 `myTeamBrief.recentSummaries`가 검증된 마이팀 행만 렌더링한다. 홈 화면에서 별도 current-season standings provider를 추가 호출하지 않는다.
 
 **경기 카드 상태별 표시**:
 | 상태 | 표시 방식 |
@@ -380,7 +380,7 @@ GET /api/scoreboard?date=2026-03-28
 **운영 메모**:
 - 서버는 날짜별 live scoreboard 응답을 `8초 TTL` 캐시로 보관한다.
 - `/api/home` aggregate의 backend in-memory cache는 응답에 LIVE 경기가 있으면 8초, KBO 오늘이면서 LIVE가 없으면 예정 경기·빈 일정도 30초, 오늘이 아닌 날짜는 300초를 사용한다. 오늘 응답은 300초 stable cache에 넣지 않으며 current 실패를 stale cache로 숨기지 않는다.
-- 운영 sync worker는 live scoreboard 요약을 8초 fresh window의 runtime state로 저장하고, `/scoreboard/home`은 이 값이 fresh일 때 원천 KBO 수집 없이 즉시 반환할 수 있다. 이 runtime state는 snapshot fallback이 아니며 stale이면 무시하고 기존 fresh-first 원천 조회/오류 정책으로 돌아간다.
+- 운영 sync worker는 `SCOREBOARD_WARM_INTERVAL_SECONDS` 기본 5초 cadence로 live scoreboard 요약을 갱신하고, `/scoreboard/home`은 이 값이 현재 `LIVE_SCOREBOARD_MAX_AGE_SECONDS=20` window 안에서 fresh일 때 원천 KBO 수집 없이 즉시 반환할 수 있다. relay/push delivery의 `PUSH_SYNC_INTERVAL_SECONDS`를 30/60초로 늘려도 warm cadence는 유지하며, worker는 `warm interval + 5초 jitter <= live max age`를 시작 전에 검증한다. 이 runtime state는 snapshot fallback이 아니며 stale이면 무시하고 기존 fresh-first 원천 조회/오류 정책으로 돌아간다.
 - 예정 경기일 때 KBO scoreboard 세부 테이블이 비어도 홈 화면은 fallback payload 로 렌더링한다.
 - 예정 경기는 YouTube 검색을 생략하고 KBO 공식 하이라이트 링크만 유지한다.
 - 진단 화면은 `health / scoreboard / schedule / push` 상태를 한 번에 확인한다. push 상태 Future도 loading, 정상, 오류를 각각 표시하고, 실패 시 `푸시 상태 다시 시도`와 전체 `다시 진단`이 새 Future를 시작해야 한다.
@@ -820,7 +820,7 @@ GET /api/schedule?month=2026-03
 - 달력·구장별·매치업의 수동 갱신은 표시 중인 `scheduleProvider(yearMonth)`와 해당 `seasonScheduleProvider(season)`을 함께 무효화한다. 달력에서 월 데이터를 갱신한 뒤 매치업이나 구장별 보기로 전환해도 이전 시즌 aggregate를 재사용하지 않고 갱신된 월 결과를 포함해야 한다.
 
 **운영 메모**:
-- 월간 일정은 월 단위 prefetch/cache 를 사용하고, 지난 날짜 경기 결과는 경기 종료 후 저장된 schedule snapshot 을 우선 사용한다.
+- 월간 일정은 월 단위 prefetch/cache 를 사용한다. 과거월 schedule snapshot은 경기 ID 날짜가 요청 월·일과 일치하고 모든 경기가 `FINAL`(양 팀 점수는 0 이상의 정수) 또는 `CANCELLED`일 때만 우선 사용한다. `SCHEDULED`/`LIVE`/`SUSPENDED`/`UNKNOWN` 또는 점수가 빠진 `FINAL`이 섞이면 원천을 다시 확인하고 실패를 오래된 일정으로 숨기지 않는다.
 - 과거 경기 일정/결과 조회는 live scoreboard 재수집이 아니라 저장된 경기 결과와 예매/구장 메타를 재사용해 즉시 응답한다.
 
 ---
@@ -889,6 +889,7 @@ homeAggregateProvider("{yyyy-MM-dd}|{myTeamId}")
 
 **운영 메모**:
 - 브리핑 탭은 외부 기사 크롤링 없이 현재 앱이 검증하는 스코어보드/순위/기록실 aggregate에서 만든 짧은 데이터 요약만 보여준다. 화면명·출처 고지·카드 문구에서 외부 기사처럼 표현하지 않는다.
+- 브리핑 항목은 표시 문구가 아니라 canonical route·팀/선수/경기 식별자·story kind·metric/topic으로 사실 identity를 만든다. 같은 원천 사실의 제목/라벨/query 순서 변형만 하나로 합치고, 같은 선수의 다른 지표·같은 경기의 다른 흐름·다른 순위 지표는 각각 보존한다. 식별할 수 없는 새 유형은 과도하게 합치지 않고 원문 항목을 유지한다.
 - 계산형 소식은 이미 표시 가능한 수치에서만 만든다. 홈런/승수 페이스는 `wins + losses + draws` 경기 수가 1 이상일 때만 노출하고, 새 API 조회나 추정용 임의 데이터를 만들지 않는다.
 - 팀 ERA 대비 불펜 ERA처럼 세부 팀 지표 간 반전 카드는 해당 지표가 `/home` aggregate 또는 별도 검증된 팀 스탯 계약으로 들어온 뒤 자동 생성한다. 현재 브리핑 탭은 standings/quickItems/kboBrief에 이미 포함된 데이터만 재가공한다.
 - 순위 흐름 제목은 실제 경기 차와 연속 승패를 근거로 만들고, 이미 편집된 제목에 같은 접두사를 다시 붙이지 않는다. `턱밑`은 실제 2경기 차 이내에만 쓰며, 외부 기사 출처를 가장하거나 데이터 없는 fake source는 만들지 않는다.
@@ -935,6 +936,7 @@ homeAggregateProvider("{yyyy-MM-dd}|{myTeamId}")
 | 빈 상태 | 선택 시즌 순위 배열이 비어 있으면 헤더 행만 남기지 않고 `standings_race` 기반 artwork empty state와 `다시 확인` CTA를 보여준다 |
 | 확인 시간 | 데이터 갱신 시각으로 오인하지 않도록 KBO civil time 기준의 화면 확인 시각 표시 |
 | 확장 정보 | 최근 10경기, 연속, 홈/원정은 행 펼침 또는 상세 보기에서 노출 |
+| 모바일 기록 전환 | 700px 미만에서는 상단 `순위표 / 선수 기록` 2분할 전환을 표시한다. 두 항목은 최소 44px이고 selected semantics를 제공하며 240% 글자에서도 줄임표 없이 양방향 이동한다 |
 
 **인터랙션**:
 - 시즌 선택 → `GET /api/standings?season={YYYY}`로 해당 연도 순위 조회. 현재 시즌 선택 상태는 `kboDateProvider`의 1월 1일 KST 연도 전환을 따라 새 시즌으로 이동하고, 사용자가 선택한 과거 시즌은 유지한다.
@@ -1007,7 +1009,7 @@ GET /api/standings?season=2026
 |------|------|
 | 마이팀 | 현재 선택 팀과 `마이팀 선택/변경` 버튼만 표시. 순위, 최근 5경기, 오늘 경기 여부는 홈/일정/순위 탭에서만 다룬다 |
 | 화면 모드 | 설정 첫 화면에서 `시스템`, `라이트`, `다크`를 고른다. `시스템`은 OS 밝기 설정을 따르고, `라이트`/`다크`는 앱 화면을 직접 고정한다. OS 고대비가 켜지면 선택 밝기에 맞는 독립 highContrast light/dark 팔레트를 사용한다 |
-| 푸시 알림 | 설정 첫 화면에서 프리셋을 먼저 고르지 않고, `경기 전후`와 `경기 중` 항목별 토글을 바로 켜고 끈다. 선택 상태는 마이팀 여부와 섞지 않고 `N개 선택됨` 또는 `선택 없음`으로 표시한다. 무팀 상태는 대상 strip의 `마이팀 선택 전`으로 따로 알리고, 실제 수신은 OS 권한·기기 등록·서버 상태에 따라 달라질 수 있음을 항상 안내한다. 설정 로드 실패는 무한 loading 대신 오류 설명과 재시도를 제공한다 |
+| 푸시 알림 | 설정 첫 화면에서 프리셋을 먼저 고르지 않고, `경기 전후`와 `경기 중` 항목별 토글을 바로 켜고 끈다. 각 행은 항목명·설명·켜짐 상태를 하나의 toggle semantics로 제공하며 240% 글자에서 설명을 생략하지 않는다. 선택 상태는 마이팀 여부와 섞지 않고 `N개 선택됨` 또는 `선택 없음`으로 표시한다. 무팀 상태는 대상 strip의 `마이팀 선택 전`으로 따로 알리고, 실제 수신은 OS 권한·기기 등록·서버 상태에 따라 달라질 수 있음을 항상 안내한다. 카드 상단은 OS 권한 상태와 명시적 `알림 허용하기`/`권한 다시 확인` CTA를 제공하고, 실패 시 같은 화면에서 재시도한다. 설정 로드 실패는 무한 loading 대신 오류 설명과 재시도를 제공한다 |
 | 알림함 | 최근 최대 50개 수신 push 목록으로 진입하는 버튼. 현재 표시 수를 밝히고 목록과 설정 로드 실패를 독립 처리하며 각각 재시도한다. 알림 행을 열면 화면에서는 즉시 읽음으로 표시하고 안전한 내부 route로 이동하며, 영속 읽음 저장 실패는 이동을 막지 않는다. 이후 재로드에서는 저장된 실제 읽음 상태로 다시 맞춘다. 설정에서는 최신 알림 본문을 미리 펼치지 않고 unread count만 보조 상태로 둔다 |
 | 경기별 알림 범위 | 기본 대상은 마이팀 경기다. 마이팀 경기 topic과 마이팀 외 선택 경기 `*_GAME_{gameId}` topic 모두 현재 켜진 moment만 구독한다 |
 | 라이브 경기 알림 | 마이팀 live/라인업 공개 예정/시작 10분 전 예정 경기 자동 선택 또는 현재 경기 상세에서 사용자가 직접 시작하는 Live Activity / Android Live Update 세션 |
@@ -1321,6 +1323,22 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 }
 ```
 
+### 화면 데이터 요청 종료 계약
+
+- 앱의 GET은 connect/receive timeout과 별도로 모든 attempt와 backoff를 합친 25초 wall-clock deadline을 갖는다. deadline을 넘으면 진행 중 Dio 요청을 취소해 provider Future와 refresh indicator가 반드시 error로 끝나게 한다.
+- GET은 connection/send/receive timeout, connection error, HTTP `408`, `429`, `502`, `503`, `504`만 전체 deadline 안에서 최대 한 번 재시도한다. 서버가 정수 초 `Retry-After`를 보내면 기본 backoff보다 우선하되 전체 deadline을 넘기면 재시도하지 않는다. 일반 `4xx`, response parsing 실패, POST는 자동 재시도하지 않는다.
+- backend의 `/api` 화면 데이터 GET은 기본 15초 안에 끝나야 한다. 넘으면 `504 UPSTREAM_DEADLINE_EXCEEDED`, process의 화면 데이터 작업 슬롯 8개가 차면 최대 0.1초 대기 후 `503 UPSTREAM_BUSY`와 `Retry-After: 1`을 반환한다. 두 오류 응답에는 `Cache-Control: no-store`를 붙인다.
+- health, metrics, push diagnostics/registration과 POST는 화면 데이터 bulkhead에서 분리해 느린 crawler가 운영 진단과 token 등록까지 막지 않게 한다.
+- timeout된 Python sync 작업은 강제로 중단할 수 없으므로 실제 종료 전까지 bulkhead 슬롯을 계속 점유한다. 이때 새 작업을 추가로 쌓지 않고 빠른 503으로 되돌리는 것이 계약이다.
+- 동일 홈 aggregate, scoreboard 날짜, live relay, current team players의 process-local 중복 조회는 coalesce한다. SingleFlight follower는 backend 전체 예산보다 짧은 최대 10초, relay/scoreboard 공유 lock 획득은 2초로 제한한다. 여러 API process 사이의 분산 coalescing은 별도 운영 경계다.
+- 시즌 매치업의 월별 일정 요청은 최대 3개 병렬이지만 전체 provider deadline 25초를 공유한다. 한 월이 고착되면 9개월 전체를 3 wave로 끝까지 기다리지 않고 명시적 오류·재시도로 전환하며 일부 월을 조용히 누락하지 않는다.
+- 홈 scoreboard와 경기 상세의 active 대기·force refresh queue는 하나의 25초 coordinator budget으로 묶는다. 새로고침이 겹쳐도 두 번째 25초를 순차로 더하지 않고 마지막 표시 데이터를 보존한다.
+
+| 코드 | HTTP | 의미 | 앱 처리 |
+|------|------|------|---------|
+| `UPSTREAM_BUSY` | 503 | 서버 작업 슬롯·공유 원천 경계가 포화됨 | deadline 안에서 한 번 재시도 후 마지막 visible data 또는 명시적 오류/재시도 |
+| `UPSTREAM_DEADLINE_EXCEEDED` | 504 | 화면 데이터 전체 예산 안에 원천 조립이 끝나지 않음 | 진행 요청을 종료하고 spinner 대신 오류/재시도 |
+
 ### 데이터 신선도 계층
 
 | 계층 | 대상 데이터 | 서버 처리 방식 | 앱 처리 방식 |
@@ -1348,9 +1366,10 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 홈은 이미 표시된 `Game`을 `extra`로 넘겨 경기 상세를 즉시 열고, `gameProvider(gameId)`와 선택 탭 갱신은 route push 뒤 background에서 수행한다. 갱신 실패는 navigation을 되돌리지 않으며, 상세 화면은 기존 경기정보와 `갱신 지연`/재시도를 함께 표시한다. 일정도 카드 상태로 선택한 route/tab을 즉시 열고 같은 갱신 소유권을 따른다. 첫 화면부터 경기정보가 전혀 없는 cold 실패만 사용자 오류 상태로 둔다.
 - 홈 secondary `/home` aggregate provider 는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전 부가 API fan-out 을 만들지 않는다.
 - 홈 자동 refresh timer 는 refresh interval 과 scoreboard signature 가 바뀔 때만 재스케줄해 unrelated rebuild 로 live polling 이 지연되지 않게 한다.
-- 홈 pull-to-refresh는 새 `scoreboardProvider` 응답이 끝날 때까지 indicator Future를 유지하고 API-backed 경로에서는 one-shot `forceRefresh=true`를 전달한다. 공개 앱 요청의 이 query는 기기 cache를 우회하는 힌트이며 backend의 8초 TTL을 직접 우회하지 않는다. backend 원천 강제 갱신은 설정된 `PUSH_SYNC_SECRET`과 정확히 일치하는 `X-KBO-Push-Sync-Secret` header를 함께 보낸 운영 worker만 사용할 수 있다. refresh 중 이전 data를 표시하더라도 이를 fresh 완료로 간주해 다음 timer를 예약하지 않는다. 자동 갱신이 일시 실패하면 마지막 visible scoreboard를 유지한 채 다음 cadence에 다시 시도하고, 수동 요청과 겹친 자동 요청은 직렬 queue로 합친다. 앱 resume sync도 current scoreboard가 이미 loading이면 invalidate하지 않고 같은 Future를 기다린다.
+- 홈 pull-to-refresh는 새 `scoreboardProvider` 응답이 끝날 때까지 indicator Future를 유지하고 API-backed 경로에서는 one-shot `forceRefresh=true`를 전달한다. 공개 앱 요청의 이 query는 기기 cache를 우회하는 힌트이며 backend의 8초 TTL을 직접 우회하지 않는다. backend 원천 강제 갱신은 설정된 `PUSH_SYNC_SECRET`과 정확히 일치하는 `X-KBO-Push-Sync-Secret` header를 함께 보낸 운영 worker만 사용할 수 있다. refresh 중 이전 data를 표시하더라도 이를 fresh 완료로 간주해 다음 timer를 예약하지 않는다. 자동 갱신이 일시 실패하면 마지막 visible scoreboard를 유지한 채 다음 cadence에 다시 시도하고, 수동 요청과 겹친 자동 요청은 25초 coordinator budget 안에서 한 번의 queued force refresh로 합친다. 앱 resume sync도 current scoreboard가 이미 loading이면 invalidate하지 않고 같은 Future를 기다린다.
 - backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 표면 전용으로 schedule + main list 만 사용하고, 경기별 상세 스코어보드 크롤러는 full scoreboard 와 game detail 경로에서만 호출한다.
 - backend current data routes 는 공용 runtime service singleton 을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache 를 재사용한다. scoreboard service 내부에서도 같은 날짜의 schedule/main list 원천 결과를 짧은 TTL로 공유해 home/compact/game detail 진입이 같은 KBO 원천 호출을 반복하지 않게 한다.
+- sync worker의 live scoreboard warmer는 relay/FCM/APNs delivery loop와 별도 thread/cadence로 동작한다. 기본 5초 cadence에 정상 jitter를 허용하도록 shared live scoreboard state는 20초 안에서만 fresh로 취급하며, 날짜는 `Asia/Seoul` KBO 경기일을 매 iteration 다시 계산한다.
 - LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다.
 - scoreboard/game wire payload의 `score=null` 또는 score 필드 누락은 실제 `0`과 다른 미확인 상태다. 앱 `TeamScore`는 numeric fallback과 별도로 `scoreAvailable`을 보존하며 홈·상세·문자중계·위젯에서는 `displayScore=–`를 사용한다.
 - 로컬 알림과 backend moment의 `scoring`/`reversal` 비교는 이전·현재 양 팀 점수가 모두 확인 가능할 때만 수행한다. 확인 불가 상태가 0점으로 변환되어 가짜 득점·역전을 만들면 안 된다.

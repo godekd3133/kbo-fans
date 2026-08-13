@@ -12,14 +12,48 @@ import '../../core/widgets/dev_console.dart';
 class ApiClient {
   late final Dio _dio;
   static const _requestTimeout = Duration(seconds: 25);
+  static const _defaultMaxGetAttempts = 2;
+  static const _defaultRetryDelay = Duration(milliseconds: 250);
   static const _cachePrefix = 'api_cache:';
   static const _maxCacheStorageKeyBytes = 192;
   static const _maxCacheEntries = 64;
   static const _maxCacheEntryBytes = 256 * 1024;
   static const _maxCacheTotalBytes = 2 * 1024 * 1024;
   static Future<void> _cacheMutationQueue = Future<void>.value();
+  final Duration _requestDeadline;
+  final int _maxGetAttempts;
+  final Duration _retryDelay;
 
-  ApiClient({Dio? dio, bool enableRequestTiming = true}) {
+  ApiClient({
+    Dio? dio,
+    bool enableRequestTiming = true,
+    Duration requestDeadline = _requestTimeout,
+    int maxGetAttempts = _defaultMaxGetAttempts,
+    Duration retryDelay = _defaultRetryDelay,
+  }) : _requestDeadline = requestDeadline,
+       _maxGetAttempts = maxGetAttempts,
+       _retryDelay = retryDelay {
+    if (requestDeadline.inMicroseconds <= 0) {
+      throw ArgumentError.value(
+        requestDeadline,
+        'requestDeadline',
+        'must be greater than zero',
+      );
+    }
+    if (maxGetAttempts < 1) {
+      throw ArgumentError.value(
+        maxGetAttempts,
+        'maxGetAttempts',
+        'must be at least one',
+      );
+    }
+    if (retryDelay.isNegative) {
+      throw ArgumentError.value(
+        retryDelay,
+        'retryDelay',
+        'must not be negative',
+      );
+    }
     _dio =
         dio ??
         Dio(
@@ -27,6 +61,7 @@ class ApiClient {
             baseUrl: AppConfig.instance.apiBaseUrl,
             // KBO 원본 크롤링을 경유하는 일부 응답은 10초를 넘길 수 있어 웹에서 조기 타임아웃이 자주 났다.
             connectTimeout: _requestTimeout,
+            sendTimeout: _requestTimeout,
             receiveTimeout: _requestTimeout,
             headers: {
               'Content-Type': 'application/json',
@@ -81,11 +116,102 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? queryParameters,
   }) async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      path,
-      queryParameters: queryParameters,
+    final elapsed = Stopwatch()..start();
+    for (var attempt = 1; attempt <= _maxGetAttempts; attempt += 1) {
+      final remaining = _requestDeadline - elapsed.elapsed;
+      if (remaining.inMicroseconds <= 0) {
+        throw _requestDeadlineException(
+          RequestOptions(path: path, queryParameters: queryParameters),
+        );
+      }
+
+      try {
+        final response = await _getWithinDeadline(
+          path,
+          queryParameters: queryParameters,
+          remaining: remaining,
+        );
+        return _extractData(response);
+      } on DioException catch (error) {
+        final canRetry =
+            attempt < _maxGetAttempts && _isTransientGetFailure(error);
+        if (!canRetry) {
+          rethrow;
+        }
+
+        final nextDelay = _retryDelayFor(error);
+        final retryBudget = _requestDeadline - elapsed.elapsed;
+        if (retryBudget.inMicroseconds <= nextDelay.inMicroseconds) {
+          rethrow;
+        }
+        if (nextDelay > Duration.zero) {
+          await Future<void>.delayed(nextDelay);
+        }
+      }
+    }
+
+    throw StateError('unreachable GET attempt state');
+  }
+
+  Future<Response<Map<String, dynamic>>> _getWithinDeadline(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    required Duration remaining,
+  }) async {
+    final cancelToken = CancelToken();
+    return _dio
+        .get<Map<String, dynamic>>(
+          path,
+          queryParameters: queryParameters,
+          cancelToken: cancelToken,
+        )
+        .timeout(
+          remaining,
+          onTimeout: () {
+            cancelToken.cancel('API request deadline exceeded');
+            throw _requestDeadlineException(
+              cancelToken.requestOptions ??
+                  RequestOptions(path: path, queryParameters: queryParameters),
+            );
+          },
+        );
+  }
+
+  bool _isTransientGetFailure(DioException error) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      case DioExceptionType.badResponse:
+        return switch (error.response?.statusCode) {
+          408 || 429 || 502 || 503 || 504 => true,
+          _ => false,
+        };
+      case DioExceptionType.badCertificate:
+      case DioExceptionType.cancel:
+      case DioExceptionType.unknown:
+        return false;
+    }
+  }
+
+  Duration _retryDelayFor(DioException error) {
+    final retryAfter = error.response?.headers.value('retry-after')?.trim();
+    final retryAfterSeconds = int.tryParse(retryAfter ?? '');
+    if (retryAfterSeconds == null || retryAfterSeconds < 0) {
+      return _retryDelay;
+    }
+    final serverDelay = Duration(seconds: retryAfterSeconds);
+    return serverDelay > _retryDelay ? serverDelay : _retryDelay;
+  }
+
+  DioException _requestDeadlineException(RequestOptions requestOptions) {
+    return DioException(
+      requestOptions: requestOptions,
+      type: DioExceptionType.receiveTimeout,
+      message: 'API request exceeded ${_requestDeadline.inMilliseconds}ms',
     );
-    return _extractData(response);
   }
 
   Future<Map<String, dynamic>> getCached(

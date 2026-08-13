@@ -42,6 +42,7 @@ Optional env:
   CONTAINER_IMAGE_URI
   API_DESIRED_COUNT
   SYNC_WORKER_DESIRED_COUNT
+  SCOREBOARD_WARM_INTERVAL_SECONDS
   PUSH_SYNC_INTERVAL_SECONDS
   PUSH_BASEBALL_INFO_SMART_DAILY_TIMES
 EOF
@@ -199,6 +200,7 @@ aws cloudformation deploy \
     KboRelayPasswordSecretArn="$SECRET_ARN_KBO_RELAY_PASSWORD" \
     ApiDesiredCount="${API_DESIRED_COUNT:-1}" \
     SyncWorkerDesiredCount="${SYNC_WORKER_DESIRED_COUNT:-1}" \
+    ScoreboardWarmIntervalSeconds="${SCOREBOARD_WARM_INTERVAL_SECONDS:-5}" \
     PushSyncIntervalSeconds="${PUSH_SYNC_INTERVAL_SECONDS:-5}" \
     PushBaseballInfoSmartDailyTimes="${PUSH_BASEBALL_INFO_SMART_DAILY_TIMES:-09:30,16:00,22:30}"
 deploy_status=$?

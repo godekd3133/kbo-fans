@@ -7,6 +7,7 @@ from typing import Any, Optional
 from kbo_fans_backend.crawlers.standings import StandingsCrawler
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_year
+from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -21,12 +22,18 @@ class StandingsService:
         self.crawler = crawler or StandingsCrawler()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self._cache: TtlCache[int, dict[str, Any]] = TtlCache(self._CACHE_TTL_SECONDS)
+        self._singleflight: SingleFlight[int] = SingleFlight()
 
     def get_standings(self, season: int) -> dict[str, Any]:
         cached = self._cache.get(season)
         if cached is not None:
             return cached
+        return self._singleflight.call(season, lambda: self._load_standings(season))
 
+    def _load_standings(self, season: int) -> dict[str, Any]:
+        cached = self._cache.get(season)
+        if cached is not None:
+            return cached
         snapshot_record = self.snapshot_store.load("standings_latest", str(season))
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._can_use_snapshot_before_crawling(season, snapshot):

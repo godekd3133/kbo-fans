@@ -6,6 +6,72 @@ from kbo_fans_backend.main import app
 client = TestClient(app)
 
 
+def test_home_rejects_unknown_my_team_before_service(monkeypatch) -> None:
+    monkeypatch.setattr(
+        home.service,
+        "get_home",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("home service must not run")),
+    )
+
+    response = client.get("/api/home", params={"myTeam": "ZZ"})
+
+    assert response.status_code == 422
+
+
+def test_home_normalizes_lowercase_my_team_before_service(monkeypatch) -> None:
+    captured = {}
+
+    def get_home(target_date: str, my_team: str):
+        captured.update({"date": target_date, "myTeam": my_team})
+        return captured
+
+    monkeypatch.setattr(home.service, "get_home", get_home)
+
+    response = client.get(
+        "/api/home",
+        params={"date": "2026-04-01", "myTeam": "lg"},
+    )
+
+    assert response.status_code == 200
+    assert captured == {"date": "2026-04-01", "myTeam": "LG"}
+
+
+def test_compact_scoreboard_rejects_unknown_my_team_before_service(monkeypatch) -> None:
+    monkeypatch.setattr(
+        scoreboard.service,
+        "get_compact_scoreboard",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("scoreboard service must not run")
+        ),
+    )
+
+    response = client.get("/api/scoreboard/compact", params={"myTeam": "ZZ"})
+
+    assert response.status_code == 422
+
+
+def test_compact_scoreboard_normalizes_lowercase_my_team(monkeypatch) -> None:
+    captured = {}
+
+    def get_compact_scoreboard(target_date: str, my_team: str):
+        captured.update({"date": target_date, "myTeam": my_team})
+        return captured
+
+    monkeypatch.setattr(
+        scoreboard.service,
+        "get_compact_scoreboard",
+        get_compact_scoreboard,
+    )
+
+    response = client.get(
+        "/api/scoreboard/compact",
+        params={"date": "2026-04-01", "myTeam": "lg"},
+    )
+
+    assert response.status_code == 200
+    assert captured == {"date": "2026-04-01", "myTeam": "LG"}
+
+
 def test_schedule_rejects_invalid_month_before_crawler(monkeypatch) -> None:
     monkeypatch.setattr(
         schedule.service,

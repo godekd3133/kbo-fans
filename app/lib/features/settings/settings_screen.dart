@@ -19,11 +19,20 @@ import '../../services/push_notification_service.dart';
 
 typedef PushNotificationSettingsLoader =
     Future<PushNotificationSettings> Function();
+typedef PushPermissionStateLoader = Future<bool> Function();
+typedef PushPermissionRequester = Future<bool> Function(String? myTeam);
 
 class SettingsScreen extends ConsumerStatefulWidget {
   final PushNotificationSettingsLoader? pushSettingsLoader;
+  final PushPermissionStateLoader? pushPermissionStateLoader;
+  final PushPermissionRequester? pushPermissionRequester;
 
-  const SettingsScreen({super.key, this.pushSettingsLoader});
+  const SettingsScreen({
+    super.key,
+    this.pushSettingsLoader,
+    this.pushPermissionStateLoader,
+    this.pushPermissionRequester,
+  });
 
   @override
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
@@ -97,6 +106,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _PushNotificationSettingsCard(
                 team: team,
                 loadSettings: widget.pushSettingsLoader,
+                loadPermissionState: widget.pushPermissionStateLoader,
+                requestPermission: widget.pushPermissionRequester,
               ),
               const SizedBox(height: 16),
 
@@ -242,10 +253,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     VoidCallback? onTap,
   }) {
     final colors = AppTheme.colorsOf(context);
-    final row = SizedBox(
-      height: 48,
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             Expanded(
@@ -292,6 +303,15 @@ class _AppearanceSettingsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = AppTheme.colorsOf(context);
     final selectedMode = ref.watch(appThemeModeProvider);
+    final textScale = MediaQuery.textScalerOf(context).scale(12) / 12;
+    final usesStackedModeSelector = textScale >= 1.4;
+
+    Widget modeButton(AppThemeModePreference mode) => _AppearanceModeButton(
+      mode: mode,
+      selected: selectedMode == mode,
+      onTap: () =>
+          unawaited(ref.read(appThemeModeProvider.notifier).setMode(mode)),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,23 +339,26 @@ class _AppearanceSettingsCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  for (final mode in AppThemeModePreference.values) ...[
-                    Expanded(
-                      child: _AppearanceModeButton(
-                        mode: mode,
-                        selected: selectedMode == mode,
-                        onTap: () => unawaited(
-                          ref.read(appThemeModeProvider.notifier).setMode(mode),
-                        ),
-                      ),
-                    ),
-                    if (mode != AppThemeModePreference.values.last)
-                      const SizedBox(width: 8),
+              if (usesStackedModeSelector)
+                Column(
+                  children: [
+                    for (final mode in AppThemeModePreference.values) ...[
+                      SizedBox(width: double.infinity, child: modeButton(mode)),
+                      if (mode != AppThemeModePreference.values.last)
+                        const SizedBox(height: 8),
+                    ],
                   ],
-                ],
-              ),
+                )
+              else
+                Row(
+                  children: [
+                    for (final mode in AppThemeModePreference.values) ...[
+                      Expanded(child: modeButton(mode)),
+                      if (mode != AppThemeModePreference.values.last)
+                        const SizedBox(width: 8),
+                    ],
+                  ],
+                ),
             ],
           ),
         ),
@@ -525,10 +548,14 @@ class _MoreHeroCard extends StatelessWidget {
 class _PushNotificationSettingsCard extends ConsumerStatefulWidget {
   final KboTeam? team;
   final PushNotificationSettingsLoader? loadSettings;
+  final PushPermissionStateLoader? loadPermissionState;
+  final PushPermissionRequester? requestPermission;
 
   const _PushNotificationSettingsCard({
     required this.team,
     required this.loadSettings,
+    required this.loadPermissionState,
+    required this.requestPermission,
   });
 
   @override
@@ -539,7 +566,11 @@ class _PushNotificationSettingsCard extends ConsumerStatefulWidget {
 class _PushNotificationSettingsCardState
     extends ConsumerState<_PushNotificationSettingsCard> {
   late Future<PushNotificationSettings> _settingsFuture;
+  late Future<bool> _permissionStateFuture;
   PushNotificationSettings? _settings;
+  bool? _permissionAllowed;
+  bool _requestingPermission = false;
+  String? _permissionError;
   bool _saving = false;
   String? _error;
 
@@ -547,6 +578,7 @@ class _PushNotificationSettingsCardState
   void initState() {
     super.initState();
     _settingsFuture = _loadSettings();
+    _permissionStateFuture = _loadPermissionState();
   }
 
   Future<PushNotificationSettings> _loadSettings() async {
@@ -555,6 +587,61 @@ class _PushNotificationSettingsCardState
             PushNotificationService.instance.loadSettings());
     _settings = settings;
     return settings;
+  }
+
+  Future<bool> _loadPermissionState() async {
+    if (widget.loadPermissionState != null) {
+      final allowed = await widget.loadPermissionState!();
+      _permissionAllowed = allowed;
+      return allowed;
+    }
+    try {
+      final state = await PushNotificationService.instance.debugState();
+      final allowed = state['notificationsAllowed'] == true;
+      _permissionAllowed = allowed;
+      return allowed;
+    } catch (_) {
+      _permissionAllowed = false;
+      return false;
+    }
+  }
+
+  Future<void> _requestPermission() async {
+    if (_requestingPermission) {
+      return;
+    }
+    setState(() {
+      _requestingPermission = true;
+      _permissionError = null;
+    });
+    try {
+      final request = widget.requestPermission;
+      final allowed = request != null
+          ? await request(widget.team?.id)
+          : await PushNotificationService.instance.requestPermissionAndSync(
+              myTeam: widget.team?.id,
+            );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _permissionAllowed = allowed;
+        _permissionStateFuture = Future<bool>.value(allowed);
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _permissionError = '알림 권한을 확인하지 못했습니다';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _requestingPermission = false;
+        });
+      }
+    }
   }
 
   void _retryLoadSettings() {
@@ -640,6 +727,19 @@ class _PushNotificationSettingsCardState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              FutureBuilder<bool>(
+                future: _permissionStateFuture,
+                builder: (context, permissionSnapshot) {
+                  final allowed = _permissionAllowed ?? permissionSnapshot.data;
+                  return _PushPermissionStatus(
+                    allowed: allowed,
+                    busy: _requestingPermission,
+                    error: _permissionError,
+                    onRequest: _requestPermission,
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
               _NotificationTargetStrip(team: widget.team, accent: accent),
               if (widget.team == null) ...[
                 const SizedBox(height: 10),
@@ -793,6 +893,76 @@ class _NotificationLoadError extends StatelessWidget {
           label: const Text('다시 시도'),
         ),
       ],
+    );
+  }
+}
+
+class _PushPermissionStatus extends StatelessWidget {
+  final bool? allowed;
+  final bool busy;
+  final String? error;
+  final VoidCallback onRequest;
+
+  const _PushPermissionStatus({
+    required this.allowed,
+    required this.busy,
+    required this.error,
+    required this.onRequest,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppTheme.colorsOf(context);
+    final isAllowed = allowed == true;
+    final status = allowed == null
+        ? '알림 권한 확인 중'
+        : isAllowed
+        ? '알림 권한 허용됨'
+        : '알림 권한을 확인해 주세요';
+    final actionLabel = allowed == false ? '알림 허용하기' : '권한 다시 확인';
+
+    return Container(
+      key: const ValueKey('push_permission_status'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            status,
+            style: TextStyle(
+              fontSize: 13,
+              color: isAllowed ? colors.positive : colors.textPrimary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (allowed != null) ...[
+            const SizedBox(height: 8),
+            OutlinedButton(
+              key: const ValueKey('push_permission_request'),
+              onPressed: busy ? null : onRequest,
+              child: Text(busy ? '확인 중' : actionLabel),
+            ),
+          ],
+          if (error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              error!,
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.4,
+                color: colors.live,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -952,55 +1122,80 @@ class _NotificationToggleRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = AppTheme.colorsOf(context);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 54),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: enabled ? colors.textPrimary : colors.textDisabled,
-                    ),
-                  ),
-                  if (item.subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      item.subtitle!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: enabled
-                            ? colors.textSupporting
-                            : colors.textDisabled,
+    final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final allowsTextWrapping = textScale >= 1.4;
+    final toggle = enabled ? () => onChanged(item.moment, !value) : null;
+    final semanticsLabel = item.subtitle == null
+        ? item.label
+        : '${item.label}, ${item.subtitle}';
+
+    return Semantics(
+      key: ValueKey('push_toggle_${item.moment.name}'),
+      container: true,
+      excludeSemantics: true,
+      label: semanticsLabel,
+      toggled: value,
+      enabled: enabled,
+      onTap: toggle,
+      child: AppPressable(
+        onTap: toggle,
+        pressedScale: 0.99,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 54),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 8, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.label,
+                        maxLines: allowsTextWrapping ? null : 1,
+                        overflow: allowsTextWrapping
+                            ? null
+                            : TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: enabled
+                              ? colors.textPrimary
+                              : colors.textDisabled,
+                        ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
+                      if (item.subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          item.subtitle!,
+                          maxLines: allowsTextWrapping ? null : 1,
+                          overflow: allowsTextWrapping
+                              ? null
+                              : TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: enabled
+                                ? colors.textSupporting
+                                : colors.textDisabled,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: value,
+                  onChanged: enabled
+                      ? (nextValue) => onChanged(item.moment, nextValue)
+                      : null,
+                  activeThumbColor: colors.accent,
+                  activeTrackColor: colors.accent.withValues(alpha: 0.36),
+                ),
+              ],
             ),
-            Switch.adaptive(
-              key: ValueKey('push_toggle_${item.moment.name}'),
-              value: value,
-              onChanged: enabled
-                  ? (nextValue) => onChanged(item.moment, nextValue)
-                  : null,
-              activeThumbColor: colors.accent,
-              activeTrackColor: colors.accent.withValues(alpha: 0.36),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -5,10 +5,23 @@
 이 문서는 구현 중 얻은 반복적인 인사이트와 운영/검증 메모를 모은다.
 기획 문서보다는 구현 판단 기준에 가깝고, `AGENTS.md` / `CLAUDE.md` 를 보완하는 용도로 사용한다.
 
+## 2026-08-13 Bounded data delivery
+
+- Dio의 `connectTimeout`/`receiveTimeout`만으로 전체 응답 시간을 제한할 수 없다. 앱 GET은 모든 attempt와 backoff를 포함하는 하나의 absolute deadline을 사용하고 deadline 시 `CancelToken`을 취소한다. transient GET만 한 번 재시도하며 정수 초 `Retry-After`를 존중한다. parse/일반 4xx/POST는 재시도하지 않는다.
+- FastAPI의 sync route는 클라이언트 응답을 timeout해도 worker thread를 강제 종료할 수 없다. 화면 GET은 15초 response deadline과 8-slot bulkhead를 함께 사용하고, timeout된 작업이 실제 종료할 때까지 슬롯을 반환하지 않아 무제한 abandoned work를 만들지 않는다. 포화는 0.1초 안에 503으로 fail fast한다.
+- `/home` fan-out은 request middleware에만 의존하지 않고 14초 이하 absolute aggregate budget과 bounded executor를 사용한다. section 하나가 고착돼도 context-manager executor 종료가 나머지 thread를 무한히 기다리게 하지 않는다.
+- 앱 시즌 매치업 일정은 9개월 월별 Future를 최대 3개씩 읽더라도 전체 25초 deadline을 공유한다. 월별 worker가 늦게 끝나도 provider는 전체 오류로 종료하며, 3개 wave가 75초로 누적되지 않는다. 데이터 일부를 조용히 버리는 partial success는 공식 일정 truth를 훼손할 수 있어 허용하지 않는다.
+- 홈 scoreboard와 경기 상세 refresh coordinator도 active 대기와 queued force refresh를 합친 하나의 25초 budget만 사용한다. 요청이 겹쳐도 두 번째 25초를 새로 시작하지 않고, 마지막 visible data와 다음 polling cadence를 유지한다.
+- cookie 정합성을 위한 relay session lock과 force-refresh ordering을 위한 scoreboard date lock은 제거하지 않는다. 대신 lock 획득은 2초, SingleFlight follower는 전체 backend 예산보다 짧은 10초로 제한하고, 같은 live relay와 current team-player miss를 process 안에서 coalesce한다. follower를 2초로 자르면 정상 cold `/home`의 4~5초 leader까지 기다리지 못해 동시 사용자만 불필요하게 실패한다.
+- sync worker의 scoreboard warm을 느린 relay/push delivery와 분리한다. `SCOREBOARD_WARM_INTERVAL_SECONDS` 기본 5초 monotonic cadence로 runtime singleton을 prime하므로 `PUSH_SYNC_INTERVAL_SECONDS`를 30/60초로 늘려도 warm은 느려지지 않는다. `LIVE_SCOREBOARD_MAX_AGE_SECONDS`는 warm interval + 5초 jitter 이상이어야 하며 기본 20초다. 이 보장은 warmer의 upstream call 자체가 끝나는 범위이며 분산 task coalescing을 의미하지 않는다.
+- release-safe 실패 로그는 endpoint/elapsed/error class를 남기되 query, credential, upstream error 원문은 남기지 않는다. 503/504 envelope와 retry 분류는 앱/서버 회귀 테스트에서 함께 검증한다.
+
 ## 2026-08-12 Eighth competitive audit
 
 - Live Activity transient backoff는 worker 수명 동안 유지하되, 15분 이상 재시도되지 않은 delivery id를 매 tick 정리해야 한다. token unregister·rotation 뒤에도 만료 map entry를 남겨 두면 실제 발송 대상 없이 메모리가 선형 증가한다.
 - API 일정 `SingleFlight`는 현재 프로세스 경계 안에서만 중복을 줄인다. API task를 수평 확장할 때의 분산 crawler coalescing은 별도 lease/queue와 운영 scale 정책이 필요하며, 이를 현재 구현의 보장으로 표현하지 않는다.
+- Home·standings·records overview·leaderboard도 같은 process-local `SingleFlight` 규칙을 사용한다. `/home.myTeam`은 KBO 10개 팀 ID만 대문자로 정규화해 허용하므로 임의 key로 이 경계를 우회하지 못한다. 이 보장은 단일 API 프로세스 안의 동일 key에 한정된다.
+- Push registration TTL은 물리 파일 GC와 발송 가능 여부를 분리한다. 등록 write는 기존 lock 안에서 stale entry와 종속 state를 정리하고, read/send selector는 registry를 다시 쓰지 않은 채 현재 UTC 기준 active view만 반환해 만료 token에 전송하지 않는다. timestamp가 없는 legacy entry는 기존 호환 정책대로 active로 본다.
 
 ## 2026-08-12 Seventh competitive audit
 
@@ -154,7 +167,7 @@
 - 홈 수동 refresh는 provider invalidate 시점이 아니라 새 scoreboard Future 완료 시점까지 기다린다. API-backed 수동 refresh는 `forceRefresh=true`를 한 번 소비해 historical 기기 cache를 명시적으로 bypass하되, 공개 앱 요청은 current backend TTL을 유지한다. configured sync secret과 exact match하는 운영 header가 있을 때만 backend cache/live-state를 우회한다.
 - 홈/상세 timer는 이전 data가 보인다는 이유만으로 refresh 완료로 판단하지 않는다. 진행 중 provider를 다시 invalidate하지 않고 요청 완료 뒤 one-shot timer를 재예약한다. 홈은 transient failure 뒤에도 visible data의 상태 cadence로 polling을 계속하고, 수동 refresh가 겹치면 force 의도를 보존한 직렬 queue로 합친다.
 - app root lifecycle resume sync는 홈 coordinator와 같은 `scoreboardProvider(today)`가 loading 중이면 직접 invalidate하지 않고 active Future를 기다린 뒤 widget sync만 수행한다.
-- 운영 sync worker는 push/Live Activity 등록이 없더라도 scoreboard warm-up을 수행하고, API service와 같은 runtime filesystem에 `live_scoreboard` state를 남긴다. API는 이 state가 8초 window 안에서 fresh일 때만 `/scoreboard/home` 응답으로 사용하고, stale state는 snapshot처럼 fallback하지 않는다.
+- 운영 sync worker는 push/Live Activity 등록이 없더라도 scoreboard warm-up을 수행하고, API service와 같은 runtime filesystem에 `live_scoreboard` state를 남긴다. API는 이 state가 현재 20초 window 안에서 fresh일 때만 `/scoreboard/home` 응답으로 사용하고, stale state는 snapshot처럼 fallback하지 않는다.
 - backend `TtlCache`는 정상 조회에서 만료값을 반환하지 않되 historical 장애 fallback이 `get_stale()`로 읽을 수 있게 보존하고, 오래된 key가 무한히 쌓이지 않도록 항목 수를 제한한다. runtime singleton을 여러 요청이 공유하므로 cache store 조회·교체는 lock으로 보호하되, deepcopy는 lock 밖에서 수행한다. records overview/leaderboard cache와 snapshot은 핵심 리더 목록이 1위부터 시작할 때만 재사용한다.
 - 경기 상세는 live 기본 탭 8초, 문자중계 foreground 원천 갱신은 5초 cadence로 맞춘다. LIVE 경기에서 스코어/문자중계/박스스코어/라인업 탭을 전환하면 타이머 tick을 기다리지 않고 현재 보이는 탭 provider를 즉시 갱신한다.
 - 자동 상세 갱신과 수동 pull이 겹치면 자동 요청은 합치되 수동 요청은 버리지 않는다. 현재 Future가 끝난 뒤 한 번의 force refresh를 queue하고, relay transient error에는 previous data를 유지한다.

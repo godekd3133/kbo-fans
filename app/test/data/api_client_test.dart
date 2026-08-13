@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -14,6 +15,209 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test(
+    'API request hard deadline ends a transport that never completes',
+    () async {
+      final adapter = _HangingAdapter();
+      final client = ApiClient(
+        dio: _dioWithAdapter(adapter),
+        enableRequestTiming: false,
+        requestDeadline: const Duration(milliseconds: 250),
+        maxGetAttempts: 1,
+      );
+      final stopwatch = Stopwatch()..start();
+
+      await expectLater(
+        client.get('/never-completes'),
+        throwsA(
+          isA<DioException>().having(
+            (error) => error.type,
+            'type',
+            DioExceptionType.receiveTimeout,
+          ),
+        ),
+      );
+
+      stopwatch.stop();
+      expect(stopwatch.elapsed, lessThan(const Duration(seconds: 1)));
+      await expectLater(
+        adapter.cancelled.future.timeout(const Duration(milliseconds: 500)),
+        completes,
+      );
+    },
+  );
+
+  test(
+    'GET retries one transient AWS gateway failure inside one deadline',
+    () async {
+      final adapter = _TransientThenSuccessAdapter({'source': 'retry-success'});
+      final client = ApiClient(
+        dio: _dioWithAdapter(adapter),
+        enableRequestTiming: false,
+        requestDeadline: const Duration(seconds: 1),
+        retryDelay: Duration.zero,
+      );
+
+      final data = await client.get('/transient');
+
+      expect(data['source'], 'retry-success');
+      expect(adapter.calls, 2);
+    },
+  );
+
+  for (final statusCode in [408, 429, 502, 504]) {
+    test('GET retries transient HTTP $statusCode once', () async {
+      final adapter = _TransientThenSuccessAdapter({
+        'source': 'retry-success',
+      }, statusCode: statusCode);
+      final client = ApiClient(
+        dio: _dioWithAdapter(adapter),
+        enableRequestTiming: false,
+        requestDeadline: const Duration(seconds: 1),
+        retryDelay: Duration.zero,
+      );
+
+      final data = await client.get('/transient-$statusCode');
+
+      expect(data['source'], 'retry-success');
+      expect(adapter.calls, 2);
+    });
+  }
+
+  test('GET does not retry HTTP 400', () async {
+    final adapter = _TransientThenSuccessAdapter({
+      'source': 'must-not-be-returned',
+    }, statusCode: 400);
+    final client = ApiClient(
+      dio: _dioWithAdapter(adapter),
+      enableRequestTiming: false,
+      requestDeadline: const Duration(seconds: 1),
+      retryDelay: Duration.zero,
+    );
+
+    await expectLater(
+      client.get('/bad-request'),
+      throwsA(
+        isA<DioException>().having(
+          (error) => error.response?.statusCode,
+          'statusCode',
+          400,
+        ),
+      ),
+    );
+    expect(adapter.calls, 1);
+  });
+
+  test(
+    'GET does not ignore Retry-After when it exceeds the total budget',
+    () async {
+      final adapter = _TransientThenSuccessAdapter({
+        'source': 'must-not-be-returned',
+      }, retryAfterSeconds: 1);
+      final client = ApiClient(
+        dio: _dioWithAdapter(adapter),
+        enableRequestTiming: false,
+        requestDeadline: const Duration(milliseconds: 100),
+        retryDelay: Duration.zero,
+      );
+
+      await expectLater(
+        client.get('/busy'),
+        throwsA(
+          isA<DioException>().having(
+            (error) => error.response?.statusCode,
+            'statusCode',
+            503,
+          ),
+        ),
+      );
+      expect(adapter.calls, 1);
+    },
+  );
+
+  test('GET does not retry a malformed response', () async {
+    final adapter = _MalformedThenSuccessAdapter({'source': 'must-not-return'});
+    final client = ApiClient(
+      dio: _dioWithAdapter(adapter),
+      enableRequestTiming: false,
+      requestDeadline: const Duration(seconds: 1),
+      retryDelay: Duration.zero,
+    );
+
+    await expectLater(client.get('/malformed'), throwsA(anything));
+    expect(adapter.calls, 1);
+  });
+
+  test('POST does not retry a transient connection failure', () async {
+    final adapter = _TransportFailureThenSuccessAdapter({
+      'source': 'must-not-return',
+    }, DioExceptionType.connectionError);
+    final client = ApiClient(
+      dio: _dioWithAdapter(adapter),
+      enableRequestTiming: false,
+      requestDeadline: const Duration(seconds: 1),
+      retryDelay: Duration.zero,
+    );
+
+    await expectLater(
+      client.post('/post', data: const {'value': 1}),
+      throwsA(isA<DioException>()),
+    );
+    expect(adapter.calls, 1);
+  });
+
+  for (final failureType in [
+    DioExceptionType.connectionTimeout,
+    DioExceptionType.sendTimeout,
+    DioExceptionType.receiveTimeout,
+    DioExceptionType.connectionError,
+  ]) {
+    test('GET retries one transient ${failureType.name} failure', () async {
+      final adapter = _TransportFailureThenSuccessAdapter({
+        'source': 'retry-success',
+      }, failureType);
+      final client = ApiClient(
+        dio: _dioWithAdapter(adapter),
+        enableRequestTiming: false,
+        requestDeadline: const Duration(seconds: 1),
+        retryDelay: Duration.zero,
+      );
+
+      final data = await client.get('/${failureType.name}');
+
+      expect(data['source'], 'retry-success');
+      expect(adapter.calls, 2);
+    });
+  }
+
+  test('GET retry cannot restart the request hard deadline', () async {
+    final adapter = _TransientThenHangingAdapter(
+      firstFailureDelay: const Duration(milliseconds: 400),
+    );
+    final client = ApiClient(
+      dio: _dioWithAdapter(adapter),
+      enableRequestTiming: false,
+      requestDeadline: const Duration(seconds: 1),
+      retryDelay: Duration.zero,
+    );
+    final stopwatch = Stopwatch()..start();
+
+    await expectLater(
+      client.get('/transient-then-hangs'),
+      throwsA(
+        isA<DioException>().having(
+          (error) => error.type,
+          'type',
+          DioExceptionType.receiveTimeout,
+        ),
+      ),
+    );
+
+    stopwatch.stop();
+    expect(adapter.calls, 2);
+    expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 1200)));
+  });
 
   test(
     'fresh-first API cache reuses fresh cache after request failure when explicitly allowed',
@@ -900,6 +1104,150 @@ class _FailingAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
+}
+
+class _HangingAdapter implements HttpClientAdapter {
+  final Completer<void> cancelled = Completer<void>();
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    cancelFuture?.whenComplete(() {
+      if (!cancelled.isCompleted) {
+        cancelled.complete();
+      }
+    });
+    return Completer<ResponseBody>().future;
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _TransientThenSuccessAdapter extends _SuccessAdapter {
+  _TransientThenSuccessAdapter(
+    super.data, {
+    this.statusCode = 503,
+    this.retryAfterSeconds,
+  });
+
+  final int statusCode;
+  final int? retryAfterSeconds;
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    calls += 1;
+    if (calls == 1) {
+      return Future<ResponseBody>.error(
+        DioException(
+          requestOptions: options,
+          response: Response<void>(
+            requestOptions: options,
+            statusCode: statusCode,
+            headers: retryAfterSeconds == null
+                ? null
+                : Headers.fromMap({
+                    'retry-after': ['$retryAfterSeconds'],
+                  }),
+          ),
+          type: DioExceptionType.badResponse,
+          message: 'gateway warming',
+        ),
+      );
+    }
+    return super.fetch(options, requestStream, cancelFuture);
+  }
+}
+
+class _TransientThenHangingAdapter implements HttpClientAdapter {
+  _TransientThenHangingAdapter({this.firstFailureDelay = Duration.zero});
+
+  final Duration firstFailureDelay;
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    calls += 1;
+    if (calls == 1) {
+      return Future<ResponseBody>.delayed(firstFailureDelay, () {
+        throw DioException(
+          requestOptions: options,
+          response: Response<void>(requestOptions: options, statusCode: 503),
+          type: DioExceptionType.badResponse,
+          message: 'gateway warming',
+        );
+      });
+    }
+    return Completer<ResponseBody>().future;
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _TransportFailureThenSuccessAdapter extends _SuccessAdapter {
+  _TransportFailureThenSuccessAdapter(super.data, this.failureType);
+
+  final DioExceptionType failureType;
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    calls += 1;
+    if (calls == 1) {
+      return Future<ResponseBody>.error(
+        DioException(
+          requestOptions: options,
+          type: failureType,
+          message: 'transient transport failure',
+        ),
+      );
+    }
+    return super.fetch(options, requestStream, cancelFuture);
+  }
+}
+
+class _MalformedThenSuccessAdapter extends _SuccessAdapter {
+  _MalformedThenSuccessAdapter(super.data);
+
+  int calls = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) {
+    calls += 1;
+    if (calls == 1) {
+      return Future<ResponseBody>.value(
+        ResponseBody.fromString(
+          '{not-json',
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['application/json'],
+          },
+        ),
+      );
+    }
+    return super.fetch(options, requestStream, cancelFuture);
+  }
 }
 
 class _SuccessAdapter implements HttpClientAdapter {

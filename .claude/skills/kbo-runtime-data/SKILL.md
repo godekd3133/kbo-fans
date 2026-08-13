@@ -40,6 +40,11 @@ description: Use when changing KBO data-loading paths, backend-backed API usage,
 - Direct relay summary fallback must not synthesize inning skeletons for scheduled/cancelled/suspended games or games without any real line-score inning values. Return the empty relay state instead.
 - Backend relay crawling shares one authenticated `requests.Session`; serialize the full login/fetch/validate/reset boundary, and treat parsed empty relay shells as failures rather than successful empty payloads.
 - Serialize normal and forced scoreboard work for the same KBO date across home/full/compact/game surfaces so an older normal response cannot overwrite a newer forced cache result.
+- Do not treat Dio connect/receive timeouts as an end-to-end deadline. Screen-data GETs must share one absolute budget across bounded retry/backoff and cancel the active transport when that budget expires.
+- Retry idempotent GETs at most once and only for connection/timeouts or HTTP 408/429/502/503/504. Never automatically retry parsing failures, ordinary 4xx responses, or POST writes.
+- Backend screen-data GETs need both a response deadline and a bounded concurrency bulkhead. A timed-out sync worker must retain its slot until it really exits; reject saturation quickly with 503 instead of queueing more abandoned work.
+- Keep relay/date serialization boundaries for correctness, but bound every lock and SingleFlight follower wait. Coalesce same-key relay and expensive current roster misses inside one process.
+- Keep live scoreboard warming on a cadence independent of relay/push delivery. `SCOREBOARD_WARM_INTERVAL_SECONDS` defaults to 5 seconds even when `PUSH_SYNC_INTERVAL_SECONDS` is raised to 30/60 seconds. Require `LIVE_SCOREBOARD_MAX_AGE_SECONDS >= SCOREBOARD_WARM_INTERVAL_SECONDS + 5` (20 seconds by default), and do not describe this process-local guarantee as distributed coalescing.
 - App UI must treat null H/E/B team totals as unavailable, not as 0 records.
 - App-wide Provider retry is disabled. Surface API failures through screen error states and Dev Console logging instead of relying on automatic retries.
 - Team records should load after team selection, not for every team at once.

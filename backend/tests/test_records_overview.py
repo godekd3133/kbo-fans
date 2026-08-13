@@ -1,4 +1,6 @@
+import concurrent.futures
 import json
+import threading
 from pathlib import Path
 
 import pytest
@@ -52,6 +54,46 @@ class _FreshRecordsCrawler:
                 "value": ".500",
             }
         ]
+
+
+class _BlockingOverviewCrawler(_FreshRecordsCrawler):
+    def __init__(self) -> None:
+        self.calls = 0
+        self._lock = threading.Lock()
+        self.first_call_started = threading.Event()
+        self.duplicate_call_started = threading.Event()
+        self.release = threading.Event()
+
+    def get_overview(self, season: int):
+        with self._lock:
+            self.calls += 1
+            call_number = self.calls
+        self.first_call_started.set()
+        if call_number > 1:
+            self.duplicate_call_started.set()
+        if not self.release.wait(timeout=3):
+            raise TimeoutError("records overview crawler was not released")
+        return super().get_overview(season)
+
+
+class _BlockingLeaderboardCrawler(_FreshRecordsCrawler):
+    def __init__(self) -> None:
+        self.calls = 0
+        self._lock = threading.Lock()
+        self.first_call_started = threading.Event()
+        self.duplicate_call_started = threading.Event()
+        self.release = threading.Event()
+
+    def get_leaderboard(self, season: int, metric: str):
+        with self._lock:
+            self.calls += 1
+            call_number = self.calls
+        self.first_call_started.set()
+        if call_number > 1:
+            self.duplicate_call_started.set()
+        if not self.release.wait(timeout=3):
+            raise TimeoutError("leaderboard crawler was not released")
+        return super().get_leaderboard(season, metric)
 
 
 class _TrackingFreshRecordsCrawler(_FreshRecordsCrawler):
@@ -350,6 +392,50 @@ def test_unsupported_2001_leaderboard_does_not_crawl() -> None:
     payload = service.get_leaderboard(2001, "avg")
 
     assert payload == {"season": 2001, "metric": "avg", "leaders": []}
+
+
+def test_concurrent_current_overview_cache_miss_crawls_once(tmp_path) -> None:
+    crawler = _BlockingOverviewCrawler()
+    service = RecordsOverviewService(
+        crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    season = current_kbo_year()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(service.get_overview, season)
+        assert crawler.first_call_started.wait(timeout=1)
+        second = executor.submit(service.get_overview, season)
+        duplicate_started = crawler.duplicate_call_started.wait(timeout=0.5)
+        crawler.release.set()
+        first_payload = first.result(timeout=2)
+        second_payload = second.result(timeout=2)
+
+    assert duplicate_started is False
+    assert crawler.calls == 1
+    assert first_payload == second_payload
+
+
+def test_concurrent_current_leaderboard_cache_miss_crawls_once(tmp_path) -> None:
+    crawler = _BlockingLeaderboardCrawler()
+    service = RecordsOverviewService(
+        crawler=crawler,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+    season = current_kbo_year()
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(service.get_leaderboard, season, "avg")
+        assert crawler.first_call_started.wait(timeout=1)
+        second = executor.submit(service.get_leaderboard, season, "avg")
+        duplicate_started = crawler.duplicate_call_started.wait(timeout=0.5)
+        crawler.release.set()
+        first_payload = first.result(timeout=2)
+        second_payload = second.result(timeout=2)
+
+    assert duplicate_started is False
+    assert crawler.calls == 1
+    assert first_payload == second_payload
 
 
 def test_leaderboard_falls_back_to_snapshot(tmp_path) -> None:

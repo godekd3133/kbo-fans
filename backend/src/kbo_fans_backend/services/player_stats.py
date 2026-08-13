@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 from kbo_fans_backend.crawlers.player_stats import PlayerStatsCrawler
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_year
+from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -25,9 +26,34 @@ class PlayerStatsService:
         self._player_detail_cache: TtlCache[Tuple[str, int, str], Dict[str, Any]] = TtlCache(
             self._PLAYER_DETAIL_CACHE_TTL_SECONDS
         )
+        self._team_players_singleflight: SingleFlight[Tuple[str, int]] = SingleFlight()
 
     def get_team_players(self, team_id: str, season: int) -> Dict[str, Any]:
         cache_key = (team_id, season)
+        cached = self._get_cached_team_players(cache_key)
+        if cached is not None and self._is_consistent_team_players_payload(
+            cached,
+            team_id=team_id,
+            season=season,
+        ):
+            return cached
+
+        return self._team_players_singleflight.call(
+            cache_key,
+            lambda: self._load_team_players(
+                team_id=team_id,
+                season=season,
+                cache_key=cache_key,
+            ),
+        )
+
+    def _load_team_players(
+        self,
+        *,
+        team_id: str,
+        season: int,
+        cache_key: Tuple[str, int],
+    ) -> Dict[str, Any]:
         cached = self._get_cached_team_players(cache_key)
         if cached is not None and self._is_consistent_team_players_payload(
             cached,

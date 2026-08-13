@@ -304,6 +304,74 @@ def test_historical_schedule_rejects_snapshot_for_another_month(tmp_path) -> Non
         service.get_month_schedule(month)
 
 
+def test_historical_schedule_rejects_non_terminal_snapshot(tmp_path) -> None:
+    season = current_kbo_date().year - 1
+    month = f"{season}-06"
+    game_date = f"{month}-15"
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    store.save(
+        "schedule",
+        month,
+        {
+            "month": month,
+            "days": [
+                {
+                    "date": game_date,
+                    "games": [
+                        {
+                            "gameId": f"{game_date.replace('-', '')}LGOB0",
+                            "status": "SCHEDULED",
+                            "awayScore": None,
+                            "homeScore": None,
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    service = ScheduleService(
+        schedule_crawler=_FailingScheduleCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="schedule unavailable"):
+        service.get_month_schedule(month)
+
+
+def test_historical_schedule_rejects_final_snapshot_without_scores(tmp_path) -> None:
+    season = current_kbo_date().year - 1
+    month = f"{season}-06"
+    game_date = f"{month}-15"
+    store = JsonSnapshotStore(base_dir=str(tmp_path))
+    store.save(
+        "schedule",
+        month,
+        {
+            "month": month,
+            "days": [
+                {
+                    "date": game_date,
+                    "games": [
+                        {
+                            "gameId": f"{game_date.replace('-', '')}LGOB0",
+                            "status": "FINAL",
+                            "awayScore": None,
+                            "homeScore": None,
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    service = ScheduleService(
+        schedule_crawler=_FailingScheduleCrawler(),
+        snapshot_store=store,
+    )
+
+    with pytest.raises(RuntimeError, match="schedule unavailable"):
+        service.get_month_schedule(month)
+
+
 def test_current_month_schedule_rejects_old_snapshot_on_failure(tmp_path) -> None:
     today = current_kbo_date().isoformat()
     month = today[:7]

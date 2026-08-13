@@ -1,3 +1,4 @@
+import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -5,10 +6,130 @@ from datetime import datetime, timezone
 import pytest
 
 from kbo_fans_backend.scheduler import live_activity_sync as live_activity_sync_scheduler
+from kbo_fans_backend.scheduler import live_activity_sync_loop
 from kbo_fans_backend.scheduler.live_activity_sync_loop import (
+    ScoreboardWarmer,
     maybe_send_smart_daily_baseball_info,
 )
 from kbo_fans_backend.services.push_registry import PushRegistry
+
+
+def test_scoreboard_warmer_keeps_running_while_sync_delivery_is_blocked(
+    monkeypatch,
+) -> None:
+    sync_delivery_started = threading.Event()
+    release_sync_delivery = threading.Event()
+    warmed_twice = threading.Event()
+    calls = []
+    calls_guard = threading.Lock()
+
+    class _FakeScoreboardService:
+        def prime_home_scoreboard(self, date: str) -> dict:
+            with calls_guard:
+                calls.append(date)
+                if len(calls) >= 2:
+                    warmed_twice.set()
+            return {"date": date, "games": []}
+
+    def block_sync_delivery(_date: str) -> dict:
+        sync_delivery_started.set()
+        assert release_sync_delivery.wait(timeout=2)
+        return {"date": "2026-08-13", "sent": True}
+
+    warmer = ScoreboardWarmer(
+        scoreboard_service=_FakeScoreboardService(),
+        interval_seconds=0.01,
+        date_provider=lambda: "2026-08-13",
+    )
+    result = []
+    configured_warm_intervals = []
+    main_thread = threading.Thread(
+        target=lambda: result.append(
+            live_activity_sync_loop.main(
+                [
+                    "--date",
+                    "2026-08-13",
+                    "--interval-seconds",
+                    "60",
+                    "--scoreboard-warm-interval-seconds",
+                    "5",
+                ]
+            )
+        )
+    )
+
+    monkeypatch.setattr(live_activity_sync_loop, "sync_once", block_sync_delivery)
+
+    def build_warmer(**kwargs):
+        configured_warm_intervals.append(kwargs["interval_seconds"])
+        return warmer
+
+    monkeypatch.setattr(live_activity_sync_loop, "ScoreboardWarmer", build_warmer)
+    monkeypatch.setattr(live_activity_sync_loop.signal, "signal", lambda *args: None)
+    monkeypatch.setattr(live_activity_sync_loop, "_SHOULD_STOP", False)
+
+    stopped_while_sync_blocked = False
+    main_thread.start()
+    try:
+        assert sync_delivery_started.wait(timeout=1)
+        assert warmed_twice.wait(timeout=1)
+        assert main_thread.is_alive()
+        assert calls[:2] == ["2026-08-13", "2026-08-13"]
+    finally:
+        live_activity_sync_loop._handle_stop(None, None)
+        warmer.join(timeout=1)
+        stopped_while_sync_blocked = not warmer.is_alive() and main_thread.is_alive()
+        release_sync_delivery.set()
+        main_thread.join(timeout=1)
+
+    assert stopped_while_sync_blocked is True
+    assert warmer.is_alive() is False
+    assert main_thread.is_alive() is False
+    assert result == [0]
+    assert configured_warm_intervals == [5]
+
+
+def test_scoreboard_warm_interval_requires_live_state_freshness_jitter(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("LIVE_SCOREBOARD_MAX_AGE_SECONDS", "20")
+
+    live_activity_sync_loop._validate_scoreboard_warm_interval(15)
+
+    with pytest.raises(SystemExit, match="must be at least 21"):
+        live_activity_sync_loop._validate_scoreboard_warm_interval(16)
+
+
+def test_scoreboard_warmer_continues_after_release_safe_failure(caplog) -> None:
+    warmed_after_failure = threading.Event()
+    calls = []
+
+    class _FlakyScoreboardService:
+        def prime_home_scoreboard(self, date: str) -> dict:
+            calls.append(date)
+            if len(calls) == 1:
+                raise RuntimeError("sensitive-upstream-detail")
+            warmed_after_failure.set()
+            return {"date": date, "games": []}
+
+    warmer = ScoreboardWarmer(
+        scoreboard_service=_FlakyScoreboardService(),
+        interval_seconds=0.01,
+        date_provider=lambda: "2026-08-13",
+    )
+
+    with caplog.at_level(logging.WARNING):
+        warmer.start()
+        try:
+            assert warmed_after_failure.wait(timeout=1)
+        finally:
+            warmer.stop()
+            warmer.join(timeout=1)
+
+    assert calls[:2] == ["2026-08-13", "2026-08-13"]
+    assert "RuntimeError" in caplog.text
+    assert "sensitive-upstream-detail" not in caplog.text
+    assert warmer.is_alive() is False
 
 
 def test_live_activity_sync_scheduler_reuses_worker_service_instance(monkeypatch) -> None:

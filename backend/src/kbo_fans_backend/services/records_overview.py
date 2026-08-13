@@ -6,6 +6,7 @@ from kbo_fans_backend.crawlers.records_overview import RecordsOverviewCrawler
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_year
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
+from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
@@ -35,6 +36,8 @@ class RecordsOverviewService:
         self._leaderboard_cache: TtlCache[str, Dict[str, Any]] = TtlCache(
             self._OVERVIEW_CACHE_TTL_SECONDS
         )
+        self._overview_singleflight: SingleFlight[int] = SingleFlight()
+        self._leaderboard_singleflight: SingleFlight[str] = SingleFlight()
 
     def get_overview(self, season: int) -> Dict[str, Any]:
         if not RecordsOverviewCrawler.is_supported_season(season):
@@ -45,7 +48,14 @@ class RecordsOverviewService:
             normalized_cached = self._normalize_overview_payload(cached, season)
             if self._is_reusable_ranked_payload(normalized_cached):
                 return normalized_cached
+        return self._overview_singleflight.call(season, lambda: self._load_overview(season))
 
+    def _load_overview(self, season: int) -> Dict[str, Any]:
+        cached = self._overview_cache.get(season)
+        if cached is not None and self._has_overview_identity(cached, season):
+            normalized_cached = self._normalize_overview_payload(cached, season)
+            if self._is_reusable_ranked_payload(normalized_cached):
+                return normalized_cached
         snapshot_record = self.snapshot_store.load("records_overview", str(season))
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._can_use_snapshot_before_crawling(season, snapshot):
@@ -83,7 +93,17 @@ class RecordsOverviewService:
             normalized_cached = self._normalize_leaderboard_payload(cached, season, metric)
             if self._is_reusable_ranked_payload(normalized_cached):
                 return normalized_cached
+        return self._leaderboard_singleflight.call(
+            cache_key,
+            lambda: self._load_leaderboard(season, metric, cache_key),
+        )
 
+    def _load_leaderboard(self, season: int, metric: str, cache_key: str) -> Dict[str, Any]:
+        cached = self._leaderboard_cache.get(cache_key)
+        if cached is not None and self._has_leaderboard_identity(cached, season, metric):
+            normalized_cached = self._normalize_leaderboard_payload(cached, season, metric)
+            if self._is_reusable_ranked_payload(normalized_cached):
+                return normalized_cached
         snapshot_record = self.snapshot_store.load("leaderboard", cache_key)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
         if self._can_use_snapshot_before_crawling(season, snapshot, metric=metric):

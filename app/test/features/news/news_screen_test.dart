@@ -545,6 +545,187 @@ void main() {
     expect(find.text('최형우 2000루타 달성'), findsNWidgets(2));
   });
 
+  testWidgets(
+    'briefing collapses the same player fact across aggregate sources',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            homeAggregateProvider.overrideWith((ref, key) async {
+              return HomeAggregate(
+                date: key.split('|').first,
+                myTeam: null,
+                myTeamBrief: null,
+                kboBrief: const HomeKboBrief(
+                  title: '오늘의 KBO 소식',
+                  subtitle: '기록 레이더',
+                  items: [
+                    HomeKboBriefItem(
+                      type: 'record_radar',
+                      eyebrow: '기록 레이더',
+                      title: '김도영 20홈런',
+                      subtitle: 'KIA · 시즌 홈런 1위',
+                      route: '/records/player/52605?season=2026&tab=overview',
+                      teamIds: ['HT'],
+                      fallbackLabel: '김도영',
+                    ),
+                    HomeKboBriefItem(
+                      type: 'batting_leader',
+                      eyebrow: '6월 현재 타율',
+                      title: '김도영 타율 .351',
+                      subtitle: 'KIA · 시즌 타율 1위',
+                      route: '/records/player/52605?tab=overview&season=2026',
+                      teamIds: ['HT'],
+                      fallbackLabel: '김도영',
+                    ),
+                    HomeKboBriefItem(
+                      type: 'record_milestone',
+                      eyebrow: '기록 달성',
+                      title: '김도영 1000안타 달성',
+                      subtitle: 'KIA · 통산 기록',
+                      route: '/records/player/52605?season=2026',
+                      teamIds: ['HT'],
+                      fallbackLabel: '김도영',
+                    ),
+                  ],
+                ),
+                quickItems: const [
+                  HomeQuickItem(
+                    eyebrow: '홈런왕',
+                    title: '김도영 20개',
+                    subtitle: 'KIA · 시즌 홈런 1위',
+                    route: '/records/player/52605?tab=overview&season=2026',
+                    teamId: 'HT',
+                    fallbackLabel: '김도영',
+                  ),
+                ],
+              );
+            }),
+          ],
+          child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('김도영 20홈런'), findsNWidgets(2));
+      expect(find.text('김도영 타율 .351'), findsNWidgets(2));
+      expect(find.text('김도영 1000안타 달성'), findsNWidgets(2));
+      expect(find.text('김도영 20개'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'briefing preserves distinct facts even when their destination entity is shared',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          retry: (_, _) => null,
+          overrides: [
+            homeAggregateProvider.overrideWith((ref, key) async {
+              return HomeAggregate(
+                date: key.split('|').first,
+                myTeam: 'LG',
+                myTeamBrief: const HomeMyTeamBrief(
+                  teamId: 'LG',
+                  teamLabel: 'LG 트윈스',
+                  standing: null,
+                  todayGameId: null,
+                  nextGame: null,
+                  recentWins: 1,
+                  recentLosses: 0,
+                  recentDraws: 0,
+                  recentGamesCount: 1,
+                  recentSummaries: [
+                    HomeRecentGameSummary(
+                      gameId: '',
+                      result: '승',
+                      opponentName: 'KT',
+                      score: '3:2',
+                    ),
+                  ],
+                ),
+                kboBrief: const HomeKboBrief(
+                  title: '오늘의 KBO 소식',
+                  subtitle: '같은 경기의 다른 흐름',
+                  items: [
+                    HomeKboBriefItem(
+                      type: 'game_flow',
+                      eyebrow: '접전 진행 중',
+                      title: 'LG 3:2 KT',
+                      subtitle: '7회 · 잠실',
+                      route: '/game/20260619LGKT0',
+                      gameId: '20260619LGKT0',
+                      teamIds: ['LG', 'KT'],
+                    ),
+                    HomeKboBriefItem(
+                      type: 'game_flow',
+                      eyebrow: '접전 진행 중',
+                      title: 'LG 3 : 2 KT',
+                      subtitle: '7회 · 잠실',
+                      route: '/game/20260619LGKT0',
+                      gameId: '20260619LGKT0',
+                      teamIds: ['LG', 'KT'],
+                    ),
+                    HomeKboBriefItem(
+                      type: 'player_performance',
+                      eyebrow: '안타 공방',
+                      title: 'LG-KT 합계 18안타',
+                      subtitle: '타격전 체크',
+                      route: '/game/20260619LGKT0',
+                      gameId: '20260619LGKT0',
+                      teamIds: ['LG', 'KT'],
+                    ),
+                    HomeKboBriefItem(
+                      type: 'defense_issue',
+                      eyebrow: '실책 많은 경기',
+                      title: 'LG-KT 합계 4실책',
+                      subtitle: '수비 흐름 체크',
+                      route: '/game/20260619LGKT0',
+                      gameId: '20260619LGKT0',
+                      teamIds: ['LG', 'KT'],
+                    ),
+                  ],
+                ),
+                quickItems: const [
+                  HomeQuickItem(
+                    eyebrow: '홈런왕',
+                    title: '문성주 홈런 1위',
+                    subtitle: 'LG · 시즌 홈런',
+                    route: '/records/leaderboard/hr?season=2026',
+                    teamId: 'LG',
+                  ),
+                  HomeQuickItem(
+                    eyebrow: '타율왕',
+                    title: '홍창기 타율 1위',
+                    subtitle: 'LG · 시즌 타율',
+                    route: '/records/leaderboard/avg?season=2026',
+                    teamId: 'LG',
+                  ),
+                ],
+              );
+            }),
+          ],
+          child: MaterialApp(theme: AppTheme.dark, home: const NewsScreen()),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('LG 3:2 KT'), findsWidgets);
+      expect(find.text('LG 3 : 2 KT'), findsNothing);
+      expect(find.text('LG-KT 합계 18안타'), findsWidgets);
+      expect(find.text('LG-KT 합계 4실책'), findsWidgets);
+      expect(find.text('LG 트윈스 최근 1경기 1승 0패'), findsWidgets);
+      expect(find.text('LG 트윈스 오늘 흐름 확인'), findsNothing);
+      expect(find.text('문성주 홈런 1위'), findsWidgets);
+      expect(find.text('홍창기 타율 1위'), findsWidgets);
+    },
+  );
+
   testWidgets('derives pace news from home run leader and standings', (
     tester,
   ) async {

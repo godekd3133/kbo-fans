@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.base import BaseCrawler
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class RelayCrawler(BaseCrawler):
 
     _KBO_BASE_URL = "https://www.koreabaseball.com"
 
-    def __init__(self) -> None:
+    def __init__(self, lock_wait_timeout_seconds: Optional[float] = None) -> None:
         super().__init__()
         settings = get_settings()
         self.user_id = settings.kbo_relay_user_id
@@ -26,10 +27,20 @@ class RelayCrawler(BaseCrawler):
         self._logged_in = False
         self._login_attempts = 0
         self._session_lock = threading.Lock()
+        self._lock_wait_timeout_seconds = (
+            max(0.0, lock_wait_timeout_seconds)
+            if lock_wait_timeout_seconds is not None
+            else max(0.1, min(float(self.timeout), 2.0))
+        )
 
     def get_relay(self, game_id: str) -> dict[str, Any]:
-        with self._session_lock:
+        acquired = self._session_lock.acquire(timeout=self._lock_wait_timeout_seconds)
+        if not acquired:
+            raise UpstreamBusyError("relay session is busy")
+        try:
             return self._get_relay_with_session(game_id)
+        finally:
+            self._session_lock.release()
 
     def _get_relay_with_session(self, game_id: str) -> dict[str, Any]:
         last_error: Optional[Exception] = None
@@ -365,9 +376,7 @@ class RelayCrawler(BaseCrawler):
         today_text = RelayCrawler._player_text(player_wrap.select_one(".today span"))
         pitch_count_match = re.search(r"(\d+)투구", today_text)
         today_at_bats, today_hits = RelayCrawler._parse_today_batting_line(today_text)
-        image = player_wrap.select_one(".player-img img.pic") or player_wrap.select_one(
-            "img.pic"
-        )
+        image = player_wrap.select_one(".player-img img.pic") or player_wrap.select_one("img.pic")
         image_src = str(image.get("src") or "") if image is not None else ""
 
         name = number_text

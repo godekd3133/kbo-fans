@@ -2,6 +2,70 @@
 
 ---
 
+## 2026-08-13: 0.1.26+94 TestFlight 재배포 준비
+
+### 결정
+
+- 현재 `main`의 최신 앱·backend·테스트·인프라 변경을 tester-facing release `0.1.26+94`로 승격한다.
+- Pages·이미지·PPT·`artifacts/`·`output/` 산출물은 사용자 변경으로 보존하되 release commit과 clean IPA 입력에서 제외한다.
+- build 93의 외부 Beta App Review가 아직 `WAITING_FOR_REVIEW`이므로 build 93과 외부 그룹 연결을 유지하고, build 94가 `VALID`가 된 뒤 외부 그룹에 추가한다.
+
+### 검증 및 진행
+
+- [x] Flutter `fvm flutter analyze`: `No issues found`.
+- [x] Flutter 전체 `fvm flutter test`: `528 passed`.
+- [x] backend 전체 `python3 -m pytest -q`: `588 passed`, FastAPI/httpx deprecation warning 1건.
+- [x] backend Ruff, Python `compileall`, `git diff --check` 통과.
+- [x] 운영 release API health gate 통과: health, scoreboard home, relay, home, schedule, standings, records overview.
+- [ ] 현재 변경만 선별 stage 후 `main` commit/push.
+- [ ] pushed SHA clean worktree에서 `0.1.26+94` release IPA archive/export, 서명 검증, `altool --validate-app`.
+- [ ] App Store Connect upload 및 processing `VALID` 확인.
+- [ ] 내부 `Tester` 접근과 외부 `External Testers` build 94 연결 확인.
+- [ ] build 94 Beta App Review submission 상태 확인. 승인 전까지 build 93은 유지.
+- [ ] 실제 내부·외부 tester 기기 설치/업데이트 여부는 App Store Connect 상태와 별도 확인.
+
+## 2026-08-13: 앱·AWS 데이터 무한대기 근본 방어
+
+### 결정 및 반영
+
+- [x] 앱 `ApiClient.get()`에 모든 attempt/backoff를 합친 25초 absolute deadline과 `CancelToken` 취소를 추가했다. transient transport 및 HTTP 408/429/502/503/504만 한 번 재시도하고 일반 4xx, parse failure, POST는 재시도하지 않는다.
+- [x] FastAPI 화면 데이터 GET에 15초 응답 deadline, 8-slot process-local bulkhead, 0.1초 queue wait를 추가했다. deadline은 504, 포화는 `Retry-After`가 있는 503 ApiEnvelope로 종료하며 health/metrics/push/POST는 격리했다.
+- [x] `/home` aggregate에 bounded executor와 absolute budget을 적용하고 scoreboard, schedule, standings, records Future를 deadline 안에서만 기다리도록 했다. relay session lock, scoreboard date lock, SingleFlight follower wait도 상한을 두었다.
+- [x] live relay와 current team players의 같은-key cold miss를 process 안에서 합쳐 KBO 중복 크롤링을 줄였다.
+- [x] sync worker에 독립 scoreboard warmer를 추가해 relay/FCM/APNs delivery가 느려도 `SCOREBOARD_WARM_INTERVAL_SECONDS=5` monotonic cadence를 유지하게 했다. `PUSH_SYNC_INTERVAL_SECONDS`를 30/60초로 늘려도 warm은 5초를 유지하며, shared live scoreboard fresh window는 8초에서 20초로 늘리고 `warm interval + 5초 jitter <= live max age`를 시작 전에 검증한다.
+- [x] local env, Lightsail, standalone ECS task definition, CloudFormation, deploy env/bootstrap에 별도 warm interval을 명시했다. CloudFormation `ScoreboardWarmIntervalSeconds`는 기본/최소 5초, 최대 15초로 제한해 20초 fresh window 계약을 배포 입력에서도 보존한다.
+
+### 검증 및 한계
+
+- [x] never-completing Dio adapter의 deadline/cancel, transient 분류, total budget 비재설정과 blocking FastAPI service의 504/503/slot recovery를 회귀 테스트로 확인했다.
+- [x] blocking home section, relay/session/date lock, same-key roster/relay, 느린 sync delivery 중 독립 warmer를 Event 기반 회귀로 확인했다.
+- [x] Flutter 전체 `528 passed`, `flutter analyze` `No issues found`; backend 전체 `588 passed`, Ruff, compileall, `git diff --check`를 통과했다.
+- [x] 변경 전 현재 운영 URL 단회 spot-check에서 health 0.402초, scoreboard/home 0.173초, home 4.833초, schedule 0.092초, standings 0.274초, records overview 0.042초를 확인했다. 이는 간헐 장애 재현이나 post-deploy 증거가 아니라 비교용 현재 표본이다.
+- [x] 2026-08-13 05:16 UTC 기준 격리 worktree의 검증된 backend bundle을 실제 Lightsail `kbo-fans-api-lightsail`(ap-northeast-2, `3.39.79.1`)에 배포했다. release 포인터는 `/opt/kbo-fans/releases/20260813051644`로 교체했고 API·sync worker·Caddy가 모두 active이며 API/worker systemd `Restart=always`와 재시작 횟수 0을 확인했다. 기존 ECS/CloudFormation stack은 현재 계정/조회 리전에 없어 변경하지 않았다.
+- [x] worker 재시작 전에 `/etc/kbo-fans/backend.env`의 `LIVE_SCOREBOARD_MAX_AGE_SECONDS=20`, `SCOREBOARD_WARM_INTERVAL_SECONDS=5`, `DATA_REQUEST_TIMEOUT_SECONDS=15`, `DATA_REQUEST_MAX_CONCURRENCY=8`, `DATA_REQUEST_QUEUE_TIMEOUT_SECONDS=0.1`을 반영했다. 외부 HTTPS health, scoreboard/home, compact, home은 모두 HTTP 200(0.259s, 0.540s, 0.906s, 1.012s)으로 확인했다.
+- [x] 배포 이후 journal window에서 `UPSTREAM_BUSY=0`, `UPSTREAM_DEADLINE_EXCEEDED=0`, worker exception=0, API 5xx=0을 확인했다. 이는 단회 smoke/짧은 관측값이며 장시간·실기기 안정성 증거는 아니다.
+- [ ] timeout된 Python sync thread는 강제 중단되지 않는다. bulkhead가 이를 격리하지만 upstream library가 영구히 반환하지 않으면 process 재시작/worker watchdog이 최종 복구 경계다.
+
+## 2026-08-13: 전 기능 경쟁 감사 후속 — 접근성·정보구조·데이터 진실성·동시성
+
+### 결정 및 반영
+
+- [x] 최신 Web build를 390/320px에서 onboarding, 홈, 일정, 경기 상세 4탭, 순위, 기록, 브리핑, 설정, 알림함 순서로 다시 캡처하고, UX critic과 runtime critic이 서로 false-positive를 반박했다. 공통 `AppPressable`의 44px 최소 영역과 이미 완성된 순위 composite semantics는 결함에서 제외했다.
+- [x] 설정의 push 토글을 항목명·설명·켜짐 상태가 하나로 읽히는 adaptive 행으로 바꾸고, 화면 모드·푸시 설명·세부 설정을 320px·240%에서 생략하지 않도록 높이와 배치를 확장했다. 자동 권한 prompt는 유지하지 않고 사용자가 탭하는 알림 권한 CTA만 추가했다.
+- [x] 모바일 `기록`이 `/records`와 `/standings`를 함께 소유하면서 순위표 진입점이 없던 IA를 `순위표 / 선수 기록` 공통 전환으로 보정했다. 700px 이상 와이드 화면의 기존 전용 navigation은 유지한다.
+- [x] 일정 경기 카드의 320px·240% 오른쪽 405px overflow를 RED로 재현하고 날짜·상태·구장·원정팀·점수·홈팀·예매 정보를 큰 글자용 세로 layout으로 전환했다.
+- [x] 홈 `최근 5경기`에서 실제 결과가 없는 다른 9개 팀의 빈 행과 공식 streak 혼합을 제거했다. 검증된 마이팀 결과만 표시하고, 큰 글자 행은 결과 전체와 route 목적을 하나의 semantics label과 실제 tap action으로 전달한다. 같은 배율에서 드러난 마이팀 브리프의 팀명·전적·제목·기록 spotlight·`경기 일정`/`팀 기록` CTA도 전체 폭 세로 layout으로 전환했다.
+- [x] 과거월 schedule snapshot은 모든 경기 identity가 일치하고 `FINAL` 점수가 완전하거나 `CANCELLED`인 경우만 재사용한다. 예정·진행·중단·unknown 또는 점수가 빠진 종료 경기는 원천을 다시 확인한다.
+- [x] 동일 Home aggregate, standings, records overview, leaderboard cache miss를 process-local SingleFlight로 합치고 `/home.myTeam`과 `/scoreboard/compact.myTeam`을 같은 10개 KBO 팀 allowlist로 제한했다. Push device/Live Activity/start-token selector는 물리 registry를 쓰지 않으면서 TTL 만료 대상을 발송 후보에서 즉시 제외한다.
+
+### 검증 및 한계
+
+- [x] 모든 변경은 공개 widget/service 반례를 먼저 실패시킨 뒤 RED→GREEN으로 구현했다. focused Flutter·backend 회귀, analyze/Ruff/compile/diff-check를 통과했다.
+- [x] 최종 통합 게이트에서 Flutter 전체 `526 passed`, backend 전체 `584 passed`, `flutter analyze` `No issues found`, Ruff, Python 3.9 compileall, Web build, `git diff --check`를 통과했다.
+- [x] post-fix Web build를 `/tmp/kbo-fans-audit-postfix-20260813`으로 생성하고 390/320px의 onboarding, 홈, 일정, 경기 스코어·문자중계, 순위, 기록, 브리핑, 설정, 알림함을 다시 캡처했다. 결과는 `artifacts/ux-audit-2026-08-13-continuation/post-*.jpg`에 보존했다.
+- [ ] 실제 VoiceOver/TalkBack 읽기 순서, iOS/Android OS 권한 sheet, APNs/FCM/Live Activity 전달, 여러 ECS API task 사이의 분산 SingleFlight는 로컬 위젯·프로세스 테스트로 확인할 수 없는 외부 게이트다.
+- [x] 보호 대상 tracked snapshot 6개는 열람·수정하지 않았고 commit/stage/deploy도 수행하지 않았다.
+
 ## 2026-08-13: 0.1.25+93 TestFlight 재배포 준비
 
 ### 결정
@@ -25,6 +89,27 @@
 - [x] 외부 `External Testers` 그룹 연결 완료: relationship POST `204`, 그룹 builds 조회에서 build 93 `VALID`.
 - [x] build 93 Beta App Review 제출 완료: `201`, 현재 `WAITING_FOR_REVIEW`; 승인 전까지 기존 build 92는 유지.
 - [ ] build 93을 실제 내부·외부 테스터 기기에 설치/업데이트했다는 device-level 증거는 아직 확인하지 않음. 현재 두 그룹의 기존 tester 계정 상태 `INSTALLED`는 새 build 93 설치 증거와 분리한다.
+
+## 2026-08-13: 전 화면 페르소나 경쟁 감사 — 홈 truth와 브리핑 사실 identity
+
+### 결정 및 반영
+
+- [x] 6개 사용자 페르소나(라이트팬, 실시간 코어팬, 예매·원정 계획팬, 공식기록 민감팬, 알림·Live Activity 팬, 접근성·작은 화면 팬)를 `artifacts/ux-persona-audit-2026-08-13/persona_matrix.md`에 근거·충돌·수용 기준과 함께 맵핑했다. 화면별 검수 범위와 외부 runtime 게이트는 `coverage_matrix.md`에 분리했다.
+- [x] 독립 리뷰어 2명이 홈 truth, 브리핑 중복, push 기본값, pregame follow를 서로 반박했다. 제품결정 또는 실기기 증거가 필요한 push 기본값·새 pregame CTA는 임의 확장하지 않고 외부 게이트로 남겼다.
+- [x] 홈의 streak/팀 ID 기반 synthetic 최근 경기 버블과 SS/OB 고정 패턴을 제거했다. 실제 verified `recentSummaries` 또는 공식 FINAL scoreboard만 결과 버블로 사용하며, 데이터가 없으면 `최근 결과 없음`과 공식 streak 텍스트를 분리해 표시한다.
+- [x] 마이팀 브리프의 요약 `AppPressable`과 `경기 일정`/`팀 기록` 독립 action row를 형제 영역으로 분리해 nested tappable semantics를 제거했다.
+- [x] 브리핑은 canonical route·팀/선수/경기 식별자·story kind·metric/topic 조합으로 동일 사실의 제목/query 순서 변형만 합친다. 같은 선수의 다른 지표, 같은 경기의 다른 흐름, 다른 순위 사실은 보존하며 알 수 없는 미래 유형은 과도하게 합치지 않는다.
+- [x] 현재 앱 버전 `0.1.25+93`과 release-note widget fixture를 정렬해 전체 앱 회귀가 실제 배포 계약을 검증하도록 했다.
+
+### 검증
+
+- [x] Flutter focused: 홈 49 + 마이팀 경기 카드 6 + 브리핑 12 tests 통과; 대상 analyze/format/diff-check 통과.
+- [x] Flutter 전체 `502 tests passed`, 전체 `flutter analyze` `No issues found`.
+- [x] Backend 전체 `560 passed in 10.10s`, Ruff, Python 3.9 호환 compileall, `git diff --check` 통과.
+- [x] 최신 Web build를 `/tmp/kbo-fans-web-20260813`으로 생성하고 로컬 미리보기에서 onboarding/home/news와 320px home/news를 직접 캡처·검수했다. 캡처는 `artifacts/ux-persona-audit-2026-08-13/`에 보존했다.
+- [ ] 실제 APNs/FCM 전달, iOS Live Activity·Android 알림, VoiceOver/TalkBack 실기기, 운영 AWS 다중 task·snapshot GC는 로컬 정적/위젯 테스트로 대체할 수 없는 외부 게이트다. push 기본값 변경과 pregame CTA 확장은 해당 증거·제품결정 뒤 진행한다.
+- [ ] Wasm dry-run의 `flutter_timezone` JS interop 경고는 외부 패키지 경고이며 일반 Web build는 성공했다.
+- [ ] commit/stage/deploy는 수행하지 않았고 보호 대상 tracked snapshot 6개는 열람·수정하지 않았다.
 
 ## 2026-08-12: 10차 backend 반례 감사 — current relay truth와 잔여 snapshot 경계
 

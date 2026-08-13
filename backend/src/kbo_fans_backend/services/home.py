@@ -4,15 +4,30 @@ import concurrent.futures
 import time
 from datetime import date as date_type
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
+from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.services.records_overview import RecordsOverviewService
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.services.standings import StandingsService
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
+from kbo_fans_backend.utils.resilience import (
+    BoundedExecutor,
+    UpstreamDeadlineExceeded,
+    remaining_seconds,
+    result_before_deadline,
+)
+from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
+
+_HOME_SECTION_EXECUTOR = BoundedExecutor(
+    max_workers=6,
+    max_pending=12,
+    queue_timeout_seconds=0.05,
+    thread_name_prefix="home-section",
+)
 
 
 class HomeService:
@@ -50,6 +65,9 @@ class HomeService:
         schedule_service: Optional[ScheduleService] = None,
         standings_service: Optional[StandingsService] = None,
         records_overview_service: Optional[RecordsOverviewService] = None,
+        aggregate_timeout_seconds: Optional[float] = None,
+        section_executor: Optional[BoundedExecutor] = None,
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self.scoreboard_service = scoreboard_service or ScoreboardService()
         self.schedule_service = schedule_service or ScheduleService()
@@ -60,6 +78,15 @@ class HomeService:
             self._CURRENT_CACHE_TTL_SECONDS
         )
         self._stable_cache: TtlCache[str, Dict[str, Any]] = TtlCache(self._STABLE_CACHE_TTL_SECONDS)
+        self._singleflight: SingleFlight[str] = SingleFlight()
+        request_timeout = get_settings().data_request_timeout_seconds
+        self._aggregate_timeout_seconds = (
+            max(0.01, aggregate_timeout_seconds)
+            if aggregate_timeout_seconds is not None
+            else max(0.1, request_timeout - 1.0)
+        )
+        self._section_executor = section_executor or _HOME_SECTION_EXECUTOR
+        self._monotonic = monotonic
 
     def get_home(self, date: str, my_team: Optional[str] = None) -> Dict[str, Any]:
         cache_key = f"{date}|{my_team or ''}"
@@ -77,29 +104,76 @@ class HomeService:
             if stable_cached is not None:
                 return stable_cached
 
-        scoreboard_payload = self.scoreboard_service.get_home_scoreboard(date)
+        return self._singleflight.call(
+            cache_key,
+            lambda: self._load_home(
+                date=date,
+                my_team=my_team,
+                cache_key=cache_key,
+                is_current_date=is_current_date,
+            ),
+        )
+
+    def _load_home(
+        self,
+        *,
+        date: str,
+        my_team: Optional[str],
+        cache_key: str,
+        is_current_date: bool,
+    ) -> Dict[str, Any]:
+        deadline = self._monotonic() + self._aggregate_timeout_seconds
+        scoreboard_future = self._section_executor.submit(
+            self.scoreboard_service.get_home_scoreboard,
+            date,
+        )
+        scoreboard_payload = result_before_deadline(
+            scoreboard_future,
+            deadline=deadline,
+            now=self._monotonic,
+            operation="home scoreboard",
+        )
         games = scoreboard_payload.get("games", [])
         year_month = date[:7]
         season = int(date[:4])
         allow_partial_sections = self._is_historical_date(date)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            schedule_future = executor.submit(self.schedule_service.get_month_schedule, year_month)
-            standings_future = executor.submit(self.standings_service.get_standings, season)
-            overview_future = executor.submit(self.records_overview_service.get_overview, season)
-
+        section_futures: List[concurrent.futures.Future] = []
+        try:
+            section_futures.append(
+                self._section_executor.submit(
+                    self.schedule_service.get_month_schedule,
+                    year_month,
+                )
+            )
+            section_futures.append(
+                self._section_executor.submit(
+                    self.standings_service.get_standings,
+                    season,
+                )
+            )
+            section_futures.append(
+                self._section_executor.submit(
+                    self.records_overview_service.get_overview,
+                    season,
+                )
+            )
             schedule_payload = self._section_result(
-                schedule_future,
+                section_futures[0],
                 {"month": year_month, "days": []},
                 allow_fallback=allow_partial_sections,
+                deadline=deadline,
+                operation="home schedule",
             )
             standings_payload = self._section_result(
-                standings_future,
+                section_futures[1],
                 {"season": season, "standings": []},
                 allow_fallback=allow_partial_sections,
+                deadline=deadline,
+                operation="home standings",
             )
             overview_payload = self._section_result(
-                overview_future,
+                section_futures[2],
                 {
                     "season": season,
                     "leaders": {"avg": [], "hr": [], "ops": [], "era": []},
@@ -111,12 +185,18 @@ class HomeService:
                     },
                 },
                 allow_fallback=allow_partial_sections,
+                deadline=deadline,
+                operation="home records overview",
             )
+        finally:
+            for future in section_futures:
+                future.cancel()
 
         schedule_days = self._schedule_days_with_recent_context(
             today=date,
             my_team=my_team,
             current_schedule_payload=schedule_payload,
+            deadline=deadline,
         )
 
         my_team_brief = self._build_my_team_brief(
@@ -143,6 +223,7 @@ class HomeService:
             standings=standings_payload.get("standings", []),
             my_team=my_team,
         )
+        self._ensure_deadline(deadline, "home aggregate")
 
         payload = {
             "date": date,
@@ -168,6 +249,7 @@ class HomeService:
         today: str,
         my_team: Optional[str],
         current_schedule_payload: Dict[str, Any],
+        deadline: float,
     ) -> List[Dict[str, Any]]:
         schedule_days = list(current_schedule_payload.get("days", []))
         if not my_team:
@@ -187,10 +269,23 @@ class HomeService:
         if previous_month is None:
             return schedule_days
 
+        if remaining_seconds(deadline, now=self._monotonic) <= 0:
+            return schedule_days
+        previous_future = self._section_executor.submit(
+            self.schedule_service.get_month_schedule,
+            previous_month,
+        )
         try:
-            previous_payload = self.schedule_service.get_month_schedule(previous_month)
+            previous_payload = result_before_deadline(
+                previous_future,
+                deadline=deadline,
+                now=self._monotonic,
+                operation="home previous-month schedule",
+            )
         except Exception:
             return schedule_days
+        finally:
+            previous_future.cancel()
         return [*previous_payload.get("days", []), *schedule_days]
 
     def _build_my_team_brief(
@@ -1052,19 +1147,35 @@ class HomeService:
         except (TypeError, ValueError):
             return None
 
-    @staticmethod
     def _section_result(
+        self,
         future: concurrent.futures.Future,
         fallback: Dict[str, Any],
         *,
         allow_fallback: bool,
+        deadline: float,
+        operation: str,
     ) -> Dict[str, Any]:
         if not allow_fallback:
-            return future.result()
+            return result_before_deadline(
+                future,
+                deadline=deadline,
+                now=self._monotonic,
+                operation=operation,
+            )
         try:
-            return future.result()
+            return result_before_deadline(
+                future,
+                deadline=deadline,
+                now=self._monotonic,
+                operation=operation,
+            )
         except Exception:
             return fallback
+
+    def _ensure_deadline(self, deadline: float, operation: str) -> None:
+        if remaining_seconds(deadline, now=self._monotonic) <= 0:
+            raise UpstreamDeadlineExceeded(f"{operation} deadline exceeded")
 
     @staticmethod
     def _is_historical_date(value: str) -> bool:

@@ -495,6 +495,77 @@ def test_device_gc_preserves_cooldown_state_when_a_fresh_legacy_owner_token_rema
     assert owner_state_id in data["deviceTestStates"]
 
 
+def test_expired_registrations_are_excluded_from_send_selectors_without_new_registration(
+    tmp_path,
+) -> None:
+    now = [datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc)]
+    game_id = "20260810LGKT0"
+    registry_path = tmp_path / "push_registry.json"
+    registry = PushRegistry(
+        str(registry_path),
+        device_registration_ttl_seconds=60,
+        live_activity_registration_ttl_seconds=60,
+        live_activity_start_token_ttl_seconds=60,
+        registration_now_provider=lambda: now[0],
+    )
+    service = PushService(registry=registry)
+    service.register(
+        PushRegisterRequest(
+            deviceToken="device-token",
+            installationId="start-installation",
+            platform="ios",
+            myTeam="LG",
+            notifications=_notification_settings(),
+            notificationsAllowed=True,
+        )
+    )
+    service.register_live_activity(
+        LiveActivityRegisterRequest(
+            gameId=game_id,
+            activityPushToken="activity-token",
+            activityId="activity-id",
+            installationId="activity-installation",
+        )
+    )
+    service.register_live_activity_start_token(
+        LiveActivityStartTokenRegisterRequest(
+            pushToStartToken="start-token",
+            installationId="start-installation",
+        )
+    )
+
+    assert registry.has_device_registrations() is True
+    assert registry.live_activity_tokens_for_game(game_id) == ["activity-token"]
+    assert registry.live_activity_game_ids() == [game_id]
+    assert registry.live_activity_start_token_count() == 1
+    assert len(
+        registry.live_activity_start_registrations_for_game(
+            game_id=game_id,
+            away_team_id="LG",
+            home_team_id="KT",
+        )
+    ) == 1
+
+    now[0] += timedelta(seconds=61)
+    before = registry_path.read_bytes()
+
+    assert registry.device_registrations() == []
+    assert registry.has_device_registrations() is False
+    assert registry.live_activity_tokens_for_game(game_id) == []
+    assert registry.live_activity_game_ids() == []
+    assert registry.live_activity_start_token_count() == 0
+    assert registry.has_live_activity_start_tokens() is False
+    assert (
+        registry.live_activity_start_registrations_for_game(
+            game_id=game_id,
+            away_team_id="LG",
+            home_team_id="KT",
+        )
+        == []
+    )
+    assert registry_path.read_bytes() == before
+
+
 def test_device_registration_cannot_reassign_an_existing_token_owner(tmp_path) -> None:
     registry = PushRegistry(str(tmp_path / "push_registry.json"))
     service = PushService(registry=registry)

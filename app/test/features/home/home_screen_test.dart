@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/config/app_config.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
+import 'package:kbo_fans/core/widgets/app_motion.dart';
 import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/home_aggregate.dart';
@@ -1182,7 +1184,33 @@ void main() {
     );
   });
 
-  testWidgets('320px 마이팀 브리프는 최근 경기와 두 지표를 세로·2열로 분리한다', (tester) async {
+  testWidgets('마이팀 브리프 액션 버튼은 요약 탭 영역 안에 중첩되지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: _homeInteractionRouter()),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final teamRecordsButton = find.widgetWithText(OutlinedButton, '팀 기록');
+    expect(teamRecordsButton, findsOneWidget);
+    expect(
+      find.ancestor(of: teamRecordsButton, matching: find.byType(AppPressable)),
+      findsNothing,
+    );
+  });
+
+  testWidgets('320px·240% 마이팀 브리프는 팀 정보와 두 지표를 생략하지 않는다', (tester) async {
     tester.view.physicalSize = const Size(320, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1194,7 +1222,13 @@ void main() {
 
     await tester.pumpWidget(
       _homeInteractionScope(
-        child: MaterialApp.router(routerConfig: router),
+        child: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 844),
+            textScaler: TextScaler.linear(2.4),
+          ),
+          child: MaterialApp.router(routerConfig: router),
+        ),
         standingsPreview: [
           _standing(
             rank: 1,
@@ -1293,10 +1327,15 @@ void main() {
     expect(avgRect.width, greaterThanOrEqualTo(60));
     expect(eraRect.width, greaterThanOrEqualTo(60));
     expect(avgRect.right, lessThanOrEqualTo(eraRect.left));
-    expect(
-      tester.getSize(narrowMetrics).height,
-      lessThanOrEqualTo(tester.getSize(teamSummary).height),
-    );
+    for (final copy in ['LG 트윈스', '1위 · 51승 34패 2무', '경기 일정', '팀 기록']) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(copy));
+      expect(
+        paragraph.didExceedMaxLines,
+        isFalse,
+        reason: '$copy는 240% 크기에서도 전체가 보여야 한다',
+      );
+    }
+    expect(tester.getSize(teamSummary).width, greaterThan(200));
     expect(find.byKey(const ValueKey('home-standings-row-LG')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -1332,7 +1371,13 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(find.text('최근 결과 없음'), findsNothing);
+    final briefMetrics = find.byKey(
+      const ValueKey('my-team-brief-wide-metrics'),
+    );
+    expect(
+      find.descendant(of: briefMetrics, matching: find.text('최근 결과 없음')),
+      findsNothing,
+    );
     expect(find.text('최근 1경기'), findsOneWidget);
     expect(find.text('승'), findsWidgets);
   });
@@ -1611,7 +1656,7 @@ void main() {
     expect(find.text('team-record-LG'), findsOneWidget);
   });
 
-  testWidgets('recent 5 games renders every standings team below standings', (
+  testWidgets('recent 5 games renders only the team with verified summaries', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -1631,22 +1676,100 @@ void main() {
     await tester.pump();
     await tester.pumpAndSettle();
 
-    expect(
-      find.byKey(const ValueKey('home-recent-flow-row-HT')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('home-recent-flow-row-HT')), findsNothing);
     expect(
       find.byKey(const ValueKey('home-recent-flow-row-LG')),
       findsOneWidget,
     );
-    expect(
-      find.byKey(const ValueKey('home-recent-flow-row-SS')),
-      findsOneWidget,
+    expect(find.byKey(const ValueKey('home-recent-flow-row-SS')), findsNothing);
+    expect(find.byKey(const ValueKey('home-recent-flow-row-KT')), findsNothing);
+  });
+
+  testWidgets('최근 흐름은 실제 summary가 없는 팀에 synthetic 결과 버블을 만들지 않는다', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MaterialApp.router(routerConfig: _homeInteractionRouter()),
+        standingsPreview: [
+          _standing(
+            rank: 1,
+            teamId: 'LG',
+            teamName: 'LG 트윈스',
+            wins: 30,
+            losses: 15,
+            draws: 1,
+            pct: '.667',
+            gb: '-',
+            streak: 'W4',
+          ),
+          _standing(
+            rank: 2,
+            teamId: 'SS',
+            teamName: '삼성 라이온즈',
+            wins: 28,
+            losses: 17,
+            draws: 1,
+            pct: '.622',
+            gb: '2.0',
+            streak: 'W2',
+          ),
+        ],
+        recentSummaries: const [],
+        scoreboardGames: const [],
+      ),
     );
-    expect(
-      find.byKey(const ValueKey('home-recent-flow-row-KT')),
-      findsOneWidget,
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-recent-flow-row-SS')), findsNothing);
+    expect(find.byKey(const ValueKey('home-recent-flow-row-LG')), findsNothing);
+    expect(find.text('표시할 최근 5경기가 없습니다'), findsOneWidget);
+  });
+
+  testWidgets('recent 5 games row reflows and exposes results at 320px 240%', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'myTeam': 'LG'});
+    _ensureAppConfigInitialized();
+
+    await tester.pumpWidget(
+      _homeInteractionScope(
+        child: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2.4)),
+          child: MaterialApp.router(routerConfig: _homeInteractionRouter()),
+        ),
+      ),
     );
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final row = find.byKey(const ValueKey('home-recent-flow-row-LG'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final semantics = tester.getSemantics(row).getSemanticsData();
+    expect(semantics.label, contains('LG'));
+    expect(semantics.label, contains('승, 승'));
+    expect(semantics.label, contains('4연승'));
+    expect(semantics.label, contains('팀 기록 보기'));
+    expect(semantics.hasAction(SemanticsAction.tap), isTrue);
   });
 
   testWidgets('standings row opens standings overview like View All', (

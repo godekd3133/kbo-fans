@@ -5,8 +5,9 @@ import logging
 import re
 import threading
 import time
+from contextlib import contextmanager
 from datetime import date as date_type
-from typing import Any, Optional
+from typing import Any, Iterator, Optional
 
 from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
@@ -15,6 +16,7 @@ from kbo_fans_backend.services.ticketing import TicketingService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.storage.live_scoreboard_store import LiveScoreboardStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
@@ -34,6 +36,7 @@ class ScoreboardService:
         ticketing_service: Optional[TicketingService] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
         live_scoreboard_store: Optional[LiveScoreboardStore] = None,
+        date_lock_wait_timeout_seconds: float = 2.0,
     ) -> None:
         provided_snapshot_store = snapshot_store
         self.main_crawler = main_crawler or MainCrawler()
@@ -68,6 +71,10 @@ class ScoreboardService:
         self._date_refresh_locks = tuple(
             threading.Lock() for _ in range(self._DATE_REFRESH_LOCK_STRIPES)
         )
+        self._date_lock_wait_timeout_seconds = max(
+            0.0,
+            date_lock_wait_timeout_seconds,
+        )
 
     def get_scoreboard(
         self,
@@ -76,12 +83,24 @@ class ScoreboardService:
     ) -> dict[str, Any]:
         started_at = time.perf_counter()
         date = self._normalize_date(date)
-        with self._date_refresh_lock(date):
-            return self._get_scoreboard_serialized(
-                date,
-                force_refresh=force_refresh,
-                started_at=started_at,
-            )
+        try:
+            with self._date_refresh_lock(date):
+                return self._get_scoreboard_serialized(
+                    date,
+                    force_refresh=force_refresh,
+                    started_at=started_at,
+                )
+        except UpstreamBusyError:
+            if force_refresh and not self._is_historical_date(date):
+                raise
+            cached = self._scoreboard_cache.get(date)
+            if cached is not None:
+                logger.info("scoreboard fresh cache while refresh busy %s", date)
+                return cached
+            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+                return snapshot
+            raise
 
     def _get_scoreboard_serialized(
         self,
@@ -200,11 +219,30 @@ class ScoreboardService:
         force_refresh: bool = False,
     ) -> dict[str, Any]:
         date = self._normalize_date(date)
-        with self._date_refresh_lock(date):
-            return self._get_home_scoreboard_serialized(
-                date,
-                force_refresh=force_refresh,
-            )
+        try:
+            with self._date_refresh_lock(date):
+                return self._get_home_scoreboard_serialized(
+                    date,
+                    force_refresh=force_refresh,
+                )
+        except UpstreamBusyError:
+            if force_refresh and not self._is_historical_date(date):
+                raise
+            cached = self._home_scoreboard_cache.get(date)
+            if cached is not None:
+                logger.info("home scoreboard fresh cache while refresh busy %s", date)
+                return cached
+            live_state = self._load_live_home_scoreboard(date)
+            if live_state is not None:
+                logger.info("home scoreboard live state while refresh busy %s", date)
+                return live_state
+            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+                return {
+                    "date": snapshot["date"],
+                    "games": [self._strip_home_payload(game) for game in snapshot["games"]],
+                }
+            raise
 
     def _get_home_scoreboard_serialized(
         self,
@@ -242,8 +280,18 @@ class ScoreboardService:
 
     def prime_home_scoreboard(self, date: str) -> dict[str, Any]:
         date = self._normalize_date(date)
-        with self._date_refresh_lock(date):
-            return self._prime_home_scoreboard_serialized(date)
+        try:
+            with self._date_refresh_lock(date):
+                return self._prime_home_scoreboard_serialized(date)
+        except UpstreamBusyError:
+            cached = self._home_scoreboard_cache.get(date)
+            if cached is not None:
+                self._save_live_home_scoreboard(date, cached)
+                return cached
+            live_state = self._load_live_home_scoreboard(date)
+            if live_state is not None:
+                return live_state
+            raise
 
     def _prime_home_scoreboard_serialized(self, date: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("scoreboard", date)
@@ -324,8 +372,28 @@ class ScoreboardService:
     ) -> dict[str, Any]:
         date = self._normalize_date(date)
         my_team = (my_team or "").strip() or None
-        with self._date_refresh_lock(date):
-            return self._get_compact_scoreboard_serialized(date, my_team)
+        try:
+            with self._date_refresh_lock(date):
+                return self._get_compact_scoreboard_serialized(date, my_team)
+        except UpstreamBusyError:
+            cache_key = f"{date}:{my_team or '-'}"
+            cached = self._compact_scoreboard_cache.get(cache_key)
+            if cached is not None:
+                logger.info("compact scoreboard fresh cache while refresh busy %s", cache_key)
+                return cached
+            live_state = self._load_live_home_scoreboard(date)
+            if live_state is not None:
+                logger.info("compact scoreboard live state while refresh busy %s", cache_key)
+                return self._compact_from_snapshot(
+                    date,
+                    live_state,
+                    my_team,
+                    source="live",
+                )
+            snapshot = self.snapshot_store.load_payload("scoreboard", date)
+            if self._can_use_historical_scoreboard_snapshot(date, snapshot):
+                return self._compact_from_snapshot(date, snapshot, my_team)
+            raise
 
     def _get_compact_scoreboard_serialized(
         self,
@@ -399,13 +467,14 @@ class ScoreboardService:
         date: str,
         snapshot: dict[str, Any],
         my_team: Optional[str],
+        source: str = "snapshot",
     ) -> dict[str, Any]:
         games = snapshot.get("games", [])
         selected = self._select_compact_game(games, {}, my_team)
         return {
             "date": date,
             "games": [] if selected is None else [self._strip_home_payload(selected)],
-            "source": "snapshot",
+            "source": source,
             "scope": "widget",
         }
 
@@ -423,11 +492,23 @@ class ScoreboardService:
         if len(game_id) < 8:
             return None
         date = f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
-        with self._date_refresh_lock(date):
-            return self._get_game_serialized(
-                game_id,
-                force_refresh=force_refresh,
-            )
+        try:
+            with self._date_refresh_lock(date):
+                return self._get_game_serialized(
+                    game_id,
+                    force_refresh=force_refresh,
+                )
+        except UpstreamBusyError:
+            snapshot = self.snapshot_store.load_payload("games", game_id)
+            if force_refresh and not self._can_use_historical_game_snapshot(game_id, snapshot):
+                raise
+            cached = self._game_cache.get(game_id)
+            if cached is not None:
+                logger.info("game fresh cache while refresh busy %s", game_id)
+                return cached
+            if self._can_use_historical_game_snapshot(game_id, snapshot):
+                return snapshot
+            raise
 
     def _get_game_serialized(
         self,
@@ -522,8 +603,16 @@ class ScoreboardService:
         self._main_game_map_cache.set(date, game_map)
         return game_map
 
-    def _date_refresh_lock(self, date: str) -> threading.Lock:
-        return self._date_refresh_locks[hash(date) % len(self._date_refresh_locks)]
+    @contextmanager
+    def _date_refresh_lock(self, date: str) -> Iterator[None]:
+        lock = self._date_refresh_locks[hash(date) % len(self._date_refresh_locks)]
+        acquired = lock.acquire(timeout=self._date_lock_wait_timeout_seconds)
+        if not acquired:
+            raise UpstreamBusyError(f"scoreboard refresh is busy for {date}")
+        try:
+            yield
+        finally:
+            lock.release()
 
     def _load_live_home_scoreboard(self, date: str) -> Optional[dict[str, Any]]:
         if self.live_scoreboard_store is None or self._is_historical_date(date):

@@ -20,6 +20,7 @@ import '../../data/models/records_overview.dart';
 import '../../data/models/team_records_bundle.dart';
 import '../../data/models/team_stats.dart';
 import '../../data/providers.dart';
+import 'records_area_switcher.dart';
 
 enum PlayerListFilter { all, entryOnly, reserveOnly }
 
@@ -135,6 +136,7 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
   Widget _buildTeamChooser() {
     final myTeamId = ref.watch(myTeamProvider);
     final overviewAsync = ref.watch(recordsOverviewProvider(_selectedSeason));
+    final showRecordsAreaSwitcher = MediaQuery.sizeOf(context).width < 700;
     final orderedTeams = [...KboTeams.teams]
       ..sort((a, b) {
         if (a.id == myTeamId) return -1;
@@ -209,6 +211,19 @@ class _RecordsScreenState extends ConsumerState<RecordsScreen>
                         ],
                       ),
                       const SizedBox(height: 10),
+                      if (showRecordsAreaSwitcher) ...[
+                        RecordsAreaSwitcher(
+                          selected: RecordsAreaSection.records,
+                          onSelected: GoRouter.maybeOf(context) == null
+                              ? null
+                              : (section) {
+                                  if (section == RecordsAreaSection.standings) {
+                                    context.go('/standings');
+                                  }
+                                },
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       _seasonSelector(),
                       const SizedBox(height: 10),
                       overviewAsync.when(

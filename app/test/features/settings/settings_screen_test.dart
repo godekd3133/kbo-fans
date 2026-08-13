@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kbo_fans/core/theme/app_theme.dart';
@@ -115,6 +115,43 @@ void main() {
       AppThemeModePreference.light.storageValue,
     );
     expect(find.text('라이트'), findsWidgets);
+  });
+
+  testWidgets('320px 240% 화면 모드 선택지는 이름을 잘라내지 않는다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.binding.setSurfaceSize(const Size(320, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(320, 844),
+                textScaler: TextScaler.linear(2.4),
+              ),
+              child: const SettingsScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final mode in ['시스템', '라이트', '다크']) {
+        final control = find.bySemanticsLabel('$mode 모드');
+        final label = find.descendant(of: control, matching: find.text(mode));
+        final paragraph = tester.renderObject<RenderParagraph>(label);
+        expect(
+          paragraph.didExceedMaxLines,
+          isFalse,
+          reason: '$mode 모드 이름은 240% 크기에서도 전체가 보여야 한다',
+        );
+      }
+    } finally {
+      semantics.dispose();
+    }
   });
 
   testWidgets('푸시 알림은 프리셋 없이 항목별 토글을 설정 첫 화면에서 제공한다', (tester) async {
@@ -282,6 +319,168 @@ void main() {
     }
   });
 
+  testWidgets('푸시 토글은 항목과 설명 그리고 켜짐 상태를 하나의 제어로 전달한다', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.binding.setSurfaceSize(const Size(390, 1200));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            theme: AppTheme.dark,
+            home: const SettingsScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final hitToggle = find.byKey(const ValueKey('push_toggle_hit'));
+      final node = tester.getSemantics(hitToggle);
+      final data = node.getSemanticsData();
+
+      expect(data.label, contains('안타'));
+      expect(data.label, contains('주자 상황 포함'));
+      expect(data.flagsCollection.isToggled.toBoolOrNull(), isTrue);
+      expect(data.flagsCollection.isEnabled.toBoolOrNull(), isTrue);
+      expect(data.hasAction(SemanticsAction.tap), isTrue);
+
+      final duplicateControlNodes = <SemanticsNode>[];
+      bool collectDuplicateControls(SemanticsNode child) {
+        final childData = child.getSemanticsData();
+        if (childData.hasAction(SemanticsAction.tap) ||
+            childData.flagsCollection.isToggled.toBoolOrNull() != null) {
+          duplicateControlNodes.add(child);
+        }
+        child.visitChildren(collectDuplicateControls);
+        return true;
+      }
+
+      node.visitChildren(collectDuplicateControls);
+      expect(
+        duplicateControlNodes,
+        isEmpty,
+        reason: '토글 행 아래에 중복 탭/토글 semantics가 노출되면 안 된다',
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('설정은 자동 프롬프트 없이 사용자가 탭할 때만 알림 권한을 요청한다', (tester) async {
+    var requestCount = 0;
+    String? requestedTeam;
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          myTeamProvider.overrideWith(() => _FixedMyTeamNotifier('LG')),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(
+            pushPermissionStateLoader: () async => false,
+            pushPermissionRequester: (myTeam) async {
+              requestCount += 1;
+              requestedTeam = myTeam;
+              return true;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(requestCount, 0);
+    expect(find.text('알림 권한을 확인해 주세요'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('push_permission_request')));
+    await tester.pumpAndSettle();
+
+    expect(requestCount, 1);
+    expect(requestedTeam, 'LG');
+    expect(find.text('알림 권한 허용됨'), findsOneWidget);
+    expect(find.text('권한 다시 확인'), findsOneWidget);
+  });
+
+  testWidgets('알림 권한 확인이 실패해도 오류를 안내하고 다시 시도할 수 있다', (tester) async {
+    var requestCount = 0;
+    await tester.binding.setSurfaceSize(const Size(390, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: SettingsScreen(
+            pushPermissionStateLoader: () async => false,
+            pushPermissionRequester: (_) async {
+              requestCount += 1;
+              if (requestCount == 1) {
+                throw StateError('permission bridge unavailable');
+              }
+              return true;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final requestButton = find.byKey(const ValueKey('push_permission_request'));
+    await tester.tap(requestButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('알림 권한을 확인하지 못했습니다'), findsOneWidget);
+    expect(tester.widget<OutlinedButton>(requestButton).onPressed, isNotNull);
+
+    await tester.tap(requestButton);
+    await tester.pumpAndSettle();
+
+    expect(requestCount, 2);
+    expect(find.text('알림 권한 허용됨'), findsOneWidget);
+    expect(find.text('알림 권한을 확인하지 못했습니다'), findsNothing);
+  });
+
+  testWidgets('320px 240% 푸시 토글은 항목과 설명을 잘라내지 않는다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(320, 844),
+              textScaler: TextScaler.linear(2.4),
+            ),
+            child: const SettingsScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final scrollable = find.byType(Scrollable).first;
+    await tester.scrollUntilVisible(
+      find.text('경기 시작과 시작 임박'),
+      500,
+      scrollable: scrollable,
+    );
+
+    for (final copy in ['경기 시작과 시작 임박', '10분 전과 플레이볼']) {
+      final paragraph = tester.renderObject<RenderParagraph>(find.text(copy));
+      expect(
+        paragraph.didExceedMaxLines,
+        isFalse,
+        reason: '$copy은 240% 크기에서도 전체가 보여야 한다',
+      );
+    }
+  });
+
   testWidgets('푸시 알림은 항목별 토글 변경을 저장한다', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -379,6 +578,8 @@ void main() {
       500,
       scrollable: mainScroll,
     );
+    await tester.ensureVisible(find.text('푸시 알림 모아보기'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('푸시 알림 모아보기'));
     await tester.pumpAndSettle();
 
@@ -465,6 +666,46 @@ void main() {
     await tester.tap(find.text('오픈소스 라이선스'));
     await tester.pumpAndSettle();
     expect(find.byType(LicensePage), findsOneWidget);
+  });
+
+  testWidgets('320px 240% 세부 설정 항목은 자동으로 높이를 늘려 내용을 보여준다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(320, 844),
+              textScaler: TextScaler.linear(2.4),
+            ),
+            child: const SettingsScreen(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('개인정보처리방침'),
+      800,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.text('개인정보처리방침'),
+    );
+    expect(
+      paragraph.size.height,
+      greaterThanOrEqualTo(
+        paragraph.getMaxIntrinsicHeight(paragraph.size.width),
+      ),
+      reason: '항목 이름이 고정 높이 안에서 잘려서는 안 된다',
+    );
   });
 }
 

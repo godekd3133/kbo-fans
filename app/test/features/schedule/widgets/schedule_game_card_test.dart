@@ -214,4 +214,53 @@ void main() {
     expect(find.text('경기 취소'), findsNothing);
     expect(find.text('vs'), findsOneWidget);
   });
+
+  testWidgets('320px 240%에서도 예정 경기 정보가 잘리지 않는다', (tester) async {
+    const game = ScheduleGame(
+      gameId: '20260520KTSS0',
+      time: '18:30',
+      awayId: 'KT',
+      awayName: 'KT 위즈',
+      homeId: 'SS',
+      homeName: '삼성 라이온즈',
+      stadium: '대구 삼성 라이온즈 파크',
+      status: 'SCHEDULED',
+    );
+
+    await tester.binding.setSurfaceSize(const Size(320, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 844),
+            textScaler: TextScaler.linear(2.4),
+          ),
+          child: const Scaffold(
+            body: SingleChildScrollView(
+              child: ScheduleGameCard(
+                game: game,
+                dateLabel: '5월 20일 수요일',
+                ticketSummary: '인터파크 티켓 · 05.13 11:00 오픈 예정',
+                myTeamId: 'SS',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    for (final text in const [
+      '5월 20일 수요일',
+      '18:30',
+      '경기 전',
+      '대구 삼성 라이온즈 파크',
+      '인터파크 티켓 · 05.13 11:00 오픈 예정',
+    ]) {
+      expect(find.text(text), findsOneWidget);
+    }
+  });
 }

@@ -237,6 +237,23 @@ class PushRegistry:
             return now.replace(tzinfo=timezone.utc)
         return now.astimezone(timezone.utc)
 
+    def _registration_is_active(
+        self,
+        registration: Any,
+        *,
+        ttl_seconds: int,
+        section_name: str,
+        now: Optional[datetime] = None,
+    ) -> bool:
+        last_seen_at = _registration_last_seen_at(
+            registration,
+            section_name=section_name,
+        )
+        if last_seen_at is None:
+            return True
+        reference = now or self._registration_now()
+        return (reference - last_seen_at).total_seconds() < ttl_seconds
+
     def _runtime_state_now(self) -> datetime:
         now = self._runtime_state_now_provider()
         if now.tzinfo is None:
@@ -661,8 +678,17 @@ class PushRegistry:
     def live_activity_tokens_for_game(self, game_id: str) -> list[str]:
         data = self._load()
         activities = data.get("liveActivities", {})
+        now = self._registration_now()
         tokens = [
-            token for token, activity in activities.items() if activity.get("gameId") == game_id
+            token
+            for token, activity in activities.items()
+            if activity.get("gameId") == game_id
+            and self._registration_is_active(
+                activity,
+                ttl_seconds=self._live_activity_registration_ttl_seconds,
+                section_name="liveActivities",
+                now=now,
+            )
         ]
         tokens.sort()
         return tokens
@@ -1057,10 +1083,17 @@ class PushRegistry:
     def live_activity_game_ids(self) -> list[str]:
         data = self._load()
         activities = data.get("liveActivities", {})
+        now = self._registration_now()
         game_ids = {
             str(activity.get("gameId"))
             for activity in activities.values()
             if activity.get("gameId")
+            and self._registration_is_active(
+                activity,
+                ttl_seconds=self._live_activity_registration_ttl_seconds,
+                section_name="liveActivities",
+                now=now,
+            )
         }
         return sorted(game_ids)
 
@@ -1069,7 +1102,18 @@ class PushRegistry:
         tokens = data.get("liveActivityStartTokens", {})
         if not isinstance(tokens, dict):
             return 0
-        return sum(1 for value in tokens.values() if isinstance(value, dict))
+        now = self._registration_now()
+        return sum(
+            1
+            for value in tokens.values()
+            if isinstance(value, dict)
+            and self._registration_is_active(
+                value,
+                ttl_seconds=self._live_activity_start_token_ttl_seconds,
+                section_name="liveActivityStartTokens",
+                now=now,
+            )
+        )
 
     def has_live_activity_start_tokens(self) -> bool:
         return self.live_activity_start_token_count() > 0
@@ -1087,10 +1131,22 @@ class PushRegistry:
         if not isinstance(tokens, dict) or not isinstance(devices, dict):
             return []
 
-        active_installations = self._live_activity_installation_ids_for_game(data, game_id)
+        now = self._registration_now()
+        active_installations = self._live_activity_installation_ids_for_game(
+            data,
+            game_id,
+            now=now,
+        )
         registrations_by_installation: dict[str, list[dict[str, Any]]] = {}
         for registration in devices.values():
             if not isinstance(registration, dict):
+                continue
+            if not self._registration_is_active(
+                registration,
+                ttl_seconds=self._device_registration_ttl_seconds,
+                section_name="devices",
+                now=now,
+            ):
                 continue
             installation_id = _clean_optional_string(registration.get("installationId"))
             if not installation_id:
@@ -1101,6 +1157,13 @@ class PushRegistry:
         seen_tokens = set()
         for token, registration in tokens.items():
             if not isinstance(registration, dict):
+                continue
+            if not self._registration_is_active(
+                registration,
+                ttl_seconds=self._live_activity_start_token_ttl_seconds,
+                section_name="liveActivityStartTokens",
+                now=now,
+            ):
                 continue
             push_to_start_token = _clean_optional_string(
                 registration.get("pushToStartToken") or token
@@ -1272,10 +1335,12 @@ class PushRegistry:
             state.pop("claimedAt", None)
             return True
 
-    @staticmethod
     def _live_activity_installation_ids_for_game(
+        self,
         data: dict[str, Any],
         game_id: str,
+        *,
+        now: Optional[datetime] = None,
     ) -> set[str]:
         activities = data.get("liveActivities", {})
         if not isinstance(activities, dict):
@@ -1286,6 +1351,12 @@ class PushRegistry:
             if isinstance(activity, dict)
             and activity.get("gameId") == game_id
             and _clean_optional_string(activity.get("installationId"))
+            and self._registration_is_active(
+                activity,
+                ttl_seconds=self._live_activity_registration_ttl_seconds,
+                section_name="liveActivities",
+                now=now,
+            )
         }
 
     @staticmethod
@@ -1308,7 +1379,17 @@ class PushRegistry:
     def has_device_registrations(self) -> bool:
         data = self._load()
         devices = data.get("devices", {})
-        return bool(devices)
+        now = self._registration_now()
+        return any(
+            isinstance(registration, dict)
+            and self._registration_is_active(
+                registration,
+                ttl_seconds=self._device_registration_ttl_seconds,
+                section_name="devices",
+                now=now,
+            )
+            for registration in devices.values()
+        )
 
     def has_device_token(self, device_token: str) -> bool:
         data = self._load()
@@ -1545,9 +1626,17 @@ class PushRegistry:
     def device_registrations(self) -> list[dict[str, Any]]:
         data = self._load()
         devices = data.get("devices", {})
+        now = self._registration_now()
         registrations = []
         for token, registration in devices.items():
             if not isinstance(registration, dict):
+                continue
+            if not self._registration_is_active(
+                registration,
+                ttl_seconds=self._device_registration_ttl_seconds,
+                section_name="devices",
+                now=now,
+            ):
                 continue
             device_token = str(registration.get("deviceToken") or token)
             if not device_token:

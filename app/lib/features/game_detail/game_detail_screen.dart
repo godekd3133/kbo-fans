@@ -35,6 +35,7 @@ import 'tabs/score_tab.dart';
 const gameDetailLiveRelayRefreshInterval = Duration(seconds: 5);
 const gameDetailLiveDefaultRefreshInterval = Duration(seconds: 8);
 const gameDetailScheduledRefreshInterval = Duration(minutes: 5);
+const _gameDetailRefreshDeadline = Duration(seconds: 25);
 const _relayTabIndex = 1;
 
 @visibleForTesting
@@ -561,24 +562,36 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     required bool forceNetwork,
     required Completer<void> completer,
   }) async {
+    final deadline = Stopwatch()..start();
     try {
       if (waitForActiveProviders) {
         await _awaitActiveRefreshProviders(
           widget.gameId,
           refreshVisibleTab: refreshVisibleTab,
+          timeout: _remainingGameDetailRefreshBudget(deadline),
         );
       }
 
       var forceNextRefresh = forceNetwork;
       do {
+        final remaining = _remainingGameDetailRefreshBudget(deadline);
+        if (remaining <= Duration.zero) {
+          break;
+        }
         _refreshPending = false;
         await _performGameDetailRefresh(
           refreshVisibleTab: refreshVisibleTab,
           forceNetwork: forceNextRefresh,
-        );
+        ).timeout(remaining, onTimeout: () {});
         forceNextRefresh = _refreshPendingForceNetwork;
         _refreshPendingForceNetwork = false;
-      } while (_refreshPending && mounted);
+      } while (_refreshPending &&
+          mounted &&
+          _remainingGameDetailRefreshBudget(deadline) > Duration.zero);
+    } catch (error) {
+      DevConsole.instance.warn(
+        'GAME DETAIL refresh coordinator stopped: $error',
+      );
     } finally {
       _refreshInFlight = false;
       _refreshPending = false;
@@ -662,6 +675,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   Future<void> _awaitActiveRefreshProviders(
     String gameId, {
     required bool refreshVisibleTab,
+    Duration timeout = _gameDetailRefreshDeadline,
   }) async {
     final futures = <Future<Object?>>[];
     if (ref.read(gameProvider(gameId)).isLoading) {
@@ -690,12 +704,17 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       return;
     }
     try {
-      await Future.wait(futures).timeout(const Duration(seconds: 25));
+      await Future.wait(futures).timeout(timeout);
     } catch (error) {
       DevConsole.instance.warn(
         'GAME DETAIL active refresh wait skipped: $error',
       );
     }
+  }
+
+  Duration _remainingGameDetailRefreshBudget(Stopwatch stopwatch) {
+    final remaining = _gameDetailRefreshDeadline - stopwatch.elapsed;
+    return remaining.isNegative ? Duration.zero : remaining;
   }
 
   Future<void> _loadFollowState() async {

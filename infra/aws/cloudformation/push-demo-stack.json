@@ -93,7 +93,14 @@
       "Type": "Number",
       "Default": 5,
       "MinValue": 5,
-      "Description": "Sync worker polling interval. Use 5 seconds for live sports demos."
+      "Description": "Relay and push delivery polling interval. It does not control scoreboard warming."
+    },
+    "ScoreboardWarmIntervalSeconds": {
+      "Type": "Number",
+      "Default": 5,
+      "MinValue": 5,
+      "MaxValue": 15,
+      "Description": "Independent scoreboard warmer interval. The interval plus 5 seconds of jitter must stay within the 20-second live-state max age."
     },
     "PushBaseballInfoSmartDailyTimes": {
       "Type": "String",
@@ -691,6 +698,16 @@
               {
                 "Name": "SNAPSHOT_DIR",
                 "Value": "/var/lib/kbo-fans/snapshots"
+              },
+              {
+                "Name": "LIVE_SCOREBOARD_MAX_AGE_SECONDS",
+                "Value": "20"
+              },
+              {
+                "Name": "SCOREBOARD_WARM_INTERVAL_SECONDS",
+                "Value": {
+                  "Fn::Sub": "${ScoreboardWarmIntervalSeconds}"
+                }
               },
               {
                 "Name": "PUSH_SYNC_INTERVAL_SECONDS",

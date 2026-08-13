@@ -238,6 +238,8 @@ write_export API_DOMAIN_NAME "api.example.com"
 write_export ACM_CERTIFICATE_ARN "arn:aws:acm:ap-northeast-2:123456789012:certificate/00000000-0000-0000-0000-000000000000"
 
 write_section "Sync worker tuning"
+write_comment "Scoreboard warming remains independent if relay/push delivery polling is raised to 30/60 seconds."
+write_export SCOREBOARD_WARM_INTERVAL_SECONDS "5"
 write_comment "Smart daily times use Asia/Seoul; set PUSH_BASEBALL_INFO_SMART_DAILY_TIMES=off to disable."
 write_export PUSH_SYNC_INTERVAL_SECONDS "5"
 write_export PUSH_BASEBALL_INFO_SMART_DAILY_TIMES "09:30,16:00,22:30"

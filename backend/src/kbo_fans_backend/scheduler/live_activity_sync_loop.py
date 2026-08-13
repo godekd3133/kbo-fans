@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import signal
+import threading
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Callable, Optional
 
+from kbo_fans_backend.api.runtime_services import scoreboard_service as runtime_scoreboard_service
 from kbo_fans_backend.scheduler import baseball_info
 from kbo_fans_backend.scheduler.live_activity_sync import current_kbo_date, sync_once
 from kbo_fans_backend.services.push import PushService
@@ -17,14 +20,94 @@ from kbo_fans_backend.utils.kbo_time import current_kbo_datetime
 _SHOULD_STOP = False
 _MIN_INTERVAL_SECONDS = 5
 _DEFAULT_INTERVAL_SECONDS = 5
+_DEFAULT_WARM_INTERVAL_SECONDS = 5
+_DEFAULT_LIVE_SCOREBOARD_MAX_AGE_SECONDS = 20
+_WARMER_FRESHNESS_JITTER_SECONDS = 5
 _DEFAULT_BASEBALL_INFO_SMART_DAILY_TIMES = ("09:30", "16:00", "22:30")
 _BASEBALL_INFO_WINDOW_MINUTES = 10
+_WARMER_JOIN_TIMEOUT_SECONDS = 5.0
+_ACTIVE_WARMER: Optional["ScoreboardWarmer"] = None
+logger = logging.getLogger(__name__)
+
+
+class ScoreboardWarmer:
+    """Keeps the shared scoreboard cache warm independently of push delivery."""
+
+    def __init__(
+        self,
+        *,
+        scoreboard_service,
+        interval_seconds: float,
+        date_provider: Callable[[], str],
+    ) -> None:
+        if interval_seconds <= 0:
+            raise ValueError("scoreboard warm interval must be positive")
+        self._scoreboard_service = scoreboard_service
+        self._interval_seconds = interval_seconds
+        self._date_provider = date_provider
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+
+    def start(self) -> None:
+        if self._thread is not None and self._thread.is_alive():
+            return
+        self._stop_event.clear()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="kbo-scoreboard-warmer",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def join(self, timeout: Optional[float] = None) -> None:
+        thread = self._thread
+        if thread is not None:
+            thread.join(timeout=timeout)
+
+    def is_alive(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
+    def _run(self) -> None:
+        next_run = time.monotonic()
+        while not self._stop_event.is_set():
+            target_date = None
+            try:
+                target_date = self._date_provider()
+                self._scoreboard_service.prime_home_scoreboard(target_date)
+            except Exception as error:
+                logger.warning(
+                    "%s",
+                    json.dumps(
+                        {
+                            "component": "live_scoreboard_warmer",
+                            "date": target_date,
+                            "errorType": type(error).__name__,
+                            "event": "prime_failed",
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ),
+                )
+
+            next_run += self._interval_seconds
+            now = time.monotonic()
+            if next_run <= now:
+                missed_intervals = int((now - next_run) // self._interval_seconds) + 1
+                next_run += missed_intervals * self._interval_seconds
+            if self._stop_event.wait(max(0, next_run - now)):
+                return
 
 
 def _handle_stop(signum, frame) -> None:
     del signum, frame
     global _SHOULD_STOP
     _SHOULD_STOP = True
+    warmer = _ACTIVE_WARMER
+    if warmer is not None:
+        warmer.stop()
 
 
 def _sleep_until_next_run(interval_seconds: int) -> None:
@@ -35,6 +118,30 @@ def _sleep_until_next_run(interval_seconds: int) -> None:
 
 def _now_kst() -> datetime:
     return current_kbo_datetime()
+
+
+def _validate_scoreboard_warm_interval(interval_seconds: int) -> None:
+    if interval_seconds < _MIN_INTERVAL_SECONDS:
+        raise SystemExit(
+            f"scoreboard-warm-interval-seconds must be at least {_MIN_INTERVAL_SECONDS}"
+        )
+
+    try:
+        max_age_seconds = int(
+            os.getenv(
+                "LIVE_SCOREBOARD_MAX_AGE_SECONDS",
+                str(_DEFAULT_LIVE_SCOREBOARD_MAX_AGE_SECONDS),
+            )
+        )
+    except ValueError as error:
+        raise SystemExit("LIVE_SCOREBOARD_MAX_AGE_SECONDS must be an integer") from error
+
+    required_max_age = interval_seconds + _WARMER_FRESHNESS_JITTER_SECONDS
+    if max_age_seconds < required_max_age:
+        raise SystemExit(
+            "LIVE_SCOREBOARD_MAX_AGE_SECONDS must be at least "
+            f"{required_max_age} for scoreboard warm interval {interval_seconds}"
+        )
 
 
 def maybe_send_smart_daily_baseball_info(
@@ -141,6 +248,7 @@ def _slot_to_minutes(value: str) -> Optional[int]:
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    global _ACTIVE_WARMER
     parser = argparse.ArgumentParser(
         description="Continuously sync registered iOS Live Activities from KBO scoreboard."
     )
@@ -150,33 +258,68 @@ def main(argv: Optional[list[str]] = None) -> int:
         type=int,
         default=int(os.getenv("PUSH_SYNC_INTERVAL_SECONDS", str(_DEFAULT_INTERVAL_SECONDS))),
     )
+    parser.add_argument(
+        "--scoreboard-warm-interval-seconds",
+        type=int,
+        default=int(
+            os.getenv(
+                "SCOREBOARD_WARM_INTERVAL_SECONDS",
+                str(_DEFAULT_WARM_INTERVAL_SECONDS),
+            )
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.interval_seconds < _MIN_INTERVAL_SECONDS:
         raise SystemExit(f"interval-seconds must be at least {_MIN_INTERVAL_SECONDS}")
+    _validate_scoreboard_warm_interval(args.scoreboard_warm_interval_seconds)
 
     signal.signal(signal.SIGTERM, _handle_stop)
     signal.signal(signal.SIGINT, _handle_stop)
 
-    while not _SHOULD_STOP:
-        sync_date = args.date or current_kbo_date()
-        try:
-            result = sync_once(sync_date)
-            if args.date is None:
-                baseball_info_result = maybe_send_smart_daily_baseball_info(
-                    now=_now_kst(),
-                )
-                if baseball_info_result.get("reason") != "not_due":
-                    result["baseballInfo"] = baseball_info_result
-            print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
-        except Exception as error:
-            payload = {
-                "date": sync_date,
-                "error": str(error),
-                "sent": False,
-            }
-            print(json.dumps(payload, ensure_ascii=False, sort_keys=True), flush=True)
-        _sleep_until_next_run(args.interval_seconds)
+    warmer = ScoreboardWarmer(
+        scoreboard_service=runtime_scoreboard_service,
+        interval_seconds=args.scoreboard_warm_interval_seconds,
+        date_provider=lambda: args.date or current_kbo_date(),
+    )
+    _ACTIVE_WARMER = warmer
+    try:
+        warmer.start()
+        while not _SHOULD_STOP:
+            sync_date = args.date or current_kbo_date()
+            try:
+                result = sync_once(sync_date)
+                if args.date is None:
+                    baseball_info_result = maybe_send_smart_daily_baseball_info(
+                        now=_now_kst(),
+                    )
+                    if baseball_info_result.get("reason") != "not_due":
+                        result["baseballInfo"] = baseball_info_result
+                print(json.dumps(result, ensure_ascii=False, sort_keys=True), flush=True)
+            except Exception as error:
+                payload = {
+                    "date": sync_date,
+                    "error": str(error),
+                    "sent": False,
+                }
+                print(json.dumps(payload, ensure_ascii=False, sort_keys=True), flush=True)
+            _sleep_until_next_run(args.interval_seconds)
+    finally:
+        warmer.stop()
+        warmer.join(timeout=_WARMER_JOIN_TIMEOUT_SECONDS)
+        if warmer.is_alive():
+            logger.warning(
+                "%s",
+                json.dumps(
+                    {
+                        "component": "live_scoreboard_warmer",
+                        "event": "join_timeout",
+                    },
+                    sort_keys=True,
+                ),
+            )
+        if _ACTIVE_WARMER is warmer:
+            _ACTIVE_WARMER = None
 
     return 0
 

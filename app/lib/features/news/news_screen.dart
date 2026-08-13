@@ -858,26 +858,9 @@ List<_NewsCardData> _newsItems(HomeAggregate aggregate) {
   final standingsByTeamId = _standingsByTeamId(aggregate.standingsPreview);
 
   void add(_NewsCardData item) {
-    final duplicate = items.any((current) {
-      if (current.route != item.route) {
-        return false;
-      }
-      if (current.title == item.title) {
-        return true;
-      }
-      if (current.label != item.label) {
-        return false;
-      }
-      final currentTeamId = current.teamId;
-      final itemTeamId = item.teamId;
-      if (currentTeamId == null ||
-          currentTeamId.isEmpty ||
-          itemTeamId == null ||
-          itemTeamId.isEmpty) {
-        return true;
-      }
-      return currentTeamId == itemTeamId;
-    });
+    final duplicate = items.any(
+      (current) => current.dedupeKey == item.dedupeKey,
+    );
     if (!duplicate && item.title.trim().isNotEmpty) {
       items.add(item);
     }
@@ -1319,6 +1302,25 @@ class _NewsCardData {
 
   Color get accent => _accentForFilter(filter);
 
+  /// Stable identity for a generated fact, independent of presentation copy.
+  ///
+  /// Entity routes carry the game/player/team/metric identity in their path or
+  /// query. Collection routes additionally use the normalized label as the
+  /// topic so that two different standings/records facts are not merged just
+  /// because they happen to share a screen destination.
+  String get dedupeKey {
+    final canonicalRoute = _canonicalNewsRoute(route);
+    final canonicalTeam = teamId?.trim().toUpperCase() ?? '';
+    final topic = _newsTopicKey(
+      route: canonicalRoute,
+      filter: filter,
+      storyKind: storyKind,
+      label: label,
+      title: title,
+    );
+    return '$canonicalRoute|$canonicalTeam|$topic';
+  }
+
   factory _NewsCardData.fromMyTeamBrief(HomeMyTeamBrief brief) {
     final hasRecent = brief.recentGamesCount > 0;
     final title = hasRecent
@@ -1428,7 +1430,9 @@ class _NewsCardData {
     return _NewsCardData(
       filter: _NewsFilter.standings,
       label: '순위 압축',
-      title: secondGap != null && secondGap <= 2
+      title: second == null
+          ? '선두 지키는 ${leader.teamName}'
+          : secondGap != null && secondGap <= 2
           ? '선두가 위태로운 ${leader.teamName}'
           : '선두 굳히는 ${leader.teamName}',
       subtitle: gap,
@@ -1462,6 +1466,140 @@ class _NewsCardData {
       fallbackLabel: standing.teamName,
     );
   }
+}
+
+String _canonicalNewsRoute(String rawRoute) {
+  final trimmed = rawRoute.trim();
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || uri.path.isEmpty) {
+    return trimmed;
+  }
+
+  final path = uri.path.replaceFirst(RegExp(r'/$'), '');
+  final queryEntries = <MapEntry<String, String>>[];
+  for (final entry in uri.queryParametersAll.entries) {
+    final values = [...entry.value]..sort();
+    for (final value in values) {
+      queryEntries.add(MapEntry(entry.key, value));
+    }
+  }
+  queryEntries.sort((a, b) {
+    final keyCompare = a.key.compareTo(b.key);
+    return keyCompare == 0 ? a.value.compareTo(b.value) : keyCompare;
+  });
+
+  if (queryEntries.isEmpty) {
+    return path;
+  }
+  final query = queryEntries
+      .map(
+        (entry) =>
+            '${Uri.encodeQueryComponent(entry.key)}='
+            '${Uri.encodeQueryComponent(entry.value)}',
+      )
+      .join('&');
+  return '$path?$query';
+}
+
+String _newsTopicKey({
+  required String route,
+  required _NewsFilter filter,
+  required String storyKind,
+  required String label,
+  required String title,
+}) {
+  final path = Uri.tryParse(route)?.path ?? route;
+  final hasEntity =
+      path.startsWith('/game/') ||
+      path.startsWith('/records/player/') ||
+      path.startsWith('/records/team/') ||
+      path.startsWith('/records/leaderboard/');
+  final normalizedLabel = label.trim().replaceAll(RegExp(r'\s+'), ' ');
+  final normalizedTitle = title.trim().replaceAll(RegExp(r'\s+'), ' ');
+  final normalizedStoryKind = storyKind.trim().toLowerCase();
+  final normalizedLabelKey = normalizedLabel.toLowerCase();
+  final isPlayerEntity = path.startsWith('/records/player/');
+  final isGameEntity = path.startsWith('/game/');
+  final isTeamOrLeaderboardEntity =
+      path.startsWith('/records/team/') ||
+      path.startsWith('/records/leaderboard/');
+  final isCollectionRoute = !hasEntity;
+
+  // Collection routes intentionally retain their source label/category. A
+  // standings summary and a per-team row may share `/standings` but represent
+  // different facts; only copy variants with the same label should collapse.
+  if (isCollectionRoute) {
+    final collectionTopic = switch (true) {
+      _
+          when filter == _NewsFilter.standings &&
+              (normalizedLabelKey == '순위 압축' || normalizedLabelKey == '선두권') =>
+        'standings_leader',
+      _
+          when filter == _NewsFilter.standings &&
+              normalizedLabelKey == '순위권 구도' =>
+        'standings_race',
+      _ => normalizedLabelKey,
+    };
+    return '${filter.name}:$normalizedStoryKind:$collectionTopic';
+  }
+
+  final searchable = '$normalizedLabel $normalizedTitle'.toLowerCase();
+  final semanticTopic = switch (true) {
+    _
+        when searchable.contains('홈런') ||
+            searchable.contains('홈런왕') ||
+            searchable.contains('home run') ||
+            RegExp(r'\bhr\b').hasMatch(searchable) =>
+      'home_run',
+    _
+        when searchable.contains('타율') ||
+            searchable.contains('타격') ||
+            searchable.contains('batting average') ||
+            RegExp(r'\bavg\b').hasMatch(searchable) =>
+      'batting_average',
+    _
+        when searchable.contains('era') ||
+            searchable.contains('평균자책') ||
+            searchable.contains('방어율') =>
+      'era',
+    _ when searchable.contains('실책') || searchable.contains('수비') => 'defense',
+    _ when searchable.contains('승수 페이스') => 'win_pace',
+    _
+        when searchable.contains('연승') ||
+            searchable.contains('연패') ||
+            searchable.contains('특이 흐름') =>
+      'streak',
+    _
+        when filter == _NewsFilter.standings &&
+            (searchable.contains('선두') ||
+                searchable.contains('선두권') ||
+                searchable.contains('순위 압축')) =>
+      'standings_leader',
+    _ when filter == _NewsFilter.standings && searchable.contains('순위권 구도') =>
+      'standings_race',
+    _
+        when searchable.contains('기록 달성') ||
+            RegExp(r'\d+\s*(루타|안타|승|세이브|홀드)\s*달성').hasMatch(searchable) =>
+      'milestone',
+    _ =>
+      normalizedLabel.isEmpty
+          ? normalizedStoryKind
+          : '$normalizedStoryKind:$normalizedLabel',
+  };
+  // Keep a stable category for entity facts while retaining the metric/topic
+  // distinction. Collection routes use the same semantic topic as well, so a
+  // generated summary and its source row can collapse without hiding a
+  // different metric for the same team/player.
+  if (isPlayerEntity) {
+    return '${filter.name}:$semanticTopic';
+  }
+  if (isGameEntity) {
+    return '${filter.name}:$normalizedStoryKind:$normalizedLabelKey';
+  }
+  if (isTeamOrLeaderboardEntity) {
+    return '${filter.name}:$normalizedStoryKind:$semanticTopic';
+  }
+  return '${filter.name}:$normalizedStoryKind:$normalizedLabelKey';
 }
 
 String _labelForStoryKind(String kind) {

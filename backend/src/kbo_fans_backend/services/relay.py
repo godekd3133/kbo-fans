@@ -8,9 +8,13 @@ from kbo_fans_backend.services.push import KBO_TEAM_NAMES, KBO_TEAM_SHORT_NAMES
 from kbo_fans_backend.services.scoreboard import ScoreboardService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.singleflight import SingleFlight
+from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 
 class RelayService:
+    _RELAY_CACHE_TTL_SECONDS = 2
+
     def __init__(
         self,
         relay_crawler: Optional[RelayCrawler] = None,
@@ -20,8 +24,32 @@ class RelayService:
         self.relay_crawler = relay_crawler or RelayCrawler()
         self.scoreboard_service = scoreboard_service or ScoreboardService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
+        self._relay_cache: TtlCache[str, dict[str, Any]] = TtlCache(self._RELAY_CACHE_TTL_SECONDS)
+        self._singleflight: SingleFlight[str] = SingleFlight()
 
     def get_relay(
+        self,
+        game_id: str,
+        after: Optional[int] = None,
+        force_refresh: bool = False,
+    ) -> dict[str, Any]:
+        if not force_refresh:
+            cached = self._relay_cache.get(game_id)
+            if cached is not None:
+                return self._after(cached, after)
+
+        payload = self._singleflight.call(
+            f"{game_id}:{'force' if force_refresh else 'cached'}",
+            lambda: self._get_relay_uncached(
+                game_id,
+                after=None,
+                force_refresh=force_refresh,
+            ),
+        )
+        self._relay_cache.set(game_id, payload)
+        return self._after(payload, after)
+
+    def _get_relay_uncached(
         self,
         game_id: str,
         after: Optional[int] = None,
@@ -82,10 +110,7 @@ class RelayService:
                 self.snapshot_store.save("relay", game_id, payload)
             return payload
         except Exception:
-            if (
-                self._is_past_game_id(game_id)
-                and self._has_detailed_snapshot(game_id, snapshot)
-            ):
+            if self._is_past_game_id(game_id) and self._has_detailed_snapshot(game_id, snapshot):
                 snapshot = self._without_current_at_bat(snapshot)
                 if after is not None:
                     snapshot = {
@@ -108,6 +133,17 @@ class RelayService:
             "relayItems": relay_items,
         }
         return payload
+
+    @staticmethod
+    def _after(payload: dict[str, Any], after: Optional[int]) -> dict[str, Any]:
+        if after is None:
+            return payload
+        return {
+            **payload,
+            "relayItems": [
+                item for item in payload.get("relayItems", []) if item.get("seqNo", 0) > after
+            ],
+        }
 
     def _build_summary_items(self, game: dict[str, Any]) -> list[dict[str, Any]]:
         away = game.get("away", {})
@@ -211,9 +247,7 @@ class RelayService:
     @staticmethod
     def _is_past_game_id(game_id: str) -> bool:
         try:
-            game_date = date_type.fromisoformat(
-                f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}"
-            )
+            game_date = date_type.fromisoformat(f"{game_id[:4]}-{game_id[4:6]}-{game_id[6:8]}")
         except (TypeError, ValueError):
             return False
         return game_date < current_kbo_date()

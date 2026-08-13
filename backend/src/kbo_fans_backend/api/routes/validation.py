@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Optional
 
 from fastapi import HTTPException
 
 MIN_SUPPORTED_KBO_YEAR = 1900
 MAX_SUPPORTED_KBO_YEAR = 2100
+KBO_TEAM_IDS = frozenset(("LG", "KT", "SK", "SS", "NC", "HH", "LT", "HT", "OB", "WO"))
 
 
 def ensure_supported_kbo_date(value: date) -> date:
@@ -19,3 +21,12 @@ def ensure_supported_kbo_month(month: str) -> str:
     if not MIN_SUPPORTED_KBO_YEAR <= year <= MAX_SUPPORTED_KBO_YEAR:
         raise HTTPException(status_code=422, detail="지원하지 않는 KBO 월입니다")
     return month
+
+
+def normalize_optional_kbo_team_id(team_id: Optional[str]) -> Optional[str]:
+    if team_id is None:
+        return None
+    normalized = team_id.upper()
+    if normalized not in KBO_TEAM_IDS:
+        raise HTTPException(status_code=422, detail="유효하지 않은 팀 ID입니다")
+    return normalized

@@ -150,6 +150,19 @@ void main() {
     ]);
   });
 
+  test('시즌 일정 월 요청은 전체 deadline 뒤 명시적으로 실패한다', () async {
+    final pending = Completer<List<ScheduleDay>>();
+
+    await expectLater(
+      loadKboSeasonScheduleBounded(
+        yearMonths: kboScheduleSeasonMonths(2026),
+        overallDeadline: const Duration(milliseconds: 20),
+        loadMonth: (_) => pending.future,
+      ),
+      throwsA(isA<TimeoutException>()),
+    );
+  });
+
   test('시즌 일정은 월별 schedule provider seam을 유지한다', () async {
     final requestedMonths = <String>[];
     final container = ProviderContainer(

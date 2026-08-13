@@ -35,7 +35,7 @@ class ScheduleService:
 
         snapshot_record = self.snapshot_store.load("schedule", month)
         snapshot = snapshot_record.get("payload") if snapshot_record is not None else None
-        if self._is_historical_month(month) and self._is_consistent_snapshot(month, snapshot):
+        if self._is_reusable_historical_snapshot(month, snapshot):
             self._cache.set(month, snapshot)
             return snapshot
 
@@ -125,9 +125,37 @@ class ScheduleService:
         month: str,
         snapshot: Optional[dict[str, Any]],
     ) -> bool:
+        return self._is_reusable_historical_snapshot(month, snapshot)
+
+    def _is_reusable_historical_snapshot(
+        self,
+        month: str,
+        snapshot: Optional[dict[str, Any]],
+    ) -> bool:
+        if not self._is_historical_month(month):
+            return False
         if not self._is_consistent_snapshot(month, snapshot):
             return False
-        return self._is_historical_month(month)
+        games = [
+            game
+            for day in snapshot.get("days", [])
+            for game in day.get("games", [])
+        ]
+        return bool(games) and all(self._is_reusable_historical_game(game) for game in games)
+
+    @staticmethod
+    def _is_reusable_historical_game(game: dict[str, Any]) -> bool:
+        status = str(game.get("status") or "").upper()
+        if status == "CANCELLED":
+            return True
+        if status != "FINAL":
+            return False
+        return all(
+            isinstance(game.get(field), int)
+            and not isinstance(game.get(field), bool)
+            and game[field] >= 0
+            for field in ("awayScore", "homeScore")
+        )
 
     @staticmethod
     def _is_consistent_snapshot(month: str, snapshot: Optional[dict[str, Any]]) -> bool:
@@ -142,8 +170,17 @@ class ScheduleService:
             date = day.get("date")
             if not isinstance(date, str) or not date.startswith(f"{month}-"):
                 return False
-            if not isinstance(day.get("games"), list):
+            games = day.get("games")
+            if not isinstance(games, list):
                 return False
+            for game in games:
+                if not isinstance(game, dict):
+                    return False
+                game_id = game.get("gameId")
+                if not isinstance(game_id, str) or not game_id.startswith(
+                    date.replace("-", "")
+                ):
+                    return False
         return True
 
     def _enrich_current_day_with_main_games(self, payload: dict[str, Any]) -> dict[str, Any]:

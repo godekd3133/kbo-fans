@@ -1,3 +1,5 @@
+import concurrent.futures
+import threading
 from pathlib import Path
 
 import pytest
@@ -28,6 +30,20 @@ class _StubRelayCrawler:
 
     def get_relay(self, game_id: str):
         return self._payload
+
+
+class _BlockingRelayCrawler(_StubRelayCrawler):
+    def __init__(self, payload):
+        super().__init__(payload)
+        self.calls = 0
+        self.started = threading.Event()
+        self.release = threading.Event()
+
+    def get_relay(self, game_id: str):
+        self.calls += 1
+        self.started.set()
+        assert self.release.wait(timeout=2)
+        return super().get_relay(game_id)
 
 
 def test_relay_service_builds_summary_items_for_final_game(tmp_path: Path) -> None:
@@ -61,6 +77,50 @@ def test_relay_service_builds_summary_items_for_final_game(tmp_path: Path) -> No
     assert relay["relayItems"][3]["text"] == "7회초 롯데 4득점"
     assert relay["relayItems"][4]["text"] == "7회말 삼성 1득점"
     assert relay["relayItems"][-1]["event"] == "GAME_END"
+
+
+def test_concurrent_live_relay_requests_share_one_crawl(tmp_path: Path) -> None:
+    game_id = "29990331KTLG0"
+    crawler = _BlockingRelayCrawler(
+        {
+            "gameId": game_id,
+            "currentAtBat": None,
+            "relayItems": [
+                {
+                    "seqNo": 1,
+                    "inning": 1,
+                    "half": "top",
+                    "event": "HIT",
+                    "isScoring": False,
+                    "text": "안타",
+                    "pitchSequence": None,
+                }
+            ],
+        }
+    )
+    service = RelayService(
+        relay_crawler=crawler,
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "LIVE",
+                "away": {},
+                "home": {},
+            }
+        ),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(service.get_relay, game_id)
+        assert crawler.started.wait(timeout=1)
+        second = executor.submit(service.get_relay, game_id, 0)
+        crawler.release.set()
+        assert first.result(timeout=1) == second.result(timeout=1)
+
+    assert crawler.calls == 1
+    assert service.get_relay(game_id, after=1)["relayItems"] == []
+    assert crawler.calls == 1
 
 
 def test_relay_service_ignores_malformed_historical_snapshot(tmp_path: Path) -> None:
@@ -473,8 +533,7 @@ def test_relay_service_does_not_use_snapshot_for_current_unknown_game(tmp_path: 
 
     assert relay["gameId"] == game_id
     assert all(
-        item.get("text") != "현재 경기의 오래된 snapshot 안타"
-        for item in relay["relayItems"]
+        item.get("text") != "현재 경기의 오래된 snapshot 안타" for item in relay["relayItems"]
     )
 
 

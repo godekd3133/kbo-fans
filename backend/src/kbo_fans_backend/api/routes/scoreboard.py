@@ -6,7 +6,10 @@ from typing import Optional
 
 from fastapi import APIRouter, Header, Query
 
-from kbo_fans_backend.api.routes.validation import ensure_supported_kbo_date
+from kbo_fans_backend.api.routes.validation import (
+    ensure_supported_kbo_date,
+    normalize_optional_kbo_team_id,
+)
 from kbo_fans_backend.api.runtime_services import scoreboard_service as service
 from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.schemas.common import ApiEnvelope
@@ -72,9 +75,19 @@ def get_home_scoreboard(
 @router.get("/scoreboard/compact", response_model=ApiEnvelope[dict])
 def get_compact_scoreboard(
     date: Optional[date_type] = None,
-    myTeam: Optional[str] = Query(default=None),
+    myTeam: Optional[str] = Query(
+        default=None,
+        min_length=2,
+        max_length=2,
+        pattern=r"^[A-Za-z]{2}$",
+    ),
 ) -> ApiEnvelope[dict]:
     if date is not None:
         ensure_supported_kbo_date(date)
     target_date = date.isoformat() if date is not None else current_kbo_date_string()
-    return ApiEnvelope.success_response(service.get_compact_scoreboard(target_date, my_team=myTeam))
+    return ApiEnvelope.success_response(
+        service.get_compact_scoreboard(
+            target_date,
+            my_team=normalize_optional_kbo_team_id(myTeam),
+        )
+    )

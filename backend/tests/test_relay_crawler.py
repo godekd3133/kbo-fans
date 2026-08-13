@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 
 from kbo_fans_backend.crawlers.relay import RelayCrawler
+from kbo_fans_backend.utils.resilience import UpstreamBusyError
 
 
 def test_parse_current_at_bat_from_live_text_view() -> None:
@@ -43,16 +44,16 @@ def test_parse_current_at_bat_from_live_text_view() -> None:
     current_at_bat = RelayCrawler()._parse_current_at_bat(html)
 
     assert current_at_bat == {
-            "batter": {
-                "name": "김지찬",
-                "number": 58,
-                "hand": "좌타",
-                "recent": "땅볼|4구|2루타|",
-                "average": "",
-                "todayAtBats": 2,
-                "todayHits": 1,
-                "imageUrl": "https://www.koreabaseball.com/batter.jpg",
-            },
+        "batter": {
+            "name": "김지찬",
+            "number": 58,
+            "hand": "좌타",
+            "recent": "땅볼|4구|2루타|",
+            "average": "",
+            "todayAtBats": 2,
+            "todayHits": 1,
+            "imageUrl": "https://www.koreabaseball.com/batter.jpg",
+        },
         "pitcher": {
             "name": "김원중",
             "number": 34,
@@ -115,16 +116,16 @@ def test_parse_current_at_bat_uses_top_half_player_boxes_and_stats() -> None:
     current_at_bat = RelayCrawler()._parse_current_at_bat(html)
 
     assert current_at_bat == {
-            "batter": {
-                "name": "디아즈",
-                "number": 61,
-                "hand": "좌타",
-                "recent": "땅볼|4구|2루타|",
-                "average": "0.245",
-                "todayAtBats": 2,
-                "todayHits": 1,
-                "imageUrl": "",
-            },
+        "batter": {
+            "name": "디아즈",
+            "number": 61,
+            "hand": "좌타",
+            "recent": "땅볼|4구|2루타|",
+            "average": "0.245",
+            "todayAtBats": 2,
+            "todayHits": 1,
+            "imageUrl": "",
+        },
         "pitcher": {
             "name": "박준영",
             "number": 68,
@@ -246,6 +247,34 @@ def test_concurrent_relay_fetches_do_not_share_session_operations() -> None:
         second.result(timeout=2)
 
     assert max_active_session_operations == 1
+
+
+def test_relay_waiter_does_not_queue_past_lock_deadline() -> None:
+    crawler = RelayCrawler(lock_wait_timeout_seconds=0.03)
+    entered = threading.Event()
+    release = threading.Event()
+    session_calls = 0
+
+    def blocking_session(game_id: str) -> dict:
+        nonlocal session_calls
+        session_calls += 1
+        entered.set()
+        assert release.wait(timeout=2)
+        return {"gameId": game_id, "currentAtBat": None, "relayItems": []}
+
+    crawler._get_relay_with_session = blocking_session
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        leader = executor.submit(crawler.get_relay, "20260719KTLG0")
+        assert entered.wait(timeout=1)
+        try:
+            with pytest.raises(UpstreamBusyError, match="relay session is busy"):
+                crawler.get_relay("20260719SSHH0")
+        finally:
+            release.set()
+        assert leader.result(timeout=1)["gameId"] == "20260719KTLG0"
+
+    assert session_calls == 1
 
 
 def test_relay_fetch_retries_then_rejects_empty_relay_shell() -> None:

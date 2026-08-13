@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/team_data.dart';
@@ -15,6 +16,7 @@ import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/api/api_client.dart';
 import '../../data/models/schedule.dart';
 import '../../data/providers.dart';
+import '../records/records_area_switcher.dart';
 
 const _largeTextStandingsScale = 1.4;
 
@@ -64,7 +66,9 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
   Widget build(BuildContext context) {
     final myTeamId = ref.watch(myTeamProvider);
     final standingsAsync = ref.watch(standingsProvider(_selectedSeason));
-    final useCompactTitle = MediaQuery.sizeOf(context).width <= 300;
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final useCompactTitle = viewportWidth <= 300;
+    final showRecordsAreaSwitcher = viewportWidth < 700;
     final useLargeText =
         MediaQuery.textScalerOf(context).scale(1) >= _largeTextStandingsScale;
 
@@ -131,6 +135,22 @@ class _StandingsScreenState extends ConsumerState<StandingsScreen> {
                       ),
               ),
               const SizedBox(height: 6),
+              if (showRecordsAreaSwitcher) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: RecordsAreaSwitcher(
+                    selected: RecordsAreaSection.standings,
+                    onSelected: GoRouter.maybeOf(context) == null
+                        ? null
+                        : (section) {
+                            if (section == RecordsAreaSection.records) {
+                              context.go('/records');
+                            }
+                          },
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
               Expanded(
                 child: AppMotionSwitcher(
                   child: standingsAsync.when(
