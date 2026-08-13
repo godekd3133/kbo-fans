@@ -17,11 +17,12 @@
 - [x] backend 전체 `python3 -m pytest -q`: `588 passed`, FastAPI/httpx deprecation warning 1건.
 - [x] backend Ruff, Python `compileall`, `git diff --check` 통과.
 - [x] 운영 release API health gate 통과: health, scoreboard home, relay, home, schedule, standings, records overview.
-- [ ] 현재 변경만 선별 stage 후 `main` commit/push.
-- [ ] pushed SHA clean worktree에서 `0.1.26+94` release IPA archive/export, 서명 검증, `altool --validate-app`.
-- [ ] App Store Connect upload 및 processing `VALID` 확인.
-- [ ] 내부 `Tester` 접근과 외부 `External Testers` build 94 연결 확인.
-- [ ] build 94 Beta App Review submission 상태 확인. 승인 전까지 build 93은 유지.
+- [x] 현재 변경만 선별 stage 후 `main` commit/push 완료: commit `a9f764b0`, `origin/main`에 push.
+- [x] pushed SHA `a9f764b0` clean worktree에서 `0.1.26+94` release IPA archive/export 완료: `/tmp/kbo-fans-release-a9f764b0/app/build/ios/ipa/kbo_fans.ipa`; 앱·Widget Apple Distribution 서명 검증, `altool --validate-app` `VERIFY SUCCEEDED`, SHA-256 `7026e9b8cb988b0b2f98ce92b1fe9732cf568318e4b38c1f384efe10857aadfe`.
+- [x] App Store Connect upload 완료: delivery UUID `72f58d3e-8c52-4d17-af19-9050b18811b7`; build `94` `PROCESSING` 후 `VALID` 확인.
+- [x] 내부 `Tester` 접근 확인: `hasAccessToAllBuilds=true`, 그룹 builds에서 build 94 `VALID`, tester 1명 상태는 기존 계정의 `INSTALLED`로 확인.
+- [x] 외부 `External Testers` 연결 완료: relationship POST `204`, 그룹 builds에서 build 94와 기존 build 93이 모두 `VALID`; build 93은 제거하지 않았다.
+- [x] build 94 Beta App Review submission 생성: POST `201`, `betaReviewState=WAITING_FOR_REVIEW`, submitted `2026-08-12T22:37:08-07:00`; 승인 전까지 기존 build 93을 유지한다.
 - [ ] 실제 내부·외부 tester 기기 설치/업데이트 여부는 App Store Connect 상태와 별도 확인.
 
 ## 2026-08-13: 앱·AWS 데이터 무한대기 근본 방어
