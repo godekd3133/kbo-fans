@@ -14,6 +14,7 @@
 
 - [x] Flutter `fvm flutter analyze`: `No issues found`.
 - [x] Flutter 전체 `fvm flutter test`: `528 passed`.
+- [x] 버전 메타데이터 정렬 후 `fvm flutter test test/features/settings/release_notes_prompt_test.dart`: `6 passed`; 이 test-only 수정은 IPA 빌드 이후 반영되어 IPA 내용에는 영향을 주지 않는다.
 - [x] backend 전체 `python3 -m pytest -q`: `588 passed`, FastAPI/httpx deprecation warning 1건.
 - [x] backend Ruff, Python `compileall`, `git diff --check` 통과.
 - [x] 운영 release API health gate 통과: health, scoreboard home, relay, home, schedule, standings, records overview.
