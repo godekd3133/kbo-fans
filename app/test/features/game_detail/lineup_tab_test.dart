@@ -159,11 +159,13 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    var lineupCalls = 0;
     await tester.pumpWidget(
       ProviderScope(
         retry: (_, _) => null,
         overrides: [
           gameLineupProvider.overrideWith((ref, gameId) async {
+            lineupCalls += 1;
             return const GameLineupData(
               gameId: '20260612SKLG0',
               away: TeamLineupData(teamId: 'SK', lineup: []),
@@ -180,6 +182,7 @@ void main() {
             body: LineupTab(
               gameId: '20260612SKLG0',
               gameStatus: GameStatus.scheduled,
+              lineupOpened: false,
               awayName: 'SSG',
               homeName: 'LG',
               awayTeamId: 'SK',
@@ -195,6 +198,7 @@ void main() {
 
     expect(find.text('경기 시작 후 라인업이 공개됩니다'), findsNothing);
     expect(find.text('라인업 공개 전입니다'), findsOneWidget);
+    expect(lineupCalls, 0);
   });
 
   testWidgets('라인업 timeout은 거짓 자동 갱신 없이 큰 글씨 재시도 상태를 보여준다', (tester) async {

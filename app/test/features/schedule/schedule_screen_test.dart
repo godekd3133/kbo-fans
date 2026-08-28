@@ -17,6 +17,7 @@ import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/models/ticketing.dart';
 import 'package:kbo_fans/data/providers.dart';
+import 'package:kbo_fans/features/game_detail/game_detail_screen.dart';
 import 'package:kbo_fans/features/schedule/schedule_screen.dart';
 
 void main() {
@@ -815,6 +816,85 @@ void main() {
     expect(lineupCompleter.isCompleted, isFalse);
     expect(relayCompleter.isCompleted, isFalse);
     expect(lineupCompleter.isCompleted, isFalse);
+  });
+
+  testWidgets('일정 상세는 실제 화면에서도 일정 요약을 먼저 보여준다', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final today = kboCivilDateTime();
+    final yearMonth = '${today.year}-${today.month.toString().padLeft(2, '0')}';
+    const gameId = '20260701SSLG0';
+    final detailCompleter = Completer<Game?>();
+    final router = GoRouter(
+      initialLocation: '/schedule',
+      routes: [
+        GoRoute(
+          path: '/schedule',
+          builder: (context, state) => const ScheduleScreen(),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (context, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: state.extra is Game ? state.extra as Game : null,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          scheduleProvider.overrideWith(
+            (_, month) async => month == yearMonth
+                ? _singleScheduleGameForDate(
+                    today,
+                    const ScheduleGame(
+                      gameId: gameId,
+                      time: '18:30',
+                      awayId: 'SS',
+                      awayName: '삼성',
+                      homeId: 'LG',
+                      homeName: 'LG',
+                      stadium: '잠실',
+                      status: 'SCHEDULED',
+                    ),
+                  )
+                : const <ScheduleDay>[],
+          ),
+          gameProvider.overrideWith((ref, requestedGameId) {
+            return detailCompleter.future;
+          }),
+          gameLineupProvider.overrideWith(
+            (ref, requestedGameId) async => const GameLineupData(
+              gameId: gameId,
+              away: TeamLineupData(teamId: 'SS', lineup: []),
+              home: TeamLineupData(teamId: 'LG', lineup: []),
+            ),
+          ),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    final row = find.byKey(const ValueKey('schedule-game-$gameId'));
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.byKey(const ValueKey('game-detail-loading')), findsNothing);
+    expect(find.text('삼성'), findsWidgets);
+    expect(find.text('LG'), findsWidgets);
+    expect(detailCompleter.isCompleted, isFalse);
+
+    detailCompleter.complete(null);
   });
 }
 

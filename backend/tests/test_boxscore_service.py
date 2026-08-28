@@ -1,3 +1,5 @@
+import concurrent.futures
+import threading
 from copy import deepcopy
 from datetime import timedelta
 
@@ -154,6 +156,112 @@ def test_current_live_ignores_official_snapshot_and_rejects_partial_crawler_payl
     assert payload["unavailableReason"] == "official_partial"
     assert payload["away"]["batters"] == []
     assert snapshot_store.load_payload("boxscore", game_id)["officialAvailable"] is True
+
+
+def test_current_official_boxscore_does_not_wait_for_optional_player_enrichment(
+    tmp_path,
+) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}KTLG0"
+
+    class CountingPlayerStatsService:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_team_players(self, team_id: str, season: int):
+            self.calls += 1
+            return {
+                "teamId": team_id,
+                "season": season,
+                "players": [
+                    {
+                        "id": "50054",
+                        "name": "A",
+                        "imageUrl": "https://img.test/2026/50054.jpg",
+                    }
+                ],
+            }
+
+    player_stats = CountingPlayerStatsService()
+    service = BoxscoreService(
+        crawler=_StubBoxscoreCrawler({game_id: _official_payload(game_id)}),
+        schedule_service=_StubScheduleService({game_id: "LIVE"}),
+        player_stats_service=player_stats,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_boxscore(game_id)
+
+    assert payload["availability"] == "official"
+    assert payload["officialAvailable"] is True
+    assert payload["away"]["batters"][0]["name"] == "A"
+    assert "playerId" not in payload["away"]["batters"][0]
+    assert player_stats.calls == 0
+
+
+def test_historical_official_boxscore_does_not_block_on_optional_player_enrichment(
+    tmp_path,
+) -> None:
+    target_date = current_kbo_date() - timedelta(days=1)
+    game_id = f"{target_date:%Y%m%d}KTLG0"
+
+    class BlockingPlayerStatsService:
+        def __init__(self) -> None:
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def get_team_players(self, team_id: str, season: int):
+            self.started.set()
+            assert self.release.wait(timeout=2)
+            return {"teamId": team_id, "season": season, "players": []}
+
+    player_stats = BlockingPlayerStatsService()
+    service = BoxscoreService(
+        crawler=_StubBoxscoreCrawler({game_id: _official_payload(game_id)}),
+        schedule_service=_StubScheduleService({game_id: "FINAL"}),
+        player_stats_service=player_stats,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        request = executor.submit(service.get_boxscore, game_id)
+        assert player_stats.started.wait(timeout=1)
+        try:
+            payload = request.result(timeout=1)
+        finally:
+            player_stats.release.set()
+
+    assert payload["availability"] == "official"
+    assert payload["officialAvailable"] is True
+
+
+def test_current_live_context_does_not_wait_for_optional_player_enrichment(
+    tmp_path,
+) -> None:
+    today = current_kbo_date()
+    game_id = f"{today:%Y%m%d}OBLG0"
+
+    class CountingPlayerStatsService:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_team_players(self, team_id: str, season: int):
+            self.calls += 1
+            return {"teamId": team_id, "season": season, "players": []}
+
+    player_stats = CountingPlayerStatsService()
+    service = BoxscoreService(
+        crawler=_StubBoxscoreCrawler({game_id: _live_context_payload(game_id)}),
+        schedule_service=_StubScheduleService({game_id: "LIVE"}),
+        player_stats_service=player_stats,
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+    )
+
+    payload = service.get_boxscore(game_id)
+
+    assert payload["availability"] == "live_context"
+    assert payload["liveContextAvailable"] is True
+    assert player_stats.calls == 0
 
 
 def test_past_suspended_game_ignores_snapshot_and_adjacent_final(tmp_path) -> None:

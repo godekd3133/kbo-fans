@@ -25,6 +25,7 @@ import '../../../data/providers.dart';
 class LineupTab extends ConsumerStatefulWidget {
   final String gameId;
   final GameStatus gameStatus;
+  final bool? lineupOpened;
   final String awayName;
   final String homeName;
   final String awayTeamId;
@@ -35,6 +36,7 @@ class LineupTab extends ConsumerStatefulWidget {
     super.key,
     required this.gameId,
     required this.gameStatus,
+    this.lineupOpened,
     this.awayName = '원정',
     this.homeName = '홈',
     this.awayTeamId = '',
@@ -62,6 +64,9 @@ class _LineupTabState extends ConsumerState<LineupTab> {
     final colors = AppTheme.colorsOf(context);
     if (gameStatus == GameStatus.cancelled) {
       return _buildUnavailableState('취소된 경기는 라인업이 없습니다');
+    }
+    if (gameStatus == GameStatus.scheduled && widget.lineupOpened == false) {
+      return _buildUnavailableState('라인업 공개 전입니다');
     }
 
     final gameLineupAsync = ref.watch(gameLineupProvider(gameId));

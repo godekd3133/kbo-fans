@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import threading
 from datetime import date as date_type
 from typing import Any, Optional
 
@@ -11,9 +13,12 @@ from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.singleflight import SingleFlight
 from kbo_fans_backend.utils.ttl_cache import TtlCache
 
+logger = logging.getLogger(__name__)
+
 
 class RelayService:
     _RELAY_CACHE_TTL_SECONDS = 2
+    _HISTORICAL_RELAY_INLINE_BUDGET_SECONDS = 0.75
 
     def __init__(
         self,
@@ -46,7 +51,9 @@ class RelayService:
                 force_refresh=force_refresh,
             ),
         )
-        self._relay_cache.set(game_id, payload)
+        cached_after_fetch = self._relay_cache.get(game_id)
+        if cached_after_fetch is None or not self._has_full_relay_payload(cached_after_fetch):
+            self._relay_cache.set(game_id, payload)
         return self._after(payload, after)
 
     def _get_relay_uncached(
@@ -78,37 +85,26 @@ class RelayService:
             return snapshot
 
         if game_status in {"SCHEDULED", "CANCELLED", "SUSPENDED"}:
-            relay_items = self._build_summary_items(game)
-            if after is not None:
-                relay_items = [item for item in relay_items if item["seqNo"] > after]
-            payload = {
-                "gameId": game_id,
-                "currentAtBat": None,
-                "relayItems": relay_items,
-            }
-            return payload
+            return self._summary_payload(game_id, game, after=after)
+
+        if (
+            self._is_past_game_id(game_id)
+            and game_status == "FINAL"
+            and not self._has_detailed_snapshot(game_id, snapshot)
+        ):
+            warmed = self._get_historical_relay_with_budget(
+                game_id,
+                game,
+                game_status,
+            )
+            if warmed is None:
+                return self._summary_payload(game_id, game, after=after)
+            return self._after(warmed, after)
 
         try:
             relay = self.relay_crawler.get_relay(game_id)
-            relay_items = relay["relayItems"]
-            current_at_bat = relay.get("currentAtBat")
-
-            if game is not None:
-                if game_status != "LIVE":
-                    current_at_bat = None
-                elif current_at_bat is None:
-                    current_at_bat = self._build_current_at_bat(game)
-
-            if after is not None:
-                relay_items = [item for item in relay_items if item["seqNo"] > after]
-            payload = {
-                "gameId": game_id,
-                "currentAtBat": current_at_bat,
-                "relayItems": relay_items,
-            }
-            if game_status == "FINAL":
-                self.snapshot_store.save("relay", game_id, payload)
-            return payload
+            payload = self._payload_from_crawler(game_id, game, game_status, relay)
+            return self._after(payload, after)
         except Exception:
             if self._is_past_game_id(game_id) and self._has_detailed_snapshot(game_id, snapshot):
                 snapshot = self._without_current_at_bat(snapshot)
@@ -123,16 +119,89 @@ class RelayService:
             if game_status == "LIVE" or game is None:
                 raise
 
-        relay_items = self._build_summary_items(game)
-        if after is not None:
-            relay_items = [item for item in relay_items if item["seqNo"] > after]
+        return self._summary_payload(
+            game_id,
+            game,
+            current_at_bat=self._build_current_at_bat(game),
+            after=after,
+        )
+
+    def _get_historical_relay_with_budget(
+        self,
+        game_id: str,
+        game: Optional[dict[str, Any]],
+        game_status: Optional[str],
+    ) -> Optional[dict[str, Any]]:
+        result: dict[str, Any] = {}
+        completed = threading.Event()
+
+        def fetch_and_cache() -> None:
+            try:
+                relay = self.relay_crawler.get_relay(game_id)
+                payload = self._payload_from_crawler(game_id, game, game_status, relay)
+                self._relay_cache.set(game_id, payload)
+                result["payload"] = payload
+            except Exception as error:
+                result["error"] = error
+            finally:
+                completed.set()
+
+        thread = threading.Thread(
+            target=fetch_and_cache,
+            name=f"historical-relay-{game_id}",
+            daemon=True,
+        )
+        thread.start()
+        if not completed.wait(timeout=self._HISTORICAL_RELAY_INLINE_BUDGET_SECONDS):
+            logger.info(
+                "Historical relay detail deferred after %.2fs for %s",
+                self._HISTORICAL_RELAY_INLINE_BUDGET_SECONDS,
+                game_id,
+            )
+            return None
+        return result.get("payload")
+
+    def _payload_from_crawler(
+        self,
+        game_id: str,
+        game: Optional[dict[str, Any]],
+        game_status: Optional[str],
+        relay: dict[str, Any],
+    ) -> dict[str, Any]:
+        relay_items = relay["relayItems"]
+        current_at_bat = relay.get("currentAtBat")
+
+        if game is not None:
+            if game_status != "LIVE":
+                current_at_bat = None
+            elif current_at_bat is None:
+                current_at_bat = self._build_current_at_bat(game)
 
         payload = {
             "gameId": game_id,
-            "currentAtBat": self._build_current_at_bat(game),
+            "currentAtBat": current_at_bat,
             "relayItems": relay_items,
         }
+        if game_status == "FINAL":
+            self.snapshot_store.save("relay", game_id, payload)
         return payload
+
+    def _summary_payload(
+        self,
+        game_id: str,
+        game: Optional[dict[str, Any]],
+        *,
+        current_at_bat: Optional[dict[str, Any]] = None,
+        after: Optional[int] = None,
+    ) -> dict[str, Any]:
+        relay_items = self._build_summary_items(game)
+        if after is not None:
+            relay_items = [item for item in relay_items if item["seqNo"] > after]
+        return {
+            "gameId": game_id,
+            "currentAtBat": current_at_bat,
+            "relayItems": relay_items,
+        }
 
     @staticmethod
     def _after(payload: dict[str, Any], after: Optional[int]) -> dict[str, Any]:
@@ -273,6 +342,17 @@ class RelayService:
             if ":" in text or item.get("pitchSequence"):
                 return True
         return False
+
+    @staticmethod
+    def _has_full_relay_payload(payload: dict[str, Any]) -> bool:
+        items = payload.get("relayItems")
+        if not isinstance(items, list):
+            return False
+        return any(
+            isinstance(item, dict)
+            and item.get("event") not in {"RUNS", "GAME_END", "INNING_CHANGE"}
+            for item in items
+        )
 
     @staticmethod
     def _without_current_at_bat(payload: dict[str, Any]) -> dict[str, Any]:

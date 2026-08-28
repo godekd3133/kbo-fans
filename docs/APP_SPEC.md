@@ -323,7 +323,7 @@
 - 마이팀 오늘 경기가 live 상태이면 scoreboard의 현재 값만으로 `진행 중인 내 경기` 카드를 마이팀 브리프 바로 아래에 표시한다. 이 카드는 홈 첫 화면에서 별도 detail/relay fetch를 시작하지 않고, 탭하면 현재 `Game`으로 `/game/{gameId}?tab=relay&focus=relay`를 즉시 연다. `gameProvider(gameId)`와 relay 갱신은 route push 뒤 background에서 이어간다.
 - 홈에서 진행 중인 오늘 경기 행을 열면 경기 상세는 기본으로 `문자중계` 탭에서 시작한다.
 - 홈에서 경기 행이나 마이팀 오늘 경기 카드를 열면 이미 표시 중인 `Game`을 route `extra`로 넘겨 상세 화면을 즉시 push한다. 중복 tap만 navigation 완료까지 막고, `gameProvider(gameId)`와 선택 탭 provider 갱신은 진입 뒤 background에서 수행한다. 갱신 실패/timeout은 상세 진입을 되돌리지 않고 상세 화면의 기존 데이터·오류/재시도 계약으로 처리한다. 대량 선수사진 eager warm-up은 기본 경로에서 실행하지 않는다.
-- 일정 화면에서 경기 카드를 열 때도 표시 상태로 결정한 기본 탭과 `/game/{gameId}` route를 즉시 push한다. 단건 경기정보 갱신은 background에서 이어가며, 일정 카드가 live이면 갱신 실패와 무관하게 `tab=relay`를 유지한다. 대량 첫 탭/선수사진 warm-up은 navigation gate로 사용하지 않는다.
+- 일정 화면에서 경기 카드를 열 때도 표시 상태로 결정한 기본 탭과 `/game/{gameId}` route를 즉시 push한다. 일정 카드의 검증된 팀·상태·점수 요약은 `Game` preview로 route `extra`에 함께 전달해 단건 경기정보 API가 느려도 상세 상단과 첫 탭을 먼저 표시한다. 단건 최신 경기정보 갱신은 background에서 이어가며, 일정 카드가 live이면 갱신 실패와 무관하게 `tab=relay`를 유지한다. 대량 첫 탭/선수사진 warm-up은 navigation gate로 사용하지 않는다.
 
 **KBO 브리프 상태별 규칙**:
 | 상태 | 우선 노출 | 예시 |
@@ -616,7 +616,7 @@ GET /api/player/{playerId}?season=2026
 - LIVE 경기에서는 홈 scoreboard와 경기 상세 기본 탭은 8초, 문자중계 foreground 갱신은 5초 cadence로 맞춘다.
 - 경기 종료 시 → "경기가 종료되었습니다" 배너
 - LIVE 경기에서는 relay 원천 실패를 득점 요약이나 과거 snapshot 으로 대체하지 않고 실패/미지원 상태로 노출
-- 종료 경기라도 원문 relay 확보가 가능하면 득점 요약이 아니라 실제 play-by-play와 교체 로그를 우선 표시하고, 실패 시에만 summary fallback 사용. 단 `currentAtBat`은 non-LIVE 상태에서 항상 `null`로 취급해 B/S/O와 타자/투수 matchup을 지운다.
+- 종료 경기라도 원문 relay snapshot이 있거나 빠르게 확보되면 득점 요약이 아니라 실제 play-by-play와 교체 로그를 우선 표시한다. cold 원문 조회가 오래 걸리면 API는 득점 요약을 먼저 반환하고 백그라운드에서 상세 snapshot을 채운 뒤 다음 재조회부터 원문을 우선한다. 단 `currentAtBat`은 non-LIVE 상태에서 항상 `null`로 취급해 B/S/O와 타자/투수 matchup을 지운다.
 
 **데이터 바인딩**:
 ```
@@ -1382,6 +1382,8 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - backend current 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot 으로 정상 상태를 만들지 않는다. 과거 스코어보드·경기 snapshot은 모든 경기가 `FINAL`/`CANCELLED`일 때만 저장·재사용한다. 과거 `SUSPENDED`/예정/진행 상태는 공식 원천을 다시 조회하고, 앱도 scoreboard/home/compact/game의 non-terminal historical 응답을 30일 cache에 저장하거나 재사용하지 않는다. 과거 시즌·월의 안정 데이터 snapshot-first 정책은 유지한다.
 - backend 기록실 요약과 리더보드는 KBO 응답 row 순서에 의존하지 않고 rank 오름차순으로 정규화한 뒤 앱에 전달한다.
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다. 박스스코어의 adjacent game id fallback 은 검증된 과거 종료 경기 canonical id 보정에만 허용하고, current/live 공식 rows가 비어 있으면 `availability=official_unavailable` 또는 검증된 `live_context` 상태를 노출한다.
+- 경기 전 `lineupOpened=false`인 라인업 탭은 `gameLineupProvider`와 팀 선수 provider를 구독하지 않고 `라인업 공개 전` 상태를 즉시 표시한다. 공개된 current/live 라인업 응답은 기본 라인업·선발 정보를 선택적인 팀 선수/프로필 이미지 보강과 분리해 먼저 반환한다.
+- 공개된 current/live 박스스코어 응답도 공식 타자·투수 rows를 선택적인 팀 선수 ID/프로필 이미지 보강과 분리해 먼저 반환한다. 앱은 rows를 먼저 그리고 선수 metadata는 별도 provider로 보강한다. 과거 종료 snapshot의 metadata 보강은 유지한다.
 - live 경기의 공식 박스스코어 rows가 비어 있어도 KBO main list가 현재 타자/투수 context를 제공하면 `/game/{gameId}/boxscore`는 `officialAvailable=false`, `liveContextAvailable=true`, `source=live_context`를 반환할 수 있다. 이 payload는 snapshot으로 저장하지 않고 앱에서는 `실시간 기록 추적` 상태로 렌더링한다.
 - LIVE 경기 상세는 탭 전환 시 현재 보이는 탭의 최신 데이터를 즉시 갱신한다. 스코어 탭은 경기 상세, 문자중계 탭은 relay, 박스스코어 탭은 boxscore, 라인업 탭은 lineup provider를 타이머 tick 전에도 refresh한다.
 - 경기 상세 자동 갱신은 완료 시점 기준 one-shot timer로 재예약한다. 이미 loading/refreshing인 visible provider를 timer가 다시 invalidate하지 않으며, 자동 갱신 중 사용자가 pull-to-refresh를 요청하면 현재 요청 완료 뒤 force refresh를 정확히 한 번 더 실행한다. 일시적 relay refresh 실패에는 마지막 정상 문자중계를 유지한다.

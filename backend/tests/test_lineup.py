@@ -1,3 +1,5 @@
+import concurrent.futures
+import threading
 from datetime import date
 
 import pytest
@@ -69,6 +71,81 @@ class _StubPlayerStatsService:
 class _EmptyPlayerStatsService:
     def get_team_players(self, team_id: str, season: int):
         return {"teamId": team_id, "season": season, "players": []}
+
+
+def test_current_lineup_does_not_wait_for_optional_player_enrichment(tmp_path) -> None:
+    class CountingPlayerStatsService:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def get_team_players(self, team_id: str, season: int):
+            self.calls += 1
+            return {
+                "teamId": team_id,
+                "season": season,
+                "players": [
+                    {
+                        "id": "78224",
+                        "name": "홍창기",
+                        "imageUrl": "https://img.test/2026/78224.jpg",
+                    }
+                ],
+            }
+
+    player_stats = CountingPlayerStatsService()
+    service = LineupService(
+        lineup_crawler=_StubLineupCrawler(),
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+        player_stats_service=player_stats,
+        today_provider=lambda: date(2026, 8, 27),
+    )
+
+    payload = service.get_lineup("20260827LGOB0")
+
+    assert payload["away"]["lineup"] == [
+        {"order": 1, "position": "CF", "name": "홍창기"}
+    ]
+    assert payload["home"]["lineup"] == [
+        {"order": 1, "position": "SS", "name": "박준영"}
+    ]
+    assert player_stats.calls == 0
+
+
+def test_historical_lineup_does_not_block_on_optional_player_enrichment(tmp_path) -> None:
+    game_id = "20260827LGOB0"
+
+    class BlockingPlayerStatsService:
+        def __init__(self) -> None:
+            self.started = threading.Event()
+            self.release = threading.Event()
+
+        def get_team_players(self, team_id: str, season: int):
+            self.started.set()
+            assert self.release.wait(timeout=2)
+            return {"teamId": team_id, "season": season, "players": []}
+
+    player_stats = BlockingPlayerStatsService()
+    service = LineupService(
+        lineup_crawler=_StubLineupCrawler(),
+        boxscore_crawler=_StubBoxscoreCrawler(),
+        main_crawler=_StubMainCrawler(),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path)),
+        player_stats_service=player_stats,
+        today_provider=lambda: date(2026, 8, 28),
+    )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        request = executor.submit(service.get_lineup, game_id)
+        assert player_stats.started.wait(timeout=1)
+        try:
+            payload = request.result(timeout=1)
+        finally:
+            player_stats.release.set()
+
+    assert payload["away"]["lineup"][0]["name"] == "홍창기"
+    assert payload["home"]["lineup"][0]["name"] == "박준영"
 
 
 def test_lineup_starter_images_are_built_from_main_game(tmp_path) -> None:

@@ -79,9 +79,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
       color: AppColors.live,
       child: relayDataAsync.when(
         skipError: true,
-        loading: () => _buildRefreshPlaceholder(
-          CircularProgressIndicator(color: AppColors.live),
-        ),
+        loading: () => _buildFallbackContent(latestGame, isLoading: true),
         error: (_, _) => _buildUnavailableState(),
         data: (relayData) {
           final currentAtBat = _currentAtBatForGame(
@@ -339,7 +337,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     });
   }
 
-  Widget _buildFallbackContent(Game game) {
+  Widget _buildFallbackContent(Game game, {bool isLoading = false}) {
     return CustomScrollView(
       key: _scrollViewKey,
       controller: _scrollController,
@@ -357,6 +355,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             child: _RelayFallbackNotice(
               game: game,
               gameStatus: widget.gameStatus,
+              isLoading: isLoading,
             ),
           ),
         ),
@@ -897,16 +896,23 @@ String _teamStatSummary(TeamScore team) {
 class _RelayFallbackNotice extends StatelessWidget {
   final Game game;
   final GameStatus gameStatus;
+  final bool isLoading;
 
-  const _RelayFallbackNotice({required this.game, required this.gameStatus});
+  const _RelayFallbackNotice({
+    required this.game,
+    required this.gameStatus,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final message = switch (gameStatus) {
-      GameStatus.live => '공식 문자중계 원문은 아직 없지만 현재 점수와 팀 기록은 계속 반영됩니다',
-      GameStatus.final_ => '공식 문자중계 원문이 없어도 최종 스코어와 팀 기록은 확인할 수 있습니다',
-      _ => '문자중계 데이터가 아직 준비되지 않았습니다',
-    };
+    final message = isLoading
+        ? '문자중계 데이터를 불러오는 중입니다. 현재 점수와 팀 정보는 계속 표시됩니다'
+        : switch (gameStatus) {
+            GameStatus.live => '공식 문자중계 원문은 아직 없지만 현재 점수와 팀 기록은 계속 반영됩니다',
+            GameStatus.final_ => '공식 문자중계 원문이 없어도 최종 스코어와 팀 기록은 확인할 수 있습니다',
+            _ => '문자중계 데이터가 아직 준비되지 않았습니다',
+          };
 
     return Container(
       key: const ValueKey('relay-fallback-notice'),

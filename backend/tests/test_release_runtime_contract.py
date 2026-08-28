@@ -52,6 +52,9 @@ def test_lightsail_rolling_release_reads_new_seed_without_overwriting_runtime(
 
     deploy_script = _read("scripts/lightsail-deploy.sh")
     assert 'cp -a "$APP_DIR/current/backend/data/snapshots/."' not in deploy_script
+    assert "--preserve-env" in deploy_script
+    assert "--ssh-certificate" in deploy_script
+    assert "Remote backend env does not exist" in deploy_script
 
     runtime_dir = tmp_path / "runtime"
     release_seed_dir = tmp_path / "releases" / "next" / "backend" / "data" / "snapshots"

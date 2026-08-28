@@ -1,5 +1,6 @@
 import concurrent.futures
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -38,12 +39,16 @@ class _BlockingRelayCrawler(_StubRelayCrawler):
         self.calls = 0
         self.started = threading.Event()
         self.release = threading.Event()
+        self.completed = threading.Event()
 
     def get_relay(self, game_id: str):
         self.calls += 1
         self.started.set()
-        assert self.release.wait(timeout=2)
-        return super().get_relay(game_id)
+        try:
+            assert self.release.wait(timeout=2)
+            return super().get_relay(game_id)
+        finally:
+            self.completed.set()
 
 
 def test_relay_service_builds_summary_items_for_final_game(tmp_path: Path) -> None:
@@ -121,6 +126,60 @@ def test_concurrent_live_relay_requests_share_one_crawl(tmp_path: Path) -> None:
     assert crawler.calls == 1
     assert service.get_relay(game_id, after=1)["relayItems"] == []
     assert crawler.calls == 1
+
+
+def test_historical_final_relay_returns_summary_while_detail_warms(tmp_path: Path) -> None:
+    game_id = "20260329LTSS0"
+    crawler = _BlockingRelayCrawler(
+        {
+            "gameId": game_id,
+            "currentAtBat": None,
+            "relayItems": [
+                {
+                    "seqNo": 42,
+                    "inning": 7,
+                    "half": "top",
+                    "event": "HIT",
+                    "isScoring": False,
+                    "text": "상세 안타",
+                    "pitchSequence": "B-S-HIT",
+                }
+            ],
+        }
+    )
+    service = RelayService(
+        relay_crawler=crawler,
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "FINAL",
+                "away": {"shortName": "롯데", "score": 6, "scores": [0, 0, 0, 1]},
+                "home": {"shortName": "삼성", "score": 2, "scores": [0, 0, 0, 0]},
+            }
+        ),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        request = executor.submit(service.get_relay, game_id)
+        assert crawler.started.wait(timeout=1)
+        try:
+            relay = request.result(timeout=1.5)
+        finally:
+            crawler.release.set()
+
+    assert relay["relayItems"][-1]["event"] == "GAME_END"
+    assert crawler.completed.wait(timeout=2)
+    detailed = None
+    for _ in range(100):
+        candidate = service.get_relay(game_id)
+        if candidate["relayItems"] and candidate["relayItems"][0]["event"] == "HIT":
+            detailed = candidate
+            break
+        time.sleep(0.01)
+
+    assert detailed is not None
+    assert detailed["relayItems"][0]["event"] == "HIT"
 
 
 def test_relay_service_ignores_malformed_historical_snapshot(tmp_path: Path) -> None:

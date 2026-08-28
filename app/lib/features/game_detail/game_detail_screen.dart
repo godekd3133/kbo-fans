@@ -985,6 +985,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
                   LineupTab(
                     gameId: gameId,
                     gameStatus: game.status,
+                    lineupOpened: game.lineupOpened || game.isPregameLineupOpen,
                     awayName: game.away.shortName,
                     homeName: game.home.shortName,
                     awayTeamId: game.away.teamId,

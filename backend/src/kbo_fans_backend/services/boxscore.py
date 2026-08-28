@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import threading
+from copy import deepcopy
 from datetime import date as date_type
 from typing import Any, Optional
 
@@ -13,9 +16,12 @@ from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 
+logger = logging.getLogger(__name__)
+
 
 class BoxscoreService:
     _UNAVAILABLE_STATUSES = {"SCHEDULED", "CANCELLED", "SUSPENDED"}
+    _OPTIONAL_ENRICHMENT_INLINE_BUDGET_SECONDS = 0.75
 
     def __init__(
         self,
@@ -28,6 +34,8 @@ class BoxscoreService:
         self.schedule_service = schedule_service or ScheduleService()
         self.player_stats_service = player_stats_service or PlayerStatsService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
+        self._enrichment_lock = threading.Lock()
+        self._enrichment_in_flight: set[str] = set()
 
     def get_boxscore(self, game_id: str) -> dict[str, Any]:
         game_status = self._game_status(game_id)
@@ -40,7 +48,9 @@ class BoxscoreService:
             snapshot,
             game_id,
         ):
-            return self._enrich_player_ids_and_images(snapshot, game_id)
+            if self._has_player_metadata(snapshot):
+                return snapshot
+            return self._enrich_with_budget(snapshot, game_id)
 
         payload = self.crawler.get_boxscore(game_id)
 
@@ -51,16 +61,28 @@ class BoxscoreService:
                     game_id,
                     reason=f"game_status_{game_status.lower()}",
                 )
-            payload = self._enrich_player_ids_and_images(payload, game_id)
+            # Player IDs/images are optional presentation metadata. Save the
+            # official rows before attempting any historical enrichment so a
+            # slow player crawl cannot block the data response.
             if game_status == "FINAL":
                 self.snapshot_store.save("boxscore", game_id, payload)
+            if self._is_past_game_id(game_id):
+                enriched_payload = self._enrich_with_budget(payload, game_id)
+                if enriched_payload != payload:
+                    self.snapshot_store.save("boxscore", game_id, enriched_payload)
+                payload = enriched_payload
             return payload
 
         if self._is_live_context_payload(payload, game_id):
             if game_status == "LIVE" or (
                 game_status in {None, "UNKNOWN"} and not self._is_past_game_id(game_id)
             ):
-                return self._enrich_player_ids_and_images(payload, game_id)
+                # Live context rows are also useful before the official
+                # boxscore is published. Keep their first response bounded by
+                # the main/relay context crawl; player metadata is optional.
+                if self._is_past_game_id(game_id):
+                    return self._enrich_with_budget(payload, game_id)
+                return payload
             payload = self._official_unavailable_payload(
                 game_id,
                 reason="live_context_not_current",
@@ -85,15 +107,77 @@ class BoxscoreService:
                             "sourceGameId": alternate_game_id,
                             "source": "adjacent_official",
                         }
-                        alternate_payload = self._enrich_player_ids_and_images(
-                            alternate_payload, game_id
-                        )
                         self.snapshot_store.save("boxscore", game_id, alternate_payload)
+                        enriched_payload = self._enrich_with_budget(alternate_payload, game_id)
+                        if enriched_payload != alternate_payload:
+                            self.snapshot_store.save("boxscore", game_id, enriched_payload)
+                        alternate_payload = enriched_payload
                         return alternate_payload
                 except Exception:
                     pass
 
         return payload
+
+    def _enrich_with_budget(
+        self,
+        payload: dict[str, Any],
+        game_id: str,
+    ) -> dict[str, Any]:
+        if self._has_player_metadata(payload):
+            return payload
+
+        with self._enrichment_lock:
+            if game_id in self._enrichment_in_flight:
+                return payload
+            self._enrichment_in_flight.add(game_id)
+
+        result: dict[str, Any] = {}
+        completed = threading.Event()
+
+        def enrich_and_persist() -> None:
+            try:
+                enriched = deepcopy(payload)
+                enriched = self._enrich_player_ids_and_images(enriched, game_id)
+                result["payload"] = enriched
+                if enriched != payload:
+                    self.snapshot_store.save("boxscore", game_id, enriched)
+            except Exception as error:
+                logger.info("Boxscore metadata enrichment skipped for %s: %s", game_id, error)
+            finally:
+                with self._enrichment_lock:
+                    self._enrichment_in_flight.discard(game_id)
+                completed.set()
+
+        thread = threading.Thread(
+            target=enrich_and_persist,
+            name=f"boxscore-metadata-{game_id}",
+            daemon=True,
+        )
+        thread.start()
+        if completed.wait(timeout=self._OPTIONAL_ENRICHMENT_INLINE_BUDGET_SECONDS):
+            return result.get("payload", payload)
+        return payload
+
+    @staticmethod
+    def _has_player_metadata(payload: dict[str, Any]) -> bool:
+        for side in ("away", "home"):
+            team_payload = payload.get(side)
+            if not isinstance(team_payload, dict):
+                continue
+            for key in ("batters", "pitchers"):
+                rows = team_payload.get(key)
+                if not isinstance(rows, list):
+                    continue
+                for row in rows:
+                    if not isinstance(row, dict) or not str(row.get("name") or "").strip():
+                        continue
+                    has_player_id = bool(
+                        str(row.get("playerId") or row.get("id") or "").strip()
+                    )
+                    has_image_url = bool(str(row.get("imageUrl") or "").strip())
+                    if not has_player_id and not has_image_url:
+                        return False
+        return True
 
     def _enrich_player_ids_and_images(
         self, payload: dict[str, Any], game_id: str

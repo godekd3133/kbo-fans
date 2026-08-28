@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import threading
 from copy import deepcopy
 from datetime import date as date_type
 from typing import Any, Callable, Optional
@@ -12,12 +14,16 @@ from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
 
+logger = logging.getLogger(__name__)
+
 
 def _current_kbo_date() -> date_type:
     return current_kbo_date()
 
 
 class LineupService:
+    _OPTIONAL_ENRICHMENT_INLINE_BUDGET_SECONDS = 0.75
+
     def __init__(
         self,
         lineup_crawler: Optional[LineupCrawler] = None,
@@ -33,6 +39,8 @@ class LineupService:
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self.player_stats_service = player_stats_service or PlayerStatsService()
         self.today_provider = today_provider or _current_kbo_date
+        self._enrichment_lock = threading.Lock()
+        self._enrichment_in_flight: set[str] = set()
 
     def get_lineup(self, game_id: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("lineup", game_id)
@@ -41,13 +49,7 @@ class LineupService:
             and self._is_past_game_id(game_id)
             and self._has_ready_lineup(game_id, snapshot)
         ):
-            enriched_snapshot = self._enrich_snapshot_if_missing_player_images(
-                snapshot,
-                game_id,
-            )
-            if enriched_snapshot != snapshot:
-                self.snapshot_store.save("lineup", game_id, enriched_snapshot)
-            return enriched_snapshot
+            return self._enrich_snapshot_if_missing_player_images(snapshot, game_id)
 
         try:
             lineup = self.lineup_crawler.get_lineup(game_id)
@@ -76,9 +78,23 @@ class LineupService:
                 "imageUrl": self._starter_image_url(game_id, starter_id),
             }
 
-        self._enrich_lineup_rows(lineup, game_id)
-
+        # Player IDs/images are optional presentation metadata. Current/live
+        # lineup responses must not wait for the much more expensive team
+        # roster/profile crawl; the app can request those images separately.
+        # Use the source status as well as the game date so a live game that
+        # crosses KBO midnight is not treated as historical.
+        main_status = str(main_game.get("GAME_STATE_SC") or "") if main_game else ""
+        should_enrich_rows = self._is_past_game_id(game_id) and main_status not in {
+            "1",
+            "2",
+            "5",
+        }
         self.snapshot_store.save("lineup", game_id, lineup)
+        if should_enrich_rows:
+            enriched_lineup = self._enrich_with_budget(lineup, game_id)
+            if enriched_lineup != lineup:
+                self.snapshot_store.save("lineup", game_id, enriched_lineup)
+            return enriched_lineup
         return lineup
 
     def _get_main_game(self, game_id: str) -> Optional[dict[str, Any]]:
@@ -167,9 +183,44 @@ class LineupService:
     ) -> dict[str, Any]:
         if self._has_lineup_player_image_handles(snapshot):
             return snapshot
-        enriched = deepcopy(snapshot)
-        self._enrich_lineup_rows(enriched, game_id)
-        return enriched
+        return self._enrich_with_budget(snapshot, game_id)
+
+    def _enrich_with_budget(
+        self,
+        payload: dict[str, Any],
+        game_id: str,
+    ) -> dict[str, Any]:
+        with self._enrichment_lock:
+            if game_id in self._enrichment_in_flight:
+                return payload
+            self._enrichment_in_flight.add(game_id)
+
+        result: dict[str, Any] = {}
+        completed = threading.Event()
+
+        def enrich_and_persist() -> None:
+            try:
+                enriched = deepcopy(payload)
+                self._enrich_lineup_rows(enriched, game_id)
+                result["payload"] = enriched
+                if enriched != payload:
+                    self.snapshot_store.save("lineup", game_id, enriched)
+            except Exception as error:
+                logger.info("Lineup metadata enrichment skipped for %s: %s", game_id, error)
+            finally:
+                with self._enrichment_lock:
+                    self._enrichment_in_flight.discard(game_id)
+                completed.set()
+
+        thread = threading.Thread(
+            target=enrich_and_persist,
+            name=f"lineup-metadata-{game_id}",
+            daemon=True,
+        )
+        thread.start()
+        if completed.wait(timeout=self._OPTIONAL_ENRICHMENT_INLINE_BUDGET_SECONDS):
+            return result.get("payload", payload)
+        return payload
 
     @staticmethod
     def _has_lineup_player_image_handles(payload: dict[str, Any]) -> bool:

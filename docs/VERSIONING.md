@@ -6,8 +6,8 @@
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.26+94`
-- Current release tag: `0.1.26`
+- Flutter app version: `0.1.27+95`
+- Current release tag: `0.1.27`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -62,6 +62,8 @@ Every version or release change must update these surfaces in the same work unit
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app update notes change.
 
 ## Numeric Release Map
+
+- `0.1.27`: 일정·경기 상세의 첫 표시, current/live 및 과거 lineup·boxscore metadata 대기, 종료 relay cold 응답을 보강하고 current app build `0.1.27+95`로 TestFlight 배포한다.
 
 - `0.1.26`: 앱·backend 화면 데이터 전체 마감과 제한 재시도, 독립 라이브 스코어보드 warmer, 모바일 기록 순위 전환, 큰 글자·좁은 화면 재배치, snapshot·동시 요청 경계를 보강하고 current app build `0.1.26+94`로 배포한다.
 

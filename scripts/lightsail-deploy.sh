@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SSH_TARGET=""
 SSH_KEY=""
+SSH_CERTIFICATE=""
 ENV_FILE=""
 FIREBASE_SERVICE_ACCOUNT_FILE=""
 APNS_AUTH_KEY_FILE=""
@@ -12,6 +13,7 @@ DOMAIN=""
 REMOTE_TMP="/tmp/kbo-fans-lightsail"
 APP_DIR="/opt/kbo-fans"
 INSTALL_CADDY=true
+PRESERVE_ENV=false
 DRY_RUN=false
 RELEASE_ID="$(date -u +%Y%m%d%H%M%S)"
 
@@ -28,6 +30,7 @@ Usage:
 Options:
   --host                       SSH target, for example ubuntu@1.2.3.4.
   --ssh-key                    SSH private key path.
+  --ssh-certificate            OpenSSH user certificate path from Lightsail.
   --env-file                   Local backend env file. Required.
   --firebase-service-account   Local Firebase Admin JSON file.
   --apns-auth-key              Local APNs .p8 file.
@@ -35,6 +38,7 @@ Options:
   --remote-tmp                 Remote temporary upload dir. Default /tmp/kbo-fans-lightsail.
   --app-dir                    Remote app dir. Default /opt/kbo-fans.
   --skip-caddy                 Do not install or configure Caddy.
+  --preserve-env               Keep the existing remote /etc/kbo-fans/backend.env.
   --dry-run                    Create and inspect the deployment bundle without SSH.
 EOF
 }
@@ -54,6 +58,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --ssh-key)
       SSH_KEY="${2:-}"
+      shift 2
+      ;;
+    --ssh-certificate)
+      SSH_CERTIFICATE="${2:-}"
       shift 2
       ;;
     --env-file)
@@ -84,6 +92,10 @@ while [[ $# -gt 0 ]]; do
       INSTALL_CADDY=false
       shift
       ;;
+    --preserve-env)
+      PRESERVE_ENV=true
+      shift
+      ;;
     --dry-run)
       DRY_RUN=true
       shift
@@ -100,7 +112,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$ENV_FILE" ]]; then
+if [[ -z "$ENV_FILE" && "$PRESERVE_ENV" != "true" ]]; then
   echo "--env-file is required." >&2
   usage >&2
   exit 2
@@ -112,7 +124,12 @@ if [[ "$DRY_RUN" != "true" && -z "$SSH_TARGET" ]]; then
   exit 2
 fi
 
-for path in "$ENV_FILE" "$FIREBASE_SERVICE_ACCOUNT_FILE" "$APNS_AUTH_KEY_FILE"; do
+for path in \
+  "$ENV_FILE" \
+  "$FIREBASE_SERVICE_ACCOUNT_FILE" \
+  "$APNS_AUTH_KEY_FILE" \
+  "$SSH_KEY" \
+  "$SSH_CERTIFICATE"; do
   if [[ -n "$path" && ! -f "$path" ]]; then
     echo "File not found: $path" >&2
     exit 2
@@ -163,10 +180,16 @@ if [[ -n "$SSH_KEY" ]]; then
   SSH_ARGS+=(-i "$SSH_KEY")
   SCP_ARGS+=(-i "$SSH_KEY")
 fi
+if [[ -n "$SSH_CERTIFICATE" ]]; then
+  SSH_ARGS+=(-o "CertificateFile=$SSH_CERTIFICATE")
+  SCP_ARGS+=(-o "CertificateFile=$SSH_CERTIFICATE")
+fi
 
 ssh "${SSH_ARGS[@]}" "$SSH_TARGET" "mkdir -p '$REMOTE_TMP'"
 scp "${SCP_ARGS[@]}" "$BUNDLE" "$SSH_TARGET:$REMOTE_TMP/kbo-fans-backend.tar.gz"
-scp "${SCP_ARGS[@]}" "$ENV_FILE" "$SSH_TARGET:$REMOTE_TMP/backend.env"
+if [[ "$PRESERVE_ENV" != "true" ]]; then
+  scp "${SCP_ARGS[@]}" "$ENV_FILE" "$SSH_TARGET:$REMOTE_TMP/backend.env"
+fi
 
 if [[ -n "$FIREBASE_SERVICE_ACCOUNT_FILE" ]]; then
   scp "${SCP_ARGS[@]}" "$FIREBASE_SERVICE_ACCOUNT_FILE" \
@@ -178,7 +201,7 @@ if [[ -n "$APNS_AUTH_KEY_FILE" ]]; then
 fi
 
 ssh "${SSH_ARGS[@]}" "$SSH_TARGET" \
-  "RELEASE_ID='$RELEASE_ID' REMOTE_TMP='$REMOTE_TMP' APP_DIR='$APP_DIR' DOMAIN='$DOMAIN' INSTALL_CADDY='$INSTALL_CADDY' HAS_FIREBASE='$([[ -n "$FIREBASE_SERVICE_ACCOUNT_FILE" ]] && echo true || echo false)' HAS_APNS='$([[ -n "$APNS_AUTH_KEY_FILE" ]] && echo true || echo false)' bash -s" <<'REMOTE'
+  "RELEASE_ID='$RELEASE_ID' REMOTE_TMP='$REMOTE_TMP' APP_DIR='$APP_DIR' DOMAIN='$DOMAIN' INSTALL_CADDY='$INSTALL_CADDY' PRESERVE_ENV='$PRESERVE_ENV' HAS_FIREBASE='$([[ -n "$FIREBASE_SERVICE_ACCOUNT_FILE" ]] && echo true || echo false)' HAS_APNS='$([[ -n "$APNS_AUTH_KEY_FILE" ]] && echo true || echo false)' bash -s" <<'REMOTE'
 set -euo pipefail
 
 SERVICE_USER="kbo-fans"
@@ -193,7 +216,12 @@ sudo tar -xzf "$REMOTE_TMP/kbo-fans-backend.tar.gz" -C "$RELEASE_DIR"
 sudo chown -R root:root "$RELEASE_DIR"
 sudo chown -R "$SERVICE_USER:$SERVICE_USER" /var/lib/kbo-fans /var/log/kbo-fans
 
-sudo install -o root -g "$SERVICE_USER" -m 0640 "$REMOTE_TMP/backend.env" /etc/kbo-fans/backend.env
+if [[ "$PRESERVE_ENV" != "true" ]]; then
+  sudo install -o root -g "$SERVICE_USER" -m 0640 "$REMOTE_TMP/backend.env" /etc/kbo-fans/backend.env
+elif [[ ! -f /etc/kbo-fans/backend.env ]]; then
+  echo "Remote backend env does not exist; refusing --preserve-env deployment." >&2
+  exit 1
+fi
 
 if [[ "$HAS_FIREBASE" == "true" ]]; then
   sudo install -o root -g "$SERVICE_USER" -m 0640 \

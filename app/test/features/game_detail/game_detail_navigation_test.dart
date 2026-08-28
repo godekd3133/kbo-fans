@@ -9,6 +9,7 @@ import 'package:kbo_fans/data/models/boxscore.dart';
 import 'package:kbo_fans/data/models/game.dart';
 import 'package:kbo_fans/data/models/highlight_info.dart';
 import 'package:kbo_fans/data/models/highlight_video.dart';
+import 'package:kbo_fans/data/models/player.dart';
 import 'package:kbo_fans/data/models/relay.dart';
 import 'package:kbo_fans/data/models/schedule.dart';
 import 'package:kbo_fans/data/providers.dart';
@@ -901,6 +902,58 @@ void main() {
       expect(awayScore.data, '–');
       expect(homeScore.data, '–');
     }
+  });
+
+  testWidgets('경기 전 라인업 미공개면 상세 화면이 라인업 원천 요청을 시작하지 않는다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _scheduledGame();
+    var lineupCalls = 0;
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=lineup',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(game)),
+          gameLineupProvider.overrideWith((ref, gameId) {
+            lineupCalls += 1;
+            return Future.error(StateError('lineup should not be requested'));
+          }),
+          teamPlayersProvider.overrideWith(
+            (ref, key) async => const <PlayerProfile>[],
+          ),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(find.text('라인업 공개 전입니다'), findsOneWidget);
+    expect(find.byKey(const ValueKey('lineup-loading')), findsNothing);
+    expect(lineupCalls, 0);
   });
 
   testWidgets('LIVE 원천 점수가 누락되면 실제 0대0이 아닌 미확인으로 표시한다', (tester) async {

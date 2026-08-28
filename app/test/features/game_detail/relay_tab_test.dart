@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,74 @@ import 'package:kbo_fans/data/providers.dart';
 import 'package:kbo_fans/features/game_detail/tabs/relay_tab.dart';
 
 void main() {
+  testWidgets('느린 첫 문자중계 요청 중에도 현재 경기 요약을 먼저 보여준다', (tester) async {
+    final relayCompleter = Completer<RelayData>();
+    const game = Game(
+      gameId: '20260612OBLT0',
+      status: GameStatus.live,
+      inning: '1회초',
+      away: TeamScore(
+        teamId: 'OB',
+        teamName: '두산 베어스',
+        shortName: '두산',
+        score: 2,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LT',
+        teamName: '롯데 자이언츠',
+        shortName: '롯데',
+        score: 1,
+        innings: [],
+      ),
+      stadium: '사직',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith(
+            (ref, gameId) => relayCompleter.future,
+          ),
+          gameLineupProvider.overrideWith(
+            (ref, gameId) async => const GameLineupData(
+              gameId: '20260612OBLT0',
+              away: TeamLineupData(teamId: 'OB', lineup: []),
+              home: TeamLineupData(teamId: 'LT', lineup: []),
+            ),
+          ),
+          teamPlayersProvider.overrideWith(
+            (ref, key) async => const <PlayerProfile>[],
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260612OBLT0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('relay-fallback-notice')), findsOneWidget);
+    expect(find.text('두산'), findsWidgets);
+    expect(find.text('롯데'), findsWidgets);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    relayCompleter.complete(
+      const RelayData(currentAtBat: null, relayItems: []),
+    );
+  });
+
   testWidgets('문자중계 fallback은 큰 글씨에서 카드 높이를 늘려 안내를 보존한다', (tester) async {
     tester.view.physicalSize = const Size(320, 844);
     tester.view.devicePixelRatio = 1;

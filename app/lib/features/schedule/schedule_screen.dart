@@ -61,6 +61,57 @@ int _seasonFromGameId(String gameId) {
   return kboCurrentSeason();
 }
 
+Game _gamePreviewFromScheduleGame(ScheduleGame scheduleGame) {
+  final normalizedStatus = scheduleGame.status.trim().toUpperCase();
+  final status = switch (normalizedStatus) {
+    'LIVE' || 'IN_PROGRESS' => GameStatus.live,
+    'FINAL' => GameStatus.final_,
+    'CANCELLED' => GameStatus.cancelled,
+    'SUSPENDED' => GameStatus.suspended,
+    _ => GameStatus.scheduled,
+  };
+  final statusLabel = scheduleGame.statusLabel?.trim();
+  final inning = statusLabel?.isNotEmpty == true
+      ? statusLabel!
+      : labelForScheduleStatus(normalizedStatus);
+
+  TeamScore previewTeam({
+    required String teamId,
+    required String teamName,
+    required int? score,
+  }) {
+    return TeamScore(
+      teamId: teamId,
+      teamName: teamName,
+      shortName: teamName,
+      score: score ?? 0,
+      scoreAvailable: score != null,
+      innings: List<int?>.filled(9, null),
+      hasStats: false,
+    );
+  }
+
+  return Game(
+    gameId: scheduleGame.gameId,
+    status: status,
+    inning: inning,
+    away: previewTeam(
+      teamId: scheduleGame.awayId,
+      teamName: scheduleGame.awayName,
+      score: scheduleGame.awayScore,
+    ),
+    home: previewTeam(
+      teamId: scheduleGame.homeId,
+      teamName: scheduleGame.homeName,
+      score: scheduleGame.homeScore,
+    ),
+    stadium: scheduleGame.stadium,
+    startTime: scheduleGame.time,
+    statusLabel: scheduleGame.statusLabel,
+    ticketInfo: scheduleGame.ticketInfo,
+  );
+}
+
 String _normalizePlayerNameForImagePrefetch(String value) {
   return value
       .replaceFirst(RegExp(r'^\d+\s*번?\s*타자\s*'), '')
@@ -234,6 +285,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         scheduleGame.gameId,
         tab: _defaultTabForScheduleGame(scheduleGame),
       ),
+      extra: _gamePreviewFromScheduleGame(scheduleGame),
     );
     unawaited(
       navigation.whenComplete(() => _gameDetailNavigationInFlight = false),

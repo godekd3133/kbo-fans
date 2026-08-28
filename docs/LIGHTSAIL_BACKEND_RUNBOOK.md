@@ -111,7 +111,24 @@ Pass the local source files to the deploy script. The script installs them under
 ```
 
 Use `--ssh-key /path/to/key.pem` if the SSH key is not already configured in
-`~/.ssh/config`.
+`~/.ssh/config`. When using the temporary key/certificate returned by
+`aws lightsail get-instance-access-details`, pass both
+`--ssh-key /path/to/tempkey` and `--ssh-certificate /path/to/tempkey-cert.pub`.
+
+If the instance already has the production environment and secrets installed,
+deploy only the runtime code while preserving `/etc/kbo-fans/backend.env`:
+
+```bash
+./scripts/lightsail-deploy.sh \
+  --host ubuntu@<lightsail-ip-or-host> \
+  --ssh-key /path/to/key.pem \
+  --preserve-env \
+  --skip-caddy
+```
+
+`--preserve-env` refuses to restart the services when the remote environment
+file is missing. Use the regular `--env-file` form only when intentionally
+replacing the backend environment.
 
 The deploy script packages only the backend runtime files and read-only seed
 snapshots, uploads them with `scp`, installs Python dependencies into

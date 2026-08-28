@@ -2,6 +2,109 @@
 
 ---
 
+## 2026-08-28: 0.1.27+95 TestFlight 배포 준비
+
+### 결정
+
+- [x] 경기 상세 첫 표시, lineup/boxscore metadata 대기, 종료 relay cold 응답 보강은 사용자-visible/API behavior 변경이므로 기존 `0.1.26+94` 재업로드가 아닌 새 numeric release `0.1.27+95`로 승격한다.
+- [x] release app은 `USE_BACKEND_API=true`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`를 사용한다. 기존 build 94와 외부 그룹의 설치 가능 상태는 새 build가 처리·승인될 때까지 유지한다.
+
+### 준비 및 미완료 checkpoint
+
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.27+95` 기준으로 갱신했다.
+- [x] Flutter 전체 `fvm flutter test --no-pub`: 531개 통과.
+- [x] backend 전체 `backend/.venv/bin/pytest -q`: 594개 통과. Ruff, compileall, `git diff --check`도 통과했다.
+- [ ] clean pushed SHA에서 signed IPA archive/export.
+- [ ] App Store Connect upload 및 Apple processing `VALID` 확인.
+- [ ] 내부 `Tester`와 외부 `External Testers` 최신 build 연결, Beta App Review 상태, 실제 installability 확인.
+
+## 2026-08-28: Lightsail backend 2차 배포 및 AWS 경기 상세 cold 검증
+
+### 배포 및 운영 확인
+
+- [x] AWS 계정 readback으로 `kbo-fans-api-lightsail`가 `running`, static IP `3.39.79.1`, 22/80/443 open임을 확인했다.
+- [x] 기존 `/etc/kbo-fans/backend.env`와 secret를 덮어쓰지 않는 `--preserve-env` 배포 옵션 및 Lightsail 임시 SSH certificate용 `--ssh-certificate` 옵션을 추가하고 shell syntax, runtime contract test, bundle dry-run을 통과했다.
+- [x] 1차 release `20260828032309`에서 current 예정 경기 lineup의 504가 해소되는 것을 확인한 뒤, 과거 종료 경기 cold boxscore/lineup에서 남은 metadata enrichment timeout을 추가 수정했다.
+- [x] 2차 release `20260828033746`을 `--preserve-env --skip-caddy`로 배포했다. backend runtime bundle 업로드, Python package 설치, `kbo-fans-api`/`kbo-fans-sync-worker` 재시작, 내부 `/api/health` 200을 확인했다.
+- [x] 배포 후 원격 readback에서 `current_release=/opt/kbo-fans/releases/20260828033746`, API/worker `active`, `NRestarts=0`, 기존 backend env `present`를 확인했다.
+
+### AWS API 및 앱 증거
+
+- [x] 새 프로세스 cold 상태의 예정 경기 `20260828WOOB0`에서 `game=200(0.934s)`, `relay=200(0.837s)`, `boxscore=200(1.454s, official_not_available)`, `lineup=200(0.403s)`를 확인했다. lineup은 양 팀 9명과 선발 `안우진`/`박신지`를 반환했다.
+- [x] 종료 경기 `20260827SSWO0`에서 `game=200(0.042s)`, `relay=200(0.064s, 616 items)`, `boxscore=200(1.387s, 공식 타자 15/15·투수 4/4)`, `lineup=200(0.041s, 양 팀 9명)`을 확인했다.
+- [x] 운영 API URL을 주입한 release Web의 실제 CDP network에서 `GET https://3-39-79-1.sslip.io/api/game/20260827SSWO0`, `/boxscore`, `/lineup`, 양 팀 `/players`가 모두 HTTP 200으로 종료되는 것을 확인했다. game 0.221초, boxscore 0.511초, lineup 0.513초 수준이었다.
+- [x] 같은 Web에서 박스스코어 탭을 열어 `삼성 15:2 키움`, 타수 45, 안타 20, 타점 15 등 실제 기록을 화면에 표시했고, 라인업 탭에서 `원태인`/`하영민` 선발과 선수 rows를 표시했다. 문자중계 탭도 AWS relay 200 후 실제 이벤트 화면을 표시했다.
+- [x] 예정 경기 Web에서는 AWS `game` 0.359초, `lineup` 0.112초가 HTTP 200으로 끝났고, 라인업 공개 상태의 양 팀 rows와 선발을 화면에 표시했다. 예정 상태에서 boxscore를 불필요하게 요청하지 않는 앱 분기도 확인했다.
+
+### 남은 경계
+
+- [ ] 오늘 예정 경기 boxscore의 `official_unavailable`은 API 오류가 아니라 KBO 공식 타자/투수 rows 미공개 상태다. 앱은 이를 `경기 시작 후/공식 업데이트 전` 상태로 끝내야 하며 spinner를 무한 유지하지 않는다.
+- [ ] 이번 검증은 Web과 backend/API 기준이다. iOS 실기기 설치·TestFlight 배포는 별도 release 작업이며, 이전 iOS 27 developer disk image 문제로 실기기 런타임 증거는 아직 없다.
+- [x] 기존 사용자 소유의 untracked Pages·이미지·PPT·`artifacts/`·`output/`은 수정·삭제하지 않았다.
+
+## 2026-08-27: 경기 상세 cold-entry 로딩 지연 원인 규명 및 보정
+
+### 원인 확인
+
+- 일정 화면의 `_openGameDetail`은 `gameId` route만 먼저 push하고, `_refreshGameDetailInBackground`에서 `gameProvider`를 별도로 갱신하고 있었다. 따라서 실제 `GameDetailScreen`에는 `widget.game`이 없어 최신 `/game/{gameId}` 응답이 끝날 때까지 `game-detail-loading` 전체 spinner만 표시됐다.
+- 같은 저장소의 홈 경기 카드 경로는 이미 표시 중인 `Game`을 route `extra`로 전달해 즉시 상세를 그렸다. 즉, 공통 backend cache 자체가 유일한 원인이 아니라 일정 navigation의 producer→consumer 데이터 전달 누락이 직접 원인이었다.
+- 운영 API 표본에서도 `/scoreboard/home` 약 0.36초, `/game/{gameId}` 약 1.93초가 확인됐고, cold route 브라우저 재현에서는 상세 화면이 약 5초 이상 spinner 상태로 남았다. `/game` 응답 지연은 증상을 키우지만, preview가 있으면 화면 표시를 막지 않는 구조적 문제로 분리했다.
+- 추가로 live 기본 탭의 `RelayTab`은 relay 응답이 pending일 때 현재 `Game`을 사용하지 않고 큰 중앙 spinner만 그렸다. 운영 `/game/{gameId}/lineup` 표본이 15.4초 뒤 504가 된 것처럼 KBO 원천 지연은 발생 가능하므로, 첫 relay 응답 대기 중에도 이미 확인된 경기 요약을 보여주도록 경계를 보강했다.
+
+### 반영
+
+- `ScheduleGame`의 팀·상태·점수·구장·예매 정보를 상세용 `Game` preview로 변환하고, 일정 상세 route의 `extra`로 전달했다. 점수·이닝·H/E/B의 미확인 상태는 `scoreAvailable=false`, `hasStats=false`로 보존해 임의의 0값을 만들지 않았다.
+- 최신 `gameProvider` 갱신과 live relay 갱신은 기존대로 background에서 수행한다. 최신 응답이 도착하면 preview를 실제 경기정보로 교체하고, 실패하면 기존 상세 표시와 재시도 경계를 유지한다.
+- `RelayTab`의 첫 로딩 상태는 현재 경기 요약과 `문자중계 데이터를 불러오는 중입니다` 안내를 먼저 표시하도록 바꿨다. relay 원문이 도착하면 기존 타석/이벤트 화면으로 전환한다.
+- 실제 `ScheduleScreen → GameDetailScreen` 조합을 사용하는 회귀 테스트와 느린 첫 relay 응답 회귀 테스트를 추가했다. 기존 일정 단위 테스트가 placeholder `Text` route만 검증해 잡지 못하던 문제를 보완했다.
+
+### 검증 및 남은 경계
+
+- [x] RED: 지연된 `gameProvider`로 실제 일정→상세를 재현했을 때 `game-detail-loading`이 남는 것을 확인.
+- [x] GREEN: `fvm flutter test test/features/schedule/schedule_screen_test.dart --no-pub` 21개 통과.
+- [x] GREEN: `fvm flutter test test/features/game_detail/relay_tab_test.dart --no-pub` 14개 통과.
+- [x] `fvm flutter analyze --no-fatal-infos` 및 변경 파일 targeted analyze 통과.
+- [x] 전체 Flutter 테스트 530개 통과.
+- [x] backend API 표본 측정으로 health 1.29초, 오늘 scoreboard/home 0.36초, game detail 1.93초, relay 0.08초, boxscore 0.49초, lineup 15.40초/504를 확인했다. 이는 현재 운영 표본이며 장시간 안정성 또는 실기기 증거와는 구분한다.
+- [x] 수정본 Web build를 다시 만들고 로컬 일정 카드→상세 진입을 캡처해 250ms 시점에 상세 팀/상태/스코어가 표시되는 것을 확인했다.
+- [ ] 앱이 완전히 종료된 상태에서 알림·위젯·브라우저 deep link로 `extra` 없이 직접 열린 경우는 경기 요약을 미리 받을 수 없어 `/game/{gameId}` 응답을 기다린다. 이 경로는 별도 route preview 계약 없이는 동일하게 즉시 표시할 수 없다.
+- [ ] 운영 lineup endpoint의 15초/504 원천 지연은 이번 변경에서 backend crawler 자체를 바꾸지 않았다. 라인업 탭에서는 이미 timeout/error 및 재시도 상태를 표시하며, 원천 지연을 줄이는 backend 작업은 별도 범위다.
+
+## 2026-08-27: 경기 상세 요청 미완료 원인 추가 규명 및 라인업 응답 병목 해소
+
+### 원인 확인
+
+- 운영 API에서 `GET /game/20260827NCLG0/lineup`과 양 팀 `/team/{teamId}/players?season=2026`가 약 15.8초 뒤 `504`로 끝나는 것을 브라우저 네트워크에서 재현했다. 화면 spinner가 멈추지 않는 것처럼 보였지만, 실제로는 라인업 provider가 정상 데이터가 아니라 API 실패를 기다리는 상태였다.
+- KBO 원천 호출을 분리 측정한 결과 `LineupCrawler` 0.11초, `BoxscoreCrawler` 0.08초, `MainCrawler` 0.07초였고, `PlayerStatsCrawler.get_team_players`만 팀당 8.60~8.85초였다. `LineupService.get_lineup`이 라인업/선발 payload를 만든 뒤 선택적 선수 이미지 보강을 동기적으로 실행한 것이 직접 병목이었다.
+- AWS Web의 종료 경기 cold 진입에서도 `lineup`, `boxscore`, 양 팀 `players`가 동시에 시작된 뒤 약 16.5초에 모두 `504`가 되는 것을 재현했다. `BoxscoreService`도 공식 타자·투수 rows를 받은 뒤 양 팀 선수 목록을 동기 보강하는 경로가 있어, 현재 경기의 boxscore 응답까지 같은 timeout 경계에 걸릴 수 있었다.
+- 경기 전 라인업 미공개 상태에서도 앱 `LineupTab`이 line-up과 양 팀 선수 provider를 먼저 구독하고 있었다. 공개되지 않은 데이터의 원천 조회와 이미지 조회가 화면의 로딩 체감을 길게 만드는 별도 경계도 확인했다.
+
+### 반영
+
+- current/live 경기의 `LineupService`는 기본 라인업과 선발 정보를 먼저 반환하고, 과거 경기 snapshot 보강에 필요한 선택적 선수 ID/이미지 enrichment만 유지하도록 분리했다. current/live 응답이 팀 선수 프로필 조회 완료를 기다리지 않는다.
+- current/live 공식 boxscore도 타자·투수 rows를 먼저 반환하고, 과거 종료 데이터에서만 선택적 선수 ID/이미지 enrichment를 수행하도록 분리했다. `BoxscoreTab`은 선수 metadata가 늦거나 실패해도 이미 받은 기록 rows를 표시하는 구조이므로 이 경계를 유지한다.
+- 종료 경기 relay cold miss는 상세 원문 crawler를 최대 0.75초만 inline으로 기다리고, 이후에는 득점 summary를 먼저 반환하면서 백그라운드에서 원문을 snapshot/cache에 저장하도록 보정했다. crawler가 빠르면 기존 상세 원문 우선 동작을 유지한다.
+- `GameDetailScreen`은 `Game.lineupOpened`/pregame label을 `LineupTab`에 전달하고, 경기 전 미공개면 line-up 및 팀 선수 provider를 구독하지 않고 `라인업 공개 전` 상태로 종료한다. 공개 이후에는 최신 경기정보가 도착한 다음 원천 라인업을 요청한다.
+- 기존 일정 preview 전달과 live relay loading fallback을 포함한 상세 로딩 경계를 함께 유지했다. 로딩 표시 자체는 허용하되, 성공 데이터 또는 명시적 오류/공개 전 상태로 끝나는 것을 기준으로 삼았다.
+
+### 검증 및 운영 경계
+
+- [x] 기존 운영 표본에서 `/game/{gameId}/lineup` 15.8초/504와 팀 선수 조회 8초대 지연을 재현.
+- [x] backend focused `backend/.venv/bin/pytest -q backend/tests/test_lineup.py`: 9개 통과.
+- [x] backend 전체 `backend/.venv/bin/pytest -q`: 592개 통과.
+- [x] `python3 -m compileall -q backend/src` 통과.
+- [x] 앱 targeted `fvm flutter test`에서 game detail navigation 33개와 lineup 7개, 총 40개 통과; 전체 Flutter 테스트 531개 통과.
+- [x] backend boxscore/lineup focused `backend/.venv/bin/pytest -q backend/tests/test_boxscore_service.py backend/tests/test_lineup.py`: 23개 통과. current official/live-context boxscore가 선수 목록 provider를 호출하지 않는 회귀를 포함한다.
+- [x] backend relay focused `backend/.venv/bin/pytest -q backend/tests/test_relay_service.py`: 16개 통과. historical final relay cold 요청이 summary로 먼저 끝나고 상세 snapshot이 뒤따르는 회귀를 포함한다.
+- [x] `fvm flutter analyze --no-fatal-infos` 및 변경 파일 analyze 통과.
+- [x] 수정 backend local endpoint에서 동일 경기 `/api/game/20260827NCLG0/lineup`이 0.49초/200으로 반환되고 9명 라인업·선발 정보가 확인됐다.
+- [x] local backend를 연결한 수정본 Web 화면에서 라인업 탭이 약 0.1초의 `/lineup` 응답 뒤 선수 목록을 표시하는 것을 확인했다. 팀 선수 조회는 별도 pending 상태로 남아도 기본 라인업 렌더를 막지 않는다.
+- [x] 운영 API 종료 경기 대조에서 `boxscore`는 실제 rows로 200, `lineup`은 양 팀 9명씩 200을 확인했다. cache가 없는 종료 경기의 기존 `relay`는 15초대 `UPSTREAM_DEADLINE_EXCEEDED` 뒤 백그라운드 snapshot이 채워지고 재요청은 581개 원문 item으로 200이 됐다. 이 관측을 근거로 수정본은 summary-first/background-warm 경계로 바꿨고, 2026-08-28 후속 배포에서 cold endpoint도 재검증했다.
+- [x] 2026-08-27 22:14 KST 공개 AWS를 재검증했다. 오늘 종료 경기 `20260827SSWO0`의 cold 요청은 `game=200(4.29s)`, `relay=504(16.62s)`, `boxscore=200`이지만 `official_unavailable`, `lineup=504(16.30s)`였고, relay는 warm 후 616개 item으로 200이 됐다. 수정 backend가 운영에 반영되지 않은 상태와 일치한다.
+- [x] 당시에는 운영 Lightsail/backend가 미배포였으나, 2026-08-28 후속 section에서 release `20260828033746` 배포와 실제 cold endpoint/Web 검증을 완료했다.
+- [x] 당시 만료됐던 AWS CLI/SSH 자격은 AWS 임시 key+certificate 절차로 복구해 배포에 사용했다. private key와 certificate는 임시 디렉터리에서만 사용 후 삭제했다.
+- [ ] 연결된 iPhone은 Flutter/Xcode destination으로 보였지만, iOS 27 developer disk image를 mount하지 못해 실기기 실행은 제품 검증까지 진행하지 못했다.
+
 ## 2026-08-13: 0.1.26+94 TestFlight 재배포 준비
 
 ### 결정
