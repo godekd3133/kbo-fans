@@ -9,14 +9,16 @@
 - [x] 경기 상세 첫 표시, lineup/boxscore metadata 대기, 종료 relay cold 응답 보강은 사용자-visible/API behavior 변경이므로 기존 `0.1.26+94` 재업로드가 아닌 새 numeric release `0.1.27+95`로 승격한다.
 - [x] release app은 `USE_BACKEND_API=true`, `API_BASE_URL=https://3-39-79-1.sslip.io/api`를 사용한다. 기존 build 94와 외부 그룹의 설치 가능 상태는 새 build가 처리·승인될 때까지 유지한다.
 
-### 준비 및 미완료 checkpoint
+### 준비 및 release checkpoint
 
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`를 `0.1.27+95` 기준으로 갱신했다.
 - [x] Flutter 전체 `fvm flutter test --no-pub`: 531개 통과.
 - [x] backend 전체 `backend/.venv/bin/pytest -q`: 594개 통과. Ruff, compileall, `git diff --check`도 통과했다.
-- [ ] clean pushed SHA에서 signed IPA archive/export.
-- [ ] App Store Connect upload 및 Apple processing `VALID` 확인.
-- [ ] 내부 `Tester`와 외부 `External Testers` 최신 build 연결, Beta App Review 상태, 실제 installability 확인.
+- [x] pushed SHA `93178f76`의 clean release worktree(`/tmp/kbo-fans-release-0.1.27`)에서 `0.1.27+95` signed IPA archive/export를 완료했다. Runner/Widget의 Apple Distribution 서명과 bundle identifier, production APNs entitlement를 readback했고 `codesign --verify --deep --strict` 및 `xcrun altool --validate-app`의 `VERIFY SUCCEEDED`를 확인했다. IPA SHA-256은 `ba75600ebfee46ca3882221026b1887b2438344dab93f326749020847f5f0110`이다.
+- [x] App Store Connect upload를 완료했다. delivery UUID는 `05048433-4c2e-4432-a041-b71dee155748`이며, Apple build-status와 App Store Connect API에서 build `95` / version `0.1.27`의 `processingState=VALID`, `import-status=VALID`, `APP_STORE_ELIGIBLE`를 확인했다.
+- [x] 내부 `Tester`와 외부 `External Testers` 그룹에 build 95를 연결했다. 기존 build 94와 외부 그룹 연결은 새 build의 승인 전 fallback으로 유지했다. build 95의 Beta App Review submission은 생성되었고 현재 `WAITING_FOR_REVIEW`다.
+- [x] numeric tag `0.1.27`와 `main` commit `93178f76`을 origin에 push했고, GitHub Release도 생성했다.
+- [ ] 실제 iPhone에서 TestFlight build 95 설치·업데이트 후 경기 상세의 AWS game/relay/boxscore/lineup 표시를 확인한다. 내부 Tester 계정은 심사 대기 없이 접근할 수 있지만, 외부 Tester 계정의 신규 build 설치 가능 여부는 Apple Beta App Review 승인 이후 별도 확인한다.
 
 ## 2026-08-28: Lightsail backend 2차 배포 및 AWS 경기 상세 cold 검증
 
