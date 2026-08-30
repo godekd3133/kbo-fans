@@ -2,6 +2,15 @@
 
 ---
 
+## 2026-08-31: 0.1.27 TestFlight 심사 승인 후속
+
+### 확인
+
+- [x] App Store Connect `altool --build-status` 재조회에서 build 95의 `processingState=VALID`, `import-status=VALID`, `build-status=APPROVED`, `beta-review-state=APPROVED`, `APP_STORE_ELIGIBLE`를 확인했다. build 만료일은 Apple 응답 기준 `2026-11-25T20:17:14-08:00`이다.
+- [x] App Store Connect API 재조회에서 build 95가 내부 `Tester`와 외부 `External Testers` 양쪽 그룹에 연결된 상태임을 확인했다. 외부 그룹에는 기존 build 94도 유지되어 있다.
+- [x] 페어링된 `Minkyu's iPhone`(iPhone 15 Pro Max, iOS 27.0)이 `available (paired)`/booted 상태임을 확인했다.
+- [ ] Mac의 `xcrun devicectl` 기반 실기기 설치·실행은 현재 Xcode 26.6에 iOS 27 개발자 디스크 이미지가 없어 진행하지 못했다. iPhone Mirroring도 Mac 로그인 잠금 화면에서 추가 인증을 요구하므로, TestFlight 설치와 앱 화면 확인은 사장님이 기기에서 직접 수행해야 한다.
+
 ## 2026-08-28: 0.1.27+95 TestFlight 배포 준비
 
 ### 결정
