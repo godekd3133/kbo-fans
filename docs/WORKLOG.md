@@ -9,7 +9,10 @@
 - [x] App Store Connect `altool --build-status` 재조회에서 build 95의 `processingState=VALID`, `import-status=VALID`, `build-status=APPROVED`, `beta-review-state=APPROVED`, `APP_STORE_ELIGIBLE`를 확인했다. build 만료일은 Apple 응답 기준 `2026-11-25T20:17:14-08:00`이다.
 - [x] App Store Connect API 재조회에서 build 95가 내부 `Tester`와 외부 `External Testers` 양쪽 그룹에 연결된 상태임을 확인했다. 외부 그룹에는 기존 build 94도 유지되어 있다.
 - [x] 페어링된 `Minkyu's iPhone`(iPhone 15 Pro Max, iOS 27.0)이 `available (paired)`/booted 상태임을 확인했다.
-- [ ] Mac의 `xcrun devicectl` 기반 실기기 설치·실행은 현재 Xcode 26.6에 iOS 27 개발자 디스크 이미지가 없어 진행하지 못했다. iPhone Mirroring도 Mac 로그인 잠금 화면에서 추가 인증을 요구하므로, TestFlight 설치와 앱 화면 확인은 사장님이 기기에서 직접 수행해야 한다.
+- [x] iPhone Mirroring으로 TestFlight 화면을 직접 확인했고 `KBO Fans 0.1.27 (95)`가 설치된 상태(`열기`)임을 확인했다. build 95를 열어 홈의 팀 정보·최근 경기·순위가 AWS 데이터로 채워지는 것을 확인했다.
+- [x] iPhone에서 일정의 2026-08-27 삼성 15:2 키움 경기를 선택했다. 일정 카드 탭 후 경기 상세에 스코어와 팀 정보가 표시되어 기존 전체 spinner 증상이 재현되지 않았다.
+- [x] 같은 실기기 경기 상세에서 문자중계 탭의 종료 상태·이닝별 점수·이벤트 카드, 박스스코어 탭의 삼성 타수 45·득점 15·안타 20·타점 15, 라인업 탭의 `원태인`/`하영민` 선발과 삼성 선발 lineup row가 실제로 표시되는 것을 확인했다.
+- [ ] Mac의 `xcrun devicectl` 기반 직접 설치·실행은 현재 Xcode 26.6에 iOS 27 개발자 디스크 이미지가 없어 진행하지 못했다. 이는 TestFlight build 95를 iPhone에서 실행한 실기기 검증과는 별도인 개발자 도구 경계다.
 
 ## 2026-08-28: 0.1.27+95 TestFlight 배포 준비
 
