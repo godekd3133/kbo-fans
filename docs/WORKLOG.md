@@ -2,6 +2,28 @@
 
 ---
 
+## 2026-08-31: 0.1.28+96 과거 경기·기록실 immutable 기기 cache
+
+### 결정과 원인
+
+- [x] 기존 앱은 과거 데이터를 cached-first로 먼저 보여주지만 경기 데이터는 30일, 과거 시즌 기록은 180일이 지나면 화면 뒤에서 다시 요청했다. 이미 검증된 종료 경기·과거 시즌 기록은 시간 경과만으로 달라지지 않으므로 불필요한 AWS/KBO 재조회와 저장 덮어쓰기가 발생했다.
+- [x] 정상 완료 payload는 로컬 cache에서 시간 만료 없이 재사용하고, 명시적 force, cache-key/schema 변경, 사용자 데이터 초기화, 용량 제한 eviction만 재조회 경계로 둔다. 현재 날짜·현재 시즌·LIVE 데이터의 fresh-first/fail-visible 계약은 유지한다.
+
+### 반영
+
+- [x] `ApiClient.getCached`에 stale cache의 background 재검증을 endpoint별로 끌 수 있는 계약을 추가했다. 과거 종료 경기·compact/scoreboard, 상세 boxscore·lineup·detailed relay, 과거 일정·순위, 과거 시즌 선수/기록실 경로가 이를 사용한다.
+- [x] 경기 ID, 월, 시즌, terminal 상태와 payload 완성도를 검증한 응답만 immutable cache로 인정한다. summary-only relay, 비공식/빈 boxscore, 한쪽이 비어 있는 lineup, non-terminal 일정, 1위부터 시작하지 않는 순위·리더보드는 저장하지 않거나 기존 cache를 폐기한다.
+- [x] 사용자-visible 데이터 로딩 정책 변경이므로 새 release candidate `0.1.28+96`으로 승격한다.
+
+### 검증 및 남은 경계
+
+- [x] targeted Flutter cache tests: 52개 통과. 1년 이상 지난 완료 relay·boxscore·lineup과 과거 기록실 cache가 네트워크 요청 0회로 재사용되고, 미완성 boxscore·lineup·relay summary는 저장되지 않는 것을 확인했다.
+- [x] `fvm flutter analyze --no-fatal-infos`: `No issues found`.
+- [x] Flutter 전체 `fvm flutter test --no-pub`: 534개 통과.
+- [x] 운영 release API health gate 재실행에서 DNS/TLS, health, scoreboard/home, home, schedule, standings, records overview가 모두 통과했다. 당일 경기 없음으로 relay는 명시적 skip이었다. 첫 실행의 relay helper 내부 scoreboard 재조회는 단회 20초 timeout이었으나 직후 curl 200과 전체 gate 재실행 통과로 transient 연결 표본으로 분리했다.
+- [ ] clean release artifact/TestFlight 배포는 후속 checkpoint에서 별도 확인한다.
+- [ ] `SharedPreferences` cache는 최대 64 entries/2 MiB이며 오래된 항목은 capacity eviction될 수 있다. 이번 변경은 시간 만료 재요청을 제거하는 범위이고, 시즌 전체 오프라인 보관을 위한 SQLite/별도 DB 확장은 포함하지 않는다.
+
 ## 2026-08-31: 0.1.27 TestFlight 심사 승인 후속
 
 ### 확인

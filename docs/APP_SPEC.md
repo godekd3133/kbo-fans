@@ -20,7 +20,7 @@
 - 앱의 날짜 의존 provider는 `Asia/Seoul` 자정에 새 날짜 key를 발행하고 resume 때도 재확인한다. 홈/일정이 실행 중인 채 자정을 지나도 전날 provider key에 머물지 않는다. 순위/기록실이 현재 시즌을 보고 있으면 1월 1일 KST 연도 전환에 새 시즌을 따르되, 사용자가 직접 고른 과거 시즌은 유지한다.
 - 순위는 KBO 연도별 페이지에서 요청 시즌, 원천 선택 시즌, 원천 기준일 연도가 모두 일치할 때만 저장·반환한다. 현재/LIVE 박스스코어는 검증된 공식 양 팀 기록이 없으면 `official_unavailable` 또는 명시적 `live_context`로 응답하며, 인접 경기나 과거 snapshot을 빌리지 않는다. 라인업 GET은 snapshot 보강·저장은 할 수 있지만 push 발송이나 registry mutation은 하지 않는다.
 - `/push/live-activity/update`는 설정된 `PUSH_SYNC_SECRET`을 필수로 하고, unregister는 `gameId + activityPushToken + activityId + installationId`가 모두 nonblank이며 등록 owner와 일치해야 한다. 기존 앱의 `installationId`가 누락/null이거나 token/activity id 일부가 누락/null/blank이면 422 대신 `removed=0` 안전 무동작으로 호환한다. 실패한 현재 앱 unregister는 이 네 필드의 불변 세대별로 보존한다. sync worker는 한 경기의 relay를 한 tick에 한 번만 읽고, token별 content signature가 그대로인 Live Activity update는 재발송하지 않는다.
-- backend snapshot은 image에 포함된 read-only seed와 runtime write 경로를 분리한다. 앱은 오늘/현재 시즌/LIVE 응답을 `SharedPreferences` API cache에 저장하지 않으며, historical cache도 최대 2 MiB와 항목별/개수 제한 안에서 오래된 항목부터 제거한다.
+- backend snapshot은 image에 포함된 read-only seed와 runtime write 경로를 분리한다. 앱은 오늘/현재 시즌/LIVE 응답을 `SharedPreferences` API cache에 저장하지 않으며, historical cache도 최대 2 MiB와 항목별/개수 제한 안에서 오래된 항목부터 제거한다. 완성된 historical payload는 시간 만료로 재검증하지 않고 force/schema·key 변경/사용자 초기화/capacity eviction 때만 다시 받는다.
 
 ### 0.2 2026-08-10 2차 감사 보강 계약
 
@@ -36,7 +36,7 @@
 
 ### 0.3 2026-08-10 3차 인수 계약
 
-- 과거 scoreboard/game은 `FINAL`/`CANCELLED`만 snapshot·30일 기기 cache 대상으로 인정한다. `SUSPENDED`는 중단 상태로 표시하되 snapshot·30일 기기 cache에는 저장·재사용하지 않고, 정상 8초 backend runtime TTL이 지난 다음 진입에서 공식 재개·종료 상태를 확인한다.
+- 과거 scoreboard/game은 `FINAL`/`CANCELLED`만 immutable 기기 cache 대상으로 인정한다. identity와 완성도 검증을 통과한 cache는 시간 만료로 재요청하지 않으며 명시적 force, cache-key/schema 변경, 사용자 초기화, 용량 eviction 때만 다시 받는다. `SUSPENDED`는 중단 상태로 표시하되 immutable cache에는 저장·재사용하지 않고, 정상 8초 backend runtime TTL이 지난 다음 진입에서 공식 재개·종료 상태를 확인한다.
 - 공개 `forceRefresh=true`는 앱 호환을 위해 200으로 수용하되 backend TTL을 우회하지 않는다. configured sync secret과 exact match하는 운영 header가 있을 때만 원천 강제 갱신을 허용한다.
 - Live Activity update는 token별 desired revision을 저장하고 APNs 호출 직전에 claim revision을 다시 fence한다. 다중 token 순차 발송과 worker lease 경쟁에서도 오래된 content-state가 최신 상태 뒤에 도착하지 않아야 한다.
 - 공개 register는 stale TTL GC와 영속 신규-owner admission을 적용한다. exact owner refresh/rotation은 보존하되 자기신고 ID의 paced Sybil은 외부 attestation/WAF 없이는 완전히 증명·차단할 수 없음을 운영 한계로 유지한다.
@@ -1345,21 +1345,21 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 |------|-------------|----------------|--------------|
 | Live | 진행 중 경기 scoreboard, relay, 현재 타석, 당일 라인업 변경 | 짧은 TTL + adaptive polling, stale snapshot masking 금지 | fresh-first. API 실패 시 TTL 안의 로컬 API cache도 정상 데이터처럼 재사용하지 않음 |
 | Warm Cache | 오늘 일정, 경기 단건 상세, 당일/직전 경기 박스스코어, 최근 팀 기록 | 메모리/Redis TTL 캐시 + 종료 직후 증분 갱신 | 화면 진입 뒤 background refresh, pull-to-refresh. 현재 날짜/월/시즌 실패는 오류로 노출 |
-| Persisted Snapshot | 선수 과거 기록, 지난 경기 결과, 지난 날짜 순위, 시즌 누적 팀/선수 통계 | DB/스토리지에 정규화 후 저장, 재크롤링보다 snapshot 우선 | 로컬 캐시와 함께 즉시 렌더링, 필요 시 조용한 재검증 |
+| Persisted Snapshot | 선수 과거 기록, 지난 경기 결과, 지난 날짜 순위, 시즌 누적 팀/선수 통계 | DB/스토리지에 정규화 후 저장, 재크롤링보다 snapshot 우선 | 검증된 완성 데이터를 로컬 캐시에서 즉시 렌더링하고 시간 기반 재검증 생략 |
 
 ### 히스토리 데이터 저장 원칙
 
 - 경기 종료 시점에 해당 경기의 박스스코어, 라인업, relay summary, 하이라이트 메타를 영속 저장한다.
 - 선수 시즌 누적 기록과 최근 경기 로그는 경기 종료 이벤트를 기준으로 증분 업데이트한다.
 - 순위는 하루 여러 번 snapshot 으로 저장하고, 과거 날짜 조회는 저장된 snapshot 을 우선 반환한다.
-- 원천 KBO 응답이 수정될 가능성이 있으므로 당일/전일 데이터는 재검증 주기를 두고, 시간이 지난 히스토리 데이터는 낮은 빈도로만 재검증한다.
+- 원천 KBO 응답이 바뀔 수 있는 당일/전일과 non-terminal 데이터는 재검증 주기를 둔다. identity와 완성도 검증을 통과한 종료 경기·과거 시즌 데이터는 시간 기반 재검증을 중단하고 명시적 force 또는 cache schema/key 변경으로만 교체한다.
 - 앱이 `지난 경기 / 지난 순위 / 선수 과거 기록`을 요청할 때는 원천 크롤링보다 저장된 정규화 데이터에서 먼저 응답해야 한다.
 - backend 기록실 overview/leaderboard와 순위는 과거 시즌 snapshot이 있으면 crawler를 호출하기 전에 snapshot을 먼저 정규화해 반환한다. current 시즌은 기존처럼 fresh-first/fail-visible 이다.
 
 ### 앱 렌더링 정책
 
 - 앱은 cold start 시 현재 날짜/월/시즌 데이터는 서버 최신 응답을 우선하고, API 실패 시 TTL 안의 로컬 API cache도 정상 데이터처럼 렌더링하지 않는다.
-- 홈/일정/순위/기록실의 히스토리 데이터는 stale-while-revalidate 를 유지하되, current 데이터는 fresh-first/fail-visible 로 처리한다. 지난 경기/일정/순위 cache 는 30일, 과거 시즌 기록실/팀/선수 기록 cache 는 180일을 기준으로 조용한 재검증 빈도를 낮춘다.
+- 지난 경기·일정·순위·기록실의 검증된 히스토리 데이터는 cached-first immutable 정책을 사용하고, current 데이터는 fresh-first/fail-visible 로 처리한다. 완성된 지난 경기·일정·순위와 과거 시즌 기록실/팀/선수 기록은 시간 만료만으로 background 재검증하지 않으며 명시적 force, cache-key/schema 변경, 사용자 초기화, capacity eviction 때만 다시 받는다. 과거 날짜의 `/home` aggregate는 부분 조합 응답일 수 있어 이 immutable 대상에 포함하지 않는다.
 - 로딩 스피너는 live 데이터가 실제로 비어 있을 때만 노출하고, 히스토리 데이터는 스냅샷이 있으면 skeleton 없이 바로 보여준다.
 - 홈 첫 로딩은 오늘 스코어보드 별도 로컬 cache 를 먼저 렌더링하지 않고, 최신 API 응답 또는 명시적 오류 상태를 기준으로 전환한다.
 - 홈이 이미 정상 스코어보드를 한 번 그린 뒤 resumed / timer refresh 가 실패하면, 저장 캐시를 새 정상 데이터처럼 쓰지 않고 화면에 보이던 같은 날짜 스코어보드만 유지한다. 보존 화면 위에는 `업데이트가 지연되고 있습니다`, `마지막 갱신 HH:mm KST`, `다시 시도` 배너를 표시하고, 새 응답을 기다리는 중에는 `새 점수를 확인하는 중입니다`로 구분한다. 전체 오류 화면은 첫 데이터가 전혀 없을 때만 노출한다.
@@ -1379,7 +1379,7 @@ final notificationSettingsProvider = NotifierProvider<NotifSettingsNotifier, Not
 - 앱 전역 Provider retry 는 비활성화한다. 화면은 API 실패를 자동 retry 뒤에 숨기지 않고 오류 카드, 빈 상태, 또는 Dev Console 로그로 명시한다.
 - `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜 스코어보드, 홈 aggregate, 경기 상세, relay, 박스스코어, 라인업, 현재 월 일정, 현재 시즌 순위/기록실/팀 기록/팀 선수/팀 스탯/선수 상세는 API 실패 시 fresh local API cache를 실패 fallback으로 쓰지 않는다.
 - backend `/home` aggregate 는 현재/미래 날짜에서 schedule/standings/records overview 하위 호출 실패를 빈 섹션이나 placeholder 로 대체하지 않고 실패를 전파한다. 과거 날짜만 partial fallback 을 허용한다.
-- backend current 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot 으로 정상 상태를 만들지 않는다. 과거 스코어보드·경기 snapshot은 모든 경기가 `FINAL`/`CANCELLED`일 때만 저장·재사용한다. 과거 `SUSPENDED`/예정/진행 상태는 공식 원천을 다시 조회하고, 앱도 scoreboard/home/compact/game의 non-terminal historical 응답을 30일 cache에 저장하거나 재사용하지 않는다. 과거 시즌·월의 안정 데이터 snapshot-first 정책은 유지한다.
+- backend current 스코어보드, 일정, 순위, 기록실 요약, 리더보드는 원천 실패 시 저장 snapshot 으로 정상 상태를 만들지 않는다. 과거 스코어보드·경기 snapshot은 모든 경기가 `FINAL`/`CANCELLED`이고 identity·완성도 검증을 통과할 때만 저장·재사용한다. 과거 `SUSPENDED`/예정/진행 상태와 summary-only relay·비공식/빈 boxscore·불완전 lineup은 immutable cache에 저장하거나 재사용하지 않는다. 과거 시즌·월의 안정 데이터 snapshot-first 정책은 유지한다.
 - backend 기록실 요약과 리더보드는 KBO 응답 row 순서에 의존하지 않고 rank 오름차순으로 정규화한 뒤 앱에 전달한다.
 - 현재/진행 예정 경기 상세의 박스스코어, 라인업, LIVE relay 는 원천 실패 시 저장 snapshot 또는 요약 payload 로 정상처럼 대체하지 않는다. 박스스코어의 adjacent game id fallback 은 검증된 과거 종료 경기 canonical id 보정에만 허용하고, current/live 공식 rows가 비어 있으면 `availability=official_unavailable` 또는 검증된 `live_context` 상태를 노출한다.
 - 경기 전 `lineupOpened=false`인 라인업 탭은 `gameLineupProvider`와 팀 선수 provider를 구독하지 않고 `라인업 공개 전` 상태를 즉시 표시한다. 공개된 current/live 라인업 응답은 기본 라인업·선발 정보를 선택적인 팀 선수/프로필 이미지 보강과 분리해 먼저 반환한다.

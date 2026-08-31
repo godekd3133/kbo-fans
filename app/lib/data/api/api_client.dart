@@ -223,6 +223,7 @@ class ApiClient {
     bool Function(Map<String, dynamic> data)? isValid,
     bool Function(Map<String, dynamic> data)? isCacheable,
     bool allowCacheOnFailure = false,
+    bool revalidateStaleCache = true,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = '$_cachePrefix$cacheKey';
@@ -253,7 +254,7 @@ class ApiClient {
     }
 
     if (preferCache && cached != null) {
-      if (!isFresh) {
+      if (!isFresh && revalidateStaleCache) {
         unawaited(
           _refreshCached(
             path,

@@ -38,9 +38,10 @@ description: Use when implementing or reviewing KBO Fans data loading, caching, 
 
 ## App Workflow
 
-1. 히스토리성 GET 은 cached-first 로 읽고 background refresh 를 건다.
-2. live 경로는 network-first 를 유지하되 stale fallback 은 허용한다.
+1. identity와 완성도 검증을 통과한 히스토리성 GET은 cached-first로 읽고 시간 기반 background refresh를 걸지 않는다. 명시적 force, cache-key/schema 변경, 사용자 초기화, 용량 eviction만 재조회 경계로 둔다.
+2. live/current 경로는 network-first/fail-visible을 유지한다. 마지막 화면 데이터를 보존할 수는 있지만 stale cache를 최신 성공 응답처럼 숨기지 않는다.
 3. snapshot 이 있으면 로딩 스피너 대신 마지막 성공 데이터를 먼저 보여준다.
+4. 득점 요약뿐인 relay, 비공식/빈 boxscore, 한쪽이 비어 있는 lineup, 다른 경기·월·시즌 payload는 immutable snapshot으로 저장하지 않는다.
 
 ## Files To Check
 

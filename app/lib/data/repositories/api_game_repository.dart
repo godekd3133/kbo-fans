@@ -50,6 +50,7 @@ class ApiGameRepository
       maxAge: isHistoricalDate ? _historicalCacheAge : _liveishCacheAge,
       isCacheable: isHistoricalDate ? _hasOnlyTerminalGames : null,
       allowCacheOnFailure: isHistoricalDate && !forceRefresh,
+      revalidateStaleCache: !isHistoricalDate,
     );
     final games = data['games'] as List<dynamic>? ?? [];
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
@@ -72,6 +73,7 @@ class ApiGameRepository
       maxAge: isHistoricalDate ? _historicalCacheAge : _liveishCacheAge,
       isCacheable: isHistoricalDate ? _hasOnlyTerminalGames : null,
       allowCacheOnFailure: isHistoricalDate,
+      revalidateStaleCache: !isHistoricalDate,
     );
     final games = data['games'] as List<dynamic>? ?? [];
     return games.map((g) => _parseGame(g as Map<String, dynamic>)).toList();
@@ -87,8 +89,11 @@ class ApiGameRepository
       cacheKey: 'game_detail_v2:$gameId',
       preferCache: isHistoricalGame && !forceRefresh,
       maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
-      isCacheable: isHistoricalGame ? _hasTerminalGame : null,
+      isCacheable: isHistoricalGame
+          ? (payload) => _hasTerminalGame(payload, gameId: gameId)
+          : null,
       allowCacheOnFailure: isHistoricalGame && !forceRefresh,
+      revalidateStaleCache: !isHistoricalGame,
     );
     final game = data['game'] as Map<String, dynamic>?;
     if (game == null) {
@@ -125,7 +130,11 @@ class ApiGameRepository
       cacheKey: 'relay:$gameId:${afterSeqNo ?? ''}',
       preferCache: isHistoricalGame && !forceRefresh,
       maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
+      isCacheable: isHistoricalGame
+          ? (payload) => _hasDetailedHistoricalRelay(payload, gameId)
+          : null,
       allowCacheOnFailure: isHistoricalGame && !forceRefresh,
+      revalidateStaleCache: !isHistoricalGame,
     );
     final items = data['relayItems'] as List<dynamic>? ?? [];
     final atBat = data['currentAtBat'] as Map<String, dynamic>?;
@@ -158,7 +167,11 @@ class ApiGameRepository
       cacheKey: 'boxscore:$gameId',
       preferCache: isHistoricalGame,
       maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
+      isCacheable: isHistoricalGame
+          ? (payload) => _hasCanonicalHistoricalBoxscore(payload, gameId)
+          : null,
       allowCacheOnFailure: isHistoricalGame,
+      revalidateStaleCache: !isHistoricalGame,
     );
     return GameBoxscoreData(
       gameId: gameId,
@@ -199,7 +212,11 @@ class ApiGameRepository
       cacheKey: 'lineup:$gameId',
       preferCache: isHistoricalGame,
       maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
+      isCacheable: isHistoricalGame
+          ? (payload) => _hasCompleteHistoricalLineup(payload, gameId)
+          : null,
       allowCacheOnFailure: isHistoricalGame,
+      revalidateStaleCache: !isHistoricalGame,
     );
     return GameLineupData(
       gameId: gameId,
@@ -226,7 +243,11 @@ class ApiGameRepository
       cacheKey: 'schedule:$yearMonth',
       preferCache: isHistoricalMonth,
       maxAge: isHistoricalMonth ? _historicalCacheAge : _liveishCacheAge,
+      isCacheable: isHistoricalMonth
+          ? (payload) => _hasCompleteHistoricalSchedule(payload, yearMonth)
+          : null,
       allowCacheOnFailure: isHistoricalMonth,
+      revalidateStaleCache: !isHistoricalMonth,
     );
     final days = data['days'] as List<dynamic>? ?? [];
     return days.map((d) {
@@ -268,7 +289,9 @@ class ApiGameRepository
         cacheKey: 'standings:$season',
         preferCache: isHistoricalSeason,
         maxAge: isHistoricalSeason ? _historicalCacheAge : _liveishCacheAge,
+        isValid: (payload) => _hasValidStandings(payload, season),
         allowCacheOnFailure: isHistoricalSeason,
+        revalidateStaleCache: !isHistoricalSeason,
       );
       return _parseStandings(data);
     } catch (_) {
@@ -561,9 +584,134 @@ class ApiGameRepository
     );
   }
 
-  static bool _hasTerminalGame(Map<String, dynamic> data) {
+  static bool _hasTerminalGame(
+    Map<String, dynamic> data, {
+    required String gameId,
+  }) {
     final game = data['game'];
-    return game is Map && _isTerminalStatus(game['status']);
+    return game is Map &&
+        game['gameId'] == gameId &&
+        _isTerminalStatus(game['status']);
+  }
+
+  static bool _hasDetailedHistoricalRelay(
+    Map<String, dynamic> data,
+    String gameId,
+  ) {
+    if (data['gameId'] != gameId || data['currentAtBat'] != null) {
+      return false;
+    }
+    final items = data['relayItems'];
+    if (items is! List || items.isEmpty) {
+      return false;
+    }
+    for (final item in items) {
+      if (item is! Map) {
+        return false;
+      }
+      final event = item['event'];
+      final text = item['text']?.toString() ?? '';
+      final pitchSequence = item['pitchSequence']?.toString() ?? '';
+      if (event != 'RUNS' && event != 'GAME_END' && event != 'INNING_CHANGE') {
+        return true;
+      }
+      if (text.contains(':') || pitchSequence.isNotEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool _hasCanonicalHistoricalBoxscore(
+    Map<String, dynamic> data,
+    String gameId,
+  ) {
+    if (data['gameId'] != gameId || data['officialAvailable'] != true) {
+      return false;
+    }
+    return _hasOfficialTeamBoxscore(data['away']) &&
+        _hasOfficialTeamBoxscore(data['home']);
+  }
+
+  static bool _hasOfficialTeamBoxscore(Object? value) {
+    if (value is! Map) {
+      return false;
+    }
+    final batters = value['batters'];
+    final pitchers = value['pitchers'];
+    return batters is List &&
+        batters.isNotEmpty &&
+        pitchers is List &&
+        pitchers.isNotEmpty;
+  }
+
+  static bool _hasCompleteHistoricalLineup(
+    Map<String, dynamic> data,
+    String gameId,
+  ) {
+    if (data['gameId'] != gameId) {
+      return false;
+    }
+    return _hasLineupRows(data['away']) && _hasLineupRows(data['home']);
+  }
+
+  static bool _hasLineupRows(Object? value) {
+    if (value is! Map) {
+      return false;
+    }
+    final lineup = value['lineup'];
+    return lineup is List && lineup.isNotEmpty;
+  }
+
+  static bool _hasCompleteHistoricalSchedule(
+    Map<String, dynamic> data,
+    String yearMonth,
+  ) {
+    if (data['month'] != yearMonth) {
+      return false;
+    }
+    final days = data['days'];
+    if (days is! List || days.isEmpty) {
+      return false;
+    }
+    var gameCount = 0;
+    for (final day in days) {
+      if (day is! Map) {
+        return false;
+      }
+      final date = day['date']?.toString() ?? '';
+      final games = day['games'];
+      if (games is! List) {
+        return false;
+      }
+      for (final game in games) {
+        gameCount += 1;
+        if (game is! Map || !_isTerminalStatus(game['status'])) {
+          return false;
+        }
+        final compactDate = date.replaceAll('-', '');
+        final gameId = game['gameId']?.toString() ?? '';
+        if (compactDate.length != 8 || !gameId.startsWith(compactDate)) {
+          return false;
+        }
+        if (game['status'] == 'FINAL' &&
+            (game['awayScore'] is! int || game['homeScore'] is! int)) {
+          return false;
+        }
+      }
+    }
+    return gameCount > 0;
+  }
+
+  static bool _hasValidStandings(Map<String, dynamic> data, int season) {
+    if (data['season'] != season) {
+      return false;
+    }
+    final standings = data['standings'];
+    return standings is List &&
+        standings.isNotEmpty &&
+        standings.first is Map &&
+        (standings.first as Map)['rank'] == 1;
   }
 
   static bool _isTerminalStatus(Object? status) {

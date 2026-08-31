@@ -26,6 +26,7 @@ description: Use when changing KBO data-loading paths, backend-backed API usage,
 - Backend records overview and leaderboard responses must be normalized by ascending rank before they are cached, saved, or returned to the app.
 - Backend `/home` aggregate must not mask current/future schedule, standings, or records overview failures with empty sections or placeholder cards. Historical home queries may keep partial fallback.
 - App cache must not mask current date/month/season failures. Keep `allowCacheOnFailure` default false; only historical paths should explicitly opt in to cached-first/snapshot behavior.
+- Canonical historical data is immutable on the device after identity/completeness validation. Do not time-revalidate completed game/boxscore/lineup/detailed relay, complete historical schedule/standings, or exact past-season records. Re-fetch only through explicit force, cache-key/schema migration, user reset, or capacity eviction; never persist summary-only or partial payloads as canonical history.
 - Home first paint must not render a separate today-scoreboard local cache while current scoreboard source is loading. Keep current data paths latest-source-or-visible-error.
 - Home secondary aggregate providers should not be watched until after the first scoreboard data frame.
 - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.

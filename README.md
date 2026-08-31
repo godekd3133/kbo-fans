@@ -79,8 +79,8 @@ kbo_fans/
 
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
-- Current release line: `0.0.x`
-- Current release: `0.0.33`
+- Current release line: `0.1.x`
+- Current release candidate: `0.1.28+96`
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 
@@ -332,6 +332,7 @@ GitHub Actions 배포:
 
 - 앱 화면 GET은 모든 재시도를 합쳐 25초 안에 끝나며 deadline 시 transport를 취소합니다. backend는 기본 15초 뒤 `504 UPSTREAM_DEADLINE_EXCEEDED`, 포화 시 `503 UPSTREAM_BUSY + Retry-After: 1`을 반환하므로 로딩 Future가 영구 pending으로 남지 않아야 합니다.
 - 앱 API cache는 성공 응답 저장과 히스토리 cached-first 조회용입니다. `allowCacheOnFailure` 기본값은 false 이며, 현재 날짜/월/시즌 경로는 API 실패 시 이 cache를 정상 데이터처럼 읽지 않습니다.
+- 정상 검증된 종료 경기·과거 일정·순위·기록실 응답은 시간 만료만으로 다시 요청하지 않고 기기 cache에서 재사용합니다. cache key/schema 변경, 명시적 강제 갱신, 앱 데이터 삭제, 용량 제한에 따른 eviction 때만 다시 받습니다. 득점 요약뿐인 문자중계나 비어 있는 공식 기록은 완성 snapshot으로 저장하지 않습니다.
 - 홈 스코어보드는 오늘 데이터 로딩 중 별도 로컬 cache를 먼저 렌더링하지 않습니다. 최신 API 응답 또는 명시적 오류 상태를 기준으로 화면을 갱신합니다.
 - 홈 secondary aggregate는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전에 `/home` 부가 API가 시작되지 않도록 합니다.
 - 홈 마이팀 브리프의 팀 타율/ERA는 scoreboard 첫 데이터 프레임 뒤 팀 지표 provider(`/api/team/{teamId}/stats`)로 먼저 보강하고, 팀 홈런 1위와 뜨는 선수는 선수 provider(`/api/team/{teamId}/players`)가 도착하면 채웁니다. `/home` aggregate에 전 팀 선수 기록을 싣지 않습니다.
@@ -352,7 +353,7 @@ GitHub Actions 배포:
 - 현재 날짜/월/시즌 원천 요청은 실패 시 TTL 안의 로컬 cache도 정상 데이터처럼 재사용하지 않습니다. 과거 날짜/시즌/월 조회만 cached-first 또는 snapshot fallback을 유지합니다.
 - 앱 전역 Provider retry는 비활성화되어 원천 실패가 반복 재시도 뒤에 숨지 않고 화면 오류 상태와 Dev Console에 드러나야 합니다.
 - 지난 경기 결과, 선수 과거 기록, 지난 날짜 순위는 화면 요청 시 원천 크롤링보다 저장된 snapshot/정규화 레코드를 우선 사용합니다.
-- 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장합니다. 앱은 히스토리 데이터만 stale-while-revalidate 로 먼저 보여주고, 현재 날짜/시즌 데이터는 direct source 최신 응답을 우선하며 실패 시 로컬 cache로 정상 상태를 만들지 않습니다.
+- 경기 종료 시 박스스코어/라인업/relay summary/시즌 누적 기록을 증분 저장합니다. 앱은 완성된 히스토리 데이터를 기기 cache에서 즉시 보여주고 시간 기반 재검증을 생략하며, 현재 날짜/시즌 데이터는 direct source 최신 응답을 우선하고 실패 시 로컬 cache로 정상 상태를 만들지 않습니다.
 - 예정 경기는 YouTube 하이라이트 검색을 생략해 첫 로딩 외부 호출을 줄입니다.
 - 개발 환경에서는 앱 Dev Console 에 `API`, `HOME loaded`, `RECORDS loaded` 타이밍 로그가 표시됩니다.
 - backend-backed mode에서는 `backend/logs/backend.log`, `backend/logs/client_metrics.log` 에 느린 요청과 클라이언트 실측 지표를 저장합니다.

@@ -359,6 +359,34 @@ void main() {
     expect(data['source'], 'historical-cache');
   });
 
+  test(
+    'immutable cached-first path never revalidates an expired snapshot',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'api_cache:scoreboard_home:2013-05-01': _cachedApiPayload({
+          'source': 'immutable-cache',
+        }, age: const Duration(days: 3650)),
+      });
+      final adapter = _CountingSuccessAdapter({'source': 'network'});
+      final client = ApiClient(
+        dio: _dioWithAdapter(adapter),
+        enableRequestTiming: false,
+      );
+
+      final data = await client.getCached(
+        '/scoreboard/home',
+        cacheKey: 'scoreboard_home:2013-05-01',
+        preferCache: true,
+        maxAge: const Duration(days: 30),
+        revalidateStaleCache: false,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(data['source'], 'immutable-cache');
+      expect(adapter.calls, 0);
+    },
+  );
+
   test('cached-first path rejects a future timestamp', () async {
     SharedPreferences.setMockInitialValues({
       'api_cache:scoreboard_home:2026-05-01': _cachedApiPayload({
@@ -383,12 +411,12 @@ void main() {
   });
 
   test(
-    'historical game cache avoids background refresh inside long TTL',
+    'historical game cache avoids background refresh after the old TTL',
     () async {
       SharedPreferences.setMockInitialValues({
         'api_cache:scoreboard_home:2013-05-01': _cachedApiPayload({
           'games': const [],
-        }, age: const Duration(days: 20)),
+        }, age: const Duration(days: 365)),
       });
       final adapter = _CountingSuccessAdapter({'games': const []});
       final repository = ApiGameRepository(
@@ -537,12 +565,14 @@ void main() {
 
       await repository.getRelayData(gameId);
 
-      expect(adapter.calls, 1);
+      expect(adapter.calls, 2);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('api_cache:relay:$gameId:'), isFalse);
     },
   );
 
   test(
-    'historical records overview cache avoids background refresh inside long TTL',
+    'historical records overview cache avoids refresh after the old TTL',
     () async {
       SharedPreferences.setMockInitialValues({
         'api_cache:recordsOverview:v5:2013': _cachedApiPayload(
@@ -551,7 +581,7 @@ void main() {
             firstAvgRank: 1,
             firstEraRank: 1,
           ),
-          age: const Duration(days: 30),
+          age: const Duration(days: 365),
         ),
       });
       final adapter = _CountingSuccessAdapter(
@@ -566,6 +596,132 @@ void main() {
 
       expect(overview.avgLeaders.first.rank, 1);
       expect(adapter.calls, 0);
+    },
+  );
+
+  test(
+    'complete historical detail snapshots stay local without reloading',
+    () async {
+      const gameId = '20130501KTLG0';
+      SharedPreferences.setMockInitialValues({
+        'api_cache:relay:$gameId:': _cachedApiPayload({
+          'gameId': gameId,
+          'currentAtBat': null,
+          'relayItems': const [
+            {
+              'seqNo': 1,
+              'inning': 1,
+              'half': 'top',
+              'event': 'HIT',
+              'text': '홍길동: 좌전 안타',
+            },
+          ],
+        }, age: const Duration(days: 365)),
+        'api_cache:boxscore:$gameId': _cachedApiPayload({
+          'gameId': gameId,
+          'officialAvailable': true,
+          'away': {
+            'teamId': 'KT',
+            'batters': [
+              {'name': '원정 타자'},
+            ],
+            'pitchers': [
+              {'name': '원정 투수'},
+            ],
+          },
+          'home': {
+            'teamId': 'LG',
+            'batters': [
+              {'name': '홈 타자'},
+            ],
+            'pitchers': [
+              {'name': '홈 투수'},
+            ],
+          },
+        }, age: const Duration(days: 365)),
+        'api_cache:lineup:$gameId': _cachedApiPayload({
+          'gameId': gameId,
+          'away': {
+            'teamId': 'KT',
+            'lineup': [
+              {'order': 1, 'name': '원정 타자'},
+            ],
+          },
+          'home': {
+            'teamId': 'LG',
+            'lineup': [
+              {'order': 1, 'name': '홈 타자'},
+            ],
+          },
+        }, age: const Duration(days: 365)),
+      });
+      final adapter = _CountingSuccessAdapter(const {});
+      final repository = ApiGameRepository(
+        ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+      );
+
+      final relay = await repository.getRelayData(gameId);
+      final boxscore = await repository.getBoxscoreData(gameId);
+      final lineup = await repository.getLineupData(gameId);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(relay.relayItems.single.event, 'HIT');
+      expect(boxscore.away.batters.single.name, '원정 타자');
+      expect(lineup.home.lineup.single.name, '홈 타자');
+      expect(adapter.calls, 0);
+    },
+  );
+
+  test(
+    'incomplete historical boxscore and lineup responses are not persisted',
+    () async {
+      const gameId = '20130501KTLG0';
+      SharedPreferences.setMockInitialValues({});
+      final boxscoreRepository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(
+            _SuccessAdapter({
+              'gameId': gameId,
+              'officialAvailable': false,
+              'away': {
+                'teamId': 'KT',
+                'batters': const [],
+                'pitchers': const [],
+              },
+              'home': {
+                'teamId': 'LG',
+                'batters': const [],
+                'pitchers': const [],
+              },
+            }),
+          ),
+          enableRequestTiming: false,
+        ),
+      );
+      final lineupRepository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(
+            _SuccessAdapter({
+              'gameId': gameId,
+              'away': {
+                'teamId': 'KT',
+                'lineup': [
+                  {'order': 1, 'name': '원정 타자'},
+                ],
+              },
+              'home': {'teamId': 'LG', 'lineup': const []},
+            }),
+          ),
+          enableRequestTiming: false,
+        ),
+      );
+
+      await boxscoreRepository.getBoxscoreData(gameId);
+      await lineupRepository.getLineupData(gameId);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('api_cache:boxscore:$gameId'), isFalse);
+      expect(prefs.containsKey('api_cache:lineup:$gameId'), isFalse);
     },
   );
 
