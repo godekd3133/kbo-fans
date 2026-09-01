@@ -28,7 +28,10 @@
 
 - [x] 이번 변경은 앱/API 동작과 사용자-visible 문자중계 상태가 바뀌므로 `0.1.30+98` 및 numeric tag `0.1.30` tester-facing release로 승격한다.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`, release-note test fixture를 새 버전에 맞췄다.
-- [ ] main push, Lightsail backend deploy, signed IPA/TestFlight upload 및 Apple external tester handoff는 진행 중이다.
+- [x] main commit `3cb426081a88cb43b0881e36eb28e842cc64c71a`를 `origin/main`에 push하고 numeric tag `0.1.30` 및 [GitHub Release](https://github.com/godekd3133/kbo-fans/releases/tag/0.1.30)를 생성했다.
+- [x] Lightsail `kbo-fans-api-lightsail`에 release `20260901171135`를 `--preserve-env --skip-caddy`로 배포했다. 원격 `/opt/kbo-fans/current`와 `relay.py` SHA-256이 push 대상과 일치하고, `kbo-fans-api` 및 `kbo-fans-sync-worker`가 모두 `active`다.
+- [x] 배포 후 외부 HTTPS health gate에서 `/api/health`, `/api/scoreboard/home`, `/api/game/20260902LGOB0/relay`, `/api/home`, `/api/schedule`, `/api/standings`, `/api/records/overview`가 모두 HTTP 200으로 readback됐다.
+- [ ] `0.1.30+98` signed IPA/TestFlight upload 및 Apple external tester handoff는 Apple Distribution certificate가 로컬 keychain과 GitHub signing secrets에 없어 진행하지 못했다. 로컬 archive는 Apple Development 서명(`get-task-allow=true`, `aps-environment=development`)뿐이므로 TestFlight에 업로드하지 않았다.
 
 ## 2026-09-01: 문자중계 첫 진입 provider 미시작 보정 및 0.1.29+97
 
