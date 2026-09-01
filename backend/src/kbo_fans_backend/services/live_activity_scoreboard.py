@@ -507,7 +507,12 @@ class LiveActivityScoreboardSyncService:
                 homerun_state = {
                     **current_state,
                     **relay_current_state,
-                    "inning": _relay_item_inning_text(item) or relay_current_state["inning"],
+                    "inning": (
+                        _relay_item_inning_text(item)
+                        or relay_current_state.get("inning")
+                        or current_state.get("inning")
+                        or "진행중"
+                    ),
                     "batterName": (
                         _relay_item_actor(item)
                         or relay_current_state["batterName"]
@@ -531,7 +536,12 @@ class LiveActivityScoreboardSyncService:
                 hit_state = {
                     **current_state,
                     **relay_current_state,
-                    "inning": _relay_item_inning_text(item) or relay_current_state["inning"],
+                    "inning": (
+                        _relay_item_inning_text(item)
+                        or relay_current_state.get("inning")
+                        or current_state.get("inning")
+                        or "진행중"
+                    ),
                     "batterName": (
                         _relay_item_actor(item)
                         or relay_current_state["batterName"]
@@ -643,9 +653,9 @@ class LiveActivityScoreboardSyncService:
             "home_team_name": current_state["homeTeam"],
             "away_score": current_state["awayScore"],
             "home_score": current_state["homeScore"],
-            "inning": current_state["inning"],
-            "batter_name": current_state["batterName"],
-            "pitcher_name": current_state["pitcherName"],
+            "inning": str(current_state.get("inning") or "진행중"),
+            "batter_name": str(current_state.get("batterName") or ""),
+            "pitcher_name": str(current_state.get("pitcherName") or ""),
             "situation_text": current_state.get("situationText", ""),
             "play_text": current_state.get("playText", ""),
             "start_time": current_state.get("startTime", ""),
@@ -885,11 +895,14 @@ def _relay_current_state(
     current_at_bat: Any,
     fallback_state: dict[str, Any],
 ) -> dict[str, Any]:
+    fallback_inning = str(fallback_state.get("inning") or "진행중")
+    fallback_batter_name = str(fallback_state.get("batterName") or "")
+    fallback_pitcher_name = str(fallback_state.get("pitcherName") or "")
     if not isinstance(current_at_bat, dict):
         return {
-            "inning": fallback_state["inning"],
-            "batterName": fallback_state["batterName"],
-            "pitcherName": fallback_state["pitcherName"],
+            "inning": fallback_inning,
+            "batterName": fallback_batter_name,
+            "pitcherName": fallback_pitcher_name,
             "batterAverage": fallback_state.get("batterAverage", ""),
             "pitcherEra": fallback_state.get("pitcherEra", ""),
             "pitchCount": fallback_state.get("pitchCount", 0),
@@ -902,7 +915,7 @@ def _relay_current_state(
     batter = current_at_bat.get("batter") or {}
     pitcher = current_at_bat.get("pitcher") or {}
     ball_count = current_at_bat.get("ballCount") or {}
-    inning = str(current_at_bat.get("inningText") or fallback_state["inning"])
+    inning = str(current_at_bat.get("inningText") or fallback_inning)
     base_state = str(current_at_bat.get("baseState") or "")
     pitch_count = _int_value(
         pitcher.get("pitchCount")
@@ -924,8 +937,8 @@ def _relay_current_state(
     )
     return {
         "inning": inning,
-        "batterName": str(batter.get("name") or fallback_state["batterName"]),
-        "pitcherName": str(pitcher.get("name") or fallback_state["pitcherName"]),
+        "batterName": str(batter.get("name") or fallback_batter_name),
+        "pitcherName": str(pitcher.get("name") or fallback_pitcher_name),
         "batterAverage": str(batter.get("average") or fallback_state.get("batterAverage", "")),
         "pitcherEra": str(pitcher.get("era") or fallback_state.get("pitcherEra", "")),
         "pitchCount": pitch_count,

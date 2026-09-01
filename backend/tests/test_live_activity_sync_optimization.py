@@ -16,6 +16,7 @@ from kbo_fans_backend.services import push_registry as push_registry_module
 from kbo_fans_backend.services.apns_live_activity import ApnsLiveActivitySendError
 from kbo_fans_backend.services.live_activity_scoreboard import (
     LiveActivityScoreboardSyncService,
+    _relay_current_state,
 )
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.services.push_registry import PushRegistry
@@ -99,6 +100,15 @@ def test_sync_fetches_relay_once_for_moments_and_live_activity(tmp_path) -> None
     assert relay_service.calls[0] == {"gameId": "20260604LGKT0", "after": None}
     assert response["updatedGames"][0]["sent"] is True
     assert sender.calls[0]["state"].batter == "장성우"
+
+
+def test_relay_current_state_has_safe_inning_fallback_for_partial_state() -> None:
+    current = _relay_current_state(
+        None,
+        {"batterName": "", "pitcherName": ""},
+    )
+
+    assert current["inning"] == "진행중"
 
 
 def test_unchanged_content_is_skipped_across_sync_service_reconstruction(tmp_path) -> None:

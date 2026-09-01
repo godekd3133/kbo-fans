@@ -44,6 +44,19 @@ _ACTIVE_WARMER: Optional["ScoreboardWarmer"] = None
 logger = logging.getLogger(__name__)
 
 
+def _configure_worker_logging() -> None:
+    """Make scheduler INFO diagnostics visible when run outside FastAPI."""
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s %(name)s %(message)s",
+        )
+
+
+_configure_worker_logging()
+
+
 class ScoreboardWarmer:
     """Keeps the shared scoreboard cache warm independently of push delivery."""
 
