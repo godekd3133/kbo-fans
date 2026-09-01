@@ -22,11 +22,13 @@
 - [x] baseline 회귀 테스트에서 boxscore/lineup 초기 오류 자동 재시도 기대가 각각 실패하는 것을 확인한 뒤 수정했다.
 - [x] 대상 앱 회귀: game-detail navigation, boxscore tab, lineup tab, API cache policy, API repository 테스트 통과. 초기 오류 재시도·stale 안내·current cache persistence/fallback·불완전 응답 보존을 포함한다.
 - [x] 운영 API readback: `20260902LGOB0/boxscore` HTTP 200의 정상적인 official-unavailable 상태, `20260902LGOB0/lineup` HTTP 200의 양 팀 9명, `20260901LGOB0/boxscore` HTTP 200의 양 팀 타자·투수 rows를 확인했다.
+- [x] Flutter 전체 `fvm flutter test --no-pub` (`545 passed`), `fvm flutter analyze --no-fatal-infos` (`No issues found`), backend `python3 -m compileall -q backend/src`, boxscore/lineup/runtime focused pytest (`42 passed`), `git diff --check`, 운영 HTTPS health gate를 통과했다.
 
 ### Release decision
 
 - [x] 사용자-visible 앱 동작이 바뀌므로 current app build를 `0.1.31+99`, numeric release를 `0.1.31`로 올린다.
-- [ ] 전체 앱/backend 검증 후 main push, GitHub Release, 운영 배포 및 signed IPA/TestFlight handoff를 기록한다. Apple Distribution signing credential이 없으면 TestFlight 업로드는 별도 blocker로 남긴다.
+- [x] 기능 커밋 `9c1df5f2`를 `origin/main`에 push하고 numeric tag `0.1.31` 및 [GitHub Release](https://github.com/godekd3133/kbo-fans/releases/tag/0.1.31)를 생성했다. backend 소스 변경은 없어 기존 Lightsail runtime을 유지하며 운영 API health gate를 재확인했다.
+- [ ] `0.1.31+99` signed IPA/TestFlight handoff는 Apple Distribution certificate와 iOS signing secrets가 없어 업로드하지 않았다. 로컬에서 만든 archive는 개발 서명(`get-task-allow=true`, `aps-environment=development`)이라 배포 artifact로 사용하지 않는다.
 
 ## 2026-09-02: 문자중계 자동 재시도와 양쪽 캐시 보강
 
