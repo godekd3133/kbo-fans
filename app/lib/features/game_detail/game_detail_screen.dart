@@ -369,6 +369,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   bool _followStateLoaded = false;
   bool _isFollowingGame = false;
   String? _highlightWarmupGameId;
+  String? _relayProviderStartedForGameId;
   late final TabController _tabController;
   final ScrollController _outerScrollController = ScrollController();
 
@@ -387,6 +388,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     }
     unawaited(_loadFollowState());
     _startRefreshTimer();
+    _scheduleRelayProviderStart();
   }
 
   @override
@@ -406,9 +408,13 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     }
     if (oldWidget.gameId != widget.gameId ||
         oldWidget.game.status != widget.game.status) {
+      if (oldWidget.gameId != widget.gameId) {
+        _relayProviderStartedForGameId = null;
+      }
       _refreshTimer?.cancel();
       _startRefreshTimer();
       unawaited(_loadFollowState());
+      _scheduleRelayProviderStart();
     }
     _warmHighlightInfoForFinalGame();
   }
@@ -467,10 +473,57 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     if (_tabController.indexIsChanging) {
       return;
     }
+    if (_tabController.index == _relayTabIndex) {
+      _scheduleRelayProviderStart();
+    }
     _startRefreshTimer();
     if (widget.game.status == GameStatus.live) {
       unawaited(_refreshGameDetail(queueIfBusy: true));
     }
+  }
+
+  void _scheduleRelayProviderStart() {
+    final shouldStart =
+        widget.game.status == GameStatus.live ||
+        _tabController.index == _relayTabIndex;
+    if (!shouldStart) {
+      return;
+    }
+
+    final gameId = widget.gameId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.gameId != gameId) {
+        return;
+      }
+      _ensureRelayProviderStarted(gameId);
+    });
+  }
+
+  void _ensureRelayProviderStarted(String gameId) {
+    if (_relayProviderStartedForGameId == gameId) {
+      return;
+    }
+
+    final provider = relayDataProvider(gameId);
+    final state = ref.read(provider);
+    if (state.hasValue || state.isLoading) {
+      _relayProviderStartedForGameId = gameId;
+      return;
+    }
+
+    _relayProviderStartedForGameId = gameId;
+    unawaited(
+      ref
+          .read(provider.future)
+          .then<void>(
+            (_) {},
+            onError: (Object error, StackTrace stackTrace) {
+              DevConsole.instance.warn(
+                'GAME DETAIL initial relay load failed: $gameId $error',
+              );
+            },
+          ),
+    );
   }
 
   Future<void> _refreshGameDetail({

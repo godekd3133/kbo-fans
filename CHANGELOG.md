@@ -10,13 +10,18 @@
 
 ## [Unreleased]
 
+## [0.1.29] - 2026-09-01
+
 ### Changed
 
+- backend 경기 상세를 API process cache와 worker/API 공유 runtime cache의 이중 구조로 제공하고, 진행 중 경기의 게임 요약·문자중계·박스스코어·라인업을 백그라운드에서 미리 준비하도록 보강
 - backend 경기 상세를 process-local L1 cache와 worker/API가 공유하는 runtime JSON L2 cache의 이중 구조로 보강해, cache miss일 때만 KBO를 조회하고 검증된 결과를 다음 요청에 재사용하도록 변경
 - release sync worker가 진행 중인 경기의 게임 요약·문자중계·박스스코어·라인업을 별도 adaptive 주기로 미리 수집하고, 종료 경기의 완전한 상세 snapshot을 historical cache로 확정하도록 추가
 
 ### Fixed
 
+- 경기 상세를 열거나 예정 경기가 LIVE로 전환된 뒤 문자중계 탭이 첫 진입에서 시작되지 않아 새로고침 전까지 로딩 상태에 남을 수 있던 경로를 보정
+- 문자중계 탭 전환 시 이미 진행 중인 요청은 유지하고, 아직 시작되지 않은 relay provider는 즉시 시작하도록 정리
 - API process가 재시작되거나 sync worker와 분리된 뒤 경기 상세 진입마다 원천 크롤링을 기다리던 경로를 shared runtime snapshot으로 줄임
 - 상세 크롤링 시간이 다음 주기를 넘겨도 crawler cycle이 겹치지 않도록 measured duration + margin, minimum/maximum interval, component별 실패 재시도 경계를 추가
 

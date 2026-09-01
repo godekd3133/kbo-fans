@@ -1,7 +1,7 @@
 name: kbo_fans
 description: "A new Flutter project."
 publish_to: 'none'
-version: 0.1.28+96
+version: 0.1.29+97
 
 environment:
   sdk: ^3.11.4

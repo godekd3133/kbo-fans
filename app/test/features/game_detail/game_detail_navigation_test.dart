@@ -289,6 +289,7 @@ void main() {
       startTime: scheduled.startTime,
     );
     final loadedGame = Completer<Game?>();
+    final repository = _FakeGameRepository(live);
     final router = GoRouter(
       initialLocation: '/game/${scheduled.gameId}',
       routes: [
@@ -312,7 +313,7 @@ void main() {
         retry: (_, _) => null,
         overrides: [
           gameProvider.overrideWith((ref, gameId) => loadedGame.future),
-          gameRepositoryProvider.overrideWithValue(_FakeGameRepository(live)),
+          gameRepositoryProvider.overrideWithValue(repository),
         ],
         child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
       ),
@@ -325,6 +326,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.widget<TabBar>(find.byType(TabBar)).controller?.index, 1);
+    expect(repository.relayCallCount, greaterThan(0));
   });
 
   testWidgets('기존 경기로 진입한 첫 상세 조회 실패도 즉시 갱신 지연과 재시도를 보여준다', (tester) async {

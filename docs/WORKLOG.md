@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-09-01: 문자중계 첫 진입 provider 미시작 보정 및 0.1.29+97
+
+### 원인
+
+- [x] 운영 API는 backend runtime relay cache hit가 약 40ms에 응답했고 worker가 LIVE 경기 relay를 계속 저장하고 있었다. 따라서 `문자중계 탭 진입 후 새로고침 전까지 로딩` 증상은 KBO relay crawler 시간보다 클라이언트 provider 시작/상태 전환 race를 먼저 의심할 수 있었다.
+- [x] `RelayTab`의 `ref.watch(relayDataProvider)`는 정상적인 고정 LIVE route에서는 동작했지만, 일정 preview 또는 `SCHEDULED → LIVE` 상태 갱신으로 TabBarView가 전환되는 경계에서는 첫 relay Future 시작을 명시적으로 보장하지 않았다. 기존 테스트도 탭 index만 확인하고 relay 호출 완료를 검증하지 않았다.
+
+### 반영
+
+- [x] `GameDetailScreen` 상세 body가 LIVE이거나 relay 탭으로 진입할 때 post-frame에서 relay provider Future를 한 번 명시적으로 시작하도록 보강했다. 이미 `loading` 또는 `data` 상태면 중복 요청하지 않고, 오류는 기존 재시도 경계로 남긴다.
+- [x] 같은 경기의 상태/route 전환과 relay 탭 선택 시에도 동일한 시작 보장을 적용하고, 사용자 새로고침의 force-refresh 동작은 유지했다.
+- [x] 사용자-visible 수정이므로 앱 버전을 `0.1.29+97`로 올리고 patch note/changelog/version map을 갱신한다.
+
+### 검증과 배포
+
+- [x] `fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart --plain-name '명시 탭 없는 예정 경기가 LIVE로 갱신되면 문자중계로 교정한다'`: 통과. 전환 후 relay provider 호출 assertion을 추가했다.
+- [x] `fvm flutter test --no-pub test/features/game_detail/relay_tab_test.dart`: 통과.
+- [ ] Flutter 전체 테스트, stable Xcode archive, TestFlight upload/processing, external tester 연결은 이 기록 시점에 진행 예정.
+
 ## 2026-09-01: backend 이중 cache와 LIVE 상세 prefetch
 
 ### 원인과 결정
