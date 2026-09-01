@@ -2,6 +2,29 @@
 
 ---
 
+## 2026-09-01: backend 이중 cache와 LIVE 상세 prefetch
+
+### 원인과 결정
+
+- [x] 기존 backend는 scoreboard와 일부 historical namespace에만 process-local TTL/JSON snapshot이 있었고, boxscore·lineup·current relay 상세는 API process가 cache를 잃거나 worker process와 분리되면 요청 시점에 crawler를 다시 기다렸다. 그래서 앱의 첫 상세 진입 spinner가 남을 수 있는 구조였다.
+- [x] `process-local L1 → shared runtime JSON L2 → crawler on miss` 순서를 고정했다. L2는 `runtime_*` namespace와 `savedAt` TTL을 사용해 current cache를 historical immutable snapshot으로 오인하지 않게 분리했다. 같은 process의 동시 miss는 `SingleFlight`로 합친다.
+
+### 반영
+
+- [x] current game summary, relay, official/live-context boxscore, lineup 서비스에 runtime L2 read-through와 L1 TTL cache를 추가했다. 완전성·gameId identity를 통과한 payload만 runtime cache에 저장하고, current failure는 오래된 snapshot으로 숨기지 않는다.
+- [x] sync worker에 `LiveGameDataWarmer`를 추가했다. 기존 5초 scoreboard warm과 분리해 `/scoreboard/home`의 `LIVE` 경기 상세를 순차 prefetch하고, `FINAL` 경기의 relay·official boxscore·lineup가 모두 완성될 때까지 finalization을 재시도한다. runtime 서비스 singleton과 authenticated relay crawler를 공유해 중복 수집을 줄였다.
+- [x] detailed cycle은 단일 worker thread에서만 실행하며 실제 `cycleDurationMs`에 50% margin을 붙여 다음 주기를 계산한다. 기본 15초, 최대 60초이며 `LIVE_GAME_DATA_*` 환경변수로 조정할 수 있다. release Lightsail/ECS worker template에는 기본 활성값을 반영했다.
+- [x] lineup가 worker cycle 중 이미 warm된 boxscore service를 재사용하도록 runtime wiring을 연결했다. API route 계약과 공개 force-refresh 권한은 변경하지 않았다.
+
+### 검증과 남은 위험
+
+- [x] 동일 크롤러 직접 측정: 2026-08-30 경기 1건에서 scoreboard `0.110s`, relay `0.425s`, boxscore `0.104s`, lineup `0.132s`, 순차 합계 `0.771s`. 다섯 경기 동시 운영 p95는 아직 실기기/운영 경기 표본이 없어 배포 후 worker 로그로 측정해야 한다.
+- [x] `backend/.venv/bin/ruff check backend/src/kbo_fans_backend backend/tests`: 통과.
+- [x] 대상 backend 회귀 테스트: `58 passed` (runtime cache, boxscore, lineup, relay, warmer 포함). 기존 snapshot/scoreboard/lineup/relay/live worker 테스트도 `86 passed`로 통과했고, 전체 `backend/.venv/bin/pytest -q backend/tests`는 `600 passed`다.
+- [x] 실제 `LiveGameDataWarmService`에 KBO crawler를 연결해 2026-08-30 종료 경기 1건을 측정했다. 첫 cycle은 `2.981s`, relay·official boxscore·lineup 완전성 검증 후 `finalizedGames=1`이었고, 같은 process의 두 번째 cycle은 `0.0s`로 재수집 없이 종료됐다. runtime cache는 historical namespace 승격 뒤 정리됐다.
+- [ ] backend 전체 pytest와 AWS 재배포는 아직 실행하지 않았다. 이번 변경은 로컬 source/test 단계이며, 운영 worker에 반영하려면 Lightsail 배포 후 `live_game_data_warmer` cycle 로그와 API cache-hit latency를 별도 확인해야 한다.
+- [ ] ECS 다중 API task를 실제로 사용할 경우 JSON L2는 EFS 같은 공유 저장소가 필요하고, snapshot 파일 자체는 분산 crawler lease를 제공하지 않는다. 현재 Lightsail 단일 worker 정책에서는 worker/API가 같은 `SNAPSHOT_DIR`를 사용한다.
+
 ## 2026-08-31: 0.1.28+96 과거 경기·기록실 immutable 기기 cache
 
 ### 결정과 원인

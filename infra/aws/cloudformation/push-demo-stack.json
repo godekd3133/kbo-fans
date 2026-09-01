@@ -716,6 +716,26 @@
                 }
               },
               {
+                "Name": "LIVE_GAME_DATA_WARM_ENABLED",
+                "Value": "true"
+              },
+              {
+                "Name": "LIVE_GAME_DATA_CACHE_MAX_AGE_SECONDS",
+                "Value": "60"
+              },
+              {
+                "Name": "LIVE_GAME_DATA_WARM_INTERVAL_SECONDS",
+                "Value": "15"
+              },
+              {
+                "Name": "LIVE_GAME_DATA_WARM_MAX_INTERVAL_SECONDS",
+                "Value": "60"
+              },
+              {
+                "Name": "LIVE_GAME_DATA_INTERVAL_MARGIN",
+                "Value": "0.5"
+              },
+              {
                 "Name": "PUSH_BASEBALL_INFO_SMART_DAILY_TIMES",
                 "Value": {
                   "Ref": "PushBaseballInfoSmartDailyTimes"

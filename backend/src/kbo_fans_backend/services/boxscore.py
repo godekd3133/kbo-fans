@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import date as date_type
 from typing import Any, Optional
 
+from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
 from kbo_fans_backend.schemas.boxscore import (
     BoxscoreAvailability,
@@ -15,6 +16,8 @@ from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.services.schedule import ScheduleService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
+from kbo_fans_backend.utils.singleflight import SingleFlight
+from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +25,8 @@ logger = logging.getLogger(__name__)
 class BoxscoreService:
     _UNAVAILABLE_STATUSES = {"SCHEDULED", "CANCELLED", "SUSPENDED"}
     _OPTIONAL_ENRICHMENT_INLINE_BUDGET_SECONDS = 0.75
+    _BOXSCORE_CACHE_TTL_SECONDS = 15
+    _RUNTIME_CACHE_NAMESPACE = "runtime_boxscore"
 
     def __init__(
         self,
@@ -29,15 +34,55 @@ class BoxscoreService:
         schedule_service: Optional[ScheduleService] = None,
         player_stats_service: Optional[PlayerStatsService] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
+        runtime_cache_max_age_seconds: Optional[float] = None,
     ) -> None:
         self.crawler = crawler or BoxscoreCrawler()
         self.schedule_service = schedule_service or ScheduleService()
         self.player_stats_service = player_stats_service or PlayerStatsService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
+        configured_runtime_cache_age = (
+            runtime_cache_max_age_seconds
+            if runtime_cache_max_age_seconds is not None
+            else get_settings().live_game_data_cache_max_age_seconds
+        )
+        self._runtime_cache_max_age_seconds = max(0.0, float(configured_runtime_cache_age))
+        self._boxscore_cache: TtlCache[str, dict[str, Any]] = TtlCache(
+            self._BOXSCORE_CACHE_TTL_SECONDS
+        )
+        self._singleflight: SingleFlight[str] = SingleFlight()
         self._enrichment_lock = threading.Lock()
         self._enrichment_in_flight: set[str] = set()
 
-    def get_boxscore(self, game_id: str) -> dict[str, Any]:
+    def get_boxscore(
+        self,
+        game_id: str,
+        force_refresh: bool = False,
+    ) -> dict[str, Any]:
+        if not force_refresh:
+            cached = self._boxscore_cache.get(game_id)
+            if self._is_cacheable_payload(cached, game_id):
+                logger.info("boxscore cache hit %s", game_id)
+                return cached
+
+            runtime_snapshot = self.snapshot_store.load_recent_payload(
+                self._RUNTIME_CACHE_NAMESPACE,
+                game_id,
+                self._runtime_cache_max_age_seconds,
+            )
+            if self._is_cacheable_payload(runtime_snapshot, game_id):
+                self._boxscore_cache.set(game_id, runtime_snapshot)
+                logger.info("boxscore runtime snapshot hit %s", game_id)
+                return runtime_snapshot
+
+        payload = self._singleflight.call(
+            f"boxscore:{game_id}:{'force' if force_refresh else 'cached'}",
+            lambda: self._get_boxscore_uncached(game_id),
+        )
+        if self._is_cacheable_payload(payload, game_id):
+            self._boxscore_cache.set(game_id, payload)
+        return payload
+
+    def _get_boxscore_uncached(self, game_id: str) -> dict[str, Any]:
         game_status = self._game_status(game_id)
         is_historical_final = self._is_historical_final(game_id, game_status)
         can_use_historical_snapshot = self._is_past_game_id(game_id) and (
@@ -66,6 +111,8 @@ class BoxscoreService:
             # slow player crawl cannot block the data response.
             if game_status == "FINAL":
                 self.snapshot_store.save("boxscore", game_id, payload)
+            if not self._is_past_game_id(game_id):
+                self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
             if self._is_past_game_id(game_id):
                 enriched_payload = self._enrich_with_budget(payload, game_id)
                 if enriched_payload != payload:
@@ -82,6 +129,7 @@ class BoxscoreService:
                 # the main/relay context crawl; player metadata is optional.
                 if self._is_past_game_id(game_id):
                     return self._enrich_with_budget(payload, game_id)
+                self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
                 return payload
             payload = self._official_unavailable_payload(
                 game_id,
@@ -117,6 +165,19 @@ class BoxscoreService:
                     pass
 
         return payload
+
+    @classmethod
+    def _is_cacheable_payload(cls, payload: Any, game_id: str) -> bool:
+        if not isinstance(payload, dict):
+            return False
+        return cls._is_verified_official_payload(payload, game_id) or cls._is_live_context_payload(
+            payload,
+            game_id,
+        )
+
+    @classmethod
+    def is_complete_payload(cls, game_id: str, payload: Any) -> bool:
+        return isinstance(payload, dict) and cls._is_verified_official_payload(payload, game_id)
 
     def _enrich_with_budget(
         self,

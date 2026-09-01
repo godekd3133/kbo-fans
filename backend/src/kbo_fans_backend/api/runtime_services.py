@@ -27,5 +27,14 @@ boxscore_service = BoxscoreService(
     schedule_service=schedule_service,
     player_stats_service=player_stats_service,
 )
-lineup_service = LineupService(player_stats_service=player_stats_service)
 relay_service = RelayService(scoreboard_service=scoreboard_service)
+
+# Share the authenticated relay crawler with the boxscore live-context path
+# and let lineup reuse the already-warmed boxscore instead of crawling it a
+# second time during one live-game warm cycle.
+if getattr(boxscore_service.crawler, "relay_crawler", None) is None:
+    boxscore_service.crawler.relay_crawler = relay_service.relay_crawler
+lineup_service = LineupService(
+    player_stats_service=player_stats_service,
+    boxscore_service=boxscore_service,
+)

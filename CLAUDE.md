@@ -119,7 +119,7 @@ kbo_fans/
 - 홈 첫 로딩은 오늘 스코어보드 별도 local cache 를 먼저 렌더링하지 않는다. 최신 direct source 데이터 또는 명시적 loading/error 상태만 보여준다
 - 홈 secondary aggregate provider 는 첫 scoreboard 데이터 프레임 이후에만 구독한다
 - 홈 refresh timer 는 unrelated rebuild 때 cancel/restart 하지 않고 interval 또는 scoreboard signature 변경 시에만 재스케줄한다
-- backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 전용 경로라 경기별 상세 스코어보드 크롤러를 호출하지 않는다. 상세 크롤링은 full scoreboard 와 game detail 로 제한한다
+- backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 요약 전용 경로라 요청 자체로 경기별 상세 스코어보드 크롤러를 호출하지 않는다. release sync worker의 별도 measured/adaptive detailed warmer만 LIVE/FINAL 경기 상세를 선행 수집한다
 - backend current data route 는 `api/runtime_services.py` singleton 을 공유해 sibling endpoint 간 TTL cache 를 재사용한다
 - LIVE 요약 스코어보드는 KBO main list 의 유효한 득점을 schedule/detail fallback 의 0점보다 우선해, 진행 중 경기의 최신 score가 fallback 0:0에 막히지 않게 한다
 - 앱 UI는 scoreboard 팀 합계 H/E/B가 `null`인 값을 실제 0 기록처럼 렌더링하지 않는다

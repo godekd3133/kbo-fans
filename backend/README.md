@@ -41,6 +41,7 @@ uvicorn kbo_fans_backend.main:app --reload
 
 - Health and product API routes are implemented for the current backend contract.
 - KBO crawlers are separated from route handlers through service classes.
+- Game detail services use a two-level cache: process-local TTL/SingleFlight first, then a shared runtime JSON snapshot written under `SNAPSHOT_DIR`. Historical verified snapshots remain immutable; current runtime entries are served only within `LIVE_GAME_DATA_CACHE_MAX_AGE_SECONDS`.
 - Remote push supports FCM test sends, device token registration, ActivityKit token registration, APNs Live Activity updates, and scoreboard-based Live Activity / FCM moment sync.
 
 ## Push notifications
@@ -174,6 +175,14 @@ Long-running sync worker for ECS/Fargate service deployments:
 ```bash
 python -m kbo_fans_backend.scheduler.live_activity_sync_loop
 ```
+
+The long-running worker keeps the lightweight scoreboard warm every five
+seconds and, when `LIVE_GAME_DATA_WARM_ENABLED=true`, runs a separate detailed
+game-data warmer. It only crawls `LIVE` games on the detailed cadence and
+finalizes `FINAL` games once relay, official boxscore, and lineup payloads are
+complete. The next detailed interval is derived from the measured cycle time
+with a configured margin, so a slow upstream response cannot overlap the next
+crawl wave.
 
 ## Lightsail native deploy
 

@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from datetime import date as date_type
 from typing import Any, Iterator, Optional
 
+from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.main import MainCrawler
 from kbo_fans_backend.crawlers.schedule import ScheduleCrawler
 from kbo_fans_backend.crawlers.scoreboard import ScoreboardCrawler
@@ -27,6 +28,8 @@ class ScoreboardService:
     _SCOREBOARD_CACHE_TTL_SECONDS = 8
     _DATE_REFRESH_LOCK_STRIPES = 32
     _TERMINAL_STATUSES = frozenset({"FINAL", "CANCELLED"})
+    _RUNTIME_GAME_CACHE_NAMESPACE = "runtime_games"
+    _RUNTIME_GAME_STATUSES = frozenset({"LIVE", "FINAL", "CANCELLED", "SUSPENDED"})
 
     def __init__(
         self,
@@ -37,6 +40,7 @@ class ScoreboardService:
         snapshot_store: Optional[JsonSnapshotStore] = None,
         live_scoreboard_store: Optional[LiveScoreboardStore] = None,
         date_lock_wait_timeout_seconds: float = 2.0,
+        runtime_cache_max_age_seconds: Optional[float] = None,
     ) -> None:
         provided_snapshot_store = snapshot_store
         self.main_crawler = main_crawler or MainCrawler()
@@ -75,6 +79,12 @@ class ScoreboardService:
             0.0,
             date_lock_wait_timeout_seconds,
         )
+        configured_runtime_cache_age = (
+            runtime_cache_max_age_seconds
+            if runtime_cache_max_age_seconds is not None
+            else get_settings().live_game_data_cache_max_age_seconds
+        )
+        self._runtime_cache_max_age_seconds = max(0.0, float(configured_runtime_cache_age))
 
     def get_scoreboard(
         self,
@@ -526,6 +536,16 @@ class ScoreboardService:
             if cached is not None:
                 return cached
 
+            runtime_snapshot = self.snapshot_store.load_recent_payload(
+                self._RUNTIME_GAME_CACHE_NAMESPACE,
+                game_id,
+                self._runtime_cache_max_age_seconds,
+            )
+            if self._is_valid_runtime_game_snapshot(game_id, runtime_snapshot):
+                self._game_cache.set(game_id, runtime_snapshot)
+                logger.info("game runtime snapshot hit %s", game_id)
+                return runtime_snapshot
+
         return self._singleflight.call(
             f"game:{game_id}:{'force' if force_refresh else 'cached'}",
             lambda: self._get_game_uncached(
@@ -573,7 +593,31 @@ class ScoreboardService:
         self._game_cache.set(game_id, game)
         if self._should_persist_snapshot(date, [game]):
             self.snapshot_store.save("games", game_id, game)
+        if self._should_persist_runtime_game(date, game):
+            self.snapshot_store.save(self._RUNTIME_GAME_CACHE_NAMESPACE, game_id, game)
         return game
+
+    def _should_persist_runtime_game(
+        self,
+        date: str,
+        game: dict[str, Any],
+    ) -> bool:
+        return (
+            not self._is_historical_date(date)
+            and game.get("status") in self._RUNTIME_GAME_STATUSES
+        )
+
+    @classmethod
+    def _is_valid_runtime_game_snapshot(
+        cls,
+        game_id: str,
+        snapshot: Any,
+    ) -> bool:
+        return (
+            isinstance(snapshot, dict)
+            and snapshot.get("gameId") == game_id
+            and snapshot.get("status") in cls._RUNTIME_GAME_STATUSES
+        )
 
     def _get_schedule_games_by_date(
         self,

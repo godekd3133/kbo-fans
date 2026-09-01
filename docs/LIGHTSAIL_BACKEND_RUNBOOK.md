@@ -87,6 +87,23 @@ PUSH_REGISTRATION_NEW_OWNER_MAX_ATTEMPTS=120
 Reads prefer runtime data and fall back to the current release seed; all writes go
 only to `/var/lib/kbo-fans/snapshots`.
 
+For the detailed game-data prefetch, keep these values in the backend env:
+
+```text
+LIVE_GAME_DATA_WARM_ENABLED=true
+LIVE_GAME_DATA_CACHE_MAX_AGE_SECONDS=60
+LIVE_GAME_DATA_WARM_INTERVAL_SECONDS=15
+LIVE_GAME_DATA_WARM_MAX_INTERVAL_SECONDS=60
+LIVE_GAME_DATA_INTERVAL_MARGIN=0.5
+```
+
+The worker first discovers LIVE/FINAL games through the lightweight scoreboard,
+then warms game summary, relay, boxscore, and lineup into the shared runtime
+cache. Each cycle logs `cycleDurationMs` and `nextIntervalSeconds`; a cycle
+never overlaps the next one. A FINAL game is removed from the runtime cache only
+after complete relay, official boxscore, and lineup snapshots have been
+promoted to the historical namespaces.
+
 The push TTL/admission values are the code defaults written explicitly for
 operational visibility: inactive device/start registrations are eligible for
 lazy cleanup after 90 days, Live Activity registrations after 2 days, and new
@@ -154,6 +171,12 @@ journalctl -u kbo-fans-api -n 80 --no-pager
 journalctl -u kbo-fans-sync-worker -n 80 --no-pager
 curl http://127.0.0.1:8000/api/health
 ```
+
+After a game is LIVE, inspect the worker journal for
+`component=live_game_data_warmer` and confirm that the logged cycle contains
+the expected live-game count and a finite `nextIntervalSeconds`. The API
+process and worker must report the same `SNAPSHOT_DIR`; otherwise the second
+cache layer is not shared.
 
 From the repo:
 

@@ -68,6 +68,11 @@ class Settings:
     data_request_timeout_seconds: float = 15.0
     data_request_max_concurrency: int = 8
     data_request_queue_timeout_seconds: float = 0.1
+    live_game_data_cache_max_age_seconds: int = 60
+    live_game_data_warm_enabled: bool = False
+    live_game_data_warm_interval_seconds: float = 15.0
+    live_game_data_warm_max_interval_seconds: float = 60.0
+    live_game_data_interval_margin: float = 0.5
     push_device_test_cooldown_seconds: int = 60
     push_device_test_global_window_seconds: int = 60
     push_device_test_global_max_attempts: int = 30
@@ -132,6 +137,26 @@ def get_settings() -> Settings:
         data_request_queue_timeout_seconds=_get_float(
             "DATA_REQUEST_QUEUE_TIMEOUT_SECONDS",
             0.1,
+        ),
+        live_game_data_cache_max_age_seconds=_get_int(
+            "LIVE_GAME_DATA_CACHE_MAX_AGE_SECONDS",
+            60,
+        ),
+        live_game_data_warm_enabled=_get_bool(
+            "LIVE_GAME_DATA_WARM_ENABLED",
+            app_env == "release",
+        ),
+        live_game_data_warm_interval_seconds=_get_float(
+            "LIVE_GAME_DATA_WARM_INTERVAL_SECONDS",
+            15.0,
+        ),
+        live_game_data_warm_max_interval_seconds=_get_float(
+            "LIVE_GAME_DATA_WARM_MAX_INTERVAL_SECONDS",
+            60.0,
+        ),
+        live_game_data_interval_margin=_get_float(
+            "LIVE_GAME_DATA_INTERVAL_MARGIN",
+            0.5,
         ),
         push_device_test_cooldown_seconds=_get_int(
             "PUSH_DEVICE_TEST_COOLDOWN_SECONDS",

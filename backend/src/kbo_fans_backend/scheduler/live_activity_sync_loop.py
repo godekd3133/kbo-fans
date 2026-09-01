@@ -10,9 +10,23 @@ import time
 from datetime import datetime
 from typing import Callable, Optional
 
-from kbo_fans_backend.api.runtime_services import scoreboard_service as runtime_scoreboard_service
+from kbo_fans_backend.api.runtime_services import (
+    boxscore_service as runtime_boxscore_service,
+)
+from kbo_fans_backend.api.runtime_services import (
+    lineup_service as runtime_lineup_service,
+)
+from kbo_fans_backend.api.runtime_services import (
+    relay_service as runtime_relay_service,
+)
+from kbo_fans_backend.api.runtime_services import (
+    scoreboard_service as runtime_scoreboard_service,
+)
+from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.scheduler import baseball_info
 from kbo_fans_backend.scheduler.live_activity_sync import current_kbo_date, sync_once
+from kbo_fans_backend.scheduler.live_game_data_loop import LiveGameDataWarmer
+from kbo_fans_backend.services.live_game_data import LiveGameDataWarmService
 from kbo_fans_backend.services.push import PushService
 from kbo_fans_backend.services.push_registry import PushRegistry
 from kbo_fans_backend.utils.kbo_time import current_kbo_datetime
@@ -282,9 +296,27 @@ def main(argv: Optional[list[str]] = None) -> int:
         interval_seconds=args.scoreboard_warm_interval_seconds,
         date_provider=lambda: args.date or current_kbo_date(),
     )
+    settings = get_settings()
+    live_game_warmer: Optional[LiveGameDataWarmer] = None
+    if settings.live_game_data_warm_enabled:
+        live_game_warmer = LiveGameDataWarmer(
+            scoreboard_service=runtime_scoreboard_service,
+            game_data_service=LiveGameDataWarmService(
+                scoreboard_service=runtime_scoreboard_service,
+                relay_service=runtime_relay_service,
+                boxscore_service=runtime_boxscore_service,
+                lineup_service=runtime_lineup_service,
+            ),
+            interval_seconds=settings.live_game_data_warm_interval_seconds,
+            max_interval_seconds=settings.live_game_data_warm_max_interval_seconds,
+            interval_margin=settings.live_game_data_interval_margin,
+            date_provider=lambda: args.date or current_kbo_date(),
+        )
     _ACTIVE_WARMER = warmer
     try:
         warmer.start()
+        if live_game_warmer is not None:
+            live_game_warmer.start()
         while not _SHOULD_STOP:
             sync_date = args.date or current_kbo_date()
             try:
@@ -305,6 +337,20 @@ def main(argv: Optional[list[str]] = None) -> int:
                 print(json.dumps(payload, ensure_ascii=False, sort_keys=True), flush=True)
             _sleep_until_next_run(args.interval_seconds)
     finally:
+        if live_game_warmer is not None:
+            live_game_warmer.stop()
+            live_game_warmer.join(timeout=_WARMER_JOIN_TIMEOUT_SECONDS)
+            if live_game_warmer.is_alive():
+                logger.warning(
+                    "%s",
+                    json.dumps(
+                        {
+                            "component": "live_game_data_warmer",
+                            "event": "join_timeout",
+                        },
+                        sort_keys=True,
+                    ),
+                )
         warmer.stop()
         warmer.join(timeout=_WARMER_JOIN_TIMEOUT_SECONDS)
         if warmer.is_alive():

@@ -74,6 +74,26 @@
           "value": "5"
         },
         {
+          "name": "LIVE_GAME_DATA_WARM_ENABLED",
+          "value": "true"
+        },
+        {
+          "name": "LIVE_GAME_DATA_CACHE_MAX_AGE_SECONDS",
+          "value": "60"
+        },
+        {
+          "name": "LIVE_GAME_DATA_WARM_INTERVAL_SECONDS",
+          "value": "15"
+        },
+        {
+          "name": "LIVE_GAME_DATA_WARM_MAX_INTERVAL_SECONDS",
+          "value": "60"
+        },
+        {
+          "name": "LIVE_GAME_DATA_INTERVAL_MARGIN",
+          "value": "0.5"
+        },
+        {
           "name": "PUSH_BASEBALL_INFO_SMART_DAILY_TIMES",
           "value": "09:30,16:00,22:30"
         }

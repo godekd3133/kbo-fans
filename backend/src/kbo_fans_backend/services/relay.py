@@ -5,6 +5,7 @@ import threading
 from datetime import date as date_type
 from typing import Any, Optional
 
+from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.relay import RelayCrawler
 from kbo_fans_backend.services.push import KBO_TEAM_NAMES, KBO_TEAM_SHORT_NAMES
 from kbo_fans_backend.services.scoreboard import ScoreboardService
@@ -19,16 +20,24 @@ logger = logging.getLogger(__name__)
 class RelayService:
     _RELAY_CACHE_TTL_SECONDS = 2
     _HISTORICAL_RELAY_INLINE_BUDGET_SECONDS = 0.75
+    _RUNTIME_CACHE_NAMESPACE = "runtime_relay"
 
     def __init__(
         self,
         relay_crawler: Optional[RelayCrawler] = None,
         scoreboard_service: Optional[ScoreboardService] = None,
         snapshot_store: Optional[JsonSnapshotStore] = None,
+        runtime_cache_max_age_seconds: Optional[float] = None,
     ) -> None:
         self.relay_crawler = relay_crawler or RelayCrawler()
         self.scoreboard_service = scoreboard_service or ScoreboardService()
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
+        configured_runtime_cache_age = (
+            runtime_cache_max_age_seconds
+            if runtime_cache_max_age_seconds is not None
+            else get_settings().live_game_data_cache_max_age_seconds
+        )
+        self._runtime_cache_max_age_seconds = max(0.0, float(configured_runtime_cache_age))
         self._relay_cache: TtlCache[str, dict[str, Any]] = TtlCache(self._RELAY_CACHE_TTL_SECONDS)
         self._singleflight: SingleFlight[str] = SingleFlight()
 
@@ -42,6 +51,16 @@ class RelayService:
             cached = self._relay_cache.get(game_id)
             if cached is not None:
                 return self._after(cached, after)
+
+            runtime_snapshot = self.snapshot_store.load_recent_payload(
+                self._RUNTIME_CACHE_NAMESPACE,
+                game_id,
+                self._runtime_cache_max_age_seconds,
+            )
+            if self._has_full_relay_payload_for_game(game_id, runtime_snapshot):
+                self._relay_cache.set(game_id, runtime_snapshot)
+                logger.info("relay runtime snapshot hit %s", game_id)
+                return self._after(runtime_snapshot, after)
 
         payload = self._singleflight.call(
             f"{game_id}:{'force' if force_refresh else 'cached'}",
@@ -184,6 +203,11 @@ class RelayService:
         }
         if game_status == "FINAL":
             self.snapshot_store.save("relay", game_id, payload)
+        if game_status == "LIVE" or (
+            game_status == "FINAL" and not self._is_past_game_id(game_id)
+        ):
+            if self._has_full_relay_payload_for_game(game_id, payload):
+                self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, payload)
         return payload
 
     def _summary_payload(
@@ -353,6 +377,18 @@ class RelayService:
             and item.get("event") not in {"RUNS", "GAME_END", "INNING_CHANGE"}
             for item in items
         )
+
+    @classmethod
+    def _has_full_relay_payload_for_game(cls, game_id: str, payload: Any) -> bool:
+        return (
+            isinstance(payload, dict)
+            and payload.get("gameId") == game_id
+            and cls._has_full_relay_payload(payload)
+        )
+
+    @classmethod
+    def is_complete_payload(cls, game_id: str, payload: Any) -> bool:
+        return cls._has_full_relay_payload_for_game(game_id, payload)
 
     @staticmethod
     def _without_current_at_bat(payload: dict[str, Any]) -> dict[str, Any]:

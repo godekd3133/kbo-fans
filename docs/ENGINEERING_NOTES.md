@@ -5,6 +5,14 @@
 이 문서는 구현 중 얻은 반복적인 인사이트와 운영/검증 메모를 모은다.
 기획 문서보다는 구현 판단 기준에 가깝고, `AGENTS.md` / `CLAUDE.md` 를 보완하는 용도로 사용한다.
 
+## 2026-09-01 Backend two-level game-data cache
+
+- 앱 로컬 cache만으로는 새 프로세스의 첫 상세 진입과 API/sync worker 프로세스 경계를 줄일 수 없다. 게임 상세 서비스의 정상 miss 경로는 `process-local TTL cache → shared runtime JSON snapshot → crawler → 검증 후 두 cache 저장` 순서로 둔다. 동일 process의 동시 miss는 `SingleFlight`로 한 번만 upstream을 호출한다.
+- `runtime_*` namespace는 `SNAPSHOT_DIR` 아래에 저장하지만 historical immutable namespace와 분리한다. runtime payload는 `savedAt` 기준 TTL 안에서만 API가 재사용하고, TTL을 넘으면 current 데이터의 오류를 숨기지 않고 crawler/명시적 실패 경계로 돌아간다. KBO 경기일과 저장 시각의 timezone 규칙은 기존대로 KST/UTC instant를 각각 사용한다.
+- sync worker는 기존 5초 lightweight scoreboard warm과 별도의 detailed warmer를 둔다. `/scoreboard/home`에서 `LIVE` 경기만 상세 3종(relay, boxscore, lineup)을 순차 수집해 API worker의 L2를 선행 채우며, `FINAL` 경기에는 같은 경로를 한 번 더 돌려 완전한 historical snapshot을 확정한다. relay/boxscore/lineup 중 하나가 미완성이면 finalization 완료로 표시하지 않는다.
+- detailed warmer는 한 cycle이 끝나기 전에 다음 cycle을 시작하지 않는다. 로그에 `cycleDurationMs`, `nextIntervalSeconds`, live/final/finalized count와 구성요소별 error class를 남기고 다음 주기를 `max(minimum, measured * (1 + margin))`으로 정하되 상한을 둔다. 1경기 직접 호출 표본은 scoreboard 0.110초, relay 0.425초, boxscore 0.104초, lineup 0.132초(순차 합계 0.771초)였고, 실제 warm/finalization cycle은 relay 로그인과 서비스 조합을 포함해 2.981초였다. 다섯 경기 운영 p95는 배포 후 로그로 다시 측정해야 한다.
+- API와 worker가 여러 ECS task로 늘어날 때 JSON runtime snapshot은 공유 EFS 같은 공용 저장소가 필요하다. 파일 snapshot은 crawler 분산 lock이 아니므로, 다중 writer를 도입할 때는 별도 distributed lease/queue를 추가하고 현재 단일 Lightsail worker 보장과 혼동하지 않는다.
+
 ## 2026-08-13 Bounded data delivery
 
 - Dio의 `connectTimeout`/`receiveTimeout`만으로 전체 응답 시간을 제한할 수 없다. 앱 GET은 모든 attempt와 backoff를 포함하는 하나의 absolute deadline을 사용하고 deadline 시 `CancelToken`을 취소한다. transient GET만 한 번 재시도하며 정수 초 `Retry-After`를 존중한다. parse/일반 4xx/POST는 재시도하지 않는다.

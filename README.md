@@ -280,6 +280,9 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 - `SCOREBOARD_WARM_INTERVAL_SECONDS=5`: relay/FCM/APNs delivery polling과 독립된 scoreboard warmer 주기입니다. `PUSH_SYNC_INTERVAL_SECONDS`를 30초나 60초로 늘려도 기본 5초 warm은 유지됩니다.
 - `LIVE_SCOREBOARD_MAX_AGE_SECONDS=20`: shared live-state freshness 상한입니다. worker 시작 시 `SCOREBOARD_WARM_INTERVAL_SECONDS + 5초 scheduler jitter <= LIVE_SCOREBOARD_MAX_AGE_SECONDS` 계약을 검사합니다.
 - `PUSH_SYNC_INTERVAL_SECONDS=5`: relay/push delivery loop 주기이며 scoreboard warm 주기를 제어하지 않습니다.
+- `LIVE_GAME_DATA_WARM_ENABLED=true`: release sync worker가 LIVE 경기의 게임 요약·문자중계·박스스코어·라인업을 미리 수집할지 결정합니다. local 기본값은 false입니다.
+- `LIVE_GAME_DATA_CACHE_MAX_AGE_SECONDS=60`: worker가 저장한 current runtime 상세 cache를 API process가 재사용할 수 있는 최대 나이입니다. immutable historical snapshot의 만료 정책과는 별도입니다.
+- `LIVE_GAME_DATA_WARM_INTERVAL_SECONDS=15`, `LIVE_GAME_DATA_WARM_MAX_INTERVAL_SECONDS=60`, `LIVE_GAME_DATA_INTERVAL_MARGIN=0.5`: 상세 한 사이클의 실제 소요시간을 측정해 `max(minimum, measured * (1 + margin))`으로 다음 수집 시점을 정하고, 겹치는 crawler cycle을 막습니다. 기본 상세 주기는 15초, 상한은 60초입니다.
 - `FIREBASE_SERVICE_ACCOUNT_JSON` 또는 `FIREBASE_SERVICE_ACCOUNT_PATH`, `FIREBASE_PROJECT_ID`: FCM 일반 푸시 발송
 - `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_AUTH_KEY_P8` 또는 `APNS_AUTH_KEY_PATH`, `APNS_BUNDLE_ID`: iOS Live Activity APNs 발송
 - `APNS_USE_SANDBOX=false`: TestFlight/운영 배포용 APNs production endpoint 사용
@@ -311,6 +314,7 @@ uvicorn kbo_fans_backend.main:app --host 0.0.0.0 --port 8000 --reload
 - `./scripts/github-push-test-notification-run.sh --topic baseball_info_ALL --watch`: GitHub Actions `Push Test Notification` workflow를 dispatch해 `PUSH_SYNC_SECRET`을 로컬에 두지 않고 원격 테스트 푸시를 보냅니다. FCM token 대상은 `--token <fcm-token>`으로 지정하며, 스크립트는 secret/token 값을 출력하지 않습니다.
 - `POST /api/push/live-activity/start-token/register`: iOS 17.2+ 앱이 ActivityKit push-to-start token과 `installationId`를 등록합니다. 운영 scheduler는 같은 설치 id의 push registration을 기준으로 마이팀/선택 경기가 KST `startTime` 10분 전 window에 들어오거나 LIVE가 되면 APNs `event=start`로 앱을 열지 않아도 Live Activity / Dynamic Island를 시작합니다.
 - `POST /api/push/live-activity/sync-scoreboard`: 운영 scheduler가 5초 간격으로 호출하는 scoreboard/relay sync trigger. 시작 10분 전 예정 경기에는 APNs start를, 등록된 Live Activity에는 APNs update/end를 보내고, scoreboard diff 기반 시작 임박/득점/역전/타석/종료/이닝 교대와 relay diff 기반 안타/홈런은 FCM topic push로 발행합니다. visible push copy는 짧은 사건명 제목과 `현재 1사 1,2루` 상황, `스코어 4:3` 점수 형식을 사용합니다.
+- sync worker의 상세 워머는 `/scoreboard/home`에서 `LIVE`/`FINAL` 경기만 골라 단건 상세를 순차 수집합니다. `FINAL` 경기의 relay·boxscore·lineup가 완전하지 않으면 finalization을 완료로 표시하지 않고 다음 cycle에 재시도합니다. API 요청은 먼저 process-local L1과 공유 runtime snapshot L2를 확인하고, 둘 다 없거나 runtime TTL을 넘은 경우에만 crawler를 실행합니다.
 - Lightsail 저비용 배포 템플릿은 `infra/aws/lightsail/`에 있습니다. 512MB plan에서는 Docker 없이 Python venv + systemd로 API와 `python -m kbo_fans_backend.scheduler.live_activity_sync_loop` worker를 같은 인스턴스에서 실행합니다.
 - AWS ECS/Fargate 시연 배포 템플릿은 `infra/aws/ecs-fargate/`와 `infra/aws/cloudformation/`에 있습니다. 이 경로는 ALB/EFS/ECR/Secrets Manager가 필요한 확장/고가용성 경로이며, 2명 규모의 상시 tester backend 비용 절감 경로로는 Lightsail을 우선합니다.
 
@@ -337,7 +341,7 @@ GitHub Actions 배포:
 - 홈 secondary aggregate는 scoreboard 첫 데이터 프레임 이후에만 구독해 첫 화면 렌더 전에 `/home` 부가 API가 시작되지 않도록 합니다.
 - 홈 마이팀 브리프의 팀 타율/ERA는 scoreboard 첫 데이터 프레임 뒤 팀 지표 provider(`/api/team/{teamId}/stats`)로 먼저 보강하고, 팀 홈런 1위와 뜨는 선수는 선수 provider(`/api/team/{teamId}/players`)가 도착하면 채웁니다. `/home` aggregate에 전 팀 선수 기록을 싣지 않습니다.
 - 홈 자동 refresh timer는 현재 scoreboard signature가 바뀔 때만 재스케줄해 unrelated rebuild가 live polling을 뒤로 밀지 않도록 합니다.
-- backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 표면용 schedule + main list 요약 경로입니다. 경기별 상세 스코어보드 크롤링은 full scoreboard 또는 game detail 진입 때만 수행합니다.
+- backend `/scoreboard/home`과 `/scoreboard/compact`는 홈/위젯 표면용 schedule + main list 요약 경로입니다. 요청 경로 자체는 경기별 상세 스코어보드를 크롤링하지 않으며, release sync worker의 별도 detailed warmer만 LIVE/FINAL 경기를 선행 수집합니다.
 - backend current data routes는 `api/runtime_services.py`의 공용 service singleton을 공유해 `/scoreboard/home`, `/home`, game detail 계열이 같은 TTL cache를 재사용합니다.
 - LIVE 요약 스코어보드는 KBO main list의 유효한 득점을 schedule/detail fallback의 0점보다 우선합니다. 진행 중 경기의 최신 score를 fallback 0:0이 덮지 않아야 합니다.
 - 앱은 요약 스코어보드의 미수집 H/E/B `null` 값을 실제 0 기록처럼 표시하지 않습니다.

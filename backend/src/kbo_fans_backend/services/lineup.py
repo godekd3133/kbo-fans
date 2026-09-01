@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import date as date_type
 from typing import Any, Callable, Optional
 
+from kbo_fans_backend.core.config import get_settings
 from kbo_fans_backend.crawlers.boxscore import BoxscoreCrawler
 from kbo_fans_backend.crawlers.lineup import LineupCrawler
 from kbo_fans_backend.crawlers.main import MainCrawler
@@ -13,6 +14,8 @@ from kbo_fans_backend.services.player_stats import PlayerStatsService
 from kbo_fans_backend.storage import JsonSnapshotStore
 from kbo_fans_backend.utils.kbo_time import current_kbo_date
 from kbo_fans_backend.utils.player_images import kbo_player_image_url
+from kbo_fans_backend.utils.singleflight import SingleFlight
+from kbo_fans_backend.utils.ttl_cache import TtlCache
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +26,8 @@ def _current_kbo_date() -> date_type:
 
 class LineupService:
     _OPTIONAL_ENRICHMENT_INLINE_BUDGET_SECONDS = 0.75
+    _LINEUP_CACHE_TTL_SECONDS = 60
+    _RUNTIME_CACHE_NAMESPACE = "runtime_lineup"
 
     def __init__(
         self,
@@ -32,6 +37,8 @@ class LineupService:
         snapshot_store: Optional[JsonSnapshotStore] = None,
         player_stats_service: Optional[PlayerStatsService] = None,
         today_provider: Optional[Callable[[], date_type]] = None,
+        boxscore_service: Optional[Any] = None,
+        runtime_cache_max_age_seconds: Optional[float] = None,
     ) -> None:
         self.lineup_crawler = lineup_crawler or LineupCrawler()
         self.boxscore_crawler = boxscore_crawler or BoxscoreCrawler()
@@ -39,10 +46,50 @@ class LineupService:
         self.snapshot_store = snapshot_store or JsonSnapshotStore()
         self.player_stats_service = player_stats_service or PlayerStatsService()
         self.today_provider = today_provider or _current_kbo_date
+        self.boxscore_service = boxscore_service
+        configured_runtime_cache_age = (
+            runtime_cache_max_age_seconds
+            if runtime_cache_max_age_seconds is not None
+            else get_settings().live_game_data_cache_max_age_seconds
+        )
+        self._runtime_cache_max_age_seconds = max(0.0, float(configured_runtime_cache_age))
+        self._lineup_cache: TtlCache[str, dict[str, Any]] = TtlCache(
+            self._LINEUP_CACHE_TTL_SECONDS
+        )
+        self._singleflight: SingleFlight[str] = SingleFlight()
         self._enrichment_lock = threading.Lock()
         self._enrichment_in_flight: set[str] = set()
 
-    def get_lineup(self, game_id: str) -> dict[str, Any]:
+    def get_lineup(
+        self,
+        game_id: str,
+        force_refresh: bool = False,
+    ) -> dict[str, Any]:
+        if not force_refresh:
+            cached = self._lineup_cache.get(game_id)
+            if self._has_ready_lineup(game_id, cached):
+                logger.info("lineup cache hit %s", game_id)
+                return cached
+
+            runtime_snapshot = self.snapshot_store.load_recent_payload(
+                self._RUNTIME_CACHE_NAMESPACE,
+                game_id,
+                self._runtime_cache_max_age_seconds,
+            )
+            if self._has_ready_lineup(game_id, runtime_snapshot):
+                self._lineup_cache.set(game_id, runtime_snapshot)
+                logger.info("lineup runtime snapshot hit %s", game_id)
+                return runtime_snapshot
+
+        payload = self._singleflight.call(
+            f"lineup:{game_id}:{'force' if force_refresh else 'cached'}",
+            lambda: self._get_lineup_uncached(game_id),
+        )
+        if self._has_ready_lineup(game_id, payload):
+            self._lineup_cache.set(game_id, payload)
+        return payload
+
+    def _get_lineup_uncached(self, game_id: str) -> dict[str, Any]:
         snapshot = self.snapshot_store.load_payload("lineup", game_id)
         if (
             snapshot is not None
@@ -53,7 +100,10 @@ class LineupService:
 
         try:
             lineup = self.lineup_crawler.get_lineup(game_id)
-            boxscore = self.boxscore_crawler.get_boxscore(game_id)
+            if self.boxscore_service is not None:
+                boxscore = self.boxscore_service.get_boxscore(game_id)
+            else:
+                boxscore = self.boxscore_crawler.get_boxscore(game_id)
         except Exception:
             if (
                 snapshot is not None
@@ -89,13 +139,20 @@ class LineupService:
             "2",
             "5",
         }
-        self.snapshot_store.save("lineup", game_id, lineup)
+        if self._is_past_game_id(game_id) or main_status == "3":
+            self.snapshot_store.save("lineup", game_id, lineup)
+        if not self._is_past_game_id(game_id):
+            self.snapshot_store.save(self._RUNTIME_CACHE_NAMESPACE, game_id, lineup)
         if should_enrich_rows:
             enriched_lineup = self._enrich_with_budget(lineup, game_id)
             if enriched_lineup != lineup:
                 self.snapshot_store.save("lineup", game_id, enriched_lineup)
             return enriched_lineup
         return lineup
+
+    @classmethod
+    def is_complete_payload(cls, game_id: str, payload: Any) -> bool:
+        return cls._has_ready_lineup(game_id, payload)
 
     def _get_main_game(self, game_id: str) -> Optional[dict[str, Any]]:
         if len(game_id) < 8:

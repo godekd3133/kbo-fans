@@ -10,6 +10,16 @@
 
 ## [Unreleased]
 
+### Changed
+
+- backend 경기 상세를 process-local L1 cache와 worker/API가 공유하는 runtime JSON L2 cache의 이중 구조로 보강해, cache miss일 때만 KBO를 조회하고 검증된 결과를 다음 요청에 재사용하도록 변경
+- release sync worker가 진행 중인 경기의 게임 요약·문자중계·박스스코어·라인업을 별도 adaptive 주기로 미리 수집하고, 종료 경기의 완전한 상세 snapshot을 historical cache로 확정하도록 추가
+
+### Fixed
+
+- API process가 재시작되거나 sync worker와 분리된 뒤 경기 상세 진입마다 원천 크롤링을 기다리던 경로를 shared runtime snapshot으로 줄임
+- 상세 크롤링 시간이 다음 주기를 넘겨도 crawler cycle이 겹치지 않도록 measured duration + margin, minimum/maximum interval, component별 실패 재시도 경계를 추가
+
 ## [0.1.28] - 2026-08-31
 
 ### Changed

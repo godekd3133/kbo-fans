@@ -112,7 +112,8 @@
   - Home secondary aggregate providers should not be watched until after the first scoreboard data frame.
   - Home refresh timers should not be cancelled/restarted on unrelated rebuilds; reschedule only when interval or scoreboard signature changes.
   - Backend `/scoreboard/home` and `/scoreboard/compact` are lightweight summary paths. Do not call per-game scoreboard detail crawlers there; reserve detail crawling for full scoreboard and game detail.
-  - Backend current data routes should share `api/runtime_services.py` singletons so sibling endpoints reuse the same TTL caches instead of duplicating KBO calls.
+- Backend current data routes should share `api/runtime_services.py` singletons so sibling endpoints reuse the same TTL caches instead of duplicating KBO calls.
+- Release sync worker keeps the lightweight scoreboard warm independently, then uses a separate measured/adaptive detailed warmer for LIVE games. It writes current game/relay/boxscore/lineup runtime snapshots so API processes can serve the shared cache; FINAL promotion requires complete relay, official boxscore, and lineup data.
   - LIVE summary scoreboard paths should prefer valid KBO main-list scores over schedule/detail fallback zeroes so in-progress games cannot stay at stale 0:0.
   - App UI must treat null H/E/B team totals as unavailable instead of rendering fake 0 records.
 - App-wide Provider retry is intentionally disabled. Do not depend on Riverpod automatic retries to hide API failures; surface errors in screen state and log technical detail to Dev Console.
