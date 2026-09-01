@@ -27,7 +27,8 @@
 - [x] numeric tag `0.1.28`, `main` commit `bb1c7917`을 origin에 push했고 GitHub Release도 생성했다.
 - [x] 실제 iPhone의 TestFlight 화면에서 `KBO Fans 0.1.28 (96)` 설치 상태를 확인하고 앱을 실행했다. 일정에서 2026-08-27 삼성 15:2 키움 경기를 열어 스코어·문자중계·박스스코어·라인업을 확인했으며, 박스스코어는 삼성 타수 45·득점 15·안타 20·타점 15, 라인업은 `원태인`/`하영민` 선발을 표시했다. build 96의 업데이트 소식도 실제 화면에 표시됐다.
 - [x] 같은 실기기 TestFlight에서 KBO Fans app switcher card를 한 번 종료해 process 재실행 경계를 만들었고, 이후 검증을 위해 Wi-Fi를 임시 해제했다.
-- [ ] Wi-Fi를 끄면 iPhone Mirroring transport 자체가 끊겨 offline 상태의 두 번째 화면 조작은 진행하지 못했다. Wi-Fi는 복구했으며, iPhone을 잠근 뒤 Mirroring으로 재연결해 build 96 process 재실행과 과거 cache 재진입을 추가 확인한다. offline direct proof가 없어도 immutable cache 계약은 1년 이상 지난 payload의 network 0회 회귀 테스트로 별도 검증했다.
+- [x] Wi-Fi를 복구한 뒤 iPhone Mirroring으로 build 96을 다시 연결했다. KBO Fans process를 app switcher에서 종료하고 TestFlight로 재실행한 뒤, 같은 삼성 15:2 키움 과거 경기 상세와 과거 시즌 `2025` 기록실을 다시 열어 데이터가 전체 spinner 없이 표시되는 것을 확인했다.
+- [ ] iPhone Wi-Fi를 끄면 Mirroring transport 자체가 끊겨 offline 상태의 화면 캡처는 증거로 남기지 못했다. Wi-Fi는 복구했으며, immutable cache 계약은 1년 이상 지난 완성 payload의 network 0회 회귀 테스트와 process 재실행 후 실기기 재진입 화면으로 별도 검증했다.
 - [ ] `SharedPreferences` cache는 최대 64 entries/2 MiB이며 오래된 항목은 capacity eviction될 수 있다. 이번 변경은 시간 만료 재요청을 제거하는 범위이고, 시즌 전체 오프라인 보관을 위한 SQLite/별도 DB 확장은 포함하지 않는다.
 
 ## 2026-08-31: 0.1.27 TestFlight 심사 승인 후속
