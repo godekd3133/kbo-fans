@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -598,6 +599,132 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
 
     expect(repository.boxscoreCallCount, greaterThan(firstBoxscoreCallCount));
+  });
+
+  testWidgets('박스스코어 첫 요청 실패는 탭에 머문 채 자동 재시도한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _finalGame();
+    final repository = _FakeGameRepository(
+      game,
+      failInitialBoxscoreOnce: true,
+      boxscoreData: _boxscoreWithRows(game.gameId),
+    );
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=boxscore',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(repository),
+          teamPlayersProvider.overrideWith(
+            (ref, key) async => const <PlayerProfile>[],
+          ),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.boxscoreCallCount, 1);
+    expect(find.text('박스 자동 재시도 타자'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.boxscoreCallCount, greaterThan(1));
+    expect(find.text('박스 자동 재시도 타자'), findsOneWidget);
+  });
+
+  testWidgets('공개된 라인업 첫 요청 실패는 탭에 머문 채 자동 재시도한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final baseGame = _scheduledGame();
+    final game = Game(
+      gameId: baseGame.gameId,
+      status: baseGame.status,
+      inning: baseGame.inning,
+      away: baseGame.away,
+      home: baseGame.home,
+      stadium: baseGame.stadium,
+      startTime: baseGame.startTime,
+      lineupOpened: true,
+    );
+    final repository = _FakeGameRepository(
+      game,
+      failInitialLineupOnce: true,
+      lineupData: _lineupWithRows(game.gameId),
+    );
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=lineup',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameRepositoryProvider.overrideWithValue(repository),
+          teamPlayersProvider.overrideWith(
+            (ref, key) async => const <PlayerProfile>[],
+          ),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.lineupCallCount, 1);
+    expect(find.text('라인업 자동 재시도 타자'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.lineupCallCount, greaterThan(1));
+    expect(find.text('라인업 자동 재시도 타자'), findsOneWidget);
   });
 
   testWidgets('자동 갱신 중 pull refresh 요청은 끝난 뒤 한 번 더 실행한다', (tester) async {
@@ -1546,6 +1673,10 @@ class _FakeGameRepository
     this.pendingInitialRelay,
     this.failInitialRelayOnce = false,
     this.relayData,
+    this.failInitialBoxscoreOnce = false,
+    this.boxscoreData,
+    this.failInitialLineupOnce = false,
+    this.lineupData,
   });
 
   final Game game;
@@ -1556,12 +1687,19 @@ class _FakeGameRepository
   final Completer<RelayData>? pendingInitialRelay;
   final bool failInitialRelayOnce;
   final RelayData? relayData;
+  final bool failInitialBoxscoreOnce;
+  final GameBoxscoreData? boxscoreData;
+  final bool failInitialLineupOnce;
+  final GameLineupData? lineupData;
   int _getGameCallCount = 0;
   int boxscoreCallCount = 0;
+  int lineupCallCount = 0;
   int highlightCallCount = 0;
   int relayCallCount = 0;
   int gameRefreshRequestCount = 0;
   int relayRefreshRequestCount = 0;
+  int boxscoreRefreshRequestCount = 0;
+  int lineupRefreshRequestCount = 0;
 
   int get gameCallCount => _getGameCallCount;
 
@@ -1576,6 +1714,16 @@ class _FakeGameRepository
   @override
   void requestRelayRefresh(String gameId) {
     relayRefreshRequestCount += 1;
+  }
+
+  @override
+  void requestBoxscoreRefresh(String gameId) {
+    boxscoreRefreshRequestCount += 1;
+  }
+
+  @override
+  void requestLineupRefresh(String gameId) {
+    lineupRefreshRequestCount += 1;
   }
 
   @override
@@ -1625,6 +1773,15 @@ class _FakeGameRepository
   @override
   Future<GameBoxscoreData> getBoxscoreData(String gameId) async {
     boxscoreCallCount += 1;
+    if (boxscoreCallCount == 1 && failInitialBoxscoreOnce) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/boxscore'),
+        type: DioExceptionType.connectionError,
+      );
+    }
+    if (boxscoreData != null) {
+      return boxscoreData!;
+    }
     return GameBoxscoreData(
       gameId: gameId,
       officialAvailable: false,
@@ -1651,6 +1808,16 @@ class _FakeGameRepository
 
   @override
   Future<GameLineupData> getLineupData(String gameId) async {
+    lineupCallCount += 1;
+    if (lineupCallCount == 1 && failInitialLineupOnce) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/lineup'),
+        type: DioExceptionType.connectionError,
+      );
+    }
+    if (lineupData != null) {
+      return lineupData!;
+    }
     return GameLineupData(
       gameId: gameId,
       away: const TeamLineupData(teamId: 'KT', lineup: []),
@@ -1671,4 +1838,87 @@ class _FakeGameRepository
 
   @override
   Future<List<TeamStanding>> getStandings(int season) async => const [];
+}
+
+GameBoxscoreData _boxscoreWithRows(String gameId) {
+  return GameBoxscoreData(
+    gameId: gameId,
+    officialAvailable: true,
+    away: const TeamBoxscoreData(
+      teamId: 'KT',
+      batters: [
+        BatterRecord(
+          order: 1,
+          position: 'CF',
+          name: '박스 자동 재시도 타자',
+          atBats: 4,
+          runs: 1,
+          hits: 2,
+          rbi: 1,
+        ),
+      ],
+      pitchers: [
+        PitcherRecord(
+          name: '박스 자동 재시도 투수',
+          innings: '5.0',
+          hits: 3,
+          strikeouts: 4,
+          walks: 1,
+          earnedRuns: 1,
+        ),
+      ],
+    ),
+    home: const TeamBoxscoreData(
+      teamId: 'LG',
+      batters: [
+        BatterRecord(
+          order: 1,
+          position: 'SS',
+          name: '상대 타자',
+          atBats: 4,
+          runs: 0,
+          hits: 1,
+          rbi: 0,
+        ),
+      ],
+      pitchers: [
+        PitcherRecord(
+          name: '상대 투수',
+          innings: '5.0',
+          hits: 5,
+          strikeouts: 3,
+          walks: 2,
+          earnedRuns: 2,
+        ),
+      ],
+    ),
+  );
+}
+
+GameLineupData _lineupWithRows(String gameId) {
+  return GameLineupData(
+    gameId: gameId,
+    away: const TeamLineupData(
+      teamId: 'KT',
+      lineup: [
+        LineupEntry(
+          order: 1,
+          position: 'CF',
+          positionKo: '중견수',
+          name: '라인업 자동 재시도 타자',
+        ),
+      ],
+    ),
+    home: const TeamLineupData(
+      teamId: 'LG',
+      lineup: [
+        LineupEntry(
+          order: 1,
+          position: 'SS',
+          positionKo: '유격수',
+          name: '상대 라인업 타자',
+        ),
+      ],
+    ),
+  );
 }

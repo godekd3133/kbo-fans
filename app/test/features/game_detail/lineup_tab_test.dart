@@ -153,6 +153,72 @@ void main() {
     );
   });
 
+  testWidgets('라인업 local fallback은 마지막 저장 데이터 안내를 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameLineupProvider.overrideWith((ref, gameId) async {
+            return const GameLineupData(
+              gameId: '20260612SKLG0',
+              isStale: true,
+              away: TeamLineupData(
+                teamId: 'SK',
+                lineup: [
+                  LineupEntry(
+                    order: 1,
+                    position: 'SS',
+                    positionKo: '유격수',
+                    name: '저장된 라인업 타자',
+                  ),
+                ],
+              ),
+              home: TeamLineupData(
+                teamId: 'LG',
+                lineup: [
+                  LineupEntry(
+                    order: 1,
+                    position: 'RF',
+                    positionKo: '우익수',
+                    name: '상대 라인업 타자',
+                  ),
+                ],
+              ),
+            );
+          }),
+          teamPlayersProvider.overrideWith((ref, key) async {
+            return const <PlayerProfile>[];
+          }),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: LineupTab(
+              gameId: '20260612SKLG0',
+              gameStatus: GameStatus.scheduled,
+              lineupOpened: true,
+              awayName: 'SSG',
+              homeName: 'LG',
+              awayTeamId: 'SK',
+              homeTeamId: 'LG',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('lineup-stale-notice')), findsOneWidget);
+    expect(find.textContaining('마지막으로 저장된 라인업'), findsOneWidget);
+  });
+
   testWidgets('경기 전 라인업이 아직 비어 있으면 공개 전 상태를 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

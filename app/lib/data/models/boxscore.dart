@@ -96,6 +96,7 @@ class GameBoxscoreData {
   final String gameId;
   final bool officialAvailable;
   final bool liveContextAvailable;
+  final bool isStale;
   final TeamBoxscoreData away;
   final TeamBoxscoreData home;
 
@@ -103,6 +104,7 @@ class GameBoxscoreData {
     required this.gameId,
     this.officialAvailable = true,
     this.liveContextAvailable = false,
+    this.isStale = false,
     required this.away,
     required this.home,
   });
@@ -241,11 +243,13 @@ class TeamLineupData {
 
 class GameLineupData {
   final String gameId;
+  final bool isStale;
   final TeamLineupData away;
   final TeamLineupData home;
 
   const GameLineupData({
     required this.gameId,
+    this.isStale = false,
     required this.away,
     required this.home,
   });

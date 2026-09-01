@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,8 +37,11 @@ import 'tabs/score_tab.dart';
 const gameDetailLiveRelayRefreshInterval = Duration(seconds: 5);
 const gameDetailLiveDefaultRefreshInterval = Duration(seconds: 8);
 const gameDetailScheduledRefreshInterval = Duration(minutes: 5);
+const gameDetailDetailRetryInterval = Duration(seconds: 5);
 const _gameDetailRefreshDeadline = Duration(seconds: 25);
 const _relayTabIndex = 1;
+const _boxscoreTabIndex = 2;
+const _lineupTabIndex = 3;
 
 @visibleForTesting
 double gameDetailRelayFocusScrollTarget(double maxScrollExtent) {
@@ -363,6 +367,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   Timer? _refreshTimer;
   Timer? _relayRetryTimer;
+  Timer? _detailDataRetryTimer;
   Duration? _refreshTimerInterval;
   bool _refreshInFlight = false;
   bool _refreshPending = false;
@@ -372,6 +377,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   bool _isFollowingGame = false;
   String? _highlightWarmupGameId;
   String? _relayProviderStartedForGameId;
+  String? _detailDataProviderStartedKey;
+  String? _detailDataRetryKey;
   late final TabController _tabController;
   final ScrollController _outerScrollController = ScrollController();
 
@@ -391,6 +398,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     unawaited(_loadFollowState());
     _startRefreshTimer();
     _scheduleRelayProviderStart();
+    _scheduleVisibleDetailProviderStart();
   }
 
   @override
@@ -410,6 +418,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     }
     if (oldWidget.gameId != widget.gameId ||
         oldWidget.game.status != widget.game.status) {
+      _detailDataProviderStartedKey = null;
+      _cancelDetailDataRetry();
       if (oldWidget.gameId != widget.gameId) {
         _relayProviderStartedForGameId = null;
         _relayRetryTimer?.cancel();
@@ -479,6 +489,9 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     }
     if (_tabController.index == _relayTabIndex) {
       _scheduleRelayProviderStart();
+    } else {
+      _cancelDetailDataRetry();
+      _scheduleVisibleDetailProviderStart();
     }
     _startRefreshTimer();
     if (widget.game.status == GameStatus.live) {
@@ -517,6 +530,150 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
 
     _relayProviderStartedForGameId = gameId;
     _observeRelayProvider(gameId, ref.read(provider.future));
+  }
+
+  void _scheduleVisibleDetailProviderStart() {
+    final tabIndex = _visibleDetailProviderTabIndex;
+    if (tabIndex == null) {
+      return;
+    }
+
+    final gameId = widget.gameId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.gameId != gameId) {
+        return;
+      }
+      _ensureVisibleDetailProviderStarted(gameId, tabIndex);
+    });
+  }
+
+  int? get _visibleDetailProviderTabIndex {
+    switch (_tabController.index) {
+      case _boxscoreTabIndex:
+        return widget.game.status == GameStatus.scheduled ||
+                widget.game.status == GameStatus.cancelled
+            ? null
+            : _boxscoreTabIndex;
+      case _lineupTabIndex:
+        if (widget.game.status == GameStatus.cancelled) {
+          return null;
+        }
+        if (widget.game.status == GameStatus.scheduled &&
+            !widget.game.isPregameLineupOpen) {
+          return null;
+        }
+        return _lineupTabIndex;
+      default:
+        return null;
+    }
+  }
+
+  void _ensureVisibleDetailProviderStarted(String gameId, int tabIndex) {
+    final key = '$gameId:$tabIndex';
+    if (_detailDataProviderStartedKey == key) {
+      return;
+    }
+
+    final provider = tabIndex == _boxscoreTabIndex
+        ? gameBoxscoreProvider(gameId)
+        : gameLineupProvider(gameId);
+    final state = ref.read(provider);
+    if (state.hasValue) {
+      _detailDataProviderStartedKey = key;
+      return;
+    }
+
+    _detailDataProviderStartedKey = key;
+    final future = tabIndex == _boxscoreTabIndex
+        ? ref.read(gameBoxscoreProvider(gameId).future)
+        : ref.read(gameLineupProvider(gameId).future);
+    _observeDetailProvider(gameId, tabIndex, future);
+  }
+
+  void _observeDetailProvider(
+    String gameId,
+    int tabIndex,
+    Future<Object?> future,
+  ) {
+    unawaited(
+      future.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          DevConsole.instance.warn(
+            'GAME DETAIL ${tabIndex == _boxscoreTabIndex ? 'boxscore' : 'lineup'} load failed: $gameId $error',
+          );
+          if (_isRetryableDetailProviderError(error)) {
+            _scheduleDetailDataRetry(gameId, tabIndex);
+          }
+        },
+      ),
+    );
+  }
+
+  bool _isRetryableDetailProviderError(Object error) {
+    if (error is TimeoutException) {
+      return true;
+    }
+    if (error is! DioException) {
+      return false;
+    }
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      case DioExceptionType.badResponse:
+        return switch (error.response?.statusCode) {
+          408 || 429 || 502 || 503 || 504 => true,
+          _ => false,
+        };
+      case DioExceptionType.badCertificate:
+      case DioExceptionType.cancel:
+      case DioExceptionType.unknown:
+        return false;
+    }
+  }
+
+  void _scheduleDetailDataRetry(String gameId, int tabIndex) {
+    if (!mounted ||
+        widget.gameId != gameId ||
+        _visibleDetailProviderTabIndex != tabIndex) {
+      return;
+    }
+    final key = '$gameId:$tabIndex';
+    if (_detailDataRetryKey == key &&
+        (_detailDataRetryTimer?.isActive ?? false)) {
+      return;
+    }
+
+    _detailDataRetryKey = key;
+    _detailDataRetryTimer = Timer(gameDetailDetailRetryInterval, () {
+      _detailDataRetryTimer = null;
+      _detailDataRetryKey = null;
+      if (!mounted ||
+          widget.gameId != gameId ||
+          _visibleDetailProviderTabIndex != tabIndex) {
+        return;
+      }
+
+      final provider = tabIndex == _boxscoreTabIndex
+          ? gameBoxscoreProvider(gameId)
+          : gameLineupProvider(gameId);
+      final state = ref.read(provider);
+      if (state.hasValue || state.isLoading) {
+        return;
+      }
+      _detailDataProviderStartedKey = null;
+      ref.invalidate(provider);
+      _ensureVisibleDetailProviderStarted(gameId, tabIndex);
+    });
+  }
+
+  void _cancelDetailDataRetry() {
+    _detailDataRetryTimer?.cancel();
+    _detailDataRetryTimer = null;
+    _detailDataRetryKey = null;
   }
 
   void _observeRelayProvider(String gameId, Future<RelayData> future) {
@@ -709,8 +866,18 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
       if (forceNetwork && repository is GameRepositoryRefreshControl) {
         final refreshControl = repository as GameRepositoryRefreshControl;
         refreshControl.requestGameRefresh(gameId);
-        if (refreshVisibleTab && _tabController.index == _relayTabIndex) {
-          refreshControl.requestRelayRefresh(gameId);
+        if (refreshVisibleTab) {
+          switch (_tabController.index) {
+            case _relayTabIndex:
+              refreshControl.requestRelayRefresh(gameId);
+              break;
+            case _boxscoreTabIndex:
+              refreshControl.requestBoxscoreRefresh(gameId);
+              break;
+            case _lineupTabIndex:
+              refreshControl.requestLineupRefresh(gameId);
+              break;
+          }
         }
       }
       final futures = <Future<Object?>>[];
@@ -733,11 +900,19 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
             break;
           case 2:
             ref.invalidate(gameBoxscoreProvider(gameId));
-            futures.add(ref.read(gameBoxscoreProvider(gameId).future));
+            final boxscoreFuture = ref.read(
+              gameBoxscoreProvider(gameId).future,
+            );
+            futures.add(boxscoreFuture);
+            _detailDataProviderStartedKey = '$gameId:$_boxscoreTabIndex';
+            _observeDetailProvider(gameId, _boxscoreTabIndex, boxscoreFuture);
             break;
           case 3:
             ref.invalidate(gameLineupProvider(gameId));
-            futures.add(ref.read(gameLineupProvider(gameId).future));
+            final lineupFuture = ref.read(gameLineupProvider(gameId).future);
+            futures.add(lineupFuture);
+            _detailDataProviderStartedKey = '$gameId:$_lineupTabIndex';
+            _observeDetailProvider(gameId, _lineupTabIndex, lineupFuture);
             break;
         }
       }
@@ -917,6 +1092,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
     _relayRetryTimer?.cancel();
+    _cancelDetailDataRetry();
     _outerScrollController.dispose();
     _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();

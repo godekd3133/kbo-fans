@@ -225,6 +225,7 @@ class ApiClient {
     bool allowCacheOnFailure = false,
     bool revalidateStaleCache = true,
     void Function()? onCacheFallback,
+    bool preserveCacheOnUncacheable = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = '$_cachePrefix$cacheKey';
@@ -275,19 +276,18 @@ class ApiClient {
       if (isValid != null && !isValid(fresh)) {
         throw StateError('Invalid API cache payload for $cacheKey');
       }
-      if (persistsResponse && (isCacheable == null || isCacheable(fresh))) {
+      final cacheable = isCacheable == null || isCacheable(fresh);
+      if (persistsResponse && cacheable) {
         await _writeCachedPayload(prefs, storageKey, fresh);
-      } else if (prefs.containsKey(storageKey)) {
+      } else if (!preserveCacheOnUncacheable && prefs.containsKey(storageKey)) {
         await _removeCachedPayload(prefs, storageKey);
       }
       return fresh;
     } catch (error) {
-      if (
-        allowCacheOnFailure &&
-        cached != null &&
-        isFresh &&
-        _isCacheFallbackEligible(error)
-      ) {
+      if (allowCacheOnFailure &&
+          cached != null &&
+          isFresh &&
+          _isCacheFallbackEligible(error)) {
         onCacheFallback?.call();
         return cached.data;
       }
@@ -541,7 +541,9 @@ class ApiClient {
 
     final gameMatch = RegExp(r'^/game/(\d{8})[^/]*(?:/.*)?$').firstMatch(path);
     if (gameMatch != null) {
-      if (path.endsWith('/relay')) {
+      if (path.endsWith('/relay') ||
+          path.endsWith('/boxscore') ||
+          path.endsWith('/lineup')) {
         return true;
       }
       final compactDate = gameMatch.group(1)!;

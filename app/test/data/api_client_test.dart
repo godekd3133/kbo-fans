@@ -405,6 +405,123 @@ void main() {
   );
 
   test(
+    'current boxscore response is stored locally and reused on a bounded failure',
+    () async {
+      final gameId = '${kboDateKey().replaceAll('-', '')}LGKT0';
+      SharedPreferences.setMockInitialValues({});
+      final repository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(
+            _CountingSuccessAdapter(_boxscorePayload(gameId)),
+          ),
+          enableRequestTiming: false,
+        ),
+      );
+
+      final fresh = await repository.getBoxscoreData(gameId);
+
+      expect(fresh.away.batters.single.name, '로컬 박스 타자');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('api_cache:boxscore:$gameId'), isTrue);
+
+      final offlineRepository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_FailingAdapter()),
+          enableRequestTiming: false,
+        ),
+      );
+      final cached = await offlineRepository.getBoxscoreData(gameId);
+
+      expect(cached.away.batters.single.name, '로컬 박스 타자');
+      expect(cached.isStale, isTrue);
+    },
+  );
+
+  test(
+    'current lineup response is stored locally and reused on a bounded failure',
+    () async {
+      final gameId = '${kboDateKey().replaceAll('-', '')}LGKT0';
+      SharedPreferences.setMockInitialValues({});
+      final repository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_CountingSuccessAdapter(_lineupPayload(gameId))),
+          enableRequestTiming: false,
+        ),
+      );
+
+      final fresh = await repository.getLineupData(gameId);
+
+      expect(fresh.away.lineup.single.name, '로컬 라인업 타자');
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('api_cache:lineup:$gameId'), isTrue);
+
+      final offlineRepository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_FailingAdapter()),
+          enableRequestTiming: false,
+        ),
+      );
+      final cached = await offlineRepository.getLineupData(gameId);
+
+      expect(cached.away.lineup.single.name, '로컬 라인업 타자');
+      expect(cached.isStale, isTrue);
+    },
+  );
+
+  test(
+    'current incomplete boxscore does not evict the last valid local cache',
+    () async {
+      final gameId = '${kboDateKey().replaceAll('-', '')}LGKT0';
+      SharedPreferences.setMockInitialValues({});
+      final firstRepository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(
+            _CountingSuccessAdapter(_boxscorePayload(gameId)),
+          ),
+          enableRequestTiming: false,
+        ),
+      );
+      await firstRepository.getBoxscoreData(gameId);
+
+      final incompleteRepository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(
+            _CountingSuccessAdapter({
+              'gameId': gameId,
+              'officialAvailable': false,
+              'liveContextAvailable': false,
+              'away': {
+                'teamId': 'LG',
+                'batters': const [],
+                'pitchers': const [],
+              },
+              'home': {
+                'teamId': 'KT',
+                'batters': const [],
+                'pitchers': const [],
+              },
+            }),
+          ),
+          enableRequestTiming: false,
+        ),
+      );
+      final incomplete = await incompleteRepository.getBoxscoreData(gameId);
+
+      expect(incomplete.officialAvailable, isFalse);
+      final offlineRepository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_FailingAdapter()),
+          enableRequestTiming: false,
+        ),
+      );
+      final cached = await offlineRepository.getBoxscoreData(gameId);
+
+      expect(cached.away.batters.single.name, '로컬 박스 타자');
+      expect(cached.isStale, isTrue);
+    },
+  );
+
+  test(
     'immutable cached-first path never revalidates an expired snapshot',
     () async {
       SharedPreferences.setMockInitialValues({
@@ -1276,6 +1393,78 @@ void main() {
     },
   );
 }
+
+Map<String, dynamic> _boxscorePayload(String gameId) => {
+  'gameId': gameId,
+  'officialAvailable': true,
+  'liveContextAvailable': false,
+  'away': {
+    'teamId': 'LG',
+    'batters': [
+      {
+        'name': '로컬 박스 타자',
+        'order': 1,
+        'position': 'CF',
+        'atBats': 4,
+        'runs': 1,
+        'hits': 2,
+        'rbi': 1,
+      },
+    ],
+    'pitchers': [
+      {
+        'name': '로컬 박스 투수',
+        'innings': '5.0',
+        'hits': 3,
+        'strikeouts': 4,
+        'walks': 1,
+        'earnedRuns': 1,
+      },
+    ],
+  },
+  'home': {
+    'teamId': 'KT',
+    'batters': [
+      {
+        'name': '상대 박스 타자',
+        'order': 1,
+        'position': 'SS',
+        'atBats': 4,
+        'runs': 0,
+        'hits': 1,
+        'rbi': 0,
+      },
+    ],
+    'pitchers': [
+      {
+        'name': '상대 박스 투수',
+        'innings': '5.0',
+        'hits': 5,
+        'strikeouts': 3,
+        'walks': 2,
+        'earnedRuns': 2,
+      },
+    ],
+  },
+};
+
+Map<String, dynamic> _lineupPayload(String gameId) => {
+  'gameId': gameId,
+  'away': {
+    'teamId': 'LG',
+    'lineup': [
+      {'order': 1, 'position': 'CF', 'positionKo': '중견수', 'name': '로컬 라인업 타자'},
+    ],
+    'starter': {'name': '로컬 라인업 선발'},
+  },
+  'home': {
+    'teamId': 'KT',
+    'lineup': [
+      {'order': 1, 'position': 'SS', 'positionKo': '유격수', 'name': '상대 라인업 타자'},
+    ],
+    'starter': {'name': '상대 라인업 선발'},
+  },
+};
 
 String _cachedApiPayload(Map<String, dynamic> data, {required Duration age}) =>
     jsonEncode({

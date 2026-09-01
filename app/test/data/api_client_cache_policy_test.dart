@@ -10,57 +10,54 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-    'current relay is persisted while boxscore and lineup remain non-persistent',
-    () async {
-      final gameId = '${kboDateKey().replaceAll('-', '')}LGKT0';
-      final targets = {
-        '/game/$gameId/relay': 'relay:$gameId:',
-        '/game/$gameId/boxscore': 'boxscore:$gameId',
-        '/game/$gameId/lineup': 'lineup:$gameId',
-      };
-      SharedPreferences.setMockInitialValues({
-        for (final cacheKey in targets.values)
-          'api_cache:$cacheKey': _cachedPayload({'legacy': true}),
-      });
-      final client = ApiClient(
-        dio: _dioWithAdapter(
-          _SuccessAdapter({
-            'gameId': gameId,
-            'currentAtBat': null,
-            'relayItems': const [
-              {
-                'seqNo': 1,
-                'inning': 1,
-                'half': 'top',
-                'event': 'HIT',
-                'text': '정상 중계 item',
-              },
-            ],
-          }),
-        ),
-        enableRequestTiming: false,
-      );
+  test('current relay, boxscore, and lineup responses are persisted', () async {
+    final gameId = '${kboDateKey().replaceAll('-', '')}LGKT0';
+    final targets = {
+      '/game/$gameId/relay': 'relay:$gameId:',
+      '/game/$gameId/boxscore': 'boxscore:$gameId',
+      '/game/$gameId/lineup': 'lineup:$gameId',
+    };
+    SharedPreferences.setMockInitialValues({
+      for (final cacheKey in targets.values)
+        'api_cache:$cacheKey': _cachedPayload({'legacy': true}),
+    });
+    final client = ApiClient(
+      dio: _dioWithAdapter(
+        _SuccessAdapter({
+          'gameId': gameId,
+          'currentAtBat': null,
+          'relayItems': const [
+            {
+              'seqNo': 1,
+              'inning': 1,
+              'half': 'top',
+              'event': 'HIT',
+              'text': '정상 중계 item',
+            },
+          ],
+        }),
+      ),
+      enableRequestTiming: false,
+    );
 
-      for (final target in targets.entries) {
-        await client.getCached(target.key, cacheKey: target.value);
-      }
+    for (final target in targets.entries) {
+      await client.getCached(target.key, cacheKey: target.value);
+    }
 
-      final prefs = await SharedPreferences.getInstance();
-      expect(
-        prefs.containsKey('api_cache:${targets['/game/$gameId/relay']}'),
-        isTrue,
-      );
-      expect(
-        prefs.containsKey('api_cache:${targets['/game/$gameId/boxscore']}'),
-        isFalse,
-      );
-      expect(
-        prefs.containsKey('api_cache:${targets['/game/$gameId/lineup']}'),
-        isFalse,
-      );
-    },
-  );
+    final prefs = await SharedPreferences.getInstance();
+    expect(
+      prefs.containsKey('api_cache:${targets['/game/$gameId/relay']}'),
+      isTrue,
+    );
+    expect(
+      prefs.containsKey('api_cache:${targets['/game/$gameId/boxscore']}'),
+      isTrue,
+    );
+    expect(
+      prefs.containsKey('api_cache:${targets['/game/$gameId/lineup']}'),
+      isTrue,
+    );
+  });
 
   test('historical relay remains persisted and cached-first', () async {
     const gameId = '20130501KTLG0';

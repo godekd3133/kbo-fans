@@ -31,4 +31,6 @@ abstract class GameRepositoryRefreshControl {
   void requestScoreboardRefresh(String date);
   void requestGameRefresh(String gameId);
   void requestRelayRefresh(String gameId);
+  void requestBoxscoreRefresh(String gameId);
+  void requestLineupRefresh(String gameId);
 }

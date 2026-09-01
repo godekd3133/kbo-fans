@@ -100,6 +100,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             const {},
             season: season,
             isLiveContext: isLiveContext,
+            isStale: boxscore.isStale,
           ),
           error: (_, _) => _buildContent(
             selected,
@@ -107,6 +108,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
             const {},
             season: season,
             isLiveContext: isLiveContext,
+            isStale: boxscore.isStale,
           ),
           data: (players) {
             final playersByName = {
@@ -126,6 +128,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
               playersByName,
               season: season,
               isLiveContext: isLiveContext,
+              isStale: boxscore.isStale,
             );
           },
         );
@@ -280,6 +283,7 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     Map<String, PlayerProfile> playersByName, {
     required int season,
     required bool isLiveContext,
+    bool isStale = false,
   }) {
     final batters = selected.batters;
     final pitchers = selected.pitchers;
@@ -348,6 +352,10 @@ class _BoxscoreTabState extends ConsumerState<BoxscoreTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (isStale) ...[
+          const _BoxscoreStaleNotice(),
+          const SizedBox(height: 10),
+        ],
         _BoxscoreSummaryPanel(
           teamId: _selectedTeamId,
           teamName: _selectedTeamName,
@@ -1935,6 +1943,28 @@ class _TeamToggleCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BoxscoreStaleNotice extends StatelessWidget {
+  const _BoxscoreStaleNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('boxscore-stale-notice'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(
+        '네트워크 갱신이 지연되어 마지막으로 저장된 박스스코어를 표시하고 있습니다',
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
       ),
     );
   }

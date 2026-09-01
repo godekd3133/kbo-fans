@@ -2,6 +2,32 @@
 
 ---
 
+## 2026-09-02: 박스스코어·라인업 자동 재시도와 current cache 보강
+
+### 진단
+
+- [x] 운영 API에서 `20260902` 예정 경기 라인업은 양 팀 9명과 선발투수까지 HTTP 200으로 반환되고, `20260901` 종료 경기 박스스코어는 양 팀 타자·투수 rows를 HTTP 200으로 반환하는 것을 확인했다. backend 원천이 항상 빈 응답을 내는 문제는 아니었다.
+- [x] 기존 화면 seam에 초기 boxscore/lineup 네트워크 오류 fixture를 넣어 재현했다. 종료 경기 박스스코어와 공개된 예정 경기 라인업 모두 첫 호출 뒤 5초 동안 호출 횟수가 1회에 머물러 수동 새로고침 전까지 error 상태가 유지됐다.
+- [x] 기존 `ApiClient` cache policy가 current `/game/{gameId}/boxscore`와 `/lineup`을 `SharedPreferences`에 저장하지 않는 것을 확인했다. 문자중계만 current local cache 예외였다.
+
+### 반영
+
+- [x] visible boxscore/lineup provider의 Future에 독립 오류 observer를 연결하고, connection/timeout/gateway 계열 오류에서 5초 후 provider를 invalidate해 같은 탭에서 자동 재시도하도록 보강했다. 공개 전 라인업·취소 경기·정상적인 공식 기록 미제공 응답은 불필요하게 시작하거나 재시도하지 않는다.
+- [x] game identity와 표시 가능성 검증을 통과한 current boxscore/lineup 응답을 60초 동안 앱 local cache에 저장하고, 일시적인 네트워크 오류에서만 stale 데이터로 fallback하도록 추가했다. 불완전한 fresh 응답은 기존 검증 cache를 덮어쓰거나 지우지 않는다.
+- [x] 수동 boxscore/lineup refresh는 local fallback을 우회하고, backend의 기존 process-local/runtime cache와 worker warming 계약은 변경하지 않았다.
+- [x] stale fallback을 사용할 때 박스스코어·라인업 화면에도 마지막 저장 데이터 안내를 표시하도록 추가했다.
+
+### 검증
+
+- [x] baseline 회귀 테스트에서 boxscore/lineup 초기 오류 자동 재시도 기대가 각각 실패하는 것을 확인한 뒤 수정했다.
+- [x] 대상 앱 회귀: game-detail navigation, boxscore tab, lineup tab, API cache policy, API repository 테스트 통과. 초기 오류 재시도·stale 안내·current cache persistence/fallback·불완전 응답 보존을 포함한다.
+- [x] 운영 API readback: `20260902LGOB0/boxscore` HTTP 200의 정상적인 official-unavailable 상태, `20260902LGOB0/lineup` HTTP 200의 양 팀 9명, `20260901LGOB0/boxscore` HTTP 200의 양 팀 타자·투수 rows를 확인했다.
+
+### Release decision
+
+- [x] 사용자-visible 앱 동작이 바뀌므로 current app build를 `0.1.31+99`, numeric release를 `0.1.31`로 올린다.
+- [ ] 전체 앱/backend 검증 후 main push, GitHub Release, 운영 배포 및 signed IPA/TestFlight handoff를 기록한다. Apple Distribution signing credential이 없으면 TestFlight 업로드는 별도 blocker로 남긴다.
+
 ## 2026-09-02: 문자중계 자동 재시도와 양쪽 캐시 보강
 
 ### 원인

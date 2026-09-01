@@ -18,8 +18,10 @@ class ApiGameRepository
   final Set<String> _forcedScoreboardRefreshes = <String>{};
   final Set<String> _forcedGameRefreshes = <String>{};
   final Set<String> _forcedRelayRefreshes = <String>{};
+  final Set<String> _forcedBoxscoreRefreshes = <String>{};
+  final Set<String> _forcedLineupRefreshes = <String>{};
   static const _liveishCacheAge = Duration(seconds: 8);
-  static const _relayLocalCacheAge = Duration(seconds: 60);
+  static const _liveDetailCacheAge = Duration(seconds: 60);
   static const _historicalCacheAge = Duration(days: 30);
 
   ApiGameRepository(this._client);
@@ -37,6 +39,16 @@ class ApiGameRepository
   @override
   void requestRelayRefresh(String gameId) {
     _forcedRelayRefreshes.add(gameId);
+  }
+
+  @override
+  void requestBoxscoreRefresh(String gameId) {
+    _forcedBoxscoreRefreshes.add(gameId);
+  }
+
+  @override
+  void requestLineupRefresh(String gameId) {
+    _forcedLineupRefreshes.add(gameId);
   }
 
   @override
@@ -131,7 +143,7 @@ class ApiGameRepository
       queryParameters: params,
       cacheKey: 'relay:$gameId:${afterSeqNo ?? ''}',
       preferCache: isHistoricalGame && !forceRefresh,
-      maxAge: isHistoricalGame ? _historicalCacheAge : _relayLocalCacheAge,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _liveDetailCacheAge,
       isCacheable: isHistoricalGame
           ? (payload) => _hasDetailedHistoricalRelay(payload, gameId)
           : (payload) => _hasCurrentRelayPayload(payload, gameId),
@@ -166,21 +178,26 @@ class ApiGameRepository
   @override
   Future<GameBoxscoreData> getBoxscoreData(String gameId) async {
     final isHistoricalGame = _isHistoricalGameId(gameId);
+    final forceRefresh = _forcedBoxscoreRefreshes.remove(gameId);
+    var usedLocalCacheFallback = false;
     final data = await _client.getCached(
       '/game/$gameId/boxscore',
       cacheKey: 'boxscore:$gameId',
-      preferCache: isHistoricalGame,
-      maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
+      preferCache: isHistoricalGame && !forceRefresh,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _liveDetailCacheAge,
       isCacheable: isHistoricalGame
           ? (payload) => _hasCanonicalHistoricalBoxscore(payload, gameId)
-          : null,
-      allowCacheOnFailure: isHistoricalGame,
+          : (payload) => _hasCurrentBoxscorePayload(payload, gameId),
+      allowCacheOnFailure: !forceRefresh,
       revalidateStaleCache: !isHistoricalGame,
+      onCacheFallback: () => usedLocalCacheFallback = true,
+      preserveCacheOnUncacheable: !isHistoricalGame,
     );
     return GameBoxscoreData(
       gameId: gameId,
       officialAvailable: data['officialAvailable'] as bool? ?? true,
       liveContextAvailable: data['liveContextAvailable'] as bool? ?? false,
+      isStale: usedLocalCacheFallback,
       away: _parseTeamBoxscore(
         data['away'] as Map<String, dynamic>? ?? const {},
       ),
@@ -211,19 +228,24 @@ class ApiGameRepository
   @override
   Future<GameLineupData> getLineupData(String gameId) async {
     final isHistoricalGame = _isHistoricalGameId(gameId);
+    final forceRefresh = _forcedLineupRefreshes.remove(gameId);
+    var usedLocalCacheFallback = false;
     final data = await _client.getCached(
       '/game/$gameId/lineup',
       cacheKey: 'lineup:$gameId',
-      preferCache: isHistoricalGame,
-      maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
+      preferCache: isHistoricalGame && !forceRefresh,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _liveDetailCacheAge,
       isCacheable: isHistoricalGame
           ? (payload) => _hasCompleteHistoricalLineup(payload, gameId)
-          : null,
-      allowCacheOnFailure: isHistoricalGame,
+          : (payload) => _hasCurrentLineupPayload(payload, gameId),
+      allowCacheOnFailure: !forceRefresh,
       revalidateStaleCache: !isHistoricalGame,
+      onCacheFallback: () => usedLocalCacheFallback = true,
+      preserveCacheOnUncacheable: !isHistoricalGame,
     );
     return GameLineupData(
       gameId: gameId,
+      isStale: usedLocalCacheFallback,
       away: _parseTeamLineup(data['away'] as Map<String, dynamic>? ?? const {}),
       home: _parseTeamLineup(data['home'] as Map<String, dynamic>? ?? const {}),
     );
@@ -666,7 +688,50 @@ class ApiGameRepository
         pitchers.isNotEmpty;
   }
 
+  static bool _hasCurrentBoxscorePayload(
+    Map<String, dynamic> data,
+    String gameId,
+  ) {
+    if (data['gameId'] != gameId) {
+      return false;
+    }
+    final isOfficial = data['officialAvailable'] == true;
+    final isLiveContext = data['liveContextAvailable'] == true;
+    if (!isOfficial && !isLiveContext) {
+      return false;
+    }
+    return _hasDisplayableTeamBoxscore(data['away']) &&
+        _hasDisplayableTeamBoxscore(data['home']);
+  }
+
+  static bool _hasDisplayableTeamBoxscore(Object? value) {
+    if (value is! Map) {
+      return false;
+    }
+    return _hasNamedRows(value['batters']) || _hasNamedRows(value['pitchers']);
+  }
+
+  static bool _hasNamedRows(Object? value) {
+    if (value is! List || value.isEmpty) {
+      return false;
+    }
+    return value.any(
+      (row) =>
+          row is Map && (row['name']?.toString().trim().isNotEmpty ?? false),
+    );
+  }
+
   static bool _hasCompleteHistoricalLineup(
+    Map<String, dynamic> data,
+    String gameId,
+  ) {
+    if (data['gameId'] != gameId) {
+      return false;
+    }
+    return _hasLineupRows(data['away']) && _hasLineupRows(data['home']);
+  }
+
+  static bool _hasCurrentLineupPayload(
     Map<String, dynamic> data,
     String gameId,
   ) {

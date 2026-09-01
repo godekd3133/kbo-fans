@@ -31,6 +31,32 @@ void main() {
     expect(find.text('경기 시작 후 박스스코어가 제공됩니다'), findsOneWidget);
   });
 
+  testWidgets('박스스코어 local fallback은 마지막 저장 데이터 안내를 보여준다', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final staleBoxscore = GameBoxscoreData(
+      gameId: _officialBoxscore.gameId,
+      officialAvailable: true,
+      isStale: true,
+      away: _officialBoxscore.away,
+      home: _officialBoxscore.home,
+    );
+    await _pumpBoxscoreTab(
+      tester,
+      boxscore: staleBoxscore,
+      players: const <PlayerProfile>[],
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.byKey(const ValueKey('boxscore-stale-notice')), findsOneWidget);
+    expect(find.textContaining('마지막으로 저장된 박스스코어'), findsOneWidget);
+  });
+
   testWidgets('박스스코어가 0값 투수 placeholder만 있으면 업데이트 전 상태를 보여준다', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

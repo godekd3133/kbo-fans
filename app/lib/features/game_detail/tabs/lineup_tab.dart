@@ -216,6 +216,10 @@ class _LineupTabState extends ConsumerState<LineupTab> {
                         ),
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (gameLineup.isStale) ...[
+                            const _LineupStaleNotice(),
+                            const SizedBox(height: 10),
+                          ],
                           if (hasComparisonData) ...[
                             AppMotionListItem(
                               index: 0,
@@ -419,6 +423,28 @@ class _LineupTabState extends ConsumerState<LineupTab> {
         precacheKboPlayerImageUrls(context, urls, limit: 80).catchError((_) {}),
       );
     });
+  }
+}
+
+class _LineupStaleNotice extends StatelessWidget {
+  const _LineupStaleNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('lineup-stale-notice'),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(
+        '네트워크 갱신이 지연되어 마지막으로 저장된 라인업을 표시하고 있습니다',
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+    );
   }
 }
 
