@@ -20,6 +20,7 @@ import '../../core/widgets/kbo_team_logo_image.dart';
 import '../../data/models/game.dart';
 import '../../data/models/highlight_info.dart';
 import '../../data/models/highlight_video.dart';
+import '../../data/models/relay.dart';
 import '../../data/models/ticketing.dart';
 import '../../data/providers.dart';
 import '../../data/repositories/game_repository.dart';
@@ -361,6 +362,7 @@ class _GameDetailBody extends ConsumerStatefulWidget {
 class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   Timer? _refreshTimer;
+  Timer? _relayRetryTimer;
   Duration? _refreshTimerInterval;
   bool _refreshInFlight = false;
   bool _refreshPending = false;
@@ -410,6 +412,8 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
         oldWidget.game.status != widget.game.status) {
       if (oldWidget.gameId != widget.gameId) {
         _relayProviderStartedForGameId = null;
+        _relayRetryTimer?.cancel();
+        _relayRetryTimer = null;
       }
       _refreshTimer?.cancel();
       _startRefreshTimer();
@@ -506,24 +510,60 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
 
     final provider = relayDataProvider(gameId);
     final state = ref.read(provider);
-    if (state.hasValue || state.isLoading) {
+    if (state.hasValue) {
       _relayProviderStartedForGameId = gameId;
       return;
     }
 
     _relayProviderStartedForGameId = gameId;
+    _observeRelayProvider(gameId, ref.read(provider.future));
+  }
+
+  void _observeRelayProvider(String gameId, Future<RelayData> future) {
     unawaited(
-      ref
-          .read(provider.future)
-          .then<void>(
-            (_) {},
-            onError: (Object error, StackTrace stackTrace) {
-              DevConsole.instance.warn(
-                'GAME DETAIL initial relay load failed: $gameId $error',
-              );
-            },
-          ),
+      future.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          DevConsole.instance.warn(
+            'GAME DETAIL initial relay load failed: $gameId $error',
+          );
+          _scheduleRelayRetry(gameId);
+        },
+      ),
     );
+  }
+
+  void _scheduleRelayRetry(String gameId) {
+    if (!mounted || widget.gameId != gameId) {
+      return;
+    }
+    final shouldRetry =
+        widget.game.status == GameStatus.live ||
+        _tabController.index == _relayTabIndex;
+    if (!shouldRetry || _relayRetryTimer?.isActive == true) {
+      return;
+    }
+
+    _relayRetryTimer = Timer(gameDetailLiveRelayRefreshInterval, () {
+      _relayRetryTimer = null;
+      if (!mounted || widget.gameId != gameId) {
+        return;
+      }
+      final shouldRetry =
+          widget.game.status == GameStatus.live ||
+          _tabController.index == _relayTabIndex;
+      if (!shouldRetry) {
+        return;
+      }
+      final provider = relayDataProvider(gameId);
+      final state = ref.read(provider);
+      if (state.hasValue || state.isLoading) {
+        return;
+      }
+      _relayProviderStartedForGameId = null;
+      ref.invalidate(provider);
+      _ensureRelayProviderStarted(gameId);
+    });
   }
 
   Future<void> _refreshGameDetail({
@@ -673,8 +713,11 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
           refreshControl.requestRelayRefresh(gameId);
         }
       }
-      ref.invalidate(gameProvider(gameId));
-      final futures = <Future<Object?>>[ref.read(gameProvider(gameId).future)];
+      final futures = <Future<Object?>>[];
+      if (!ref.read(gameProvider(gameId)).isLoading) {
+        ref.invalidate(gameProvider(gameId));
+        futures.add(ref.read(gameProvider(gameId).future));
+      }
 
       if (refreshVisibleTab) {
         switch (_tabController.index) {
@@ -711,9 +754,6 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     String gameId, {
     required bool refreshVisibleTab,
   }) {
-    if (ref.read(gameProvider(gameId)).isLoading) {
-      return true;
-    }
     if (!refreshVisibleTab) {
       return false;
     }
@@ -731,9 +771,6 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
     Duration timeout = _gameDetailRefreshDeadline,
   }) async {
     final futures = <Future<Object?>>[];
-    if (ref.read(gameProvider(gameId)).isLoading) {
-      futures.add(ref.read(gameProvider(gameId).future));
-    }
     if (refreshVisibleTab) {
       switch (_tabController.index) {
         case 1:
@@ -879,6 +916,7 @@ class _GameDetailBodyState extends ConsumerState<_GameDetailBody>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _refreshTimer?.cancel();
+    _relayRetryTimer?.cancel();
     _outerScrollController.dispose();
     _tabController.removeListener(_handleTabChanged);
     _tabController.dispose();

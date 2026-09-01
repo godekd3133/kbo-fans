@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class RelayService:
-    _RELAY_CACHE_TTL_SECONDS = 2
+    _RELAY_CACHE_TTL_SECONDS = 5
     _HISTORICAL_RELAY_INLINE_BUDGET_SECONDS = 0.75
     _RUNTIME_CACHE_NAMESPACE = "runtime_relay"
 
@@ -71,7 +71,11 @@ class RelayService:
             ),
         )
         cached_after_fetch = self._relay_cache.get(game_id)
-        if cached_after_fetch is None or not self._has_full_relay_payload(cached_after_fetch):
+        if (
+            cached_after_fetch is None
+            or not self._has_full_relay_payload(cached_after_fetch)
+            or (force_refresh and self._has_full_relay_payload(payload))
+        ):
             self._relay_cache.set(game_id, payload)
         return self._after(payload, after)
 

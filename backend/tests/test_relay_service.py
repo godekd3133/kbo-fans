@@ -33,6 +33,17 @@ class _StubRelayCrawler:
         return self._payload
 
 
+class _MutableRelayCrawler:
+    def __init__(self, *payloads):
+        self._payloads = list(payloads)
+        self.calls = 0
+
+    def get_relay(self, game_id: str):
+        payload = self._payloads[min(self.calls, len(self._payloads) - 1)]
+        self.calls += 1
+        return payload
+
+
 class _BlockingRelayCrawler(_StubRelayCrawler):
     def __init__(self, payload):
         super().__init__(payload)
@@ -126,6 +137,90 @@ def test_concurrent_live_relay_requests_share_one_crawl(tmp_path: Path) -> None:
     assert crawler.calls == 1
     assert service.get_relay(game_id, after=1)["relayItems"] == []
     assert crawler.calls == 1
+
+
+def test_force_refresh_replaces_previous_full_relay_cache(tmp_path: Path) -> None:
+    game_id = "20260902KTLG0"
+    first_payload = {
+        "gameId": game_id,
+        "currentAtBat": None,
+        "relayItems": [
+            {
+                "seqNo": 1,
+                "inning": 1,
+                "half": "top",
+                "event": "HIT",
+                "isScoring": False,
+                "text": "이전 안타",
+                "pitchSequence": "B-S-HIT",
+            }
+        ],
+    }
+    refreshed_payload = {
+        **first_payload,
+        "relayItems": [
+            {
+                **first_payload["relayItems"][0],
+                "seqNo": 2,
+                "text": "새 안타",
+            }
+        ],
+    }
+    crawler = _MutableRelayCrawler(first_payload, refreshed_payload)
+    service = RelayService(
+        relay_crawler=crawler,
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "LIVE",
+                "away": {"shortName": "KT", "score": 1, "scores": [1]},
+                "home": {"shortName": "LG", "score": 0, "scores": [0]},
+            }
+        ),
+        snapshot_store=JsonSnapshotStore(base_dir=str(tmp_path / "snapshots")),
+    )
+
+    assert service.get_relay(game_id)["relayItems"][0]["text"] == "이전 안타"
+    assert service.get_relay(game_id, force_refresh=True)["relayItems"][0]["text"] == "새 안타"
+    assert service.get_relay(game_id)["relayItems"][0]["text"] == "새 안타"
+    assert crawler.calls == 2
+
+
+def test_live_full_relay_crawl_writes_shared_runtime_snapshot(tmp_path: Path) -> None:
+    game_id = "20260902KTLG0"
+    payload = {
+        "gameId": game_id,
+        "currentAtBat": None,
+        "relayItems": [
+            {
+                "seqNo": 1,
+                "inning": 1,
+                "half": "top",
+                "event": "HIT",
+                "isScoring": False,
+                "text": "공유 cache 안타",
+                "pitchSequence": "B-S-HIT",
+            }
+        ],
+    }
+    store = JsonSnapshotStore(base_dir=str(tmp_path / "snapshots"))
+    service = RelayService(
+        relay_crawler=_StubRelayCrawler(payload),
+        scoreboard_service=_StubScoreboardService(
+            {
+                "gameId": game_id,
+                "status": "LIVE",
+                "away": {"shortName": "KT", "score": 1, "scores": [1]},
+                "home": {"shortName": "LG", "score": 0, "scores": [0]},
+            }
+        ),
+        snapshot_store=store,
+        runtime_cache_max_age_seconds=60,
+    )
+
+    result = service.get_relay(game_id)
+
+    assert store.load_recent_payload("runtime_relay", game_id, 60) == result
 
 
 def test_historical_final_relay_returns_summary_while_detail_warms(tmp_path: Path) -> None:

@@ -84,6 +84,80 @@ void main() {
     );
   });
 
+  testWidgets('로컬 캐시 fallback을 사용하면 중계 화면에 갱신 지연을 표시한다', (tester) async {
+    const game = Game(
+      gameId: '20260612OBLT0',
+      status: GameStatus.live,
+      inning: '1회초',
+      away: TeamScore(
+        teamId: 'OB',
+        teamName: '두산 베어스',
+        shortName: '두산',
+        score: 2,
+        innings: [],
+      ),
+      home: TeamScore(
+        teamId: 'LT',
+        teamName: '롯데 자이언츠',
+        shortName: '롯데',
+        score: 1,
+        innings: [],
+      ),
+      stadium: '사직',
+      startTime: '18:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) async => game),
+          relayDataProvider.overrideWith(
+            (ref, gameId) async => const RelayData(
+              currentAtBat: null,
+              isStale: true,
+              relayItems: [
+                RelayItem(
+                  seqNo: 1,
+                  inning: 1,
+                  half: 'top',
+                  event: 'HIT',
+                  text: '저장된 안타',
+                ),
+              ],
+            ),
+          ),
+          gameLineupProvider.overrideWith(
+            (ref, gameId) async => const GameLineupData(
+              gameId: '20260612OBLT0',
+              away: TeamLineupData(teamId: 'OB', lineup: []),
+              home: TeamLineupData(teamId: 'LT', lineup: []),
+            ),
+          ),
+          teamPlayersProvider.overrideWith(
+            (ref, key) async => const <PlayerProfile>[],
+          ),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.dark,
+          home: const Scaffold(
+            body: RelayTab(
+              gameId: '20260612OBLT0',
+              gameStatus: GameStatus.live,
+              game: game,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('저장된 안타'), findsOneWidget);
+    expect(find.byKey(const ValueKey('relay-stale-notice')), findsOneWidget);
+    expect(find.textContaining('마지막으로 저장된 문자중계'), findsOneWidget);
+  });
+
   testWidgets('문자중계 fallback은 큰 글씨에서 카드 높이를 늘려 안내를 보존한다', (tester) async {
     tester.view.physicalSize = const Size(320, 844);
     tester.view.devicePixelRatio = 1;

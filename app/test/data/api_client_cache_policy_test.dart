@@ -11,7 +11,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
-    'current relay boxscore and lineup are not persisted and legacy entries are removed',
+    'current relay is persisted while boxscore and lineup remain non-persistent',
     () async {
       final gameId = '${kboDateKey().replaceAll('-', '')}LGKT0';
       final targets = {
@@ -28,7 +28,15 @@ void main() {
           _SuccessAdapter({
             'gameId': gameId,
             'currentAtBat': null,
-            'relayItems': const [],
+            'relayItems': const [
+              {
+                'seqNo': 1,
+                'inning': 1,
+                'half': 'top',
+                'event': 'HIT',
+                'text': '정상 중계 item',
+              },
+            ],
           }),
         ),
         enableRequestTiming: false,
@@ -39,9 +47,18 @@ void main() {
       }
 
       final prefs = await SharedPreferences.getInstance();
-      for (final cacheKey in targets.values) {
-        expect(prefs.containsKey('api_cache:$cacheKey'), isFalse);
-      }
+      expect(
+        prefs.containsKey('api_cache:${targets['/game/$gameId/relay']}'),
+        isTrue,
+      );
+      expect(
+        prefs.containsKey('api_cache:${targets['/game/$gameId/boxscore']}'),
+        isFalse,
+      );
+      expect(
+        prefs.containsKey('api_cache:${targets['/game/$gameId/lineup']}'),
+        isFalse,
+      );
     },
   );
 

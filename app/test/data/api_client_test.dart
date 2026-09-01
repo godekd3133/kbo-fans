@@ -360,6 +360,51 @@ void main() {
   });
 
   test(
+    'current relay response is stored locally and reused on a bounded failure',
+    () async {
+      final gameId = '${kboDateKey().replaceAll('-', '')}LGKT0';
+      const relayText = '로컬 캐시 안타';
+      final payload = {
+        'gameId': gameId,
+        'currentAtBat': null,
+        'relayItems': [
+          {
+            'seqNo': 1,
+            'inning': 1,
+            'half': 'top',
+            'event': 'HIT',
+            'isScoring': false,
+            'text': relayText,
+            'pitchSequence': 'B-S-HIT',
+          },
+        ],
+      };
+      SharedPreferences.setMockInitialValues({});
+      final adapter = _CountingSuccessAdapter(payload);
+      final repository = ApiGameRepository(
+        ApiClient(dio: _dioWithAdapter(adapter), enableRequestTiming: false),
+      );
+
+      final fresh = await repository.getRelayData(gameId);
+
+      expect(fresh.relayItems.single.text, relayText);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.containsKey('api_cache:relay:$gameId:'), isTrue);
+
+      final offlineRepository = ApiGameRepository(
+        ApiClient(
+          dio: _dioWithAdapter(_FailingAdapter()),
+          enableRequestTiming: false,
+        ),
+      );
+      final cached = await offlineRepository.getRelayData(gameId);
+
+      expect(cached.relayItems.single.text, relayText);
+      expect(cached.isStale, isTrue);
+    },
+  );
+
+  test(
     'immutable cached-first path never revalidates an expired snapshot',
     () async {
       SharedPreferences.setMockInitialValues({

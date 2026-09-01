@@ -67,6 +67,11 @@ class CurrentAtBat {
 class RelayData {
   final CurrentAtBat? currentAtBat;
   final List<RelayItem> relayItems;
+  final bool isStale;
 
-  const RelayData({required this.currentAtBat, required this.relayItems});
+  const RelayData({
+    required this.currentAtBat,
+    required this.relayItems,
+    this.isStale = false,
+  });
 }

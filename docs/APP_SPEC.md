@@ -20,7 +20,8 @@
 - 앱의 날짜 의존 provider는 `Asia/Seoul` 자정에 새 날짜 key를 발행하고 resume 때도 재확인한다. 홈/일정이 실행 중인 채 자정을 지나도 전날 provider key에 머물지 않는다. 순위/기록실이 현재 시즌을 보고 있으면 1월 1일 KST 연도 전환에 새 시즌을 따르되, 사용자가 직접 고른 과거 시즌은 유지한다.
 - 순위는 KBO 연도별 페이지에서 요청 시즌, 원천 선택 시즌, 원천 기준일 연도가 모두 일치할 때만 저장·반환한다. 현재/LIVE 박스스코어는 검증된 공식 양 팀 기록이 없으면 `official_unavailable` 또는 명시적 `live_context`로 응답하며, 인접 경기나 과거 snapshot을 빌리지 않는다. 라인업 GET은 snapshot 보강·저장은 할 수 있지만 push 발송이나 registry mutation은 하지 않는다.
 - `/push/live-activity/update`는 설정된 `PUSH_SYNC_SECRET`을 필수로 하고, unregister는 `gameId + activityPushToken + activityId + installationId`가 모두 nonblank이며 등록 owner와 일치해야 한다. 기존 앱의 `installationId`가 누락/null이거나 token/activity id 일부가 누락/null/blank이면 422 대신 `removed=0` 안전 무동작으로 호환한다. 실패한 현재 앱 unregister는 이 네 필드의 불변 세대별로 보존한다. sync worker는 한 경기의 relay를 한 tick에 한 번만 읽고, token별 content signature가 그대로인 Live Activity update는 재발송하지 않는다.
-- backend snapshot은 image에 포함된 read-only seed와 runtime write 경로를 분리한다. 앱은 오늘/현재 시즌/LIVE 응답을 `SharedPreferences` API cache에 저장하지 않으며, historical cache도 최대 2 MiB와 항목별/개수 제한 안에서 오래된 항목부터 제거한다. 완성된 historical payload는 시간 만료로 재검증하지 않고 force/schema·key 변경/사용자 초기화/capacity eviction 때만 다시 받는다.
+- backend snapshot은 image에 포함된 read-only seed와 runtime write 경로를 분리한다. 앱은 오늘/현재 시즌의 일반 응답과 current/LIVE payload를 `SharedPreferences` API cache에 저장하지 않지만, 문자중계는 game identity·payload shape를 검증한 마지막 성공 응답을 60초 bounded local cache로 보존한다. 문자중계도 정상 경로는 network-first이며, 일시적인 connection/timeout/gateway failure 때만 마지막 저장 데이터를 사용하고 화면에 갱신 지연을 표시한다. historical cache는 최대 2 MiB와 항목별/개수 제한 안에서 오래된 항목부터 제거한다. 완성된 historical payload는 시간 만료로 재검증하지 않고 force/schema·key 변경/사용자 초기화/capacity eviction 때만 다시 받는다.
+- backend 문자중계는 process-local L1 TTL과 worker/API가 공유하는 `runtime_relay` JSON L2를 사용한다. 정상 relay 원문은 두 cache에 저장하고, L1 만료 또는 API process 재시작 뒤에도 60초 runtime snapshot이 유효하면 KBO relay 원문 재크롤링 없이 응답한다. 강제 갱신으로 새 원문을 얻으면 이전 L1 payload를 새 payload가 가리지 않도록 교체한다.
 
 ### 0.2 2026-08-10 2차 감사 보강 계약
 

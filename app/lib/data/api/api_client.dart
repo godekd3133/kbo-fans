@@ -224,6 +224,7 @@ class ApiClient {
     bool Function(Map<String, dynamic> data)? isCacheable,
     bool allowCacheOnFailure = false,
     bool revalidateStaleCache = true,
+    void Function()? onCacheFallback,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final storageKey = '$_cachePrefix$cacheKey';
@@ -280,8 +281,14 @@ class ApiClient {
         await _removeCachedPayload(prefs, storageKey);
       }
       return fresh;
-    } catch (_) {
-      if (allowCacheOnFailure && cached != null && isFresh) {
+    } catch (error) {
+      if (
+        allowCacheOnFailure &&
+        cached != null &&
+        isFresh &&
+        _isCacheFallbackEligible(error)
+      ) {
+        onCacheFallback?.call();
         return cached.data;
       }
       rethrow;
@@ -495,6 +502,28 @@ class ApiClient {
     return !age.isNegative && age <= maxAge;
   }
 
+  bool _isCacheFallbackEligible(Object error) {
+    if (error is! DioException) {
+      return false;
+    }
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      case DioExceptionType.badResponse:
+        return switch (error.response?.statusCode) {
+          408 || 429 || 502 || 503 || 504 => true,
+          _ => false,
+        };
+      case DioExceptionType.badCertificate:
+      case DioExceptionType.cancel:
+      case DioExceptionType.unknown:
+        return false;
+    }
+  }
+
   bool _shouldPersistResponse(
     String path, {
     required String cacheKey,
@@ -512,6 +541,9 @@ class ApiClient {
 
     final gameMatch = RegExp(r'^/game/(\d{8})[^/]*(?:/.*)?$').firstMatch(path);
     if (gameMatch != null) {
+      if (path.endsWith('/relay')) {
+        return true;
+      }
       final compactDate = gameMatch.group(1)!;
       final date =
           '${compactDate.substring(0, 4)}-'

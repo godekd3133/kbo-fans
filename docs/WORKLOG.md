@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-09-02: 문자중계 자동 재시도와 양쪽 캐시 보강
+
+### 원인
+
+- [x] `GameDetailScreen`의 자동 refresh coordinator가 경기 요약 `gameProvider`의 진행 중 Future를 먼저 기다리면서, 이미 실패한 문자중계 provider를 같은 화면에서 다시 시작하지 못하는 경로를 재현했다. 기존 첫 진입 보정은 provider가 이미 `loading`이면 오류 관찰 callback을 붙이지 않아, 이 경우 retry timer도 생성되지 않았다.
+- [x] 앱은 current/LIVE game payload를 로컬에 저장하지 않는 정책 때문에 문자중계 성공 데이터를 `SharedPreferences`에 남기지 않았고, backend relay L1은 2초 뒤 만료되어 API process 재시작 시 runtime cache가 완전 원문을 갖고 있을 때만 재사용됐다.
+
+### 반영
+
+- [x] relay provider가 이미 로딩 중이어도 같은 Future에 오류 관찰을 연결하고, 초기 오류가 발생하면 경기 요약 요청과 독립된 5초 retry를 예약하도록 수정했다. 탭이 유지되는 동안 provider error를 invalidate하고 다시 시작하며, 기존 loading 요청은 중복 재시작하지 않는다.
+- [x] 검증된 current relay 응답을 `api_cache:relay:{gameId}:`에 저장하고, 다음 네트워크 요청이 connection/timeout/gateway failure인 경우에만 60초 이내 local payload를 사용하도록 보강했다. fallback은 `RelayData.isStale`와 화면 안내로 표시하며 force refresh에는 사용하지 않는다.
+- [x] backend relay process-local L1 TTL을 5초로 맞추고, 강제 갱신에서 새 완전 원문을 얻으면 이전 완전 cache를 새 payload로 교체하도록 수정했다. 기존 `runtime_relay` JSON L2 read-through/write와 완전성 검증은 유지했다.
+- [x] `CHANGELOG.md`, `docs/APP_SPEC.md`, `docs/ENGINEERING_NOTES.md`에 current relay cache 및 자동 retry 계약을 동기화했다.
+
+### 검증
+
+- [x] 앱 회귀: `fvm flutter test test/features/game_detail/game_detail_navigation_test.dart` 통과. 초기 relay 실패, 경기 요약 지연, 5초 자동 retry를 포함한다.
+- [x] 앱 cache/relay: `fvm flutter test test/features/game_detail/game_detail_navigation_test.dart test/features/game_detail/relay_tab_test.dart test/data/api_client_cache_policy_test.dart test/data/api_client_test.dart` (`96 passed`) 및 전체 `fvm flutter test` (`538 passed`) 통과.
+- [x] 앱 정적 분석: `fvm flutter analyze --no-fatal-infos` (`No issues found`) 통과.
+- [x] backend relay: `backend/.venv/bin/pytest -q backend/tests/test_relay_service.py backend/tests/test_relay_crawler.py backend/tests/test_live_game_data.py` (`34 passed`) 및 전체 `backend/.venv/bin/pytest -q` (`604 passed`) 통과.
+- [x] backend `python3 -m compileall -q backend/src` 통과.
+
+### Release decision
+
+- [x] 이번 변경은 앱/API 동작과 사용자-visible 문자중계 상태가 바뀌므로 `0.1.30+98` 및 numeric tag `0.1.30` tester-facing release로 승격한다.
+- [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`, release-note test fixture를 새 버전에 맞췄다.
+- [ ] main push, Lightsail backend deploy, signed IPA/TestFlight upload 및 Apple external tester handoff는 진행 중이다.
+
 ## 2026-09-01: 문자중계 첫 진입 provider 미시작 보정 및 0.1.29+97
 
 ### 원인

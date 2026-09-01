@@ -719,6 +719,147 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('문자중계 첫 요청이 실패해도 탭에 머문 채 자동 재시도하여 데이터를 표시한다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final repository = _FakeGameRepository(
+      game,
+      failInitialRelayOnce: true,
+      relayData: const RelayData(
+        currentAtBat: null,
+        relayItems: [
+          RelayItem(
+            seqNo: 2,
+            inning: 1,
+            half: 'top',
+            event: 'HIT',
+            text: '자동 재시도 안타',
+          ),
+        ],
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=relay',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [gameRepositoryProvider.overrideWithValue(repository)],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.relayCallCount, 1);
+    expect(
+      find.byKey(const ValueKey('relay-unavailable-notice')),
+      findsWidgets,
+    );
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.relayCallCount, greaterThan(1));
+    expect(find.text('자동 재시도 안타'), findsOneWidget);
+  });
+
+  testWidgets('경기 요약 요청이 오래 걸려도 문자중계 자동 재시도를 막지 않는다', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final game = _liveGame();
+    final gameLookup = Completer<Game?>();
+    final repository = _FakeGameRepository(
+      game,
+      failInitialRelayOnce: true,
+      relayData: const RelayData(
+        currentAtBat: null,
+        relayItems: [
+          RelayItem(
+            seqNo: 2,
+            inning: 1,
+            half: 'top',
+            event: 'HIT',
+            text: '경기 요약 대기 중 자동 재시도 안타',
+          ),
+        ],
+      ),
+    );
+    final router = GoRouter(
+      initialLocation: '/game/${game.gameId}?tab=relay',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('홈')),
+        ),
+        GoRoute(
+          path: '/game/:gameId',
+          builder: (_, state) => GameDetailScreen(
+            gameId: state.pathParameters['gameId']!,
+            game: game,
+            initialTab: state.uri.queryParameters['tab'],
+          ),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: (_, _) => null,
+        overrides: [
+          gameProvider.overrideWith((ref, gameId) => gameLookup.future),
+          gameRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: MaterialApp.router(theme: AppTheme.dark, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.relayCallCount, 1);
+    expect(
+      find.byKey(const ValueKey('relay-unavailable-notice')),
+      findsWidgets,
+    );
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(repository.relayCallCount, greaterThan(1));
+    expect(find.text('경기 요약 대기 중 자동 재시도 안타'), findsOneWidget);
+
+    gameLookup.complete(game);
+    await tester.pump();
+  });
+
   testWidgets('종료 경기 스코어탭은 하이라이트를 자동 로드하고 앱 안 재생 버튼을 노출한다', (tester) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(390, 844);
@@ -1403,6 +1544,8 @@ class _FakeGameRepository
     this.highlightInfo,
     this.pendingRelayRefresh,
     this.pendingInitialRelay,
+    this.failInitialRelayOnce = false,
+    this.relayData,
   });
 
   final Game game;
@@ -1411,6 +1554,8 @@ class _FakeGameRepository
   final HighlightInfo? highlightInfo;
   final Completer<RelayData>? pendingRelayRefresh;
   final Completer<RelayData>? pendingInitialRelay;
+  final bool failInitialRelayOnce;
+  final RelayData? relayData;
   int _getGameCallCount = 0;
   int boxscoreCallCount = 0;
   int highlightCallCount = 0;
@@ -1457,13 +1602,16 @@ class _FakeGameRepository
   @override
   Future<RelayData> getRelayData(String gameId, {int? afterSeqNo}) async {
     relayCallCount += 1;
+    if (relayCallCount == 1 && failInitialRelayOnce) {
+      throw Exception('initial relay unavailable');
+    }
     if (relayCallCount == 1 && pendingInitialRelay != null) {
       return pendingInitialRelay!.future;
     }
     if (relayCallCount == 2 && pendingRelayRefresh != null) {
       return pendingRelayRefresh!.future;
     }
-    return const RelayData(currentAtBat: null, relayItems: []);
+    return relayData ?? const RelayData(currentAtBat: null, relayItems: []);
   }
 
   @override

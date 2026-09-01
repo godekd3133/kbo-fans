@@ -1,13 +1,13 @@
 # Versioning And Release Policy
 
 > Created: 2026-05-20
-> Updated: 2026-09-01
+> Updated: 2026-09-02
 
 ## Current Baseline
 
 - Active release line: `0.1.x`
-- Flutter app version: `0.1.29+97`
-- Current release tag: `0.1.29`
+- Flutter app version: `0.1.30+98`
+- Current release tag: `0.1.30`
 - Preview suffixes are not used. Do not create `*-preview*` tags or GitHub prereleases for this repository.
 - Historical preview/prerelease tags were rewritten into plain numeric releases on 2026-05-20 by explicit Director request.
 
@@ -62,6 +62,8 @@ Every version or release change must update these surfaces in the same work unit
 - When the Director says "이어서 해", decide autonomously whether the current work deserves a new numeric version or should only amend/rewrite the current GitHub release notes. Prefer a new version when app behavior, API behavior, user-visible UI, or in-app update notes change.
 
 ## Numeric Release Map
+
+- `0.1.30`: 문자중계 초기 오류·경기 요약 지연에 독립 자동 retry를 적용하고, backend relay L1/L2 및 앱 제한 local cache를 보강한 current app build `0.1.30+98`.
 
 - `0.1.29`: 경기 상세 첫 진입과 예정→LIVE 전환에서 문자중계 provider가 시작되지 않던 클라이언트 경로를 보정하고, backend 이중 cache와 LIVE 상세 prefetch 배포를 반영하는 current app build `0.1.29+97`.
 

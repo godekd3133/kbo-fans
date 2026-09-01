@@ -19,6 +19,7 @@ class ApiGameRepository
   final Set<String> _forcedGameRefreshes = <String>{};
   final Set<String> _forcedRelayRefreshes = <String>{};
   static const _liveishCacheAge = Duration(seconds: 8);
+  static const _relayLocalCacheAge = Duration(seconds: 60);
   static const _historicalCacheAge = Duration(days: 30);
 
   ApiGameRepository(this._client);
@@ -123,18 +124,20 @@ class ApiGameRepository
     final forceRefresh = _forcedRelayRefreshes.remove(gameId);
     if (forceRefresh) params['forceRefresh'] = true;
     final isHistoricalGame = _isHistoricalGameId(gameId);
+    var usedLocalCacheFallback = false;
 
     final data = await _client.getCached(
       '/game/$gameId/relay',
       queryParameters: params,
       cacheKey: 'relay:$gameId:${afterSeqNo ?? ''}',
       preferCache: isHistoricalGame && !forceRefresh,
-      maxAge: isHistoricalGame ? _historicalCacheAge : _liveishCacheAge,
+      maxAge: isHistoricalGame ? _historicalCacheAge : _relayLocalCacheAge,
       isCacheable: isHistoricalGame
           ? (payload) => _hasDetailedHistoricalRelay(payload, gameId)
-          : null,
-      allowCacheOnFailure: isHistoricalGame && !forceRefresh,
+          : (payload) => _hasCurrentRelayPayload(payload, gameId),
+      allowCacheOnFailure: !forceRefresh,
       revalidateStaleCache: !isHistoricalGame,
+      onCacheFallback: () => usedLocalCacheFallback = true,
     );
     final items = data['relayItems'] as List<dynamic>? ?? [];
     final atBat = data['currentAtBat'] as Map<String, dynamic>?;
@@ -144,6 +147,7 @@ class ApiGameRepository
       relayItems: items
           .map((r) => _parseRelayItem(r as Map<String, dynamic>))
           .toList(),
+      isStale: usedLocalCacheFallback,
     );
   }
 
@@ -620,6 +624,23 @@ class ApiGameRepository
       }
     }
     return false;
+  }
+
+  static bool _hasCurrentRelayPayload(
+    Map<String, dynamic> data,
+    String gameId,
+  ) {
+    if (data['gameId'] != gameId) {
+      return false;
+    }
+    final items = data['relayItems'];
+    if (items is! List || items.isEmpty) {
+      return data['currentAtBat'] is Map;
+    }
+    if (data['currentAtBat'] != null && data['currentAtBat'] is! Map) {
+      return false;
+    }
+    return items.every((item) => item is Map);
   }
 
   static bool _hasCanonicalHistoricalBoxscore(

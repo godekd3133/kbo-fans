@@ -87,7 +87,10 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             relayData.currentAtBat,
           );
           if (relayData.relayItems.isEmpty && currentAtBat == null) {
-            return _buildFallbackContent(latestGame);
+            return _buildFallbackContent(
+              latestGame,
+              isStale: relayData.isStale,
+            );
           }
           _trackRelayUpdates(relayData.relayItems);
           final imageMap = _buildRelayPlayerImageMap(
@@ -104,6 +107,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             playersByName,
             lineupData,
             season: season,
+            isStale: relayData.isStale,
           );
         },
       ),
@@ -194,6 +198,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     Map<String, PlayerProfile> playersByName,
     GameLineupData? lineupData, {
     required int season,
+    bool isStale = false,
   }) {
     final sortedItems = List<RelayItem>.from(items)
       ..sort((a, b) => b.seqNo.compareTo(a.seqNo));
@@ -222,6 +227,13 @@ class _RelayTabState extends ConsumerState<RelayTab> {
             child: _RelayGameSummary(game: game),
           ),
         ),
+        if (isStale)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: _RelayStaleNotice(),
+            ),
+          ),
         if (atBat != null)
           SliverToBoxAdapter(
             child: Padding(
@@ -337,7 +349,11 @@ class _RelayTabState extends ConsumerState<RelayTab> {
     });
   }
 
-  Widget _buildFallbackContent(Game game, {bool isLoading = false}) {
+  Widget _buildFallbackContent(
+    Game game, {
+    bool isLoading = false,
+    bool isStale = false,
+  }) {
     return CustomScrollView(
       key: _scrollViewKey,
       controller: _scrollController,
@@ -356,6 +372,7 @@ class _RelayTabState extends ConsumerState<RelayTab> {
               game: game,
               gameStatus: widget.gameStatus,
               isLoading: isLoading,
+              isStale: isStale,
             ),
           ),
         ),
@@ -897,16 +914,20 @@ class _RelayFallbackNotice extends StatelessWidget {
   final Game game;
   final GameStatus gameStatus;
   final bool isLoading;
+  final bool isStale;
 
   const _RelayFallbackNotice({
     required this.game,
     required this.gameStatus,
     this.isLoading = false,
+    this.isStale = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final message = isLoading
+    final message = isStale
+        ? '네트워크 갱신이 지연되어 마지막으로 저장된 문자중계를 표시하고 있습니다'
+        : isLoading
         ? '문자중계 데이터를 불러오는 중입니다. 현재 점수와 팀 정보는 계속 표시됩니다'
         : switch (gameStatus) {
             GameStatus.live => '공식 문자중계 원문은 아직 없지만 현재 점수와 팀 기록은 계속 반영됩니다',
@@ -938,6 +959,28 @@ class _RelayFallbackNotice extends StatelessWidget {
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _RelayStaleNotice extends StatelessWidget {
+  const _RelayStaleNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey('relay-stale-notice'),
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.cardSub,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Text(
+        '네트워크 갱신이 지연되어 마지막으로 저장된 문자중계를 표시하고 있습니다',
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
       ),
     );
   }
