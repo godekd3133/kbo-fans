@@ -23,7 +23,7 @@
 - [x] 운영 release API health gate 재실행에서 DNS/TLS, health, scoreboard/home, home, schedule, standings, records overview가 모두 통과했다. 당일 경기 없음으로 relay는 명시적 skip이었다. 첫 실행의 relay helper 내부 scoreboard 재조회는 단회 20초 timeout이었으나 직후 curl 200과 전체 gate 재실행 통과로 transient 연결 표본으로 분리했다.
 - [x] pushed SHA `bb1c7917`의 clean release worktree(`/tmp/kbo-fans-release-0.1.28`)에서 stable Xcode 26.6(build `17F113`, iPhoneOS SDK `23F81a`)로 `0.1.28+96` signed IPA archive/export를 완료했다. Runner/Widget의 Apple Distribution 서명, bundle identifier, production APNs entitlement를 readback했고 `codesign --verify --deep --strict` 및 `xcrun altool --validate-app`의 `VERIFY SUCCEEDED`를 확인했다. IPA SHA-256은 `1e9816a28bef5ad7d7f152e06bebb073c70e5530e06636790085c095f229066c`이다.
 - [x] App Store Connect upload를 완료했다. delivery UUID는 `fd078b1d-7f99-49f4-bd20-ae72f284db3c`이며 transferred bytes는 `35456477`이다. App Store Connect API에서 build 96의 `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`를 확인했다.
-- [x] 내부 `Tester`와 외부 `External Testers` 그룹에 build 96을 연결했고, 기존 build 95는 fallback으로 유지했다. build 96 Beta App Review submission은 생성되었으며 현재 `WAITING_FOR_REVIEW`다.
+- [x] 내부 `Tester`와 외부 `External Testers` 그룹에 build 96을 연결했고, 기존 build 95는 fallback으로 유지했다. build 96 Beta App Review submission은 `APPROVED`로 전환되었으며 외부 테스터 설치 조건도 충족했다.
 - [x] numeric tag `0.1.28`, `main` commit `bb1c7917`을 origin에 push했고 GitHub Release도 생성했다.
 - [ ] 실제 iPhone에서 TestFlight build 96을 설치·업데이트한 뒤 immutable 과거 경기·기록실 cache 동작과 경기 상세 탭을 확인한다. build 95 실기기 검증은 완료했지만 build 96 자체의 실기기 설치 증거는 아직 없다.
 - [ ] `SharedPreferences` cache는 최대 64 entries/2 MiB이며 오래된 항목은 capacity eviction될 수 있다. 이번 변경은 시간 만료 재요청을 제거하는 범위이고, 시즌 전체 오프라인 보관을 위한 SQLite/별도 DB 확장은 포함하지 않는다.
