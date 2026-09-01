@@ -25,7 +25,9 @@
 - [x] App Store Connect upload를 완료했다. delivery UUID는 `fd078b1d-7f99-49f4-bd20-ae72f284db3c`이며 transferred bytes는 `35456477`이다. App Store Connect API에서 build 96의 `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`를 확인했다.
 - [x] 내부 `Tester`와 외부 `External Testers` 그룹에 build 96을 연결했고, 기존 build 95는 fallback으로 유지했다. build 96 Beta App Review submission은 `APPROVED`로 전환되었으며 외부 테스터 설치 조건도 충족했다.
 - [x] numeric tag `0.1.28`, `main` commit `bb1c7917`을 origin에 push했고 GitHub Release도 생성했다.
-- [ ] 실제 iPhone에서 TestFlight build 96을 설치·업데이트한 뒤 immutable 과거 경기·기록실 cache 동작과 경기 상세 탭을 확인한다. build 95 실기기 검증은 완료했지만 build 96 자체의 실기기 설치 증거는 아직 없다.
+- [x] 실제 iPhone의 TestFlight 화면에서 `KBO Fans 0.1.28 (96)` 설치 상태를 확인하고 앱을 실행했다. 일정에서 2026-08-27 삼성 15:2 키움 경기를 열어 스코어·문자중계·박스스코어·라인업을 확인했으며, 박스스코어는 삼성 타수 45·득점 15·안타 20·타점 15, 라인업은 `원태인`/`하영민` 선발을 표시했다. build 96의 업데이트 소식도 실제 화면에 표시됐다.
+- [x] 같은 실기기 TestFlight에서 KBO Fans app switcher card를 한 번 종료해 process 재실행 경계를 만들었고, 이후 검증을 위해 Wi-Fi를 임시 해제했다.
+- [ ] Wi-Fi를 끄면 iPhone Mirroring transport 자체가 끊겨 offline 상태의 두 번째 화면 조작은 진행하지 못했다. Wi-Fi는 복구했으며, iPhone을 잠근 뒤 Mirroring으로 재연결해 build 96 process 재실행과 과거 cache 재진입을 추가 확인한다. offline direct proof가 없어도 immutable cache 계약은 1년 이상 지난 payload의 network 0회 회귀 테스트로 별도 검증했다.
 - [ ] `SharedPreferences` cache는 최대 64 entries/2 MiB이며 오래된 항목은 capacity eviction될 수 있다. 이번 변경은 시간 만료 재요청을 제거하는 범위이고, 시즌 전체 오프라인 보관을 위한 SQLite/별도 DB 확장은 포함하지 않는다.
 
 ## 2026-08-31: 0.1.27 TestFlight 심사 승인 후속
