@@ -19,7 +19,12 @@
 
 - [x] `fvm flutter test --no-pub test/features/game_detail/game_detail_navigation_test.dart --plain-name '명시 탭 없는 예정 경기가 LIVE로 갱신되면 문자중계로 교정한다'`: 통과. 전환 후 relay provider 호출 assertion을 추가했다.
 - [x] `fvm flutter test --no-pub test/features/game_detail/relay_tab_test.dart`: 통과.
-- [ ] Flutter 전체 테스트, stable Xcode archive, TestFlight upload/processing, external tester 연결은 이 기록 시점에 진행 예정.
+- [x] `fvm flutter test --no-pub`: 전체 534개 통과. `fvm flutter analyze --no-fatal-infos`: `No issues found`.
+- [x] pushed SHA `ec205f24`의 clean release worktree(`/tmp/kbo-fans-release-0.1.29`)에서 stable Xcode 26.6(build `17F113`, iPhoneOS SDK 26.5)으로 `0.1.29+97` signed IPA archive/export를 완료했다. production `aps-environment`, `beta-reports-active`, App Group, `get-task-allow=false` entitlement를 확인했고 `codesign --verify --deep --strict`를 통과했다. IPA 경로는 `/tmp/kbo-fans-release-0.1.29/app/build/ios/ipa/kbo_fans.ipa`, SHA-256은 `2f1cbdf23a3408973a86070bc33ee6e6839d941fc0806a13e4de2e08408d735f`이다.
+- [x] `xcrun altool --validate-app`의 `VERIFY SUCCEEDED`와 App Store Connect upload 성공을 확인했다. delivery UUID는 `f07114bd-1a97-4a89-807b-d33369d23382`이며 transferred bytes는 `35456386`이다. Apple readback에서 build `97`, `processingState=VALID`, `buildAudienceType=APP_STORE_ELIGIBLE`, `IS-ON-APP-STORE-CONNECT=true`를 확인했다.
+- [x] App Store Connect API에서 내부 `Tester` 그룹에 build 97이 연결된 상태를 확인했고, 외부 `External Testers` 그룹 연결은 HTTP 204로 완료했다. 재조회 결과 외부 그룹은 build 96과 build 97을 모두 유지한다.
+- [x] build 97 Beta App Review submission을 생성했고 HTTP 201 및 `betaReviewState=WAITING_FOR_REVIEW`를 확인했다. 외부 심사 승인 전까지 기존 build 96을 제거하지 않는다.
+- [ ] 새 build 97을 실제 iPhone TestFlight에서 설치·업데이트한 뒤 문자중계 탭의 첫 진입/예정→LIVE 전환을 확인하는 실기기 증거는 아직 남아 있다. App Store Connect의 `VALID`·그룹 연결·심사 제출은 실제 설치 및 런타임 표시 증거가 아니다.
 
 ## 2026-09-01: backend 이중 cache와 LIVE 상세 prefetch
 

@@ -80,7 +80,7 @@ kbo_fans/
 - App version format: `MAJOR.MINOR.PATCH+BUILD` in `app/pubspec.yaml`
 - Release tag format: `MAJOR.MINOR.PATCH`
 - Current release line: `0.1.x`
-- Current release candidate: `0.1.28+96`
+- Current release candidate: `0.1.29+97`
 - Preview suffixes are not used. Do not create `*-preview*` tags or prereleases unless this policy is explicitly changed.
 - Every release/version change must update `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, GitHub Release notes, and `docs/WORKLOG.md`.
 

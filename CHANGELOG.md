@@ -14,7 +14,6 @@
 
 ### Changed
 
-- backend 경기 상세를 API process cache와 worker/API 공유 runtime cache의 이중 구조로 제공하고, 진행 중 경기의 게임 요약·문자중계·박스스코어·라인업을 백그라운드에서 미리 준비하도록 보강
 - backend 경기 상세를 process-local L1 cache와 worker/API가 공유하는 runtime JSON L2 cache의 이중 구조로 보강해, cache miss일 때만 KBO를 조회하고 검증된 결과를 다음 요청에 재사용하도록 변경
 - release sync worker가 진행 중인 경기의 게임 요약·문자중계·박스스코어·라인업을 별도 adaptive 주기로 미리 수집하고, 종료 경기의 완전한 상세 snapshot을 historical cache로 확정하도록 추가
 
