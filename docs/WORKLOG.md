@@ -20,9 +20,14 @@
 
 - [x] 동일 크롤러 직접 측정: 2026-08-30 경기 1건에서 scoreboard `0.110s`, relay `0.425s`, boxscore `0.104s`, lineup `0.132s`, 순차 합계 `0.771s`. 다섯 경기 동시 운영 p95는 아직 실기기/운영 경기 표본이 없어 배포 후 worker 로그로 측정해야 한다.
 - [x] `backend/.venv/bin/ruff check backend/src/kbo_fans_backend backend/tests`: 통과.
-- [x] 대상 backend 회귀 테스트: `58 passed` (runtime cache, boxscore, lineup, relay, warmer 포함). 기존 snapshot/scoreboard/lineup/relay/live worker 테스트도 `86 passed`로 통과했고, 전체 `backend/.venv/bin/pytest -q backend/tests`는 `600 passed`다.
+- [x] 대상 backend 회귀 테스트: `58 passed` (runtime cache, boxscore, lineup, relay, warmer 포함). 기존 snapshot/scoreboard/lineup/relay/live worker 테스트도 `86 passed`로 통과했고, 전체 `backend/.venv/bin/pytest -q backend/tests`는 `602 passed`다.
 - [x] 실제 `LiveGameDataWarmService`에 KBO crawler를 연결해 2026-08-30 종료 경기 1건을 측정했다. 첫 cycle은 `2.981s`, relay·official boxscore·lineup 완전성 검증 후 `finalizedGames=1`이었고, 같은 process의 두 번째 cycle은 `0.0s`로 재수집 없이 종료됐다. runtime cache는 historical namespace 승격 뒤 정리됐다.
-- [ ] backend 전체 pytest와 AWS 재배포는 아직 실행하지 않았다. 이번 변경은 로컬 source/test 단계이며, 운영 worker에 반영하려면 Lightsail 배포 후 `live_game_data_warmer` cycle 로그와 API cache-hit latency를 별도 확인해야 한다.
+- [x] 요청 범위 파일만 staging해 commit `68c22e6`으로 `origin/main`에 push한 뒤 Lightsail release `20260901093903`에 `--preserve-env --skip-caddy`로 배포했다. 기존 `/etc/kbo-fans/backend.env`와 secret/Caddy 설정은 보존했다.
+- [x] 운영 readback에서 첫 release의 API와 sync worker가 `active`, `NRestarts=0`, `/api/health` HTTP 200임을 확인했다. 실제 2026-09-01 LIVE 4경기에서 runtime game/relay/boxscore/lineup 파일이 생성되고 API 상세 4종이 HTTP 200으로 응답했다.
+- [x] 운영 로그에서 첫 release의 상세 cache runtime hit를 확인한 뒤, worker INFO 로그가 journal에 남지 않는 경계를 발견했다. 실제 LIVE sync 중 발생한 `"'inning'"` 누락 필드 오류도 재현 증거로 확인했다.
+- [x] logging/partial relay inning 방어 보완 commit `d8fef18`을 push하고 release `20260901094833`으로 재배포했다. 운영 worker journal에서 LIVE 4경기 cycle `6.827s`, `5.905s`, `5.510s`, 각 구성요소 `ok`, `errors=[]`, 다음 주기 `15.0s`를 확인했다.
+- [x] 최종 운영 readback에서 release `20260901094833`, API/worker `active`, `NRestarts=0`, public health HTTP 200을 확인했다. `20260901LTSS0` 상세는 relay 56 items/currentAtBat, live-context boxscore rows, lineup 양 팀 9 rows를 반환했고 연속 API 요청은 약 `0.037~0.054s`에 200으로 종료됐다.
+- [ ] 첫 release 재시작 시 진행 중 crawler thread가 5초 join 안에 끝나지 않아 `join_timeout` 1건이 journal에 남았다. 최종 worker는 정상 active이고 재시작 횟수 0이지만, 다음 graceful shutdown 개선에서 별도 확인한다.
 - [ ] ECS 다중 API task를 실제로 사용할 경우 JSON L2는 EFS 같은 공유 저장소가 필요하고, snapshot 파일 자체는 분산 crawler lease를 제공하지 않는다. 현재 Lightsail 단일 worker 정책에서는 worker/API가 같은 `SNAPSHOT_DIR`를 사용한다.
 
 ## 2026-08-31: 0.1.28+96 과거 경기·기록실 immutable 기기 cache
