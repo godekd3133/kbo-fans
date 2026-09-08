@@ -26,17 +26,25 @@
 
 ### Release decision
 
-- [x] 사용자-visible 앱/API 동작 변경이므로 `0.1.32+100` / numeric tag `0.1.32` 릴리즈로 승격했다. Android release gate가 `home_widget` JVM target 불일치로 실패해 태그를 되돌리지 않고 `0.1.33+101` / numeric tag `0.1.33`을 최종 배포 대상으로 추가한다.
+- [x] 사용자-visible 앱/API 동작 변경이므로 `0.1.32+100` / numeric tag `0.1.32` 릴리즈로 승격했다. Android release gate가 `home_widget` JVM target 불일치로 실패해 태그를 되돌리지 않고 `0.1.33+101` / numeric tag `0.1.33`을 최종 배포 대상으로 추가했다.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`, `README.md`, `CLAUDE.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `docs/PLANNING.md`, `docs/WORKLOG.md`를 릴리즈 기준으로 동기화했다.
 - [x] 현재 작업 트리에서 허용 목록만 stage하여 `a517fe79`를 커밋하고 `origin/main` 및 tag `0.1.32`에 push했다.
-- [ ] JVM 17 전파 수정과 `0.1.33+101` 버전을 허용 목록으로 stage하여 새 커밋과 tag를 push한다.
-- [ ] pushed SHA의 clean worktree에서 backend Lightsail bundle과 release web/Android/iOS artifact를 생성한다.
-- [ ] Lightsail API·worker 및 GitHub Release/tag checkpoint를 배포 후 기록한다.
-- [ ] Apple Distribution signing/TestFlight와 Google Play 업로드는 자격증명·외부 콘솔 상태를 별도 확인한다.
+- [x] JVM 17 전파 수정과 `0.1.33+101` 버전을 허용 목록으로 stage하여 커밋 `6845e195bbb298e6e67626af5f67f40e163cac05`, numeric tag `0.1.33`, `origin/main`을 push했다.
+- [x] pushed SHA 기준 release web/Android/iOS simulator artifact와 backend 검증을 완료했다. Android CI AAB는 `debug-fallback`이며 로컬 upload keystore AAB를 별도 생성했다.
+- [x] Lightsail API·worker와 GitHub Release/tag checkpoint를 실제 배포 후 확인했다. Lightsail release는 `20260908065917`, API·worker는 active, worker `NRestarts=0`이다.
+- [x] Apple Distribution signing/TestFlight와 Google Play 업로드는 자격증명·외부 콘솔 상태를 확인한 결과 보류했다. signed IPA job은 skip됐고 Play 업로드는 실행하지 않았다.
 
 ### 인수와 배포 경계
 
-최종 Flutter 분석·전체 테스트·웹 빌드·실제 화면 확인 결과는 [리뉴얼 통합 인수](RENEWAL_2026-09-07.md)에 정본으로 기록한다. [기능 감사](RENEWAL_FEATURE_AUDIT_2026-09-07.md), [시장 조사](RENEWAL_MARKET_2026-09-07.md), `artifacts/renewal-2026-09-07/`에 세부 근거를 보관한다. API 연결과 로컬 웹 시각 검증은 실기기/FCM/APNs/서명/TestFlight 성공을 뜻하지 않는다. 이번 릴리즈는 `0.1.32+100`으로 승격하며, 커밋·푸시·백엔드·아티팩트·스토어 배포 checkpoint를 실제 결과와 함께 갱신한다.
+최종 Flutter 분석·전체 테스트·웹 빌드·실제 화면 확인 결과는 [리뉴얼 통합 인수](RENEWAL_2026-09-07.md)에 정본으로 기록한다. [기능 감사](RENEWAL_FEATURE_AUDIT_2026-09-07.md), [시장 조사](RENEWAL_MARKET_2026-09-07.md), `artifacts/renewal-2026-09-07/`에 세부 근거를 보관한다. API 연결과 로컬 웹 시각 검증은 실기기/FCM/APNs/서명/TestFlight 성공을 뜻하지 않는다. `0.1.33+101` commit/tag/GitHub Release, Lightsail release `20260908065917`, GitHub Actions run `34196425475`, 외부 HTTPS health gate를 실제 결과와 함께 갱신했다. Apple TestFlight와 Google Play는 서명·스토어 자격이 확인될 때 별도 checkpoint로 진행한다.
+
+### 0.1.33 최종 배포 증거 (2026-09-08)
+
+- 소스: `6845e195bbb298e6e67626af5f67f40e163cac05`가 `origin/main`과 일치하고 numeric tag `0.1.33` 및 [GitHub Release](https://github.com/godekd3133/kbo-fans/releases/tag/0.1.33)가 생성됐다. Release asset `app-release.aab`는 로컬 upload keystore AAB이며 SHA-256은 `6da02953247d60d8ada6971b143643b70f796504729438789ab0bc34847d0cca`다.
+- CI: [run 34196425475](https://github.com/godekd3133/kbo-fans/actions/runs/34196425475)에서 backend, web release, iOS simulator release, Android release job이 모두 성공했다. Android artifact metadata는 `data_mode=backend-api`, `push_api_base_url=https://3-39-79-1.sslip.io/api`, `signing=debug-fallback`이며 signed IPA job은 skip됐다.
+- Backend: clean pushed SHA bundle을 Lightsail `kbo-fans-api-lightsail` release `20260908065917`에 `--preserve-env --skip-caddy`로 배포했다. API와 sync worker가 active이고 worker `NRestarts=0`, 내부 `/api/health` HTTP 200이며 remote `home.py` SHA-256 `0cd03295dbdb43a5f0ae3e63ed1b54cc28f77743449cf54431541ce30be26b71`가 local과 일치한다.
+- 외부 readback: `release-api-health-check.sh`가 DNS/TLS 및 `/api/health`, `/api/scoreboard/home`, `/api/game/20260908WOLG0/relay`, `/api/home`, `/api/schedule`, `/api/standings`, `/api/records/overview` 모두 HTTP 200을 확인했다. `/api/home?date=2026-09-08&myTeam=LG`도 success=true로 standings/record_radar/batting_leader/big_match를 반환했다.
+- 경계: Apple Distribution certificate/provisioning profile과 GitHub signing secrets가 없어 TestFlight signed IPA 및 external tester handoff는 진행하지 않았다. Play Console API 자격이 없어 Google Play 업로드도 진행하지 않았다. 외부 API health와 GitHub artifact는 실기기 설치·FCM/APNs 수신·Live Activity 갱신의 증거가 아니다.
 
 ---
 
