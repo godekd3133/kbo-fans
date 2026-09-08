@@ -26,9 +26,10 @@
 
 ### Release decision
 
-- [x] 사용자-visible 앱/API 동작 변경이므로 `0.1.32+100` / numeric tag `0.1.32` 릴리즈로 승격한다.
+- [x] 사용자-visible 앱/API 동작 변경이므로 `0.1.32+100` / numeric tag `0.1.32` 릴리즈로 승격했다. Android release gate가 `home_widget` JVM target 불일치로 실패해 태그를 되돌리지 않고 `0.1.33+101` / numeric tag `0.1.33`을 최종 배포 대상으로 추가한다.
 - [x] `app/pubspec.yaml`, `CHANGELOG.md`, `app/assets/bootstrap/patch_notes.md`, `docs/VERSIONING.md`, `README.md`, `CLAUDE.md`, `docs/APP_SPEC.md`, `docs/FIGMA_PROMPT.md`, `docs/PLANNING.md`, `docs/WORKLOG.md`를 릴리즈 기준으로 동기화했다.
-- [ ] 현재 작업 트리에서 허용 목록만 stage하여 커밋하고 `origin/main`에 push한다.
+- [x] 현재 작업 트리에서 허용 목록만 stage하여 `a517fe79`를 커밋하고 `origin/main` 및 tag `0.1.32`에 push했다.
+- [ ] JVM 17 전파 수정과 `0.1.33+101` 버전을 허용 목록으로 stage하여 새 커밋과 tag를 push한다.
 - [ ] pushed SHA의 clean worktree에서 backend Lightsail bundle과 release web/Android/iOS artifact를 생성한다.
 - [ ] Lightsail API·worker 및 GitHub Release/tag checkpoint를 배포 후 기록한다.
 - [ ] Apple Distribution signing/TestFlight와 Google Play 업로드는 자격증명·외부 콘솔 상태를 별도 확인한다.
